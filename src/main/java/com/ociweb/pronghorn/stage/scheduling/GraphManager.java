@@ -23,7 +23,9 @@ import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
+import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
@@ -2154,14 +2156,28 @@ public class GraphManager {
 			graphManager.stageRunNS[stageId] += duration;			
 		} else {
 			
-			int x = totalZeroDurations.incrementAndGet();
+			PronghornStage stage = getStage(graphManager, stageId);
 			
-			if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
-				logger.info("Warning: the OS has measured stages taking zero ms {} times. "
-						+ "Most recent case is for {}.", x, getStage(graphManager, stageId));
+			if ((stage instanceof PipeCleanerStage) ||
+				(stage instanceof ReplicatorStage) ) {
+				
+				//these can be very fast and should not be logged.
+				
+			} else {
+			
+				int x = totalZeroDurations.incrementAndGet();
+								
+				if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
+					if (duration<0) {
+						logger.info("Bad duration {}",duration);
+					} else {
+						logger.info("Warning: the OS has measured stages taking zero ms {} times. "
+							+ "Most recent case is for {}.", x, stage);
+					}
+				}
+				
+				graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
 			}
-			
-			graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
 		}
 		
 		

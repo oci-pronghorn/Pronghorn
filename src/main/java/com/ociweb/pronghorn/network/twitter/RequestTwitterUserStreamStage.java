@@ -25,10 +25,12 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	
 	private final int httpRequestResponseId;	
 	
+	private static final String scheme = "https";
 	private static final int port = 443;		
 	private static final String host = "userstream.twitter.com";// api.twitter.com";		
-	private static final String rawQuery = "stall_warnings=true&with=followings";
 	private static final String pathRoot = "/1.1/user.json";	
+
+	private static final String rawQuery = "stall_warnings=true&with=followings";
 	private static final String path = pathRoot+"?"+rawQuery;
 	
 	public RequestTwitterUserStreamStage(GraphManager graphManager, 
@@ -52,8 +54,8 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	@Override
 	public void startup() {
 		
-		myAuth = new OAuth1HeaderBuilder(ck, port, "https", host, pathRoot);
-	    myAuth.setupStep3(cs, token, secret);
+		myAuth = new OAuth1HeaderBuilder(port, scheme, host, pathRoot);
+	    myAuth.setupStep3(ck, cs, token, secret);
 		
 		myAuth.addMACParam("stall_warnings","true");
 		myAuth.addMACParam("with","followings");		

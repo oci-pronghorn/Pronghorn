@@ -3,7 +3,9 @@ package com.ociweb.pronghorn.network.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -178,6 +180,19 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		      }
 	      }
 		return typeMap;
+	}
+
+	public void headerSkip(int headerId, ChannelReader stream) {
+		headers[headerId].skipValue(stream);		
+	}
+
+	public void headerConsume(int headerId, ChannelReader stream, Appendable target) {
+		headers[headerId].consumeValue(stream, target);
+		
+	}
+
+	public long headerConsume(int headerId, ChannelReader stream) {
+		return headers[headerId].consumeValue(stream);
 	}
 
 

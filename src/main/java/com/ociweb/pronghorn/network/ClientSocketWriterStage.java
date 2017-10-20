@@ -150,10 +150,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 								
 								cc.recordSentTime(System.nanoTime());
 								
-						        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-							            Pipe.peekInt(pipe)==msgIdx && 
-							            		buffers[i].remaining()>pipe.maxVarLen && 
-							            Pipe.peekLong(pipe, 1)==channelId ) {
+						        while (enableWriteBatching && 
+						        		Pipe.hasContentToRead(pipe) && 
+							            Pipe.peekInt(pipe) == msgIdx && 
+							            buffers[i].remaining() > pipe.maxVarLen && 
+							            Pipe.peekLong(pipe, 1) == channelId ) {
 							        			        	
 							        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
 							        	

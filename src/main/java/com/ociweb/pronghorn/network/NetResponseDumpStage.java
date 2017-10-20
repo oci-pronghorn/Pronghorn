@@ -2,21 +2,29 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.http.HeaderUtil;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
 	private final A target;
+	private final HTTPSpecification<?, ?, ?, ?> httpSpec;
 	
-	public NetResponseDumpStage(GraphManager graphManager, Pipe<NetResponseSchema> input, A target) {
+	public NetResponseDumpStage(GraphManager graphManager, 
+			                    Pipe<NetResponseSchema> input, 
+			                    A target, 
+			                    HTTPSpecification<?, ?, ?, ?> httpSpec) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.target = target;
+		this.httpSpec = httpSpec;
 	}
 
 	@Override
@@ -40,18 +48,16 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 						int headerId = stream.readShort();
 						
 						while (-1 != headerId) { //end of headers will be marked with -1 value
-							//determine the type
 							
-							int headerValue = stream.readShort();
-							//is this what we need?
-							System.out.println(headerId+"  "+headerValue);
-							
+							httpSpec.writeHeader(
+									Appendables.appendValue(System.out, "", headerId, ": "), 
+									headerId, stream);
 							
 							//read next
 							headerId = stream.readShort();
 							
 						}
-						System.out.println("last short:"+headerId);
+						//System.out.println("last short:"+headerId);
 						
 						try {
 							DataInputBlobReader.readUTF(stream, stream.available(), target);

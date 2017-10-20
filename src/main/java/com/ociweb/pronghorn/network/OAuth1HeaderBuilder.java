@@ -39,14 +39,12 @@ public class OAuth1HeaderBuilder {
   private static final String OAUTH_VERIFIER         = "oauth_verifier";  // the pin only for E
   private static final String OAUTH_CALLBACK         = "oauth_callback"; //only for A
   
-  
-  private final String consumerKey;
-  
   private final SecureRandom secureRandom = new SecureRandom(); 
   
   private final StringBuilder nonceBuilder = new StringBuilder();
   private final StringBuilder timeBuilder = new StringBuilder();
   private final StringBuilder tokenBuilder = new StringBuilder();
+  private final StringBuilder consumerKeyBuilder = new StringBuilder();
 	
   private final List<CharSequence[]> macParams = new ArrayList<CharSequence[]>(); //in alpha order...  
   private final Pipe<RawDataSchema> workingPipe;    
@@ -62,17 +60,17 @@ public class OAuth1HeaderBuilder {
   ///////////////////////
   
   
-  public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
-		                     int port, String scheme, String host, String path) {
-
-    this.consumerKey = consumerKey;    
+  public OAuth1HeaderBuilder(int port, String scheme, String host, String path) {
+   
     try {
 		this.mac = Mac.getInstance("HmacSHA1");
 	} catch (NoSuchAlgorithmException e) {
 		throw new RuntimeException(e);
 	}
    	
-	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKey); 
+    consumerKeyBuilder.setLength(0);
+	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKeyBuilder); 
+	
 	this.addMACParam(OAUTH_NONCE,nonceBuilder);
 	this.addMACParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1");
 	this.addMACParam(OAUTH_TIMESTAMP,timeBuilder);
@@ -89,8 +87,10 @@ public class OAuth1HeaderBuilder {
 
   }
 
-  public void setupStep1() {
+  public void setupStep1(String consumerKey) {
 	  // A
+	  this.consumerKeyBuilder.setLength(0);
+	  this.consumerKeyBuilder.append(consumerKey);
 	  this.tokenBuilder.setLength(0);
 	  this.secretKeySpec = new SecretKeySpec("anonymous&".getBytes(), "HmacSHA1");
   
@@ -122,8 +122,10 @@ public class OAuth1HeaderBuilder {
 //		  		Any additional parameters, as defined by the Service Provider.
   }
   
-  public void setupStep2( String consumerSecret, String token, String tokenSecret ) {
+  public void setupStep2(String consumerKey, String consumerSecret, String token, String tokenSecret ) {
 	  // E
+	  this.consumerKeyBuilder.setLength(0);
+	  this.consumerKeyBuilder.append(consumerKey);
 	  this.tokenBuilder.setLength(0);
 	  this.tokenBuilder.append(token);		
 	  this.secretKeySpec = new SecretKeySpec((consumerSecret + "&").getBytes(), "HmacSHA1");
@@ -153,8 +155,10 @@ public class OAuth1HeaderBuilder {
 //		 		 Any additional parameters, as defined by the Service Provider.
   }
   
-  public void setupStep3( String consumerSecret, String token, String tokenSecret ) {
-	  
+  public void setupStep3(String consumerKey, String consumerSecret, String token, String tokenSecret ) {
+	 
+	  this.consumerKeyBuilder.setLength(0);
+	  this.consumerKeyBuilder.append(consumerKey);
 	  this.tokenBuilder.setLength(0);
 	  this.tokenBuilder.append(token);		
 	  this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
@@ -239,7 +243,7 @@ public class OAuth1HeaderBuilder {
 	    builder.append("Authorization: ");
 	    
 	    builder.append("OAuth ");
-	    builder.append(OAUTH_CONSUMER_KEY).append("=\"").append(consumerKey).append("\", ");
+	    builder.append(OAUTH_CONSUMER_KEY).append("=\"").append(consumerKeyBuilder).append("\", ");
 	    
 	    if (tokenBuilder.length()>0) {
 	    	builder.append(OAUTH_TOKEN).append("=\"").append(tokenBuilder).append("\", ");

@@ -14,18 +14,54 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),//chromium
     TRANSFER_ENCODING("Transfer-Encoding: chunked") {    
-	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
 	    	return target;
 	    }
+	    
+		@Override
+		public void skipValue(ChannelReader reader) {
+		}
+
+		@Override
+		public <A extends Appendable> A consumeValue(ChannelReader reader, A target) {
+			try {
+				target.append("chunked");
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			return target;
+		}
+
+		@Override
+		public long consumeValue(ChannelReader reader) {
+			throw new UnsupportedOperationException();
+		}
+	    
 	}, //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u") {    
-	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
 	    	Appendables.appendValue(target, reader.readPackedLong());
 	    	return target;
 	    }
+	    
+	    @Override
+		public void skipValue(ChannelReader reader) {
+			reader.readPackedLong();
+		}
+
+		@Override
+		public <A extends Appendable> A consumeValue(ChannelReader reader, A target) {
+			Appendables.appendValue(target, reader.readPackedLong());
+			return target;
+		}
+		
+		@Override
+		public long consumeValue(ChannelReader reader) {
+			return reader.readPackedLong();
+		}
 	}, //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b") {
-	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
             HTTPContentType contentType = httpSpec.getContentType(reader.readShort());
             try {
                 target.append(contentType.contentType());
@@ -69,7 +105,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
     STATUS("Status: %i %b"){    
-	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
 	    	try {
 	    		Appendables.appendValue(target, reader.readPackedLong());				
 	    		target.append(' ');
@@ -79,18 +115,59 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
 			}
 	    	return target;
 	    }
+	    
+		@Override
+		public void skipValue(ChannelReader reader) {
+			
+			reader.readPackedLong();
+			short len = reader.readShort();
+			reader.skipBytes(len);
+			
+		}
+
+		@Override
+		public <A extends Appendable> A consumeValue(ChannelReader reader, A target) {
+			reader.readPackedLong();
+			reader.readUTF(target);
+			return target;
+		}
+
+		@Override
+		public long consumeValue(ChannelReader reader) {
+			long result = reader.readPackedLong();
+			//skip text
+			short len = reader.readShort();
+			reader.skipBytes(len);
+			return result;
+		}
+	    
+	    
 	}, //Not matching?
     KEEP_ALIVE("Keep-Alive: %b"),
     EXPIRES("Expires: %b"),
-    RETRY_AFTER("Retry-After: %b"), //CNN
-    X_SERVED_BY("X-Served-By: %b"), //CNN
-    X_CACHE("X-Cache: %b"), //CNN
-    X_CACHE_HITS("X-Cache-Hits: %b"), //CNN
+    RETRY_AFTER("Retry-After: %b"),
     
 //    CONTENT_SECURITY_POLICY("content-security-policy: %b"), //twitter
     SET_COOKIE("set-cookie: %b"), //twitter
     COOKIE("Cookie: %b"), //chromium
     STRICT_TRANSPORT_SECURITY("strict-transport-security: %b"), //twitter
+    
+    
+    OAUTH_VERSION("oauth_version: %b"), //optional for all oauth1 calls    
+    OAUTH_NONCE("oauth_nonce: %b"), //required for all oauth1 calls
+    OAUTH_TIMESTAMP("oauth_timestamp: %u"), //required for all oauth1 calls
+    OAUTH_SIGNATURE_METHOD("oauth_signature_method: %b"), //required for all oauth1 calls
+    OAUTH_SIGNATURE("oauth_signature: %b"), //required for all oauth1 calls
+    OAUTH_CONSUMER_KEY("oauth_consumer_key: %b"), //required for all oauth1 calls
+    OAUTH_TOKEN("oauth_token: %b"), //only for E and G oauth1 
+    OAUTH_VERIFIER("oauth_verifier: %b"),  // the pin only for E oauth1 
+    OAUTH_CALLBACK("oauth_callback: %b"), //only for A oauth1 
+
+    
+    X_SERVED_BY("X-Served-By: %b"), //CNN
+    X_CACHE("X-Cache: %b"), //CNN
+    X_CACHE_HITS("X-Cache-Hits: %b"), //CNN
+    
     X_CONNECTION_HASH("x-connection-hash: %b"), //twitter
     X_RESPONSE_TIME("x-response-time: %b"), //twitter
     X_XSS_PROTECTION("x-xss-protection: %b"), //twitter
@@ -146,7 +223,8 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
         return writingRoot;
     }
     
-    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+    @Override
+    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
     	reader.readUTF(target);
     	return target;
     }
@@ -155,5 +233,23 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     public byte[] rootBytes() {
     	return rootBytes;
     }
+
+	@Override
+	public void skipValue(ChannelReader reader) {
+		//default assumes a UTF8 block capture
+		short len = reader.readShort();
+		reader.skipBytes(len);
+	}
+
+	@Override
+	public <A extends Appendable> A consumeValue(ChannelReader reader, A target) {
+		reader.readUTF(target);
+		return target;
+	}
+
+	@Override
+	public long consumeValue(ChannelReader reader) {
+		throw new UnsupportedOperationException();
+	}
     
 }

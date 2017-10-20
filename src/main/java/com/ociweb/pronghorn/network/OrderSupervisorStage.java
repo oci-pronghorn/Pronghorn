@@ -111,9 +111,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public void startup() {                
 		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
         expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
+        
         expectedSquenceNosPipeIdx = new short[totalChannels];
-        expectedSquenceNosChannelId = new long[totalChannels];
         Arrays.fill(expectedSquenceNosPipeIdx, (short)-1);
+
+        expectedSquenceNosChannelId = new long[totalChannels];
+        Arrays.fill(expectedSquenceNosChannelId, (long)-1);
         
         //TODO: if we keep the long ChannelID we will know when the expectedSquenceNos should be zero again.
         //      these arrays are keeping one entry for each active connection.
@@ -651,7 +654,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 	int idx = (int)(channelId & coordinator.channelBitsMask);
 			expectedSquenceNos[idx]++;
 		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
-		 //	logger.info("increment expected for chnl {}  to value {} ",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]);
+		 	
+		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);
 		 	
 		 } 
 		                     
