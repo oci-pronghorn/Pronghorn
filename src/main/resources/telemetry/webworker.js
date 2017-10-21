@@ -20,7 +20,9 @@ var worker = this;
 
 this.onmessage = function onmessage(){
     httpGet('graph.dot', function(result){
+    	console.log('got new graph.dot');
         var updateDemo = Viz(result, {format: "svg", engine: "dot"});
+        console.log('finished vis call');
         worker.postMessage({result: updateDemo});
     }, function(error) {
         console.log('Error: ' + error);

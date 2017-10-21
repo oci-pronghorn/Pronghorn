@@ -137,9 +137,10 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 				ss.working[i]=i;
 			}
 			//collect all the constant values needed for doing the copy
-            ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
-            ss.totalBytesCopy =   ss.byteHeadPos -ss.tempByteTail;
-            ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
+      
+			ss.tempByteTail = Pipe.getBlobTailPosition(ss.source);
+            ss.totalBytesCopy =   ss.byteHeadPos - ss.tempByteTail;
+            ss.byteTailPos = ss.source.blobMask & ss.tempByteTail;
 		
 		}
 
@@ -151,6 +152,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 
 	}
 
+	private int checkShutdownCycle = 0;
+	
 	private static <S extends MessageSchema<S>> void recordCopyComplete(ReplicatorStage<S> ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 
@@ -161,7 +164,9 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 		
 		//both end of pipe was sent AND we have consumed everything off that pipe.
-		if (Pipe.isEndOfPipe(ss.source, ss.cachedTail) && Pipe.contentRemaining(ss.source)==0) {
+		if ((0 == (0xF&ss.checkShutdownCycle++)) &&	//TODO: Still testing to see if this helps..			
+			Pipe.isEndOfPipe(ss.source, ss.cachedTail) &&
+			Pipe.contentRemaining(ss.source)==0) {
 			//we have copied everything including the EOF marker to all the downstream consumers
 			ss.requestShutdown();
 		}

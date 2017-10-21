@@ -1064,7 +1064,7 @@ public class GraphManager {
 	}
 
     static int getRingProducerId(GraphManager gm, int ringId) {
-        int idx = ringId*2;
+        int idx = ringId<<1;
 		return idx < gm.ringIdToStages.length ? gm.ringIdToStages[idx] : -1;
     }
 	
@@ -1460,6 +1460,8 @@ public class GraphManager {
 		        if (null==ranks) {
 		        	ranks = new HashMap<Object, StringBuilder>();
 		        }
+	        } else {
+	        	target.append("digraph {\n"); 
 	        }
 	        
 	        int i = -1;

@@ -16,6 +16,7 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
 	private final Pipe[] inputs;
+	private PipeMonitorStage[] producers;
 	private GraphManager graphManager;
 	private int[] percentileValues; 
 	private int[] trafficValues; 
@@ -68,6 +69,20 @@ public class MonitorConsoleStage extends PronghornStage {
 		}
 				
 		position = inputs.length;
+		
+		producers = new PipeMonitorStage[inputs.length];
+		
+		int j = producers.length;
+		while (--j>=0) {
+			int stageId = GraphManager.getRingProducerStageId(graphManager, inputs[j].id);	
+            PronghornStage producer = GraphManager.getStage(graphManager, stageId);
+            if (producer instanceof PipeMonitorStage) {
+            	producers[j] = (PipeMonitorStage)producer;
+            }
+            
+		}
+		
+		
 	}
 		
 	
@@ -133,7 +148,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		int[] localTrafficValues = trafficValues;
 		int[] localPercentileValues = percentileValues;
 		GraphManager localGM = graphManager;
-		Pipe[] localInputs = inputs;
+		PipeMonitorStage[] localProducers = producers;
 		
 		int i = localHists.length;
 		while (--i>=0) {
@@ -145,20 +160,19 @@ public class MonitorConsoleStage extends PronghornStage {
 			long avg = accumAvg(writeToConsole, localHists, i);
 			boolean inBounds = true;//value>80 || value < 1;
             long sampleCount = localHists[i].getTotalCount();
-            PronghornStage producer = GraphManager.getRingProducer(localGM,  localInputs[i].id);
-            
+                        
             String ringName = "Unknown";
             long published = 0;
             long allocated = 0;
-            if (producer instanceof PipeMonitorStage) {
+            if (null != localProducers[i]) {
             	
-            	published = ((PipeMonitorStage)producer).getObservedPipePublishedCount();
-            	allocated = ((PipeMonitorStage)producer).getObservedPipeBytesAllocated();
-            	localTrafficValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)published;
-            	ringName = ((PipeMonitorStage)producer).getObservedPipeName();
+            	published = (localProducers[i]).getObservedPipePublishedCount();
+            	allocated = (localProducers[i]).getObservedPipeBytesAllocated();
+            	localTrafficValues[ (localProducers[i]).getObservedPipeId() ] = (int)published;
+            	ringName = (localProducers[i]).getObservedPipeName();
             	
 	            if (inBounds && (sampleCount>=1)) {
-	            	localPercentileValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
+	            	localPercentileValues[ (localProducers[i]).getObservedPipeId() ] = (int)pctile;
 					
 	            }
             }
