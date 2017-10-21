@@ -65,15 +65,9 @@ public class HeaderUtil {
 		int count = 0;
 		int i = headers.length;
 		
-		while (--i>=0) {	
-			
-			byte[] h = headers[i];
-			int ord = httpSpec.headerId(h, localReader);
-			
-			if (ord<0) {
-				throw new UnsupportedOperationException("unsupported header "+new String(h));
-			}
-			
+		while (--i>=0) {
+			int ord = httpSpec.headerId(headers[i], localReader);
+			assert(ord>=0) : "Bad header id";
 			boolean ok = IntHashTable.setItem(headerToPosTable, HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
 			assert(ok);
 		}

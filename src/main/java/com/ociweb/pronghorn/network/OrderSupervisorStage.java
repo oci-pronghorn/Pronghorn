@@ -223,7 +223,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        ///////////////////////////////
 		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		logger.info("no room to write out");
+		    		//logger.trace("no room to write out, try again later");
 		    		break;
 		    	}		    	
 		    	
@@ -243,12 +243,28 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        }
 		        
 		        
-				int expected = expectedSquenceNos[idx];     
+				int expected = expectedSquenceNos[idx]; 
+				
 		        if (sequenceNo < expected) {
-		        	logger.info("WARNING: older response {} expected {}",sequenceNo, expected);
+		        	
+		        	assert(0==sequenceNo) : "Internal error request:"+sequenceNo+" expected:"+expected;
+		        		        			     			        	
+		            //this case happens upon disconnect / reconnect
+		        	//	        	
+		        	//sequenceNo 0 from request, with valid channelId x
+		        	//expected Z shows that we already got a call on channelId x
+		        	//if x got disconnected and re-used the expected will be up by one.
+		        	//
+		        	
+		        	logger.trace("WARNING: older response {} expected {}",
+		        			     sequenceNo, 
+		        			     expected);
+		        	
 		        	//moved up sequence number and continue
 		        	//rare case but we do not want to fail when it happens
 		        	expectedSquenceNos[idx] =  expected = sequenceNo;		        	
+	        	
+		        	
 		        } 
 		        
 		        if (expected==sequenceNo) {
@@ -264,14 +280,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		}
 		        	}
 		        } else {
-		        
+		            //larger value and not ready yet
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+		        	logger.trace("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+		        	//TODO: need to check 404 values and get this value
 		        	
-		        	//for not found 404 we will get these values, TODO: need a better approach 
-		        	expectedSquenceNos[idx] = sequenceNo;
-		        	break;//does not match
+		        	continue;
+//DELETE...		        	
+//		        	//for not found 404 we will get these values, TODO: need a better approach 
+//		        	expectedSquenceNos[idx] = sequenceNo;
+//		        	break;//does not match
 		        }
 		        
 

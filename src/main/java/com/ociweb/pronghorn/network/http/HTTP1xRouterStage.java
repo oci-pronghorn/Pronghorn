@@ -267,7 +267,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
         		waitForOutputOn=-1;
         	} else {
-        		logger.info("wait for output on {}",waitForOutputOn);
+        		//logger.trace("wait for output on {}",waitForOutputOn);
         		return;//output is backed up so go do something else.
         	}
         }
@@ -676,8 +676,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         int consumed = Pipe.publishWrites(outputPipe);                        // Write 1 
         assert(consumed>=0);        
         Pipe.confirmLowLevelWrite(outputPipe, size); 
+  
         sequences[idx]++; //increment the sequence since we have now published the route.
-
         
     } else {
     	//logger.info("No room, waiting for {} {}",channel, outputPipe);

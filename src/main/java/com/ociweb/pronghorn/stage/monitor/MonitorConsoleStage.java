@@ -75,31 +75,40 @@ public class MonitorConsoleStage extends PronghornStage {
 	public void run() {
 
 		int j = batchSize; //max to check before returning thread.
+		int pos = position;
+		Pipe[] localInputs = inputs;
+		Histogram[] localHists = hists;
+		boolean localRec = recorderOn;
 		while (--j>=0) {
-			if (--position<0) {
-				position = inputs.length-1;
+			if (--pos<0) {
+				pos = localInputs.length-1;
 			}			
-			Pipe<?> ring = inputs[position];
-			
-			while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
-				int mgdIdx = Pipe.takeMsgIdx(ring);			
-				long time = Pipe.takeLong(ring);
-				long head = Pipe.takeLong(ring);
-				long tail = Pipe.takeLong(ring); 				
-				int lastMsgIdx = Pipe.takeInt(ring);
-				int ringSize = Pipe.takeInt(ring);			
+			consumeSamples(pos, localInputs, localHists, localRec);
+		}
+		position = pos;
+	}
 
-				if (recorderOn && head>=0 && tail>=0) {
-					int pctFull = (int)((100*(head-tail))/ringSize);
-					//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
-					
-					hists[position].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
-				}
+	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, boolean localRec) {
+		Pipe<?> ring = localInputs[pos];
+		
+		while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
+			int mgdIdx = Pipe.takeMsgIdx(ring);			
+			long time = Pipe.takeLong(ring);
+			long head = Pipe.takeLong(ring);
+			long tail = Pipe.takeLong(ring); 				
+			int lastMsgIdx = Pipe.takeInt(ring);
+			int ringSize = Pipe.takeInt(ring);			
+
+			if (localRec && head>=0 && tail>=0) {
+				int pctFull = (int)((100*(head-tail))/ringSize);
+				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
 				
-				Pipe.confirmLowLevelRead(ring, SIZE_OF);
-				Pipe.releaseReadLock(ring);
-				
+				localHists[pos].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
 			}
+			
+			Pipe.confirmLowLevelRead(ring, SIZE_OF);
+			Pipe.releaseReadLock(ring);
+			
 		}
 	}
 
@@ -120,24 +129,23 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	protected void summarizeRuntime(boolean writeToConsole) {
-		int i = hists.length;
+		Histogram[] localHists = hists;
+		int[] localTrafficValues = trafficValues;
+		int[] localPercentileValues = percentileValues;
+		GraphManager localGM = graphManager;
+		Pipe[] localInputs = inputs;
+		
+		int i = localHists.length;
 		while (--i>=0) {
-			if (null==hists[i]) {
-				break;
+			if (null==localHists[i]) {
+				continue;
 			}
-			long pctile = hists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
+			long pctile = localHists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
 			
-			long avg = -1;
-			if (writeToConsole) {
-				try {
-					avg = (long)hists[i].getMean();
-				} catch (Throwable e) {
-					logger.trace("unable to read mean",e);
-				}
-			}
+			long avg = accumAvg(writeToConsole, localHists, i);
 			boolean inBounds = true;//value>80 || value < 1;
-            long sampleCount = hists[i].getTotalCount();
-            PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
+            long sampleCount = localHists[i].getTotalCount();
+            PronghornStage producer = GraphManager.getRingProducer(localGM,  localInputs[i].id);
             
             String ringName = "Unknown";
             long published = 0;
@@ -146,11 +154,11 @@ public class MonitorConsoleStage extends PronghornStage {
             	
             	published = ((PipeMonitorStage)producer).getObservedPipePublishedCount();
             	allocated = ((PipeMonitorStage)producer).getObservedPipeBytesAllocated();
-            	trafficValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)published;
+            	localTrafficValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)published;
             	ringName = ((PipeMonitorStage)producer).getObservedPipeName();
             	
 	            if (inBounds && (sampleCount>=1)) {
-					percentileValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
+	            	localPercentileValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
 					
 	            }
             }
@@ -158,6 +166,18 @@ public class MonitorConsoleStage extends PronghornStage {
             	writeToConsole(i, pctile, avg, sampleCount, ringName, published, allocated);
             }
 		}
+	}
+
+	private long accumAvg(boolean writeToConsole, Histogram[] localHists, int i) {
+		long avg = -1;
+		if (writeToConsole) {
+			try {
+				avg = (long)localHists[i].getMean();
+			} catch (Throwable e) {
+				logger.trace("unable to read mean",e);
+			}
+		}
+		return avg;
 	}
 
 	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published, long allocated) {

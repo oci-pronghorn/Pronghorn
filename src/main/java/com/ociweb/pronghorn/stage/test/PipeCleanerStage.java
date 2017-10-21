@@ -85,27 +85,30 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
     }
 
 	private void cleanPipe(int sourcePos) {
-		long head = Pipe.headPosition(this.input[sourcePos]);
+		Pipe<T> pipe = this.input[sourcePos];
+		long head = Pipe.headPosition(pipe);
         long contentRemaining = head-tail[sourcePos];
         if (contentRemaining>0) {
         	
         	totalSlabCount += contentRemaining;
             
-            int byteHead = Pipe.getBlobRingHeadPosition(this.input[sourcePos]);
+            int byteHead = Pipe.getBlobHeadPosition(pipe);
             
-            if (byteHead >= byteTail[sourcePos]) {
-                totalBlobCount += byteHead-byteTail[sourcePos];
+            int bTail = byteTail[sourcePos];
+			if (byteHead >= bTail) {
+                totalBlobCount += (byteHead-bTail);
             } else {
-                totalBlobCount += (long) (Pipe.blobMask(this.input[sourcePos])&byteHead);                
-                totalBlobCount += (long)(this.input[sourcePos].sizeOfBlobRing-(Pipe.blobMask(this.input[sourcePos])&byteTail[sourcePos]));
+                totalBlobCount += ((long) (Pipe.blobMask(pipe)&byteHead)               
+                                    +(long)(pipe.sizeOfBlobRing-(Pipe.blobMask(pipe)&bTail))
+                                   );
             } 
             
-            Pipe.publishBlobWorkingTailPosition(this.input[sourcePos], byteTail[sourcePos] = byteHead);
-            Pipe.publishWorkingTailPosition(this.input[sourcePos], tail[sourcePos] = head);            
+            Pipe.publishBlobWorkingTailPosition(pipe, byteTail[sourcePos] = byteHead);
+            Pipe.publishWorkingTailPosition(pipe, tail[sourcePos] = head);            
             
         } else {
         	
-        	if (Pipe.isEndOfPipe(this.input[sourcePos], tail[sourcePos]) && Pipe.contentRemaining(this.input[sourcePos])==0) {
+        	if (Pipe.isEndOfPipe(pipe, tail[sourcePos]) && Pipe.contentRemaining(pipe)==0) {
         		requestShutdown();
         	}
         }

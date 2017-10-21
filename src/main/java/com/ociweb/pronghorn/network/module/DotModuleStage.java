@@ -46,8 +46,10 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 	
 	@Override
-	protected byte[] payload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params,
-			HTTPVerbDefaults verb) {
+	protected byte[] payload(Appendable payload, 
+			                 GraphManager gm, 
+			                 DataInputBlobReader<HTTPRequestSchema> params,
+			                 HTTPVerbDefaults verb) {
 		
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
