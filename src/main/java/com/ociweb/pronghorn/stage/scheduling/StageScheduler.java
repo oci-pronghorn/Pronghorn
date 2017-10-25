@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.ThreadBasedCallerLookup;
+import com.ociweb.pronghorn.stage.PronghornStage;
 
 public abstract class StageScheduler {
 
@@ -89,7 +90,13 @@ public abstract class StageScheduler {
  		          return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
 		}
 	}
+
+	public static StageScheduler threadPerStage(GraphManager gm) {
+		return new ThreadPerStageScheduler(gm);
+	}
 	
-	
+	public static StageScheduler fixedThreads(GraphManager gm, int threadCountLimit, boolean isHardLimit) {
+		return new FixedThreadsScheduler(gm, threadCountLimit, isHardLimit);
+	}
 	
 }

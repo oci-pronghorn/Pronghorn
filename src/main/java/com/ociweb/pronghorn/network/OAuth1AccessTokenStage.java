@@ -1,15 +1,17 @@
 package com.ociweb.pronghorn.network;
 
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class OAuth1RequestAccessStage extends PronghornStage {
+public class OAuth1AccessTokenStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputs; 
-    private final Pipe<ServerResponseSchema>[] outputs;
+    private final Pipe<ClientHTTPRequestSchema> clientRequestsPipe;
     
     private OAuth1HeaderBuilder oauth;
     
@@ -18,12 +20,15 @@ public class OAuth1RequestAccessStage extends PronghornStage {
 	private static final String host     = "userstream.twitter.com";// api.twitter.com";		
 	private static final String pathRoot = "/1.1/user.json";
 	
-	public OAuth1RequestAccessStage(GraphManager graphManager, 
-			                        Pipe<HTTPRequestSchema>[] inputs, 
-			                        Pipe<ServerResponseSchema>[] outputs) {
-		super(graphManager, inputs, outputs);
+	public OAuth1AccessTokenStage(GraphManager graphManager, 
+			                        Pipe<HTTPRequestSchema>[] inputs,
+			                        Pipe<ClientHTTPRequestSchema> clientRequestsPipe,
+				                    int responseId,
+				                    HTTPSpecification<?, ?, ?, ?> httpSpec) {
+		
+		super(graphManager, inputs, clientRequestsPipe);
 		this.inputs = inputs;
-		this.outputs = outputs;
+		this.clientRequestsPipe = clientRequestsPipe;
 	}
 
 	@Override

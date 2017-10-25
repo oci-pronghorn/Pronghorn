@@ -302,7 +302,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//TODO: need to refactor and push this message down stream to callers..
 							StringBuilder closedMessage = new StringBuilder();
 							Appendables.appendUTF8(closedMessage, backing, pos, len, mask);
-							logger.error("closed response:\n{}",closedMessage);
+							logger.error("closed response:\n{}\n<END OF ERROR>",closedMessage);
 							
 						}
 

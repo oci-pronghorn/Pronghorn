@@ -22,7 +22,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	private int[] trafficValues; 
 	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
 		
-	private Histogram[] hists; 
+	private Histogram[] hists;
+	private short[] pctFull;
     private int position;
     private final int batchSize;
 	
@@ -63,9 +64,10 @@ public class MonitorConsoleStage extends PronghornStage {
 		trafficValues = new int[Pipe.totalPipes()+1];
 		
 		int i = inputs.length;
+		pctFull = new short[i];
 		hists = new Histogram[i];
 		while (--i>=0) {
-			hists[i] = new Histogram(100,2); 
+			hists[i] = new Histogram(10000,2); 
 		}
 				
 		position = inputs.length;
@@ -92,18 +94,19 @@ public class MonitorConsoleStage extends PronghornStage {
 		int j = batchSize; //max to check before returning thread.
 		int pos = position;
 		Pipe[] localInputs = inputs;
-		Histogram[] localHists = hists;
-		boolean localRec = recorderOn;
+		Histogram[] localHists = recorderOn ? hists : null;
+		
 		while (--j>=0) {
 			if (--pos<0) {
 				pos = localInputs.length-1;
 			}			
-			consumeSamples(pos, localInputs, localHists, localRec);
+			//can pass in null for local hists when not gatering history
+			consumeSamples(pos, localInputs, localHists, pctFull);
 		}
 		position = pos;
 	}
 
-	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, boolean localRec) {
+	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, short[] pctFullAvg) {
 		Pipe<?> ring = localInputs[pos];
 		
 		while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
@@ -114,12 +117,13 @@ public class MonitorConsoleStage extends PronghornStage {
 			int lastMsgIdx = Pipe.takeInt(ring);
 			int ringSize = Pipe.takeInt(ring);			
 
-			if (localRec && head>=0 && tail>=0) {
-				int pctFull = (int)((100*(head-tail))/ringSize);
+			int pctFull = (int)((10000*(head-tail))/ringSize);
+			if (null!=localHists && head>=0 && tail>=0) {
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
 				
-				localHists[pos].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
+				localHists[pos].recordValue(pctFull>=0 ? (pctFull<=10000 ? pctFull : 9999) : 0);
 			}
+			pctFullAvg[pos] = (short)Math.min(9999, (((99*pctFullAvg[pos])+pctFull)/100));
 			
 			Pipe.confirmLowLevelRead(ring, SIZE_OF);
 			Pipe.releaseReadLock(ring);
@@ -134,7 +138,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		boolean writeToConsole = true;
 		
-		summarizeRuntime(writeToConsole);
+		summarizeRuntime(writeToConsole, ValueType.Percentile96th);
 				
 		//Send in pipe depth data	
 		boolean writeImage = false;
@@ -143,7 +147,8 @@ public class MonitorConsoleStage extends PronghornStage {
 		}
 	}
 
-	protected void summarizeRuntime(boolean writeToConsole) {
+	protected void summarizeRuntime(boolean writeToConsole, 
+			                        ValueType pipePctFullType) {
 		Histogram[] localHists = hists;
 		int[] localTrafficValues = trafficValues;
 		int[] localPercentileValues = percentileValues;
@@ -155,7 +160,19 @@ public class MonitorConsoleStage extends PronghornStage {
 			if (null==localHists[i]) {
 				continue;
 			}
-			long pctile = localHists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
+			long pctile = 0;
+			
+			switch (pipePctFullType) {
+				case Maxium:
+					pctile = localHists[i].getMaxValue()/10000;
+					break;
+				case NearRealTime:
+					pctile = pctFull[i]/100;
+					break;
+				case Percentile96th:
+					pctile = localHists[i].getValueAtPercentile(96)/10000; //do not change: this is the 80-20 rule applied twice
+					break;
+			}
 			
 			long avg = accumAvg(writeToConsole, localHists, i);
 			boolean inBounds = true;//value>80 || value < 1;
@@ -256,7 +273,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	public void writeAsDot(GraphManager gm, Appendable payload) {
-		summarizeRuntime(false);
+		summarizeRuntime(false, ValueType.NearRealTime);
 		GraphManager.writeAsDOT(gm, payload, true, percentileValues, trafficValues);
 	}
 

@@ -45,6 +45,10 @@ public class OAuth1HeaderBuilder {
   private final StringBuilder timeBuilder = new StringBuilder();
   private final StringBuilder tokenBuilder = new StringBuilder();
   private final StringBuilder consumerKeyBuilder = new StringBuilder();
+  private final StringBuilder callbackBuilder = new StringBuilder();
+  private final StringBuilder verifierBuilder = new StringBuilder();
+  
+  
 	
   private final List<CharSequence[]> macParams = new ArrayList<CharSequence[]>(); //in alpha order...  
   private final Pipe<RawDataSchema> workingPipe;    
@@ -79,6 +83,12 @@ public class OAuth1HeaderBuilder {
 	tokenBuilder.setLength(0);
 	this.addMACParam(OAUTH_TOKEN,tokenBuilder);
 
+	callbackBuilder.setLength(0);
+	this.addMACParam(OAUTH_CALLBACK, callbackBuilder);
+	
+	verifierBuilder.setLength(0);
+	this.addMACParam(OAUTH_VERIFIER, verifierBuilder);
+	
 
 	this.workingPipe = RawDataSchema.instance.newPipe(2, 1000);
 	this.workingPipe.initBuffers();
@@ -87,13 +97,26 @@ public class OAuth1HeaderBuilder {
 
   }
 
-  public void setupStep1(String consumerKey) {
+  public void setupStep1(String consumerKey, String callback) {
 	  // A
 	  this.consumerKeyBuilder.setLength(0);
 	  this.consumerKeyBuilder.append(consumerKey);
+	  
+	  assert(callback==null 
+			  || callback.indexOf("%3")>0 
+			  || callback.equals("oob")) : "value must be url encoded or set to oob for pin mode";
+	  //example oauth_callback="http%3A%2F%2Fmyapp.com%3A3005%2Ftwitter%2Fprocess_callback"
+	  
+	  this.callbackBuilder.setLength(0);
+	  if (null!=callback) {
+		  this.callbackBuilder.append(callback);
+	  }
+	  
 	  this.tokenBuilder.setLength(0);
 	  this.secretKeySpec = new SecretKeySpec("anonymous&".getBytes(), "HmacSHA1");
   
+	  //required for twitter 
+	  //oauth_callback =
 	  
 //	  oauth_consumer_key:
 //		  The Consumer Key.
@@ -243,12 +266,19 @@ public class OAuth1HeaderBuilder {
 	    builder.append("Authorization: ");
 	    
 	    builder.append("OAuth ");
+	    	    
+	    if (callbackBuilder.length()>0) {
+	    	builder.append(OAUTH_CALLBACK).append("=\"").append(callbackBuilder).append("\", ");
+	    }
+	    
 	    builder.append(OAUTH_CONSUMER_KEY).append("=\"").append(consumerKeyBuilder).append("\", ");
 	    
 	    if (tokenBuilder.length()>0) {
 	    	builder.append(OAUTH_TOKEN).append("=\"").append(tokenBuilder).append("\", ");
 	    }
-	    
+	    if (verifierBuilder.length()>0) {
+	    	builder.append(OAUTH_VERIFIER).append("=\"").append(verifierBuilder).append("\", ");
+	    }
 	    mac.init(secretKeySpec);	    	    
 		doFinalHMAC(builder.append(OAUTH_SIGNATURE).append("=\""), upperVerb, formalPath, mac);
 		builder.append("\", ");
@@ -256,6 +286,7 @@ public class OAuth1HeaderBuilder {
 	    builder.append(OAUTH_SIGNATURE_METHOD).append("=\"").append("HMAC-SHA1").append("\", ");
 	    builder.append(OAUTH_TIMESTAMP).append("=\"").append(timeBuilder).append("\", ");
 	    builder.append(OAUTH_NONCE).append("=\"").append(nonceBuilder).append("\", ");
+	    
 	    builder.append(OAUTH_VERSION).append("=\"").append("1.0").append("\"");
 	} catch (Exception e) {
 		throw new RuntimeException(e);
@@ -281,14 +312,14 @@ public class OAuth1HeaderBuilder {
 	      CharSequence key = pair[0];
 	      CharSequence value = pair[1];
 	      
-	      if (null!=value) {
+	      if (null!=value && value.length()>0) {
 		      if (!isFirst) {
 		    	  normalizedBuilder.append("%26");  
+		    	  isFirst = false;
 		      }
 		      normalizedBuilder.append(key);
 		      normalizedBuilder.append("%3D");
 		      normalizedBuilder.append(value);  
-		      isFirst = false;
 	      }
 	      
 	    }
