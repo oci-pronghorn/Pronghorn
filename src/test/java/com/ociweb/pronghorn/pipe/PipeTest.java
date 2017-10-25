@@ -471,8 +471,7 @@ public class PipeTest {
 
 		Pipe.confirmLowLevelRead(p, msgsize);
 		Pipe.releaseReadLock(p);
-		Pipe.confirmLowLevelRead(p1, msgsize);
-		Pipe.releaseReadLock(p1);
+
 
 	}
 

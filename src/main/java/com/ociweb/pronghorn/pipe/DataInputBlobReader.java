@@ -424,6 +424,16 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         int length = readShort(); //read first 2 byte for length in bytes to convert.    
         return readUTFOfLength(length, target);
     }
+
+    @Override
+    public String readUTFFully() {
+        workspace.setLength(0);
+        try {
+        	return readUTF(this, available(), workspace).toString();
+        } catch (Exception e) {
+        	throw new RuntimeException(e);
+        }
+    }
     
     @Override
     public String readUTFOfLength(int length) {

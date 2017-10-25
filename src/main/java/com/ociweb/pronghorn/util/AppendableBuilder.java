@@ -60,7 +60,10 @@ public class AppendableBuilder implements Appendable {
 		
 		int len = csq.length();
 		
-		growIfNeeded(len);
+		int req = byteCount+(len<<3); 
+		if (req > buffer.length) {
+			growNow(req);			
+		}
 		
 		int bytesConsumed = Pipe.copyUTF8ToByte(csq, 0, buffer, Integer.MAX_VALUE, byteCount, len);
 		byteCount+=bytesConsumed;
@@ -69,16 +72,13 @@ public class AppendableBuilder implements Appendable {
 		return this;
 	}
 
-	private void growIfNeeded(int len) {
-		int req = byteCount+(len<<3); 
-		if (req > buffer.length) {
-			if (req > maximumAllocation) {
-				throw new UnsupportedOperationException("Max allocation was limited to "+maximumAllocation+" but more space needed");
-			}
-			byte[] temp = new byte[req];
-			System.arraycopy(buffer, 0, temp, 0, buffer.length);
-			buffer = temp;			
+	private void growNow(int req) {
+		if (req > maximumAllocation) {
+			throw new UnsupportedOperationException("Max allocation was limited to "+maximumAllocation+" but more space needed");
 		}
+		byte[] temp = new byte[req];
+		System.arraycopy(buffer, 0, temp, 0, buffer.length);
+		buffer = temp;
 	}
 
 	@Override
@@ -86,7 +86,10 @@ public class AppendableBuilder implements Appendable {
 		
 		int len = end-start;
 		
-		growIfNeeded(len);
+		int req = byteCount+(len<<3); 
+		if (req > buffer.length) {
+			growNow(req);			
+		}
 		
 		int bytesConsumed = Pipe.copyUTF8ToByte(csq, start, buffer, Integer.MAX_VALUE, byteCount, len);
 		byteCount+=bytesConsumed;
@@ -98,7 +101,10 @@ public class AppendableBuilder implements Appendable {
 	@Override
 	public Appendable append(char c) {
 	
-		growIfNeeded(1);
+		int req = byteCount+(1<<3); 
+		if (req > buffer.length) {
+			growNow(req);			
+		}
 		
 		byteCount = Pipe.encodeSingleChar(c, buffer, Integer.MAX_VALUE, byteCount);
 		charCount++;

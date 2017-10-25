@@ -874,5 +874,28 @@ public class Appendables {
 		 
 		 return target;
 	}
+
+
+	public static void nearestTimeUnit(Appendable target, long nsValue) {
+		try {
+			if (nsValue<2_000) {
+				appendValue(target, nsValue).append("ns");
+			} else if (nsValue<2_000_000){
+				appendValue(target, nsValue/1_000).append("µs");
+			} else if (nsValue<2_000_000_000){
+				appendValue(target, nsValue/1_000_000).append("ms");				
+			} else if (nsValue<90_000_000_000L){
+				appendValue(target, nsValue/1_000_000_000L).append("sec");
+			} else if (nsValue<(120L*60_000_000_000L)){
+				appendValue(target, nsValue/60_000_000_000L).append("min");
+			} else {
+				appendValue(target, nsValue/(60L*60_000_000_000L)).append("hr");
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	//TODO: add nearestMemoryUnit  B, K, M, G, T, P
     
 }

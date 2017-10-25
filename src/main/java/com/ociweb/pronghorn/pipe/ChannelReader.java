@@ -13,6 +13,8 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	
 	public abstract <A extends Appendable> A readUTF(A target);
 	
+	public abstract String readUTFFully();
+	
 	public abstract String readUTFOfLength(int length);
 	
 	public abstract <A extends Appendable> A readUTFOfLength(int length, A target);

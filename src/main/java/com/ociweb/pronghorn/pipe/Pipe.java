@@ -1010,19 +1010,24 @@ public class Pipe<T extends MessageSchema<T>> {
 	    		                      Pipe.getWorkingTailPosition(p));
 	}
 
-	public static <S extends MessageSchema<S>> void copyFragment(
+    /**
+     * Returns the slab size of this copied fragment.
+     * This method assumes there is both a fragment to be copied and
+     * that there will be room at the destination.
+     */
+	public static <S extends MessageSchema<S>> int copyFragment(
     		Pipe<S> source, 
     		Pipe<S> target) {
     	
-    	copyFragment(source, 
+    	return copyFragment(source, 
     			Pipe.tailPosition(source),
     			Pipe.getBlobTailPosition(source),
     			target);
-    	
+
     }
     		
     
-	static <S extends MessageSchema<S>> void copyFragment(
+	static <S extends MessageSchema<S>> int copyFragment(
 			Pipe<S> sourcePipe, long sourceSlabPos, int sourceBlobPos,
 			Pipe<S> localTarget) {
 		
@@ -1030,7 +1035,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		int[] slab = Pipe.slab(sourcePipe);
 		
 		int msgIdx = slab[mask&(int)sourceSlabPos];
-					
+		
 		//look up the data size to copy...
 		int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
 		int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for byte count
@@ -1040,6 +1045,16 @@ public class Pipe<T extends MessageSchema<T>> {
 				Pipe.blob(sourcePipe), Pipe.slab(sourcePipe), 
 				Pipe.blobMask(sourcePipe), Pipe.slabMask(sourcePipe), 
 				sourceBlobPos, (int)sourceSlabPos);
+		
+		//move source pointers forward
+		Pipe.addAndGetWorkingTail(sourcePipe, slabMsgSize-1);
+		Pipe.addAndGetBytesWorkingTailPosition(sourcePipe, blobMsgSize);
+		Pipe.confirmLowLevelRead(sourcePipe, slabMsgSize);
+		Pipe.releaseReadLock(sourcePipe);		
+		
+		
+		return slabMsgSize;
+		
 	}
 
 	public static Pipe[] buildPipes(PipeConfig[] configs) {
@@ -3350,7 +3365,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
-	static <S extends MessageSchema<S>> void copyFragment(Pipe<S> pipe, 
+	static <S extends MessageSchema<S>> void copyFragment(Pipe<S> targetPipe, 
 			final int slabMsgSize, int blobMsgSize,
 			byte[] sourceBlob, int[] sourceSlab, 
 			int sourceBlobMask, int sourceSlabMask, 
@@ -3358,18 +3373,19 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 		//copy all the bytes
 		Pipe.copyBytesFromToRing(sourceBlob, sourceBlobPos, sourceBlobMask, 
-				                 Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition(pipe), Pipe.blobMask(pipe), 
+				                 Pipe.blob(targetPipe), Pipe.getWorkingBlobHeadPosition(targetPipe), Pipe.blobMask(targetPipe), 
 				                 blobMsgSize);			
-		Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
+		Pipe.addAndGetBytesWorkingHeadPosition(targetPipe, blobMsgSize);
 		
 		//copy all the ints
 		Pipe.copyIntsFromToRing(sourceSlab, sourceSlabPos, sourceSlabMask, 
-				                Pipe.slab(pipe), (int)Pipe.headPosition(pipe), Pipe.slabMask(pipe), 
+				                Pipe.slab(targetPipe), 
+				                (int)Pipe.headPosition(targetPipe), Pipe.slabMask(targetPipe), 
 				                slabMsgSize);	
-		Pipe.addAndGetWorkingHead(pipe, slabMsgSize-1);//one less because trailing length is not part of the data fields.
+		Pipe.addAndGetWorkingHead(targetPipe, slabMsgSize-1);//one less because trailing length is not part of the data fields.
 		
-		Pipe.confirmLowLevelWrite(pipe, slabMsgSize);
-		Pipe.publishWrites(pipe);
+		Pipe.confirmLowLevelWrite(targetPipe, slabMsgSize);
+		Pipe.publishWrites(targetPipe);
 		
 	}
     
