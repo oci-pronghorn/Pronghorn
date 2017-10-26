@@ -31,23 +31,23 @@ public class JPGRaster {
 
 	private static void populateGraph(GraphManager gm, String inputFilePath) {
 				
-		Pipe<RawDataSchema> pipe1= RawDataSchema.instance.newPipe(10, 10_000); //10 chunks each 10K in  size
-		Pipe<RawDataSchema> pipe1A= RawDataSchema.instance.newPipe(20, 20_000); //10 chunks each 10K in  size
-		Pipe<RawDataSchema> pipe1B= RawDataSchema.instance.newPipe(20, 20_000); //10 chunks each 10K in  size
+		Pipe<RawDataSchema> pipe1  = RawDataSchema.instance.newPipe(10, 10_000); // 10 chunks each 10K in  size
+		Pipe<RawDataSchema> pipe1A = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
+		Pipe<RawDataSchema> pipe1B = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 		
 		
-		new FileBlobReadStage(gm, pipe1, inputFilePath); //This stage reads a file
+		new FileBlobReadStage(gm, pipe1, inputFilePath); // This stage reads a file
 		
 		
-		//This stage replicates the data to two pipes, great for debugging while passing on the real data.
-		new ReplicatorStage(gm, pipe1, pipe1A, pipe1B); 
+		// This stage replicates the data to two pipes, great for debugging while passing on the real data.
+		new ReplicatorStage<>(gm, pipe1, pipe1A, pipe1B); 
 		
-		new ConsoleJSONDumpStage(gm, pipe1A); //see all the data at the console.
-		//new ConsoleSummaryStage<>(gm, pipe1A); //dumps just a count of messages periodically
+		new ConsoleJSONDumpStage<>(gm, pipe1A); // see all the data at the console.
+		//new ConsoleSummaryStage<>(gm, pipe1A); // dumps just a count of messages periodically
 		
-		new PipeCleanerStage(gm, pipe1B); //dumps all data which came in 
+		new PipeCleanerStage<>(gm, pipe1B); // dumps all data which came in 
 		
-		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); //write byte data to disk
+		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		
 		
 	}
