@@ -63,8 +63,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         for (int i = 0; i < stages.length; i++) {
 
             // TODO: Default value?
-            long scheduleRate = (long) GraphManager.getNota(graphManager, stages[i], GraphManager.SCHEDULE_RATE,
-                                                            2_000_000);
+            long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[i], GraphManager.SCHEDULE_RATE, 2_000_000)));
             rates[i] = scheduleRate;
         }
 
@@ -419,7 +418,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             // we'll just burn through the entire schedule nearly instantaneously.
             //
             // If we're still waiting, we need to wait until its time to run again.
-            if (blockStartTime - System.nanoTime() > 0) {
+            if ((blockStartTime - System.nanoTime()) > 0) {
 
                 // TODO: We can do a few things here:
                 // - Busy-wait.
@@ -440,16 +439,19 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                 inProgressIdx = schedule.script[scheduleIdx];
 
                 // If it isn't a block-end (-1), run it!
-                if (inProgressIdx != -1) {
-                    stages[inProgressIdx].run();
+                if (inProgressIdx >= 0) {
+                    long start = System.nanoTime();
+                    run(graphManager, stages[inProgressIdx], this);
+                    long now = System.nanoTime();
+                    GraphManager.accumRunTimeNS(graphManager, stages[inProgressIdx].stageId, now-start, now);
+
+                    // Check if we should continue execution after these stages execute.
+                    continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[inProgressIdx].stageId);
+                    Thread.yield();
                 }
 
                 // Increment IDX and wrap around if necessary.
                 scheduleIdx = (scheduleIdx + 1) % schedule.script.length;
-
-                // Check if we should continue execution after these stages execute.
-                continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[inProgressIdx].stageId);
-                Thread.yield();
 
             } while (inProgressIdx != -1 && !shutdownRequested.get());
 

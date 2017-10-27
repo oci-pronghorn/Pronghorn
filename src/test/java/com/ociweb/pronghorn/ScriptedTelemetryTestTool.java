@@ -30,11 +30,11 @@ public class ScriptedTelemetryTestTool {
 					temp = new Pipe(prev.config().grow2x());
 					//slow replicator so it batches
 					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000,
-					new ReplicatorStage<MessageSchema>(gm, prev, temp) );
+					new ReplicatorStage(gm, prev, temp) );
 					prev = temp;
 				}
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_000_000,
-		        new PipeCleanerStage<MessageSchema>(gm, temp) );
+		        new PipeCleanerStage(gm, temp) );
 			}
 			//slow replicator so it batches
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000,
