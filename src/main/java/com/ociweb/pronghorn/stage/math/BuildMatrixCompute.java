@@ -389,10 +389,13 @@ public class BuildMatrixCompute {
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
 		PipeConfig<ColumnSchema<M>> rightColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsInputSchema,4); //just big enough to support batching of one consumer and one producer
+		rightColumnConfig.hideLabels();
+		
 		
 		//TODO: build second compute that will use rows rather than keep this column open.
 		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,4);
-	
+		resultColumnConfig.hideLabels();
+		
 		int parts = Math.min(parallelism, i);
 		int partsSize = i/parts;
 		
@@ -478,7 +481,11 @@ public class BuildMatrixCompute {
 		//////////////////
 		
 		MatrixSchema resultSchema2 = colResults[0].config().schema().rootSchema();
-		Pipe<RowSchema<M>> rowResults = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(new RowSchema<M>(resultSchema2), resultSchema2.getRows()));
+		PipeConfig<RowSchema<M>> config = new PipeConfig<RowSchema<M>>(new RowSchema<M>(resultSchema2), resultSchema2.getRows());
+		
+		config.hideLabels();
+		
+		Pipe<RowSchema<M>> rowResults = new Pipe<RowSchema<M>>(config);
 		ColumnsToRowsStage<M> ctr = new ColumnsToRowsStage( gm,
 															colResults,
 															rowResults);
