@@ -81,8 +81,6 @@ public class FragmentWriter {
     
     public static <S extends MessageSchema<S>> void writeI(Pipe<S> pipe, int msgIdx, int field1) {
     	assert(FieldReferenceOffsetManager.isValidMsgIdx(Pipe.from(pipe), msgIdx));
-    	
-    	int messageSize = Pipe.from(pipe).fragDataSize[msgIdx];
     	assert(3==Pipe.from(pipe).fragDataSize[msgIdx]) : "This constant does not this fragment size";
     	
     	int size = Pipe.addMsgIdx(pipe, msgIdx);
