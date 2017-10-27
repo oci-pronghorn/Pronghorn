@@ -41,6 +41,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
@@ -735,33 +736,35 @@ public class NetGraphBuilder {
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		ModuleConfig config = new ModuleConfig(){
 
-			private final int moduleCount = 5;
+			//TODO:rollup telemetry stage..
+			
+						
+			private final String[] routes = new String[] {
+					"/"
+					,"/viz-lite.js"
+					,"/graph.dot"
+					,"/jquery-3.2.1.min.js"
+					,"/webworker.js"
+					,"/dataView?pipeId=#{pipeId}"
+					,"/histogram/pipeFull?pipeId=#{pipeId}"
+					,"/histogram/stageElapsed?stageId=#{stageId}"
+					
+			};
 			
 			public CharSequence getPathRoute(int a) {
-				switch(a) {
-					case 0:
-						return "/";
-					case 1:
-						return "/viz-lite.js";
-					case 2:
-						return "/graph.dot";
-					case 3:
-						return "/jquery-3.2.1.min.js";
-					case 4:
-						return "/webworker.js";
-					default:
-						throw new RuntimeException("unknown value "+a);
-				}
+				return routes[a];
 			}
-		
+	
 			@Override
 			public int moduleCount() {
-				return moduleCount;
+				return routes.length;
 			}
 
 			@Override
 			public Pipe<ServerResponseSchema>[] registerModule(int a,
-					GraphManager graphManager, RouterStageConfig routerConfig, Pipe<HTTPRequestSchema>[] inputPipes) {
+					GraphManager graphManager,
+					RouterStageConfig routerConfig,
+					Pipe<HTTPRequestSchema>[] inputPipes) {
 				
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
@@ -811,11 +814,10 @@ public class NetGraphBuilder {
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
-						//TODO: add version...
+						case 5:
+						    Pipe<ServerResponseSchema>[] outputs = staticFileOutputs = Pipe.buildPipes(instances, 
+								           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
 					
-						
-						default:
-							
 							//One module for each file??
 							//TODO: add monitor to this stream
 							//this will be a permanent output stream...
@@ -823,6 +825,36 @@ public class NetGraphBuilder {
 							//some stage much stream out this pipe?
 							//must convert to JSON and stream.
 							//how large is the JSON blocks must ensure output is that large.
+							
+							//TODO: replace this code with the actual streaming data from pipe..
+							activeStage = new DummyRestStage(graphManager, 
+									                          inputPipes, 
+									                          outputs, 
+									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+							break;
+						case 6:
+						    Pipe<ServerResponseSchema>[] outputs2 = staticFileOutputs = Pipe.buildPipes(instances, 
+							           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
+						    
+							//TODO: replace this code with the actual pipe full histogram
+							activeStage = new DummyRestStage(graphManager, 
+			                          inputPipes, 
+			                          outputs2, 
+			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+							break;
+						case 7:
+						    Pipe<ServerResponseSchema>[] outputs3 = staticFileOutputs = Pipe.buildPipes(instances, 
+							           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
+						    
+							//TODO: replace this code with the actual stage elapsed histogram
+							activeStage = new DummyRestStage(graphManager, 
+			                          inputPipes, 
+			                          outputs3, 
+			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+							break;
+						default:
+							
+	
 							
 							
 							

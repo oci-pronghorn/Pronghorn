@@ -8,16 +8,16 @@ import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
-public class TelemetryTestTool {
+public class TelemtryTestTool {
 
 	public static void main(String[] args) {
 	
 			GraphManager gm = new GraphManager();
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 200_000);
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 100_000);
 
-			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(2, 8);
+			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(8, 8);
 			new ExampleProducerStage(gm, output);
-			
+						
 			int i = 100;
 			Pipe[] targets = new Pipe[i];
 			while (--i>=0) {
@@ -25,7 +25,17 @@ public class TelemetryTestTool {
 				Pipe temp = null;
 				Pipe prev = targets[i];
 				
-				int j = 13;
+				int k = 10; //batching stage
+				while (--k>=0) {
+					temp = new Pipe(prev.config().grow2x());
+					//slow replicator so it batches
+					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 1_000_000, 
+					new BatchingStage(gm, .90, prev, temp) );
+					prev = temp;
+				}
+								
+				
+				int j = 3; //replicators
 				while (--j>=0) {
 					temp = new Pipe(prev.config().grow2x());
 					//slow replicator so it batches
@@ -41,7 +51,7 @@ public class TelemetryTestTool {
 			new ReplicatorStage<>(gm, output, targets) );
 					
 			gm.enableTelemetry(8092);
-
+						
 			StageScheduler.defaultScheduler(gm).startup();
 	
 	}

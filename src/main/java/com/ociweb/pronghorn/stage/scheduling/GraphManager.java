@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,10 @@ public class GraphManager {
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;	
 	
-	public static boolean monitorAll = false;
+	public static boolean monitorAll = false;//will show telemetry its self
+	
+	public static boolean recordElapsedTime = true;//turn off to minimize memory.
+	
 
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
@@ -101,7 +105,7 @@ public class GraphManager {
 	private long[] stageRunNS = new long[INIT_STAGES];
 	private int[]  stageCPUPct = new int[INIT_STAGES];
 	private long[] stageLastTimeNs = new long[INIT_STAGES];
-	
+	private Histogram[] stageElapsed = new Histogram[0];
 	
 	private Map<Object, StringBuilder> cachedRanks;
     
@@ -133,7 +137,8 @@ public class GraphManager {
 		pipeFullValues = new String[k];
 		while (--k>=0) {
 			builder.setLength(0);
-			Appendables.appendFixedDecimalDigits(builder.append(" \nFull:"), k, 100).append("% ");
+			Appendables.appendFixedDecimalDigits(builder.append(" \nFull:"), k, k<=99?10:100).append("% ");
+		
 			pipeFullValues[k] = builder.toString();
 		}
 		
@@ -1524,7 +1529,9 @@ public class GraphManager {
 	            	}
 
 	                target.append("\"").append(stageId).append("\"[label=\"").append(stageDisplayName);
-	           	                
+	           	           
+	                               
+	                
 	                //if supported give PCT used
 	                long runNs = m.stageRunNS[stage.stageId];
 	                int pct = 0;
@@ -1538,6 +1545,9 @@ public class GraphManager {
 	                			//NOTE: this is required becaue FixedThreadScheduler and NonThreadScheduler quit too early before this gets set.
 	                			shutdownTime = System.nanoTime();
 	                		}
+	                		
+	                		
+	                		//TODO: add enum to choose between 96, NRT and Max...
 	                		
 	                		pct = m.stageCPUPct[stage.stageId];//moving average of CPU
 	                			                		
@@ -1558,6 +1568,29 @@ public class GraphManager {
 	                	
             			logger.trace("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
             	            			
+	                }
+	                
+	                if (recordElapsedTime) {
+	                	Histogram elapsed = m.stageElapsed[stage.stageId];
+	                	
+	                	///real time of elapsed?  need to add.
+	                	
+	                	long triggerLimitNS = 200_000; //200 µs
+	                		                	
+	                	long max = elapsed.getMaxValue();	                	
+	                	long at96 = elapsed.getValueAtPercentile(96)/100;
+	                	
+	                	if (max > triggerLimitNS) {
+	                		target.append(" Max:");
+	                		Appendables.nearestTimeUnit(target, max);
+	                		
+	                	}
+	                	
+                	    if (at96 > triggerLimitNS) {
+                	 		target.append(" Elap:");
+	                		Appendables.nearestTimeUnit(target, at96);
+	                		
+	                	}
 	                }
 	                
 	                if (null!=stageRate) {
@@ -2138,13 +2171,23 @@ public class GraphManager {
     private static final int defaultDurationWhenZero = 1;
     private static AtomicInteger totalZeroDurations = new AtomicInteger();
     
+    
 	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
+
 		if (duration>0) {
 			
 			long last = graphManager.stageLastTimeNs[stageId];
 			
 			if (last>0 && last<now) {
 				long cycleDuration = now-last;
+				
+				if (recordElapsedTime) {
+					
+					//add rolling moving average
+					
+					buildHistogramsAsNeeded(graphManager, stageId);
+					graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
+				}
 				
 				int newPct = (int)((100_000L*duration)/cycleDuration);
 				int oldPct = graphManager.stageCPUPct[stageId];
@@ -2155,6 +2198,8 @@ public class GraphManager {
 			
 			//we have the running pct since startup but we need a recent rolling value.
 			graphManager.stageLastTimeNs[stageId] = now;
+			
+			//this total duration is also used as the baseline for the histogram of elapsed time
 			graphManager.stageRunNS[stageId] += duration;			
 		} else {
 			
@@ -2183,6 +2228,20 @@ public class GraphManager {
 		}
 		
 		
+	}
+
+	private static void buildHistogramsAsNeeded(GraphManager graphManager, int stageId) {
+		if (stageId >= graphManager.stageElapsed.length) {
+			//only done once..
+			assert(graphManager.stageElapsed.length==0);
+			int maxArray = 1+graphManager.stageCounter.get(); //largestId plus 1
+			Histogram[] newHE = new Histogram[maxArray];
+			int i = maxArray;
+			while (--i>=0) {
+				newHE[i] = new Histogram(2);
+			}
+			graphManager.stageElapsed = newHE;
+		}
 	}
 
 	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {		
