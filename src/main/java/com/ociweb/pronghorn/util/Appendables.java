@@ -876,7 +876,7 @@ public class Appendables {
 	}
 
 
-	public static void nearestTimeUnit(Appendable target, long nsValue) {
+	public static void appendNearestTimeUnit(Appendable target, long nsValue) {
 		try {
 			if (nsValue<2_000) {
 				appendValue(target, nsValue).append("ns");

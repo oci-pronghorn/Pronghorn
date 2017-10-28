@@ -43,6 +43,10 @@ public class AppendableBuilder implements Appendable {
 		this.pos = 0;
 	}
 	
+	public int copyTo(OutputStream target) {	
+		return copyTo(Integer.MAX_VALUE, target);
+	}
+	
 	public int copyTo(int maxBytes, OutputStream target) {		
 		int len = Math.min(maxBytes, (byteCount-pos));
 		assert(len>=0);
@@ -54,6 +58,24 @@ public class AppendableBuilder implements Appendable {
 		}
 		return len;
 	}	
+	
+	public void append(byte[] encodedBlock) {
+		append(encodedBlock,encodedBlock.length); //only true when non unicode is used
+	}
+	
+	public void append(byte[] encodedBlock, int charCount) {
+		
+		int req = byteCount+encodedBlock.length; 
+		if (req > buffer.length) {
+			growNow(req);			
+		}
+		
+		Pipe.copyBytesFromArrayToRing(encodedBlock, 0, 
+				buffer, byteCount, Integer.MAX_VALUE, 
+				encodedBlock.length);
+		this.byteCount+=encodedBlock.length;
+		this.charCount+=charCount;
+	}
 	
 	@Override
 	public Appendable append(CharSequence csq) {
@@ -72,6 +94,7 @@ public class AppendableBuilder implements Appendable {
 		return this;
 	}
 
+	
 	private void growNow(int req) {
 		if (req > maximumAllocation) {
 			throw new UnsupportedOperationException("Max allocation was limited to "+maximumAllocation+" but more space needed");

@@ -5,10 +5,10 @@ import com.ociweb.pronghorn.util.Appendables;
 public class ScriptedSchedule {
 
     public final long commonClock;
-    public final byte[] script;
+    public final int[] script;
     public final int maxRun;
     
-    public ScriptedSchedule(long commonClock, byte[] script, int maxRun) {
+    public ScriptedSchedule(long commonClock, int[] script, int maxRun) {
         this.commonClock = commonClock;
         this.script = script;
         this.maxRun = maxRun;

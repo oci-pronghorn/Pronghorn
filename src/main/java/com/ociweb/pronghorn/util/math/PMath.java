@@ -230,19 +230,31 @@ public class PMath {
         return true;
     }
 
+
     public static ScriptedSchedule buildScriptedSchedule(long[] schedulePeriods) {
-        
+    	return buildScriptedSchedule(schedulePeriods, false);
+    }
+    
+    /**
+     * 
+     * @param schedulePeriods array of periods that the item at each index is epxpected to run
+     * @param reverseOrder the reversed order schedule may be desirable under heavy load conditions with directed graphs.
+     * @return new scripted schedule object to be used at runtime.
+     */
+    public static ScriptedSchedule buildScriptedSchedule(long[] schedulePeriods, final boolean reverseOrder) {
+ 
+    	assert(schedulePeriods.length<Integer.MAX_VALUE) : "Maximum schedule can only be "+Integer.MAX_VALUE;
+    	
         int maxPrimeBits  = 4;
         int maxPrimes     = 1<<maxPrimeBits;
         int maxPrimesMask = maxPrimes-1;
                 
-        int i = schedulePeriods.length;
-        byte[][] factors = new byte[i][];
-        int[] offsets = new int[i];
-        int[] lengths = new int[i];
-        int[] masks = new int[i];        
+        byte[][] factors = new byte[schedulePeriods.length][];
+        int[] offsets = new int[schedulePeriods.length];
+        int[] lengths = new int[schedulePeriods.length];
+        int[] masks = new int[schedulePeriods.length];        
         
-        while (--i>=0) {
+        for(int i=0;i<schedulePeriods.length;i++) {
             lengths[i] = maxPrimes;
             masks[i] = maxPrimesMask;
             factors[i] = new byte[maxPrimes];
@@ -256,13 +268,13 @@ public class PMath {
         final long commonClock = factorsToLong(gcm, 0, maxPrimes, maxPrimesMask);
         
         //remove GCM from each rate and roll-up steps to find the point when the schedule loops
-        i = schedulePeriods.length;
+      
         byte[] repeatLength = new byte[maxPrimes];
         byte[] temp = new byte[maxPrimes];
-        int[] steps = new int[i];
-        int[] bases = new int[i];
+        int[] steps = new int[schedulePeriods.length];
+        int[] bases = new int[schedulePeriods.length];
         int largestPrimeIdx = -1;
-        while (--i>=0) {
+        for(int i=0;i<schedulePeriods.length;i++) {
            
             //remove the GCM from the factors for this particular rate
             removeFactors(factors[i], 0, maxPrimes, maxPrimesMask,
@@ -288,10 +300,9 @@ public class PMath {
         int repeatCount = factorsToInt(repeatLength, 0, maxPrimes, maxPrimesMask);
         int scriptLength = repeatCount;//one for the -1 (stop flag) of each iteration
        
-        i = schedulePeriods.length;
         int activeBase = 0;
         int z = largestPrimeIdx+1;//we want to stay above the largest prime previously used.
-        while (--i>=0) {
+        for(int i=0;i<schedulePeriods.length;i++) {
             int instances = (repeatCount/steps[i]);
             assert(0 == (repeatCount%steps[i])): "Internal compute error";
             scriptLength += instances;
@@ -302,18 +313,30 @@ public class PMath {
         }
     
         // -1 is the end of a block
-        byte[] script = new byte[scriptLength];
+        int[] script = new int[scriptLength];
         int s = 0;
         int maxRun = 0;
         for(int r = 0; r<repeatCount; r++) {
-            i = schedulePeriods.length;
+            
             int runCount = 0;
-            while (--i>=0) {
-                if (0==((bases[i]+r) % steps[i])) {
-                    runCount++;
-                    script[s++]=(byte)i;
-                }
+
+            if (reverseOrder) {
+            	int i = schedulePeriods.length;
+            	while (--i>=0) {
+	                if (0==((bases[i]+r) % steps[i])) {
+	                    runCount++;
+	                    script[s++]=i;
+	                }
+	            }
+            } else {            
+	            for(int i=0;i<schedulePeriods.length;i++) {
+	                if (0==((bases[i]+r) % steps[i])) {
+	                    runCount++;
+	                    script[s++]=i;
+	                }
+	            }
             }
+            
             if (runCount>=maxRun) {
                 maxRun = runCount;
             }
