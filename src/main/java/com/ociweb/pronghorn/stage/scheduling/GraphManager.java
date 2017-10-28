@@ -27,26 +27,41 @@ import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableProxy;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class GraphManager {
 	
+	private static final byte[] HR = "hr".getBytes();
+	private static final byte[] MIN = "min".getBytes();
+	private static final byte[] SEC = "sec".getBytes();
+	private static final byte[] MS = "ms".getBytes();
+	private static final byte[] MICROS = "µs".getBytes();
+	private static final byte[] NS = "ns".getBytes();
+	
+	private static final byte[] AQUOTE = "\"".getBytes();
+	private static final byte[] ELAP = " Elap:".getBytes();
+	private static final byte[] CLOSEBRACKET_NEWLINE = "]\n".getBytes();
+	private static final byte[] WHITE_NEWLINE = " \n".getBytes();
+	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
+
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;	
 	
 	public static boolean monitorAll = false;//will show telemetry its self
-	
-	public static boolean recordElapsedTime = true;//turn off to minimize memory.
+	public static boolean recordElapsedTime = true;//turn off to minimize memory and remove from profiler.
+	private static final double percentile = 99.999;
 	
 
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
 	//must be set before graph starts and impacts the latency of the graph.dot calls
 	//this does NOT impact the data poll rate which is fixed at 80ms
-	public static int TELEMTRY_SERVER_RATE = 4800;
+	public static int TELEMTRY_SERVER_RATE = 20000;//20 mirco seconds
 	
     private class GraphManagerStageStateData {
     	
@@ -109,37 +124,37 @@ public class GraphManager {
 	
 	private Map<Object, StringBuilder> cachedRanks;
     
-	private String[] stageDOTNames;
-    private String[] pipeDOTSchemaNames;
-    private String[] pipeDOTNames;
-    private String[] stageDOTRate;
+	private byte[][] stageDOTNames;
+    private byte[][] pipeDOTSchemaNames;
+    private byte[][] pipeDOTNames;
+    private byte[][] stageDOTRate;
     private String[] stageIds;
     private String[] pipeDOTConst;
     
-    private static String[] cpuValues;
-	private static String[] pipeFullValues;
+    private static byte[][] cpuValues;
+	private static byte[][] pipeFullValues;
 
 	static {
 		////////////////////////////
 		//build all the CPU % usage labels once
 		//////////////////////////// 
 		int j = 100_001;
-		cpuValues = new String[j];
+		cpuValues = new byte[j][];
 		StringBuilder builder = new StringBuilder();
 		while (--j>=0) {
 			builder.setLength(0);
 			Appendables.appendValue(builder," CPU ",j/1000,".");
 			Appendables.appendFixedDecimalDigits(builder,j%1000,100).append("%");
-			cpuValues[j]= builder.toString();
+			cpuValues[j]= builder.toString().getBytes();
 		}
 		
 		int k = 101;
-		pipeFullValues = new String[k];
+		pipeFullValues = new byte[k][];
 		while (--k>=0) {
 			builder.setLength(0);
 			Appendables.appendFixedDecimalDigits(builder.append(" \nFull:"), k, k<=99?10:100).append("% ");
 		
-			pipeFullValues[k] = builder.toString();
+			pipeFullValues[k] = builder.toString().getBytes();
 		}
 		
 	}
@@ -466,13 +481,52 @@ public class GraphManager {
 			
 			m.enableMutation = false;
 			final int totalStages = GraphManager.countStages(m)+1;
-			m.stageDOTNames = new String[totalStages];
-			m.stageDOTRate = new String[totalStages]; 
+			m.stageDOTNames = new byte[totalStages][];
+			m.stageDOTRate = new byte[totalStages][]; 
 			m.stageIds = new String[totalStages];
-			m.pipeDOTSchemaNames = new String[Pipe.totalPipes()];
+			m.pipeDOTSchemaNames = new byte[Pipe.totalPipes()][];
 			m.pipeDOTConst = new String[Pipe.totalPipes()];
-			m.pipeDOTNames = new String[Pipe.totalPipes()];
+			m.pipeDOTNames = new byte[Pipe.totalPipes()][];
 			
+			////////////////////////
+			//build all the constant string values for DOT.
+			///////////////////////
+			
+		    int i = -1;
+	        while (++i<m.stageIdToStage.length) {
+	            PronghornStage stage = m.stageIdToStage[i];
+	            if (null!=stage) {
+		        	byte[] stageDisplayName = m.stageDOTNames[stage.stageId];
+		        	if (null==stageDisplayName) {
+		        		buldStageDOTName(m, stage);
+		        	}
+		        	
+		        	byte[] stageRate = m.stageDOTRate[stage.stageId];
+	            	if (null==stageRate) {
+	            		stageRate = buildStageDOTRate(m, stage);
+	            	}
+	            	
+	            	String stageId = m.stageIds[stage.stageId];
+	            	if (null == stageId) {
+	            		stageId = "Stage"+stage.stageId;
+	            		m.stageIds[stage.stageId] = stageId;
+	            	}
+	            }
+	        }
+	        
+	        int j = m.pipeIdToPipe.length;
+	        while (--j>=0) {
+	            Pipe pipe = m.pipeIdToPipe[j];
+	            if (null!=pipe) {
+	                byte[] pipeName = m.pipeDOTSchemaNames[pipe.id];
+	                if (null==pipeName) {//keep so this is not built again upon every call
+	                	String temp = Pipe.schemaName(pipe).replace("Schema", "");
+	                	m.pipeDOTSchemaNames[pipe.id] = temp.getBytes();
+	                }
+	            }
+	        }
+	            
+        	
 		}
 	}
 	
@@ -1423,11 +1477,14 @@ public class GraphManager {
     //	new Exception("GENERATING NEW DOT FILE "+filename).printStackTrace();
     	
         FileOutputStream fost;
-        try {
+        try {            
+            AppendableBuilder target = new AppendableBuilder(1<<24);
+          
+            gm.writeAsDOT(gm, target, isVertical, percentileValues, traffic);
+
             fost = new FileOutputStream(filename);
-            PrintWriter pw = new PrintWriter(fost);
-            gm.writeAsDOT(gm, pw, isVertical, percentileValues, traffic);
-            pw.close();
+            target.copyTo(fost);
+            fost.close();
             
             
             //to produce the png we must call
@@ -1445,13 +1502,12 @@ public class GraphManager {
         
     }
     
-    public static void writeAsDOT(GraphManager m, Appendable target, boolean isVertical) {
+    public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical) {
     	writeAsDOT(m,target,isVertical,null,null);
     }
     
-	public static void writeAsDOT(GraphManager m, Appendable target, boolean isVertical, int[] percentileValues, int[] traffic) {
-	    try {
-	            
+	public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical, int[] percentileValues, int[] traffic) {
+					    	
 	        int stages = GraphManager.countStages(m);
 	        	        
 	        Map<Object, StringBuilder> ranks = m.cachedRanks; 
@@ -1469,6 +1525,7 @@ public class GraphManager {
 	        	target.append("digraph {\n"); 
 	        }
 	        
+	        
 	        int i = -1;
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
@@ -1483,53 +1540,15 @@ public class GraphManager {
 	            	////////////////////
 	            	//cache stage names since these are needed frequently
 	            	///////////////////
-	            	String stageDisplayName = m.stageDOTNames[stage.stageId];
-	            	if (null==stageDisplayName) {
-	            		Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
-	            		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
-	            	    if (null!=group) {
-	            	    	stageDisplayName+=(" grp:"+group.toString());
-	 	                }
-	            		m.stageDOTNames[stage.stageId] = stageDisplayName;
-	            	}
-	            	
-	            	String stageRate = m.stageDOTRate[stage.stageId];
-	            	if (null==stageRate) {
-	            		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
-	            		if (null!=rate) {
-	            			stageRate = "\n Rate:"+Long.toString(((Number)rate).longValue());
-	            			m.stageDOTRate[stage.stageId] = stageRate;
-	            		}
-	            	}
-	            	
 	            	String stageId = m.stageIds[stage.stageId];
-	            	if (null == stageId) {
-	            		stageId = "Stage"+stage.stageId;
-	            		m.stageIds[stage.stageId] = stageId;
-	            	}
-	            	
-	            	//////////////////
-	            	
-            		
-	            	if (ranks!=null && m.cachedRanks==null) {
-	            		//thes rank keys are cached
-		            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
-		            	if (rankKey!=null) {
-		            		
-		            		//{ rank=same, b, c, d }
-		            		StringBuilder b = ranks.get(rankKey);
-		            		if (null==b) {
-		            			b = new StringBuilder("{ rank=same");
-		            			ranks.put(rankKey, b);
-		            		}
-		            		
-		            		b.append(" \"").append(stageId).append("\",");
-		            		
-		            	}
-	            	}
 
-	                target.append("\"").append(stageId).append("\"[label=\"").append(stageDisplayName);
-	           	           
+	            	//////////////////
+	            	populateRanks(m, ranks, stage, stageId);
+
+	                target.append(AQUOTE);
+	                target.append(stageId);
+	                target.append(LABEL_OPEN);
+	                target.append(m.stageDOTNames[stage.stageId]);	           	           
 	                               
 	                
 	                //if supported give PCT used
@@ -1547,11 +1566,11 @@ public class GraphManager {
 	                		}
 	                		
 	                		
-	                		//TODO: add enum to choose between 96, NRT and Max...
+	                		//TODO: add params to pass in percentile and limit
 	                		
 	                		pct = m.stageCPUPct[stage.stageId];//moving average of CPU
 	                			                		
-	                		int lifePct = (int)((100_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));             		
+	                		//int lifePct = (int)((100_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));             		
 	                		
 	                		
 	                		if (pct>=0) {
@@ -1577,27 +1596,23 @@ public class GraphManager {
 	                	
 	                	long triggerLimitNS = 200_000; //200 µs
 	                		                	
-	                	long max = elapsed.getMaxValue();	                	
-	                	long at96 = elapsed.getValueAtPercentile(96)/100;
+	                	long max = elapsed.getMaxValue();	        
 	                	
-	                	if (max > triggerLimitNS) {
-	                		target.append(" Max:");
-	                		Appendables.nearestTimeUnit(target, max);
-	                		
-	                	}
-	                	
-                	    if (at96 > triggerLimitNS) {
-                	 		target.append(" Elap:");
-	                		Appendables.nearestTimeUnit(target, at96);
+	                	long atPct = elapsed.getValueAtPercentile(percentile);
+	                		                	
+                	    if (true || atPct > triggerLimitNS) {
+                	 		writeElapsed(target, atPct);
 	                		
 	                	}
 	                }
 	                
+
+	            	byte[] stageRate = m.stageDOTRate[stage.stageId];	            	
 	                if (null!=stageRate) {
 	                	target.append(stageRate);	                
 	                }
 	                
-	                target.append("\"");
+	                target.append(AQUOTE);
 	                
 	                if (pct>=6000) {
                 		target.append(",color=red");	    
@@ -1617,10 +1632,11 @@ public class GraphManager {
 	            	}    
 	                /////////////////////////////////////
 	            	
-	                target.append("]\n");
+	                target.append(CLOSEBRACKET_NEWLINE);
 	                	                
 	            }
 	        }
+	        
 	        /////
 	        //DOT_RANK_NAME
 	        /////
@@ -1629,7 +1645,8 @@ public class GraphManager {
 	        	m.cachedRanks = ranks;//keep to use this again
 	        	
 		        for (StringBuilder value: ranks.values()) { //removes comma on end
-		        	target.append(value, 0, value.length()-1).append(" }\n");	        	
+		        	target.append(value, 0, value.length()-1);
+		        	target.append(" }\n");	        	
 		        }
 	        }
 	        
@@ -1653,10 +1670,10 @@ public class GraphManager {
 	                		) {
 		                
 	                	
-	                	String pipeId = m.pipeDOTNames[pipe.id];
-	                	if (null==pipeId) {
+	                	byte[] pipeIdBytes = m.pipeDOTNames[pipe.id];
+	                	if (null==pipeIdBytes) {
 	                	
-		                	pipeId ="";
+		                	String pipeId ="";
 	                	
 			                if (producer>=0) {
 			                	pipeId += ("\"Stage"+producer);
@@ -1671,28 +1688,23 @@ public class GraphManager {
 			                	pipeId += ("\"Undefined"+undefIdx++);
 			                }			                
 			                
-			                m.pipeDOTNames[pipe.id] = pipeId;
+			                pipeIdBytes = m.pipeDOTNames[pipe.id] = pipeId.getBytes();
 	                	}
-		                target.append(pipeId);
+		                target.append(pipeIdBytes);
 		                
-	                    
-	                    String pipeName = m.pipeDOTSchemaNames[pipe.id];
-	                    if (null==pipeName) {//keep so this is not built again upon every call
-	                    	pipeName = Pipe.schemaName(pipe).replace("Schema", "");
-	                    	m.pipeDOTSchemaNames[pipe.id] = pipeName;
-	                    }
-		                target.append("\"[label=\"");
+		                target.append(LABEL_OPEN);
 		                if (pipe.config().showLabels()) {
-			                target.append(pipeName);
+			                target.append(m.pipeDOTSchemaNames[pipe.id]);
 			                		                
 			                if (null!=percentileValues) {
 			                	target.append(pipeFullValues[percentileValues[pipe.id]]);
 			                } else {
-			                	target.append(" \n");		                	
+			                	target.append(WHITE_NEWLINE);		                	
 			                }
 			     
 			                if (null!=traffic) {
-			                	Appendables.appendValue(target.append(" Vol:"), traffic[pipe.id]).append("  \n");			                	
+			                	Appendables.appendValue(target.append(" Vol:"), traffic[pipe.id]);
+			                	target.append(WHITE_NEWLINE);			                	
 			                } 
 			                	                    
 		                    
@@ -1704,16 +1716,9 @@ public class GraphManager {
 		                    target.append(pipeMemory);
 			                			                
 		                }
-		                target.append("\"");
-		                
-		                
-		                int lineWidth = 1; //default
-		                if (null!=traffic) {
-		                	int trafficCount = traffic[pipe.id];
-		                	//compute the line width.
-		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
-		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);			                	
-		                }
+		                target.append(AQUOTE);
+		                		                
+		                int lineWidth = computeLineWidth(traffic, pipe);
 		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
 		                if (null!=percentileValues) {		                	
@@ -1726,16 +1731,82 @@ public class GraphManager {
 		                	}
 		                }
 		                
-		                target.append("]\n");
+		                target.append(CLOSEBRACKET_NEWLINE);
 	                }	          
 	            }
 	        }	        
 	    
             target.append("}\n");
-            
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+   
+	}
+
+	private static void writeElapsed(AppendableBuilder target, long atPct) {
+		target.append(ELAP);
+		
+		if (atPct<2_000) {
+			Appendables.appendValue(target, atPct).append(NS);
+		} else if (atPct<2_000_000){
+			Appendables.appendValue(target, atPct/1_000).append(MICROS,2);
+		} else if (atPct<2_000_000_000){
+			Appendables.appendValue(target, atPct/1_000_000).append(MS);				
+		} else if (atPct<90_000_000_000L){
+			Appendables.appendValue(target, atPct/1_000_000_000L).append(SEC);
+		} else if (atPct<(120L*60_000_000_000L)){
+			Appendables.appendValue(target, atPct/60_000_000_000L).append(MIN);
+		} else {
+			Appendables.appendValue(target, atPct/(60L*60_000_000_000L)).append(HR);
+		}
+	
+	}
+
+	private static int computeLineWidth(int[] traffic, Pipe pipe) {
+		int lineWidth = 1; //default
+		if (null!=traffic) {
+			int trafficCount = traffic[pipe.id];
+			//compute the line width.
+			int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
+			lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);			                	
+		}
+		return lineWidth;
+	}
+
+	private static void populateRanks(GraphManager m, Map<Object, StringBuilder> ranks, PronghornStage stage,
+			String stageId) {
+		if (ranks!=null && m.cachedRanks==null) {
+			//thes rank keys are cached
+			Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
+			if (rankKey!=null) {
+				
+				//{ rank=same, b, c, d }
+				StringBuilder b = ranks.get(rankKey);
+				if (null==b) {
+					b = new StringBuilder("{ rank=same");
+					ranks.put(rankKey, b);
+				}
+				
+				b.append(" \"").append(stageId).append("\",");
+				
+			}
+		}
+	}
+
+	private static byte[] buildStageDOTRate(GraphManager m, PronghornStage stage) {
+		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
+		if (null!=rate) {
+			String stageRate = "\n Rate:"+Long.toString(((Number)rate).longValue());
+			return m.stageDOTRate[stage.stageId] = stageRate.getBytes();
+		}
+		return null;
+	}
+
+	private static byte[] buldStageDOTName(GraphManager m, PronghornStage stage) {
+		String stageDisplayName;
+		Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
+		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
+		if (null!=group) {
+			stageDisplayName+=(" grp:"+group.toString());
+		}
+		return m.stageDOTNames[stage.stageId] = stageDisplayName.getBytes();
 	}
 
 	private static String buildPipeConstantText(Pipe pipe) {
@@ -2191,8 +2262,8 @@ public class GraphManager {
 				
 				int newPct = (int)((100_000L*duration)/cycleDuration);
 				int oldPct = graphManager.stageCPUPct[stageId];
-				int combined = newPct+(999*oldPct);//exponential moving avg
-				graphManager.stageCPUPct[stageId] = combined/1000; 
+				int combined = newPct+(9999*oldPct);//exponential moving avg
+				graphManager.stageCPUPct[stageId] = combined/10000; 
 				
 			}
 			

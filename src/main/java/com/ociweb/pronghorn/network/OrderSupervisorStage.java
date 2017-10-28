@@ -240,6 +240,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        if (expectedSquenceNosChannelId[idx] != channelId) {
 		        	expectedSquenceNos[idx] = 0;
 		        	expectedSquenceNosChannelId[idx] = channelId;
+		        	
+					
+			//		ServerCoordinator.newConnectionCounterStart = System.nanoTime();
+					
 		        }
 		        
 		        

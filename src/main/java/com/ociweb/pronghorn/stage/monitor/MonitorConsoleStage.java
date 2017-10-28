@@ -4,11 +4,14 @@ import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableProxy;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -152,7 +155,6 @@ public class MonitorConsoleStage extends PronghornStage {
 		Histogram[] localHists = hists;
 		int[] localTrafficValues = trafficValues;
 		int[] localPercentileValues = percentileValues;
-		GraphManager localGM = graphManager;
 		PipeMonitorStage[] localProducers = producers;
 		
 		int i = localHists.length;
@@ -162,6 +164,8 @@ public class MonitorConsoleStage extends PronghornStage {
 			}
 			long pctile = 0;
 			
+			
+			//TOOD: change to pass in percentile instead of enum...
 			switch (pipePctFullType) {
 				case Maxium:
 					pctile = localHists[i].getMaxValue()/10000;
@@ -272,9 +276,14 @@ public class MonitorConsoleStage extends PronghornStage {
 		return stage;
 	}
 
-	public void writeAsDot(GraphManager gm, Appendable payload) {
+	public void writeAsDot(GraphManager gm, AppendableBuilder payload) {
 		summarizeRuntime(false, ValueType.NearRealTime);
+
+	//	ServerCoordinator.newDotRequestStart = System.nanoTime();
 		GraphManager.writeAsDOT(gm, payload, true, percentileValues, trafficValues);
+
+		
+		
 	}
 
 	

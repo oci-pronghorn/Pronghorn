@@ -58,6 +58,13 @@ public class ServerCoordinator extends SSLConnectionHolder {
     
     
 	public static boolean TEST_RECORDS = false;
+
+//	public static long acceptConnectionStart;
+//	public static long newConnectionCounterStart;
+//	public static long newDotRequestStart;
+	
+	
+	
 	static {
 		
 	}

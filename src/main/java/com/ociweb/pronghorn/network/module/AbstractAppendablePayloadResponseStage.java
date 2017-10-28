@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
@@ -18,9 +19,9 @@ import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableProxy;
 
 public abstract class AbstractAppendablePayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
@@ -79,15 +80,16 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	@Override
 	public void run() {
 		
-		while ((activeChannelId != -1) && (null!=activeOutput) && PipeWriter.hasRoomForWrite(activeOutput)   ) {
+		while ((activeChannelId != -1) 
+				&& (null!=activeOutput) 
+				&& Pipe.hasRoomForWrite(activeOutput) ) {
 			
-			PipeWriter.presumeWriteFragment(activeOutput, ServerResponseSchema.MSG_TOCHANNEL_100);
-		    PipeWriter.writeLong(activeOutput,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21, activeChannelId);
-		    PipeWriter.writeInt(activeOutput,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23, activeSequenceNo);
-		    				    
-		    DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(activeOutput);
-		    DataOutputBlobWriter.openField(outputStream);
-		    
+			Pipe.addMsgIdx(activeOutput, ServerResponseSchema.MSG_TOCHANNEL_100);
+			Pipe.addLongValue(activeChannelId, activeOutput);
+			Pipe.addIntValue(activeSequenceNo, activeOutput);
+				    
+		    DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.openOutputStream(activeOutput);
+
 		    appendRemainingPayload(activeOutput);
 			
 		}		
@@ -104,13 +106,15 @@ public abstract class AbstractAppendablePayloadResponseStage <
 
 
 	
-	private void process(Pipe<HTTPRequestSchema> input, 
+	private boolean process(Pipe<HTTPRequestSchema> input, 
 			             Pipe<ServerResponseSchema> output) {
 		
+		boolean didWork = false;
 		//NOTE: the output writer is the high level while input is the low level.
-		while ( PipeWriter.hasRoomForWrite(output) &&
+		while ( Pipe.hasRoomForWrite(output) &&
 				Pipe.hasContentToRead(input)) {
 			
+			didWork = true;
 			//logger.trace("has room and has data to write out from "+input);
 		    
 	//      ServerCoordinator.inServerCount.incrementAndGet();
@@ -136,7 +140,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		        	activeFieldRequestContext = Pipe.takeInt(input);//context
 		        			        	
 		        	//must read context before calling this
-		        	if (!sendResponse(output, fieldRevision, paramStream, 
+		        	if (!sendResponse(output, paramStream, 
 		        			          (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
 
 		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, output); 
@@ -152,21 +156,21 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		    Pipe.releaseReadLock(input);
 		    
 		}
-		
+		return didWork;
 	}
 
-	private final boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
+	private final boolean sendResponse(Pipe<ServerResponseSchema> output, 
 			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
 		
 		//logger.info("sending:\n{}",payloadWorkspace);
         			
-		PipeWriter.presumeWriteFragment(output, ServerResponseSchema.MSG_TOCHANNEL_100);
-		PipeWriter.writeLong(output,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21, activeChannelId);
-		PipeWriter.writeInt(output,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23, activeSequenceNo);
-						    
-		DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(output);
-		DataOutputBlobWriter.openField(outputStream);
-		
+		Pipe.presumeRoomForWrite(output);
+		Pipe.addMsgIdx(output, ServerResponseSchema.MSG_TOCHANNEL_100);
+		Pipe.addLongValue(activeChannelId, output);
+		Pipe.addIntValue(activeSequenceNo, output);
+	    
+		DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.openOutputStream(output);
+
 		payloadWorkspace.clear();
 		byte[] etagBytes = payload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
         
@@ -182,7 +186,8 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		int contLocBytesLen = 0;
 		int contLocBytesMask = 0;
 		
-		writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
+		writeHeader(
+					HTTPRevisionDefaults.HTTP_1_1.getBytes(), //our supported revision
 		 		    200, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
@@ -199,13 +204,13 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		return true;
 	}
 	
-	protected abstract byte[] payload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
+	protected abstract byte[] payload(AppendableBuilder payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
 
 	protected abstract byte[] contentType();
 	
 	private void appendRemainingPayload(Pipe<ServerResponseSchema> output) {
 		
-		DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(output);
+		DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.outputStream(output);
 		
 		int sendLength;
 
@@ -242,13 +247,13 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 		assert(outputStream.length()<=output.maxVarLen): "Header is too large or pipe max var size of "+output.maxVarLen+" is too small";
 
-		DataOutputBlobWriter.closeHighLevelField(outputStream, ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_PAYLOAD_25);
+		
+		DataOutputBlobWriter.closeLowLevelField(outputStream);
  		
-		PipeWriter.writeInt(output,
-				            ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_REQUESTCONTEXT_24, 
-							activeFieldRequestContext);
-				
-		PipeWriter.publishWrites(output);
+		Pipe.addIntValue(activeFieldRequestContext, output);
+		
+		Pipe.confirmLowLevelWrite(output);		
+		Pipe.publishWrites(output);
 	
 	}
 

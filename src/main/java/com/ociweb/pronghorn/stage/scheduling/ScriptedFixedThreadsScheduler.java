@@ -429,6 +429,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	private void createSchedulers(GraphManager graphManager, PronghornStage[][] stageArrays) {
 	
+				
 		/////////////
 	    //for each array of stages create a scheduler
 	    ///////////// 
@@ -444,9 +445,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		}
 	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
+	    
+				//TODO: NOTE: this is optimized for low load conditions, eg the next pipe has room.
+				//      This boolean can be set to true IF we know the pipe will be full all the time
+				//      By setting this to true the scheduler is optimized for heavy loads
+				//      Each individual part of the graph can have its own custom setting... 
+				boolean reverseOrder = false;
 	    		
-	    		
-	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(graphManager, stageArrays[k], name, true);
+	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(graphManager, reverseOrder, stageArrays[k], name, true);
 	    	}
 	    }
 	}

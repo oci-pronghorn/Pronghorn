@@ -86,8 +86,11 @@ public abstract class StageScheduler {
 				  logger.info("Threads in use {}, one per stage.", countStages);
 		          return new ThreadPerStageScheduler(gm);
 		} else {
-				  logger.info("Threads in use {}, fixed limit.", threadLimit);
- 		          return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+				  logger.info("Threads in use {}, fixed limit with fixed script.", threadLimit);
+				  return new ScriptedFixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+				  
+				  //TODO: if we do not need to roll back to this before 2018 we should remove this line.
+ 		          //return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
 		}
 	}
 

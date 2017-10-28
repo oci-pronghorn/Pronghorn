@@ -201,8 +201,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                                     
                   if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
                      
-//                	  ServerCoordinator.inServerCount.incrementAndGet();
-//                	  ServerCoordinator.start = System.nanoTime();
+               // 	  ServerCoordinator.acceptConnectionStart = System.nanoTime();
                 	  
                       if (null!=newClientConnections && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
                           return;

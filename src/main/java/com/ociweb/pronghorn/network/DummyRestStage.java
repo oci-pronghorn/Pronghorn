@@ -37,11 +37,13 @@ public class DummyRestStage extends PronghornStage {
 
 	private void process(Pipe<HTTPRequestSchema> input, 
 			             Pipe<ServerResponseSchema> output) {
-		while (Pipe.hasContentToRead(input)) {			
+		
+		while (Pipe.hasContentToRead(input)) {
+			
 		    int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:
-		        	
+		        	System.err.println("dummy rest request");
 					long fieldChannelId = Pipe.takeLong(input);
 					int fieldSequence = Pipe.takeInt(input);
 					int fieldVerb = Pipe.takeInt(input);

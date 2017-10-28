@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.module;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -16,6 +17,7 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.AppendableBuilder;
 
 public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
@@ -46,15 +48,12 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 	
 	@Override
-	protected byte[] payload(Appendable payload, 
+	protected byte[] payload(AppendableBuilder payload, 
 			                 GraphManager gm, 
 			                 DataInputBlobReader<HTTPRequestSchema> params,
 			                 HTTPVerbDefaults verb) {
+	
 		
-		if (verb != HTTPVerbDefaults.GET) {
-			return null;
-		}		
-				
 		//logger.info("begin building requested graph");
 		monitor.writeAsDot(gm, payload);
 		

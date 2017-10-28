@@ -302,7 +302,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    assert(Pipe.contentRemaining(input[idx])>=0);
 		    
 		} else if (NetPayloadSchema.MSG_BEGIN_208 == activeMessageId) {
-			
+
 			int seqNo = Pipe.takeInt(input[idx]);
 			Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208));
 			Pipe.releaseReadLock(input[idx]);
@@ -685,6 +685,20 @@ public class ServerSocketWriterStage extends PronghornStage {
         					sequenceNo);
         }
         //logger.info("write is complete for {} ", activeIds[idx]);
+        
+        //beginSocketStart
+//        
+//        long duration1 = System.nanoTime()-ServerCoordinator.acceptConnectionStart;
+//        Appendables.appendNearestTimeUnit(System.err, duration1);
+//        System.err.append(" round trip for call\n");
+//        
+//        long duration3 = System.nanoTime()-ServerCoordinator.newDotRequestStart;
+//        Appendables.appendNearestTimeUnit(System.err, duration3);
+//        System.err.append(" new dot trip for call\n");
+//
+//        long duration2 = System.nanoTime()-ServerCoordinator.newConnectionCounterStart;
+//        Appendables.appendNearestTimeUnit(System.err, duration2);
+//        System.err.append(" super order trip for call\n");
         
     }
    

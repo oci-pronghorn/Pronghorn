@@ -29,8 +29,6 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 		int remaining;
 		if ((remaining = Pipe.contentRemaining(input)) >= limit) {
 			
-			int pct = (100* Pipe.contentRemaining(input))/input.sizeOfSlabRing;
-
 			//move all the data we can
 			while ( remaining > 0 //active batch still has data
 			     && Pipe.hasContentToRead(input) //has a full fragment

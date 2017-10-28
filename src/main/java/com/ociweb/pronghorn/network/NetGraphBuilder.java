@@ -688,8 +688,8 @@ public class NetGraphBuilder {
 	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, 
 			                                GraphManager gm, int baseRate) {
 		
-		final int serverRate = Math.max(4800, baseRate);
-		final int rate = serverRate*40; // actual modules do not need to run nearly as fast
+		final int serverRate = Math.max(100000, baseRate); //100 micros 
+		final int rate = serverRate;// actual modules rates
 		
 		boolean isLarge = false;
 		int countOfMonitoredPipes = 0;		

@@ -1,17 +1,17 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 import com.ociweb.pronghorn.util.math.PMath;
 import com.ociweb.pronghorn.util.math.ScriptedSchedule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ScriptedNonThreadScheduler extends StageScheduler implements Runnable {
 
@@ -42,9 +42,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private Pipe[] inputPipes;
     private long[] inputPipeHeads;
 
-    private Pipe[] internalPipes;
-    private boolean isInternalEmpty = false; //always starts as no empty to be safe.
-    private boolean someAreRateLimited = false;
     private AtomicInteger isRunning = new AtomicInteger(0);
     private final GraphManager graphManager;
     private String name = "";
@@ -54,21 +51,23 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     private ScriptedSchedule schedule = null;
 
-    private void buildSchedule(GraphManager graphManager, PronghornStage[] stages) {
+    private void buildSchedule(GraphManager graphManager, PronghornStage[] stages, boolean reverseOrder) {
 
         // Pre-allocate rates based on number of stages.
+    	final int defaultValue = 2_000_000;
         long rates[] = new long[stages.length];
 
         // Determine rates for each stage.
-        for (int i = 0; i < stages.length; i++) {
-
-            // TODO: Default value?
-            long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[i], GraphManager.SCHEDULE_RATE, 2_000_000)));
-            rates[i] = scheduleRate;
+        int k = stages.length;
+        while (--k>=0) {
+			long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[k], GraphManager.SCHEDULE_RATE, defaultValue)));
+            rates[k] = scheduleRate;
         }
 
         // Build the script.
-        schedule = PMath.buildScriptedSchedule(rates);
+        schedule = PMath.buildScriptedSchedule(rates, reverseOrder);
+
+        logger.trace("new schedule: {}",schedule);
     }
 
     public ScriptedNonThreadScheduler(GraphManager graphManager) {
@@ -77,27 +76,29 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         this.graphManager = graphManager;
         this.inLargerScheduler = false;
 
-        buildSchedule(graphManager, stages);
+        //order does not matter unless we add code to organize the results of allStages
+        buildSchedule(graphManager, stages, false);
     }
 
-    public ScriptedNonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name) {
+    public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder, PronghornStage[] stages, String name) {
         super(graphManager);
         this.stages = stages;
         this.graphManager = graphManager;
         this.name = name;
         this.inLargerScheduler = false;
 
-        buildSchedule(graphManager, stages);
+        buildSchedule(graphManager, stages, reverseOrder);
     }
 
-    public ScriptedNonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name, boolean isInLargerScheduler) {
+    public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder, PronghornStage[] stages, String name, boolean isInLargerScheduler) {
         super(graphManager);
+                
         this.stages = stages;
         this.graphManager = graphManager;
         this.name = name;
         this.inLargerScheduler = isInLargerScheduler;
 
-        buildSchedule(graphManager, stages);
+        buildSchedule(graphManager, stages, reverseOrder);
     }
 
     RunningStdDev stdDevRate = null;
@@ -150,7 +151,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         syncInputHeadValues(producerInputPipes, producerInputPipeHeads);
         syncInputHeadValues(inputPipes, inputPipeHeads);
 
-        internalPipes = buildInternalPipes(0, 0, 1, stages, graphManager);
     }
 
     private static void syncInputHeadValues(Pipe[] pipes, long[] heads) {
@@ -256,33 +256,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     }
 
-    private static Pipe[] buildInternalPipes(int count, int stageIdx, int inputIdx, final PronghornStage[] stages, final GraphManager graphManager) {
-
-        while (stageIdx < stages.length) {
-
-            int inputCount = GraphManager.getInputPipeCount(graphManager, stages[stageIdx]);
-            while (inputIdx <= inputCount) {
-
-                Pipe pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);
-
-                int producerId = GraphManager.getRingProducerId(graphManager, pipe.id);
-
-                int k = stages.length;
-                while (--k >= 0) {
-                    if (stages[k].stageId == producerId) {
-                        Pipe[] result = buildInternalPipes(count + 1, stageIdx, inputIdx + 1, stages, graphManager);
-                        result[count] = pipe;
-                        return result;
-                    }
-                }
-                inputIdx++;
-            }
-            inputIdx = 1;
-            stageIdx++;
-        }
-        return new Pipe[count];
-
-    }
 
     /**
      * Stages have unknown dependencies based on their own internal locks and the pipe usages.  As a result we do not
@@ -302,7 +275,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                 isAnyRateLimited |= GraphManager.isRateLimited(graphManager, stages[j].stageId);
             }
         }
-        someAreRateLimited = isAnyRateLimited;
 
         int unInitCount = stageCount;
 
@@ -398,6 +370,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         return nextRun;
     }
 
+    // Pre-allocate startup information.
+    // this value is continues to keep time across calls to run.
+    private long blockStartTime = System.nanoTime();
+    
+    
     @Override
     public void run() {
 
@@ -406,27 +383,32 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             throw new UnsupportedOperationException("startup() must be called before run.");
         }
 
-        // Pre-allocate startup information.
-        long blockStartTime = System.nanoTime();
         int inProgressIdx = 0;
         int scheduleIdx = 0;
 
         // Infinite scheduler loop.
-        while (true) {
+        while (scheduleIdx<schedule.script.length) {
 
             // We need to wait between scheduler blocks, or else
             // we'll just burn through the entire schedule nearly instantaneously.
             //
             // If we're still waiting, we need to wait until its time to run again.
-            if ((blockStartTime - System.nanoTime()) > 0) {
-
-                // TODO: We can do a few things here:
-                // - Busy-wait.
-                // - Thread yield (could cause timing issues).
-                // - Continue (reset) the loop.
-                while (System.nanoTime() < blockStartTime) {
-                    Thread.yield();
-                }
+        	long wait = blockStartTime - System.nanoTime(); 
+            if (wait > 0) {
+            	
+            	if (wait>1_000_000_000L) { //1 second
+            		//timeout safety for bad nanoTime;
+            		blockStartTime = System.nanoTime()+schedule.commonClock;
+            		break;
+            	}
+            	
+            	try {
+            		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
+					Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				}
             }
 
             // Used to indicate if we should shut down after this execution of stages.
@@ -435,6 +417,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             // Once we're done waiting for a block, we need to execute it!
             do {
 
+            	//TODO: if series has only one sequence of pipe and the first one is empty
+            	//      then we could sleep until the next run and not check the rest but only
+            	//      if the pipeline is already known to be empty.
+            	
                 // Identify the index of the block we're starting with.
                 inProgressIdx = schedule.script[scheduleIdx];
 
@@ -447,11 +433,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
                     // Check if we should continue execution after these stages execute.
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[inProgressIdx].stageId);
-                    Thread.yield();
                 }
 
-                // Increment IDX and wrap around if necessary.
-                scheduleIdx = (scheduleIdx + 1) % schedule.script.length;
+                // Increment IDX 
+                scheduleIdx++;
 
             } while (inProgressIdx != -1 && !shutdownRequested.get());
 

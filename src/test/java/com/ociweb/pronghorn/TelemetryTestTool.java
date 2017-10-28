@@ -1,12 +1,10 @@
 package com.ociweb.pronghorn;
 
-import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
-import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class TelemetryTestTool {
@@ -14,7 +12,7 @@ public class TelemetryTestTool {
 	public static void main(String[] args) {
 	
 			GraphManager gm = new GraphManager();
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 100_000);
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500_000);
 
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(8, 8);
 			new ExampleProducerStage(gm, output);
@@ -30,7 +28,7 @@ public class TelemetryTestTool {
 				while (--k>=0) {
 					temp = new Pipe(prev.config().grow2x());
 					//slow replicator so it batches
-					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 1_000_000, 
+					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_000_000, 
 					new BatchingStage(gm, .90, prev, temp) );
 					prev = temp;
 				}
