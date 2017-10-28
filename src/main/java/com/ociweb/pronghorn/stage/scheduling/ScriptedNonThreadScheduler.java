@@ -412,7 +412,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             }
 
             // Used to indicate if we should shut down after this execution of stages.
-            boolean continueRun = false;
+            boolean shutDownRequestedHere = false;
 
             // Once we're done waiting for a block, we need to execute it!
             do {
@@ -432,7 +432,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     GraphManager.accumRunTimeNS(graphManager, stages[inProgressIdx].stageId, now-start, now);
 
                     // Check if we should continue execution after these stages execute.
-                    continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[inProgressIdx].stageId);
+                    shutDownRequestedHere |= GraphManager.isStageShuttingDown(graphManager, stages[inProgressIdx].stageId);
                 }
 
                 // Increment IDX 
@@ -444,7 +444,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             blockStartTime += schedule.commonClock;
 
             // If a shutdown is triggered in any way, shutdown and halt this scheduler.
-            if (!continueRun || shutdownRequested.get()) {
+            if (shutDownRequestedHere || shutdownRequested.get()) {
                 shutdown();
                 break;
             }
