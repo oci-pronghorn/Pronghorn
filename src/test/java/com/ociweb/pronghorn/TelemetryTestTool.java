@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn;
 
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
@@ -8,7 +9,7 @@ import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
-public class TelemtryTestTool {
+public class TelemetryTestTool {
 
 	public static void main(String[] args) {
 	
@@ -40,11 +41,11 @@ public class TelemtryTestTool {
 					temp = new Pipe(prev.config().grow2x());
 					//slow replicator so it batches
 					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000, 
-					new ReplicatorStage<>(gm, prev, temp) );
+					new ReplicatorStage(gm, prev, temp) );
 					prev = temp;
 				}
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_000_000, 
-		        new PipeCleanerStage<>(gm, temp) );
+		        new PipeCleanerStage(gm, temp) );
 			}			
 			//slow replicator so it batches
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000, 

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
-
-   <template name="IdRange" id="1">
-     <uInt32 name="Range" id="100"/>
-   </template>
-   
-</templates>
