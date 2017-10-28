@@ -315,11 +315,11 @@ public class OAuth1HeaderBuilder {
 	      if (null!=value && value.length()>0) {
 		      if (!isFirst) {
 		    	  normalizedBuilder.append("%26");  
-		    	  isFirst = false;
 		      }
 		      normalizedBuilder.append(key);
 		      normalizedBuilder.append("%3D");
 		      normalizedBuilder.append(value);  
+		      isFirst = false;
 	      }
 	      
 	    }

@@ -99,6 +99,9 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(pipe);
 		DataOutputBlobWriter.openField(stream);
 		myAuth.addHeaders(stream, "GET").append("\r\n");
+		
+		//myAuth.addHeaders(System.out, "GET");
+		
 		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7);
 
 		PipeWriter.publishWrites(pipe);
