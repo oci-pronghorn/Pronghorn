@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -525,11 +526,21 @@ public class GraphManager {
 	                }
 	            }
 	        }
-	            
+	          
+			
         	
 		}
 	}
 	
+	private Comparator<? super Pipe> joinFirstComparator;
+	
+	public static Comparator<? super Pipe> joinFirstComparator(GraphManager m) {
+		assert(!m.enableMutation) : "must not call until we are done with contruction";
+		if (null==m.joinFirstComparator) {
+			m.joinFirstComparator = new JoinFirstComparator(m);			
+		}
+		return m.joinFirstComparator;
+	}
 	
 	//Should only be called by methods that are protected by the lock
 	private static int[] setValue(int[] target, int idx, int value, Object obj) {		
@@ -2303,9 +2314,8 @@ public class GraphManager {
 
 	private static void buildHistogramsAsNeeded(GraphManager graphManager, int stageId) {
 		if (stageId >= graphManager.stageElapsed.length) {
-			//only done once..
-			assert(graphManager.stageElapsed.length==0);
 			int maxArray = 1+graphManager.stageCounter.get(); //largestId plus 1
+			//Does this need to grow??
 			Histogram[] newHE = new Histogram[maxArray];
 			int i = maxArray;
 			while (--i>=0) {

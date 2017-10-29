@@ -180,6 +180,7 @@ public class ClientConnection extends SSLConnection {
 		if (null==ipAddresses || ipAddresses.length==0) {
 			//unresolved
 			logger.error("unable to resolve address for {}:{}",host,port);
+			new Exception("we have host: "+host+" and port: "+port).printStackTrace();
 			return;
 		} else {
 			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));

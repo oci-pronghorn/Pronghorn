@@ -687,7 +687,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         //logger.info("write is complete for {} ", activeIds[idx]);
         
         //beginSocketStart
-//        
+        
 //        long duration1 = System.nanoTime()-ServerCoordinator.acceptConnectionStart;
 //        Appendables.appendNearestTimeUnit(System.err, duration1);
 //        System.err.append(" round trip for call\n");
@@ -696,7 +696,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 //        Appendables.appendNearestTimeUnit(System.err, duration3);
 //        System.err.append(" new dot trip for call\n");
 //
-//        long duration2 = System.nanoTime()-ServerCoordinator.newConnectionCounterStart;
+//        long duration2 = System.nanoTime()-ServerCoordinator.orderSuperStart;
 //        Appendables.appendNearestTimeUnit(System.err, duration2);
 //        System.err.append(" super order trip for call\n");
         

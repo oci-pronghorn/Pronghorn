@@ -82,10 +82,11 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     	String parent = super.toString();
     	
     	//invariant
-    	for(int p=0;p<path.length;p++) {
-    		parent += ("\n"+path[p]);    		
+    	if (null!=path) {
+	    	for(int p=0;p<path.length;p++) {
+	    		parent += ("\n"+path[p]);    		
+	    	}
     	}
-    	
     	return parent;
     }
     

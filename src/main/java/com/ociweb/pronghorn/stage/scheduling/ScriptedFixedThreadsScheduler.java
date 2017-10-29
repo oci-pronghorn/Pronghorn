@@ -15,51 +15,8 @@ import java.util.concurrent.*;
 
 public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
-	public class JoinFirstComparator implements Comparator<Pipe> {
-
-		private final GraphManager graphManager;
-		private final int[] weights;
-
-		public JoinFirstComparator(GraphManager graphManager) {
-			this.graphManager = graphManager;
-			this.weights = new int[Pipe.totalPipes()];
-		}
-
-		@Override
-		public int compare(Pipe p1, Pipe p2) {
-			return Integer.compare(weight(p1),weight(p2));
-		}
-
-		public int weight(Pipe p) {
-
-			if (weights[p.id]==0) {
-
-				int result = (int)p.config().slabBits();
-
-				//returns the max pipe length from this pipe or any of the pipes that feed its producer.
-				//if this value turns out to be large then we should probably not join these two stages.
-
-				int producerId = GraphManager.getRingProducerId(graphManager, p.id);
-				if (producerId>=0) {
-					PronghornStage producer = GraphManager.getStage(graphManager, producerId);
-					int count = GraphManager.getInputPipeCount(graphManager, producer);
-					while (--count>=0) {
-						Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count);
-						result = Math.max(result, inputPipe.config().slabBits());
-					}
-				} else {
-					//no producer found, an external thread must be pushing data into this, there is nothing to combine it with
-				}
-				weights[p.id] = result;
-			}
-			return weights[p.id];
-
-		}
-
-	}
-
 	private int threadCount;
-	private final IntHashTable rootsTable;
+
 	private ExecutorService executorService;
 	private volatile Throwable firstException;//will remain null if nothing is wrong
 	private static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
@@ -78,49 +35,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
 		super(graphManager);
 
-		int logLimit=4000;//how many stages that we we can schedule without significant delay.
+		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, enforceLimit);
 		
-		int countStages = GraphManager.countStages(graphManager);
-		if (countStages>logLimit) {
-			logger.info("beginning to schedule work if {} stages into thread count of {}, this may take some time.",
-					countStages,
-					targetThreadCount);
-		}
-	    final Comparator<? super Pipe> joinFirstComparator = new JoinFirstComparator(graphManager);
-	    //created sorted list of pipes by those that should have there stages combined first.
-	    Pipe[] pipes = GraphManager.allPipes(graphManager);	  
-	    Arrays.sort(pipes, joinFirstComparator);
-        if (countStages>logLimit) {
-        	logger.info("finished inital sorting");
-        }
-	    int totalThreads = GraphManager.countStages(graphManager);  
-	  
-	    //must add 1 for the tree of roots also adding 1 more to make hash more efficient.
-	    int bits = 1 + (int)Math.ceil(Math.log(totalThreads)/Math.log(2));
-	   
-		rootsTable = new IntHashTable(bits);
-	    
-	    //counter for root ids, must not collide with stageIds so we start above that point.	
-	    //this is where we decide which stages will be in which thread groups.
-	    final int rootCounter = hierarchicalClassifier(graphManager, targetThreadCount, pipes, totalThreads, enforceLimit);    
-	    if (countStages>logLimit) {
-	        	logger.info("finished hierarchical classifications");
-	    }
-	    PronghornStage[][] stageArrays = buildOrderedArraysOfStages(graphManager, rootCounter);
-	  
-
-	    int total = 0;
-	    int i = stageArrays.length;
-	    while (--i>=0) {
-	    	if (null!=stageArrays[i]) {
-	    		int j = stageArrays[i].length;
-	    		total += j;
-	    	}
-	    	
-	    }
-	    if (countStages>logLimit) {
-	    	logger.info("finished scheduling");
-	    }
 		///////////////////    
 		//  test code for a single thread	
 		//	threadCount = 1;
@@ -136,7 +52,72 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 	}
 
-	private int hierarchicalClassifier(GraphManager graphManager, int targetThreadCount, Pipe[] pipes, int totalThreads, boolean enforceLimit) {
+	public static PronghornStage[][] buildStageGroups(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
+		//must add 1 for the tree of roots also adding 1 more to make hash more efficient.
+	    final int countStages = GraphManager.countStages(graphManager);  
+		int bits = 1 + (int)Math.ceil(Math.log(countStages)/Math.log(2));
+		IntHashTable rootsTable = new IntHashTable(bits);
+		int[] lastKnownRoot = new int[128];
+		
+		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, 
+				                                          enforceLimit, countStages, 
+				                                          rootsTable, lastKnownRoot);
+		return stageArrays;
+	}
+
+	private static PronghornStage[][] buildStageGroups(GraphManager graphManager, 
+			int targetThreadCount, boolean enforceLimit,
+			final int countStages, 
+			final IntHashTable rootsTable, int[] lastKnownRoot
+			) {
+		
+		int logLimit=4000;//how many stages that we we can schedule without significant delay.
+		
+		if (countStages>logLimit) {
+			logger.info("beginning to schedule work if {} stages into thread count of {}, this may take some time.",
+					countStages,
+					targetThreadCount);
+		}
+
+	    //created sorted list of pipes by those that should have there stages combined first.
+	    Pipe[] pipes = GraphManager.allPipes(graphManager);	  
+	    Arrays.sort(pipes, GraphManager.joinFirstComparator(graphManager));
+        if (countStages>logLimit) {
+        	logger.info("finished inital sorting");
+        }
+	   
+	    
+	    //counter for root ids, must not collide with stageIds so we start above that point.	
+	    //this is where we decide which stages will be in which thread groups.
+	    final int rootCounter = hierarchicalClassifier(rootsTable, lastKnownRoot, graphManager,
+									    		targetThreadCount, 
+									    		pipes, countStages, enforceLimit);    
+	    if (countStages>logLimit) {
+	        	logger.info("finished hierarchical classifications");
+	    }
+	    PronghornStage[][] stageArrays = buildOrderedArraysOfStages(graphManager, rootCounter,
+	    														rootsTable, lastKnownRoot);
+	  
+
+//	    int total = 0;
+//	    int i = stageArrays.length;
+//	    while (--i>=0) {
+//	    	if (null!=stageArrays[i]) {
+//	    		int j = stageArrays[i].length;
+//	    		total += j;
+//	    	}
+//	    	
+//	    }
+	    
+	    if (countStages>logLimit) {
+	    	logger.info("finished scheduling");
+	    }
+		return stageArrays;
+	}
+
+	private static int hierarchicalClassifier(IntHashTable rootsTable, int[] lastKnownRoot,
+			                           GraphManager graphManager, int targetThreadCount, 
+			                           Pipe[] pipes, int totalThreads, boolean enforceLimit) {
 				
 		int rootCounter =  totalThreads+1;
 		
@@ -154,10 +135,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//	int outId = rbms.getObservedPipeId();//this idea did not work out.
 									
 			int consumerId = GraphManager.getRingConsumer(graphManager, outId).stageId;
-    		int consRoot = rootId(consumerId, rootsTable);
-    		int prodRoot = rootId(rbms.stageId , rootsTable);
+    		int consRoot = rootId(consumerId, rootsTable, lastKnownRoot);
+    		int prodRoot = rootId(rbms.stageId , rootsTable, lastKnownRoot);
     		if (consRoot!=prodRoot) {
-				rootCounter = combineToSameRoot(rootCounter, consRoot, prodRoot);							
+				rootCounter = combineToSameRoot(rootCounter, consRoot, prodRoot, rootsTable);							
 				totalThreads--;//removed one thread		
     		}
 		}
@@ -180,10 +161,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		
 	    		
 		    		//determine if they are already merged in the same tree?
-		    		int consRoot = rootId(consumerId, rootsTable);
-		    		int prodRoot = rootId(producerId, rootsTable);
+		    		int consRoot = rootId(consumerId, rootsTable, lastKnownRoot);
+		    		int prodRoot = rootId(producerId, rootsTable, lastKnownRoot);
 		    		if (consRoot!=prodRoot) {		    			
-		    			rootCounter = combineToSameRoot(rootCounter, consRoot, prodRoot);
+		    			rootCounter = combineToSameRoot(rootCounter, consRoot, prodRoot, rootsTable);
 		    			totalThreads--;//removed one thread
 		    		}
 		    		//else nothing already combined
@@ -202,7 +183,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    while (totalThreads>targetThreadCount) {
 	
 		    	 int[] rootMemberCounter = new int[rootCounter+1]; 
-		    	 buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter);
+		    	 buildCountOfStagesForEachThread(graphManager, rootCounter, 
+		    			                         rootMemberCounter, 
+		    			                         rootsTable, lastKnownRoot);
 		    	 
 		    	 int smallest1count = Integer.MAX_VALUE;
 		    	 int smallest1root = -1;
@@ -231,24 +214,18 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    	 if (smallest1count==Integer.MAX_VALUE) {
 		    		 break;//nothing more could be done
 		    	 } else {
-		    		 rootCounter = combineToSameRoot(rootCounter, smallest1root, smallest2root);
+		    		 rootCounter = combineToSameRoot(rootCounter, smallest1root, smallest2root, rootsTable);
 		    		 totalThreads--;//removed one thread
 		    	 }	
 		    	
 		    }
 	    }
-	    
-		
-	    
-	    ///////////////////////////
-
-	    threadCount = totalThreads;
-	    //logger.info("Threads Requested: {} Threads Used: {}",targetThreadCount,threadCount);
+	  
 		return rootCounter;
 	}
 
 	//rules because some stages should not be combined
-	private boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager) {
+	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager) {
 				
 		Pipe p = GraphManager.getPipe(graphManager, ringId);
 		
@@ -281,7 +258,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return true;
 	}
 
-	private boolean countParallelProducers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean countParallelProducers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
 		int noMatchCount = 0;
 		int proOutCount = GraphManager.getOutputPipeCount(graphManager, producerId);
         while (--proOutCount>=0) {
@@ -304,7 +281,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return noMatchCount>=1;
 	}
 
-	private boolean countParallelConsumers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean countParallelConsumers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
 		int noMatchCount = 0;
 		int conInCount = GraphManager.getInputPipeCount(graphManager, consumerId);
 		while (--conInCount>=0) {
@@ -328,7 +305,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return noMatchCount>=1;
 	}
 
-	private int combineToSameRoot(int rootCounter, int consRoot, int prodRoot) {
+	private static int combineToSameRoot(int rootCounter, int consRoot, int prodRoot, IntHashTable rootsTable) {
 		//combine these two roots.
 		int newRootId = ++rootCounter;
 		if (!IntHashTable.setItem(rootsTable, consRoot, newRootId)) {
@@ -340,7 +317,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return rootCounter;
 	}
 
-	private int[] buildCountOfStagesForEachThread(GraphManager graphManager, int rootCounter, int[] rootMemberCounter) {
+	private static int[] buildCountOfStagesForEachThread(GraphManager graphManager,
+			 int rootCounter, int[] rootMemberCounter,
+			 IntHashTable rootsTable, int[] lastKnownRoot) {
 		Arrays.fill(rootMemberCounter, 0);
 	   	    
 	    int countStages = GraphManager.countStages(graphManager);
@@ -350,7 +329,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
 	    	if (null!=stage) {
 	    		
-	    		int rootId = rootId(stage.stageId, rootsTable);
+	    		int rootId = rootId(stage.stageId, rootsTable, lastKnownRoot);
 				rootMemberCounter[rootId]++;	    			
 				
 				GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, rootId, stage);
@@ -365,11 +344,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	
 
-	private PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter) {
+	private static PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter,
+			IntHashTable rootsTable, int[] lastKnownRoot) {
 	    
 		int[] rootMemberCounter = new int[rootCounter+1]; 
 
-	    buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter);	    
+	    buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter, rootsTable, lastKnownRoot);	    
 
 		int stages;
 		PronghornStage[][] stageArrays = new PronghornStage[rootCounter+1][]; //one for every stage plus 1 for our new root working room
@@ -382,7 +362,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages--);
 	    	if (null!=stage) {
 	    		//get the root for this table
-	    		int root =rootId(stage.stageId, rootsTable);	    			    		
+	    		int root =rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
 
 				int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
 				lazyCreateOfArray(rootMemberCounter, stageArrays, root);
@@ -392,7 +372,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//find all the entry points where the inputs to this stage are NOT this same root
 				for(int j=1; j<=inputCount; j++) {	    			
 					int ringProducerStageId = GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id);
-					if (rootId(ringProducerStageId, rootsTable) != root 
+					if (rootId(ringProducerStageId, rootsTable, lastKnownRoot) != root 
 							|| GraphManager.isStageInLoop(graphManager, stage.stageId)
 					    ) {
 						isTop = true;
@@ -407,7 +387,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//this stage is the top where it starts
 				if (isTop) {
 					//logger.debug("adding to {}",root);
-					add(stageArrays[root], stage, root, graphManager, rootsTable);
+					add(stageArrays[root], stage, root, graphManager, rootsTable, lastKnownRoot);
 				}
 				
 	    	}
@@ -415,7 +395,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return stageArrays;
 	}
 
-	private void lazyCreateOfArray(int[] rootMemberCounter, PronghornStage[][] stageArrays, int root) {
+	private static void lazyCreateOfArray(int[] rootMemberCounter, PronghornStage[][] stageArrays, int root) {
 		if (rootMemberCounter[root]>0) {
 			//create array if not created since count is > 0
 			if (null == stageArrays[root]) {
@@ -429,7 +409,15 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	private void createSchedulers(GraphManager graphManager, PronghornStage[][] stageArrays) {
 	
-				
+		int j = stageArrays.length; //TODO: refactor into a recursive single pass count.
+		int count = 0;
+		while (--j>=0) {
+			if (null!=stageArrays[j]) {
+				count++;
+			}
+		}
+		threadCount=count;
+		
 		/////////////
 	    //for each array of stages create a scheduler
 	    ///////////// 
@@ -457,7 +445,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    }
 	}
 
-	private void add(PronghornStage[] pronghornStages, PronghornStage stage, final int root, final GraphManager graphManager, final IntHashTable rootsTable) {
+	private static void add(PronghornStage[] pronghornStages, PronghornStage stage,
+			              final int root, final GraphManager graphManager, 
+			              final IntHashTable rootsTable, int[] lastKnownRoot) {
 		int i = 0;
 		while (i<pronghornStages.length && pronghornStages[i]!=null) {
 			if (pronghornStages[i]==stage) {
@@ -476,15 +466,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			
 			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
 			//this exists and has the same root so add it
-			if (consumerId>=0 && rootId(consumerId, rootsTable)==root) {
-				add(pronghornStages, GraphManager.getStage(graphManager, consumerId), root, graphManager, rootsTable);
+			if (consumerId>=0 && rootId(consumerId, rootsTable, lastKnownRoot)==root) {
+				add(pronghornStages, GraphManager.getStage(graphManager, consumerId), root, graphManager, rootsTable, lastKnownRoot);
 			}
 		}
 	}
 
-    private int[] lastKnownRoot = new int[128];
-	
-	private int rootId(int id, IntHashTable hashTable) {
+
+	private static int rootId(int id, IntHashTable hashTable, int[] lastKnownRoot) {
 		
 		int item = 0;
 		int orig = id;
@@ -495,7 +484,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			//this code must only read the hash table
 			item = IntHashTable.getItem(hashTable, id);
 			if (item!=0) {
-				cacheLastKnown(orig, item);			
+				cacheLastKnown(orig, item, lastKnownRoot);			
 				id = item;
 			}
 			
@@ -503,7 +492,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return id;
 	}
 
-	private void cacheLastKnown(int item, int result) {
+	private static void cacheLastKnown(int item, int result, int[] lastKnownRoot) {
 		int i = lastKnownRoot.length;
 		if (item>=i) {
 			
@@ -526,7 +515,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}	
 		
         ThreadFactory threadFactory = new ThreadFactory() {
-        	int count = threadCount;
+        	int count = ntsArray.length;
 			@Override
 			public Thread newThread(Runnable r) {
 				if (--count>=0) {
@@ -542,7 +531,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
-		int i = threadCount;
+		int i = ntsArray.length;
 		while (--i>=0) {
 			executorService.execute(buildRunnable(allStagesLatch, ntsArray[i]));
 		}		
@@ -614,7 +603,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	@Override
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
-		int i = threadCount;
+		int i = ntsArray.length;
 		boolean cleanExit = true;
 
 		while (--i>=0) {			

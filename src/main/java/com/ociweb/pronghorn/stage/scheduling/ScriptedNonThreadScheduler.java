@@ -70,14 +70,27 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         logger.trace("new schedule: {}",schedule);
     }
 
-    public ScriptedNonThreadScheduler(GraphManager graphManager) {
+    public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder) {
         super(graphManager);
-        this.stages = GraphManager.allStages(graphManager);
         this.graphManager = graphManager;
         this.inLargerScheduler = false;
-
-        //order does not matter unless we add code to organize the results of allStages
-        buildSchedule(graphManager, stages, false);
+        
+        PronghornStage[] temp = null;
+        
+//	    PronghornStage[][] orderedStages = ScriptedFixedThreadsScheduler.buildStageGroups(graphManager, 1, true);
+//	   
+//	    int i = orderedStages.length;
+//	    while (--i>=0) {
+//	    	if (null!=orderedStages[i]) {
+//	    		assert(null==temp) : "expected only 1 check the hard limit.";
+//	    		temp = orderedStages[i];
+//	    	}
+//	    }
+	    
+	    temp = GraphManager.allStages(graphManager);
+	    
+	    this.stages = temp;
+        buildSchedule(graphManager, stages, reverseOrder);
     }
 
     public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder, PronghornStage[] stages, String name) {
