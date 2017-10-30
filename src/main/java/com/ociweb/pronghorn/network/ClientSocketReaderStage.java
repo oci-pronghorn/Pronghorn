@@ -48,6 +48,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		coordinator.setStart(this);
 		
+		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
+		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+				
 	}
 	
 	@Override

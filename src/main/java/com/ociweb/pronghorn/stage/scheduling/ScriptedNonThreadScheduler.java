@@ -76,18 +76,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         this.inLargerScheduler = false;
         
         PronghornStage[] temp = null;
-        
-//	    PronghornStage[][] orderedStages = ScriptedFixedThreadsScheduler.buildStageGroups(graphManager, 1, true);
-//	   
-//	    int i = orderedStages.length;
-//	    while (--i>=0) {
-//	    	if (null!=orderedStages[i]) {
-//	    		assert(null==temp) : "expected only 1 check the hard limit.";
-//	    		temp = orderedStages[i];
-//	    	}
-//	    }
-	    
-	    temp = GraphManager.allStages(graphManager);
+
+	    PronghornStage[][] orderedStages = ScriptedFixedThreadsScheduler.buildStageGroups(graphManager, 1, true);
+	   
+	    int i = orderedStages.length;
+	    while (--i>=0) {
+	    	if (null != orderedStages[i]) {
+	    		assert(null==temp) : "expected only 1 check the hard limit.";
+	    		temp = orderedStages[i];
+	    	} 
+	    }
 	    
 	    this.stages = temp;
         buildSchedule(graphManager, stages, reverseOrder);

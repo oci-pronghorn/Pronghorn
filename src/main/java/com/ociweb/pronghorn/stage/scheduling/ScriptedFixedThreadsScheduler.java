@@ -62,7 +62,43 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, 
 				                                          enforceLimit, countStages, 
 				                                          rootsTable, lastKnownRoot);
+		
+		verifyNoStagesAreMissing(graphManager, stageArrays);
+		
+		
 		return stageArrays;
+	}
+
+	public static void verifyNoStagesAreMissing(GraphManager graphManager, PronghornStage[][] stageArrays) {
+		///////////
+		//double check that nothing was lost
+		/////////
+		PronghornStage[] all = GraphManager.allStages(graphManager);
+		boolean[] found = new boolean[all.length];
+		for(PronghornStage[] list: stageArrays) {
+			if (null!=list) {
+				for(PronghornStage stage: list) {
+					int i = all.length;
+					while (--i>=0) {
+						if (stage == all[i]) {
+							found[i] = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		int j = found.length;
+		boolean error = false;
+		while (--j>=0) {
+			if (!found[j]) {
+				error = true;
+				System.err.println("not found "+all[j].getClass()+" "+all[j].stageId);			
+			}
+		}
+		if (error) {
+			throw new RuntimeException("internal errror, some stages were not scheduled");
+		}
 	}
 
 	private static PronghornStage[][] buildStageGroups(GraphManager graphManager, 
@@ -320,11 +356,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static int[] buildCountOfStagesForEachThread(GraphManager graphManager,
 			 int rootCounter, int[] rootMemberCounter,
 			 IntHashTable rootsTable, int[] lastKnownRoot) {
+		
 		Arrays.fill(rootMemberCounter, 0);
-	   	    
 	    int countStages = GraphManager.countStages(graphManager);
 	    
-		for(int stages=1; stages <= countStages; stages++) { 
+		for(int stages=0; stages <= countStages; stages++) { 
 	    
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
 	    	if (null!=stage) {
@@ -351,35 +387,38 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	    buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter, rootsTable, lastKnownRoot);	    
 
-		int stages;
 		PronghornStage[][] stageArrays = new PronghornStage[rootCounter+1][]; //one for every stage plus 1 for our new root working room
 	    	    
 		//////////////
 		//walk over all stages once and build the actual arrays
 		/////////////
-	    stages = GraphManager.countStages(graphManager); 
+		int stages = GraphManager.countStages(graphManager);
+	    int addsCount = 0;
+	    int expectedCount = 0;
 	    while (stages>=0) {	    		    	
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages--);
 	    	if (null!=stage) {
+	    		expectedCount++;
 	    		//get the root for this table
-	    		int root =rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
-
+	    		int root = rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
+	    		lazyCreateOfArray(rootMemberCounter, stageArrays, root);
+	    		
 				int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
-				lazyCreateOfArray(rootMemberCounter, stageArrays, root);
 				
 				boolean isTop=false; 
 				
 				//find all the entry points where the inputs to this stage are NOT this same root
 				for(int j=1; j<=inputCount; j++) {	    			
-					int ringProducerStageId = GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id);
-					if (rootId(ringProducerStageId, rootsTable, lastKnownRoot) != root 
+					if (root != rootId(GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id), rootsTable, lastKnownRoot)  
 							|| GraphManager.isStageInLoop(graphManager, stage.stageId)
 					    ) {
 						isTop = true;
 					}
 				}
 				
-				if (0==inputCount || null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null)) {
+				//if this is a producer use it
+				if (0==inputCount 
+					|| null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null)) {
 					isTop=true;
 				}								
 				
@@ -387,9 +426,46 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//this stage is the top where it starts
 				if (isTop) {
 					//logger.debug("adding to {}",root);
-					add(stageArrays[root], stage, root, graphManager, rootsTable, lastKnownRoot);
+					addsCount = add(stageArrays[root], stage, 
+						root, graphManager, rootsTable, lastKnownRoot, addsCount);
 				}
 				
+	    	}
+	    }
+	    
+	    //if any were skipped add them now.
+	    if (expectedCount != addsCount) {	    	
+	    	//A loop was detected and not added, at this point each must be added 
+	    	stages = GraphManager.countStages(graphManager);
+	    	//get root if not on this list then add.
+	    	while (stages>=0) {	    		    	
+		    	final PronghornStage stage = GraphManager.getStage(graphManager, stages--);
+		    	if (null!=stage) {
+		    		//get the root for this table
+		    		final int root = rootId(stage.stageId, rootsTable, lastKnownRoot);
+		    
+		    		boolean needToAdd = true;
+		    		PronghornStage[] array = stageArrays[root];
+		    		int i = array.length;
+		    		if (array[i-1]==null) {
+		    			//this array is missing a value
+		    			while (--i>=0) {
+		    				if (array[i]==stage) {
+		    					needToAdd = false;
+		    					break;
+		    				}
+		    			}
+		    		}
+		    		
+		    		if (needToAdd) {
+		    			
+		    			logger.info("WARNING: loop detected, graph can start faster if one Stage was selected as the Producer. {}"
+		    					, stage.getClass() );
+		    			add(stageArrays[root], stage, 
+		    				root, graphManager, rootsTable, lastKnownRoot, 0);
+
+		    		}
+		    	}
 	    	}
 	    }
 		return stageArrays;
@@ -445,18 +521,21 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    }
 	}
 
-	private static void add(PronghornStage[] pronghornStages, PronghornStage stage,
+	private static int add(PronghornStage[] pronghornStages, PronghornStage stage,
 			              final int root, final GraphManager graphManager, 
-			              final IntHashTable rootsTable, int[] lastKnownRoot) {
+			              final IntHashTable rootsTable, int[] lastKnownRoot,
+			              int count) {
+		
 		int i = 0;
 		while (i<pronghornStages.length && pronghornStages[i]!=null) {
 			if (pronghornStages[i]==stage) {
-				return;//already added
+				return count;//already added
 			}
 			i++;
 		}
 		//now add the new stage at index i
 		pronghornStages[i]=stage;
+		count++;
 		
 		//Recursively add the ones under the same root.
 		
@@ -467,9 +546,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
 			//this exists and has the same root so add it
 			if (consumerId>=0 && rootId(consumerId, rootsTable, lastKnownRoot)==root) {
-				add(pronghornStages, GraphManager.getStage(graphManager, consumerId), root, graphManager, rootsTable, lastKnownRoot);
+				count = add(pronghornStages, GraphManager.getStage(graphManager, consumerId),
+						     root, graphManager, rootsTable, lastKnownRoot, count);
 			}
 		}
+		return count;
 	}
 
 
