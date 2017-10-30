@@ -875,6 +875,14 @@ public class Appendables {
 		 return target;
 	}
 
+	public static void appendNearestTimeUnit(Appendable target, long nsValue, String postfix) {
+		appendNearestTimeUnit(target, nsValue);
+		try {
+			target.append(postfix);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	public static void appendNearestTimeUnit(Appendable target, long nsValue) {
 		try {
