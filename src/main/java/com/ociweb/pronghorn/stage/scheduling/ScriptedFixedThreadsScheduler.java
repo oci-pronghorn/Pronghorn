@@ -1,17 +1,23 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.util.Arrays;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.concurrent.*;
+import com.ociweb.pronghorn.util.primitive.IntArrayHolder;
 
 public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
@@ -57,7 +63,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    final int countStages = GraphManager.countStages(graphManager);  
 		int bits = 1 + (int)Math.ceil(Math.log(countStages)/Math.log(2));
 		IntHashTable rootsTable = new IntHashTable(bits);
-		int[] lastKnownRoot = new int[128];
+		
+		IntArrayHolder lastKnownRoot = new IntArrayHolder(128);
+		
+		
 		
 		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, 
 				                                          enforceLimit, countStages, 
@@ -104,7 +113,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static PronghornStage[][] buildStageGroups(GraphManager graphManager, 
 			int targetThreadCount, boolean enforceLimit,
 			final int countStages, 
-			final IntHashTable rootsTable, int[] lastKnownRoot
+			final IntHashTable rootsTable, IntArrayHolder lastKnownRoot
 			) {
 		
 		int logLimit=4000;//how many stages that we we can schedule without significant delay.
@@ -151,7 +160,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return stageArrays;
 	}
 
-	private static int hierarchicalClassifier(IntHashTable rootsTable, int[] lastKnownRoot,
+	private static int hierarchicalClassifier(IntHashTable rootsTable, IntArrayHolder lastKnownRoot,
 			                           GraphManager graphManager, int targetThreadCount, 
 			                           Pipe[] pipes, int totalThreads, boolean enforceLimit) {
 				
@@ -219,6 +228,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    while (totalThreads>targetThreadCount) {
 	
 		    	 int[] rootMemberCounter = new int[rootCounter+1]; 
+		    	 
 		    	 buildCountOfStagesForEachThread(graphManager, rootCounter, 
 		    			                         rootMemberCounter, 
 		    			                         rootsTable, lastKnownRoot);
@@ -355,24 +365,26 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	private static int[] buildCountOfStagesForEachThread(GraphManager graphManager,
 			 int rootCounter, int[] rootMemberCounter,
-			 IntHashTable rootsTable, int[] lastKnownRoot) {
+			 IntHashTable rootsTable, IntArrayHolder lastKnownRoot) {
 		
 		Arrays.fill(rootMemberCounter, 0);
-	    int countStages = GraphManager.countStages(graphManager);
+
+		//long start = System.nanoTime();
+		
+		int countStages = GraphManager.countStages(graphManager);
+	    
 	    
 		for(int stages=0; stages <= countStages; stages++) { 
 	    
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
-	    	if (null!=stage) {
-	    		
-	    		int rootId = rootId(stage.stageId, rootsTable, lastKnownRoot);
-				rootMemberCounter[rootId]++;	    			
-				
-				GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, rootId, stage);
-				
+	    	if (null!=stage) {	    		
+	    		rootMemberCounter[rootId(stage.stageId, rootsTable, lastKnownRoot)]++;	    			
+
 	    	}
 	    	
 	    }
+		//System.err.println("performance issue here calling this too often "+countStages+" duration "+(System.nanoTime()-start));
+
 	    //logger.info("group counts "+Arrays.toString(rootMemberCounter));
 		return rootMemberCounter;
 	}
@@ -381,7 +393,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 
 	private static PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter,
-			IntHashTable rootsTable, int[] lastKnownRoot) {
+			IntHashTable rootsTable, IntArrayHolder lastKnownRoot) {
 	    
 		int[] rootMemberCounter = new int[rootCounter+1]; 
 
@@ -523,7 +535,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	private static int add(PronghornStage[] pronghornStages, PronghornStage stage,
 			              final int root, final GraphManager graphManager, 
-			              final IntHashTable rootsTable, int[] lastKnownRoot,
+			              final IntHashTable rootsTable, IntArrayHolder lastKnownRoot,
 			              int count) {
 		
 		int i = 0;
@@ -535,6 +547,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 		//now add the new stage at index i
 		pronghornStages[i]=stage;
+		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, root, stage);
 		count++;
 		
 		//Recursively add the ones under the same root.
@@ -554,36 +567,24 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	}
 
 
-	private static int rootId(int id, IntHashTable hashTable, int[] lastKnownRoot) {
+	private static int rootId(int id, IntHashTable hashTable, IntArrayHolder lastKnownRoot) {
 		
 		int item = 0;
 		int orig = id;
 		do {
-			if (id<lastKnownRoot.length && lastKnownRoot[id]!=0) {
-				id = lastKnownRoot[id];
+			if (id<lastKnownRoot.data.length && lastKnownRoot.data[id]!=0) {
+				id = lastKnownRoot.data[id];
 			}
 			//this code must only read the hash table
 			item = IntHashTable.getItem(hashTable, id);
 			if (item!=0) {
-				cacheLastKnown(orig, item, lastKnownRoot);			
+				lastKnownRoot.growIfNeeded(orig);
+				lastKnownRoot.data[orig]=item;			
 				id = item;
 			}
 			
 		} while (item!=0);
 		return id;
-	}
-
-	private static void cacheLastKnown(int item, int result, int[] lastKnownRoot) {
-		int i = lastKnownRoot.length;
-		if (item>=i) {
-			
-			int[] newLast = new int[item*2];
-			System.arraycopy(lastKnownRoot, 0, newLast, 0, i);
-			lastKnownRoot = newLast;
-			
-		}
-		lastKnownRoot[item]=result;
-		
 	}
 
 	@Override

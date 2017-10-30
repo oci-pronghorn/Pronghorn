@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
@@ -32,7 +33,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final int maxClients;
 	
-
+	private Selector selector;
 	
 	private StringBuilder[] accumulators; //for testing only
 	
@@ -55,6 +56,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
+		
+		try {
+			selector = Selector.open();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+				
+		
+		
 		start = System.currentTimeMillis();
 		
 		if (ClientCoordinator.TEST_RECORDS) {
@@ -94,7 +104,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						//TODO: this is slow because we are NOT using the e-poll mechanism and we check every connection for data
 						//      this results in many zero reads...
 						cc = coordinator.getClientConnectionByPosition(cpos);
-
+						
 						
 					    if (cc!=null) {
 					    	
@@ -128,7 +138,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	//holds the pipe until we gather all the data and got the end of the parse.
 					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the system busy
 					    	if (pipeIdx>=0) {					    		
-					    	} else {				    	
+					    	} else {	    	
 					    		consumeRelease();
 					    		pipeIdx = coordinator.responsePipeLineIdx(cc.getId()); //try again.
 					    		if (pipeIdx<0) {
@@ -148,7 +158,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 						    	if (Pipe.hasRoomForWrite(target)) {
 						        		
-						    								    		
+						    		//TODO: use epoll to detect new data??				
+						    		
+						    		
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
 						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 						    

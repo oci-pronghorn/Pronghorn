@@ -418,8 +418,12 @@ public class ClientConnection extends SSLConnection {
 	}
 
 	public void recordArrivalTime(long time) {
-		long value = time-inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
+		long value = time - inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
+			
 		if (value>=0 && value<MAX_HIST_VALUE) {
+		
+			//Appendables.appendNearestTimeUnit(System.err, value, " client latency\n");
+		
 			histRoundTrip.recordValue(value);
 		}
 	}

@@ -94,7 +94,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     			
     	} while (--c>=0 && null!=(cc = connections.next()));
     	
-    	    	
     	if (showHistogramResults) {
     		//
     		histRoundTrip.outputPercentileDistribution(System.out, 1.0); 

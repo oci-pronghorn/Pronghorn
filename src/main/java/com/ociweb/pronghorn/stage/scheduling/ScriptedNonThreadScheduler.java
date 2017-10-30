@@ -465,7 +465,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
             // Update the block start time.
             blockStartTime += schedule.commonClock;
-
+           
             // If a shutdown is triggered in any way, shutdown and halt this scheduler.
             if (shutDownRequestedHere || shutdownRequested.get()) {
                 shutdown();

@@ -1128,7 +1128,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		assert(positionMemoData[stateIdx]>=5);
 		
 		int foundWork = 0;
-		
 		//only ack when all the data held has been consumed.
 		if (trieReader.sourceLen<=0 &&
 		    Pipe.contentRemaining(pipe)==0) {	//added second rule to minimize release messages.
@@ -1142,12 +1141,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			}
 
 		} else {
+			
 			foundWork = 1;						
 			positionMemoData[stateIdx] = nextState;
-			cc.recordArrivalTime(arrivalTimeAtPosition[i]);
+		}
+		//records the leading edge of arrival time.
+		long temp = arrivalTimeAtPosition[i];
+		if (0 != temp) {
+			cc.recordArrivalTime(temp);
 			arrivalTimeAtPosition[i] = 0;
 		}
-		
+
 		if (ServerCoordinator.TEST_RECORDS &&  trieReader.sourceLen>0) {
 		   assert('H'==(char)pipe.blobRing[ pipe.blobMask&trieReader.sourcePos ]);			
 		}

@@ -139,31 +139,29 @@ public class ServerSocketReaderStage extends PronghornStage {
 	         return;
     	 }
     	
-    		{	
+        ////////////////////////////////////////
+        ///Read from socket
+        ////////////////////////////////////////
+
+	    //max cycles before we take a break.
+    	int maxIterations = 100; //important or this stage will take all the resources.
     	
-	        ////////////////////////////////////////
-	        ///Read from socket
-	        ////////////////////////////////////////
+        while (--maxIterations>=0 & hasNewDataToRead()) { //single & to ensure we check has new data to read.
+        	
+        	//logger.info("found new data to read on "+groupIdx);
+            
+           Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            
+           assert(selectedKeys.size()>0);	            
 
-    	    //max cycles before we take a break.
-	    	int maxIterations = 100; //important or this stage will take all the resources.
-	    	
-	        while (--maxIterations>=0 & hasNewDataToRead()) { //single & to ensure we check has new data to read.
-	        	
-	        	//logger.info("found new data to read on "+groupIdx);
-	            
-	           Set<SelectionKey> selectedKeys = selector.selectedKeys();
-	            
-	           assert(selectedKeys.size()>0);	            
-
-	           doneSelectors.clear();
-		
-	           selectedKeys.forEach(selectionKeyAction);
-	                 
-			   removeDoneKeys(selectedKeys);
-			        	 
-	        }	        
-    	}
+           doneSelectors.clear();
+	
+           selectedKeys.forEach(selectionKeyAction);
+                 
+		   removeDoneKeys(selectedKeys);
+		        	 
+        }	        
+    	
     }
 
 	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {

@@ -53,8 +53,12 @@ public class GraphManager {
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;	
 	
-	public static boolean monitorAll = false;//will show telemetry its self
-	public static boolean recordElapsedTime = true;//turn off to minimize memory and remove from profiler.
+	//will show telemetry its self
+	public static boolean monitorAll = false;
+	
+	//turn off to minimize memory and remove from profiler.
+	public static boolean recordElapsedTime = false;//this is turned on by telemetry
+	
 	private static final double percentile = 99.999;
 	
 
@@ -472,6 +476,7 @@ public class GraphManager {
 		if (m.enableMutation) {
 			//logger.info("disable mutation");
 			if (m.telemetryPort > 0) {
+				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
 				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m, TELEMTRY_SERVER_RATE);

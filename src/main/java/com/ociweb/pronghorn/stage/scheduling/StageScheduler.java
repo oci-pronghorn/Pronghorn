@@ -65,7 +65,7 @@ public abstract class StageScheduler {
 	
 
 	private static int idealThreadCount() {
-		return Runtime.getRuntime().availableProcessors()*4;
+		return Runtime.getRuntime().availableProcessors()*2;
 	}
 	
 	public static StageScheduler defaultScheduler(GraphManager gm) {
@@ -90,7 +90,7 @@ public abstract class StageScheduler {
 				  return new ScriptedFixedThreadsScheduler(gm, threadLimit, threadLimitHard);
 				  
 				  //TODO: if we do not need to roll back to this before 2018 we should remove this line.
- 		          //return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+ 		         // return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
 		}
 	}
 

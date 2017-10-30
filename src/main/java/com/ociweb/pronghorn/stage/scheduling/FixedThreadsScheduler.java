@@ -348,8 +348,10 @@ public class FixedThreadsScheduler extends StageScheduler {
 	}
 
 	private int[] buildCountOfStagesForEachThread(GraphManager graphManager, int rootCounter, int[] rootMemberCounter) {
+		//long start = System.nanoTime();
+		
 		Arrays.fill(rootMemberCounter, 0);
-	   	    
+	   	
 	    int countStages = GraphManager.countStages(graphManager);
 	    
 		for(int stages=1; stages <= countStages; stages++) { 
@@ -365,6 +367,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    	}
 	    	
 	    }
+		//System.err.println("performance issue here calling this too often "+countStages+" duration "+(System.nanoTime()-start));
 	    //logger.info("group counts "+Arrays.toString(rootMemberCounter));
 		return rootMemberCounter;
 	}
