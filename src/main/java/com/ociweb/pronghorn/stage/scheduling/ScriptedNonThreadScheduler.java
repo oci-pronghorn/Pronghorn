@@ -82,8 +82,20 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	    int i = orderedStages.length;
 	    while (--i>=0) {
 	    	if (null != orderedStages[i]) {
-	    		assert(null==temp) : "expected only 1 check the hard limit.";
-	    		temp = orderedStages[i];
+	    		
+	    		if (null == temp) {
+	    			temp = orderedStages[i];
+	    		} else {
+	    			//roll up any stages
+	    			PronghornStage[] additional = orderedStages[i];
+	    			PronghornStage[] newList = new PronghornStage[temp.length+additional.length];
+	    			
+	    			System.arraycopy(temp, 0, newList, 0, temp.length);
+	    			System.arraycopy(additional, 0, newList, temp.length, additional.length);
+	    			
+	    			temp = newList;
+	    			
+	    		}
 	    	} 
 	    }
 	    
