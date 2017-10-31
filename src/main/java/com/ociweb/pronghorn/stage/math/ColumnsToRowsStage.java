@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.math;
 
-import java.nio.channels.UnsupportedAddressTypeException;
-
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -19,6 +17,10 @@ public class ColumnsToRowsStage<M extends MatrixSchema<M>> extends PronghornStag
 	private final int colSizeOf;
 	private final int matrixSize;
 	
+	
+    //NOTE: For Neural compute? Improve .. the column converters need a flag to hold and re-use the last value so we only need to xmit once....
+	
+
 	public ColumnsToRowsStage(GraphManager graphManager, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
 		super(graphManager, columnPipeInput, matrixPipeOutput);
 		

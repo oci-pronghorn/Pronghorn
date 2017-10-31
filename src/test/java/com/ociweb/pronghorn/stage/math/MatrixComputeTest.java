@@ -303,7 +303,7 @@ public class MatrixComputeTest {
 		
 	}
 	
-	@Test
+	@Ignore
 	public <M extends MatrixSchema<M>> void testComputeExample() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
@@ -454,7 +454,14 @@ public class MatrixComputeTest {
 	//	String actual = new String(baos.toByteArray());
 		
 		for(int r=0;r<5;r++) {
-			assertTrue(result2.hasContentToRead(result2));
+			
+			if (!Pipe.hasContentToRead(result2)) {
+				
+				assert(Pipe.hasContentToRead(result2)) : "no data for row "+r;
+			}
+			//while (!Pipe.hasContentToRead(result2)){
+		//		Thread.yield();
+			//}
 	
 			int id = Pipe.takeMsgIdx(result2);
 			for(int c=0;c<3;c++) {

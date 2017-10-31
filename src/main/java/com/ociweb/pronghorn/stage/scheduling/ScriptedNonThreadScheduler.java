@@ -21,7 +21,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 
     private long maxRate;
-    private final PronghornStage[] stages;
+    public final PronghornStage[] stages;
     private static final Logger logger = LoggerFactory.getLogger(ScriptedNonThreadScheduler.class);
 
     private long nextRun = 0; //keeps times of the last pass so we need not check again
@@ -67,6 +67,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         // Build the script.
         schedule = PMath.buildScriptedSchedule(rates, reverseOrder);
 
+        logger.trace("stages: {} scriptLength: {}", stages.length, schedule.script.length);
+        
         logger.trace("new schedule: {}",schedule);
     }
 
@@ -86,6 +88,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	    		if (null == temp) {
 	    			temp = orderedStages[i];
 	    		} else {
+	    			logger.info("warning had to roll up, check the hard limit on threads");
+	    			
 	    			//roll up any stages
 	    			PronghornStage[] additional = orderedStages[i];
 	    			PronghornStage[] newList = new PronghornStage[temp.length+additional.length];
@@ -124,6 +128,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         buildSchedule(graphManager, stages, reverseOrder);
     }
 
+    
+    public ScriptedSchedule schedule() {
+    	return schedule;
+    }
+    
     RunningStdDev stdDevRate = null;
 
     public RunningStdDev stdDevRate() {

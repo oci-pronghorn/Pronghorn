@@ -392,8 +392,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	
 
-	private static PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter,
-			IntHashTable rootsTable, IntArrayHolder lastKnownRoot) {
+	private static PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager,
+			int rootCounter,
+			IntHashTable rootsTable,
+			IntArrayHolder lastKnownRoot) {
 	    
 		int[] rootMemberCounter = new int[rootCounter+1]; 
 
@@ -422,24 +424,30 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//find all the entry points where the inputs to this stage are NOT this same root
 				for(int j=1; j<=inputCount; j++) {	    			
 					if (root != rootId(GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id), rootsTable, lastKnownRoot)  
-							|| GraphManager.isStageInLoop(graphManager, stage.stageId)
+							//do not pick those in loops we will deal with those later...
+							&& !GraphManager.isStageInLoop(graphManager, stage.stageId)
 					    ) {
+						
 						isTop = true;
+						
 					}
 				}
-				
+								
 				//if this is a producer use it
-				if (0==inputCount 
-					|| null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null)) {
-					isTop=true;
+				if ((0==inputCount) 
+					|| (null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null))) {
+					
+					isTop = true;
+				
 				}								
 				
 				//Add this and all down stream stages in order only if we have discovered
 				//this stage is the top where it starts
 				if (isTop) {
-					//logger.debug("adding to {}",root);
+					//logger.info("adding to {} stage {}",root, stage.getClass());
 					addsCount = add(stageArrays[root], stage, 
-						root, graphManager, rootsTable, lastKnownRoot, addsCount);
+									root, graphManager, rootsTable, 
+									lastKnownRoot, addsCount);
 				}
 				
 	    	}
@@ -456,8 +464,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    		//get the root for this table
 		    		final int root = rootId(stage.stageId, rootsTable, lastKnownRoot);
 		    
-		    		boolean needToAdd = true;
 		    		PronghornStage[] array = stageArrays[root];
+		    		boolean needToAdd = (array.length>0);
+		    		
 		    		int i = array.length;
 		    		if (array[i-1]==null) {
 		    			//this array is missing a value
@@ -467,16 +476,19 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    					break;
 		    				}
 		    			}
-		    		}
-		    		
-		    		if (needToAdd) {
 		    			
-		    			logger.info("WARNING: loop detected, graph can start faster if one Stage was selected as the Producer. {}"
-		    					, stage.getClass() );
-		    			add(stageArrays[root], stage, 
-		    				root, graphManager, rootsTable, lastKnownRoot, 0);
-
-		    		}
+		    			if (needToAdd) {
+		    				
+		    				logger.trace("WARNING: loop detected, graph can start faster if one Stage was selected as the Producer. {}, root {}"
+		    						, stage.getClass(), root );
+		    				
+		    				add(stageArrays[root], stage, 
+		    						root, graphManager, rootsTable, lastKnownRoot, 0);
+		    				
+		    			}
+		    			
+		    		} 
+		    		
 		    	}
 	    	}
 	    }

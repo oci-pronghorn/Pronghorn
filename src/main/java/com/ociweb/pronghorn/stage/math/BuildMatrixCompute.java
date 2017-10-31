@@ -417,9 +417,11 @@ public class BuildMatrixCompute {
 			//note how the last one takes the remainder of the pipes. TODO: may want to revist for better spread of the remainder.
 			int len = start-i;			
 			if ((splitterPipesCount>1 && len==partsSize) || i==0) {
-			
+		
 				splitterPipesCount = buildComputeStage(gm, resultSchema, rightSchema, leftInput, i, intputAsColumns,
-						                               resultColumnPipes, splitterPipesCount, splitterPipes, start, len);
+						                               resultColumnPipes, 
+						                               splitterPipesCount, 
+						                               splitterPipes, start, len);
 				start = i;
 			}
 					
@@ -427,7 +429,11 @@ public class BuildMatrixCompute {
 
 		//split the left matrix into N column pipes.
 		new RowsToColumnRouteStage(gm, rightInput, intputAsColumns);
-		new ReplicatorStage<RowSchema<M>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		
+		if (splitterPipesCount>1) {
+			new ReplicatorStage<RowSchema<M>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		}
+		
 		return resultColumnPipes;
 	}
 
@@ -461,10 +467,14 @@ public class BuildMatrixCompute {
 		}
 		assert(c==len);
 
+		//if the work is not split then we do not need a replicator.
+		Pipe<RowSchema<M>> pipe = 1==splitterPipesCount ?
+								  leftInput:
+				                  new Pipe<RowSchema<M>>(leftInput.config().grow2x());
 		
 		new ColumnComputeStage( gm, 
 				                inputs, 
-				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<M>>(leftInput.config().grow2x()),
+				                splitterPipes[--splitterPipesCount] = pipe,
 				                outputs, 
 				                resultSchema, leftSchema, rightSchema.getRows(), rightSchema.getColumns(), rightSchema.type);
 		return splitterPipesCount;
