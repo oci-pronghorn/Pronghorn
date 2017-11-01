@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn;
 
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -22,23 +23,33 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 		
 	}
 
+	private long tailCache;
+	private int maxFrag;
+	
+	@Override
+	public void startup() {
+		tailCache = Pipe.tailPosition(input);
+		maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(input));
+	}
+	
 	@Override
 	public void run() {
 		
 		//only move the data if we are over the lmit
 		int remaining;
-		if ((remaining = Pipe.contentRemaining(input)) >= limit) {
+		
+		
+		if ((remaining = (int)(Pipe.getWorkingHeadPositionObject(input).value-tailCache)) >= limit) {
+			if (Pipe.hasRoomForWrite(output, remaining)) {
 			
-			//move all the data we can
-			while ( remaining > 0 //active batch still has data
-			     && Pipe.hasContentToRead(input) //has a full fragment
-				 && Pipe.hasRoomForWrite(output)) {
-				
-				int size = Pipe.copyFragment(input, output);
-				
-				remaining -= size;	
-				
+				//move all the data we can
+				while ( remaining > 0 //active batch still has data
+				     && (remaining>=maxFrag) //has a full fragment
+					 ) {
+					remaining -= Pipe.copyFragment(input, output);					
+				}
 			}
+			tailCache = Pipe.tailPosition(input);
 		}
 	}
 
