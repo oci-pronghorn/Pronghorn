@@ -79,7 +79,7 @@ public class Blocker {
     
     public boolean isBlocked(int id) {        
         int item = id+1;
-        return (item<1) ? false : 0!=untilTimes[item-1];
+        return ((item<1) || (item-1>=untilTimes.length)) ? false : 0!=untilTimes[item-1];
     }
     
     public long isBlockedUntil(int id) {        
