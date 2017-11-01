@@ -15,7 +15,7 @@ public class TelemetryTestTool {
 			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500_000);
 
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(8, 8);
-			new ExampleProducerStage(gm, output);
+			ExampleProducerStage producer = new ExampleProducerStage(gm, output);
 						
 			int i = 100;
 			Pipe[] targets = new Pipe[i];
@@ -28,7 +28,7 @@ public class TelemetryTestTool {
 				while (--k>=0) {
 					temp = new Pipe(prev.config().grow2x());
 					//slow replicator so it batches
-					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_000_000, 
+					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000, 
 					new BatchingStage(gm, .90, prev, temp) );
 					prev = temp;
 				}
@@ -42,15 +42,14 @@ public class TelemetryTestTool {
 					new ReplicatorStage(gm, prev, temp) );
 					prev = temp;
 				}
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_000_000, 
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 5_000_000, 
 		        new PipeCleanerStage(gm, temp) );
 			}			
 			//slow replicator so it batches
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000, 
 			new ReplicatorStage<>(gm, output, targets) );
-					
 			gm.enableTelemetry(8092);
-						
+
 			StageScheduler.defaultScheduler(gm).startup();
 	
 	}
