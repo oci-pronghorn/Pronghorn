@@ -2323,8 +2323,8 @@ public class GraphManager {
 			//Does this need to grow??
 			Histogram[] newHE = new Histogram[maxArray];
 			int i = maxArray;
-			while (--i>=0) {
-				newHE[i] = new Histogram(2);
+			while (--i>=0) {				
+				newHE[i] = new Histogram(0);
 			}
 			graphManager.stageElapsed = newHE;
 		}
@@ -2459,6 +2459,26 @@ public class GraphManager {
 		}
 		
     }
+
+	public static void appendInputs(GraphManager graphManager, Appendable target, PronghornStage pronghornStage) {
+		
+		int c = GraphManager.getInputPipeCount(graphManager, pronghornStage.stageId);
+		for(int i = 1; i<=c; i++) {
+			int id = GraphManager.getInputPipe(graphManager, pronghornStage.stageId, i).id;
+			Appendables.appendValue(target, i==1?"":" ,", id);
+		}
+		
+	}
+	
+	public static void appendOutputs(GraphManager graphManager, Appendable target, PronghornStage pronghornStage) {
+		
+		int c = GraphManager.getOutputPipeCount(graphManager, pronghornStage.stageId);
+		for(int i = 1; i<=c; i++) {
+			int id = GraphManager.getOutputPipe(graphManager, pronghornStage.stageId, i).id;
+			Appendables.appendValue(target, i==1?"":" ,", id);
+		}
+		
+	}
 	
 
 }
