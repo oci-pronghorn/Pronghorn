@@ -35,7 +35,7 @@ import java.nio.ByteOrder;
 public class BitStream extends BitInputStream {
 
     public BitStream(final InputStream in) {
-        super(in, ByteOrder.LITTLE_ENDIAN);
+        super(in, ByteOrder.BIG_ENDIAN);
     }
 
     /**

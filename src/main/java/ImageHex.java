@@ -69,43 +69,48 @@ public class ImageHex {
 
     public static void interpretHuffmanSegment(byte[] b) throws IOException {
         //I will use an input stream to keep my place in the data. 
-        ByteArrayInputStream bytes = new ByteArrayInputStream(b); //I'd like to skip this step
-        BitStream bits = new BitStream(bytes);
+        ByteArrayInputStream bytes = new ByteArrayInputStream(b);
+        byte[][] values1 = interpretDHT(bytes);
+        byte[][] values2 = interpretDHT(bytes);
+        byte[][] values3 = interpretDHT(bytes);
+        byte[][] values4 = interpretDHT(bytes);
+
+    }
+
+    public static byte[][] interpretDHT(ByteArrayInputStream bytes){
         byte firstByte = 0;
         byte firstHalf = 0;
         byte secondHalf = 0;
         byte[] numElements = new byte[16];
-        byte[][] values = new byte[16][16];
-
-        values = fill(values); //filling with all 0xFF
+        byte[][] values = fill(new byte[16][256]); //filling all with 0xFF
 
 
         //First byte (in halves) should be HT information for table 1
-        firstByte = (byte)bits.nextByte();
+        firstByte = (byte)bytes.read();
         firstHalf = (byte)(firstByte & 0xF0);
         secondHalf = (byte)(firstByte & 0x0F);
 
-        //for the first table we expect these both to be 0
+        //info about the huffman table in question
         println("Half bytes:");
         println(formatByte(firstHalf));
         println(formatByte(secondHalf));
 
         println("numbers of elements:");
         for(int i = 0; i < 16; ++i){
-            numElements[i] = (byte)bits.nextByte();
+            numElements[i] = (byte)bytes.read();
             println(formatByte(numElements[i]) + " " + (i + 1)); //print byte as hex
-
-            // println((byte)(numElements[i] * (i + 1)));
         }
 
         print("\n\n\n");
-        //Values have been pre-filled with all 0xFF
+        // Values have been pre-filled with all 0xFF
         for(int i = 0; i < 16; ++i) {
             for(int j = 0; j < numElements[i]; ++j){
-                values[i][j] = (byte)bits.nextBits(i + 1);
+                values[i][j] = (byte)bytes.read();
             }
         }
         printByteMatrix(values);
+        println("+++++++++++++++++++++++++++++++++++++++++++\n\n\n");
+        return values;
     }
 
     //simply prints a 2d array of bytes
