@@ -428,7 +428,7 @@ assertEquals(val1,12);
 		// n[i] = Integer.parseInt(m.group(i++));
 			result_string += m.group();
 		}
-		System.out.println(result_string);
+		//System.out.println(result_string);
 		
 		assertEquals(result_string.charAt(0),'0'); //compare 'pos'
 		assertEquals(result_string.charAt(1),'0'); //mask
@@ -455,7 +455,7 @@ assertEquals(val1,12);
 
 		int result = reader.debugAsUTF8(reader, str);
 	
-		System.out.println(result);
+		//System.out.println(result);
 		assertEquals(result,8);
 		
 	}
@@ -482,7 +482,7 @@ assertEquals(val1,12);
 		
 	
 		reader.parseGather(reader, x,(byte) 'd'); // so will give 5. 5 bytes until d is hit. if i put 'c' will return length of 4.
-	System.out.println(reader.sourcePos);
+	//System.out.println(reader.sourcePos);
 		
 		x.closeLowLevelField();
 		Pipe.confirmLowLevelWrite(pipe, size);
@@ -500,7 +500,7 @@ y.readUTFOfLength(y.available(), str);
 //dont understand what this parseGather() is supposed to do.
 reader.parseGather( reader, (byte) 'd');
 //just changes sourcePos? but this shouldne be 22 if my sixe of source array is only like 8
-System.out.println(reader.sourcePos);
+//System.out.println(reader.sourcePos);
 assertEquals(str.length(),5);
 assertEquals(str.toString(),"12abc");
 assertEquals(22,reader.sourcePos);
@@ -633,7 +633,7 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 		CharSequence x = "12abcde";
 		reader.query(map,x); //will change position
 	
-		System.out.println();
+		//System.out.println();
 		//to check that sourcePos is not already 0(for test below).
 		assertEquals(reader.sourcePos,14);
 		//will move  sourcePos by 1.
@@ -660,11 +660,11 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
        // byte[] source, int sourcePos, long sourceLength, int sourceMask, 
         //final long unfoundResult) {
 	long no_val = TrieParserReader.query(reader,map, "NoMatchonlong".getBytes(),0,"No Match on long test.".length(),15,-1);	
-		System.out.println("NOVAL " + no_val);
+		//System.out.println("NOVAL " + no_val);
 		CharSequence test = "12abcd12";
 		
 		long val = reader.query(map, test);
-		System.out.println(val);
+		//System.out.println(val);
 		
 		//below is testing cs.length()> reader.workingPipe.maxVarLen in Query() mthod
 		StringBuilder maxlengthtest = new StringBuilder();
@@ -690,9 +690,9 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 		x.append(test); 
 	long yy = reader.blobQuery(reader, map);
 	
-	System.out.println(x.length());
+	//System.out.println(x.length());
 
-		System.out.println(yy);
+		//System.out.println(yy);
 		x.close();
 
 assertEquals(yy,33); //blobquery will return the mapping of the charsequence in the map
@@ -2294,7 +2294,7 @@ y.readUTFOfLength(y.available(), str);
 //VALUE1 = 10           //offset 2 len 3
 		reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-		System.out.println("vistor.toString(): " + visitor.toString());
+		//System.out.println("vistor.toString(): " + visitor.toString());
 		assertEquals("", visitor.toString()); 
 	}
 
@@ -2642,14 +2642,14 @@ y.readUTFOfLength(y.available(), str);
 //this one fails, other does not. let me see
 		byte[] text1 = "Hello: 123\r".getBytes();
 		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
-		System.out.println("visitor.toString() : " + visitor.toString());
+		//System.out.println("visitor.toString() : " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("23", visitor.toString());//23 for sequential case  . should map to 23.
 		visitor.clearResult();
-System.out.println("**");
+//System.out.println("**");
 		byte[] text2 = "Hello: 123\r\n".getBytes();
 		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
-		System.out.println("visitor.toString() : " + visitor.toString());
+		//System.out.println("visitor.toString() : " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("35", visitor.toString());
 		visitor.clearResult();
@@ -2703,7 +2703,7 @@ System.out.println("**");
 	
 		reader.visit(map, visitor,wrapping(text1,5), 0, text1.length, 31);
 
-		System.out.println("visitor.toString(): " + visitor.toString());
+		//System.out.println("visitor.toString(): " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 
 		assertEquals("35 23", visitor.toString()); //23
@@ -2716,7 +2716,7 @@ System.out.println("**");
 		reader.visit(map, visitor,wrapping(text2,5), 0, text2.length, 31);
 	
 
-		System.out.println("visitor.toString(): " + visitor.toString());
+		//System.out.println("visitor.toString(): " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("35", visitor.toString()); //35
 	
@@ -2743,7 +2743,7 @@ System.out.println("**");
 
 	
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-		System.out.println("visitor.toString(): " + visitor.toString());
+		//System.out.println("visitor.toString(): " + visitor.toString());
 		assertEquals("50 35", visitor.toString()); 
 	
 		visitor.clearResult();
@@ -3255,13 +3255,13 @@ System.out.println("**");
 
 
 		reader.visit(map, visitor,data1, 0, 8, 7);
-		System.out.println("visitor.toString() -> " + visitor.toString());
+		//System.out.println("visitor.toString() -> " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("10", visitor.toString());
 		visitor.clearResult();
 
 		reader.visit(map, visitor,data1, 0, 3, 7);
-		System.out.println("visitor.toString() -> " + visitor.toString());
+		//System.out.println("visitor.toString() -> " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("23", visitor.toString());   //changed from 10-23
 		visitor.clearResult();
@@ -3391,7 +3391,7 @@ System.out.println("**");
 		i = testSize;
 		int expectedSum = 0;
 		while (--i >= 0) {
-			System.out.println("ADD:"+Arrays.toString(Arrays.copyOfRange(testData,testPos[i],testPos[i]+testLen[i])));
+			//System.out.println("ADD:"+Arrays.toString(Arrays.copyOfRange(testData,testPos[i],testPos[i]+testLen[i])));
 
 			bsm.setValue(testData, testPos[i], testLen[i], 0x7FFF_FFFF, i);
 			expectedSum += i;
@@ -3402,7 +3402,7 @@ System.out.println("**");
 				System.exit(0);
 			}
 		}
-		System.out.println("done building trie limit:"+bsm.getLimit()+" max:"+maxSize);
+		//System.out.println("done building trie limit:"+bsm.getLimit()+" max:"+maxSize);
 
 		//Build up the classic Map
 		Map<KeyBytesData, Integer> map = new HashMap<KeyBytesData, Integer>();
@@ -3411,13 +3411,13 @@ System.out.println("**");
 			map.put(new KeyBytesData(testData,testPos[i],testLen[i]), new Integer(i));
 		}
 
-		System.out.println("done with setup now run the test.");
+		//System.out.println("done with setup now run the test.");
 		//ready for the read test.
 
 
 		int j;
 
-		System.out.println("exp:"+(expectedSum*iterations));
+		//System.out.println("exp:"+(expectedSum*iterations));
 
 		long startTrie = System.currentTimeMillis();
 		int sumTotalTrie = 0;
@@ -3432,14 +3432,14 @@ System.out.println("**");
 		long totalLookups = iterations*testSize;
 		long lookupsPerMs = totalLookups/durationTrie;
 
-		System.out.println("Trie duration "+durationTrie+" Lookups per MS "+lookupsPerMs);
+		//System.out.println("Trie duration "+durationTrie+" Lookups per MS "+lookupsPerMs);
 		//header request may be between 200 and 2000 bytes, 800 is common
 
 		int avgLookpsPerheader = 16;//this is a big guess
 		long perSecond = 1000*lookupsPerMs;
 		long headersPerSecond = perSecond/avgLookpsPerheader;
 		long bytesPerSecond = 800 * headersPerSecond;
-		System.out.println("guess of mbps read "+ (bytesPerSecond/(1024*1024)));
+		//System.out.println("guess of mbps read "+ (bytesPerSecond/(1024*1024)));
 
 
 
@@ -3453,7 +3453,7 @@ System.out.println("**");
 			}
 		}
 		long durationMap = System.currentTimeMillis()-startMap;
-		System.out.println("Map duration "+durationMap);//+" sum "+sumTotalMap);
+		//System.out.println("Map duration "+durationMap);//+" sum "+sumTotalMap);
 
 		// System.out.println(testData);
 
@@ -3504,7 +3504,7 @@ System.out.println("**");
 			runningPos+=activeLength;            
 
 		}
-		System.out.println("Total bytes of test data "+runningPos);
+		//System.out.println("Total bytes of test data "+runningPos);
 		return testData;
 	}
 }

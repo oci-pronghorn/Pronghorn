@@ -297,18 +297,25 @@ public class PMath {
             largestPrimeIdx = Math.max(largestPrimeFactorIdx(factors[i],0,maxPrimes,maxPrimesMask), largestPrimeIdx);
             
         }
-        int repeatCount = factorsToInt(repeatLength, 0, maxPrimes, maxPrimesMask);
-        int scriptLength = repeatCount;//one for the -1 (stop flag) of each iteration
+        int groupsCount = factorsToInt(repeatLength, 0, maxPrimes, maxPrimesMask);
+        int scriptLength = groupsCount;//one for the -1 (stop flag) of each iteration
        
         int activeBase = 0;
-        int z = largestPrimeIdx+1;//we want to stay above the largest prime previously used.
+        final int base = largestPrimeIdx+1;//we want to stay above the largest prime previously used.
         for(int i=0;i<schedulePeriods.length;i++) {
-            int instances = (repeatCount/steps[i]);
-            assert(0 == (repeatCount%steps[i])): "Internal compute error";
-            scriptLength += instances;
+            assert(0 == (groupsCount%steps[i])): "Internal compute error";
+            scriptLength += (groupsCount/steps[i]);
             
-            activeBase += primeAtIdx(i+z);
-            bases[i]=(activeBase); //each must start at a different base to minimize collision.
+            ///NOTE: we can count how many have the steps[i] value and divide them into steps[i] groups...
+            //       in most cases this is probably not required but consider it for the future.
+                        
+            //what if everything with same freq has same prime?
+            //then those in a run.... are expected to run together.
+            activeBase = primeAtIdx(base+steps[i]); //NOTE: base+i and accumulated.. for flat distribution...
+            
+            //each must start at a different base to minimize collision.
+            //by using increasing prime numbers we ensure a good distribution
+            bases[i]=activeBase;
  
         }
     
@@ -316,31 +323,42 @@ public class PMath {
         int[] script = new int[scriptLength];
         int s = 0;
         int maxRun = 0;
-        for(int r = 0; r<repeatCount; r++) {
+        for(int r = 0; r < groupsCount; r++) {
             
             int runCount = 0;
 
             if (reverseOrder) {
             	int i = schedulePeriods.length;
             	while (--i>=0) {
-	                if (0==((bases[i]+r) % steps[i])) {
-	                    runCount++;
+	                
+            		if (0==((bases[i] + r) % steps[i])) {
+	                    if (++runCount >= maxRun) {
+	                        maxRun = runCount;
+	                    }
 	                    script[s++]=i;
 	                }
+	                
 	            }
             } else {            
-	            for(int i=0;i<schedulePeriods.length;i++) {
-	                if (0==((bases[i]+r) % steps[i])) {
-	                    runCount++;
+            	//NOTE: this run covers all the items to run at the "same" time
+	            for(int i=0;i<schedulePeriods.length;i++) {	            	
+	         	
+            		if (0==((bases[i] + r) % steps[i])) {
+	                    if (++runCount >= maxRun) {
+	                        maxRun = runCount;
+	                    }
 	                    script[s++]=i;
-	                }
+	            	}
+		           
 	            }
             }
+             
             
-            if (runCount>=maxRun) {
-                maxRun = runCount;
-            }
+            
+            //finished with run.
             script[s++] = -1;
+        
+        
         }
         //System.out.println(Arrays.toString(script));
         
