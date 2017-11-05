@@ -71,10 +71,18 @@ public abstract class StageScheduler {
 	public static StageScheduler defaultScheduler(GraphManager gm) {
 		
 		final boolean threadLimitHard = true;//must make this a hard limit or we can saturate the system easily.
-		final int scale = 2;
+		final int ideal = idealThreadCount();
+		return defaultSchedulerImpl(gm, threadLimitHard, ideal);
+	}
+	
+	public static StageScheduler defaultScheduler(GraphManager gm, int maxThreads, boolean threadLimitHard) {
+		return defaultSchedulerImpl(gm, threadLimitHard, Math.min(idealThreadCount(),maxThreads));
+	}
+
+	private static StageScheduler defaultSchedulerImpl(GraphManager gm, final boolean threadLimitHard, int ideal) {
+		int threadLimit = ideal; 		
 		
-		int ideal = idealThreadCount();
-		int threadLimit = ideal; 
+		final int scale = 2;
 		assert(threadLimit>0);
 		final int countStages = GraphManager.countStages(gm);
 		if ((threadLimit<=0) || (countStages > scale*ideal)) {

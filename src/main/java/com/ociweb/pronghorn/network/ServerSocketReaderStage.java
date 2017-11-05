@@ -55,7 +55,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
 
-        this.label = coordinator.host()+":"+coordinator.port();
+        this.label = "\n"+coordinator.host()+":"+coordinator.port()+"\n";
         
         this.output = output;
         this.releasePipes = ack;
@@ -64,13 +64,14 @@ public class ServerSocketReaderStage extends PronghornStage {
         coordinator.setStart(this);
         
         GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+        GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
+        
         
     }
         
     @Override
     public String toString() {
-    	String root = super.toString();
-    	return root+"\n"+label+"\n";
+    	return super.toString()+label;
     }
 
     @Override

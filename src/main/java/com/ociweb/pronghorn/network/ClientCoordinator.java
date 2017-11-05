@@ -223,7 +223,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	public int responsePipeLineIdx(long ccId) {
-		return responsePipeLinePool.get(ccId);
+		return PoolIdx.get(responsePipeLinePool, ccId);
 	}
 		
 	public int checkForResponsePipeLineIdx(long ccId) {

@@ -77,12 +77,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //prep the data for our skipping the run of follow on stages which we  know to have no work.
         skipScript = buildSkipScript(schedule, graphManager, stages, schedule.script);
         
+        //System.err.println("script: "+Arrays.toString( schedule.script ));
+        //System.err.println("skipsr: "+Arrays.toString(skipScript));
+        
+        
         //logger.info("The zero values are skiped when we know there is no work to do.\n {}",Arrays.toString(skipScript));        
         //logger.trace("stages: {} scriptLength: {}", stages.length, schedule.script.length);        
         //logger.trace("new schedule: {}",schedule);
+//        System.err.println("xxxxxxxxxxxx");
 //        for(int i = 0 ;i<skipScript.length; i++) {
 //        	if (-1==schedule.script[i]) {
 //        		System.err.println("Dump of threads into: "+this.getClass());
+//        		System.err.println();
 //        	} else {
 //        		
 //        		StringBuilder target = new StringBuilder();
@@ -95,19 +101,24 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //        		System.err.println(skipScript[i] +"   "+stages[schedule.script[i]].getClass()+" "+target);
 //        	}
 //        }
-//        for(int i = 0; i<stages.length; i++) {
-//        	
-//        	StringBuilder target = new StringBuilder();
-//    		target.append("full stages "+stages[i].stageId);
-//    		target.append("  inputs:");
-//    		GraphManager.appendInputs(graphManager, target, stages[i]);
-//    		target.append(" outputs:");
-//    		GraphManager.appendOutputs(graphManager, target, stages[i]);
-//    		        		
-//    		System.err.println("   "+stages[i].getClass()+" "+target);
-//
-//        	
-//        }
+        
+        boolean debug = false;
+        if (debug) {		
+	        System.err.println();
+	        System.err.println("----------full stages -------------");
+	        for(int i = 0; i<stages.length; i++) {
+	        	
+	        	StringBuilder target = new StringBuilder();
+	    		target.append("full stages "+stages[i].getClass().getSimpleName()+":"+stages[i].stageId);
+	    		target.append("  inputs:");
+	    		GraphManager.appendInputs(graphManager, target, stages[i]);
+	    		target.append(" outputs:");
+	    		GraphManager.appendOutputs(graphManager, target, stages[i]);
+	    		        		
+	    		System.err.println("   "+target);
+	        	
+	        }
+        }
         
         
         
@@ -498,17 +509,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             top:
             do {
 
-            	//TODO: if series has only one sequence of pipe and the first one is empty
-            	//      then we could sleep until the next run and not check the rest but only
-            	//      if the pipeline is already known to be empty.
-            	
                 // Identify the index of the block we're starting with.
                 inProgressIdx = schedule.script[scheduleIdx];
                 
                 // If it isn't a block-end (-1), run it!
                 if (inProgressIdx >= 0) {
 
-                
                 	PronghornStage stage = stages[inProgressIdx];
                 	
                 	int rawSkip = skipScript[scheduleIdx];
@@ -522,27 +528,20 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	                			//are the input pipes empty?
 	                			
 	                			boolean hasContent = isContentForStage(stage);
-	                			
-	                			//TODO: is producer then we must run it..
-	                			//and it can not be a run..
-	                			
-	                			
+	                		
 	                			if (hasContent) {
-	                				//normal runn..
+	                				//normal run...
 	                				//clear and watch if we can turn it back on
 	                				skipScript[scheduleIdx] = skip; //clears top bit
 	                				skipCounter = skip;//watch while we run     
 	                				skipCounterTarget = scheduleIdx;
 	                			} else {
-	                				//skipScript[scheduleIdx] = skip; //clears top bit
-	                				
+	                					                				
 	                				//skip running these stages and return to top.
 	                				scheduleIdx += skip; 
 	                				inProgressIdx = schedule.script[scheduleIdx];
-	                				//System.err.println("skipped "+skip);
 	                				
-	                				if ((inProgressIdx == -1) 
-	                					|| shutdownRequested.get()) {
+	                				if ((inProgressIdx == -1) || shutdownRequested.get()) {
 	                					break;
 	                				} else {
 	                					continue top;
@@ -566,11 +565,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     long now = System.nanoTime();
                     GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
 
-                    //TODO: to create runs, fix sort, those without extra pipes should move up near producuer
-                    //TODO: test pipe filter skip run all producers?
-                    //TODO: error, we must run producers so they can not head a skip block..
-                    
-                    
                     if (skipCounter>0) {
                     	//checks that this stage has no inputs waiting
                     	
@@ -621,62 +615,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		}
 		return false;
 	}
-
-    private static long runStage(GraphManager graphManager, boolean someAreRateLimited, long nearestNextRun, int s, long rate, PronghornStage stage, ScriptedNonThreadScheduler that) {
-
-        if (rate >= 0) {
-            if (!someAreRateLimited) {
-            } else {
-                long nsDelay = GraphManager.delayRequiredNS(that.graphManager, stage.stageId);
-                if (nsDelay > 0) {
-                    nearestNextRun = Math.min(nearestNextRun, nsDelay + System.nanoTime());
-                    rate = -1;//must try again later
-                }
-            }
-
-            if (rate > 0) {
-                nearestNextRun = runStageWithRate(graphManager, nearestNextRun, s, rate, stage, that);
-
-            } else {
-                if (0 == rate) {
-
-                    nearestNextRun = 0;
-                    long start = System.nanoTime();
-
-                    run(that.graphManager, stage, that);
-
-                    long now = System.nanoTime();
-                    GraphManager.accumRunTimeNS(graphManager, stage.stageId, now - start, now);
-
-                }
-            }
-        } else {
-            //never run -1
-        }
-        return nearestNextRun;
-    }
-
-    private static long runStageWithRate(GraphManager graphManager, long nearestNextRun, int s, long rate, PronghornStage stage, ScriptedNonThreadScheduler that) {
-        //check time and only run if valid
-        long start = System.nanoTime();
-
-        long nextRun = that.lastRun[s] + rate;
-        long nsDelay = nextRun - start;
-        if (nsDelay <= 0) {
-            //logger.info("running stage {}",stage);
-            run(that.graphManager, stage, that);
-            that.lastRun[s] = start;
-
-            long now = System.nanoTime();
-            GraphManager.accumRunTimeNS(graphManager, stage.stageId, now - start, now);
-
-            nearestNextRun = Math.min(nearestNextRun, start + rate);
-        } else {
-            //logger.info("skipped stage {}",stage);
-            nearestNextRun = Math.min(nearestNextRun, nextRun);
-        }
-        return nearestNextRun;
-    }
 
     private static void run(GraphManager graphManager, PronghornStage stage, ScriptedNonThreadScheduler that) {
         try {
@@ -800,31 +738,32 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     }
     
 
-	public static int[] buildSkipScript(ScriptedSchedule schedule, GraphManager gm, PronghornStage[] stages,
-			int[] script) {
+	public static int[] buildSkipScript(ScriptedSchedule schedule, 
+			                            GraphManager gm, 
+			                            PronghornStage[] stages,
+			                            int[] script) {
+		
 		int[] skipScript = new int[script.length];
 		int lastPointIndex = 0;
+		
 		for(int idx = 0;idx<script.length;idx++) {
 			if (script[idx] != -1) {
-				PronghornStage stage = stages[schedule.script[idx]];
-				
-				int inC1 = GraphManager.getInputPipeCount(gm, stage.stageId);
-				
-				if ((inC1 == 0) 
-					||	null !=	GraphManager.getNota(gm, stage.stageId, GraphManager.PRODUCER, null)) {
+				int stageId = stages[schedule.script[idx]].stageId;
+
+				final int inC1 = GraphManager.getInputPipeCount(gm, stageId);
+				if ((inC1 == 0) || (GraphManager.hasNota(gm, stageId, GraphManager.PRODUCER))) {
 					//producer, all producers must always be run.
-					skipScript[idx]=-2;
+					skipScript[idx] = -2;
 					lastPointIndex = idx+1; //this starts a new run from here.
 					continue;
-				} else {				
-					for(int k = 1; k<=inC1; k++) {
-						int id = GraphManager.getInputPipe(gm, stage.stageId, k).id;
+				} else {
+					for(int k = 1; k <= inC1; k++) {
+						int id = GraphManager.getInputPipe(gm, stageId, k).id;
 						//this id MUST be found as one of the previous outs
 						//if not found this is a new point
 						if (!isInputLocal(lastPointIndex, idx, gm, stages, script, id)) {
 							lastPointIndex = idx;
 						}
-						
 					}
 				}
 				

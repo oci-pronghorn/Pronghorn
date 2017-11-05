@@ -70,24 +70,32 @@ public final class PoolIdx  {
     	noLocks = run;
     }
     
-    public int get(long key) {   
+    public int get(long key) {
+    	return get(this,key);
+    }
+    
+    public static int get(PoolIdx that, long key) {   
     	
-        int i = keys.length;
+        long[] localKeys = that.keys;
+        byte[] localLocked = that.locked;
+        
+		int i = localKeys.length;
         int idx = -1;
+        
         //linear search for this key. TODO: if member array is bigger than 100 we should consider hashTable
         while (--i>=0) {
             //found and returned member that matches key and was locked
-            if (key == keys[i] && 1 == locked[i]) {
+            if (key == localKeys[i] && 1 == localLocked[i]) {
                 return i;
             } else {
                 //this slot was not locked so remember it
                 //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == locked[i]) {
+                if (idx < 0 && 0 == localLocked[i]) {
                     idx = i;
                 }
             }
         }
-        return startNewLock(key, idx);
+        return startNewLock(that, key, idx);
     }
     
     /**
@@ -112,17 +120,17 @@ public final class PoolIdx  {
                 }
             }
         }
-        return startNewLock(key, idx);
+        return startNewLock(this, key, idx);
     }
 
-    private int startNewLock(long key, int idx) {
+    private static int startNewLock(PoolIdx that, long key, int idx) {
         if (idx>=0) {
-        	if (0==locksTaken && firstUsage!=null) {
-        		firstUsage.run();
+        	if (0==that.locksTaken && that.firstUsage!=null) {
+        		that.firstUsage.run();
         	}
-        	locksTaken++;
-            locked[idx] = 1;
-            keys[idx] = key;
+        	that.locksTaken++;
+        	that.locked[idx] = 1;
+        	that.keys[idx] = key;
             return idx;
         } else {
             return -1;

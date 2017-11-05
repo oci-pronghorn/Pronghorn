@@ -87,6 +87,10 @@ public class GraphManager {
 	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME      = "STAGE_NAME";
 	
+	public final static String LOAD_BALANCER   = "LOAD_BALANCER"; //this stage evenly splits traffic across outputs
+	public final static String LOAD_MERGE      = "LOAD_MERGE"; //this stage consumes equal priority traffic from inputs.
+	
+	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
 	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	
 
@@ -151,6 +155,7 @@ public class GraphManager {
 			Appendables.appendValue(builder," CPU ",j/1000,".");
 			Appendables.appendFixedDecimalDigits(builder,j%1000,100).append("%");
 			cpuValues[j]= builder.toString().getBytes();
+			//System.err.println(j+" is now "+builder.toString());
 		}
 		
 		int k = 101;
@@ -1092,6 +1097,10 @@ public class GraphManager {
 	    return (null==stage) ? defaultValue : getNota(m, stage.stageId, key, defaultValue);
 	}
 	
+	public static boolean hasNota(GraphManager m, int stageId, Object key) {
+		return (null != getNota(m, stageId, key, null));
+	}
+	
 	public static Object getNota(GraphManager m, int stageId, Object key, Object defaultValue) {
 	    if (stageId>=0) {
     		int idx = m.stageIdToNotasBeginIdx[stageId];
@@ -1526,19 +1535,21 @@ public class GraphManager {
 					    	
 	        int stages = GraphManager.countStages(m);
 	        	        
+	        
 	        Map<Object, StringBuilder> ranks = m.cachedRanks; 
+	        
+	        
+	        target.append("digraph {\n"); 
 	        if (stages<500) {
 	            //no need if the picture is very large
 		        if (isVertical) {
-		        	target.append("digraph {\nrankdir = TD\n"); 
+		        	target.append("rankdir = TD\n"); 
 		        } else {
-		        	target.append("digraph {\nrankdir = LR\n"); 
+		        	target.append("rankdir = LR\n"); 
 		        }
 		        if (null==ranks) {
 		        	ranks = new HashMap<Object, StringBuilder>();
 		        }
-	        } else {
-	        	target.append("digraph {\n"); 
 	        }
 	        
 	        
@@ -1643,7 +1654,7 @@ public class GraphManager {
 	                /////////////////////////////////////
 	            	Object background = getNota(m, stage.stageId, GraphManager.DOT_BACKGROUND, null);	            	
 	            	if (null!=background) {
-	            		target.append("style=filled,fillcolor=");
+	            		target.append(",style=filled,fillcolor=");
 	            		target.append(background.toString());
 	            	}    
 	                /////////////////////////////////////
@@ -2276,10 +2287,11 @@ public class GraphManager {
 					graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
 				}
 				
-				int newPct = (int)((100_000L*duration)/cycleDuration);
+				long newPct = ((100_000L*duration)/cycleDuration);
+				
 				int oldPct = graphManager.stageCPUPct[stageId];
-				int combined = newPct+(9999*oldPct);//exponential moving avg
-				graphManager.stageCPUPct[stageId] = combined/10000; 
+				long combined = newPct+(9999L*oldPct);//exponential moving avg
+				graphManager.stageCPUPct[stageId] = (int)(combined/10000L); 
 				
 			}
 			
@@ -2338,12 +2350,12 @@ public class GraphManager {
 	private StageDetector loopDetector;
 	
 	
-	public static synchronized boolean isStageInLoop(GraphManager graphManager, final int stageId) {
+	public static synchronized int isStageInLoop(GraphManager graphManager, final int stageId) {
 			
 		if (null == graphManager.loopDetector) {
 			graphManager.loopDetector = new StageDetector();
 		}
-		graphManager.loopDetector.setTarget(stageId);
+		graphManager.loopDetector.setTarget(graphManager, stageId);
 		
 		int c =	GraphManager.getOutputPipeCount(graphManager, stageId);
 		while (--c>=0) {				
@@ -2354,10 +2366,10 @@ public class GraphManager {
 							0, 
 							graphManager.loopDetector);
 			if ( graphManager.loopDetector.wasDetected()) {
-				return true;
+				return graphManager.loopDetector.foundProducerStageId(); //will be -1 when no prodcuer was found.
 			}
 		}
-		return false;
+		return -2; //This is not in a loop
 	}
 
 	private static long[] cleanStageBitMap(GraphManager graphManager) {

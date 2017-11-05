@@ -403,7 +403,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 				for(int j=1; j<=inputCount; j++) {	    			
 					int ringProducerStageId = GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id);
 					if (rootId(ringProducerStageId, rootsTable) != root 
-							|| GraphManager.isStageInLoop(graphManager, stage.stageId)
+							|| GraphManager.isStageInLoop(graphManager, stage.stageId)>=-1
 					    ) {
 						isTop = true;
 					}
