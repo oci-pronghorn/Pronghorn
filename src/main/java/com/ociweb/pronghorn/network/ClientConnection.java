@@ -215,11 +215,11 @@ public class ClientConnection extends SSLConnection {
 		requestsSent++;		
 	}
 	
-	public void waitForMatch() {
-		while (responsesReceived<requestsSent) {
-			Thread.yield();
-		}
-	}
+//	public void waitForMatch() {
+//		while (responsesReceived<requestsSent) {
+//			Thread.yield();
+//		}
+//	}
 	
 	public boolean incResponsesReceived() {
 		assert(1+responsesReceived<=requestsSent) : "received more responses than requests were sent";
