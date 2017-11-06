@@ -24,6 +24,10 @@ public class DummyRestStage extends PronghornStage {
 		this.inputPipes = inputPipes;
 		this.outputs = outputs;
 		this.httpSpec = httpSpec;
+		
+		if (inputPipes.length>1) {
+			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
+		}
 	}
 
 	@Override

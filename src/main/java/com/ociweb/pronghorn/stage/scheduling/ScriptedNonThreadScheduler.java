@@ -84,7 +84,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //logger.info("The zero values are skiped when we know there is no work to do.\n {}",Arrays.toString(skipScript));        
         //logger.trace("stages: {} scriptLength: {}", stages.length, schedule.script.length);        
         //logger.trace("new schedule: {}",schedule);
-//        System.err.println("xxxxxxxxxxxx");
+//        System.err.println();
 //        for(int i = 0 ;i<skipScript.length; i++) {
 //        	if (-1==schedule.script[i]) {
 //        		System.err.println("Dump of threads into: "+this.getClass());

@@ -18,7 +18,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 import com.ociweb.pronghorn.util.primitive.IntArrayHolder;
@@ -307,20 +306,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}	
 	
-		//testing removal of this.
-//		Number a = (Number)GraphManager.getNota(graphManager, consumerId, GraphManager.SCHEDULE_RATE, null);
-//		Number b = (Number)GraphManager.getNota(graphManager, producerId, GraphManager.SCHEDULE_RATE, null);
-//		if (null!=a && null!=b) {
-//			if ((a.longValue()/b.longValue())>=10 || (b.longValue()/a.longValue())>=10) {
-//				return false;
-//			}
-//		}
-		
-		
-		if (Pipe.isForSchema(p, PipeMonitorSchema.instance)) {
-			return true;//all monitors can be combined freely as needed.
-		}
-		
 		
 		///////////////
 		//NOTE: these are turned off for now, they mess up the simple web server performance
@@ -467,14 +452,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		if (
 	    			   (0==GraphManager.getInputPipeCount(graphManager, stage.stageId))	
 	    			|| (null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null))) {
-
-	    			//TODO: when roots are made we must decorate the head dynamically, and apply them here
-	    			//      we have some roots with no producer head and this must be fixed..
-	    			
-//	    			if (stage instanceof ServerSocketReaderStage) {
-//	    				new Exception("here "+stage.stageId).printStackTrace();
-//	    				System.err.println();
-//	    			}
 	    			
 	    			//get the root for this table
 					int root = rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
@@ -642,7 +619,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				count = recursiveAdd(stageArrays, root, graphManager, 
 						             rootsTable, lastKnownRoot, count, rootMemberCounter,
 						             log, 
-						             r==outputCount,
 						             GraphManager.getRingConsumerId(graphManager, outputPipe.id));
 				
 			}
@@ -668,7 +644,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						count = recursiveAdd(stageArrays, root, graphManager, 
 								             rootsTable, lastKnownRoot, count, rootMemberCounter,
 								             log,
-								             r==outputCount,
 								             GraphManager.getRingConsumerId(graphManager, GraphManager.getOutputPipe(graphManager, stage, r).id));
 						
 					}
@@ -684,16 +659,35 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static int recursiveAdd(PronghornStage[][] stageArrays, final int root, final GraphManager graphManager,
 			final IntHashTable rootsTable, IntArrayHolder lastKnownRoot, 
 			int count, int[] rootMemberCounter,
-			boolean log, boolean isLast, int consumerId) {
+			boolean log, int consumerId) {
 		
 		
 		if ( GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE)) {
 			assert(!GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_BALANCER));
-			//do not add unless this is the last one.
-			if (!isLast) {
-				return count;
+			
+			////////////////
+			//if all the consumers inputs have been added then we can add this one
+			//but never before this point
+			///////////////
+			int inC = GraphManager.getInputPipeCount(graphManager, consumerId);
+			
+			for(int i = 1; i<=inC ; i++) {
+				Pipe inPipe = GraphManager.getInputPipe(graphManager, consumerId, i);				
+				int inProd = GraphManager.getRingProducerStageId(graphManager, inPipe.id);
+				PronghornStage[] prodsList = stageArrays[rootId(inProd, rootsTable, lastKnownRoot)];
+				
+				boolean found = false;
+				int j = prodsList.length;
+				while (--j>=0) {
+					if (null != prodsList[j]) {
+						found |= (prodsList[j].stageId==inProd);
+					}
+				}
+				if (!found) {
+					//this one was not already added so push this off till later.
+					return count;
+				}				
 			}
-			//TODO: if large then return in all cases.
 			
 		}
 		

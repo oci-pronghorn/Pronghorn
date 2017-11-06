@@ -45,6 +45,9 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		super(graphManager, inputs, outputs, httpSpec);
 		this.monitor = monitor;
 		
+		if (inputs.length>1) {
+			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
+		}
 	}
 	
 	@Override
