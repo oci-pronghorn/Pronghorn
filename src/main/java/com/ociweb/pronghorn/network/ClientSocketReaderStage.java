@@ -2,9 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
@@ -16,7 +14,6 @@ import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
@@ -33,7 +30,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final int maxClients;
 	
-	private Selector selector;
+	//private Selector selector;
 	
 	private StringBuilder[] accumulators; //for testing only
 	
@@ -57,11 +54,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void startup() {
 		
-		try {
-			selector = Selector.open();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+//		try {
+//			selector = Selector.open();
+//		} catch (IOException e) {
+//			throw new RuntimeException(e);
+//		}
 				
 		
 		
@@ -107,6 +104,17 @@ public class ClientSocketReaderStage extends PronghornStage {
 						
 						
 					    if (cc!=null) {
+					    	
+					    	//selector notes...
+//					    	Selector selector = Selector.open();
+//					    	cc.getSocketChannel().register(selector, SelectionKey.OP_READ);
+//					    	
+//				        	/////////////
+//				        	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
+//				        	////////////        	
+//				            pendingSelections = selector.selectNow();
+				            
+				            
 					    	
 					    	//process handshake before reserving one of the pipes
 					    	if (coordinator.isTLS) {
@@ -163,11 +171,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    		
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
 						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
-						    
-//						    		int r1 = wrappedUnstructuredLayoutBufferOpen[0].remaining();
-//						    		int r2 = wrappedUnstructuredLayoutBufferOpen[1].remaining();
-						    		
-						    		
+
 						    		//TODO: add assert that target bufer is larger than socket buffer.
 						    		//TODO: warning note cast to int.
 						    		int readCount=-1; 
@@ -219,9 +223,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 									//			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
 									//		}
 		
-							    			if (ClientCoordinator.TEST_RECORDS) {
-							    				validateContent(pipeIdx, target, readCount, originalBlobPosition);
-							    			}		
 							    			
 							    			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
 							    			Pipe.publishWrites(target);
@@ -256,69 +257,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 //		}
 	}
 
-	private void validateContent(int pipeIdx, Pipe<NetPayloadSchema> target, int readCount, int originalBlobPosition) {
-		
-		if (ClientCoordinator.TEST_RECORDS) {
-			
-			//write pipeIdx identifier.
-			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-			
-			
-			boolean confirmExpectedRequests = true;
-			if (confirmExpectedRequests) {
-				Appendables.appendUTF8(accumulators[pipeIdx], target.blobRing, originalBlobPosition, readCount, target.blobMask);						    				
-				
-				while (accumulators[pipeIdx].length() >= ClientCoordinator.expectedOK.length()) {
-					
-				   int c = startsWith(accumulators[pipeIdx],ClientCoordinator.expectedOK); 
-				   if (c>0) {
-					   
-					   String remaining = accumulators[pipeIdx].substring(c*ClientCoordinator.expectedOK.length());
-					   accumulators[pipeIdx].setLength(0);
-					   accumulators[pipeIdx].append(remaining);							    					   
-					   
-					   
-				   } else {
-					   logger.info("A"+Arrays.toString(ClientCoordinator.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[pipeIdx].subSequence(0, ClientCoordinator.expectedOK.length()).toString().getBytes()   ));
-					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",originalBlobPosition,ClientCoordinator.expectedOK.length());
-					   System.out.println(accumulators[pipeIdx].subSequence(0, ClientCoordinator.expectedOK.length()).toString());
-					   System.exit(-1);
-					   	
-					   
-					   
-				   }
-				
-					
-				}
-			}
-			
-			
-		}
-	}
-	
 
-	
-	
-	private int startsWith(StringBuilder stringBuilder, String expected2) {
-		
-		int count = 0;
-		int rem = stringBuilder.length();
-		int base = 0;
-		while(rem>=expected2.length()) {
-			int i = expected2.length();
-			while (--i>=0) {
-				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-					return count;
-				}
-			}
-			base+=expected2.length();
-			rem-=expected2.length();
-			count++;
-		}
-		return count;
-	}
 
 	long lastTotalBytes = 0;
 

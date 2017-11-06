@@ -53,7 +53,9 @@ public class SSLEngineWrapStage extends PronghornStage {
 				throw new UnsupportedOperationException("ERROR: buffer size must be larger than "+min+" but found Enc:"+encLen+" Pln:"+plnLen);
 			}
 		}		
-				
+			
+		GraphManager.addNota(graphManager, GraphManager.HEAVY_COMPUTE, GraphManager.HEAVY_COMPUTE, this);
+
 	}
 
 	@Override

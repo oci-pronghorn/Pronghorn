@@ -55,6 +55,8 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.isServer = isServer;
 		this.groupId = groupId;
 		this.shutdownCount = encryptedContent.length;
+		
+		GraphManager.addNota(graphManager, GraphManager.HEAVY_COMPUTE, GraphManager.HEAVY_COMPUTE, this);
 
 	}
 

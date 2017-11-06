@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.stage.scheduling;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -29,7 +28,6 @@ import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.util.AppendableBuilder;
-import com.ociweb.pronghorn.util.AppendableProxy;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
@@ -54,7 +52,7 @@ public class GraphManager {
 	private final static int INIT_STAGES = 32;	
 	
 	//will show telemetry its self
-	public static boolean monitorAll = false;
+	public static boolean monitorAll = true;
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
@@ -89,7 +87,7 @@ public class GraphManager {
 	
 	public final static String LOAD_BALANCER   = "LOAD_BALANCER"; //this stage evenly splits traffic across outputs
 	public final static String LOAD_MERGE      = "LOAD_MERGE"; //this stage consumes equal priority traffic from inputs.
-	
+	public final static String HEAVY_COMPUTE   = "HEAVY_COMPUTE"; //this stage does a lot of compute, we will avoid putting these on the same thread.
 	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
 	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	

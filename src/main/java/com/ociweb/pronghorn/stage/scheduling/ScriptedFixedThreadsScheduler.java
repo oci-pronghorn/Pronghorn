@@ -305,22 +305,17 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		if (consumerStage instanceof ServerNewConnectionStage ) {
 			return false;
 		}	
-	
 		
-		///////////////
-		//NOTE: these are turned off for now, they mess up the simple web server performance
-		//      we may want to re-visit as "suggestions" rather than validations for larger core deployments..
-		////////////
+		//if producer sends to n consumers each with the same scheme 
+	    //and each with a heavy compute stage then keep the split, never join.
+		if (isSplittingHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+			return false;
+		}
+		if (isMergeOfHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+			return false;
+		}
 		
-		//the consumer stage has 2 or more of the same pipe schema as this one it consumes so we should not share the same root
-//        if (countParallelConsumers(consumerId, producerId, graphManager, p)) {
-//        	return false;
-//        }
-//        //the producer stage has 2 or more of the same pipe schema as this one it producers so we should not share the same root.
-//        if (countParallelProducers(consumerId, producerId, graphManager, p)) {
-//        	return false;
-//        }
-		
+
         //NOTE: this also helps with the parallel work above, any large merge or split will show up here.
 		//do not combine with stages which are 2 standard deviations above the mean input/output count
 		if (GraphManager.countStages(graphManager)>100) {//only apply if we have large enough sample.
@@ -338,10 +333,16 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		return true;
 	}
+	
+		
 
-	private static boolean countParallelProducers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
-		int noMatchCount = 0;
-		int proOutCount = GraphManager.getOutputPipeCount(graphManager, producerId);
+	private static boolean isSplittingHeavyComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+		int countOfHeavyComputeConsumers = 0;
+		final int totalOutputsCount = GraphManager.getOutputPipeCount(graphManager, producerId);
+		if (totalOutputsCount<=1) {
+			return false;
+		}
+		int proOutCount = totalOutputsCount;
         while (--proOutCount>=0) {
 			//all the other output coming from the producer
 			Pipe outputPipe = GraphManager.getOutputPipe(graphManager, producerId, 1+proOutCount);
@@ -350,21 +351,32 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			if (Pipe.isForSameSchema(outputPipe, p)) {
 				
 				//determine if they are consumed by the same place or not
-				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);				
-				if (consumerId  != conId) {
-					//only count if they are not consumed at the same place
-					noMatchCount++;
+				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
+				
+				if (GraphManager.hasNota(graphManager, conId, GraphManager.HEAVY_COMPUTE)) {
+					countOfHeavyComputeConsumers++;
+					
+				} else {
+					//TODO: we can go deeper down this chain as needed to discover heavy compute....
+					
+					
 				}
-				//else if they are consumed by the same place then the pipes are just for parallel storage not parallel compute
 				
 			}
 		}
-		return noMatchCount>=1;
+		//every output pipe has the same schema and leads to heavy compute work
+        return countOfHeavyComputeConsumers == totalOutputsCount;
 	}
 
-	private static boolean countParallelConsumers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
-		int noMatchCount = 0;
-		int conInCount = GraphManager.getInputPipeCount(graphManager, consumerId);
+	
+	
+	private static boolean isMergeOfHeavyComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+		int countOfHeavyComputeProducers = 0;
+		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
+		if (totalInputsCount<=1) {
+			return false;
+		}
+		int conInCount = totalInputsCount;
 		while (--conInCount>=0) {
 			//all the other inputs going into the consumer
 			Pipe inputPipe = GraphManager.getInputPipe(graphManager, consumerId, 1+conInCount);
@@ -372,18 +384,20 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			//is this the same schema as the pipe in question.
 			if (Pipe.isForSameSchema(inputPipe, p)) {
 				
-				//determine if they are coming from the same place or not
+				//determine if they are consumed by the same place or not
 				int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
-				if (producerId != prodId) {
-					//only count if they are NOT coming from the same place
-					noMatchCount++;
+				
+				if (GraphManager.hasNota(graphManager, prodId, GraphManager.HEAVY_COMPUTE)) {
+					countOfHeavyComputeProducers++;
 					
-				} 
-				//else if they are all from the samme place then pipes are used here for holding parallel work not for CPU intensive activities
-
+				} else {
+					//TODO: we can go deeper up this chain as needed to discover heavy compute....
+					
+					
+				}
 			}
 		}
-		return noMatchCount>=1;
+		return countOfHeavyComputeProducers == totalInputsCount;
 	}
 
 	private static int combineToSameRoot(int rootCounter, int consRoot, int prodRoot, IntHashTable rootsTable) {
@@ -549,7 +563,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		/////////////
 	    //for each array of stages create a scheduler
-	    ///////////// 
+	    /////////////
 	    ntsArray = new ScriptedNonThreadScheduler[threadCount];
 	
 	    int k = stageArrays.length;
@@ -608,10 +622,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		int outputCount = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
 		
 		if (GraphManager.hasNota(graphManager, stage.stageId, GraphManager.LOAD_BALANCER)) {
-			assert(!GraphManager.hasNota(graphManager, stage.stageId, GraphManager.LOAD_MERGE));
-			
-			//TODO: if large do not add any of those down stream.
-			
+
 			//load balancer must add all left to right as they are defined.
 			for(int r = 1; r<=outputCount; r++) {
 				
@@ -663,8 +674,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		
 		if ( GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE)) {
-			assert(!GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_BALANCER));
-			
+	
 			////////////////
 			//if all the consumers inputs have been added then we can add this one
 			//but never before this point
