@@ -40,16 +40,25 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
 	}
 	
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out) {
 		this(graphManager, input, out, false);
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
 	}
 
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out, boolean showBytesAsUTF) {
 		this(graphManager, input);
 		this.out = out;
 		this.showBytesAsUTF = showBytesAsUTF; 
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
 	}
 
 	@Override

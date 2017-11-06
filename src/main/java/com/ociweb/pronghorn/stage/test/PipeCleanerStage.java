@@ -56,6 +56,9 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
         this.label = label;
         this.tail = new long[input.length];
         this.byteTail = new int[input.length];
+        
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
     }
   
     

@@ -39,6 +39,9 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 		this.totalCounts = new long[from.tokensLen];
 		this.counts = new long[from.tokensLen];
 		this.target = target;
+		
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
 	}
 
 

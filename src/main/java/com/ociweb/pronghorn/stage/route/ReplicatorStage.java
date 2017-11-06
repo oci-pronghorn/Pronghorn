@@ -95,6 +95,9 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 			}
 			
 		}
+		
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+        
 	}
 	
 	@Override

@@ -31,6 +31,7 @@ import com.ociweb.pronghorn.stage.test.JSONTap;
 
 public class MQTTClientGraphBuilder {
 
+	public static final String BACKGROUND_COLOR = "darkolivegreen2";
 	private static final Logger logger = LoggerFactory.getLogger(MQTTClientGraphBuilder.class);
 
 	public static Pipe<MQTTClientResponseSchema> buildMQTTClientGraph(GraphManager gm, 
@@ -93,6 +94,7 @@ public class MQTTClientGraphBuilder {
 		
 		IdGenStage idGenStage = new IdGenStage(gm, idGenOld, idRangeControl, idGenNew);		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate*10, idGenStage);
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, idGenStage);
 		
 		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, isTLS);
 		
@@ -101,6 +103,7 @@ public class MQTTClientGraphBuilder {
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
+				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, stage);
 			}
 		});
 		
@@ -113,6 +116,7 @@ public class MQTTClientGraphBuilder {
 				MQTTClientResponseStage responseStage = new MQTTClientResponseStage(gm, ccm, fromBroker, 
 						ackReleaseForResponseParser, serverToClient); //releases Ids.	
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, responseStage);
+				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, responseStage);
 			}
 		};
 				
@@ -141,7 +145,7 @@ public class MQTTClientGraphBuilder {
 //				                     persistancePipe, persistanceLoadPipe, 
 //				                     multi, maxValueBits, rootFolder );
 //		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, persistedStage);
-
+//		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "darkolivegreen2", persistedStage);
 		
 		short inFlightCount = (short)maxInFlight;
 		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = 
@@ -165,6 +169,7 @@ public class MQTTClientGraphBuilder {
 				                                        idRangeControl, toBroker);
 		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, encodeStage);
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, encodeStage);
 
 		
 		//debug to watch the raw packes back from the server.
@@ -195,6 +200,7 @@ public class MQTTClientGraphBuilder {
 				clientToServerAck);
 		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, mqttClient);
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, mqttClient);
 		
 		int clientWriters = 1;				
 		int responseUnwrapCount = 2;
