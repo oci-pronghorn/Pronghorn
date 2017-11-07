@@ -1822,8 +1822,10 @@ public class GraphManager {
 	private static byte[] buildStageDOTRate(GraphManager m, PronghornStage stage) {
 		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
 		if (null!=rate) {
-			String stageRate = "\n Rate:"+Long.toString(((Number)rate).longValue());
-			return m.stageDOTRate[stage.stageId] = stageRate.getBytes();
+			StringBuilder builder = new StringBuilder();
+			builder.append("\n Rate:");
+			Appendables.appendNearestTimeUnit(builder, ((Number)rate).longValue());
+			return m.stageDOTRate[stage.stageId] = builder.toString().getBytes();
 		}
 		return null;
 	}
