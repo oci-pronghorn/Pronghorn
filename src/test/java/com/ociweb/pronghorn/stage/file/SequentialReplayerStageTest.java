@@ -229,7 +229,7 @@ public class SequentialReplayerStageTest {
 		
 		long rate = 2400;
 		Pipe<PersistedBlobLoadSchema> perLoad = FileGraphBuilder.buildSequentialReplayer(gm, perStore, multi, bits, inFlightCount,
-				largestBlock, dir, cypher,rate);
+				largestBlock, dir, cypher,rate, null);
 		
 		StringBuilder result = new StringBuilder();
 		ConsoleJSONDumpStage watch = ConsoleJSONDumpStage.newInstance(gm, perLoad, result);

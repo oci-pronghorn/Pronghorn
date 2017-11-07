@@ -256,7 +256,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		//loop over pipes once and stop early if total threads is smaller than or matches the target thread count goal
 	    int i = pipes.length;
-	    while (/*totalThreads>targetThreadCount &&*/ --i>=0) {	    	
+	    while (--i>=0) {	    	
 	    	int ringId = pipes[i].id;
 	    	
 	    	int consumerId = GraphManager.getRingConsumerId(graphManager, ringId);
@@ -327,7 +327,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    }
 		    if ((GraphManager.getInputPipeCount(graphManager,producerId)
 			    +GraphManager.getOutputPipeCount(graphManager, producerId)) > thresholdToNeverCombine) {
-			    return false;
+		    	return false;
 	        }    
 		}
 		
@@ -484,7 +484,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    
 	    if (expectedCount != addsCount) {
 		    
-	    	logger.warn("We have {} stages which do not consume from any known producers, To ensure efficient scheduling please mark one as the producer.", expectedCount-addsCount);
+	    	logger.trace("We have {} stages which do not consume from any known producers, To ensure efficient scheduling please mark one as the producer.", expectedCount-addsCount);
 	    			
 	    	
 		    stages = GraphManager.countStages(graphManager);
@@ -492,8 +492,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    	//Then ensure everything has beed added
 		    	PronghornStage stage = GraphManager.getStage(graphManager, stages--);
 		    	if (null!=stage) {
-		    	    	
-		    		
 		    		
 					//get the root for this table
 					int root = rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
@@ -857,6 +855,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
 					
 					nts.run();
+					
+					
 					
 					Thread.yield();
 				}

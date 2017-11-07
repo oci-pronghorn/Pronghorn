@@ -452,8 +452,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     }
 
-    //TODO: we want to monitor pipe content and flip execution order if they are full.
-
     public long nextRun() {
         return nextRun;
     }
@@ -461,7 +459,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // Pre-allocate startup information.
     // this value is continues to keep time across calls to run.
     private long blockStartTime = System.nanoTime();
-    
+    private long lackOfSleepNS = 0;
     
     @Override
     public void run() {
@@ -493,10 +491,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             		break;
             	}
             	
+            	wait += lackOfSleepNS;
             	try {
             		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
 					Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
-				} catch (InterruptedException e) {
+				
+					long temp = blockStartTime - System.nanoTime();
+					lackOfSleepNS = temp>0 ? temp : 0;
+					
+            	} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;
 				}

@@ -21,6 +21,8 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+		
 	}
 
 	private long tailCache;

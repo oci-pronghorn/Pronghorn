@@ -25,7 +25,7 @@ public class FileGraphBuilder {
 			int largestBlock,
 			File targetDirectory, 
 			byte[] cypherBlock, 
-			long rate) {
+			long rate, String backgroundColor) {
 		
 		if (cypherBlock != null) {
 			if (cypherBlock.length!=16) {
@@ -70,10 +70,11 @@ public class FileGraphBuilder {
 			e.printStackTrace();
 		}
 		
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
-				new SequentialFileReadWriteStage(gm, control, response, 
-											     fileDataToSave, fileDataToLoad, 
-											     paths));
+		SequentialFileReadWriteStage readWriteStage = new SequentialFileReadWriteStage(gm, control, response, 
+									     fileDataToSave, fileDataToLoad, 
+									     paths);
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, readWriteStage);
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, readWriteStage);
 		
 		if (null != cypherBlock) {
 			
@@ -100,20 +101,24 @@ public class FileGraphBuilder {
 						              new Pipe[] {doFinalXmit1, doFinalXmit2},
 						              new Pipe[] {doFinalReceive1, doFinalReceive2});
 				
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate,
-						new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
-						                         doFinalReceive1, doFinalXmit1));
+				RawDataCryptAESCBCPKCS5Stage crypt1 = new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
+				                         doFinalReceive1, doFinalXmit1);
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt1);
+				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt1);
 				
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
-						new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
-						                         doFinalReceive2, doFinalXmit2));
+				RawDataCryptAESCBCPKCS5Stage crypt2 = new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
+				                         doFinalReceive2, doFinalXmit2);
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt2);
+				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt2);
 			}			
 			
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate,
-					new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits));
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits);
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
+			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		} else {
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
-					new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits));
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits);
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
+			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		}
 		return perLoad;
 	}

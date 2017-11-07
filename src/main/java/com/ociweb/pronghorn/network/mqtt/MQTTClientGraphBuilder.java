@@ -151,7 +151,8 @@ public class MQTTClientGraphBuilder {
 		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = 
 				FileGraphBuilder.buildSequentialReplayer(
 				gm, persistancePipe, multiplierBeforeCompact, maxValueBits, inFlightCount,
-				maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10);
+				maximumLenghOfVariableLengthFields, rootFolder, cypherBlock,
+				rate*10, BACKGROUND_COLOR);
 		
 		
 		int independentClients = 1; 

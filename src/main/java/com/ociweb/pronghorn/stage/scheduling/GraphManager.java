@@ -52,7 +52,7 @@ public class GraphManager {
 	private final static int INIT_STAGES = 32;	
 	
 	//will show telemetry its self
-	public static boolean monitorAll = true;
+	public static boolean monitorAll = false;
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
@@ -1020,11 +1020,15 @@ public class GraphManager {
 	}
 	
 	public static void addNota(GraphManager m, Object key, Object value, PronghornStage stage) {
+		addNota(m, key, value, stage.stageId);
+	}
+	
+	public static void addNota(GraphManager m, Object key, Object value, int stageId) {
 		synchronized(m.lock) {	
 			
 			//if Nota key already exists then replace previous value
 			
-			int notaId = findNotaIdForKey(m, stage.stageId, key);
+			int notaId = findNotaIdForKey(m, stageId, key);
 			
 			if (-1 != notaId) {
 				//simple replace with new value
@@ -1035,9 +1039,9 @@ public class GraphManager {
 				//this allows for direct lookup later for every instance found
 				m.notaIdToKey = setValue(m.notaIdToKey, m.totalNotaCount, key);
 				m.notaIdToValue = setValue(m.notaIdToValue, m.totalNotaCount, value);
-				m.notaIdToStageId = setValue(m.notaIdToStageId, m.totalNotaCount, stage.stageId, stage);
+				m.notaIdToStageId = setValue(m.notaIdToStageId, m.totalNotaCount, stageId);
 				
-				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
+				int beginIdx = m.stageIdToNotasBeginIdx[stageId];
 			    if (m.topNota == m.multNotaIds.length) {
 			    	
 			    	//create new larger array		    	
