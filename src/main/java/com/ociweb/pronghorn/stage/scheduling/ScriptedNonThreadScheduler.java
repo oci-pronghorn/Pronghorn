@@ -459,7 +459,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // Pre-allocate startup information.
     // this value is continues to keep time across calls to run.
     private long blockStartTime = System.nanoTime();
-    private long lackOfSleepNS = 0;
     
     @Override
     public void run() {
@@ -491,14 +490,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             		break;
             	}
             	
-            	wait += lackOfSleepNS;
             	try {
+            		//some platforms will not sleep long enough so the spin yield is below 
             		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
 					Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
-				
-					long temp = blockStartTime - System.nanoTime();
-					lackOfSleepNS = temp>0 ? temp : 0;
-					
+					long dif;
+					while ((dif = (blockStartTime-System.nanoTime()))>0) {
+						if (dif>100) {
+							Thread.yield();
+						}
+					}
             	} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;

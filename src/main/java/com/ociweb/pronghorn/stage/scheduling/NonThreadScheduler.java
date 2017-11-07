@@ -384,6 +384,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     		//we have called run but we know that it can do anything until this time so we must wait
     		if (0!=nextRun) {
 	    		long nanoDelay = nextRun-System.nanoTime();
+	    		
 	    		if (nanoDelay>10) {
 
 	    			//if we are in the larger scheduler do sleep now
@@ -394,11 +395,18 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			    	
 		    		try {
 						Thread.sleep(nanoDelay/1_000_000,(int) (nanoDelay%1_000_000));
+						long dif;
+						while ((dif = (nextRun-System.nanoTime()))>0) {
+							if (dif>100) {
+								Thread.yield();
+							}
+						}	
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						shutdown();
 						return;
 				    }
+		    		
 		    		
 	    		}
     		}

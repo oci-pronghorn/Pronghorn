@@ -472,14 +472,22 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		setCallerId(stage.boxedStageId);
 		do {
 		    long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
-		   
 		    if (nsDelay>0) {
 		        try {
-		            Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));		                                    
+		        	long limit = System.nanoTime()+nsDelay;
+		        	//some slow platforms may not wait long enough so we spin below
+		        	Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));		                                    
+		        	long dif;
+		        	while ((dif = (limit-System.nanoTime()))>0) {
+		        		if (dif>100) {
+		        			Thread.yield();
+		        		}
+		        	}	
 		        } catch (InterruptedException e) {
 		        	Thread.currentThread().interrupt();
 		            break;
 		        }
+		        
 		    } else if (playNice && 0==(0x3&i++)){
 		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
 		            //before doing yield must push any batched up writes & reads
@@ -522,7 +530,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				long limit = nsSleep + System.nanoTime();
 				if (nsSleep>900) {					
 		      	    try {
-				        Thread.sleep(0,nsSleep-300);
+				        Thread.sleep(0, nsSleep-300);
 				    } catch (InterruptedException e) {
 					    Thread.currentThread().interrupt();
 					    clearCallerId();
