@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import com.sun.corba.se.impl.orbutil.graph.Graph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private ExecutorService executorService;
 	private volatile Throwable firstException;//will remain null if nothing is wrong
 	private static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
-	private ScriptedNonThreadScheduler[] ntsArray;
+	private ScriptedNonThreadScheduler[] ntsArrayForward;
+	private Pipe[] ntsArrayForwardInputs;
+	private long halfTotalSlabSize;
+	private ScriptedNonThreadScheduler[] ntsArrayReverse;
 
     private static final Comparator comp = new Comparator<PronghornStage[]>(){
 
@@ -564,26 +568,55 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		/////////////
 	    //for each array of stages create a scheduler
 	    /////////////
-	    ntsArray = new ScriptedNonThreadScheduler[threadCount];
-	
-	    int k = stageArrays.length;
+
+		// Determine number of input pipes in the forward array.
+		int numberInputPipes = 0;
+		for (int i = 0; i < count; i++) {
+			PronghornStage[] stages = stageArrays[i];
+
+			for (int k = 0; k < stages.length; k++) {
+				numberInputPipes += GraphManager.getInputPipeCount(graphManager, stages[k]);
+			}
+		}
+
+		// Create metadata for forward pipes.
+		ntsArrayForwardInputs = new Pipe[numberInputPipes];
+
+		int ntsArraysIdx = 0;
+		for (int i = 0; i < count; i++) {
+			PronghornStage[] stages = stageArrays[i];
+
+			for (int k = 0; k < stages.length; k++) {
+
+				for (int L = 1; L <= GraphManager.getInputPipeCount(graphManager, stages[k]); L++) {
+
+					ntsArrayForwardInputs[ntsArraysIdx] = GraphManager.getInputPipe(graphManager, stages[k], L);
+					halfTotalSlabSize += GraphManager.getInputPipe(graphManager, stages[k], L).sizeOfSlabRing;
+				}
+			}
+		}
+
+		// Finalize total slab size based on cumulative total.
+		halfTotalSlabSize = halfTotalSlabSize / 2;
+
+		// Allocate NTS arrays.
+		ntsArrayForward = new ScriptedNonThreadScheduler[count];
+		ntsArrayReverse = new ScriptedNonThreadScheduler[count];
+
 	    int ntsIdx = 0;
-	    while (--k >= 0) {
-	    	if (null!=stageArrays[k]) {
+	    for (int i = 0; i < count; i++) {
+	    	if (null != stageArrays[i]) {
 	    		
 	    		if (logger.isDebugEnabled()) {
-	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
+	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[i]));
 	    		}
-	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
+	    		PronghornStage pronghornStage = stageArrays[i][stageArrays[i].length - 1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
-	    
-				//TODO: NOTE: this is optimized for low load conditions, eg the next pipe has room.
-				//      This boolean can be set to true IF we know the pipe will be full all the time
-				//      By setting this to true the scheduler is optimized for heavy loads
-				//      Each individual part of the graph can have its own custom setting... 
-				boolean reverseOrder = false;
 	    		
-	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(graphManager, reverseOrder, stageArrays[k], name, true);
+	    		ntsArrayForward[ntsIdx] = new ScriptedNonThreadScheduler(graphManager, false, stageArrays[i], name, true);
+				ntsArrayReverse[ntsIdx] = new ScriptedNonThreadScheduler(graphManager, true, stageArrays[i], name, true);
+
+				ntsIdx++;
 	    	}
 	    }
 	}
@@ -801,11 +834,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}	
 		
         ThreadFactory threadFactory = new ThreadFactory() {
-        	int count = ntsArray.length;
+        	int count = ntsArrayForward.length;
 			@Override
 			public Thread newThread(Runnable r) {
 				if (--count>=0) {
-					return new Thread(r, ntsArray[count].name());
+					return new Thread(r, ntsArrayForward[count].name());
 				} else {
 					logger.info("Warning: fixed thread scheduler did not expect more threads to be created than {}", threadCount);
 					return new Thread(r,"Unknown");
@@ -817,9 +850,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
-		int i = ntsArray.length;
+		int i = ntsArrayForward.length;
 		while (--i>=0) {
-			executorService.execute(buildRunnable(allStagesLatch, ntsArray[i]));
+			executorService.execute(buildRunnable(allStagesLatch, i));
 		}		
 		
 		logger.trace("waiting for startup");
@@ -833,16 +866,27 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 	}
 
-	private Runnable buildRunnable(final CyclicBarrier allStagesLatch, final ScriptedNonThreadScheduler nts) {
+	private Runnable buildRunnable(final CyclicBarrier allStagesLatch, final int ntsIdx) {
 		assert(null!=allStagesLatch);
-		assert(null!=nts);
+
+		final ScriptedNonThreadScheduler ntsf = ntsArrayForward[ntsIdx];
+		final ScriptedNonThreadScheduler ntsr = ntsArrayReverse[ntsIdx];
+
+		assert(null!=ntsf);
+		assert(null!=ntsr);
 	
 		return new Runnable() {
+
+			// Interval to check if we should run forward or reverse scheduler.
+			boolean forward = true;
+			long checkCounter = 0;
+			int checkInterval = 1024;
 
 			@Override
 			public void run() {
 				
-				nts.startup();
+				ntsf.startup();
+				ntsr.startup();
 				
 				try {
 			            allStagesLatch.await();
@@ -854,9 +898,31 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//      if we have a list with the same rate they can be on a simple loop
 				//      this saves the constant checking of which one is to run next...
 				
-				while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
-					
-					nts.run();
+				while (!ScriptedNonThreadScheduler.isShutdownRequested(ntsf) &&
+					   !ScriptedNonThreadScheduler.isShutdownRequested(ntsr)) {
+
+					// Check to see if forward pipe is backed up on an interval.
+					if (checkCounter % checkInterval == 0) {
+
+						// Sum total pipes.
+						long sum = 0;
+						for (int i = 0; i < ntsArrayForwardInputs.length; i++) {
+							sum += Pipe.contentRemaining(ntsArrayForwardInputs[i]);
+						}
+
+						// Run forward if the sum is less than half the total slab size.
+						forward = sum < halfTotalSlabSize;
+					}
+
+					// Progress check counter.
+					checkCounter++;
+
+					// Run forward or reverse pipe depending on current pipe data.
+					if (forward) {
+						ntsf.run();
+					} else {
+						ntsr.run();
+					}
 					
 					Thread.yield();
 				}
@@ -868,10 +934,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	@Override
 	public void shutdown() {
 
-		int i = ntsArray.length;
+		int i = ntsArrayForward.length;
 		while (--i>=0) {
-			if (null != ntsArray[i]) {
-				ntsArray[i].shutdown();	
+			if (null != ntsArrayForward[i]) {
+				ntsArrayForward[i].shutdown();
+			}
+
+			if (null != ntsArrayReverse[i]) {
+				ntsArrayReverse[i].shutdown();
 			}
 		}	
  
@@ -889,11 +959,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	@Override
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
-		int i = ntsArray.length;
+		int i = ntsArrayForward.length;
 		boolean cleanExit = true;
 
 		while (--i>=0) {			
-			cleanExit &= ntsArray[i].awaitTermination(timeout, unit);			
+			cleanExit &= ntsArrayForward[i].awaitTermination(timeout, unit);
+			cleanExit &= ntsArrayReverse[i].awaitTermination(timeout, unit);
 		}	
 
 		if (!cleanExit) {
