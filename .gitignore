@@ -16,3 +16,8 @@ buildNumber.properties
 /.metadata/*
 
 RemoteSystemsTempFiles/\.project
+
+*.class
+
+src/main/java/apache/*
+
