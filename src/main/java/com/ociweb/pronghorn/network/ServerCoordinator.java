@@ -1,19 +1,14 @@
 package com.ociweb.pronghorn.network;
 
-import java.nio.channels.Selector;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.MemberHolder;
-import com.ociweb.pronghorn.util.PoolIdx;
-import com.ociweb.pronghorn.util.PoolIdxPredicate;
-import com.ociweb.pronghorn.util.ServiceObjectHolder;
-import com.ociweb.pronghorn.util.ServiceObjectValidator;
+import com.ociweb.pronghorn.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.channels.Selector;
 
 public class ServerCoordinator extends SSLConnectionHolder {
 	
@@ -24,7 +19,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private MemberHolder                          subscriptions;
     private int[]                                 upgradePipeLookup;
     private ConnectionContext[]                   connectionContext; //NOTE: ObjectArrays would work very well here!!
-            
+
     
     public final int                                  channelBits;
     public final int                                  channelBitsSize;
@@ -50,7 +45,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private final PoolIdx responsePipeLinePool;
 	public final int maxPartialResponses;
 	private final int[] processorLookup;
-	public final boolean isTLS;
 	private final int processorsCount;
 	
     private final String serviceName;
@@ -62,38 +56,33 @@ public class ServerCoordinator extends SSLConnectionHolder {
 //	public static long acceptConnectionStart;
 //	public static long orderSuperStart;
 //	public static long newDotRequestStart;
-	
-	
-	
-	static {
-		
-	}
+
 	
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig) {
+	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig){
 		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
 	}
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath) {
+	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
 		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", defaultPath);
 	}
 	
 	public ServerCoordinator(boolean isTLS, String bindHost, int port, 
             int maxConnectionsBits, int maxPartialResponses,
-            int processorsCount) {
+            int processorsCount){
 		this(isTLS,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
 	}
 	
     public ServerCoordinator(boolean isTLS, String bindHost, int port, 
     		                 int maxConnectionsBits, int maxPartialResponses,
     		                 int processorsCount, 
-    		                 String serviceName, String defaultPath) {
+    		                 String serviceName, String defaultPath){
 
-    	this.isTLS 			   = isTLS;
+		super(isTLS);
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
@@ -108,14 +97,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
     	this.processorsCount = processorsCount;
     	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
-    	
-    	if (isTLS) {
-    		//logger.info("init TLS");
-			// TODO: move this up and share policy with client coordinator
-			TLSPolicy tls = TLSPolicy.defaultPolicy;
-			SSLEngineFactory.init(tls);
-    	}
-        
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {

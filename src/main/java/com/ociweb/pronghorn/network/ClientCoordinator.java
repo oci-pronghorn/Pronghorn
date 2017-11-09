@@ -1,24 +1,19 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.IOException;
-import java.nio.channels.Selector;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.HdrHistogram.Histogram;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.PoolIdx;
-import com.ociweb.pronghorn.util.ServiceObjectHolder;
-import com.ociweb.pronghorn.util.ServiceObjectValidator;
-import com.ociweb.pronghorn.util.TrieParser;
-import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.*;
+import org.HdrHistogram.Histogram;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLEngine;
+import java.io.IOException;
+import java.nio.channels.Selector;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
@@ -66,8 +61,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 //											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
 	
 	
-	
-	public final boolean isTLS;
+
 
     private PronghornStageProcessor optionalStageProcessor;
     
@@ -107,18 +101,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, boolean isTLS) { 
-		
-		this.isTLS = isTLS;
+	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, boolean isTLS) {
+		super(isTLS);
 		int maxUsers = 1<<connectionsInBits;
 		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
-
-		if (isTLS) {
-			// TODO: move this up and share policy with server coordinator
-			TLSPolicy tls = TLSPolicy.defaultPolicy;
-			SSLEngineFactory.init(tls);
-		}
-				
 		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
 		hostTrie = new TrieParser(trieSize, 4, false, false);
@@ -351,7 +337,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					try {
 						
 				    	//create new connection because one was not found or the old one was closed
-						cc = new ClientConnection(host, port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
+						SSLEngine engine =  ccm.isTLS ? ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port):null;
+						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
 						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
 						

@@ -1,27 +1,21 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.IOException;
-import java.net.BindException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.SocketException;
-import java.net.StandardSocketOptions;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-
-import javax.net.ssl.SSLEngine;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLEngine;
+import java.io.IOException;
+import java.net.*;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 
 /**
  * General base class for server construction.
@@ -235,7 +229,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           						  
                           SSLEngine sslEngine = null;
                           if (coordinator.isTLS) {
-							  sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
+							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
 							  sslEngine.setUseClientMode(false); //here just to be complete and clear
 							//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
 							 // sslEngine.setWantClientAuth(true); //the auth is optional

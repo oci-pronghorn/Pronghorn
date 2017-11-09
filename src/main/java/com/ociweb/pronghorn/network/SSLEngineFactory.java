@@ -1,69 +1,69 @@
 package com.ociweb.pronghorn.network;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.*;
 import java.io.InputStream;
 import java.security.KeyStore;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-
 //import io.netty.handler.ssl.SslContext;
-
-
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SSLEngineFactory {
 
 	private static final Logger log = LoggerFactory.getLogger(SSLEngineFactory.class);
-	private static KeyManagerFactory keyManagerFactory;
-	private static TrustManagerFactory trustManagerFactory;
-    private static TLSService privateService;
+    private TLSService privateService;
+	private final KeyManagerFactory keyManagerFactory;
+	private final TrustManagerFactory trustManagerFactory;
 
-    public static void init(TLSPolicy certSource) {
-        // TODO: once server coordinator and client coordinator share the same policy
-        // this init can be moved up and called once.
-        // Then we should be smart about being server or client only
-        if (keyManagerFactory != null) {
-            return;
+    public SSLEngineFactory(TLSCertificates policy) {
+        // Server Identity
+        InputStream keyInputStream = policy.keyInputStream();
+        // All the internet sites client trusts
+        InputStream trustInputStream = policy.trustInputStream();
+
+        String keyPassword = policy.keyPassword();
+        String keyStorePassword = policy.keyStorePassword();
+
+        if (keyInputStream != null) {
+            try {
+                keyManagerFactory = createKeyManagers(keyInputStream, keyStorePassword, keyPassword);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create key manager.", e);
+            }
         }
-        try {
-            // Server Identity
-            InputStream keyInputStream = certSource.keyInputStream();
-            // All the internet sites client trusts
-            InputStream trustInputStream = certSource.trustInputStream();
+        else {
+            keyManagerFactory = null;
+        }
 
-            String keyPassword = certSource.keyPassword();
-            String keyStorePassword = certSource.keyStorePassword();
-
-            keyManagerFactory = createKeyManagers(keyInputStream, keyStorePassword, keyPassword);
-            trustManagerFactory = createTrustManagers(trustInputStream, keyStorePassword);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (trustInputStream != null) {
+            try {
+                trustManagerFactory = createTrustManagers(trustInputStream, keyStorePassword);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create trust manager.", e);
+            }
+        }
+        else {
+            trustManagerFactory = null;
         }
     }
-	
-	public static TLSService getService() {
-		if (privateService==null) {
-			privateService = new TLSService(keyManagerFactory, trustManagerFactory);
-		}
-		return privateService;
-	}
-	
+
+    TLSService getService() {
+        if (privateService==null) {
+            privateService = new TLSService(keyManagerFactory, trustManagerFactory);
+        }
+        return privateService;
+    }
+
     /**
      * Creates the key managers required to initiate the {@link SSLContext}, using a JKS keystore as an input.
      *
-     * @param filepath - the path to the JKS keystore.
      * @param keystorePassword - the keystore's password.
      * @param keyPassword - the key's passsword.
      * @return {@link KeyManager} array that will be used to initiate the {@link SSLContext}.
      * @throws Exception
      */
-    private static KeyManagerFactory createKeyManagers(InputStream keyStoreIS, String keystorePassword, String keyPassword) throws Exception {
+    private static KeyManagerFactory createKeyManagers(InputStream keyStoreIS, String keystorePassword, String keyPassword) throws Exception  {
 
     	KeyStore keyStore = KeyStore.getInstance("JKS");
         try {
@@ -81,7 +81,6 @@ public class SSLEngineFactory {
     /**
      * Creates the trust managers required to initiate the {@link SSLContext}, using a JKS keystore as an input.
      *
-     * @param filepath - the path to the JKS keystore.
      * @param keystorePassword - the keystore's password.
      * @return {@link TrustManager} array, that will be used to initiate the {@link SSLContext}.
      * @throws Exception
@@ -98,18 +97,14 @@ public class SSLEngineFactory {
         TrustManagerFactory trustFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trustFactory.init(trustStore);
         return trustFactory;
-    }	
+    }
 
-    public static SSLEngine createSSLEngine(String host, int port) {
+    SSLEngine createSSLEngine(String host, int port) {
     	return getService().createSSLEngineClient(host, port);
     }
 
-    public static SSLEngine createSSLEngine() {
+    SSLEngine createSSLEngine() {
     	return getService().createSSLEngineServer();
     }
 
-
-    
-
-	
 }
