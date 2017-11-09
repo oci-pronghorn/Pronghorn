@@ -13,6 +13,16 @@ public class InverseQuantizer {
         }
     }
 
+    void dequantize(int[][][] MCU) {
+        for (int i = 0; i < MCU.length; ++i) {
+            for (int j = 0; j < MCU[0].length; ++j) {
+                for (int k = 0; k < MCU[0][0].length; ++k) {
+                    MCU[i][j][k] = MCU[i][j][k] * quantizationTable[k];
+                }
+            }
+        }
+    }
+
     int[][] reverseZigZag(int[] inputArr, int length) {
         final int EAST = 0;
         final int SOUTH = 1;
