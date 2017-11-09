@@ -28,9 +28,11 @@ public class MQTTClientGraphBuilder {
 
 	public static Pipe<MQTTClientResponseSchema> buildMQTTClientGraph(GraphManager gm, 
 			Pipe<MQTTClientRequestSchema> clientRequest,
-			String user, String pass) {
-		
-		final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
+			String user, String pass, TLSCertificates tlsCertificates) {
+
+		if (tlsCertificates == null) {
+			tlsCertificates = TLSCertificates.defaultCerts;
+		}
 		int maxInFlight = 10;
 		int maximumLenghOfVariableLengthFields = 4096;
 		int rate = 1_200;
@@ -48,7 +50,7 @@ public class MQTTClientGraphBuilder {
 	}
 
 	
-	public static void buildMQTTClientGraph(GraphManager gm, final TLSCertificates tlsCertificates, int maxInFlight,
+	public static void buildMQTTClientGraph(GraphManager gm, TLSCertificates tlsCertificates, int maxInFlight,
 											int maximumLenghOfVariableLengthFields,
 											Pipe<MQTTClientRequestSchema> clientRequest,
 											Pipe<MQTTClientResponseSchema> clientResponse,
@@ -63,7 +65,11 @@ public class MQTTClientGraphBuilder {
 			
 			cypherBlock = new byte[16];
 			SecureRandom sr = new SecureRandom((username+":"+password).getBytes());
-			sr.nextBytes(cypherBlock);		
+			sr.nextBytes(cypherBlock);
+
+			if (tlsCertificates == null) {
+				tlsCertificates = TLSCertificates.defaultCerts;
+			}
 		} else {
 			logger.info("Warning: MQTT persistance to disk is not encrypted because no user/pass provided.");
 		}
