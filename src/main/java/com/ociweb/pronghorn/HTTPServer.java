@@ -1,20 +1,9 @@
 package com.ociweb.pronghorn;
 
-import java.io.File;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.config.*;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
@@ -24,22 +13,28 @@ import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.util.MainArgs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 public class HTTPServer {
 
 	private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
 	
 	
-	public static void startupHTTPServer(GraphManager gm, boolean large, ModuleConfig config, String bindHost, int port, boolean isTLS) {
+	public static void startupHTTPServer(GraphManager gm, boolean large, ModuleConfig config, String bindHost, int port, TLSCertificates tlsCertificates) {
 				
 		boolean debug = false;
 		
-		if (!isTLS) {
+		if (tlsCertificates == null) {
 			logger.warn("TLS has been progamatically switched off");
 		}
 		// 78,300
@@ -49,7 +44,7 @@ public class HTTPServer {
 		///////////////
 	    //BUILD THE SERVER
 	    ////////////////		
-		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(isTLS, bindHost, port, gm, large, config);
+		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, large, config);
 					
 		if (debug) {
 			////////////////

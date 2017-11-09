@@ -61,28 +61,28 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig){
-		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig){
+		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
 	}
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
-		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
+		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", defaultPath);
 	}
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
             int maxConnectionsBits, int maxPartialResponses,
             int processorsCount){
-		this(isTLS,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
+		this(tlsCertificates,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
 	}
 	
-    public ServerCoordinator(boolean isTLS, String bindHost, int port, 
-    		                 int maxConnectionsBits, int maxPartialResponses,
-    		                 int processorsCount, 
-    		                 String serviceName, String defaultPath){
+    public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
+							 int maxConnectionsBits, int maxPartialResponses,
+							 int processorsCount,
+							 String serviceName, String defaultPath){
 
-		super(isTLS);
+		super(tlsCertificates);
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;

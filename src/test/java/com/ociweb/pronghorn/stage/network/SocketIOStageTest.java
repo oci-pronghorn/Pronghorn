@@ -1,19 +1,8 @@
 package com.ociweb.pronghorn.stage.network;
 
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.ClientSocketReaderStage;
-import com.ociweb.pronghorn.network.ClientSocketWriterStage;
-import com.ociweb.pronghorn.network.ServerSocketReaderStage;
-import com.ociweb.pronghorn.network.ServerSocketWriterStage;
-import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.ServerNewConnectionStage;
+import com.ociweb.pronghorn.network.*;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -21,7 +10,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
-import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class SocketIOStageTest {
 
@@ -62,8 +53,10 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-        ServerCoordinator serverCoordinator = new ServerCoordinator(encryptedContent, bindHost, port, maxConnBits, maxtPartials, routerCount);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials, false);
+
+		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
+        ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, maxtPartials, routerCount);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxtPartials, null);
 		
 		
 		///
@@ -143,8 +136,9 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-		ServerCoordinator serverCoordinator = new ServerCoordinator(encryptedContent, bindHost, port, maxConnBits, maxtPartials, routerCount);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials,false);
+		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
+		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, maxtPartials, routerCount);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxtPartials,null);
 					
 		///
 		///server new connections e-poll

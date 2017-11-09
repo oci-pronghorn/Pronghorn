@@ -101,8 +101,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, boolean isTLS) {
-		super(isTLS);
+	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, TLSCertificates tlsCertificates) {
+		super(tlsCertificates);
 		int maxUsers = 1<<connectionsInBits;
 		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
 		
@@ -286,7 +286,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		
 		if (null==oldConnection || ((!oldConnection.isValid()) && oldConnection.isFinishConnect() ) ) {
 			//only do reOpen if the previous one is finished connecting and its now invalid.
-			oldConnection = ClientCoordinator.openConnection(this, host, port, 
+			oldConnection = ClientCoordinator.openConnection(this, host, port,
 					sessionId, outputs,
 	                lookup(host, port, sessionId));
 		}
@@ -368,7 +368,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 
-	private static ClientConnection doRegister(ClientCoordinator ccm, 
+	private static ClientConnection doRegister(ClientCoordinator ccm,
 			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
 			                                   ClientConnection cc) {
 		try {

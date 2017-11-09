@@ -482,7 +482,7 @@ public class GraphManager {
 				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
-				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m, TELEMTRY_SERVER_RATE);
+				NetGraphBuilder.telemetryServerSetup(null, m.telemetryHost, m.telemetryPort, m, TELEMTRY_SERVER_RATE);
 				logger.info("total count of stages {} ",m.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");

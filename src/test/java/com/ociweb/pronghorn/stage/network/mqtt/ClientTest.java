@@ -1,22 +1,20 @@
 package com.ociweb.pronghorn.stage.network.mqtt;
 
-import static org.junit.Assert.*;
-
-import java.nio.ByteBuffer;
-
-import org.junit.Ignore;
-import org.junit.Test;
-
+import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientGraphBuilder;
 import com.ociweb.pronghorn.network.mqtt.MQTTEncoder;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertTrue;
 
 public class ClientTest {
 
@@ -43,7 +41,9 @@ public class ClientTest {
 		Pipe<MQTTClientResponseSchema> clientResponse = MQTTClientResponseSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		
 		short responseConnections = (short)1;
-		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, 
+
+		TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
+		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, certs,
 				                                    maxInFlight, maximumLenghOfVariableLengthFields, 
 				                                    clientRequest, clientResponse, rate,
 													(byte)3, responseConnections,
