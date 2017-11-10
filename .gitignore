@@ -10,3 +10,13 @@ buildNumber.properties
 /.classpath
 /.project
 /.settings/
+
+####
+# IntelliJ
+*.iml
+target/
+/.settings
+/.classpath
+/.project
+/.attach_pid25440
+.idea/

@@ -1,18 +1,13 @@
 package com.ociweb.pronghorn.network;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TLSUtil {
+import javax.net.ssl.*;
 
-	private static final Logger logger = LoggerFactory.getLogger(TLSUtil.class);
+public class TLSCertificateTrust {
+
+	private static final Logger logger = LoggerFactory.getLogger(TLSCertificateTrust.class);
 	
 	public static void trustAllCerts(final String host) {
 		logger.warn("WARNING: this scope will now accept all certs on host: "+host+". This is for testing only!");
