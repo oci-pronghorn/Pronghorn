@@ -1,21 +1,18 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLEngineResult.Status;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.net.ssl.SSLException;
-
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class SSLUtil {
 
@@ -233,8 +230,7 @@ public class SSLUtil {
 		assert(!buffer.hasRemaining());
 	}
 
-	private static SSLEngineResult gatherPipeDataForUnwrap(Pipe<NetPayloadSchema> source, ByteBuffer rolling,
-															SSLConnection cc, final ByteBuffer[] targetBuffer, boolean isServer) {
+	private static SSLEngineResult gatherPipeDataForUnwrap(TLSService tlsService, ByteBuffer rolling, SSLConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
 		SSLEngineResult result=null;
 		
 		assert(rolling.limit()==rolling.capacity());
@@ -253,7 +249,7 @@ public class SSLUtil {
 			if (rolling.position()==0) {
 		//		System.err.println(source.id+"A "+firstPartOfBuffer+"  "+inputs[1]);
 				try {
-					result = unwrap(cc, firstPartOfBuffer, targetBuffer);
+					result = unwrap(tlsService, firstPartOfBuffer, targetBuffer, cc);
 				} catch (SSLException sslex) {
 					manageException(sslex, cc, isServer);	//the connection is closed
 					
@@ -280,7 +276,7 @@ public class SSLUtil {
 		return result;
 	}
 
-	private static SSLEngineResult unwrap(SSLConnection cc, ByteBuffer sourceBuffer, final ByteBuffer[] targetBuffer)
+	private static SSLEngineResult unwrap(TLSService tlsService, ByteBuffer sourceBuffer, final ByteBuffer[] targetBuffer, SSLConnection cc)
 			throws SSLException {
 		SSLEngineResult result;
 		int origLimit;
@@ -290,12 +286,12 @@ public class SSLUtil {
 			///////////////
 			origLimit = sourceBuffer.limit();
 			int pos = sourceBuffer.position();
-			if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
-				sourceBuffer.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
+			if (origLimit-pos>tlsService.maxEncryptedContentLength()) {
+				sourceBuffer.limit(pos+tlsService.maxEncryptedContentLength());
 			}
 			/////////////
 			
-			assert(sourceBuffer.remaining()<=SSLEngineFactory.getService().maxEncryptedContentLength());
+			assert(sourceBuffer.remaining()<=tlsService.maxEncryptedContentLength());
 						
 			
 			result = cc.getEngine().unwrap(sourceBuffer, targetBuffer);//common case where we can unwrap directly from the pipe.
@@ -314,7 +310,7 @@ public class SSLUtil {
 	 * Consume rolling which must be positioned for reading from position up to limit.
 	 * Resturns rolling setup for appending new data so limit is at capacity and position is where we left off.		
 	 */
-	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, SSLConnection cc, final ByteBuffer[] targetBuffer,	SSLEngineResult result) throws SSLException {
+	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, TLSService tlsService, final ByteBuffer[] targetBuffer, SSLEngineResult result, SSLConnection cc) throws SSLException {
 		while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ||
 			   cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_TASK) {				
 															
@@ -333,8 +329,8 @@ public class SSLUtil {
 					    ///////////////////////
 					    int origLimit = rolling.limit();
 					    int pos = rolling.position();
-					    if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
-					    	rolling.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
+					    if (origLimit-pos>tlsService.maxEncryptedContentLength()) {
+					    	rolling.limit(pos+tlsService.maxEncryptedContentLength());
 					    }
 					    /////////////////////////
 				
@@ -370,7 +366,7 @@ public class SSLUtil {
 		return result;
 	}
 	
-	private static SSLEngineResult unwrapRollingNominal(ByteBuffer rolling, SSLConnection cc, final ByteBuffer[] targetBuffer,	SSLEngineResult result) throws SSLException {
+	private static SSLEngineResult unwrapRollingNominal(ByteBuffer rolling, TLSService tlsService, final ByteBuffer[] targetBuffer, SSLEngineResult result, SSLConnection cc) throws SSLException {
 		int x=0;
 		String rollingData = rolling.toString();
 		while (rolling.hasRemaining()) {
@@ -381,8 +377,8 @@ public class SSLUtil {
 			    ///////////////////////
 			    int origLimit = rolling.limit();
 			    int pos = rolling.position();
-			    if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
-			    	rolling.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
+			    if (origLimit-pos>tlsService.maxEncryptedContentLength()) {
+			    	rolling.limit(pos+tlsService.maxEncryptedContentLength());
 			    }
 			    /////////////////////////
   
@@ -418,8 +414,7 @@ public class SSLUtil {
 	}
 	
 
-	public static int handShakeUnWrapIfNeeded(final SSLConnection cc, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, final ByteBuffer[] workspace, 
-			                                      Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime) {
+	public static int handShakeUnWrapIfNeeded(TLSService tlsService, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final SSLConnection cc) {
 		
 		 assert(handshakePipe!=null);
 		 assert(source!=null);  
@@ -457,7 +452,7 @@ public class SSLUtil {
 				 			SSLEngineResult result;
 							try { 
 								rolling.flip();
-								result = unwrapRollingHandshake(rolling, cc, workspace, null); //when done the wrapper is ready for writing more data to it
+								result = unwrapRollingHandshake(rolling, tlsService, workspace, null, cc); //when done the wrapper is ready for writing more data to it
 								//logger.info("server {} status is now {}  for {} ",isServer, cc.getEngine().getHandshakeStatus(),cc);
 							} catch (SSLException sslex) {
 								rolling.clear();
@@ -544,14 +539,14 @@ public class SSLUtil {
 	                    long positionId = Pipe.takeLong(source);	
 	                }
 	                	                
-					SSLEngineResult result = gatherPipeDataForUnwrap(source, rolling, cc, workspace, isServer);
+					SSLEngineResult result = gatherPipeDataForUnwrap(tlsService, rolling, cc, workspace, isServer, source);
 
 					rolling.flip();	
 					//logger.info("server {} unwrap rolling data {} for {} ", isServer, rolling, cc);
 										
 					
 					try {
-						result = unwrapRollingHandshake(rolling, cc, workspace, result);
+						result = unwrapRollingHandshake(rolling, tlsService, workspace, result, cc);
 						//logger.info("server {} status is now {}  for {} ",isServer, cc.getEngine().getHandshakeStatus(),cc);
 					} catch (SSLException sslex) {
 						rolling.clear();
@@ -706,6 +701,7 @@ public class SSLUtil {
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, Pipe<ReleaseSchema> releasePipe, 
 			                        ByteBuffer secureBuffer, int groupId, boolean isServer) {
 		
+		TLSService tlsService = ccm.engineFactory.getService();
 		///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
 
 		int didWork = 0;
@@ -739,7 +735,7 @@ public class SSLUtil {
 				}
 
 				//need to come back in for needed wrap even without content to read but... we need the content to give use the CC !!!
-				didWork = handShakeUnWrapIfNeeded(cc, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime=Pipe.peekLong(source, 3));
+				didWork = handShakeUnWrapIfNeeded(tlsService, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime=Pipe.peekLong(source, 3), cc);
 				assert(rolling.limit()==rolling.capacity());	
 				
 				if (didWork<0) {
@@ -805,7 +801,7 @@ public class SSLUtil {
 				
 				int msgIdx = Pipe.takeMsgIdx(source); 
 				if (msgIdx<0) {	
-					shutdownUnwrapper(source, target, rolling, isServer, cc, System.currentTimeMillis());
+					shutdownUnwrapper(source, target, rolling, isServer, tlsService, System.currentTimeMillis(), cc);
 					return -1;
 				} else if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
 					
@@ -844,7 +840,7 @@ public class SSLUtil {
 				//////////////		
 				writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
 
-				result1 = gatherPipeDataForUnwrap(source, rolling, cc, writeHolderUnWrap, isServer);
+				result1 = gatherPipeDataForUnwrap(tlsService, rolling, cc, writeHolderUnWrap, isServer, source);
 											
 				Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
 				Pipe.releaseReadLock(source);
@@ -866,7 +862,7 @@ public class SSLUtil {
 					//this method will consume all it can from rolling before returning
 					//no need to worry about remaining data in rolling, it must be a partial waiting on extra data
 					////////////////
-					result = unwrapRollingNominal(rolling, cc, writeHolderUnWrap, result); //remaining data is ready for append	
+					result = unwrapRollingNominal(rolling, tlsService, writeHolderUnWrap, result, cc); //remaining data is ready for append
 					status = null==result?null:result.getStatus();	
 				} catch (SSLException sslex) {
 					rolling.clear();//TODO: consume all the broken messages...
@@ -897,7 +893,7 @@ public class SSLUtil {
 				//logger.trace("closed status detected");				
 				try {
 					 cc.getEngine().closeOutbound();
-					 handShakeUnWrapIfNeeded(cc, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime);
+					 handShakeUnWrapIfNeeded(tlsService, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime, cc);
 				     cc.getSocketChannel().close();
 				} catch (IOException e) {
 					cc.isValid = false;
@@ -914,8 +910,7 @@ public class SSLUtil {
 		
 	}
 
-	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
-			ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, SSLConnection cc, long arrivalTime) {
+	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, SSLConnection cc, long arrivalTime) {
 	
 		if(cc.localRunningBytesProduced>0) {
 			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
@@ -938,7 +933,7 @@ public class SSLUtil {
 	}
 
 	private static void shutdownUnwrapper(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
-			ByteBuffer rolling, boolean isServer, SSLConnection cc, long arrivalTime) {
+										  ByteBuffer rolling, boolean isServer, TLSService tlsService, long arrivalTime, SSLConnection cc) {
 		if (rolling.position()>0 && null!=cc) {
 			logger.info("shutdown of unwrap detected but we must procesing rolling data first {} isServer:{}",rolling,isServer);
 
@@ -952,7 +947,7 @@ public class SSLUtil {
 			final ByteBuffer[] writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
 
 			try {
-				unwrapRollingNominal(rolling, cc, writeHolderUnWrap, null);	
+				unwrapRollingNominal(rolling, tlsService, writeHolderUnWrap, null, cc);
 			} catch (SSLException sslex) {
 				logger.warn("did we not release the new block write?");
 				manageException(sslex, cc, isServer);						

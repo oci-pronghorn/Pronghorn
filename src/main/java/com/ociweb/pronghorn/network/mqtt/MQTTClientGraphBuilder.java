@@ -1,25 +1,10 @@
 package com.ociweb.pronghorn.network.mqtt;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.security.SecureRandom;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
-import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
-import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
-import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
-import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
-import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
-import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
-import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.schema.*;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -28,6 +13,13 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.JSONTap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.security.SecureRandom;
 
 public class MQTTClientGraphBuilder {
 
@@ -36,9 +28,11 @@ public class MQTTClientGraphBuilder {
 
 	public static Pipe<MQTTClientResponseSchema> buildMQTTClientGraph(GraphManager gm, 
 			Pipe<MQTTClientRequestSchema> clientRequest,
-			String user, String pass) {
-		
-		final boolean isTLS = true;		
+			String user, String pass, TLSCertificates tlsCertificates) {
+
+		if (tlsCertificates == null) {
+			tlsCertificates = TLSCertificates.defaultCerts;
+		}
 		int maxInFlight = 10;
 		int maximumLenghOfVariableLengthFields = 4096;
 		int rate = 1_200;
@@ -48,7 +42,7 @@ public class MQTTClientGraphBuilder {
         //we are not defining he other side of the request and response....
 		
 		short maxPartialResponses = (short)1;
-		buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, 
+		buildMQTTClientGraph(gm, tlsCertificates, maxInFlight, maximumLenghOfVariableLengthFields,
 							clientRequest, clientResponse, rate, 
 							(byte)2, maxPartialResponses, user, pass);
 				
@@ -56,13 +50,13 @@ public class MQTTClientGraphBuilder {
 	}
 
 	
-	public static void buildMQTTClientGraph(GraphManager gm, final boolean isTLS, int maxInFlight,
-												int maximumLenghOfVariableLengthFields, 
-												Pipe<MQTTClientRequestSchema> clientRequest,
-												Pipe<MQTTClientResponseSchema> clientResponse, 
-												final long rate, byte connectionsInBits, 
-												short maxPartialResponses,
-												String username, String password) {
+	public static void buildMQTTClientGraph(GraphManager gm, TLSCertificates tlsCertificates, int maxInFlight,
+											int maximumLenghOfVariableLengthFields,
+											Pipe<MQTTClientRequestSchema> clientRequest,
+											Pipe<MQTTClientResponseSchema> clientResponse,
+											final long rate, byte connectionsInBits,
+											short maxPartialResponses,
+											String username, String password) {
 		
 		byte[] cypherBlock = null; //default value if no user/pass is provided		
 		if (username!=null && password!=null) {
@@ -71,14 +65,18 @@ public class MQTTClientGraphBuilder {
 			
 			cypherBlock = new byte[16];
 			SecureRandom sr = new SecureRandom((username+":"+password).getBytes());
-			sr.nextBytes(cypherBlock);		
+			sr.nextBytes(cypherBlock);
+
+			if (tlsCertificates == null) {
+				tlsCertificates = TLSCertificates.defaultCerts;
+			}
 		} else {
 			logger.info("Warning: MQTT persistance to disk is not encrypted because no user/pass provided.");
 		}
 		
 		
 		
-		if (isTLS && maximumLenghOfVariableLengthFields<(1<<15)) {
+		if (tlsCertificates != null && maximumLenghOfVariableLengthFields<(1<<15)) {
 			maximumLenghOfVariableLengthFields = (1<<15);//ensure we have enough room for TLS work.
 		}
 		
@@ -96,7 +94,7 @@ public class MQTTClientGraphBuilder {
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate*10, idGenStage);
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, idGenStage);
 		
-		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, isTLS);
+		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates);
 		
 		ccm.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system

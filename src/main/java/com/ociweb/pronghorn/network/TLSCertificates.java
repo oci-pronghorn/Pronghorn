@@ -2,21 +2,22 @@ package com.ociweb.pronghorn.network;
 
 import java.io.InputStream;
 
-public interface TLSPolicy {
+public interface TLSCertificates {
     InputStream keyInputStream();
     InputStream trustInputStream();
     String keyStorePassword();
     String keyPassword();
 
-    static TLSPolicy defaultPolicy = new TLSPolicy() {
+    TLSCertificates defaultCerts = new TLSCertificates() {
         @Override
         public InputStream keyInputStream() {
-            return TLSPolicy.class.getResourceAsStream("/client.jks");
+            return TLSCertificates.class.getResourceAsStream("/client.jks");
+
         }
 
         @Override
         public InputStream trustInputStream() {
-            return SSLEngineFactory.class.getResourceAsStream("/trustedCerts.jks");
+            return TLSCertificates.class.getResourceAsStream("/trustedCerts.jks");
         }
 
         @Override

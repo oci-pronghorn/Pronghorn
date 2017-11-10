@@ -1,5 +1,13 @@
 package com.ociweb.pronghorn.network;
 
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import org.HdrHistogram.Histogram;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -9,16 +17,6 @@ import java.nio.channels.NoConnectionPendingException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-
-import org.HdrHistogram.Histogram;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
 
 
 public class ClientConnection extends SSLConnection {
@@ -98,12 +96,10 @@ public class ClientConnection extends SSLConnection {
 		return lastUsedTime;
 	}
 	
-	public ClientConnection(CharSequence host, int port, int sessionId, int pipeIdx,
+	public ClientConnection(SSLEngine engine, CharSequence host, int port, int sessionId, int pipeIdx,
 			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
-		
-		super(isTLS?SSLEngineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port):null,
-			  SocketChannel.open(), 
-			  conId);
+
+		super(engine, SocketChannel.open(), conId);
 		
 		this.maxInFlightBits = inFlightBits;
 		this.maxInFlight = 1<<maxInFlightBits;

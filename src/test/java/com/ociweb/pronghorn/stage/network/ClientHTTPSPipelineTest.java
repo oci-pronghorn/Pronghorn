@@ -1,28 +1,26 @@
 package com.ociweb.pronghorn.stage.network;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.concurrent.TimeUnit;
-
-import org.junit.Ignore;
-import org.junit.Test;
-
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import org.junit.Ignore;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
 
 public class ClientHTTPSPipelineTest {
 
@@ -42,8 +40,9 @@ public class ClientHTTPSPipelineTest {
 		final int maxListeners = 1<<base2SimultaniousConnections;
 
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
-		
-		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,true);
+
+		TLSCertificates certs = TLSCertificates.defaultCerts;
+		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,certs);
 
 		
 		//IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0

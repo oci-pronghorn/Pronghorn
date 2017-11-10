@@ -1,52 +1,27 @@
 package com.ociweb.pronghorn.stage.network;
 
-import static org.junit.Assert.*;
-
-import java.io.File;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.concurrent.TimeUnit;
-
-import org.HdrHistogram.Histogram;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.ClientResponseParserFactory;
-import com.ociweb.pronghorn.network.NetGraphBuilder;
-import com.ociweb.pronghorn.network.SSLConnection;
-import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.ServerPipesConfig;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.*;
+import com.ociweb.pronghorn.network.config.*;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.FileReadModuleStage;
-import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.NetResponseSchema;
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.network.schema.*;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.scheduling.ColorMinusScheduler;
-import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
-import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
-import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.fail;
 
 public class HTTPSRoundTripTest {
 
@@ -254,8 +229,9 @@ public class HTTPSRoundTripTest {
 						Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
 						
 						int usersBits = 0;//2; //TODO: not working they stomp on same client pipe?
-						int usersPerPipe = 1<<usersBits;  
-						ClientCoordinator clientCoord1 = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
+						int usersPerPipe = 1<<usersBits;
+						TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
+						ClientCoordinator clientCoord1 = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, certs);
 												
 						Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
 								                                           input, clientCoord1, clientResponseUnwrapUnits, clientRequestWrapUnits,
@@ -386,8 +362,10 @@ public class HTTPSRoundTripTest {
 			}        
 		 	
 		 };
+
+		TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
 	
-		 ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(isTLS, bindHost, bindPort, gm, isLarge, config);
+		 ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(certs, bindHost, bindPort, gm, isLarge, config);
 
 		 return serverCoord;
 	}
