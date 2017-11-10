@@ -1,23 +1,20 @@
 package com.ociweb.pronghorn.network;
 
-<<<<<<< HEAD
 import java.nio.channels.Selector;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-=======
->>>>>>> branch 'master' of https://github.com/oci-pronghorn/Pronghorn.git
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.channels.Selector;
+import com.ociweb.pronghorn.util.MemberHolder;
+import com.ociweb.pronghorn.util.PoolIdx;
+import com.ociweb.pronghorn.util.PoolIdxPredicate;
+import com.ociweb.pronghorn.util.ServiceObjectHolder;
+import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
 public class ServerCoordinator extends SSLConnectionHolder {
 	
