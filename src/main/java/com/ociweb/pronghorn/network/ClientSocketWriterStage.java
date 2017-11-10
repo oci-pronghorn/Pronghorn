@@ -38,9 +38,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	//NOTE: this is important for high volume testing is must be large enough to push out data at a fast rate.
 	private final int bufMultiplier;
-
-    private StringBuilder[] accumulators;//for testing only
-	
 	
 	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, int bufMultiplier, Pipe<NetPayloadSchema>[] input) {
 		return new ClientSocketWriterStage(graphManager, ccm, bufMultiplier, input);
@@ -61,15 +58,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
-		
-		if (ClientCoordinator.TEST_RECORDS) {
-			int j = input.length;
-			accumulators = new StringBuilder[j];
-			while (--j >= 0) {
-				accumulators[j]=new StringBuilder();					
-			}
-		}
-		
 		
 		int i = input.length;
 		connections = new ClientConnection[i];
@@ -273,11 +261,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 											      
 								        }											
 										
-										if (ClientCoordinator.TEST_RECORDS) {	
-							    			ByteBuffer temp = buffers[i].duplicate();
-							    			temp.flip();
-							    			testValidContent(i, temp);
-										}
 									
 										buffers[i].flip();	
 										connections[i] = cc;
@@ -411,54 +394,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private int countOfUnableToFullyWrite = 0;
 	
     private int totalB;
-	private void testValidContent(final int idx, ByteBuffer buf) {
-		
-		if (ClientCoordinator.TEST_RECORDS) {							
-			
-			boolean confirmExpectedRequests = true;
-			if (confirmExpectedRequests) {
-			
-				 
-				int pos = buf.position();
-				int len = buf.remaining();
-				
-				
-				while (--len>=0) {
-					totalB++;
-					accumulators[idx].append((char)buf.get(pos++));
-				}
-				
-			//	Appendables.appendUTF8(accumulators[idx], buf.array(), pos, len, Integer.MAX_VALUE);						    				
-				
-				while (accumulators[idx].length() >= ClientCoordinator.expectedGet.length()) {
-					
-				   int c = startsWith(accumulators[idx],ClientCoordinator.expectedGet); 
-				   if (c>0) {
-					   
-					   String remaining = accumulators[idx].substring(c*ClientCoordinator.expectedGet.length());
-					   accumulators[idx].setLength(0);
-					   accumulators[idx].append(remaining);							    					   
-					   
-					   
-				   } else {
-					   logger.info("A"+Arrays.toString(ClientCoordinator.expectedGet.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ClientCoordinator.expectedGet.length()).toString().getBytes()   ));
-					   
-					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",ClientCoordinator.expectedGet.length(),totalB);
-					   System.out.println(accumulators[idx].subSequence(0, ClientCoordinator.expectedGet.length()).toString());
-					   System.exit(-1);
-					   	
-					   
-					   
-				   }
-				
-					
-				}
-			}
-			
-			
-		}
-	}
     
 	private int startsWith(StringBuilder stringBuilder, String expected2) {
 		

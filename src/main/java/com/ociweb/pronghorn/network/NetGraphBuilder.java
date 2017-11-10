@@ -645,21 +645,21 @@ public class NetGraphBuilder {
 	}
 	
 
-	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, 
+	public static ServerCoordinator httpServerSetup(TLSCertificates tlsCertificates, String bindHost, int port, GraphManager gm,
 			                                        boolean large, ModuleConfig modules) {
 		
-		ServerPipesConfig serverConfig = new ServerPipesConfig(large, isTLS);
+		ServerPipesConfig serverConfig = new ServerPipesConfig(large, tlsCertificates != null);
 				 
 		 //This must be large enough for both partials and new handshakes.
 	
-		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
 		
 		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		
 		return serverCoord;
 	}
 	
-	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, 
+	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
 			                                GraphManager gm, int baseRate) {
 		///////////////
 		//telemetry latency can be as large as 40ms so we run this sever very slow
@@ -674,13 +674,13 @@ public class NetGraphBuilder {
 		int countOfMonitoredPipes = 0;		
 
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, tlsCertificates != null, 2);
 				 
 		serverConfig.ensureServerParallelResponses(countOfMonitoredPipes);		
 		serverConfig.ensureServerCanWrite(1<<19);//512K
 		 //This must be large enough for both partials and new handshakes.
 		
-		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port,
 				                                              serverConfig.maxConnectionBitsOnServer, 
 				                                              serverConfig.maxPartialResponsesServer, 
 				                                              serverConfig.processorCount,
@@ -764,6 +764,8 @@ public class NetGraphBuilder {
 					,"/dataView?pipeId=#{pipeId}"
 					,"/histogram/pipeFull?pipeId=#{pipeId}"
 					,"/histogram/stageElapsed?stageId=#{stageId}"
+					,"/ws.html" //client side websocket example
+					,"/WS1/example" //server side websocket example
 					
 			};
 			
@@ -831,8 +833,7 @@ public class NetGraphBuilder {
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
 						case 5:
-						    Pipe<ServerResponseSchema>[] outputs = staticFileOutputs = Pipe.buildPipes(instances, 
-								           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
+						
 					
 							//One module for each file??
 							//TODO: add monitor to this stream
@@ -845,29 +846,50 @@ public class NetGraphBuilder {
 							//TODO: replace this code with the actual streaming data from pipe..
 							activeStage = new DummyRestStage(graphManager, 
 									                          inputPipes, 
-									                          outputs, 
+									                          staticFileOutputs = Pipe.buildPipes(instances, 
+																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 						case 6:
-						    Pipe<ServerResponseSchema>[] outputs2 = staticFileOutputs = Pipe.buildPipes(instances, 
-							           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
-						    
-							//TODO: replace this code with the actual pipe full histogram
+						//TODO: replace this code with the actual pipe full histogram
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
-			                          outputs2, 
+			                          staticFileOutputs = Pipe.buildPipes(instances, 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 						case 7:
-						    Pipe<ServerResponseSchema>[] outputs3 = staticFileOutputs = Pipe.buildPipes(instances, 
-							           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax));
-						    
-							//TODO: replace this code with the actual stage elapsed histogram
+						//TODO: replace this code with the actual stage elapsed histogram
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
-			                          outputs3, 
+			                          staticFileOutputs = Pipe.buildPipes(instances, 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
+						case 8:
+							//NOTE:
+							//     initial development of websockets
+							//     this will be used for streaming the telemetry
+							//     live data found inside the pipe and the histograms
+							/////////
+							activeStage = ResourceModuleStage.newInstance(graphManager, 
+						          inputPipes, 
+						          staticFileOutputs = Pipe.buildPipes(instances, 
+						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+						          "telemetry/ws.html", HTTPContentTypeDefaults.HTML);
+						break;
+						case 9:
+						//TODO: replace this code with the actual pipe full histogram
+							
+							activeStage = new UpgradeToWebSocketStage(graphManager, 
+			                          inputPipes, 
+			                          staticFileOutputs = Pipe.buildPipes(instances, 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+							
+						break;
+							
 						default:
 							
 	
@@ -883,12 +905,24 @@ public class NetGraphBuilder {
 						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
 					}
 					
-				
-				
-				routerConfig.registerRoute(
-									             getPathRoute(a)
-									             ); //no headers
-
+				if (a==9) {
+					routerConfig.registerRoute(
+				             getPathRoute(a),
+				             HTTPHeaderDefaults.ORIGIN.rootBytes(),
+				             HTTPHeaderDefaults.SEC_WEBSOCKET_ACCEPT.rootBytes(),
+				             HTTPHeaderDefaults.SEC_WEBSOCKET_KEY.rootBytes(),
+				             HTTPHeaderDefaults.SEC_WEBSOCKET_PROTOCOL.rootBytes(),
+				             HTTPHeaderDefaults.SEC_WEBSOCKET_VERSION.rootBytes(),
+				             HTTPHeaderDefaults.UPGRADE.rootBytes(),
+				             HTTPHeaderDefaults.CONNECTION.rootBytes()
+				             				             
+				             );	
+					
+				} else {
+					routerConfig.registerRoute(
+										             getPathRoute(a)
+										             ); //no headers
+				}
 				return staticFileOutputs;			
 			}
 		};
@@ -910,18 +944,18 @@ public class NetGraphBuilder {
 		int connectionsInBits = 6;		
 		int clientRequestCount = 4;
 		int clientRequestSize = 1<<15;
-		boolean isTLS = true;
-		
+		final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
+
 		buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
-								clientRequestCount, clientRequestSize, isTLS);
+								clientRequestCount, clientRequestSize, tlsCertificates);
 				
 	}
 
 	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
 			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
-			int connectionsInBits, int clientRequestCount, int clientRequestSize, boolean isTLS) {
+			int connectionsInBits, int clientRequestCount, int clientRequestSize, TLSCertificates tlsCertificates) {
 		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
-							 clientRequestCount, clientRequestSize, isTLS);
+							 clientRequestCount, clientRequestSize, tlsCertificates);
 	}
 	
 
@@ -945,9 +979,9 @@ public class NetGraphBuilder {
 	public static void buildHTTPClientGraph(GraphManager gm, 
 			final Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] requestsPipe,
 			int maxPartialResponses, int connectionsInBits, int clientRequestCount, int clientRequestSize,
-			boolean isTLS) {
+			TLSCertificates tlsCertificates) {
 		
-		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, isTLS);
+		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates);
 				
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 

@@ -427,7 +427,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
 		 int len = Pipe.takeRingByteLen(input);
 		
-		         
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
 		 final int blobMask = Pipe.blobMask(input);
 		 byte[] blob = Pipe.byteBackingArray(meta, input);
@@ -443,12 +442,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (debug){
 			 Appendables.appendUTF8(System.err, blob, bytePosition, len, blobMask);
 		 }
-//		 if (ServerCoordinator.TEST_RECORDS) {
-//			 //check 
-//			 testValidContent(myPipeIdx, input, meta, len);
-//			 
-//			 //testValidContentQuick(sourcePipe, meta, len);
-//		 }
 		 
 		 int temp = Pipe.bytesReadBase(input);
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
@@ -495,7 +488,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 final long time = 0;//System.nanoTime();//field not used by server...
 	
-		 writeToNextStage(output, channelId, len, requestContext, blobMask, blob, bytePosition, time); 
+		 writeToNextStage(output, channelId, len, requestContext,
+				          blobMask, blob, bytePosition, time); 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
@@ -636,7 +630,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void writeToNextStage(Pipe<NetPayloadSchema> output, final long channelId, int len, int requestContext,
+	private void writeToNextStage(Pipe<NetPayloadSchema> output, 
+			final long channelId, int len, int requestContext,
 			int blobMask, byte[] blob, int bytePosition, long time) {
 		/////////////
 		 //if needed write out the upgrade message
@@ -650,7 +645,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 //the next response should be routed to this new location
 			 int upgSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_UPGRADE_307);
 			 Pipe.addLongValue(channelId, output);
-			 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, output);;
+			 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, output);
 			 Pipe.confirmLowLevelWrite(output, upgSize);
 			 Pipe.publishWrites(output);
 			 

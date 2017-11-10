@@ -29,12 +29,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
 	private final int maxClients;
-	
-	//private Selector selector;
-	
-	private StringBuilder[] accumulators; //for testing only
-	
-	
+
 	
 	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
@@ -63,14 +58,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		
 		start = System.currentTimeMillis();
-		
-		if (ClientCoordinator.TEST_RECORDS) {
-			int i = output.length;
-			accumulators = new StringBuilder[i];
-			while (--i >= 0) {			
-				accumulators[i]=new StringBuilder();					
-			}
-		}
+
 		
 	}
 	

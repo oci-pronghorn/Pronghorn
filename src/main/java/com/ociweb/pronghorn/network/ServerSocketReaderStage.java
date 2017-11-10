@@ -212,6 +212,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (processWork) {
 			
+			
+			//ServerCoordinator.acceptConnectionStart = System.nanoTime();
+			
 				int responsePipeLineIdx = cc.getPoolReservation();
 				
 				final boolean newBeginning = (responsePipeLineIdx<0);
@@ -260,19 +263,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 	}
 
 	private void removeSelection(SelectionKey selection) {
-		
-//		System.err.println("removed "+((ConnectionContext)selection.attachment()).getChannelId());
-		
+
 		doneSelectors.add(selection);//add to list for removal
 		pendingSelections--;
-		
-//		if (pendingSelections==0) {
-////			System.err.println("we now have zero selectors *************");
-////			System.err.println("remove all the stored keys "+doneSelectors.size());
-//			removeDoneKeys(selector.selectedKeys());
-//			doneSelectors.clear();
-//		}
-		
 	}
 
 	private int rMask = 0;
@@ -332,12 +325,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (idToClear<0) {
 			throw new UnsupportedOperationException();
 		}
-		
-		
+				
 		int pipeIdx = coordinator.checkForResponsePipeLineIdx(idToClear);
 		//if we can not look it  up then we can not release it?
-		
-		
+				
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
@@ -440,7 +431,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (len>0) {
 			
 			if (newBeginning) {	
-					
+							
 				Pipe.presumeRoomForWrite(targetPipe);
 				
 				int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);

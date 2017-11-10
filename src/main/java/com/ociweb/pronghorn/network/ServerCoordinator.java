@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.nio.channels.Selector;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,11 +10,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.MemberHolder;
-import com.ociweb.pronghorn.util.PoolIdx;
-import com.ociweb.pronghorn.util.PoolIdxPredicate;
-import com.ociweb.pronghorn.util.ServiceObjectHolder;
-import com.ociweb.pronghorn.util.ServiceObjectValidator;
+import com.ociweb.pronghorn.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.channels.Selector;
 
 public class ServerCoordinator extends SSLConnectionHolder {
 	
@@ -24,7 +25,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private MemberHolder                          subscriptions;
     private int[]                                 upgradePipeLookup;
     private ConnectionContext[]                   connectionContext; //NOTE: ObjectArrays would work very well here!!
-            
+
     
     public final int                                  channelBits;
     public final int                                  channelBitsSize;
@@ -50,7 +51,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private final PoolIdx responsePipeLinePool;
 	public final int maxPartialResponses;
 	private final int[] processorLookup;
-	public final boolean isTLS;
 	private final int processorsCount;
 	
     private final String serviceName;
@@ -62,38 +62,33 @@ public class ServerCoordinator extends SSLConnectionHolder {
 //	public static long acceptConnectionStart;
 //	public static long orderSuperStart;
 //	public static long newDotRequestStart;
-	
-	
-	
-	static {
-		
-	}
+
 	
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig) {
-		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig){
+		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
 	}
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath) {
-		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
+		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", defaultPath);
 	}
 	
-	public ServerCoordinator(boolean isTLS, String bindHost, int port, 
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
             int maxConnectionsBits, int maxPartialResponses,
-            int processorsCount) {
-		this(isTLS,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
+            int processorsCount){
+		this(tlsCertificates,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
 	}
 	
-    public ServerCoordinator(boolean isTLS, String bindHost, int port, 
-    		                 int maxConnectionsBits, int maxPartialResponses,
-    		                 int processorsCount, 
-    		                 String serviceName, String defaultPath) {
+    public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
+							 int maxConnectionsBits, int maxPartialResponses,
+							 int processorsCount,
+							 String serviceName, String defaultPath){
 
-    	this.isTLS 			   = isTLS;
+		super(tlsCertificates);
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
@@ -108,14 +103,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
     	this.processorsCount = processorsCount;
     	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
-    	
-    	if (isTLS) {
-    		//logger.info("init TLS");
-			// TODO: move this up and share policy with client coordinator
-			TLSPolicy tls = TLSPolicy.defaultPolicy;
-			SSLEngineFactory.init(tls);
-    	}
-        
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -203,6 +190,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
         }
         
         that.upgradePipeLookup = new int[that.channelBitsSize];
+        Arrays.fill(that.upgradePipeLookup, -1);//if not upgraded it remains -1
+        
         return that.socketHolder = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
         
     }
@@ -266,9 +255,23 @@ public class ServerCoordinator extends SSLConnectionHolder {
 //	public static AtomicInteger inServerCount = new AtomicInteger(0);
 //    public static long start;
     
+	@Deprecated
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
         return that.upgradePipeLookup;
     }
+    
+    public static void setUpgradePipe(ServerCoordinator that, long channelId, int targetPipe) {
+    	that.upgradePipeLookup[(int)(that.channelBitsMask & channelId)] = targetPipe;
+    }
+    
+	public static boolean isWebSocketUpgraded(ServerCoordinator that, long channelId) {
+		return that.upgradePipeLookup[(int)(that.channelBitsMask & channelId)]>=0;
+	}
+	public static int getWebSocketPipeIdx(ServerCoordinator that, long channelId) {
+		return that.upgradePipeLookup[(int)(that.channelBitsMask & channelId)];
+	}
+	
+	
     
     public static Selector getSelector(ServerCoordinator that) {
         return that.selectors;
@@ -293,6 +296,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public String defaultPath() {
 		return defaultPath;
 	}
+
 
 
 }

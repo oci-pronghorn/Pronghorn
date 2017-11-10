@@ -14,12 +14,33 @@
         <uInt32 name="Verb" id="23">
         </uInt32>
 		
-		<byteVector name="Params" id="32"/> <!-- written as stream -->
+		<byteVector name="Params" id="32"/>
 		
         <uInt32 name="Revision" id="24">
         </uInt32>
         <uInt32 name="RequestContext" id="25">
         </uInt32>
    </template>
+   
+   
+   <template name="WebSocketFrame" id="100"> 
+    
+        <uInt64 name="ChannelId"   id="21">
+            <delta/>
+        </uInt64>
+        
+        <int32 name="Sequence" id="26">
+        </int32>
+
+        <int32 name="FinOpp" id="11">
+        </int32>
+        
+        <int32 name="Mask" id="10">
+        </int32>      
+                		
+		<byteVector name="BinaryPayload" id="12"/>
+
+   </template>
+    
 
 </templates>

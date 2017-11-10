@@ -31,11 +31,14 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 
 	protected final HTTPSpecification<T,R,V, H> httpSpec;
     
-    protected static final byte[] OK_200        = " 200 OK\r\n".getBytes();
-    protected static final byte[] Not_Found_404 = " 404 Not Found\r\n".getBytes();
-    
-    protected static final byte[] X_400 = " 400 OK\r\n".getBytes();
-    protected static final byte[] X_500 = " 500 OK\r\n".getBytes();
+	//TODO: protocols must be added as a new Enum rather than these hardcoded values.
+	
+
+	public static final byte[] Switching_Protocols_101 = " 101 Switching Protocols\r\n".getBytes();
+    protected static final byte[] OK_200                  = " 200 OK\r\n".getBytes();
+    protected static final byte[] X_400                   = " 400 OK\r\n".getBytes();
+    protected static final byte[] Not_Found_404           = " 404 Not Found\r\n".getBytes();   
+    protected static final byte[] X_500                   = " 500 OK\r\n".getBytes();
     
     protected static final byte[] SERVER = "Server: GreenLightning\r\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
     protected static final byte[] ETAG = "ETag: ".getBytes();
@@ -58,7 +61,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 //
 //    {"x":9,"y":17,"groovySum":26}
     
-   private static final byte[] EXTRA_STUFF = "Date: Mon, 16 Jan 2017 17:18:27 GMT\r\nLast-Modified: Mon, 16 Jan 2017 16:50:59 GMT\r\nETag: \"587cf9f3-1e\"\r\nAccept-Ranges: bytes\r\n".getBytes();
+   //private static final byte[] EXTRA_STUFF = "Date: Mon, 16 Jan 2017 17:18:27 GMT\r\nLast-Modified: Mon, 16 Jan 2017 16:50:59 GMT\r\nETag: \"587cf9f3-1e\"\r\nAccept-Ranges: bytes\r\n".getBytes();
     
     
     
@@ -135,7 +138,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     }
     
     //TODO: build better constants for these values needed.
-    public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
+    public static void writeHeader(byte[] revisionBytes, int status, int requestContext,
+    		                       byte[] etagBytes, byte[] typeBytes, 
     		                       int length, boolean chunked, boolean server,
     		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
     		                       DataOutputBlobWriter<ServerResponseSchema> writer, int conStateIdx) {
@@ -150,6 +154,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             } else {
             	if (404==status) {
             		writer.write(Not_Found_404);
+            	} else if (101==status) {
+            		writer.write(Switching_Protocols_101);            		
             	} else if (400==status) {
                     writer.write(X_400);
                 } else if (500==status) {
@@ -203,7 +209,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             
             //line five            
             writer.write(CONNECTION[conStateIdx]);
-            writer.write(EXTRA_STUFF);
+           // writer.write(EXTRA_STUFF);
             writer.write(RETURN_NEWLINE);
             //now ready for content
             

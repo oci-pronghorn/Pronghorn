@@ -101,7 +101,7 @@ public final class PoolIdx  {
     /**
      * 
      * @param key
-     * @param isOk filter to ensure that only acceptable values are choosen
+     * @param isOk filter to ensure that only acceptable values are chosen
      */
     public int get(long key, PoolIdxPredicate isOk) {   
     	

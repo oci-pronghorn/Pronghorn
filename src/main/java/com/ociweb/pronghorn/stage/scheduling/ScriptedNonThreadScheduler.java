@@ -379,8 +379,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     try {
                         logger.debug("begin startup of    {}", stage);
 
-                        Thread thread = Thread.currentThread();
-                        new ThreadLocal<Integer>();
+                       // Thread thread = Thread.currentThread();
+                       // new ThreadLocal<Integer>();
 
                         setCallerId(stage.boxedStageId);
                         stage.startup();
@@ -407,6 +407,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                                                                 stage.stageId); //Must ensure marked as terminated
                             }
                         }
+                        //TODO: need to halt more startups
+                        //      while j< stage count must shutdown those started
+                        //      then call shutdown on this scheduler
+                        System.exit(-1); //this is a hack for now until the above is completed.
                         return;
                     }
                 }

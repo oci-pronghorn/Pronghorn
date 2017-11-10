@@ -86,6 +86,11 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     DATE("Date: %b"),//nginx
     LAST_MODIFIED("Last-Modified: %b"),//nginx
     ETAG("ETag: %b"),//nginx
+    SEC_WEBSOCKET_KEY("Sec-WebSocket-Key: %b"), //for server parse
+    SEC_WEBSOCKET_PROTOCOL("Sec-WebSocket-Protocol: %b"),//both server and client
+    SEC_WEBSOCKET_VERSION("Sec-WebSocket-Version: %b"), //for server parse
+    SEC_WEBSOCKET_ACCEPT("Sec-WebSocket-Accept: %b"), //for client parse
+    ORIGIN("Origin: %b"),
     ACCEPT_RANGES("Accept-Ranges: %b"),//nginx
     EXPECT("Expect: %b"),
     FORWARDED("Forwarded: %b"),
@@ -98,10 +103,6 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     VIA("Via: %b"),
     WARNING("Warning: %b"),
     DNT("DNT: %b"),//chromium
-    SEC_WEBSOCKET_KEY("Sec-WebSocket-Key: %b"),
-    SEC_WEBSOCKET_PROTOCOL("Sec-WebSocket-Protocol: %b"),
-    SEC_WEBSOCKET_VERSION("Sec-WebSocket-Version: %b"),
-    ORIGIN("Origin: %b"),
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
     STATUS("Status: %i %b"){    

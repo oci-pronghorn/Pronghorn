@@ -1,11 +1,11 @@
 package com.ociweb.pronghorn.network.config;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelReader;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -182,6 +182,26 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		return typeMap;
 	}
 
+	public void visitHeaders(ChannelReader stream, Appendable target) {
+		int id = stream.readShort();
+		while (id > 0) {
+			try {
+				
+				target.append(headers[id].writingRoot());
+				
+				headerConsume(id, stream, target);
+				target.append("\n");
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			id = stream.readShort();
+		}
+		
+	}
+	
+	
 	public void headerSkip(int headerId, ChannelReader stream) {
 		headers[headerId].skipValue(stream);		
 	}

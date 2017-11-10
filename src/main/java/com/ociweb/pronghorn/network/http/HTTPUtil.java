@@ -70,9 +70,9 @@ public class HTTPUtil {
 	    writer.openField();
 		boolean chunked = false;
 		boolean server = false;
-		
+		byte[] eTagBytes = null;
 		AbstractRestStage.writeHeader(  HTTPRevisionDefaults.HTTP_1_1.getBytes(),
-				                        status, requestContext, null, 
+				                        status, requestContext, eTagBytes, 
 				                        typeBytes, 
 				                        contentLength, 
 						    		    chunked, server,

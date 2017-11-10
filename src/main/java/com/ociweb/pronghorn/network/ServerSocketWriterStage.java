@@ -295,13 +295,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    
 		} else if (NetPayloadSchema.MSG_UPGRADE_307 == activeMessageId) {
 			
-			final long channelId = Pipe.takeLong(input[idx]);
-			final int newRoute = Pipe.takeInt(input[idx]);
+			//set the pipe for any further communications
+		    long channelId = Pipe.takeLong(input[idx]);
+			int pipeIdx = Pipe.takeInt(input[idx]);
 			
-		    //set the pipe for any further communications
-		   // ServerCoordinator.setTargetUpgradePipeIdx(coordinator, groupIdx, channelId, newRoute);
+			
+			ServerCoordinator.setUpgradePipe(coordinator, 
+		    		channelId, //connection Id 
+		    		pipeIdx); //pipe idx
 		    
-		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
+		    //switch to new reserved connection?? after upgrade no need to use http router
+		    //perhaps? coordinator.releaseResponsePipeLineIdx(channelId);
+		    //	 connection   setPoolReservation
+		    //or...
+			
+		    
+		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_UPGRADE_307));
 		    Pipe.releaseReadLock(input[idx]);
 		    assert(Pipe.contentRemaining(input[idx])>=0);
 		    
@@ -660,9 +669,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 
 	        	}
     			
-    		}	        
-	        
-	        
+    		}
 
     }
 

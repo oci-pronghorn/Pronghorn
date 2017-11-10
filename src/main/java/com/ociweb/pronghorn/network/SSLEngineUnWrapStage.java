@@ -41,12 +41,18 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.encryptedContent = encryptedContent;
 		this.outgoingPipeLines = outgoingPipeLines;
 		this.handshakeRelease = relesePipe;
-		
-		
+				
 		assert(outgoingPipeLines.length>0);
 		assert(encryptedContent.length>0);
 		assert(encryptedContent.length == outgoingPipeLines.length);
-
+		
+		if (encryptedContent.length<=0) {
+			throw new UnsupportedOperationException("Must have at least 1 input pipe");		
+		}
+		if (outgoingPipeLines.length<=0) {
+			throw new UnsupportedOperationException("Must have at least 1 output pipe");
+		}
+		
 		
 		this.handshakePipe = handshakePipe;
 		
@@ -172,7 +178,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			i = outgoingPipeLines.length;
 			while (--i>=0) {
 				
-				totalBytesOfContent += Pipe.getBlobRingTailPosition(outgoingPipeLines[i]);
+				totalBytesOfContent += Pipe.getBlobTailPosition(outgoingPipeLines[i]);
 			}
 			
 			float mbps = (float) ( (8_000d*totalBytesOfContent)/ (double)totalNS);
