@@ -1,8 +1,10 @@
 package com.ociweb.pronghorn.pipe.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
+import java.util.Base64;
 import java.util.Random;
 
 import org.junit.Test;
@@ -178,8 +180,8 @@ public class AppendablesTest {
   	 Appendables.appendArray(str, '[',a,']');
   	 
 	 assertEquals(str.toString().charAt(0),'[');//testing ledt and right chars were appended properly
-	   	assertEquals(str.toString().charAt(str.length()-1),']');
-	   	assertEquals(str.length(),4000);//predictable length of 1000 int array with formatting char bytes.
+	 assertEquals(str.toString().charAt(str.length()-1),']');
+	 assertEquals(str.length(),4000);//predictable length of 1000 int array with formatting char bytes.
 		      
     }
     
@@ -191,22 +193,67 @@ public class AppendablesTest {
     }
     
     @Test
+    public void wikipediaTest() {
+    	String value = "Man is distinguished, not only by his reason, but by this singular passion from "
+	    	+"other animals, which is a lust of the mind, that by a perseverance of delight "
+	    	+"in the continued and indefatigable generation of knowledge, exceeds the short "
+	    	+"vehemence of any carnal pleasure.";
+    	
+    	byte[] b = value.getBytes();
+ 
+    	
+    	StringBuilder str = new StringBuilder();
+    	Appendables.appendBase64(str, b, 0, b.length, Integer.MAX_VALUE);
+    	assertEquals(Base64.getEncoder().encodeToString(b), str.toString());
+    	
+//    	TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1dCBieSB0aGlz
+//    	IHNpbmd1bGFyIHBhc3Npb24gZnJvbSBvdGhlciBhbmltYWxzLCB3aGljaCBpcyBhIGx1c3Qgb2Yg
+//    	dGhlIG1pbmQsIHRoYXQgYnkgYSBwZXJzZXZlcmFuY2Ugb2YgZGVsaWdodCBpbiB0aGUgY29udGlu
+//    	dWVkIGFuZCBpbmRlZmF0aWdhYmxlIGdlbmVyYXRpb24gb2Yga25vd2xlZGdlLCBleGNlZWRzIHRo
+//    	ZSBzaG9ydCB2ZWhlbWVuY2Ugb2YgYW55IGNhcm5hbCBwbGVhc3VyZS4=
+
+    	byte[] encBytes = str.toString().getBytes();
+    	//from these bytes we must reassemble the original text
+    	//each char must map to an integer.
+    	
+    	byte[] target = new byte[value.length()];
+    	int len = Appendables.decodeBase64(encBytes, 0, encBytes.length, Integer.MAX_VALUE, 
+    			                           target, 0, Integer.MAX_VALUE);
+    	
+    	assertEquals(value.length(), len);
+    	assertEquals(value, new String(target,0,len));
+
+    	
+    }
+    
+    @Test
     public void appendBase64Encoded(){
     	StringBuilder str = new StringBuilder();
     	byte [] b = new byte[100];
     	Random r = new Random(101);
     	r.nextBytes(b);
-    	String val1 = "6cDPuOnAz7jpwM%2B46cDPuOnAz7jpwM%2B46cDPuOnAz7gNMSP9DTEj%2FQ0xI%2F0NMSP9DTEj%2FQ0xI%2F0NMSP9DTEj%2FZFnmb%2BRZ5m%2FkWeZv5Fnmb%2BRZ5m%2FkWeZv5Fnmb%2BRZ5m%2F%2BekiCg%3D%3D";
-    	String val2 = "6cDPuOnAz7jpwM+46cDPuOnAz7jpwM+46cDPuOnAz7gNMSP9DTEj/Q0xI/0NMSP9DTEj/Q0xI/0NMSP9DTEj/ZFnmb+RZ5m/kWeZv5Fnmb+RZ5m/kWeZv5Fnmb+RZ5m/+ekiCg==";
-    	Appendables.appendBase64Encoded(str, b, 0, b.length, b.length-1);
-    	assertEquals(str.toString(),val1);
+    	String val1 = "6cDPuFQn8gA7NlFdPWxThG37yTwrIDXBxmeLjytbTdgNMSP9POqYoURhxkvhwRMm11q10IS2VdDFXDdxkwHqrZFnmb%2BB%2BKOyAYU3hQgDIJnsl4SeYWBDBK%2FOqDVYN7RL%2BekiCg%3D%3D";
+    	String val2 = "6cDPuFQn8gA7NlFdPWxThG37yTwrIDXBxmeLjytbTdgNMSP9POqYoURhxkvhwRMm11q10IS2VdDFXDdxkwHqrZFnmb+B+KOyAYU3hQgDIJnsl4SeYWBDBK/OqDVYN7RL+ekiCg==";
+    	Appendables.appendBase64Encoded(str, b, 0, b.length, Integer.MAX_VALUE);
+    	assertEquals(val1, str.toString());
     	
     	
     	str = new StringBuilder();
-    			Appendables.appendBase64(str, b, 0, b.length, b.length-1);
+    	Appendables.appendBase64(str, b, 0, b.length, Integer.MAX_VALUE);
+     	assertEquals(val2, str.toString());
 
-    	    	assertEquals(str.toString(),val2);
+     	String x = Base64.getEncoder().encodeToString(b);
+     	assertEquals(x, val2);
     	
+     	
+     	/////////////////
+     	/////////////////
+     	//convert back 
+     	
+     	byte[] data = Base64.getDecoder().decode(val2.getBytes());
+     	assertArrayEquals(b, data);
+	
+     	
     	
     }
     
@@ -226,24 +273,6 @@ public class AppendablesTest {
     	 assertEquals(str.toString(),"1:00:00.000");
     }
     
-    
-    @Test
-    public void appendUTF8(){
-    	byte [] b = new byte[100];
-    	Random r = new Random(101);
-   for(int i = 0;i<b.length;i++){
-	   b[i] = (byte) r.nextInt(127); 
-   }
-    	StringBuilder str = new StringBuilder();
-    	//string literal. predictable randoms.
-    	String val = "=9mF=9mF=9mF=9mF=9mF=9mF=9mF=9mF@HB@HB@HB@HB@HB@HB@HB@HB.B17.B17.B17.B17.B17.B17.B17.B17cvh";
-    	System.out.println();
-    	Appendables.appendUTF8(str, b, 0, b.length, b.length-1);
-    	
-    	assertEquals(str.toString(),val);
-    	
-    	
-    }
     
     @Test
     public void appendIntDecimalValue() {

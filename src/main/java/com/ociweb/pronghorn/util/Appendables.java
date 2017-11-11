@@ -1,6 +1,10 @@
 package com.ociweb.pronghorn.util;
 
 import java.io.IOException;
+import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 
@@ -16,8 +20,30 @@ import com.ociweb.pronghorn.pipe.Pipe;
  */
 public class Appendables {
     
+	private final static Logger logger = LoggerFactory.getLogger(Appendables.class);
+	
     private final static char[] hBase = new char[] {'0','1','2','3','4','5','6','7','8','9',
-      'a','b','c','d','e','f'};
+    												'a','b','c','d','e','f'};
+    
+    
+    private final static char[] base64 = new char[]{'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
+    		                                        'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
+    		                                        'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
+    		                                        'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'};
+    
+    private final static byte[] base64Inverse;
+    
+    static {
+    	//populate inverse for base64 decode
+    	base64Inverse = new byte[256];    	
+    	Arrays.fill(base64Inverse, (byte)-1);
+    	int i = base64.length;
+    	while (--i>=0) {
+    		base64Inverse[(int)	base64[i] ] = (byte)i;
+    	}
+    }
+
+    
     
     public static <A extends Appendable> A appendArray(A target, char left, long[] a, char right) {
     	try {
@@ -31,8 +57,9 @@ public class Appendables {
 	            for (int i = 0; ; i++) {
 	                appendValue(target,a[i]);
 	                //target.append(Long.toString(a[i]));
-	                if (i == iMax)
+	                if (i == iMax) {
 	                    return (A) target.append(right);
+	                }
 	                target.append(", ");
 	            } 
 	        } else {
@@ -682,12 +709,7 @@ public class Appendables {
 		}
     }
 
-    
-    private final static char[] base64 = new char[]{'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-    		                                        'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
-    		                                        'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
-    		                                        'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'};
-    
+
     // + IS %2B
     // / IS %2F
     // = IS %3D    
@@ -769,9 +791,13 @@ public class Appendables {
     	}
     }
     
+    
     public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int mask) {
         //  https://en.wikipedia.org/wiki/Base64
     	try {
+    		
+    		assert(Integer.lowestOneBit(mask+1) == mask+1) : "mask must be all ones but found "+Integer.toBinaryString(mask);
+    		
 	    	int accumulator = 0;
 	    	int i = 0;
 	    	int shift = -6;
@@ -813,7 +839,45 @@ public class Appendables {
     		throw new RuntimeException(ioex);
     	}
     }
-    
+        
+
+	public static int decodeBase64(byte[] source, int sourceIdx, int sourceLen, int sourceMask, 
+								   byte[] target, int targetIdx, int targetMask) {
+
+		int accumulator = 0;
+		int bitsAvail = 0;
+		int t = targetIdx;
+		int i = sourceLen;
+		while (--i >= 0) {
+
+			byte b = base64Inverse[source[sourceMask & sourceIdx++]];
+			if (b >= 0) {
+
+				// roll in 6 bits at a time
+				accumulator = (accumulator << 6) | (0x3F & b);
+				bitsAvail += 6;
+
+				while (bitsAvail > 8) {
+
+					bitsAvail -= 8;
+					target[targetMask & t++] = (byte) (accumulator >> bitsAvail);
+
+				}
+				// Note the xtra bits < 8 are not used on the very last cycle
+
+			} else {
+				if (i > 0) {
+					logger.info("invlid value found in base64 encoding");
+					return -1; // can not decode
+				} else {
+					// last block, nothing to do.
+				}
+			}
+		}
+
+		return t - targetIdx;
+
+	}
     public static <A extends Appendable> A appendUTF8(A target, byte[] backing, int pos, int len, int mask) {
     	try {
 	        //TODO: note with very long len plus pos we can still run into a problem. so assert len< maxInt-mask ???

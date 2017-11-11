@@ -2418,9 +2418,9 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
 		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
-		//TODO: revisit this not sure this conditional is required
+		
 	    if (sourceLen > 0) {
-	    	int tStart = p & rbRingBuffer.byteMask;
+	    	int tStart = p & rbRingBuffer.blobMask;
 	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.blobRing, tStart, 1+rbRingBuffer.byteMask - tStart);
 	    }
 		return p;
@@ -2442,7 +2442,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
 		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
-	    	int targetMask = rbRingBuffer.byteMask;
+	    	int targetMask = rbRingBuffer.blobMask;
 	    	byte[] target = rbRingBuffer.blobRing;
 
 	        int tStart = p & targetMask;
@@ -2472,7 +2472,8 @@ public class Pipe<T extends MessageSchema<T>> {
 		while (--i>=0) {
 			target[targetIdx+i] = (byte)(0xFF&source.charAt(sourceIdx+i));
 		}
-	}
+	}	
+
 
 	public static <S extends MessageSchema<S>> void addUTF8(CharSequence source, Pipe<S> rb) {
 	    addUTF8(source, null==source? -1 : source.length(), rb);

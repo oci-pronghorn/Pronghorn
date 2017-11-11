@@ -1374,6 +1374,21 @@ public class TrieParserReader {
 
 		return l;
 	}
+	
+	public static boolean capturedFieldBytesEquals(TrieParserReader reader, int idx, byte[] target, int targetPos, int targetMask) {
+
+		int pos = idx*4;
+		assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
+
+		int type = reader.capturedValues[pos++];
+		assert(type==0);
+		int p = reader.capturedValues[pos++];
+		int l = reader.capturedValues[pos++];
+		int m = reader.capturedValues[pos++];
+
+		return Pipe.isEqual(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);
+
+	}
 
 	public static int capturedFieldByte(TrieParserReader reader, int idx, int offset) {
 
