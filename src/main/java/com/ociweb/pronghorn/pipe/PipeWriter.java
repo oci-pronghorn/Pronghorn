@@ -298,7 +298,7 @@ public class PipeWriter {
     
 	public static void publishEOF(Pipe pipe) {	
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
-		StackStateWalker.writeEOF(pipe);		
+		StackStateWalker.writeEOF(pipe);
 		Pipe.publishWorkingHeadPosition(pipe, pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);		
 	}
 

@@ -81,9 +81,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	
     	//NOTE: we ignore length of the data and always read from maxVarLen 
     	
-    	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
     	
-    	//logger.trace("read from last {}  {}  {}",bytesLowBound,pipe.maxVarLen,negativeIntOffset);
+    	
+    	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
+
+    	//logger.info("backing len:{} low {} max {} off {} pos {}",backing.length,bytesLowBound,pipe.maxVarLen,(4*negativeIntOffset),position);
     	
 //    	logger.info("reading int from position {} value {} from pipe {}",position,
 //    			(backing[byteMask & position]<<24) |
@@ -232,7 +234,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     public void setPositionBytesFromStart(int byteIndexFromStart) {
-    	assert(byteIndexFromStart<length) : "index of "+byteIndexFromStart+" is out of limit "+length;
+        assert(byteIndexFromStart<length) : "index of "+byteIndexFromStart+" is out of limit "+length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
     	position = bytesLowBound+byteIndexFromStart;
     }
