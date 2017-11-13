@@ -141,6 +141,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		if (outMaxVar <= inMaxVar) {
 			throw new UnsupportedOperationException("Input has field lenght of "+inMaxVar+" while output pipe is "+outMaxVar+", output must be larger");
 		}
+		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
 	}
 	public HTTP1xRouterStage(GraphManager gm, 
@@ -169,6 +170,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.shutdownCount = inputs.length;
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
+        
+        GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		
     }    
 	
     
@@ -263,7 +267,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
     	
-        if (waitForOutputOn>=0) { //hack test
+        if (waitForOutputOn>=0 && waitForOutputOn<outputs.length) { //hack test
         	
         	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
         		waitForOutputOn=-1;
@@ -690,7 +694,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
         final int size =  Pipe.addMsgIdx(outputPipe, HTTPRequestSchema.MSG_RESTREQUEST_300);        // Write 1   1                         
         Pipe.addLongValue(channel, outputPipe); // Channel                        // Write 2   3        
- 
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
         
         //route and verb

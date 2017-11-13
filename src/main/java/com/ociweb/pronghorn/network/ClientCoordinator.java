@@ -208,8 +208,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return connections.lookupInsertPosition();
 	}
 	
-	public int responsePipeLineIdx(long ccId) {
-		return PoolIdx.get(responsePipeLinePool, ccId);
+	public static int responsePipeLineIdx(ClientCoordinator that, long ccId) {
+		return PoolIdx.get(that.responsePipeLinePool, ccId);
 	}
 		
 	public int checkForResponsePipeLineIdx(long ccId) {

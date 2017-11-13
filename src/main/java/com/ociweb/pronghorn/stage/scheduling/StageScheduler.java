@@ -65,7 +65,7 @@ public abstract class StageScheduler {
 	
 
 	private static int idealThreadCount() {
-		return Runtime.getRuntime().availableProcessors()*2;
+		return Runtime.getRuntime().availableProcessors();
 	}
 	
 	public static StageScheduler defaultScheduler(GraphManager gm) {
@@ -79,26 +79,18 @@ public abstract class StageScheduler {
 		return defaultSchedulerImpl(gm, threadLimitHard, Math.min(idealThreadCount(),maxThreads));
 	}
 
-	private static StageScheduler defaultSchedulerImpl(GraphManager gm, final boolean threadLimitHard, int ideal) {
-		int threadLimit = ideal; 		
-		
-		final int scale = 2;
-		assert(threadLimit>0);
+	private static StageScheduler defaultSchedulerImpl(GraphManager gm, final boolean threadLimitHard, final int targetThreadCountLimit) {
+		assert(targetThreadCountLimit>0);
 		final int countStages = GraphManager.countStages(gm);
-		if ((threadLimit<=0) || (countStages > scale*ideal)) {
-			//do not allow the ThreadPerStageScheduler to be used, we must group
-			threadLimit = scale*ideal;//this must be large so give them a few more
-		}
-		
-		if (threadLimit>=countStages) { 
+
+		if (targetThreadCountLimit>countStages) { 
+				  //NOTE: this case will be rarely used, the other schedules are
+			      //      more effecient however this scheduler is much simpler.
 				  logger.info("Threads in use {}, one per stage.", countStages);
 		          return new ThreadPerStageScheduler(gm);
 		} else {
-				  logger.info("Threads in use {}, fixed limit with fixed script.", threadLimit);
-				  return new ScriptedFixedThreadsScheduler(gm, threadLimit, threadLimitHard);
-				  
-				  //TODO: if we do not need to roll back to this before 2018 we should remove this line.
- 		         // return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+				  logger.info("Threads in use {}, fixed limit with fixed script.", targetThreadCountLimit);
+				  return new ScriptedFixedThreadsScheduler(gm, targetThreadCountLimit, threadLimitHard);
 		}
 	}
 

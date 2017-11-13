@@ -90,6 +90,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     SEC_WEBSOCKET_PROTOCOL("Sec-WebSocket-Protocol: %b"),//both server and client
     SEC_WEBSOCKET_VERSION("Sec-WebSocket-Version: %b"), //for server parse
     SEC_WEBSOCKET_ACCEPT("Sec-WebSocket-Accept: %b"), //for client parse
+    SEC_WEBSOCKET_EXTENSIONS("Sec-WebSocket-Extensions: %b"),
     ORIGIN("Origin: %b"),
     ACCEPT_RANGES("Accept-Ranges: %b"),//nginx
     EXPECT("Expect: %b"),

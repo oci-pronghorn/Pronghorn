@@ -907,14 +907,14 @@ public class NetGraphBuilder {
 					
 				if (a==9) {
 					routerConfig.registerRoute(
-				             getPathRoute(a),
-				             HTTPHeaderDefaults.ORIGIN.rootBytes(),
-				             HTTPHeaderDefaults.SEC_WEBSOCKET_ACCEPT.rootBytes(),
-				             HTTPHeaderDefaults.SEC_WEBSOCKET_KEY.rootBytes(),
-				             HTTPHeaderDefaults.SEC_WEBSOCKET_PROTOCOL.rootBytes(),
-				             HTTPHeaderDefaults.SEC_WEBSOCKET_VERSION.rootBytes(),
-				             HTTPHeaderDefaults.UPGRADE.rootBytes(),
-				             HTTPHeaderDefaults.CONNECTION.rootBytes()
+				             getPathRoute(a)
+//				             ,HTTPHeaderDefaults.ORIGIN.rootBytes()
+//				             ,HTTPHeaderDefaults.SEC_WEBSOCKET_ACCEPT.rootBytes()
+//				             ,HTTPHeaderDefaults.SEC_WEBSOCKET_KEY.rootBytes()
+//				             ,HTTPHeaderDefaults.SEC_WEBSOCKET_PROTOCOL.rootBytes()
+//				             ,HTTPHeaderDefaults.SEC_WEBSOCKET_VERSION.rootBytes()
+//				             ,HTTPHeaderDefaults.UPGRADE.rootBytes()
+//				             ,HTTPHeaderDefaults.CONNECTION.rootBytes()
 				             				             
 				             );	
 					

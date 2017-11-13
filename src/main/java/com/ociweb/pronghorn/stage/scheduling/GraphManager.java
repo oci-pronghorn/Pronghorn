@@ -88,6 +88,8 @@ public class GraphManager {
 	public final static String LOAD_BALANCER   = "LOAD_BALANCER"; //this stage evenly splits traffic across outputs
 	public final static String LOAD_MERGE      = "LOAD_MERGE"; //this stage consumes equal priority traffic from inputs.
 	public final static String HEAVY_COMPUTE   = "HEAVY_COMPUTE"; //this stage does a lot of compute, we will avoid putting these on the same thread.
+	public final static String TRIGGER         = "TRIGGER"; //this stage limits rate or flow and triggers other stages.
+	public final static String ISOLATE         = "ISOLATE"; //this stage should be isolated from its neighbors
 	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
 	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	
@@ -198,6 +200,7 @@ public class GraphManager {
 		Arrays.fill(multNotaIds, -1);
 		
 		stageStateData = new GraphManagerStageStateData();
+				
 	}
 	
 	private GraphManager(GraphManagerStageStateData parentStageStateData) {
@@ -477,6 +480,7 @@ public class GraphManager {
      */
 	public static void disableMutation(GraphManager m) {
 		if (m.enableMutation) {
+					
 			//logger.info("disable mutation");
 			if (m.telemetryPort > 0) {
 				recordElapsedTime = true; //turn on for the chart data
@@ -1644,11 +1648,11 @@ public class GraphManager {
 	                target.append(AQUOTE);
 	                
 	                if (pct>=6000) {
-                		target.append(",color=red");	    
+                		target.append(",color=red,penwidth=5");	    
                 	} else if (pct>=4000) {
-                		target.append(",color=orange");	    
+                		target.append(",color=orange,penwidth=5");	    
                 	} else if (pct>=2000) {
-                		target.append(",color=blue");
+                		target.append(",color=blue,penwidth=5");
                 	}
 	                
 	                /////////////////////////////////////
@@ -1748,7 +1752,6 @@ public class GraphManager {
 		                target.append(AQUOTE);
 		                		                
 		                int lineWidth = computeLineWidth(traffic, pipe);
-		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];
@@ -1759,6 +1762,7 @@ public class GraphManager {
 		                	} else {
 		                	}
 		                }
+		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
 		                target.append(CLOSEBRACKET_NEWLINE);
 	                }	          

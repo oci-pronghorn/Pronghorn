@@ -113,6 +113,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 		this.UNSUPPORTED_HEADER_ID  = httpSpec.headerCount+2;
 		this.END_OF_HEADER_ID       = httpSpec.headerCount+3;//for the empty header found at the bottom of the header
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
+		
 	}
 
 	  @Override

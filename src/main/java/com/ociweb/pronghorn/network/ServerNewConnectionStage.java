@@ -52,6 +52,8 @@ public class ServerNewConnectionStage extends PronghornStage{
         this.label = coordinator.host()+":"+coordinator.port();
         
         this.newClientConnections = newClientConnections;
+        
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
     }
     
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, boolean isTLS) {
@@ -65,6 +67,8 @@ public class ServerNewConnectionStage extends PronghornStage{
         this.label = coordinator.host()+":"+coordinator.port();
         
         this.newClientConnections = null;
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		
     }
     
     @Override
@@ -79,7 +83,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     	SocketAddress endPoint = null;
 
     	try {
-            logger.info("startup of new server");
+            //logger.info("startup of new server");
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
     		server = ServerSocketChannel.open();

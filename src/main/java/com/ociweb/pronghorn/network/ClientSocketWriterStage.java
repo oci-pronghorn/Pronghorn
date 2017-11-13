@@ -53,6 +53,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.shutCountDown = input.length;
 		this.bufMultiplier = bufMultiplier;
 		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 	}
 
 	

@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
@@ -23,6 +24,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final Pipe<ReleaseSchema>[] releasePipes;
 	private final static Logger logger = LoggerFactory.getLogger(ClientSocketReaderStage.class);
 
+	public static final boolean showResponse = false;
+	
 	private long start;
 	private long totalBytes=0;
 
@@ -43,7 +46,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
-				
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);	
 	}
 	
 	@Override
@@ -65,15 +68,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		long duration = System.currentTimeMillis()-start;
-		
-		logger.trace("Client Bytes Read: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
-		
+		if (duration>0) {
+			logger.trace("Client Bytes Read: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
+		}
 	}
 
 	int maxWarningCount = 10;
 	
 	@Override
-	public void run() {
+	public void run() { //TODO: this method is the new hot spot in the profiler.
 
 		    consumeRelease();
 		    
@@ -132,11 +135,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
-					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the system busy
+					    	int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
 					    	if (pipeIdx>=0) {
 					    	} else {	    	
 					    		consumeRelease();
-					    		pipeIdx = coordinator.responsePipeLineIdx(cc.getId()); //try again.
+					    		pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId()); //try again.
 					    		if (pipeIdx<0) {
 //					    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
 //					    				logger.warn("bump up maxPartialResponsesClient count, performance is slowed due to waiting for available input pipe on client");
@@ -206,10 +209,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
 				 				 
-									//		boolean showResponse = true;
-									//		if (showResponse) {
-									//			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-									//		}
+											
+											if (showResponse) {
+														    System.err.println("//////////////////////");
+												   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+												   			System.err.println("//////////////////////");
+											}
 		
 							    			
 							    			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);

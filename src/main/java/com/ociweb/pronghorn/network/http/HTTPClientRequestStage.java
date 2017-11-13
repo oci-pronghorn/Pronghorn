@@ -51,6 +51,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		//TODO: we have a bug here detecting EOF so this allows us to shutdown until its found.
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 	}
 	
 	

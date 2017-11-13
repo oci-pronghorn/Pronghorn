@@ -95,6 +95,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
         
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
     
@@ -109,6 +110,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
         
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
     
@@ -273,8 +275,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
 					
-			//System.err.println("begin of disconnect EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEe");
-			
 			final long channelId = Pipe.takeLong(input[idx]);
 
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
@@ -352,8 +352,10 @@ public class ServerSocketWriterStage extends PronghornStage {
         int len = Pipe.takeRingByteLen(pipe);
         
         if (showAllContentSent) {
+        	System.out.println("////////////////////");
         	int pos = Pipe.convertToPosition(meta, pipe);
         	Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
+        	System.out.println("////////////////////");
         }
         
         

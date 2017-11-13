@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ClientSocketWriterStage;
+import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
+import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -152,6 +154,20 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    final int rootCounter = hierarchicalClassifier(rootsTable, lastKnownRoot, graphManager,
 									    		targetThreadCount, 
 									    		pipes, countStages, enforceLimit);    
+	
+//		for(int stages=0; stages <= GraphManager.countStages(graphManager); stages++) { 
+//	    
+//	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
+//	    	if (null!=stage) {	    		
+//	    		int id = 		rootId(stage.stageId, rootsTable, lastKnownRoot);	    			
+//	    		
+//	    		System.err.println(id+"  "+stage.getClass().getSimpleName()+" "+stage.stageId);
+//	    		
+//	    	}
+//	    	
+//	    }
+	    
+	    
 	    if (countStages>logLimit) {
 	        	logger.info("finished hierarchical classifications");
 	    }
@@ -253,10 +269,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//done combining the monitor stages.
 		///////////////////////////////////////////////
 			
+		//TODO: do producers first?
+		//      do not combine 2 producers..
 		
 		//loop over pipes once and stop early if total threads is smaller than or matches the target thread count goal
-	    int i = pipes.length;
-	    while (--i>=0) {	    	
+	  
+		int i = pipes.length;
+	    while (--i>=0 /*&& totalThreads>targetThreadCount*/) {	    //can stop early but this may not be optimal??	
 	    	int ringId = pipes[i].id;
 	    	
 	    	int consumerId = GraphManager.getRingConsumerId(graphManager, ringId);
@@ -270,7 +289,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    		//determine if they are already merged in the same tree?
 		    		int consRoot = rootId(consumerId, rootsTable, lastKnownRoot);
 		    		int prodRoot = rootId(producerId, rootsTable, lastKnownRoot);
-		    		if (consRoot!=prodRoot) {		    			
+		    		
+		    		if (consRoot != prodRoot) {	
+		    		
 		    			rootCounter = combineToSameRoot(rootCounter, consRoot, prodRoot, rootsTable);
 		    			totalThreads--;//removed one thread
 		    		}
@@ -287,8 +308,30 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager) {
 				
+		//these stages must be isolated from their neibors.
+		//  1. they may be a hub and a bottleneck for traffic
+		//  2. they may be blocking calls
+		if (GraphManager.hasNota(graphManager, producerId, GraphManager.ISOLATE)) {
+			return false;
+		}
+		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.ISOLATE)) {
+			//if this a small single use allow for join
+			if (GraphManager.getInputPipeCount(graphManager, consumerId)>2) {
+				return false;
+			}
+		}
+		
 		Pipe p = GraphManager.getPipe(graphManager, ringId);
 		
+		//if producer sends to n consumers each with the same scheme 
+		//and each with a heavy compute stage then keep the split, never join.
+		if (isSplittingHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+			return false;
+		}
+		if (isMergeOfHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+			return false;
+		}
+
 		PronghornStage consumerStage = GraphManager.getStage(graphManager, consumerId);
 		PronghornStage producerStage = GraphManager.getStage(graphManager, producerId);
 
@@ -306,14 +349,18 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}	
 		
-		//if producer sends to n consumers each with the same scheme 
-	    //and each with a heavy compute stage then keep the split, never join.
-		if (isSplittingHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+		
+		//this server pipe is only used for 404 based on route failures
+		//since this is not a priority it should not be an optimized relationship
+		if ((producerStage instanceof HTTP1xRouterStage)
+			&& (consumerStage instanceof OrderSupervisorStage)	
+			) {
 			return false;
 		}
-		if (isMergeOfHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
-			return false;
-		}
+			
+		
+		//if this consumer comes from a different produer up stream do not combine
+		//if the size of a group is above average do not combine.
 		
 
         //NOTE: this also helps with the parallel work above, any large merge or split will show up here.
@@ -333,8 +380,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		return true;
 	}
-	
-		
 
 	private static boolean isSplittingHeavyComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
 		int countOfHeavyComputeConsumers = 0;
@@ -593,9 +638,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			              final IntHashTable rootsTable, IntArrayHolder lastKnownRoot,
 			              int count, int[] rootMemberCounter, boolean log) {
 
-		
-		boolean isLarge = false;//TODO: add support for large threading model
-		
 		PronghornStage[] pronghornStages = stageArrays[root];
 				
 		int i = 0;
@@ -608,9 +650,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//now add the new stage at index i
 		pronghornStages[i]=stage;
 		
-		if (log) {
-			logger.info("added stage {}",stage);
-		}
+//		if (log) {
+//			logger.info("added stage {}",stage);
+//		}
+
 		
 		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, root, stage);
 		count++;
@@ -643,7 +686,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				tempRanks[r] = getNearnessRank(consumerId, graphManager, pronghornStages);
 			}
 						
-			int targetRank = 0;
+			int targetRank = -1;
 			do {
 				for(int r = 1; r<=outputCount; r++) {
 					
@@ -658,7 +701,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					}
 				}
 				targetRank++;
-			} while (targetRank<=i && pronghornStages[pronghornStages.length-1]==null);
+			} while (targetRank<=i 
+					&& pronghornStages[pronghornStages.length-1]==null);
 			
 		}
 		
@@ -678,11 +722,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			//but never before this point
 			///////////////
 			int inC = GraphManager.getInputPipeCount(graphManager, consumerId);
-			
+		
 			for(int i = 1; i<=inC ; i++) {
 				Pipe inPipe = GraphManager.getInputPipe(graphManager, consumerId, i);				
 				int inProd = GraphManager.getRingProducerStageId(graphManager, inPipe.id);
-				PronghornStage[] prodsList = stageArrays[rootId(inProd, rootsTable, lastKnownRoot)];
+				int tempRootId = rootId(inProd, rootsTable, lastKnownRoot);
+				lazyCreateOfArray(rootMemberCounter, stageArrays, tempRootId);
+				PronghornStage[] prodsList = stageArrays[tempRootId];
 				
 				boolean found = false;
 				int j = prodsList.length;
@@ -729,13 +775,15 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
      * has the maximum distance, then return that value. if not found return max int.
      * 
      * this provides a "rank" to determine how "near" this consumer is to the most recent stages.
+     * 
+     * "TrafficCops" and other "triggers" however are always the highest priority and are given a rank of -1 by default.
      */
 	private static int getNearnessRank(int consumerId,
 			                           GraphManager graphManager, 
 			                           PronghornStage[] pronghornStages) {
 
-		if (GraphManager.getStage(graphManager, consumerId) instanceof ClientSocketWriterStage ) { //HTTPClientRequestTrafficStage 4
-			System.err.println();
+		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.TRIGGER)) {
+			return -1;
 		}
 		
 		int maxSteps = 0;
