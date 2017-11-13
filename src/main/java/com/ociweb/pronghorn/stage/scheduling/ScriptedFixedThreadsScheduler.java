@@ -311,10 +311,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//these stages must be isolated from their neibors.
 		//  1. they may be a hub and a bottleneck for traffic
 		//  2. they may be blocking calls
-		if (GraphManager.hasNota(graphManager, producerId, GraphManager.ISOLATE)) {
+		if (GraphManager.hasNota(graphManager, producerId, GraphManager.ROUTER_HUB)) {
 			return false;
 		}
-		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.ISOLATE)) {
+		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.ROUTER_HUB)) {
 			//if this a small single use allow for join
 			if (GraphManager.getInputPipeCount(graphManager, consumerId)>2) {
 				return false;
