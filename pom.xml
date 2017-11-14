@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
-  <version>0.0.4-SNAPSHOT</version>
+  <version>0.0.4</version>
   <name>Ph-TLS-pureJava</name>
   <artifactId>Ph-TLS-pureJava</artifactId>
   <description>pure Java TLS implementation</description>
@@ -33,7 +33,7 @@
     <connection>scm:git:git://github.com/oci-pronghorn/Ph-TLS-pureJava.git</connection>
     <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Ph-TLS-pureJava.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>Ph-TLS-pureJava-0.0.4</tag>
   </scm>
   
     
