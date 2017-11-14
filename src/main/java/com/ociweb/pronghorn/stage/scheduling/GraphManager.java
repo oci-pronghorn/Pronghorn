@@ -2290,11 +2290,11 @@ public class GraphManager {
 				
 				if (recordElapsedTime) {
 					
-					//add rolling moving average
-					
 					buildHistogramsAsNeeded(graphManager, stageId);
 					graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
+
 				}
+
 				
 				long newPct = ((100_000L*duration)/cycleDuration);
 				

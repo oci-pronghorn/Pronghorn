@@ -510,68 +510,84 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				}
             }
 
-            // Used to indicate if we should shut down after this execution of stages.
-            boolean shutDownRequestedHere = false;
+            scheduleIdx = runBlock(scheduleIdx);
+            
+            
+            if (shutdownRequested.get()) {
+                //exit now
+                break;
+            }
+            
+        }
+    }
 
-            // Once we're done waiting for a block, we need to execute it!
-            top:
-            do {
+	private int runBlock(int scheduleIdx) {
+		int inProgressIdx;
+		int skipCounter;
+		int skipCounterTarget;
+		
+		// Used to indicate if we should shut down after this execution of stages.
+		boolean shutDownRequestedHere = false;
 
-                // Identify the index of the block we're starting with.
-                inProgressIdx = schedule.script[scheduleIdx];
-                
-                // If it isn't a block-end (-1), run it!
-                if (inProgressIdx >= 0) {
+		// Once we're done waiting for a block, we need to execute it!
+		top:
+		do {
 
-                	PronghornStage stage = stages[inProgressIdx];
-                	
-                	int rawSkip = skipScript[scheduleIdx];
-                	int skip = 0x7FFFFFFF & rawSkip;
-                	//check skip value first since -1 is also used as the stop signal
-                	if (skip>1) {
-                		if (rawSkip!=-2) {
-	                		//we found a potential skip
-	                		if (rawSkip<0) {
-	                			//high bit is on so it is enabled
-	                			//are the input pipes empty?
-	                			
-	                			boolean hasContent = isContentForStage(stage);
-	                		
-	                			if (hasContent) {
-	                				//normal run...
-	                				//clear and watch if we can turn it back on
-	                				skipScript[scheduleIdx] = skip; //clears top bit
-	                				skipCounter = skip;//watch while we run     
-	                				skipCounterTarget = scheduleIdx;
-	                			} else {
-	                					                				
-	                				//skip running these stages and return to top.
-	                				scheduleIdx += skip; 
-	                				inProgressIdx = schedule.script[scheduleIdx];
-	                				
-	                				if ((inProgressIdx == -1) || shutdownRequested.get()) {
-	                					break;
-	                				} else {
-	                					continue top;
-	                				}
-	                				//continue on we are already set up
-	                			}
-	                		
-	                		} else {
-	                			//high bit not on so call but watch for empty
-	                			skipCounter = skip;
-	                			skipCounterTarget = scheduleIdx;
-	                		}
-                		}
-                	}
-                	
-                	//////////////
-                	///////////////
-                	
-                    long start = System.nanoTime();
-					run(graphManager, stage, this);
-                    long now = System.nanoTime();
-                    GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+		    // Identify the index of the block we're starting with.
+		    inProgressIdx = schedule.script[scheduleIdx];
+		    
+		    // If it isn't a block-end (-1), run it!
+		    if (inProgressIdx >= 0) {
+
+		    	PronghornStage stage = stages[inProgressIdx];
+		    	
+//		    	int rawSkip = skipScript[scheduleIdx];
+//		    	int skip = 0x7FFFFFFF & rawSkip;
+//		    	//check skip value first since -1 is also used as the stop signal
+//		    	if (skip>1) {
+//		    		if (rawSkip!=-2) {
+//		        		//we found a potential skip
+//		        		if (rawSkip<0) {
+//		        			//high bit is on so it is enabled
+//		        			//are the input pipes empty?
+//		        			
+//		        			boolean hasContent = isContentForStage(stage);
+//		        		
+//		        			if (hasContent) {
+//		        				//normal run...
+//		        				//clear and watch if we can turn it back on
+//		        				skipScript[scheduleIdx] = skip; //clears top bit
+//		        				skipCounter = skip;//watch while we run     
+//		        				skipCounterTarget = scheduleIdx;
+//		        			} else {
+//		        					                				
+//		        				//skip running these stages and return to top.
+//		        				scheduleIdx += skip; 
+//		        				inProgressIdx = schedule.script[scheduleIdx];
+//		        				
+//		        				if ((inProgressIdx == -1) || shutdownRequested.get()) {
+//		        					break;
+//		        				} else {
+//		        					continue top;
+//		        				}
+//		        				//continue on we are already set up
+//		        			}
+//		        		
+//		        		} else {
+//		        			//high bit not on so call but watch for empty
+//		        			skipCounter = skip;
+//		        			skipCounterTarget = scheduleIdx;
+//		        		}
+//		    		}
+//		    	}
+		    	
+		    	//////////////
+		    	///////////////
+		    	
+		        long start = System.nanoTime();
+				run(graphManager, stage, this);
+		        long now = System.nanoTime();
+		        GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
 
 //                    if (skipCounter>0) {
 //                    	//checks that this stage has no inputs waiting
@@ -591,26 +607,26 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //                    		skipCounter=-1;//we will not enable
 //                    	}
 //                    }
-                    
-                    // Check if we should continue execution after these stages execute.
-                    shutDownRequestedHere |= GraphManager.isStageShuttingDown(graphManager, stage.stageId);
-                }
+		        
+		        // Check if we should continue execution after these stages execute.
+		        shutDownRequestedHere |= GraphManager.isStageShuttingDown(graphManager, stage.stageId);
+		    }
 
-                // Increment IDX 
-                scheduleIdx++;
+		    // Increment IDX 
+		    scheduleIdx++;
 
-            } while (inProgressIdx != -1 && !shutdownRequested.get());
+		} while (inProgressIdx != -1 && !shutdownRequested.get());
 
-            // Update the block start time.
-            blockStartTime += schedule.commonClock;
-           
-            // If a shutdown is triggered in any way, shutdown and halt this scheduler.
-            if (shutDownRequestedHere || shutdownRequested.get()) {
-                shutdown();
-                break;
-            }
-        }
-    }
+		// Update the block start time.
+		blockStartTime += schedule.commonClock;
+         
+		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
+		if (shutDownRequestedHere || shutdownRequested.get()) {
+		    shutdown();
+		}
+   
+		return scheduleIdx;
+	}
 
 	public boolean isContentForStage(PronghornStage stage) {
 		int inC = GraphManager.getInputPipeCount(graphManager, stage.stageId);
