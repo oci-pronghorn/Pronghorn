@@ -203,7 +203,7 @@ public class HTTPSRoundTripTest {
 				int netRespQueue = 8;
 				
 				//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
-				int netRespSize = 1<<17;//must be just larger than the socket buffer //TODO: test this when the socket is opened as an assert, must confirm this value is large enought.
+				int netRespSize = 1<<18;//must be just larger than the socket buffer 
 				//TODO: even with this there is still corruption in the clientSocketReader...
 				
 				
@@ -219,7 +219,7 @@ public class HTTPSRoundTripTest {
 				int httpRequestQueueBytes = isTLS? 1<<15 : 1<<12; //NOTE: Must be 32K for encryption.
 				int releaseCount = 2048;
 				int netResponseCount = 4;
-				int netResponseBlob = 1<<17; //NOTE: must be 128K or larger for decyrption.
+				int netResponseBlob = 1<<18; //NOTE: must be 256K or larger for decyrption.
 								
 				
 				int cc = clientCount;

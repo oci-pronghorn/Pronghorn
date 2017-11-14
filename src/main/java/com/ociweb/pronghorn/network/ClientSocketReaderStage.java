@@ -226,7 +226,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 			//these buffers are only big enought to accept 1 target.maxAvgVarLen
 			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 
-			assert(target.maxVarLen >= recvBufferSize(cc)) : "The target buffer must be larger than the input buffer.";
+			assert(target.maxVarLen >= recvBufferSize(cc)) : 
+				"The target buffer must be larger than the input buffer. "+target.maxVarLen+" vs "+recvBufferSize(cc);
 			
 			//TODO: warning note cast to int.
 			int readCount=-1; 
