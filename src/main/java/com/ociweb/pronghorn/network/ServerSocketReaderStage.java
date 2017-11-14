@@ -200,7 +200,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 		                	task.run();
 		                }
-		                handshakeStatus = cc.getEngine().getHandshakeStatus();
+		                //TODO: delete this does not appear to be needed
+		                //handshakeStatus = cc.getEngine().getHandshakeStatus();
 				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 					 releasePipesForUse();
 					 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";
@@ -353,11 +354,9 @@ public class ServerSocketReaderStage extends PronghornStage {
     	if (pendingSelections>0) {
     		return true;
     	}
-    	
-  //no longer true remove,,,  	assert (0 == selector.selectedKeys().size());
-    	    	
+    		
         try {        	        	
-        	/////////////
+        	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
             pendingSelections = selector.selectNow();

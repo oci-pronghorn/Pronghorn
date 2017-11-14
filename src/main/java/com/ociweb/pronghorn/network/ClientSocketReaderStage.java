@@ -1,8 +1,14 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
@@ -32,7 +38,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
 	private final int maxClients;
-
 	
 	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
@@ -46,22 +51,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
-		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);	
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 	}
 	
 	@Override
 	public void startup() {
-		
-//		try {
-//			selector = Selector.open();
-//		} catch (IOException e) {
-//			throw new RuntimeException(e);
-//		}
-				
-		
-		
-		start = System.currentTimeMillis();
 
+		start = System.currentTimeMillis();
 		
 	}
 	
@@ -75,179 +71,238 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	int maxWarningCount = 10;
 	
+	
+	private int pendingSelections;
+
+	private boolean shutdownInProgress;
+	private final ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
+    private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
+			@Override
+			public void accept(SelectionKey selection) {
+				processSelection(selection); 
+			}
+    };  
+	
+	
 	@Override
 	public void run() { //TODO: this method is the new hot spot in the profiler.
 
-		    consumeRelease();
-		    
-			boolean didWork;
-			
-			do {	
-				    didWork = false;
-					ClientConnection cc;
-					
-					int cpos = maxClients;
-					while (--cpos>=0) { 
-						
-						//TODO: this is slow because we are NOT using the e-poll mechanism and we check every connection for data
-						//      this results in many zero reads...
-						cc = coordinator.getClientConnectionByPosition(cpos);
-						
-						
-					    if (cc!=null) {
-					    	
-					    	//selector notes...
-//					    	Selector selector = Selector.open();
-//					    	cc.getSocketChannel().register(selector, SelectionKey.OP_READ);
-//					    	
-//				        	/////////////
-//				        	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
-//				        	////////////        	
-//				            pendingSelections = selector.selectNow();
-				            
-				            
-					    	
-					    	//process handshake before reserving one of the pipes
-					    	if (coordinator.isTLS) {
-					    		
-					    		HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-					    		//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
-					  
-					    		 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
-					    		
-						                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
-						                while ((task = cc.getEngine().getDelegatedTask()) != null) {
-						                	task.run();
-						                }
-						                handshakeStatus = cc.getEngine().getHandshakeStatus();
-								 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
-							
-									 consumeRelease();
-									 
-								//	 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-						    	//			logger.warn("waiting on wrap, need more pipes???? {}",cc.id);
-						    	//		}
-									 continue;//one of the other pipes can do work
-								 }	
-					    				    		 
-					    		 
-					    	}
+	   	 if(shutdownInProgress) {
+	    	 int i = output.length;
+	         while (--i >= 0) {
+	         	if (null!=output[i] && Pipe.isInit(output[i])) {
+	         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
+	         			return;
+	         		}  
+	         	}
+	         }
+	         requestShutdown();
+	         return;
+		 }
+	   	 
+        ////////////////////////////////////////
+        ///Read from socket
+        ////////////////////////////////////////
 
-					    	
-					    	//holds the pipe until we gather all the data and got the end of the parse.
-					    	int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
-					    	if (pipeIdx>=0) {
-					    	} else {	    	
-					    		consumeRelease();
-					    		pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId()); //try again.
-					    		if (pipeIdx<0) {
-//					    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-//					    				logger.warn("bump up maxPartialResponsesClient count, performance is slowed due to waiting for available input pipe on client");
-//					    			}
-					  
-					    			continue;//we can not allocate a new pipe but on of the other previously assigned pipes may be empty so continue here.
-					    		}				    		
-					    	}
-					    	
-					    	//logger.trace("pipe idx {} ",pipeIdx);
-					    	
-					    	if (pipeIdx>=0) {
-					    		//was able to reserve a pipe run 
-						    	Pipe<NetPayloadSchema> target = output[pipeIdx];
+	    //max cycles before we take a break.
+    	int maxIterations = 100; //important or this stage will take all the resources.
+    	
+    	Selector selector = coordinator.selector();
+    	
+    	consumeRelease();
+    	
+        while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
+
+           Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            
+           assert(selectedKeys.size()>0);	            
+           
+           doneSelectors.clear();
 	
-						    	if (Pipe.hasRoomForWrite(target)) {
-						        		
-						    		//TODO: use epoll to detect new data??				
-						    		
-						    		
-						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
-						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
+           selectedKeys.forEach(selectionKeyAction);
+                 
+		   removeDoneKeys(selectedKeys);
+		      
+        }
+   	}
 
-						    		//TODO: add assert that target bufer is larger than socket buffer.
-						    		//TODO: warning note cast to int.
-						    		int readCount=-1; 
-						    		try {					    									    			
-						    			readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-						    			
-						    		} catch (IOException ioex) {
-						    			readCount = -1;
-						    			//logger.info("unable to read socket, may not be an error. ",ioex);
-						    			//will continue with readCount of -1;
-						    		}
-						    
-							    	
-						    		if (readCount>0) {
-						    			didWork = true;
-							    		totalBytes += readCount;						    		
-							    		//we read some data so send it		
-							    	
-							    		logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
-							    		
-							    	//	logger.info("client reading {} for id {}",readCount,cc.getId());
-							    		
-							    		if (coordinator.isTLS) {
-							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
-							    			
-							    			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-							    			Pipe.addLongValue(cc.getId(), target);
-							    			Pipe.addLongValue(System.nanoTime(), target);
-							    			
-							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-							    			
-							    			Pipe.confirmLowLevelWrite(target, size);
-							    			Pipe.publishWrites(target);
-							    										    		
-							    		} else {
-							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
-							    			
-							    			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
-							    			Pipe.addLongValue(cc.getId(), target);         //connection
-							    			Pipe.addLongValue(System.nanoTime(), target);
-							    			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
-							    			
-							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-				 				 
-											
-											if (showResponse) {
-														    System.err.println("//////////////////////");
-												   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-												   			System.err.println("//////////////////////");
-											}
+	private void processSelection(SelectionKey selection) {
+		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
 		
-							    			
-							    			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
-							    			Pipe.publishWrites(target);
-					    													    			
-							    		}						    		
-							    		
-							    	} else {
-							    		//logger.info("zero read detected client side..");
-							    		//nothing to send so let go of byte buffer.
-							    		Pipe.unstoreBlobWorkingHeadPosition(target);
-							    	}
-						    	}
-					    	} else {
-					    		//not an error, just try again later.
-					    		
-								 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-					    				logger.warn("odd we should not be here for this test.");
-					    			}
-					    	}
-					    } 
-					}	
+		ClientConnection cc = (ClientConnection)selection.attachment();
+		assert(cc.getSelectionKey() == selection);
+		assert(cc.getSocketChannel() == (SocketChannel)selection.channel());
+		
+		boolean didWork = false;
+		didWork = processConnection(didWork, cc);
+		if (didWork) {
+			pendingSelections--;
+			doneSelectors.add(selection);
+		}
+		
+	}
+	
+	
+	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
+		//sad but this is the best way to remove these without allocating a new iterator
+		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
+		int c = doneSelectors.size();
+		//logger.info("remove {} done selector keys out of {} ",c, selectedKeys.size());
+		while (--c>=0) {
+		    		selectedKeys.remove(doneSelectors.get(c));
+		}
+		
+	}
+	
+    private boolean hasNewDataToRead(Selector selector) {
+    	
+    	if (pendingSelections>0) {
+    		return true;
+    	}
+    		
+        try {        	        	
+        	////////////
+        	//CAUTION - select now clears previous count and only returns the additional I/O operation counts which have become avail since the last time SelectNow was called
+        	////////////        	
+            pendingSelections = selector.selectNow();
 
-			} while(didWork);
+        //    logger.info("pending new selections {} ",pendingSelections);
+            return pendingSelections > 0;
+        } catch (IOException e) {
+            logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
+            shutdownInProgress = true;
+            return false;
+        }
+    }
+	
 
+	private boolean processConnection(boolean didWork, ClientConnection cc) {
+		//process handshake before reserving one of the pipes
+		boolean doRead = true;
+		if (coordinator.isTLS) {
+			
+			HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
+			//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
+  
+			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+			
+		            Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.
+		            while ((task = cc.getEngine().getDelegatedTask()) != null) {
+		            	task.run();
+		            }
+		            //TODO: delete we are done with task. or confrim the new status? as finished..
+		            //handshakeStatus = cc.getEngine().getHandshakeStatus();
+			 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
+		
+				 consumeRelease();
+				 doRead = false;
+				 //one of the other pipes can do work
+			 }	    		 
+			 
+		}
+
+		if (doRead) {
+			//holds the pipe until we gather all the data and got the end of the parse.
+			int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
+			if (pipeIdx>=0) {
+				didWork = readFromSocket(didWork, cc, output[pipeIdx]);
+			} else {	    	
+				consumeRelease();
+				pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId()); //try again.
+				if (pipeIdx>=0) {
+					//was able to reserve a pipe run 
+					didWork = readFromSocket(didWork, cc, output[pipeIdx]);
+				}				    		
+			}
+		} else {
+			didWork = false;
+		}
+		return didWork;
+	}
+
+	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
+		if (Pipe.hasRoomForWrite(target)) {
+	
+			//these buffers are only big enought to accept 1 target.maxAvgVarLen
+			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
+
+			assert(target.maxVarLen >= recvBufferSize(cc)) : "The target buffer must be larger than the input buffer.";
+			
+			//TODO: warning note cast to int.
+			int readCount=-1; 
+			try {					    									    			
+				readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
 				
-//		boolean debug = false;
-//		if (debug) {
-//			if (lastTotalBytes!=totalBytes) {
-//				System.err.println("Client reader total bytes :"+totalBytes);
-//				lastTotalBytes =totalBytes;
-//			}
-//		}
+			} catch (IOException ioex) {
+				readCount = -1;
+				//logger.info("unable to read socket, may not be an error. ",ioex);
+				//will continue with readCount of -1;
+			}
+   
+			
+			if (readCount>0) {
+				didWork = true;
+				totalBytes += readCount;						    		
+				//we read some data so send it		
+			
+				logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
+				
+			//	logger.info("client reading {} for id {}",readCount,cc.getId());
+				
+				if (coordinator.isTLS) {
+					assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+					
+					int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+					Pipe.addLongValue(cc.getId(), target);
+					Pipe.addLongValue(System.nanoTime(), target);
+					
+					int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+					Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
+					
+					Pipe.confirmLowLevelWrite(target, size);
+					Pipe.publishWrites(target);
+												    		
+				} else {
+					assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+					
+					Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
+					Pipe.addLongValue(cc.getId(), target);         //connection
+					Pipe.addLongValue(System.nanoTime(), target);
+					Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
+					
+					int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+					Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
+		 
+					
+					if (showResponse) {
+								    System.err.println("//////////////////////");
+						   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+						   			System.err.println("//////////////////////");
+					}
+
+					
+					Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
+					Pipe.publishWrites(target);
+													    			
+				}						    		
+				
+			} else {
+				//logger.info("zero read detected client side..");
+				//nothing to send so let go of byte buffer.
+				Pipe.unstoreBlobWorkingHeadPosition(target);
+			}
+		}
+		return didWork;
+	}
+
+	private int recvBufferSize(ClientConnection cc) {
+		
+		try {
+			return cc.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
+		} catch (Throwable e) {
+			return -1;
+		}
+		
 	}
 
 
