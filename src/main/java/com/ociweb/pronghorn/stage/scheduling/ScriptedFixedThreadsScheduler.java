@@ -583,7 +583,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    while (stages >= 0) {	    		 
 		    	PronghornStage stage = GraphManager.getStage(graphManager, stages--);
 		    	if (null!=stage) {	    	    
-		    		expectedCount++;
+		    		
 		    		//Definition of "producers" is somewhat complex
 		    		//we do those marked as producers second
 		    		if (
@@ -611,7 +611,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    while (stages >= 0) {	    		 
 		    	PronghornStage stage = GraphManager.getStage(graphManager, stages--);
 		    	if (null!=stage) {	    	    
-		    		expectedCount++;
+		    		
 		    		//Definition of "producers" is somewhat complex
 		    		//we do local producers third
 		    		if (
@@ -650,7 +650,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					int root = rootId(stage.stageId, rootsTable, lastKnownRoot);	    			    		
 					lazyCreateOfArray(rootMemberCounter, stageArrays, root);
 	
-						
 		    		addsCount = add(stageArrays, stage, 
 									root, graphManager, rootsTable, 
 									lastKnownRoot, addsCount, rootMemberCounter, true);
@@ -658,10 +657,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		    	}
 		    }
 	    }
-	    
-	    assert(expectedCount==addsCount) : "Some stages left unscheduled, internal error.";
-	    
-	    boolean debug = false;
+
+	    boolean debug = (expectedCount!=addsCount);
 	    if (debug){
 	        for(PronghornStage[] st: stageArrays) {
 	        	if(null!=st) {
@@ -683,6 +680,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	        }
 	    }
         
+	    
+	    assert(expectedCount==addsCount) : "Some stages left unscheduled, internal error. "+expectedCount+" vs "+addsCount;
 	    
 	    
 		return stageArrays;
