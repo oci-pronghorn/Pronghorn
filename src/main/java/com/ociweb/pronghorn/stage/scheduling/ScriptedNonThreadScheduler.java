@@ -573,24 +573,24 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     long now = System.nanoTime();
                     GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
 
-                    if (skipCounter>0) {
-                    	//checks that this stage has no inputs waiting
-                    	
-                    	if ((rawSkip<0) || (!isContentForStage(stage))) {
-                    		if (--skipCounter == 0) {
-                    			
-                    			//TODO: enable this skip since we know the path is now clear
-                    			
-                    			//do not enable until this works.
-                    			//System.err.println("can enable skipping");
-                    			//skipScript[skipCounterTarget] |= 0x8000_0000;
-                    			
-                    			skipCounter=-1;//done with count for now
-                    		}
-                    	} else {
-                    		skipCounter=-1;//we will not enable
-                    	}
-                    }
+//                    if (skipCounter>0) {
+//                    	//checks that this stage has no inputs waiting
+//                    	
+//                    	if ((rawSkip<0) || (!isContentForStage(stage))) {
+//                    		if (--skipCounter == 0) {
+//                    			
+//                    			//TODO: enable this skip since we know the path is now clear
+//                    			
+//                    			//do not enable until this works.
+//                    			//System.err.println("can enable skipping");
+//                    			//skipScript[skipCounterTarget] |= 0x8000_0000;
+//                    			
+//                    			skipCounter=-1;//done with count for now
+//                    		}
+//                    	} else {
+//                    		skipCounter=-1;//we will not enable
+//                    	}
+//                    }
                     
                     // Check if we should continue execution after these stages execute.
                     shutDownRequestedHere |= GraphManager.isStageShuttingDown(graphManager, stage.stageId);

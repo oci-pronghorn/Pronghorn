@@ -45,11 +45,17 @@ public abstract class StageScheduler {
 	}
 
 	protected void setCallerId(Integer caller) {
+		assert(setC(caller)); //only do with assertions on
+		
+	}
+
+	private final boolean setC(Integer caller) {
 		callerId.set(caller);
+		return true;
 	}
 	
 	protected void clearCallerId() {
-		callerId.set(null);
+		assert(setC(null)); //only do with assertions on
 	}
 	
 	protected boolean validShutdownState() {
