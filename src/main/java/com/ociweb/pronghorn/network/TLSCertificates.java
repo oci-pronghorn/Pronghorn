@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.network;
 
 import java.io.InputStream;
 
+// TODO: split server from client concerns into interfaces
+// TODO: do not use input streams on public interface
 public interface TLSCertificates {
     InputStream keyInputStream();
     InputStream trustInputStream();
