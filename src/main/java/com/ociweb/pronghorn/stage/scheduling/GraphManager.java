@@ -477,65 +477,65 @@ public class GraphManager {
 	
     /**
      * This graph is now complete and we are ready to add monitoring and begin thread scheduling.
-     * @param m
+     * @param gm
      */
-	public static void disableMutation(GraphManager m) {
-		if (m.enableMutation) {
+	public static void disableMutation(GraphManager gm) {
+		if (gm.enableMutation) {
 					
 			//logger.info("disable mutation");
-			if (m.telemetryPort > 0) {
+			if (isTelemetryEnabled(gm)) {
 				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
-				NetGraphBuilder.telemetryServerSetup(null, m.telemetryHost, m.telemetryPort, m, TELEMTRY_SERVER_RATE);
-				logger.info("total count of stages {} ",m.stageCounter.get());
+				NetGraphBuilder.telemetryServerSetup(null, gm.telemetryHost, gm.telemetryPort, gm, TELEMTRY_SERVER_RATE);
+				logger.info("total count of stages {} ",gm.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");
 			}
 			
-			m.enableMutation = false;
-			final int totalStages = GraphManager.countStages(m)+1;
-			m.stageDOTNames = new byte[totalStages][];
-			m.stageDOTRate = new byte[totalStages][]; 
-			m.stageIds = new String[totalStages];
-			m.pipeDOTSchemaNames = new byte[Pipe.totalPipes()][];
-			m.pipeDOTConst = new String[Pipe.totalPipes()];
-			m.pipeDOTNames = new byte[Pipe.totalPipes()][];
+			gm.enableMutation = false;
+			final int totalStages = GraphManager.countStages(gm)+1;
+			gm.stageDOTNames = new byte[totalStages][];
+			gm.stageDOTRate = new byte[totalStages][]; 
+			gm.stageIds = new String[totalStages];
+			gm.pipeDOTSchemaNames = new byte[Pipe.totalPipes()][];
+			gm.pipeDOTConst = new String[Pipe.totalPipes()];
+			gm.pipeDOTNames = new byte[Pipe.totalPipes()][];
 			
 			////////////////////////
 			//build all the constant string values for DOT.
 			///////////////////////
 			
 		    int i = -1;
-	        while (++i<m.stageIdToStage.length) {
-	            PronghornStage stage = m.stageIdToStage[i];
+	        while (++i<gm.stageIdToStage.length) {
+	            PronghornStage stage = gm.stageIdToStage[i];
 	            if (null!=stage) {
-		        	byte[] stageDisplayName = m.stageDOTNames[stage.stageId];
+		        	byte[] stageDisplayName = gm.stageDOTNames[stage.stageId];
 		        	if (null==stageDisplayName) {
-		        		buldStageDOTName(m, stage);
+		        		buldStageDOTName(gm, stage);
 		        	}
 		        	
-		        	byte[] stageRate = m.stageDOTRate[stage.stageId];
+		        	byte[] stageRate = gm.stageDOTRate[stage.stageId];
 	            	if (null==stageRate) {
-	            		stageRate = buildStageDOTRate(m, stage);
+	            		stageRate = buildStageDOTRate(gm, stage);
 	            	}
 	            	
-	            	String stageId = m.stageIds[stage.stageId];
+	            	String stageId = gm.stageIds[stage.stageId];
 	            	if (null == stageId) {
 	            		stageId = "Stage"+stage.stageId;
-	            		m.stageIds[stage.stageId] = stageId;
+	            		gm.stageIds[stage.stageId] = stageId;
 	            	}
 	            }
 	        }
 	        
-	        int j = m.pipeIdToPipe.length;
+	        int j = gm.pipeIdToPipe.length;
 	        while (--j>=0) {
-	            Pipe pipe = m.pipeIdToPipe[j];
+	            Pipe pipe = gm.pipeIdToPipe[j];
 	            if (null!=pipe) {
-	                byte[] pipeName = m.pipeDOTSchemaNames[pipe.id];
+	                byte[] pipeName = gm.pipeDOTSchemaNames[pipe.id];
 	                if (null==pipeName) {//keep so this is not built again upon every call
 	                	String temp = Pipe.schemaName(pipe).replace("Schema", "");
-	                	m.pipeDOTSchemaNames[pipe.id] = temp.getBytes();
+	                	gm.pipeDOTSchemaNames[pipe.id] = temp.getBytes();
 	                }
 	            }
 	        }
@@ -543,6 +543,10 @@ public class GraphManager {
 			
         	
 		}
+	}
+
+	private static boolean isTelemetryEnabled(GraphManager gm) {
+		return gm.telemetryPort > 0;
 	}
 	
 	private Comparator<? super Pipe> joinFirstComparator;
@@ -2281,60 +2285,64 @@ public class GraphManager {
     
 	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
 
-		if (duration>0) {
-			
-			long last = graphManager.stageLastTimeNs[stageId];
-			
-			if (last>0 && last<now) {
-				long cycleDuration = now-last;
+		//Does not track this data if it will no be used by telemetry
+		//this saves CPU cycles
+		if (isTelemetryEnabled(graphManager)) {
+		
+			if (duration>0) {
 				
-				if (recordElapsedTime) {
+				long last = graphManager.stageLastTimeNs[stageId];
+				
+				if (last>0 && last<now) {
+					long cycleDuration = now-last;
 					
-					buildHistogramsAsNeeded(graphManager, stageId);
-					graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
-
-				}
-
-				
-				long newPct = ((100_000L*duration)/cycleDuration);
-				
-				int oldPct = graphManager.stageCPUPct[stageId];
-				long combined = newPct+(9999L*oldPct);//exponential moving avg
-				graphManager.stageCPUPct[stageId] = (int)(combined/10000L); 
-				
-			}
-			
-			//we have the running pct since startup but we need a recent rolling value.
-			graphManager.stageLastTimeNs[stageId] = now;
-			
-			//this total duration is also used as the baseline for the histogram of elapsed time
-			graphManager.stageRunNS[stageId] += duration;			
-		} else {
-			
-			PronghornStage stage = getStage(graphManager, stageId);
-			
-			if ((stage instanceof PipeCleanerStage) ||
-				(stage instanceof ReplicatorStage) ) {
-				
-				//these can be very fast and should not be logged.
-				
-			} else {
-			
-				int x = totalZeroDurations.incrementAndGet();
-								
-				if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
-					if (duration<0) {
-						logger.info("Bad duration {}",duration);
-					} else {
-						logger.info("Warning: the OS has measured stages taking zero ms {} times. "
-							+ "Most recent case is for {}.", x, stage);
+					if (recordElapsedTime) {
+						
+						buildHistogramsAsNeeded(graphManager, stageId);
+						graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
+	
 					}
+	
+					long newPct = ((100_000L*duration)/cycleDuration);
+					
+					int oldPct = graphManager.stageCPUPct[stageId];
+					long combined = newPct+(9999L*oldPct);//exponential moving avg
+					graphManager.stageCPUPct[stageId] = (int)(combined/10000L); 
+					
+					
 				}
 				
-				graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
+				//we have the running pct since startup but we need a recent rolling value.
+				graphManager.stageLastTimeNs[stageId] = now;
+				
+				//this total duration is also used as the baseline for the histogram of elapsed time
+				graphManager.stageRunNS[stageId] += duration;			
+			} else {
+				
+				PronghornStage stage = getStage(graphManager, stageId);
+				
+				if ((stage instanceof PipeCleanerStage) ||
+					(stage instanceof ReplicatorStage) ) {
+					
+					//these can be very fast and should not be logged.
+					
+				} else {
+				
+					int x = totalZeroDurations.incrementAndGet();
+									
+					if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
+						if (duration<0) {
+							logger.info("Bad duration {}",duration);
+						} else {
+							logger.info("Warning: the OS has measured stages taking zero ms {} times. "
+								+ "Most recent case is for {}.", x, stage);
+						}
+					}
+					
+					graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
+				}
 			}
 		}
-		
 		
 	}
 
