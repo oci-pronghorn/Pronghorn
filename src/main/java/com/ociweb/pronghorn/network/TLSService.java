@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
+import java.io.InputStream;
 import java.security.SecureRandom;
 
 public class TLSService {
@@ -14,7 +15,17 @@ public class TLSService {
 	
 	public static final boolean LOG_CYPHERS = false;
 
-	public TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll) {
+	public static TLSService make(InputStream keyStoreIS, String keystorePassword, InputStream trustStoreIS, String keyPassword, boolean trustAll) {
+		try {
+			KeyManagerFactory keyManagerFactory = TLSCertificateTrust.createKeyManagers(keyStoreIS, keystorePassword, keyPassword);
+			TrustManagerFactory trustManagerFactory = TLSCertificateTrust.createTrustManagers(trustStoreIS, keystorePassword);
+			return new TLSService(keyManagerFactory, trustManagerFactory, trustAll);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll) {
 		try {
 			//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
 			final String PROTOCOL    = "TLSv1.2";

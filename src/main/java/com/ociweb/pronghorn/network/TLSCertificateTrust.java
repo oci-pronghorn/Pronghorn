@@ -4,12 +4,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
+import java.io.InputStream;
+import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 
 public class TLSCertificateTrust {
 
 	private static final Logger logger = LoggerFactory.getLogger(TLSCertificateTrust.class);
+
+	/**
+	 * Creates the key managers required to initiate the {@link SSLContext}, using a JKS keystore as an input.
+	 *
+	 * @param keystorePassword - the keystore's password.
+	 * @param keyPassword - the key's passsword.
+	 * @return {@link KeyManager} array that will be used to initiate the {@link SSLContext}.
+	 * @throws Exception
+	 */
+	public static KeyManagerFactory createKeyManagers(InputStream keyStoreIS, String keystorePassword, String keyPassword) throws Exception  {
+		KeyStore keyStore = KeyStore.getInstance("JKS");
+		keyStore.load(keyStoreIS, keystorePassword.toCharArray());
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		kmf.init(keyStore, keyPassword.toCharArray());
+		return kmf;
+	}
+
+	/**
+	 * Creates the trust managers required to initiate the {@link SSLContext}, using a JKS keystore as an input.
+	 *
+	 * @param keystorePassword - the keystore's password.
+	 * @return {@link TrustManager} array, that will be used to initiate the {@link SSLContext}.
+	 * @throws Exception
+	 */
+	public static TrustManagerFactory createTrustManagers(InputStream trustStoreIS, String keystorePassword) throws Exception {
+		KeyStore trustStore = KeyStore.getInstance("JKS");
+		trustStore.load(trustStoreIS, keystorePassword.toCharArray());
+		TrustManagerFactory trustFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		trustFactory.init(trustStore);
+		return trustFactory;
+	}
 
 	public static TrustManager[] trustManagerFactoryDefault(TrustManagerFactory trustManagerFactory) {
 		return trustManagerFactory.getTrustManagers();
