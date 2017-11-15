@@ -1048,7 +1048,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		int i = ntsArray.length;
 		while (--i>=0) {
 			if (null != ntsArray[i]) {
-				ntsArray[i].shutdown();	
+				if (!ScriptedNonThreadScheduler.isShutdownRequested(ntsArray[i])) {
+					ntsArray[i].shutdown();	
+				}
 			}
 		}	
  
