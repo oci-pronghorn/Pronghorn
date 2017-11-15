@@ -7,8 +7,6 @@ import javax.net.ssl.*;
 import java.io.InputStream;
 import java.security.KeyStore;
 
-//import io.netty.handler.ssl.SslContext;
-
 public class SSLEngineFactory {
 
 	private static final Logger log = LoggerFactory.getLogger(SSLEngineFactory.class);
@@ -16,14 +14,14 @@ public class SSLEngineFactory {
 	private final KeyManagerFactory keyManagerFactory;
 	private final TrustManagerFactory trustManagerFactory;
 
-    public SSLEngineFactory(TLSCertificates policy) {
+    public SSLEngineFactory(TLSCertificates certificates) {
         // Server Identity
-        InputStream keyInputStream = policy.keyInputStream();
+        InputStream keyInputStream = certificates.keyInputStream();
         // All the internet sites client trusts
-        InputStream trustInputStream = policy.trustInputStream();
+        InputStream trustInputStream = certificates.trustInputStream();
 
-        String keyPassword = policy.keyPassword();
-        String keyStorePassword = policy.keyStorePassword();
+        String keyPassword = certificates.keyPassword();
+        String keyStorePassword = certificates.keyStorePassword();
 
         if (keyInputStream != null) {
             try {
@@ -48,7 +46,19 @@ public class SSLEngineFactory {
         }
     }
 
-    TLSService getService() {
+    SSLEngine createSSLEngine(String host, int port) {
+        return getService().createSSLEngineClient(host, port);
+    }
+
+    SSLEngine createSSLEngine() {
+        return getService().createSSLEngineServer();
+    }
+
+    int maxEncryptedContentLength() {
+        return getService().maxEncryptedContentLength();
+    }
+
+    private TLSService getService() {
         if (privateService==null) {
             privateService = new TLSService(keyManagerFactory, trustManagerFactory, true);
         }
@@ -98,13 +108,4 @@ public class SSLEngineFactory {
         trustFactory.init(trustStore);
         return trustFactory;
     }
-
-    SSLEngine createSSLEngine(String host, int port) {
-    	return getService().createSSLEngineClient(host, port);
-    }
-
-    SSLEngine createSSLEngine() {
-    	return getService().createSSLEngineServer();
-    }
-
 }
