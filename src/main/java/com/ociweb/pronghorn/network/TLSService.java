@@ -1,69 +1,36 @@
 package com.ociweb.pronghorn.network;
 
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
-import java.util.Arrays;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TLSService {
+import javax.net.ssl.*;
+import java.security.SecureRandom;
 
+public class TLSService {
 	private static final Logger logger = LoggerFactory.getLogger(TLSService.class);
-			
 	private final SSLContext context;
-	private final KeyManager[] keyManagers;
-	private final TrustManager[] trustManagers;
-	
-	//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
-	private static final String PROTOCOL    = "TLSv1.2";
-	private static final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
-	
-	public static final boolean TRUST_ALL = true;
-	public static final boolean LOG_CYPHERS = false;
-	
 	private String[] cipherSuits;
-	private String[] protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
-    
+	private final String[] protocols;
 	
-	public TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory) {
-		
+	public static final boolean LOG_CYPHERS = false;
+
+	public TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll) {
 		try {
-			
-			keyManagers = keyManagerFactory.getKeyManagers();			
-			
-			if (TRUST_ALL) {
-				TrustManagerFactory trustFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-				logger.warn("***** No trust manager in use, all connecions will be trusted. This is only appropriate for development and testing. *****");
-				trustManagers = new TrustManager[] { 
-					    new X509TrustManager() {     
-					        public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
-					            return new X509Certificate[0];
-					        } 
-					        public void checkClientTrusted( 
-					            java.security.cert.X509Certificate[] certs, String authType) {
-					            } 
-					        public void checkServerTrusted( 
-					            java.security.cert.X509Certificate[] certs, String authType) {
-					        }
-					    } 
-					}; 
-				
+			//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
+			final String PROTOCOL    = "TLSv1.2";
+			final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
+
+			this.protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
+
+			KeyManager[] keyManagers = keyManagerFactory.getKeyManagers();
+
+			TrustManager[] trustManagers;
+			if (trustAll) {
+				trustManagers = TLSCertificateTrust.trustManagerFactoryTrustAllCerts(trustManagerFactory);
 			} else {
-				trustManagers = trustManagerFactory.getTrustManagers();				
-		
+				trustManagers = TLSCertificateTrust.trustManagerFactoryDefault(trustManagerFactory);
 			}
-			
-			
-			
+
 	        context = SSLContext.getInstance(PROTOCOL);
 			context.init(keyManagers, trustManagers, new SecureRandom());
 			
@@ -72,7 +39,6 @@ public class TLSService {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-		
 	}
 	
 	public int maxEncryptedContentLength() {
@@ -80,16 +46,13 @@ public class TLSService {
 	}
 	
     public SSLEngine createSSLEngineClient(String host, int port) {
-    	
     	SSLEngine result = context.createSSLEngine(host, port);
     	result.setEnabledCipherSuites(filterCipherSuits(result)); 
     	result.setEnabledProtocols(protocols);
-    	
     	return result;
     }
 
     public SSLEngine createSSLEngineServer() {
-    	
     	SSLEngine result = context.createSSLEngine();
     	result.setEnabledCipherSuites(filterCipherSuits(result)); 
     	result.setEnabledProtocols(protocols);
@@ -98,7 +61,6 @@ public class TLSService {
     
 	private String[] filterCipherSuits(SSLEngine result) {
 		if (null==cipherSuits) {
-    		
 			//TODO: rewrite with recursive count...
 	    	String[] enabledCipherSuites = result.getSupportedCipherSuites();
 	    	int count = 0;
@@ -132,12 +94,10 @@ public class TLSService {
 		return !enabledCipherSuites[i].contains("DES_") &&
 			   !enabledCipherSuites[i].contains("EXPORT") && 
 			   !enabledCipherSuites[i].contains("NULL");
-		
 	}
 
 	private static boolean containsPerfectForward(String[] enabledCipherSuites, int i) {
 		return enabledCipherSuites[i].contains("DHE") || 
 			   enabledCipherSuites[i].contains("EDH");
 	}
-	
 }
