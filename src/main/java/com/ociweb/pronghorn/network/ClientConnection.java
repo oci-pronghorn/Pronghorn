@@ -128,8 +128,8 @@ public class ClientConnection extends SSLConnection {
 		//TCP_NODELAY is required for HTTP/2 get used to to being on.
 		this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
 	
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); 
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<17); 
+		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
+		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
