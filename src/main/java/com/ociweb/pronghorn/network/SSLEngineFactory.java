@@ -50,7 +50,7 @@ public class SSLEngineFactory {
 
     TLSService getService() {
         if (privateService==null) {
-            privateService = new TLSService(keyManagerFactory, trustManagerFactory);
+            privateService = new TLSService(keyManagerFactory, trustManagerFactory, true);
         }
         return privateService;
     }
