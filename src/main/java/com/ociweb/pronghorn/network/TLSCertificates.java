@@ -11,7 +11,6 @@ public interface TLSCertificates {
         @Override
         public String keyStoreResourceName() {
             return "/certificates/client.jks";
-
         }
 
         @Override
