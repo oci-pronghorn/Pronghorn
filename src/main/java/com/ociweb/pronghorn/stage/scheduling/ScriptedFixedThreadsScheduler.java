@@ -79,7 +79,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//keep all the montiors on one end to merge them last		
 				
 				int len1 = null==o1 ? -1 : GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o1.length;
-				int len2 = null==o2 ? -1 : GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o2.length;
+				int len2 = null==o2 ? -1 : GraphManager.hasNota(graphManager, o2[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o2.length;
 
 				return len2-len1;
 			}
