@@ -90,8 +90,9 @@ public class ServerNewConnectionStage extends PronghornStage{
     		
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
-    		
-    
+    		server.socket().setPerformancePreferences(1, 2, 0);
+    		server.socket().setSoTimeout(0);
+    		    		
     		endPoint = bindAddressPort(coordinator.host(), coordinator.port());
             
             ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
@@ -186,6 +187,8 @@ public class ServerNewConnectionStage extends PronghornStage{
     @Override
     public void run() {
   
+    	//long now = System.nanoTime();
+    	
         try {//selector may be null if shutdown was called on startup.
            if (null!=selector && selector.selectNow() > selectionKeysAllowedToWait) {
                 //we know that there is an interesting (non zero positive) number of keys waiting.
@@ -199,7 +202,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                                     
                   if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
                      
-                	//  ServerCoordinator.acceptConnectionStart = System.nanoTime();
+                	  //ServerCoordinator.acceptConnectionStart = now;
                 	  
                       if (null!=newClientConnections && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
                           return;
@@ -220,8 +223,9 @@ public class ServerNewConnectionStage extends PronghornStage{
                           channel.configureBlocking(false);
                           
                           //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
-                          channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
-                          
+                          channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
+                          channel.socket().setPerformancePreferences(0, 2, 1);
+                 
                           
                           //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);
                           //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
