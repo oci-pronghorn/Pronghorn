@@ -15,17 +15,18 @@ public class TLSService {
 	
 	public static final boolean LOG_CYPHERS = false;
 
-	public static TLSService make(InputStream keyStoreIS, String keystorePassword, InputStream trustStoreIS, String keyPassword, boolean trustAll) {
+	public static TLSService make(InputStream keyStoreInputStream, String keystorePassword, InputStream trustStoreInputStream, String keyPassword, boolean trustAll) {
 		try {
-			KeyManagerFactory keyManagerFactory = TLSCertificateTrust.createKeyManagers(keyStoreIS, keystorePassword, keyPassword);
-			TrustManagerFactory trustManagerFactory = TLSCertificateTrust.createTrustManagers(trustStoreIS, keystorePassword);
-			return new TLSService(keyManagerFactory, trustManagerFactory, trustAll);
+			KeyManagerFactory keyManagerFactory = keyStoreInputStream != null ? TLSCertificateTrust.createKeyManagers(keyStoreInputStream, keystorePassword, keyPassword) : null;
+			TrustManagerFactory trustManagerFactory = trustStoreInputStream != null ? TLSCertificateTrust.createTrustManagers(trustStoreInputStream, keystorePassword) : null;
+			// null SecureRandom uses default impl of new SecureRandom()
+			return new TLSService(keyManagerFactory, trustManagerFactory, trustAll, null);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	private TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll) {
+	private TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll, SecureRandom secureRandom) {
 		try {
 			//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
 			final String PROTOCOL    = "TLSv1.2";
@@ -33,23 +34,22 @@ public class TLSService {
 
 			this.protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
 
-			KeyManager[] keyManagers = keyManagerFactory.getKeyManagers();
+			KeyManager[] keyManagers = keyManagerFactory != null ? keyManagerFactory.getKeyManagers() : null;
 
-			TrustManager[] trustManagers;
+			TrustManager[] trustManagers = null;
 			if (trustAll) {
-				trustManagers = TLSCertificateTrust.trustManagerFactoryTrustAllCerts(trustManagerFactory);
-			} else {
-				trustManagers = TLSCertificateTrust.trustManagerFactoryDefault(trustManagerFactory);
+				trustManagers = TLSCertificateTrust.trustManagerFactoryTrustAllCerts();
 			}
-
+			else if (trustManagerFactory != null) {
+				trustManagers = trustManagerFactory.getTrustManagers();
+			}
 	        context = SSLContext.getInstance(PROTOCOL);
-			context.init(keyManagers, trustManagers, new SecureRandom());
-			
-			//run once first to determine which cypher suites we will be using.
-			createSSLEngineServer();
+			context.init(keyManagers, trustManagers, secureRandom);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+		//run once first to determine which cypher suites we will be using.
+		createSSLEngineServer();
 	}
 	
 	public int maxEncryptedContentLength() {

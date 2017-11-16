@@ -44,11 +44,7 @@ public class TLSCertificateTrust {
 		return trustFactory;
 	}
 
-	public static TrustManager[] trustManagerFactoryDefault(TrustManagerFactory trustManagerFactory) {
-		return trustManagerFactory.getTrustManagers();
-	}
-
-	public static TrustManager[] trustManagerFactoryTrustAllCerts(TrustManagerFactory trustManagerFactory) throws NoSuchAlgorithmException {
+	public static TrustManager[] trustManagerFactoryTrustAllCerts() throws NoSuchAlgorithmException {
 		logger.warn("WARNING: No trust manager in use, all connecions will be trusted. This is only appropriate for development and testing.");
 		return new TrustManager[] {
 				new X509TrustManager() {
