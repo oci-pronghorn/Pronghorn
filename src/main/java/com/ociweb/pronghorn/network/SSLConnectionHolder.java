@@ -8,9 +8,7 @@ public abstract class SSLConnectionHolder {
 	SSLConnectionHolder(TLSCertificates tlsCerificates) {
 		this.isTLS = tlsCerificates != null;
 		if (tlsCerificates != null) {
-			// TODO: client/server differentiation and application overrides
-			TLSCertificates tls = TLSCertificates.defaultCerts;
-			this.engineFactory = new SSLEngineFactory(tls);
+			this.engineFactory = new SSLEngineFactory(tlsCerificates);
 		}
 		else {
 			this.engineFactory = null;
