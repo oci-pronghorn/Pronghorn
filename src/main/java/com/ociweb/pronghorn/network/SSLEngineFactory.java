@@ -29,10 +29,20 @@ class SSLEngineFactory {
             InputStream keyInputStream = null;
             InputStream trustInputStream = null;
             try {
-                // Server Identity
-                keyInputStream = certificates.keyInputStream();
-                // All the internet sites client trusts
-                trustInputStream = certificates.trustInputStream();
+                String keyStoreResourceName = certificates.keyStoreResourceName();
+                if (keyStoreResourceName != null) {
+                    keyInputStream = TLSCertificates.class.getResourceAsStream(keyStoreResourceName);
+                    if (keyInputStream == null) {
+                        throw new RuntimeException(String.format("Resource %s not found", keyStoreResourceName));
+                    }
+                }
+                String trustStroreResourceName = certificates.trustStroreResourceName();
+                if (trustStroreResourceName != null) {
+                    trustInputStream = TLSCertificates.class.getResourceAsStream(trustStroreResourceName);
+                    if (trustInputStream == null) {
+                        throw new RuntimeException(String.format("Resource %s not found", trustStroreResourceName));
+                    }
+                }
 
                 String keyPassword = certificates.keyPassword();
                 String keyStorePassword = certificates.keyStorePassword();
@@ -43,15 +53,15 @@ class SSLEngineFactory {
                 if (keyInputStream != null ) {
                     try {
                         keyInputStream.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    } catch (IOException ignored) {
+                        // This is not a failure for the running system
                     }
                 }
                 if (trustInputStream != null ) {
                     try {
                         trustInputStream.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    } catch (IOException ignored) {
+                        // This is not a failure for the running system
                     }
                 }
             }
