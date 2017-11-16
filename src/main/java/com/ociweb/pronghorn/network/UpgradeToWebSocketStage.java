@@ -60,7 +60,7 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 		assert(httpSpec.headerMatches(ID_SEC_WEBSOCKET_VERSION, HTTPHeaderDefaults.SEC_WEBSOCKET_VERSION.writingRoot()));
 		//assert(httpSpec.headerMatches(ID_SEC_WEBSOCKET_EXTENSIONS, HTTPHeaderDefaults.SEC_WEBSOCKET_EXTENSIONS.writingRoot()));
 		//assert(httpSpec.headerMatches(ID_ORIGIN, HTTPHeaderDefaults.ORIGIN.writingRoot()));
-		
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 
 	@Override
@@ -187,7 +187,7 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 								//what to do with the key? append etc and hash...
 								
 								//  If the response lacks a |Sec-WebSocket-Accept| header field or
-							  //     the |Sec-WebSocket-Accept| contains a value other than the
+							    //     the |Sec-WebSocket-Accept| contains a value other than the
 							    //   base64-encoded SHA-1 of the concatenation of the |Sec-WebSocket-
 							    //   Key| (as a string, not base64-decoded) with the string "258EAFA5-
 							    //   E914-47DA-95CA-C5AB0DC85B11" but ignoring any leading and
