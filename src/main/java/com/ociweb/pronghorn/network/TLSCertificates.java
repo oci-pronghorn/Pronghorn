@@ -6,6 +6,8 @@ public interface TLSCertificates {
     String trustStroreResourceName();
     String keyStorePassword();
     String keyPassword();
+    // if true ignores trustStoreResourceName and uses a trust all TrustManager
+    boolean trustAllCerts();
 
     TLSCertificates defaultCerts = new TLSCertificates() {
         @Override
@@ -26,6 +28,11 @@ public interface TLSCertificates {
         @Override
         public String keyPassword() {
             return "keypass";
+        }
+
+        @Override
+        public boolean trustAllCerts() {
+            return true;
         }
     };
 }
