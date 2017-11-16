@@ -97,7 +97,7 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	public ClientConnection(SSLEngine engine, CharSequence host, int port, int sessionId, int pipeIdx,
-			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
+			                 long conId, boolean isTLS, int inFlightBits, int maxRecBuf) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
 		
@@ -129,6 +129,10 @@ public class ClientConnection extends SSLConnection {
 		this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
 	
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
+		
+		//TODO: we know the pipe size but the socket takes this as a suggestion...
+		
+		
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690

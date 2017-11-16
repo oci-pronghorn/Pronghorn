@@ -51,7 +51,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private final PoolIdx responsePipeLinePool;
 	public final int maxPartialResponses;
 	private final int[] processorLookup;
-	private final int processorsCount;
+	private final int moduleParallelism;
 	
     private final String serviceName;
     private final String defaultPath;
@@ -60,6 +60,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public static boolean TEST_RECORDS = false;
 
 //	public static long acceptConnectionStart;
+//	public static long acceptConnectionRespond;
+//	
 //	public static long orderSuperStart;
 //	public static long newDotRequestStart;
 
@@ -69,23 +71,24 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
+		   serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism,"Server", "");
 	}
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", defaultPath);
+		   serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism,"Server", defaultPath);
 	}
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
             int maxConnectionsBits, int maxPartialResponses,
-            int processorsCount){
-		this(tlsCertificates,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
+            int moduleParallelism){
+		this(tlsCertificates,bindHost,port,maxConnectionsBits, maxPartialResponses, moduleParallelism,"Server", "");
 	}
 	
     public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
-							 int maxConnectionsBits, int maxPartialResponses,
-							 int processorsCount,
+							 int maxConnectionsBits, 
+							 int maxPartialResponses,
+							 int moduleParallelism,
 							 String serviceName, String defaultPath){
 
 		super(tlsCertificates);
@@ -101,8 +104,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	
     	this.maxPartialResponses = maxPartialResponses;
 
-    	this.processorsCount = processorsCount;
-    	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
+    	this.moduleParallelism = moduleParallelism;
+    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxPartialResponses);
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -225,8 +228,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		}
 	}
     
-    public int processorCount() {
-    	return processorsCount;
+    public int moduleParallelism() {
+    	return moduleParallelism;
     }
 
 	public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {

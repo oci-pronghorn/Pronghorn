@@ -534,49 +534,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 		}
 	}
     
-//	private void testValidContent(final int idx, Pipe<NetPayloadSchema> pipe, int meta, int len) {
-//	
-//		if (ServerCoordinator.TEST_RECORDS) {
-//			
-//			//write pipeIdx identifier.
-//			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-//			
-//			int pos = Pipe.convertToPosition(meta, pipe);
-//			    				
-//			
-//			boolean confirmExpectedRequests = true;
-//			if (confirmExpectedRequests) {
-//				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
-//				
-//				while (accumulators[idx].length() >= HTTPUtil.expectedOK.length()) {
-//					
-//				   int c = startsWith(accumulators[idx],HTTPUtil.expectedOK); 
-//				   if (c>0) {
-//					   
-//					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedOK.length());
-//					   accumulators[idx].setLength(0);
-//					   accumulators[idx].append(remaining);							    					   
-//					   
-//					   
-//				   } else {
-//					   logger.info("A"+Arrays.toString(HTTPUtil.expectedOK.getBytes()));
-//					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString().getBytes()   ));
-//					   
-//					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPUtil.expectedOK.length());
-//					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString());
-//					   System.exit(-1);
-//					   	
-//					   
-//					   
-//				   }
-//				
-//					
-//				}
-//			}
-//			
-//			
-//		}
-//	}
     
 	private int startsWith(StringBuilder stringBuilder, String expected2) {
 		
@@ -689,6 +646,7 @@ public class ServerSocketWriterStage extends PronghornStage {
        
     	//System.err.println("done with connection");
     	workingBuffers[idx].clear();
+    	
     	writeToChannel[idx]=null;
         int sequenceNo = 0;//not available here
         if (null!=releasePipe) {
@@ -700,11 +658,17 @@ public class ServerSocketWriterStage extends PronghornStage {
         //logger.info("write is complete for {} ", activeIds[idx]);
         
         //beginSocketStart
+       // System.err.println();
+        //long now = System.nanoTime();
         
-//        long duration1 = System.nanoTime()-ServerCoordinator.acceptConnectionStart;
-//        Appendables.appendNearestTimeUnit(System.err, duration1);
+//        Appendables.appendNearestTimeUnit(System.err, now-ServerCoordinator.acceptConnectionStart);
 //        System.err.append(" round trip for call\n");
 //        
+//        Appendables.appendNearestTimeUnit(System.err, now-ServerCoordinator.acceptConnectionRespond);
+//        System.err.append(" round trip for data gathering\n");
+        
+        
+        
 //        long duration3 = System.nanoTime()-ServerCoordinator.newDotRequestStart;
 //        Appendables.appendNearestTimeUnit(System.err, duration3);
 //        System.err.append(" new dot trip for call\n");

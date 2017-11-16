@@ -325,6 +325,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 	}
 
+	
+	
 	private void tryWrite(int i) {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
 		int value = -10;
@@ -332,6 +334,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 			if (!debugWithSlowWrites) {
 				assert(buffers[i].isDirect());
+	
+			//	this.ccm.sentTime = System.nanoTime();
+				
 				//System.err.println("write data block of "+buffers[i].remaining());
 				value = connections[i].getSocketChannel().write(buffers[i]);
 				//total+=value;

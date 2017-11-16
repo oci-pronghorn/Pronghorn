@@ -142,15 +142,26 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 	}
 	
+	long sum = 0;
+	long sumc = 0;
 	
 	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
 		//sad but this is the best way to remove these without allocating a new iterator
 		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
 		int c = doneSelectors.size();
+
+//		if (c>0) {
+//			long duration = System.nanoTime()- coordinator.sentTime;
+//			sum+=duration;
+//			sumc++;
+//			Appendables.appendNearestTimeUnit(System.out, sum/sumc," avg\n");
+//			//Appendables.appendNearestTimeUnit(System.out, duration," now\n");
+//		}
 		//logger.info("remove {} done selector keys out of {} ",c, selectedKeys.size());
 		while (--c>=0) {
 		    		selectedKeys.remove(doneSelectors.get(c));
 		}
+		
 		
 	}
 	
@@ -226,7 +237,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			//these buffers are only big enought to accept 1 target.maxAvgVarLen
 			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 
-			assert(target.maxVarLen >= recvBufferSize(cc)) : 
+			assert(target.maxVarLen+1 >= recvBufferSize(cc)) : 
 				"The target buffer must be larger than the input buffer. "+target.maxVarLen+" vs "+recvBufferSize(cc);
 			
 			//TODO: warning note cast to int.

@@ -205,16 +205,15 @@ public class MQTTClientGraphBuilder {
 		int responseUnwrapCount = 2;
 		int clientWrapperCount = 2;
 		int responseQueue = maxInFlight;
-		int responseSize = maximumLenghOfVariableLengthFields;
 		int releaseCount = maxInFlight;
 		int netResponseCount = maxInFlight;
 		int netResponseBlob = maximumLenghOfVariableLengthFields;
 		int writeBufferMultiplier = 32;//bumped up to speed client writing
 				
-		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, responseSize, toBroker,
-				         responseUnwrapCount, clientWrapperCount,
-				         clientWriters, releaseCount, netResponseCount,
-				         netResponseBlob, factory, writeBufferMultiplier);
+		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, toBroker, responseUnwrapCount,
+				         clientWrapperCount, clientWriters,
+				         releaseCount, netResponseCount, netResponseBlob,
+				         factory, writeBufferMultiplier);
 	}
 	
 	

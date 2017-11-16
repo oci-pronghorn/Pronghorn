@@ -213,9 +213,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (processWork && (null!=cc)) {
 			
-			//ServerCoordinator.acceptConnectionStart = System.nanoTime();
-			
-			
+			  // ServerCoordinator.acceptConnectionRespond = System.nanoTime();
+						
 				int responsePipeLineIdx = cc.getPoolReservation();
 				
 				final boolean newBeginning = (responsePipeLineIdx<0);

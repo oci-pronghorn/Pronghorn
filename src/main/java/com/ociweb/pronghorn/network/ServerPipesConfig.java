@@ -11,7 +11,6 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 public class ServerPipesConfig {
 	
 	
-	public final int maxConnectionBitsOnServer; 	
 	public final int serverRequestUnwrapUnits;
 	public final int serverResponseWrapUnits;
 	public final int serverPipesPerOutputEngine;
@@ -25,7 +24,11 @@ public class ServerPipesConfig {
 	public final int fromProcessorBlob;
 	public final int releaseMsg;
 	
-	public int maxPartialResponsesServer; //will grow based on simultaneous repose count 
+	public final int moduleParallelism; //scale of compute modules
+	public final int maxConnectionBitsOnServer; //max connected users 	
+	//will grow based on simultaneous response count after ensure calls are taken into account 
+	public int maxPartialResponsesServer; //concurrent actions count
+
 	private int serverBlobToWrite; //may need to grow based on largest payload required
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerPipesConfig.class);
@@ -44,7 +47,6 @@ public class ServerPipesConfig {
     
     public final PipeConfig<NetPayloadSchema> handshakeDataConfig;
 	
-    public final int processorCount;
 	public int writeBufferMultiplier;
     
 	public ServerPipesConfig(boolean isLarge, boolean isTLS) {
@@ -63,14 +65,14 @@ public class ServerPipesConfig {
 			cores = 1;
 		}
 		
-		processorCount = processors > 0? processors : (isLarge ? (isTLS?4:8) : 2);
+		moduleParallelism = processors > 0? processors : (isLarge ? (isTLS?4:8) : 2);
 		
 		//logger.info("cores in use {}", cores);
 		
 		if (isLarge) {
 						
 			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
-			maxConnectionBitsOnServer 	  = 20;       //1M open connections on server	    	
+			maxConnectionBitsOnServer 	  = 20;          //1M open connections on server	    	
 				
 			serverInputMsg                = isTLS? 8 : 64; 
 			serverInputBlobs              = 1<<14;

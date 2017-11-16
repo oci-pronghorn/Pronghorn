@@ -464,6 +464,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // this value is continues to keep time across calls to run.
     private long blockStartTime = System.nanoTime();
     
+    
+    int totalWaitCount = 0;
+    
     @Override
     public void run() {
 
@@ -481,6 +484,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         // Infinite scheduler loop.
         while (scheduleIdx<schedule.script.length) {
 
+        	totalWaitCount++;
+        	
             // We need to wait between scheduler blocks, or else
             // we'll just burn through the entire schedule nearly instantaneously.
             //
@@ -511,13 +516,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             }
 
             scheduleIdx = runBlock(scheduleIdx);
-            
-            
-            if (shutdownRequested.get()) {
-                //exit now
-                break;
-            }
-            
+            //upon shutdown scheduleIdx is set to maxint so it exits
+
         }
     }
 
@@ -585,10 +585,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    	///////////////
 		    	
 		        long start = System.nanoTime();
-				run(graphManager, stage, this);
+				boolean isRunning = run(graphManager, stage, this);
 		        long now = System.nanoTime();
 		        GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
-
+		        if (!isRunning) {
+		        	shutDownRequestedHere = true;
+		        }
+		        
 //                    if (skipCounter>0) {
 //                    	//checks that this stage has no inputs waiting
 //                    	
@@ -608,8 +611,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //                    	}
 //                    }
 		        
-		        // Check if we should continue execution after these stages execute.
-		        shutDownRequestedHere |= GraphManager.isStageShuttingDown(graphManager, stage.stageId);
 		    }
 
 		    // Increment IDX 
@@ -621,11 +622,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		blockStartTime += schedule.commonClock;
          
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
-		if (shutDownRequestedHere || shutdownRequested.get()) {
-		    shutdown();
+		if (!(shutDownRequestedHere || shutdownRequested.get())) {
+			return scheduleIdx;
+		} else {
+			if (!shutdownRequested.get()) {
+				shutdown();
+			}
+		    return Integer.MAX_VALUE;
 		}
-   
-		return scheduleIdx;
 	}
 
 	public boolean isContentForStage(PronghornStage stage) {
@@ -640,7 +644,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return false;
 	}
 
-    private static void run(GraphManager graphManager, PronghornStage stage, ScriptedNonThreadScheduler that) {
+    private static boolean run(GraphManager graphManager, PronghornStage stage, ScriptedNonThreadScheduler that) {
         try {
             if (!GraphManager.isStageShuttingDown(graphManager, stage.stageId)) {
 
@@ -661,27 +665,59 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                 if (debugNonReturningStages) {
                     logger.info("end run {}", stage);
                 }
-
+                return true;
             } else {
                 if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {
                     GraphManager.shutdownStage(graphManager, stage);
                     GraphManager.setStateToShutdown(graphManager, stage.stageId);
                 }
+                return false;
             }
         } catch (AssertionError ae) {
             recordTheException(stage, ae, that);
-            System.exit(-1); //hard stop due to assertion failure
+            throw ae;
         } catch (Throwable t) {
             recordTheException(stage, t, that);
-            System.exit(-1); //hard stop due to suprise
+            throw t;
         }
 
     }
 
+    private Object key = "key";
+    
     @Override
     public void shutdown() {
+    	
+
+        
+    	
         if (null!=stages && shutdownRequested.compareAndSet(false, true)) {
 
+        	
+        	
+        	synchronized(key) {
+                boolean debug = true;
+                if (debug) {	
+        	        System.err.println();
+        	        System.err.println("total wait count "+totalWaitCount+" at clock "+schedule.commonClock);
+        	        System.err.println("----------full stages -------------"+System.identityHashCode(this));
+        	        for(int i = 0; i<stages.length; i++) {
+        	        	
+        	        	StringBuilder target = new StringBuilder();
+        	    		target.append("full stages "+stages[i].getClass().getSimpleName()+":"+stages[i].stageId);
+        	    		target.append("  inputs:");
+        	    		GraphManager.appendInputs(graphManager, target, stages[i]);
+        	    		target.append(" outputs:");
+        	    		GraphManager.appendOutputs(graphManager, target, stages[i]);
+        	    		        		
+        	    		System.err.println("   "+target);
+        	        	
+        	        }
+                }
+            }
+        	
+        	
+        	
             int s = stages.length;
             while (--s >= 0) {
                 //ensure every non terminated stage gets shutdown called.

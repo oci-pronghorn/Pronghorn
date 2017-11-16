@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
 import java.io.IOException;
+import java.net.StandardSocketOptions;
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
@@ -64,6 +66,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 
     private PronghornStageProcessor optionalStageProcessor;
+
+	//public long sentTime;
     
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	
@@ -100,11 +104,22 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.firstStage = startStage;
 	}
 	
+	public final int receiveBufferSize;
 	
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, TLSCertificates tlsCertificates) {
 		super(tlsCertificates);
 		int maxUsers = 1<<connectionsInBits;
 		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
+		
+		try {
+			//get values we can not modify from the networking subsystem
+			SocketChannel testChannel = SocketChannel.open();
+			//we read the receive buffer size here to ensure that the consuming pipe has the 
+			//same size.
+			receiveBufferSize = 1+testChannel.getOption(StandardSocketOptions.SO_RCVBUF);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
 		hostTrie = new TrieParser(trieSize, 4, false, false);
@@ -335,10 +350,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					}
 						
 					try {
-						
+						;
 				    	//create new connection because one was not found or the old one was closed
 						SSLEngine engine =  ccm.isTLS ? ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port):null;
-						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
+						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 
+								                  connectionId, ccm.isTLS, inFlightBits, outputs[pipeIdx].maxVarLen);
 						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
 						

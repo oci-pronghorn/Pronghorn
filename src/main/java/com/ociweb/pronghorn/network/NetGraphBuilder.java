@@ -48,8 +48,7 @@ public class NetGraphBuilder {
 	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
 			ClientCoordinator ccm, 
 			int responseQueue, 
-			int responseSize, final Pipe<NetPayloadSchema>[] requests, 
-			final Pipe<NetResponseSchema>[] responses) {
+			final Pipe<NetPayloadSchema>[] requests, final Pipe<NetResponseSchema>[] responses) {
 		
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 
@@ -63,15 +62,14 @@ public class NetGraphBuilder {
 			
 		};
 		
-		buildClientGraph(gm, ccm, responseQueue, responseSize, requests, 2, 2, 
-				             2, 2048, 64, 1<<19, factory, 20);
+		buildClientGraph(gm, ccm, responseQueue, requests, 2, 2, 2, 
+				             2048, 64, 1<<19, factory, 20);
 	}
 	
-	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, int responseSize,
-										Pipe<NetPayloadSchema>[] requests, int responseUnwrapCount, int clientWrapperCount,
-										int clientWriters, 
-										int releaseCount, int netResponseCount, int netResponseBlob, 
-										ClientResponseParserFactory parserFactory,
+	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,
+										int responseUnwrapCount, int clientWrapperCount, int clientWriters,
+										int releaseCount, 
+										int netResponseCount, int netResponseBlob, ClientResponseParserFactory parserFactory, 
 										int writeBufferMultiplier
 										) {
 	
@@ -81,7 +79,7 @@ public class NetGraphBuilder {
 		
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
 		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(
-				NetPayloadSchema.instance, responseQueue, responseSize); 	
+				NetPayloadSchema.instance, responseQueue, ccm.receiveBufferSize); 	
 		
 		
 		//pipe holds data as it is parsed so making it larger is helpful
@@ -131,6 +129,9 @@ public class NetGraphBuilder {
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse);
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);
 		ccm.processNota(gm, socketReaderStage);
+		
+		//This makes a big difference in testing... TODO: clean this up and develop a new approach.		
+		//GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, ((Number)GraphManager.getNota(gm,socketReaderStage.stageId,GraphManager.SCHEDULE_RATE,null)).longValue()/10, socketReaderStage);
 		
 		
 		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(gm, ccm, requests, responseUnwrapCount, socketResponse, clearResponse, acks);	
@@ -269,7 +270,7 @@ public class NetGraphBuilder {
 		logger.info("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);           
            
-        Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.processorCount(),
+        Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.moduleParallelism(),
         		                                                         serverConfig, encryptedIncomingGroup);
                        
         Pipe<NetPayloadSchema>[] handshakeIncomingGroup=null;
@@ -305,25 +306,23 @@ public class NetGraphBuilder {
 			throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
 		}
 		
-		int routerCount = coordinator.processorCount();
-
 		//logger.info("build modules");
-        Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];       
-        Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
+        Pipe<ServerResponseSchema>[][] fromModule = new Pipe[coordinator.moduleParallelism()][];       
+        Pipe<HTTPRequestSchema>[][] toModules = new Pipe[coordinator.moduleParallelism()][];
         
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromProcessorCount, serverConfig.fromProcessorBlob);///if payload is smaller than average file size will be slower
-        final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, httpSpec, routerToModuleConfig, fromModule, toModules);
+        final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, coordinator.moduleParallelism(), httpSpec, routerToModuleConfig, fromModule, toModules);
         
         
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
-        Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(routerCount, fromModule, config);        
+        Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(coordinator.moduleParallelism(), fromModule, config);        
         boolean captureAll = false;
-        buildRouters(graphManager, routerCount, receivedFromNet, 
+        buildRouters(graphManager, coordinator.moduleParallelism(), receivedFromNet, 
         		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, captureAll);
 		        
         //logger.info("build http ordering supervisors");
-        buildOrderingSupers(graphManager, coordinator, routerCount, 
+        buildOrderingSupers(graphManager, coordinator, coordinator.moduleParallelism(), 
         		            fromModule, sendingToNet);
         
 	}
@@ -652,7 +651,7 @@ public class NetGraphBuilder {
 				 
 		 //This must be large enough for both partials and new handshakes.
 	
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism);
 		
 		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		
@@ -683,7 +682,7 @@ public class NetGraphBuilder {
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port,
 				                                              serverConfig.maxConnectionBitsOnServer, 
 				                                              serverConfig.maxPartialResponsesServer, 
-				                                              serverConfig.processorCount,
+				                                              serverConfig.moduleParallelism,
 				                                              "Telemetry Server","");
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
@@ -966,14 +965,13 @@ public class NetGraphBuilder {
 		int responseUnwrapCount = 1;
 		int clientWrapperCount = 1;
 		int responseQueue = 10;
-		int responseSize = 1<<17;
 		int releaseCount = 2048;
 		int netResponseCount = 64;
 		int netResponseBlob = 1<<19;
 		int writeBufferMultiplier = 20;
 				
-		buildClientGraph(gm, ccm, responseQueue, responseSize, clientRequests, responseUnwrapCount, clientWrapperCount,
-				         clientWriters, releaseCount, netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
+		buildClientGraph(gm, ccm, responseQueue, clientRequests, responseUnwrapCount, clientWrapperCount, clientWriters,
+				         releaseCount, netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
 	}
 	
 	public static void buildHTTPClientGraph(GraphManager gm, 

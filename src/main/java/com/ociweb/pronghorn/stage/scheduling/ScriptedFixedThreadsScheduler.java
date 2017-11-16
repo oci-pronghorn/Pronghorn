@@ -32,18 +32,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
 	private ScriptedNonThreadScheduler[] ntsArray;
 
-    private static final Comparator comp = new Comparator<PronghornStage[]>(){
-
-		@Override
-		public int compare(PronghornStage[] o1, PronghornStage[] o2) {
-			int len1 = null==o1?-1:o1.length;
-			int len2 = null==o2?-1:o2.length;
-			
-			return len2-len1;
-		}
-    	
-    };
-    
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager) {
 		//this is often very optimal since we have enough granularity to swap work but we do not
 		//have so many threads that it overwhelms the operating system context switching
@@ -54,9 +42,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		this(graphManager, targetThreadCount, true);
 	}
 
-	public ScriptedFixedThreadsScheduler(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
+	public ScriptedFixedThreadsScheduler(final GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
 		super(graphManager);
 
+	    
 		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, enforceLimit);
 		
 		///////////////////    
@@ -74,7 +63,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 	}
 
-	public static PronghornStage[][] buildStageGroups(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
+	public static PronghornStage[][] buildStageGroups(final GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
 		//must add 1 for the tree of roots also adding 1 more to make hash more efficient.
 	    final int countStages = GraphManager.countStages(graphManager);  
 		int bits = 1 + (int)Math.ceil(Math.log(countStages)/Math.log(2));
@@ -82,9 +71,24 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		IntArrayHolder lastKnownRoot = new IntArrayHolder(128);
 	
+		Comparator<PronghornStage[]> comp = new Comparator<PronghornStage[]>(){
+
+			@Override
+			public int compare(PronghornStage[] o1, PronghornStage[] o2) {
+						
+				//keep all the montiors on one end to merge them last		
+				
+				int len1 = null==o1 ? -1 : GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o1.length;
+				int len2 = null==o2 ? -1 : GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o2.length;
+
+				return len2-len1;
+			}
+	    	
+	    };
+		
 		PronghornStage[][] stageArrays = buildStageGroups(graphManager, targetThreadCount, 
 				                                          enforceLimit, countStages, 
-				                                          rootsTable, lastKnownRoot);
+				                                          rootsTable, lastKnownRoot, comp);
 		
 		verifyNoStagesAreMissing(graphManager, stageArrays);
 		
@@ -127,7 +131,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static PronghornStage[][] buildStageGroups(GraphManager graphManager, 
 			int targetThreadCount, boolean enforceLimit,
 			final int countStages, 
-			final IntHashTable rootsTable, IntArrayHolder lastKnownRoot
+			final IntHashTable rootsTable, IntArrayHolder lastKnownRoot, Comparator comp
 			) {
 		
 		int logLimit=4000;//how many stages that we we can schedule without significant delay.
@@ -172,7 +176,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    														rootsTable, lastKnownRoot);
     
 	    if (enforceLimit) {
-	    	enforceThreadLimit(graphManager, targetThreadCount, stageArrays);
+	    	enforceThreadLimit(graphManager, targetThreadCount, stageArrays, comp);
 	    }
 	    
 	    
@@ -182,7 +186,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return stageArrays;
 	}
 
-	private static void enforceThreadLimit(GraphManager graphManager, int targetThreadCount, PronghornStage[][] stageArrays) {
+	private static void enforceThreadLimit(GraphManager graphManager, int targetThreadCount, PronghornStage[][] stageArrays, Comparator comp) {
 		////////////
 	    
 	    Arrays.sort(stageArrays, comp );
@@ -224,30 +228,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    	PronghornStage[] newArray = new PronghornStage[stageArrays[idx].length
 	    	                                               +stageArrays[idx-1].length];
 	    	
-	    	boolean inOriginalOrder = true;
+	    	
+	    	System.arraycopy(stageArrays[idx], 0, newArray, 0, stageArrays[idx].length);
+	    	System.arraycopy(stageArrays[idx-1], 0, newArray, stageArrays[idx].length, stageArrays[idx-1].length);
 
-//	    	//TODO: this is a general ordering problem, should it be solved before this point or not?
-//	    	//      client reader only happens after a client write so they must be connected.
-//	    	PronghornStage[] temp = stageArrays[idx-1];
-//	    	int i = temp.length;
-//	    	while (--i>=0) {
-//	    		if (temp[i] instanceof ClientSocketWriterStage) {
-//	    			inOriginalOrder = false;
-//	    		}
-//	    	}
-//	    	if (inOriginalOrder) {
-//	    		//producers must come first???
-//	    		
-//	    	}
-	    	
-	    	if (inOriginalOrder) {
-	    		System.arraycopy(stageArrays[idx], 0, newArray, 0, stageArrays[idx].length);
-	    		System.arraycopy(stageArrays[idx-1], 0, newArray, stageArrays[idx].length, stageArrays[idx-1].length);
-	    	} else {
-	    		System.arraycopy(stageArrays[idx-1], 0, newArray, 0, stageArrays[idx-1].length);
-	    		System.arraycopy(stageArrays[idx], 0, newArray, stageArrays[idx-1].length, stageArrays[idx].length);
-	    	}
-	    	
 	    	
 	    	stageArrays[idx] = newArray;
 	    	stageArrays[idx-1] = null;

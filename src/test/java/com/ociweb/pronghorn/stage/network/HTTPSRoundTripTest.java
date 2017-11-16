@@ -235,10 +235,10 @@ public class HTTPSRoundTripTest {
 												
 						Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
 								                                           input, clientCoord1, clientResponseUnwrapUnits, clientRequestWrapUnits,
-								                                           requestQueue, requestQueueBytes, responseQueue, responseQueueBytes,
-								                                           clientWriterStages, netRespQueue, netRespSize, 
-								                                           httpRequestQueueSize,httpRequestQueueBytes,writeBufferMultiplier, 
-								                                           releaseCount, netResponseCount, netResponseBlob);
+								                                           requestQueue, requestQueueBytes, responseQueue, clientWriterStages,
+								                                           netRespQueue, netRespSize, httpRequestQueueSize, 
+								                                           httpRequestQueueBytes,writeBufferMultiplier,releaseCount, 
+								                                           netResponseCount, netResponseBlob);
 						assert(toReactor.length == input.length);
 						clients[cc] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+cc,clientCoord1,printProgress);
 						clientCoords[cc]=clientCoord1;
@@ -419,9 +419,9 @@ public class HTTPSRoundTripTest {
 
 	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, int bitsPlusHashRoom,
 			int outputsCount, int maxPartialResponses, Pipe<ClientHTTPRequestSchema>[] input, ClientCoordinator ccm, int responseUnwrapUnits, int requestWrapUnits,
-			int requestQueue, int requestQueueBytes, int responseQueue, int responseQueueBytes, int clientWriterStages,
-			int netRespQueue, int netRespSize, int httpRequestQueueSize, int httpRequestQueueBytes, 
-			int writeBufferMultiplier, int releaseCount, int netResponseCount, int netResponseBlob) {
+			int requestQueue, int requestQueueBytes, int responseQueue, int clientWriterStages, int netRespQueue,
+			int netRespSize, int httpRequestQueueSize, int httpRequestQueueBytes, int writeBufferMultiplier, 
+			int releaseCount, int netResponseCount, int netResponseBlob) {
 					
 		
 		//create more pipes if more wrapers were requested.
@@ -432,7 +432,7 @@ public class HTTPSRoundTripTest {
 		PipeConfig<ClientHTTPRequestSchema> netRequestConfig = new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, requestQueue, requestQueueBytes);
 		//System.err.println("in "+netRequestConfig);
 		//back from server, one of these for every client user.
-		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, responseQueueBytes);
+		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, ccm.receiveBufferSize);
 		//System.err.println("out "+netResponseConfig);	
 		
 		//second pipe which also impacts latency		
@@ -473,11 +473,11 @@ public class HTTPSRoundTripTest {
 
 
 		NetGraphBuilder.buildClientGraph(gm, ccm, 
-				                             netRespQueue, netRespSize,
-				                             clientRequests,responseUnwrapUnits,
-											 requestWrapUnits, 
-											 clientWriterStages, releaseCount, 
-											 netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
+				                             netRespQueue, clientRequests,
+				                             responseUnwrapUnits,requestWrapUnits,
+											 clientWriterStages, 
+											 releaseCount, netResponseCount, 
+											 netResponseBlob, factory, writeBufferMultiplier);
 
 		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		
