@@ -9,7 +9,7 @@ public interface TLSCertificates {
     // if true ignores trustStoreResourceName and uses a trust all TrustManager
     boolean trustAllCerts();
 
-    TLSCertificates defaultCerts = new TLSCertificates() {
+    class Default implements TLSCertificates {
         @Override
         public String keyStoreResourceName() {
             return "/certificates/client.jks";
@@ -34,5 +34,7 @@ public interface TLSCertificates {
         public boolean trustAllCerts() {
             return true;
         }
-    };
+    }
+
+    TLSCertificates defaultCerts = new Default();
 }
