@@ -1741,7 +1741,12 @@ public class GraphManager {
 			                }
 			     
 			                if (null!=traffic) {
-			                	Appendables.appendValue(target.append(" Vol:"), traffic[pipe.id]);
+			                	int traf = traffic[pipe.id];
+			                	if (traf>9999) {
+			                		Appendables.appendValue(target.append(" Vol:"), traf);
+			                	} else {
+			                		Appendables.appendFixedDecimalDigits(target.append(" Vol:"), traf, 1000);
+			                	}
 			                	target.append(WHITE_NEWLINE);			                	
 			                } 
 			                	                    
@@ -1782,15 +1787,15 @@ public class GraphManager {
 		target.append(ELAP);
 		
 		if (atPct<2_000) {
-			Appendables.appendValue(target, atPct).append(NS);
+			Appendables.appendFixedDecimalDigits(target, atPct, 1000).append(NS);
 		} else if (atPct<2_000_000){
-			Appendables.appendValue(target, atPct/1_000).append(MICROS,2);
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000, 1000).append(MICROS,2);
 		} else if (atPct<2_000_000_000){
-			Appendables.appendValue(target, atPct/1_000_000).append(MS);				
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000, 1000).append(MS);				
 		} else if (atPct<90_000_000_000L){
-			Appendables.appendValue(target, atPct/1_000_000_000L).append(SEC);
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000_000L, 100).append(SEC);
 		} else if (atPct<(120L*60_000_000_000L)){
-			Appendables.appendValue(target, atPct/60_000_000_000L).append(MIN);
+			Appendables.appendFixedDecimalDigits(target, atPct/60_000_000_000L, 100).append(MIN);
 		} else {
 			Appendables.appendValue(target, atPct/(60L*60_000_000_000L)).append(HR);
 		}

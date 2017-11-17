@@ -1,14 +1,194 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <script src="viz-lite.js"></script>
     <script src="jquery-3.2.1.min.js"></script>
+
+    <style>
+
+        /*slider*/
+        .range {
+            position: relative;
+            width: 550px;
+            height: 5px;
+        }
+        .range input {
+            width: 100%;
+            position: absolute;
+            top: 2px;
+            height: 0;
+            -webkit-appearance: none;
+        }
+        .range input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            margin: -8px 0 0;
+            border-radius: 50%;
+            background: #37adbf;
+            cursor: pointer;
+            border: 0 !important;
+        }
+        .range input::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            margin: -8px 0 0;
+            border-radius: 50%;
+            background: #37adbf;
+            cursor: pointer;
+            border: 0 !important;
+        }
+        .range input::-ms-thumb {
+            width: 18px;
+            height: 18px;
+            margin: -8px 0 0;
+            border-radius: 50%;
+            background: #37adbf;
+            cursor: pointer;
+            border: 0 !important;
+        }
+        .range input::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #b2b2b2;
+        }
+        .range input::-moz-range-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #b2b2b2;
+        }
+        .range input::-ms-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #b2b2b2;
+        }
+        .range input:focus {
+            background: none;
+            outline: none;
+        }
+        .range input::-ms-track {
+            width: 100%;
+            cursor: pointer;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+        }
+        .range-labels {
+            margin: 18px -41px 0;
+            padding: 0;
+            list-style: none;
+        }
+        .range-labels li {
+            position: relative;
+            float: left;
+            width: 90.25px;
+            text-align: center;
+            color: #b2b2b2;
+            font-size: 25px;
+            cursor: pointer;
+        }
+        .range-labels li::before {
+            position: absolute;
+            top: -25px;
+            right: 0;
+            left: 0;
+            content: "";
+            margin: 0 auto;
+            width: 9px;
+            height: 9px;
+            background: #b2b2b2;
+            border-radius: 50%;
+        }
+        .range-labels:active {
+            color: #37adbf;
+        }
+        .range-labels .selected::before {
+            background: #37adbf;
+        }
+        .range-labels .active.selected::before {
+            display: none;
+        }
+
+        .scale {
+            transform: scale(0.7);
+            position: fixed;
+            top: 0px;
+            right:0px;
+        }
+
+        .refreshTitle {
+            text-align: center;
+            color: #37adbf;
+            margin-bottom: 10px;
+            font-size: 30px;
+        }
+
+        #download-svg {
+            cursor: pointer;
+            border-radius: 10px;
+            width: 100px;
+            height: 30px;
+            background: #37adbf;
+            border: none;
+            color: white;
+            margin: 20px;
+            position: fixed;
+            opacity: 0.9;
+        }
+
+
+        #loading {
+            position: absolute;
+            text-align: center;
+            top: 50%;
+            width: 100%;
+            font-weight: 900;
+            font-size: 30px;
+            z-index: 0.5;
+        }
+
+    </style>
 </head>
 <body>
-<div id="demo">Loading...</div>
+
+<div class="scale"><div class="refreshTitle"><b>Refresh Rate</b></div>
+    <div class="range" id="slidecontainer">
+        <input type="range" min="1" max="7" steps="1" value="2" id="sliderRange">
+    </div>
+    <ul class="range-labels">
+        <li>40 Ms</li>
+        <li class="active selected">160 Ms</li>
+        <li>1 Sec</li>
+        <li>20 Sec</li>
+        <li>1 Min</li>
+        <li>20 Min</li>
+        <li>1 Hr</li>
+    </ul>
+
+</div>
+
+<!-- <button id="download-svg">Download</button> -->
+<!-- <a style="display: none;" id="_btn" download="Telemetry.svg" href="data:image/svg+xml;base64,"><b>Download</b></a> -->
+
+<div id="demo"><div id="loading">Loading...</div></div>
+
 <script>
+
+    //download button
+    //$("#download-svg").click(function() {
+
+    //   var Base64={_keyStr:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",encode:function(e){var t="";var n,r,i,s,o,u,a;var f=0;e=Base64._utf8_encode(e);while(f<e.length){n=e.charCodeAt(f++);r=e.charCodeAt(f++);i=e.charCodeAt(f++);s=n>>2;o=(n&3)<<4|r>>4;u=(r&15)<<2|i>>6;a=i&63;if(isNaN(r)){u=a=64}else if(isNaN(i)){a=64}t=t+this._keyStr.charAt(s)+this._keyStr.charAt(o)+this._keyStr.charAt(u)+this._keyStr.charAt(a)}return t},decode:function(e){var t="";var n,r,i;var s,o,u,a;var f=0;e=e.replace(/[^A-Za-z0-9+/=]/g,"");while(f<e.length){s=this._keyStr.indexOf(e.charAt(f++));o=this._keyStr.indexOf(e.charAt(f++));u=this._keyStr.indexOf(e.charAt(f++));a=this._keyStr.indexOf(e.charAt(f++));n=s<<2|o>>4;r=(o&15)<<4|u>>2;i=(u&3)<<6|a;t=t+String.fromCharCode(n);if(u!=64){t=t+String.fromCharCode(r)}if(a!=64){t=t+String.fromCharCode(i)}}t=Base64._utf8_decode(t);return t},_utf8_encode:function(e){e=e.replace(/rn/g,"n");var t="";for(var n=0;n<e.length;n++){var r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r)}else if(r>127&&r<2048){t+=String.fromCharCode(r>>6|192);t+=String.fromCharCode(r&63|128)}else{t+=String.fromCharCode(r>>12|224);t+=String.fromCharCode(r>>6&63|128);t+=String.fromCharCode(r&63|128)}}return t},_utf8_decode:function(e){var t="";var n=0;var r=c1=c2=0;while(n<e.length){r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r);n++}else if(r>191&&r<224){c2=e.charCodeAt(n+1);t+=String.fromCharCode((r&31)<<6|c2&63);n+=2}else{c2=e.charCodeAt(n+1);c3=e.charCodeAt(n+2);t+=String.fromCharCode((r&15)<<12|(c2&63)<<6|c3&63);n+=3}}return t}}
+    //   console.log("Base64: " + Base64);
+    //   var svgContent =  Base64.encode($("#demo").html());
+    //    console.log ("svgContent: " + svgContent);
+
+    //    $("#_btn").attr("href", "data:image/svg+xml;base64," + svgContent)[0].click();
+    //});
 
     function httpGet(theUrl, onSuccess, onError) {
         var xmlHttp = new XMLHttpRequest();
@@ -29,45 +209,60 @@
     var doingUpdate = false;
 
     function doUpdate() {
-        if (!doingUpdate) {
+        if (!doingUpdate || !paintAllDrawing) { //doingUpdate and paintAllDrawing is false
             doingUpdate = true;
             httpGet('graph.dot', paintParts, handleError);
         } else {
-            console.log('Needed to perform an update, but another update is already occurring.');
+            doUpdate();
         }
     }
 
-    var w;
+    var webworker;
     if (window.Worker) {
-        w = new Worker('webworker.js');
+        webworker = new Worker('webworker.js');
     }
-    
+
     function handleError(error) {
         console.log('Error: ' + error);
         doingUpdate = false;
     }
 
-    var isFirst = true;
-    
-    
+    var isFirst = true; //only effects initial paintAll
+    var initialInterval;
+    var paintAllDrawing = false;
+    var interval = 160;
+    var webworkerInProgress = false;
+    var paintAllinProgress = false;
+    var sliderIsActive = false;
+
     function paintAll () {
-        if (w) {
-            //returned message from the webworker
-            w.onmessage = function (e) {
-                if (doingUpdate) {        	
-                 	   paintAll();
-                } else {
-            	       document.getElementById("demo").innerHTML = e.data.result;        
-		            	if (isFirst) {
-		           		    setInterval(paintAll,20000);
-		           		    setInterval(doUpdate,160);
-			            	isFirst=false;         		
-		            	}
+        paintAllinProgress = true;
+        if (webworker) {
+
+            //message posted to webworker
+            if (!webworkerInProgress){
+                webworkerInProgress = true;
+                webworker.postMessage("");
+            }
+            else {
+                paintAll();
+            }
+
+            //message returned from the webworker
+            webworker.onmessage = function (e) {
+                webworkerInProgress = false;
+                paintAllDrawing = true;
+                document.getElementById("demo").innerHTML = e.data.result;
+                console.log("256 COMPLETED PAINTALL UPDATE");
+                paintAllDrawing = false;
+                paintAllinProgress = false
+                $("#graph0 title").remove();
+                if (isFirst) {
+                    initialInterval = setInterval(doUpdate,interval); //initially set paintParts
+                    isFirst=false;
+                    sliderIsActive = true;
                 }
-            	
             };
-            //message sent to webworker
-            w.postMessage("");
         }
     }
 
@@ -77,10 +272,15 @@
 
     var node = new RegExp(/label="([^"]+)"/g); //grabs the section
     var newline = new RegExp(/([^\n]+)/g); //grabs each line in the section
+    var features = new RegExp(/\"(.*)\]/g); //grabs everything between " and ]
+    var oldfeatureArray = [];
+    var newfeatureArray = [];
+    var eoldfeatureArray = [];
+    var enewfeatureArray = [];
+    var first = true; //to ensure paintAll isn't called the first time when old and new array aren't the same
 
     //function that updates the text values
     function paintParts(dot) {
-
         var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
         var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
         var numberOfNodeIds = numberOfTotalIds-numberOfEdgeIds; //Number of node IDs
@@ -88,27 +288,50 @@
         var whole = dot.match(node); //section matches starting with label=" and ending with "
         var ss = 1; // node id number in html (node ids start at 1)
         var ee = 1; //edge id number in html (node ids start at 1)
+        var featureSection = dot.match(features); //grabs all features
 
         //updates the nodes
         for (var s = 0; s < numberOfNodeIds; s++) {   // is the number of nodes
             var iteration = whole[s].match(newline).map(function(item) {
+                featureSection[s] = featureSection[s].replace(/"|]/g, ''); //removes " and ] from feature data
+                oldfeatureArray.push(featureSection[s]); //adds feature values to an array
                 return item.replace(/label|"|=/g, '');
             });
 
             $('#node' + ss).children('text').each(function(itemIdx, item) {
-                if (itemIdx !== 0) {
+                if (itemIdx !== 0) { //skips title line which doesn't change
                     item = $(item);
-                    if (item.text() !== iteration[itemIdx]) {
-                        item.text(iteration[itemIdx]);
+                    if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
+                        if ((item.text().length !== iteration[itemIdx].length) && !paintAllinProgress) { //if the length is different redraw
+                            doingUpdate = false;
+                            console.log("307 node length change triggered a paintAll. "+item.text()+" vs "+iteration[itemIdx]);
+                            paintAll();
+                        } else{
+                            item.text(iteration[itemIdx]); // if there is a change but length is same just update that line
+                        }
                     }
                 }
             });
             ss++;
         }
 
+        //updates paintAll for nodes depending on changes to color and thickness
+        var is_same = oldfeatureArray.length === newfeatureArray.length && oldfeatureArray.every(function(element, index) {
+            return element === newfeatureArray[index];
+        }); //returns boolean of whether oldfeatureArray and newfeatureArray are the same
+        if ((!is_same && first === false) && !paintAllinProgress){
+            doingUpdate = false;
+            console.log("324 node color/thickness change triggered a paintAll");
+            paintAll();
+        }
+        newfeatureArray = Array.from(oldfeatureArray); //assign old array to new array to keep repeating process
+        oldfeatureArray = [];
+
         //updates the edges
         for (var e = numberOfNodeIds; e < numberOfTotalIds; e++) {   // is the number of nodes
             var eiteration = whole[e].match(newline).map(function(item) {
+                featureSection[e] = featureSection[e].replace(/"|]/g, '');
+                eoldfeatureArray.push(featureSection[e]);
                 return item.replace(/label|"|=/g, '');
             });
 
@@ -116,18 +339,112 @@
                 if (itemIdx !== 0) {
                     item = $(item);
                     if(item.text() !== eiteration[itemIdx]) {
-                        item.text(eiteration[itemIdx]);
+                        if ((item.text().length !== eiteration[itemIdx].length) && !paintAllinProgress) { //if lenght of text changes bubble needs to be redrawn
+                            doingUpdate = false;
+                            console.log("344 edge length change triggered a paintAll "+item.text()+" vs "+eiteration[itemIdx]);
+                            paintAll();
+                        } else {
+                            item.text(eiteration[itemIdx]);
+                        }
                     }
                 }
             });
             ee++;
         }
+
+        //updates paintAll for edges depending on changes to color and thickness
+        is_same = eoldfeatureArray.length === enewfeatureArray.length && eoldfeatureArray.every(function(element, index) {
+            return element === enewfeatureArray[index];
+        });
+        if ((!is_same && first === false) && !paintAllinProgress){
+            doingUpdate = false;
+            console.log("361 edge color/thickness change triggered a paintAll");
+            paintAll();
+        }
+        enewfeatureArray = Array.from(eoldfeatureArray); //assign old array to new array
+        eoldfeatureArray = []; //empty old array so we can repeat the process
+
         doingUpdate = false;
         return 0;
     }
 
-    paintAll(); //runs first initially
-   
+    paintAll(); //runs first initiall paintAll();
+
+    if (sliderIsActive){
+        var updatedInterval = setInterval(doUpdate, interval);
+    }
+
+    function stopInterval() {
+        clearInterval(updatedInterval);
+        clearInterval(initialInterval);
+    }
+
+    var sheet = document.createElement('style'),
+        $rangeInput = $('.range input'),
+        prefs = ['webkit-slider-runnable-track', 'moz-range-track', 'ms-track'];
+    document.body.appendChild(sheet);
+
+    var getTrackStyle = function (el) {
+        var curVal = el.value;
+        var val = (curVal - 1) * 16.666666667,
+            style = '';
+
+        switch (curVal) {
+            case '1':
+                interval = 40;
+                break;
+            case '2':
+                interval = 160;
+                break;
+            case '3':
+                interval = 1000;
+                break;
+            case '4':
+                interval = 20000;
+                break;
+            case '5':
+                interval = 60000;
+                break;
+            case '6':
+                interval = 1.2e+6;
+                break;
+            case '7':
+                interval = 3.6e+6;
+                break;
+        }
+
+        if (sliderIsActive){
+            stopInterval();
+            updatedInterval = setInterval(doUpdate, interval); //gets updated from the slider
+        }
+
+        // Set active label
+        $('.range-labels li').removeClass('active selected');
+
+        var curLabel = $('.range-labels').find('li:nth-child(' + curVal + ')');
+
+        curLabel.addClass('active selected');
+        curLabel.prevAll().addClass('selected');
+
+        // Change background gradient
+        for (var i = 0; i < prefs.length; i++) {
+            style += '.range {background: linear-gradient(to right, #37adbf 0%, #37adbf ' + val + '%, #fff ' + val + '%, #fff 100%)}';
+            style += '.range input::-' + prefs[i] + '{background: linear-gradient(to right, #37adbf 0%, #37adbf ' + val + '%, #b2b2b2 ' + val + '%, #b2b2b2 100%)}';
+        }
+        return style;
+    };
+
+    $rangeInput.on('input', function () {
+        sheet.textContent = getTrackStyle(this);
+    });
+
+    // Change input value on label click
+    $('.range-labels li').on('click', function () {
+        var index = $(this).index();
+        $rangeInput.val(index + 1).trigger('input');
+    });
+
+
 </script>
 
 </body>
