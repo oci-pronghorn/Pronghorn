@@ -37,8 +37,7 @@ public class HTTPServer {
 		if (tlsCertificates == null) {
 			logger.warn("TLS has been progamatically switched off");
 		}
-		// 78,300
-	
+
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, large ? 20_000 : 2_000_000 );//pi needs larger values...
 						
 		///////////////
