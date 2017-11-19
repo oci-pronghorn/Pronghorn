@@ -571,10 +571,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
 						
 							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
-							
-							TrieParserReader.writeCapturedShort(trieReader, 0, DataOutputBlobWriter.openField(Pipe.outputStream(targetPipe))); //status code	
-														
-							positionMemoData[stateIdx]= ++state;
+
+							TrieParserReader.writeCapturedShort(trieReader, 0, Pipe.openOutputStream(targetPipe)); //status code	
+							positionMemoData[stateIdx]= ++state;//state change is key
 							
 							int consumed = startingLength1 - trieReader.sourceLen;						
 							
@@ -597,13 +596,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								//logger.info("error trieReader pos {} len {} ", trieReader.sourcePos,trieReader.sourceLen);
 								
 								reportCorruptStream("HTTP revision",cc);
-								
-//								trieReader.sourcePos-=100;
-//								trieReader.sourceLen+=100;
-//								TrieParserReader.debugAsUTF8(trieReader, System.out, trieReader.sourceLen, false);
-//								trieReader.sourcePos+=100;
-//								trieReader.sourceLen-=100;
-								
+
 								///////////////////////////////////
 								//server is behaving badly so shut the connection
 								//////////////////////////////////
@@ -674,6 +667,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							if (trieReader.sourceLen<MAX_VALID_HEADER) {		
 								break;//not an error just needs more data.
 							} else {
+							    
 								reportCorruptStream2(cc);
 								
 								//TODO: bad client, disconnect??  finish partial message out!!!

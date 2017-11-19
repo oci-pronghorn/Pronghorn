@@ -259,7 +259,12 @@ public class NetGraphBuilder {
 			ServerFactory factory) {
 		
 		return buildServerGraph(graphManager, coordinator,
-				                new ServerPipesConfig(isLarge,isTLS),factory);
+				                new ServerPipesConfig(isTLS, 
+								   isLarge ? 20 : 12, 
+								   isLarge? 8 : (isLarge ? (isTLS?4:8) : 2),
+								   isLarge ? 2 : 1, isLarge ? 2 : 1,
+								   isLarge ? 2 : 1, isLarge ? 2 : 1),
+				                   factory);
 		
 	}
 	
@@ -268,7 +273,7 @@ public class NetGraphBuilder {
 													final ServerPipesConfig serverConfig,
 													ServerFactory factory) {
 		logger.info("building server graph");
-		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);           
+		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxConcurrentInputs, serverConfig.incomingDataConfig);           
            
         Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.moduleParallelism(),
         		                                                         serverConfig, encryptedIncomingGroup);
@@ -277,7 +282,7 @@ public class NetGraphBuilder {
         Pipe<NetPayloadSchema>[] receivedFromNet;
         
         if (coordinator.isTLS) {
-        	receivedFromNet = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);
+        	receivedFromNet = Pipe.buildPipes(serverConfig.maxConcurrentInputs, serverConfig.incomingDataConfig);
         	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, serverConfig.serverRequestUnwrapUnits, serverConfig.handshakeDataConfig,
         			                      encryptedIncomingGroup, receivedFromNet, releaseAfterParse);
         } else {
@@ -310,7 +315,7 @@ public class NetGraphBuilder {
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[coordinator.moduleParallelism()][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[coordinator.moduleParallelism()][];
         
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromProcessorCount, serverConfig.fromProcessorBlob);///if payload is smaller than average file size will be slower
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromRouterToModuleCount, serverConfig.fromRouterToModuleBlob);///if payload is smaller than average file size will be slower
         final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, coordinator.moduleParallelism(), httpSpec, routerToModuleConfig, fromModule, toModules);
         
         
@@ -359,7 +364,7 @@ public class NetGraphBuilder {
 		
 	//	logger.info("build remainder of server");
 		PipeConfig<NetPayloadSchema> fromOrderedConfig = serverConfig.orderWrapConfig();
-		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
+		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnitsAndOutputs * serverConfig.serverPipesPerOutputEngine];
 
 		Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, serverConfig, 
 				                                                       handshakeIncomingGroup,
@@ -382,7 +387,7 @@ public class NetGraphBuilder {
 		
 		int requestUnwrapUnits = serverConfig.serverRequestUnwrapUnits;		
 		int y = serverConfig.serverPipesPerOutputEngine;
-		int z = serverConfig.serverResponseWrapUnits;
+		int z = serverConfig.serverResponseWrapUnitsAndOutputs;
 		Pipe<NetPayloadSchema>[] toWiterPipes = null;
 		
 		if (coordinator.isTLS) {
@@ -644,14 +649,24 @@ public class NetGraphBuilder {
 	}
 	
 
-	public static ServerCoordinator httpServerSetup(TLSCertificates tlsCertificates, String bindHost, int port, GraphManager gm,
-			                                        boolean large, ModuleConfig modules) {
-		
-		ServerPipesConfig serverConfig = new ServerPipesConfig(large, tlsCertificates != null);
+	public static ServerCoordinator httpServerSetup(TLSCertificates tlsCertificates, String bindHost, int port, 
+													GraphManager gm,
+			                                        int processors, ModuleConfig modules) {
+	
+		boolean isTLS = tlsCertificates != null;
+		ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, 
+		  (processors >= 4) ? 20 : 12, 
+		   processors > 0? processors : ((processors >= 4) ? (isTLS?4:8) : 2),
+		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
+		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1);
 				 
 		 //This must be large enough for both partials and new handshakes.
 	
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, 
+				   serverConfig.maxConnectionBitsOnServer, 
+				   serverConfig.maxConcurrentInputs, 
+				   serverConfig.maxConcurrentOutputs,
+				   serverConfig.moduleParallelism);
 		
 		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		
@@ -669,19 +684,19 @@ public class NetGraphBuilder {
 		final int serverRate = Math.max(2000000, baseRate); //2ms
 		final int rate = serverRate;// actual modules rates
 		
-		boolean isLarge = false;
-		int countOfMonitoredPipes = 0;		
-
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, tlsCertificates != null, 2);
-				 
-		serverConfig.ensureServerParallelResponses(countOfMonitoredPipes);		
+		boolean isTLS = tlsCertificates != null;
+		int maxConnectionBits = 12;
+		int tracks = 2;
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, maxConnectionBits, tracks, 1, 1, 1, 1);
+				 		
 		serverConfig.ensureServerCanWrite(1<<19);//512K
 		 //This must be large enough for both partials and new handshakes.
 		
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port,
 				                                              serverConfig.maxConnectionBitsOnServer, 
-				                                              serverConfig.maxPartialResponsesServer, 
+				                                              serverConfig.maxConcurrentInputs, 
+				                                              serverConfig.maxConcurrentOutputs, 
 				                                              serverConfig.moduleParallelism,
 				                                              "Telemetry Server","");
 		

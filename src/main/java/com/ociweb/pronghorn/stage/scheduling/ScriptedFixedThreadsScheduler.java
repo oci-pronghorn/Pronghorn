@@ -78,8 +78,16 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						
 				//keep all the montiors on one end to merge them last		
 				
-				int len1 = null==o1 ? -1 : GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o1.length;
-				int len2 = null==o2 ? -1 : GraphManager.hasNota(graphManager, o2[0].stageId, GraphManager.MONITOR) ? Integer.MAX_VALUE : o2.length;
+				boolean mon1 = o1!=null && GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR);
+				boolean mon2 = o2!=null && GraphManager.hasNota(graphManager, o2[0].stageId, GraphManager.MONITOR);
+
+				if (mon1 && mon2) {
+					mon1 = false;
+					mon2 = false;							
+				}
+				
+				int len1 = null==o1 ? -1 : mon1 ? Integer.MAX_VALUE : o1.length;
+				int len2 = null==o2 ? -1 : mon2 ? Integer.MAX_VALUE : o2.length;
 
 				return len2-len1;
 			}
@@ -188,7 +196,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	private static void enforceThreadLimit(GraphManager graphManager, int targetThreadCount, PronghornStage[][] stageArrays, Comparator comp) {
 		////////////
-	    
+	    assert(null!=comp);
+	  
 	    Arrays.sort(stageArrays, comp );
 	    
 	    int countOfGroups = 0;
@@ -224,6 +233,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    boolean debug = false;
 	    while (--threadCountdown>=0) {
 	    	int idx = countOfGroups/2;
+	    	
+	    	if (null == stageArrays[idx]) {
+	    		break;
+	    	}
+	    	assert(null!=stageArrays[idx]);
+	    	assert(null!=stageArrays[idx-1]);
+	    	
 
 	    	PronghornStage[] newArray = new PronghornStage[stageArrays[idx].length
 	    	                                               +stageArrays[idx-1].length];

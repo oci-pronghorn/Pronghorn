@@ -49,10 +49,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
 	private final PoolIdx responsePipeLinePool;
-	public final int maxPartialResponses;
 	private final int[] processorLookup;
 	private final int moduleParallelism;
 	
+	public final int maxConcurrentInputs;
+	public final int maxConcurrentOutputs;
+		
     private final String serviceName;
     private final String defaultPath;
     
@@ -71,23 +73,29 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism,"Server", "");
+		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
+		   serverConfig.moduleParallelism,"Server", "");
 	}
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxPartialResponsesServer, serverConfig.moduleParallelism,"Server", defaultPath);
+		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
+		   serverConfig.moduleParallelism,"Server", defaultPath);
 	}
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
-            int maxConnectionsBits, int maxPartialResponses,
+            int maxConnectionsBits, 
+            int maxConcurrentInputs, int maxConcurrentOutputs,
             int moduleParallelism){
-		this(tlsCertificates,bindHost,port,maxConnectionsBits, maxPartialResponses, moduleParallelism,"Server", "");
+		this(tlsCertificates,bindHost,port,maxConnectionsBits, 
+				maxConcurrentInputs, maxConcurrentOutputs,
+				moduleParallelism,"Server", "");
 	}
 	
     public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
 							 int maxConnectionsBits, 
-							 int maxPartialResponses,
+							 int maxConcurrentInputs,
+							 int maxConcurrentOutputs,
 							 int moduleParallelism,
 							 String serviceName, String defaultPath){
 
@@ -100,12 +108,13 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
-    	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
+    	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs); 
     	
-    	this.maxPartialResponses = maxPartialResponses;
+    	this.maxConcurrentInputs = maxConcurrentInputs;
+    	this.maxConcurrentOutputs = maxConcurrentOutputs;
 
     	this.moduleParallelism = moduleParallelism;
-    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxPartialResponses);
+    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -141,6 +150,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 	
 	private PipeLineFilter isOk = new PipeLineFilter();
+
+	
+	
 	//NOT thread safe only called by ServerSocketReaderStage
 	public int responsePipeLineIdx(final long ccId) {
 	
@@ -217,8 +229,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		}
 
 		public void setId(long ccId) {
-			assert(maxPartialResponses == processorLookup.length);
-			this.idx = ((int)ccId)%maxPartialResponses;
+			assert(maxConcurrentInputs == processorLookup.length);
+			//multiplied by prime number to ensure value jumps arround
+			this.idx = ((int)ccId*191)%maxConcurrentInputs;
 			this.validValue = processorLookup[idx];
 		}
 

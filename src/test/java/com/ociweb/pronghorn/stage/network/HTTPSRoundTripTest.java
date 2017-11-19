@@ -98,15 +98,14 @@ public class HTTPSRoundTripTest {
 			final String testFile = "groovySum.json";
 			final int loadMultiplier = isTLS? 300_000 : 3_000_000;
 			
-			roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
+			roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
 
 	}
 
-	//@Ignore
-    @Test
+	@Ignore
+    //@Test
 	public void simpleHTTPTest() {
-    	boolean isLarge = false;		
-    	
+ 
     	boolean isTLS = false;
 		int port = 8085;
 		String host = "127.0.0.1";
@@ -115,14 +114,14 @@ public class HTTPSRoundTripTest {
 		final String testFile = "groovySum.json";
 		final int loadMultiplier = 2_000;
 		
-		roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
+		roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
 
     }
     
-	//@Ignore
-    @Test
+	@Ignore
+    //@Test
 	public void simpleHTTPSTest() {
-    	boolean isLarge = false;		
+    
     	
     	boolean isTLS = true;
 		int port = 9443;
@@ -132,13 +131,13 @@ public class HTTPSRoundTripTest {
 		final String testFile = "groovySum.json";
 		final int loadMultiplier = 1_000;
 		
-		roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
+		roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
 
     }
     
     
 	private void roundTripHTTPTest(boolean isTLS, int port, String host, 
-			                       boolean isLarge, boolean useLocalServer,
+			                       boolean useLocalServer,
 			                       final String testFile, final int loadMultiplier) {
 	
 				GraphManager gm = new GraphManager();
@@ -155,7 +154,7 @@ public class HTTPSRoundTripTest {
 				//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 				//NOTE: smaller values here will allow for slightly lower latency values
 				//NOTE: by sleeping less we get more work done per stage, sometimes
-				GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_200); //this is in ns, can be as low as 1_200
+				GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000); //this is in ns, can be as low as 1_200
 				
 				//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 				//TODO: urgent need to kill off expired pipe usages.
@@ -163,7 +162,7 @@ public class HTTPSRoundTripTest {
 				 
 				ServerCoordinator serverCoord = null;
 				if (useLocalServer) {
-					serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port, isLarge);
+					serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port);
 					
 				}
 		
@@ -172,8 +171,8 @@ public class HTTPSRoundTripTest {
 				
 				/////////////////
 				/////////////////
-				int base2SimultaniousConnections = isLarge ? 3 : 1;
-				int clientCount = isLarge ? 4 : 2;
+				int base2SimultaniousConnections = 3;
+				int clientCount = 2;
 					    	
 				//TODO: this number must be the limit of max simuantious handshakes.
 				int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
@@ -210,7 +209,7 @@ public class HTTPSRoundTripTest {
 				ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
 				RegulatedLoadTestStage[] clients = new RegulatedLoadTestStage[clientCount];
 				
-				int writeBufferMultiplier = isLarge ? 24 : 8;
+				int writeBufferMultiplier = 8;
 
 				int extraHashBits = 1;
 				int requestQueueBytes = 1<<8;
@@ -313,17 +312,24 @@ public class HTTPSRoundTripTest {
 				System.out.println("calls per sec: "+(1000f/msPerCall)); //task manager its self can slow down results so avoid running it during test.
 	}
 
-	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort, boolean isLarge) {
+	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, 
+			                                     String bindHost, int bindPort) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
 				
+		boolean isLarge = false;
 		System.out.println("init file path "+pathRoot);
+		gm.enableTelemetry(8098);
 		
 		//final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		//final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int messagesToOrderingSuper       = isLarge ? 1<<13 : 1<<8;	    		
 		final int messageSizeToOrderingSuper    = isLarge ? 1<<12 : 1<<9;	    		
-		
 
+		int processors = isLarge ? 8 : -1;
+
+		TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
+	
+		
 		//using the basic no-fills API
 		ModuleConfig config = new ModuleConfig() { 
 		
@@ -363,9 +369,7 @@ public class HTTPSRoundTripTest {
 		 	
 		 };
 
-		TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
-	
-		 ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(certs, bindHost, bindPort, gm, isLarge, config);
+		ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(certs, bindHost, bindPort, gm, processors, config);
 
 		 return serverCoord;
 	}

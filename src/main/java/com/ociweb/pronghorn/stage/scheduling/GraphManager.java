@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -189,6 +190,7 @@ public class GraphManager {
 	private Object lock = new Object();	
 	
 	private boolean enableMutation = true;
+	
 	
 	public GraphManager() {
 		Arrays.fill(ringIdToStages, -1);
@@ -487,7 +489,7 @@ public class GraphManager {
 				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
-				NetGraphBuilder.telemetryServerSetup(null, gm.telemetryHost, gm.telemetryPort, gm, TELEMTRY_SERVER_RATE);
+				NetGraphBuilder.telemetryServerSetup(gm.telemetryCert, gm.telemetryHost, gm.telemetryPort, gm, TELEMTRY_SERVER_RATE);
 				logger.info("total count of stages {} ",gm.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");
@@ -2192,8 +2194,9 @@ public class GraphManager {
         blockUntilStageBeginsShutdown(this,stageToWatch);
     }
 	
-    private String telemetryHost=null;
-    private int    telemetryPort=-1;
+    private String 			telemetryHost=null;
+    private int    			telemetryPort=-1;
+    private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
     
     public String enableTelemetry(String host, int port) {
     	telemetryHost = host;
@@ -2464,12 +2467,19 @@ public class GraphManager {
     public static void shutdownStage(GraphManager gm, PronghornStage stage) {
     	stage.shutdown();
     	
-    	int c = GraphManager.getOutputPipeCount(gm, stage.stageId);
-    	while (--c>=0) {
-    		Pipe<?> out = GraphManager.getOutputPipe(gm, stage.stageId, c);    		
-    		assert(Pipe.outputStream(out).reportObjectSizes(System.out));
-    	}
+//    	int c = GraphManager.getOutputPipeCount(gm, stage.stageId);
+//    	while (--c>=0) {
+//    		Pipe<?> out = GraphManager.getOutputPipe(gm, stage.stageId, c);    	
+//    		assert(report(out));
+//    	}
     }
+
+//	private static boolean report(Pipe<?> out) {
+//		if (null!=Pipe.outputStream(out)) {
+//			assert(Pipe.outputStream(out).reportObjectSizes(System.out));
+//		}
+//		return true;
+//	}
     
     public static void monitorPipe(GraphManager gm, int pipeId, Appendable target) {
     	    	    	

@@ -18,9 +18,9 @@ public class SocketIOStageTest {
 
 	private static final int TIMEOUT = 30_000;//1 min
 	
-    private final int socketGroups = 1;  //only have 1 group listener for this test
-    private final int socketGroupId = 0; //we only have the 0th reader in use.
-    private final int maxtPartials = 5;//0; 
+    private final int maxConcurrentInputs = 5;
+	private final int maxConcurrentOutputs = 1;
+	
     private final int maxConnBits = 15;
 	private final int testUsers = 12;
 	////
@@ -55,8 +55,10 @@ public class SocketIOStageTest {
         int routerCount = 1;
 
 		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
-        ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, maxtPartials, routerCount);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxtPartials, null);
+
+		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
+        		maxConcurrentInputs, maxConcurrentOutputs, routerCount);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null);
 		
 		
 		///
@@ -78,8 +80,8 @@ public class SocketIOStageTest {
         ////server to consume data from socket and bounce it back to sender
         ////
         {
-		    Pipe<NetPayloadSchema>[] output = new Pipe[maxtPartials];
-		    int p = maxtPartials;
+		    Pipe<NetPayloadSchema>[] output = new Pipe[maxConcurrentInputs];
+		    int p = maxConcurrentInputs;
 		    while (--p>=0) {
 		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
@@ -95,8 +97,8 @@ public class SocketIOStageTest {
 		PronghornStage watch = null;
 		{
 			Pipe[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};   
-			Pipe<NetPayloadSchema>[] response = new Pipe[maxtPartials];
-		    int z = maxtPartials;
+			Pipe<NetPayloadSchema>[] response = new Pipe[maxConcurrentInputs];
+		    int z = maxConcurrentInputs;
 		    while (--z>=0) {
 		    	response[z]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
 		    }
@@ -137,8 +139,12 @@ public class SocketIOStageTest {
         String bindHost = "127.0.0.1";
         int routerCount = 1;
 		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
-		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, maxtPartials, routerCount);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxtPartials,null);
+
+		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
+				maxConcurrentInputs, 
+				maxConcurrentOutputs, 
+				routerCount);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null);
 					
 		///
 		///server new connections e-poll
@@ -148,8 +154,8 @@ public class SocketIOStageTest {
         ////
         ////server to consume data from socket
         ////
-	    Pipe<NetPayloadSchema>[] output = new Pipe[maxtPartials];
-	    int p = maxtPartials;
+	    Pipe<NetPayloadSchema>[] output = new Pipe[maxConcurrentInputs];
+	    int p = maxConcurrentInputs;
 	    while (--p>=0) {
 	    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 	    }

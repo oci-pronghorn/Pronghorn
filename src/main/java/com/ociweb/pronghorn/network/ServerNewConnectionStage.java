@@ -30,7 +30,7 @@ public class ServerNewConnectionStage extends PronghornStage{
         
     private static final int CONNECTION_TIMEOUT = 7_000; 
 
-	private static Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
     
     private Selector selector;
     private int selectionKeysAllowedToWait = 0;//NOTE: should test what happens when we make this bigger.
@@ -117,8 +117,16 @@ public class ServerNewConnectionStage extends PronghornStage{
             	}
             }
             
-            System.out.println(coordinator.serviceName()+" is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+host+"/"+coordinator.defaultPath());
-            
+            //ensure reporting is done together
+            synchronized(logger) {
+            	System.out.println();
+	            System.out.println(coordinator.serviceName()+" is now ready on http"+(coordinator.isTLS?"s":"")+":/"+host+"/"+coordinator.defaultPath());
+	            System.out.println(coordinator.serviceName()+" max connections: "+coordinator.channelBitsSize);
+	            System.out.println(coordinator.serviceName()+" max concurrent inputs: "+coordinator.maxConcurrentInputs);
+	            System.out.println(coordinator.serviceName()+" concurrent tracks: "+coordinator.moduleParallelism());
+	            System.out.println(coordinator.serviceName()+" max concurrent outputs: "+coordinator.maxConcurrentOutputs);
+	            System.out.println();
+            }
             
         } catch (SocketException se) {
          

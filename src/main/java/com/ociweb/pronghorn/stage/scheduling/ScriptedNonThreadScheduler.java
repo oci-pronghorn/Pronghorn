@@ -696,7 +696,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	
         	
         	synchronized(key) {
-                boolean debug = true;
+                boolean debug = false;
                 if (debug) {	
         	        System.err.println();
         	        System.err.println("total wait count "+totalWaitCount+" at clock "+schedule.commonClock);

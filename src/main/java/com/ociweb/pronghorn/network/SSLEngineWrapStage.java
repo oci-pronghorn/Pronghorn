@@ -56,6 +56,8 @@ public class SSLEngineWrapStage extends PronghornStage {
 			
 		GraphManager.addNota(graphManager, GraphManager.HEAVY_COMPUTE, GraphManager.HEAVY_COMPUTE, this);
 
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "bisque1", this);
+		
 	}
 
 	@Override

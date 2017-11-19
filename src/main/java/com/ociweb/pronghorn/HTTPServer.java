@@ -30,20 +30,23 @@ public class HTTPServer {
 	private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
 	
 	
-	public static void startupHTTPServer(GraphManager gm, boolean large, ModuleConfig config, String bindHost, int port, TLSCertificates tlsCertificates) {
+	public static void startupHTTPServer(GraphManager gm, int processors, ModuleConfig config, String bindHost, int port, TLSCertificates tlsCertificates) {
 				
+		
+		
 		boolean debug = false;
 		
 		if (tlsCertificates == null) {
 			logger.warn("TLS has been progamatically switched off");
 		}
 
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, large ? 20_000 : 2_000_000 );//pi needs larger values...
+		
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, processors>=4 ? 20_000 : 2_000_000 );//pi needs larger values...
 						
 		///////////////
 	    //BUILD THE SERVER
 	    ////////////////		
-		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, large, config);
+		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, config);
 					
 		if (debug) {
 			////////////////

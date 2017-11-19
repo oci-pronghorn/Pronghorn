@@ -7,27 +7,26 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ServerPipesConfig {
 	
 	
 	public final int serverRequestUnwrapUnits;
-	public final int serverResponseWrapUnits;
+	public final int serverResponseWrapUnitsAndOutputs;
 	public final int serverPipesPerOutputEngine;
 	public final int serverSocketWriters;
 	
-	public final int serverInputBlobs;	
-	public final int serverInputMsg;	
 	public final int serverOutputMsg;
 	
-	public final int fromProcessorCount;
-	public final int fromProcessorBlob;
+	public final int fromRouterToModuleCount;
+	public final int fromRouterToModuleBlob;
 	public final int releaseMsg;
 	
 	public final int moduleParallelism; //scale of compute modules
-	public final int maxConnectionBitsOnServer; //max connected users 	
-	//will grow based on simultaneous response count after ensure calls are taken into account 
-	public int maxPartialResponsesServer; //concurrent actions count
+	public final int maxConnectionBitsOnServer; //max connected users
+	public final int maxConcurrentInputs; //concurrent actions count
+	public final int maxConcurrentOutputs;
 
 	private int serverBlobToWrite; //may need to grow based on largest payload required
 
@@ -48,79 +47,81 @@ public class ServerPipesConfig {
     public final PipeConfig<NetPayloadSchema> handshakeDataConfig;
 	
 	public int writeBufferMultiplier;
-    
-	public ServerPipesConfig(boolean isLarge, boolean isTLS) {
-		this(isLarge,isTLS,-1);
-	}
+  
 	
-	public ServerPipesConfig(boolean isLarge, boolean isTLS, int processors) {
-		int cores = Runtime.getRuntime().availableProcessors();
-		if (cores>64) {
-			cores = cores >> 2;
-		}
-		if (cores<4) {
-			cores = 4;
-		}
-		if (1==processors && !isLarge && !isTLS){
-			cores = 1;
-		}
+	public ServerPipesConfig(boolean isTLS, 
+							 int maxConnectionBits,
+							 int tracks,
+							 int encryptUnitsPerTrack,
+							 int concurrentChannelsPerEncryptUnit,
+							 int decryptUnitsPerTrack,
+							 int concurrentChannelsPerDecryptUnit) {
 		
-		moduleParallelism = processors > 0? processors : (isLarge ? (isTLS?4:8) : 2);
 		
+		moduleParallelism = tracks;
+		maxConnectionBitsOnServer = maxConnectionBits;
+		
+		serverResponseWrapUnitsAndOutputs = encryptUnitsPerTrack*moduleParallelism;
+		serverPipesPerOutputEngine = concurrentChannelsPerEncryptUnit;	
+		maxConcurrentOutputs = serverPipesPerOutputEngine*serverResponseWrapUnitsAndOutputs;
+		
+		/////////		
+		//Note how each value builds on the next.		
+		//		int outputWrapUnits = 4;//must be divisible by moduleParallelism
+		//		int outputConcurrency = 12; //must be divisible by wrap units and moduleParallelism
+		//		serverPipesPerOutputEngine = outputConcurrency/outputWrapUnits;
+		//		serverResponseWrapUnitsAndOutputs = outputWrapUnits;
+		//////////////////////
+		
+		////////
+		//Note the unwrap input behaves the same as the above wrapped output
+		serverRequestUnwrapUnits = decryptUnitsPerTrack*moduleParallelism;
+		maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
+		////////
+		
+		// do not need multiple writers until we have giant load
+		serverSocketWriters       = (moduleParallelism >= 16) ? (isTLS?1:2) : 1;
+				
+		
+		writeBufferMultiplier     = (moduleParallelism >= 4) ? 16 : 4; //write buffer on server
+
+	    int serverInputMsg        = isTLS? 8 : 64; 
+	    int serverInputBlobs; //TODO: set based on the socket values on the server??
+	    
 		//logger.info("cores in use {}", cores);
 		
-		if (isLarge) {
-						
-			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
-			maxConnectionBitsOnServer 	  = 20;          //1M open connections on server	    	
-				
-			serverInputMsg                = isTLS? 8 : 64; 
+		if (moduleParallelism >= 4) {
+	    	
 			serverInputBlobs              = 1<<14;
 
 			serverOutputMsg               = isTLS? 32:512;
-			serverBlobToWrite             = 1<<15;
-			
-			fromProcessorCount 			  = isTLS?512:2048;//impacts performance
-			fromProcessorBlob 			  = 1<<10;
-			
-			serverSocketWriters           = isTLS?1:2;
-			releaseMsg                    = 1024;
-						
-			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
-			writeBufferMultiplier         = 16;
+			fromRouterToModuleCount 	  = isTLS? 512:2048;//impacts performance
+			fromRouterToModuleBlob 		  = 1<<10;
 		} else {	//small
-			maxPartialResponsesServer     = processors==1 ? 2 : 4;    //4 concurrent partial messages 
-			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
-		
-			serverInputMsg                = isTLS? 8 : 48; 
+    	
 			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
 
-			serverOutputMsg               = isTLS?8:16; //important for outgoing data and greatly impacts performance
-			serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
-			
-			fromProcessorCount 			  = isTLS?64:256; //impacts performance
-			fromProcessorBlob			  = 1<<7;
-			
-			serverSocketWriters           = 1;
-			releaseMsg                    = 1024;//256;
-						
-			serverRequestUnwrapUnits      = isTLS?2:1;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = processors==1?1:(isTLS?4:2);    //server wrap units
-			serverPipesPerOutputEngine 	  = processors==1?1:(isTLS?2:1);//multiplier against server wrap units for max simultanus user responses.
-			writeBufferMultiplier         = 4;
+			serverOutputMsg               = isTLS? 8:16; //important for outgoing data and greatly impacts performance
+			fromRouterToModuleCount 	  = isTLS? 64:256; //impacts performance
+			fromRouterToModuleBlob		  = 1<<7;
 		}
+
 		
+		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+		releaseMsg                    = 1024;
 				
 	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
 	    
 	    newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 100);
 	    
-	    //byte buffer must remain small because we will have a lot of these for all the partial messages
-	    incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, serverInputMsg, serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
 
-	    handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, maxPartialResponsesServer>>1, 1<<15); //must be 1<<15 at a minimum for handshake
+	    //byte buffer must remain small because we will have a lot of these for all the partial messages
+	    incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
+	    		                                             serverInputMsg, 
+	    		                                             serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
+
+	    handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
+	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake
 	    	    
 	}
 	
@@ -128,15 +129,12 @@ public class ServerPipesConfig {
 		serverBlobToWrite =  Math.max(serverBlobToWrite, length);
 	}
 	
-	public void ensureServerParallelResponses(int count) {
-		maxPartialResponsesServer = Math.max(maxPartialResponsesServer, count);
-	}
-	
 	public PipeConfig<NetPayloadSchema> orderWrapConfig() {
 		if (null==fromOrderWraperConfig) {
 			//also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
 			fromOrderWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
-					                  serverOutputMsg, serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
+					                  serverOutputMsg, 
+					                  serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
 		}		
 		return fromOrderWraperConfig;
 	}
