@@ -6,7 +6,10 @@
     <script src="viz-lite.js"></script>
     <script src="jquery-3.2.1.min.js"></script>
 
-    <style>
+    <style type="text/css">
+        body {
+            font-family: 'Segoe UI', sans-serif;
+        }
 
         /*slider*/
         .range {
@@ -14,6 +17,7 @@
             width: 550px;
             height: 5px;
         }
+
         .range input {
             width: 100%;
             position: absolute;
@@ -21,6 +25,7 @@
             height: 0;
             -webkit-appearance: none;
         }
+
         .range input::-webkit-slider-thumb {
             -webkit-appearance: none;
             width: 18px;
@@ -31,6 +36,7 @@
             cursor: pointer;
             border: 0 !important;
         }
+
         .range input::-moz-range-thumb {
             width: 18px;
             height: 18px;
@@ -40,6 +46,7 @@
             cursor: pointer;
             border: 0 !important;
         }
+
         .range input::-ms-thumb {
             width: 18px;
             height: 18px;
@@ -49,28 +56,33 @@
             cursor: pointer;
             border: 0 !important;
         }
+
         .range input::-webkit-slider-runnable-track {
             width: 100%;
             height: 2px;
             cursor: pointer;
             background: #b2b2b2;
         }
+
         .range input::-moz-range-track {
             width: 100%;
             height: 2px;
             cursor: pointer;
             background: #b2b2b2;
         }
+
         .range input::-ms-track {
             width: 100%;
             height: 2px;
             cursor: pointer;
             background: #b2b2b2;
         }
+
         .range input:focus {
             background: none;
             outline: none;
         }
+
         .range input::-ms-track {
             width: 100%;
             cursor: pointer;
@@ -78,11 +90,13 @@
             border-color: transparent;
             color: transparent;
         }
+
         .range-labels {
             margin: 18px -41px 0;
             padding: 0;
             list-style: none;
         }
+
         .range-labels li {
             position: relative;
             float: left;
@@ -92,6 +106,7 @@
             font-size: 25px;
             cursor: pointer;
         }
+
         .range-labels li::before {
             position: absolute;
             top: -25px;
@@ -104,12 +119,15 @@
             background: #b2b2b2;
             border-radius: 50%;
         }
+
         .range-labels:active {
             color: #37adbf;
         }
+
         .range-labels .selected::before {
             background: #37adbf;
         }
+
         .range-labels .active.selected::before {
             display: none;
         }
@@ -118,7 +136,7 @@
             transform: scale(0.7);
             position: fixed;
             top: 0px;
-            right:0px;
+            right: 0px;
         }
 
         .refreshTitle {
@@ -129,41 +147,48 @@
         }
 
         #download-svg {
+            text-shadow: 0px 1px 1px rgba(0,0,0,0.5);
             cursor: pointer;
-            border-radius: 10px;
-            width: 100px;
-            height: 30px;
             background: #37adbf;
-            border: none;
+            border: thin solid #33a2b3;
+            border-radius: 10px;
             color: white;
             margin: 20px;
+            padding: 10px 20px 10px 20px;
             position: fixed;
-            opacity: 0.9;
+            text-decoration: none;
         }
 
+        #download-svg:hover {
+            background: #3bbbce;
+        }
+
+        #download-svg img {
+            width: 16px;
+            height: 16px;
+        }
 
         #loading {
             position: absolute;
             text-align: center;
             top: 50%;
             width: 100%;
-            font-weight: 900;
             font-size: 30px;
             z-index: 0.5;
+            padding: 50px;
         }
-
     </style>
 </head>
 <body>
 
 <div class="scale"><div class="refreshTitle"><b>Refresh Rate</b></div>
     <div class="range" id="slidecontainer">
-        <input type="range" min="1" max="7" steps="1" value="2" id="sliderRange">
+        <input type="range" min="1" max="7" steps="1" value="3" id="sliderRange">
     </div>
     <ul class="range-labels">
         <li>40 Ms</li>
-        <li class="active selected">160 Ms</li>
-        <li>1 Sec</li>
+        <li>160 Ms</li>
+        <li class="active selected">1 Sec</li>
         <li>20 Sec</li>
         <li>1 Min</li>
         <li>20 Min</li>
@@ -172,23 +197,40 @@
 
 </div>
 
-<!-- <button id="download-svg">Download</button> -->
-<!-- <a style="display: none;" id="_btn" download="Telemetry.svg" href="data:image/svg+xml;base64,"><b>Download</b></a> -->
+<a id="download-svg" href="#">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAChSURBVEhL5dHBDYMwEERRnyklTdEaTaWUXB1m5a+NErAEZi4RT7KUDN45rMt9vH8Q+9CbiH3oTcQ+9CZiH3oTsQ+9idiH3kTsQ28iHqeOpVUdsjB2nIamWuuzzfdxZ2LsHA0/dF6taiu+xR2uj1HBTN9GfOPaNerae4/ze+9R2dd78Hts7z2xa53Y+fW996h4jsPfu2nP50PtB7kNtX+vlBUqJwHrBaCaGQAAAABJRU5ErkJggg==">
+    Download
+</a>
 
-<div id="demo"><div id="loading">Loading...</div></div>
+<div id="demo"><div id="loading"><img src="data:image/gif;base64,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" />Loading...</div></div>
 
-<script>
+<script type="text/javascript">
 
-    //download button
-    //$("#download-svg").click(function() {
+    $("#download-svg,.scale").hide();
+    var saveData = (function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style = "display: none";
+        return function (data, fileName) {
+            var blob = new Blob([data], {type: "octet/stream"}),
+                url = window.URL.createObjectURL(blob);
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        };
+    }());
 
-    //   var Base64={_keyStr:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",encode:function(e){var t="";var n,r,i,s,o,u,a;var f=0;e=Base64._utf8_encode(e);while(f<e.length){n=e.charCodeAt(f++);r=e.charCodeAt(f++);i=e.charCodeAt(f++);s=n>>2;o=(n&3)<<4|r>>4;u=(r&15)<<2|i>>6;a=i&63;if(isNaN(r)){u=a=64}else if(isNaN(i)){a=64}t=t+this._keyStr.charAt(s)+this._keyStr.charAt(o)+this._keyStr.charAt(u)+this._keyStr.charAt(a)}return t},decode:function(e){var t="";var n,r,i;var s,o,u,a;var f=0;e=e.replace(/[^A-Za-z0-9+/=]/g,"");while(f<e.length){s=this._keyStr.indexOf(e.charAt(f++));o=this._keyStr.indexOf(e.charAt(f++));u=this._keyStr.indexOf(e.charAt(f++));a=this._keyStr.indexOf(e.charAt(f++));n=s<<2|o>>4;r=(o&15)<<4|u>>2;i=(u&3)<<6|a;t=t+String.fromCharCode(n);if(u!=64){t=t+String.fromCharCode(r)}if(a!=64){t=t+String.fromCharCode(i)}}t=Base64._utf8_decode(t);return t},_utf8_encode:function(e){e=e.replace(/rn/g,"n");var t="";for(var n=0;n<e.length;n++){var r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r)}else if(r>127&&r<2048){t+=String.fromCharCode(r>>6|192);t+=String.fromCharCode(r&63|128)}else{t+=String.fromCharCode(r>>12|224);t+=String.fromCharCode(r>>6&63|128);t+=String.fromCharCode(r&63|128)}}return t},_utf8_decode:function(e){var t="";var n=0;var r=c1=c2=0;while(n<e.length){r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r);n++}else if(r>191&&r<224){c2=e.charCodeAt(n+1);t+=String.fromCharCode((r&31)<<6|c2&63);n+=2}else{c2=e.charCodeAt(n+1);c3=e.charCodeAt(n+2);t+=String.fromCharCode((r&15)<<12|(c2&63)<<6|c3&63);n+=3}}return t}}
-    //   console.log("Base64: " + Base64);
-    //   var svgContent =  Base64.encode($("#demo").html());
-    //    console.log ("svgContent: " + svgContent);
-
-    //    $("#_btn").attr("href", "data:image/svg+xml;base64," + svgContent)[0].click();
-    //});
+    $("#download-svg").click(function() {
+        var date = new Date();
+        var year = date.getFullYear().toString();
+        var month = (date.getMonth()+1).toString();
+        var day = date.getDate().toString();
+        var hour = date.getHours().toString();
+        var min = date.getMinutes().toString();
+        var sec = date.getSeconds().toString();
+        saveData($("#demo").html(), `telemetry_${year}-${month}-${day}_${hour}-${min}-${sec}.svg`);
+    });
 
     function httpGet(theUrl, onSuccess, onError) {
         var xmlHttp = new XMLHttpRequest();
@@ -230,7 +272,7 @@
     var isFirst = true; //only effects initial paintAll
     var initialInterval;
     var paintAllDrawing = false;
-    var interval = 160;
+    var interval = 1000;
     var webworkerInProgress = false;
     var paintAllinProgress = false;
     var sliderIsActive = false;
@@ -252,8 +294,8 @@
             webworker.onmessage = function (e) {
                 webworkerInProgress = false;
                 paintAllDrawing = true;
+                $('#download-svg,.scale').show();
                 document.getElementById("demo").innerHTML = e.data.result;
-                console.log("256 COMPLETED PAINTALL UPDATE");
                 paintAllDrawing = false;
                 paintAllinProgress = false
                 $("#graph0 title").remove();
@@ -277,24 +319,22 @@
     var newfeatureArray = [];
     var eoldfeatureArray = [];
     var enewfeatureArray = [];
-    var first = true; //to ensure paintAll isn't called the first time when old and new array aren't the same
 
     //function that updates the text values
     function paintParts(dot) {
         var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
         var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
         var numberOfNodeIds = numberOfTotalIds-numberOfEdgeIds; //Number of node IDs
-
         var whole = dot.match(node); //section matches starting with label=" and ending with "
         var ss = 1; // node id number in html (node ids start at 1)
         var ee = 1; //edge id number in html (node ids start at 1)
         var featureSection = dot.match(features); //grabs all features
 
-        //updates the nodes
         for (var s = 0; s < numberOfNodeIds; s++) {   // is the number of nodes
             var iteration = whole[s].match(newline).map(function(item) {
-                featureSection[s] = featureSection[s].replace(/"|]/g, ''); //removes " and ] from feature data
-                oldfeatureArray.push(featureSection[s]); //adds feature values to an array
+                var formattedSection = featureSection[s].replace(/"|]/g, '');
+                oldfeatureArray.push(formattedSection);
+                featureSection[s] = formattedSection;
                 return item.replace(/label|"|=/g, '');
             });
 
@@ -304,11 +344,11 @@
                     if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
                         if ((item.text().length !== iteration[itemIdx].length) && !paintAllinProgress) { //if the length is different redraw
                             doingUpdate = false;
-                            console.log("307 node length change triggered a paintAll. "+item.text()+" vs "+iteration[itemIdx]);
                             paintAll();
                         } else{
                             item.text(iteration[itemIdx]); // if there is a change but length is same just update that line
                         }
+                        item.text(iteration[itemIdx]);
                     }
                 }
             });
@@ -318,20 +358,21 @@
         //updates paintAll for nodes depending on changes to color and thickness
         var is_same = oldfeatureArray.length === newfeatureArray.length && oldfeatureArray.every(function(element, index) {
             return element === newfeatureArray[index];
-        }); //returns boolean of whether oldfeatureArray and newfeatureArray are the same
-        if ((!is_same && first === false) && !paintAllinProgress){
+        });
+        if ((!is_same && !isFirst) && !paintAllinProgress){
             doingUpdate = false;
-            console.log("324 node color/thickness change triggered a paintAll");
             paintAll();
         }
-        newfeatureArray = Array.from(oldfeatureArray); //assign old array to new array to keep repeating process
-        oldfeatureArray = [];
+        newfeatureArray = Array.from(oldfeatureArray); //assign old array to new array
+        oldfeatureArray = []; //empty old array so we can repeat the process
+
 
         //updates the edges
         for (var e = numberOfNodeIds; e < numberOfTotalIds; e++) {   // is the number of nodes
             var eiteration = whole[e].match(newline).map(function(item) {
-                featureSection[e] = featureSection[e].replace(/"|]/g, '');
-                eoldfeatureArray.push(featureSection[e]);
+                var eformattedSection = featureSection[e].replace(/"|]/g, '');
+                eoldfeatureArray.push(eformattedSection);
+                featureSection[e] = eformattedSection;
                 return item.replace(/label|"|=/g, '');
             });
 
@@ -341,7 +382,6 @@
                     if(item.text() !== eiteration[itemIdx]) {
                         if ((item.text().length !== eiteration[itemIdx].length) && !paintAllinProgress) { //if lenght of text changes bubble needs to be redrawn
                             doingUpdate = false;
-                            console.log("344 edge length change triggered a paintAll "+item.text()+" vs "+eiteration[itemIdx]);
                             paintAll();
                         } else {
                             item.text(eiteration[itemIdx]);
@@ -356,11 +396,11 @@
         is_same = eoldfeatureArray.length === enewfeatureArray.length && eoldfeatureArray.every(function(element, index) {
             return element === enewfeatureArray[index];
         });
-        if ((!is_same && first === false) && !paintAllinProgress){
+        if ((!is_same && !isFirst) && (!paintAllinProgress)){
             doingUpdate = false;
-            console.log("361 edge color/thickness change triggered a paintAll");
             paintAll();
         }
+
         enewfeatureArray = Array.from(eoldfeatureArray); //assign old array to new array
         eoldfeatureArray = []; //empty old array so we can repeat the process
 
@@ -443,8 +483,6 @@
         var index = $(this).index();
         $rangeInput.val(index + 1).trigger('input');
     });
-
-
 </script>
 
 </body>
