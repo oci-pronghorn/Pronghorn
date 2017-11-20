@@ -36,6 +36,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     //TODO: double check that this all works iwth ipv6.
     
+	private static final int SIZE_OF_BEGIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
+	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private static final int MAX_URL_LENGTH = 4096;
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
 
@@ -323,20 +325,20 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         if (isOpen[idx]) {  
 
         	//logger.info("accum off this pipe "+isOpen[idx]+"   "+inputChannels[idx]);
-        	
-        	int start = inputLengths[idx];
+        	int[] localInputLengths = inputLengths;
+        	final int start = localInputLengths[idx];
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
             	//logger.trace("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consumed.
                 isOpen[idx] = false;
-                if (inputLengths[idx]<=0) {
+                if (localInputLengths[idx]<=0) {
                 	return -1;
                 }
             }
             
             if (needsData[idx]) {
-	            if (inputLengths[idx]==start) {
+	            if (localInputLengths[idx]==start) {
 	            	//we got no data so move on to the next
 	            	return 0;
 	            } else {
@@ -890,14 +892,16 @@ private void badClientError(long channel) {
 private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInput) {
     
     int messageIdx = Integer.MAX_VALUE;
+    long inChnl = inputChannels[idx];
 
+    
     boolean debug = false;
     if (debug) {
-	    logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
+		logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
 	    		     Pipe.hasContentToRead(selectedInput), 
-	    		     hasNoActiveChannel(idx), 
+	    		     hasNoActiveChannel(inChnl), 
 	    		     hasReachedEndOfStream(selectedInput), 
-	    		     hasContinuedData(idx, selectedInput) );
+	    		     hasContinuedData(selectedInput, inChnl) );
     }
 
     
@@ -905,8 +909,8 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             
     	   Pipe.hasContentToRead(selectedInput) //must check first to ensure assert is happy
     	   &&	
-           ( hasNoActiveChannel(idx) ||      //if we do not have an active channel
-        	  hasContinuedData(idx, selectedInput) ||
+           ( hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
+        	  hasContinuedData(selectedInput, inChnl) ||
               hasReachedEndOfStream(selectedInput)  //if we have reached the end of the stream
            )           
             
@@ -929,28 +933,20 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             
             assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
             assert(length<=selectedInput.maxVarLen);
-            
-            boolean freshStart = (-1 == inputChannels[idx]);
-            
-            //logger.info("accumulate length: {} for {} begin: {}",length,channel,freshStart);
-
             assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
             
-			if (freshStart) {
+			if (-1 == inputChannels[idx]) { //is freshStart
 				
 				assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
 				
 				//assign
-                inputChannels[idx]  = channel;
-                inputLengths[idx]  = length;
-                inputBlobPos[idx]   = pos;
-                inputBlobPosLimit[idx]  =pos + length;
+                inputChannels[idx]     = inChnl = channel;
+                inputLengths[idx]      = length;
+                inputBlobPos[idx]      = pos;
+                inputBlobPosLimit[idx] = pos + length;
                 
                 //logger.info("added new fresh start data of {}",length);
-                
-                
-                //assert('G'== Pipe.blob(selectedInput)[pos&selectedInput.blobMask]) : "expected a GET";
-
+               
                 assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
                 assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
             } else {
@@ -962,9 +958,6 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
                 inputLengths[idx] += length; 
                 inputBlobPosLimit[idx] += length;
                 
-               // logger.info("adding start data of {} for total of {}",length,inputBlobPosLimit[idx]);
-               
-                
                 assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
                                 
                 //may only read up to safe point where head is       
@@ -975,7 +968,7 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 			assert(inputLengths[idx]>=0) : "error negative length not supported";
 
             //if we do not move this forward we will keep reading the same spot up to the new head
-            Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(selectedInput, messageIdx));            
+            Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
             Pipe.readNextWithoutReleasingReadLock(selectedInput); 
             
             
@@ -986,7 +979,7 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         } else {
         	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {
         		
-        		assert(hasNoActiveChannel(idx)) : "Can not begin a new connection if one is already in progress.";        		
+        		assert(hasNoActiveChannel(inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
         		assert(0==Pipe.releasePendingByteCount(selectedInput));
         			     
   	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
@@ -994,11 +987,9 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         	  
         		//logger.info("accumulate begin");
         		//keep this as the base for our counting of sequence
-        		int newSeq = Pipe.takeInt(selectedInput);
-
-        		sequences[idx] = newSeq;
+        		sequences[idx] = Pipe.takeInt(selectedInput);
         		
-        		Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208));
+        		Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
         		//Pipe.releaseReadLock(selectedInput);
         		Pipe.readNextWithoutReleasingReadLock(selectedInput);
         		//do not return, we will go back arround the while again.     		
@@ -1021,13 +1012,13 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 }
 
 
-	private boolean hasNoActiveChannel(int idx) {
-		return -1 == inputChannels[idx];
+	private boolean hasNoActiveChannel(long inChnl) {
+		return -1 == inChnl;
 	}
 
 
-	private boolean hasContinuedData(int idx, Pipe<NetPayloadSchema> selectedInput) {
-	    return (Pipe.hasContentToRead(selectedInput) && Pipe.peekLong(selectedInput, 1)==inputChannels[idx]);
+	private boolean hasContinuedData(Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+		return (Pipe.hasContentToRead(selectedInput) && Pipe.peekLong(selectedInput, 1)==inChnl);
 	}
 	
 	
