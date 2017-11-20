@@ -250,8 +250,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
         @Override
         public boolean isValid(ServerConnection serviceObject) { 
         	
-        	new Exception("a").printStackTrace();
-        	
             return serviceObject.socketChannel.isConnectionPending() || 
                    serviceObject.socketChannel.isConnected();
         }
@@ -259,8 +257,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
         @Override
         public void dispose(ServerConnection t) {
 
-        	new Exception("b").printStackTrace();
-        	
         		if (t.socketChannel.isOpen()) {
                     t.close();
                 }

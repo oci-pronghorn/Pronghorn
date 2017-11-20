@@ -287,6 +287,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					if (msgIdx<0) {
 						throw new UnsupportedOperationException("no support for shutdown");
 					}
+					
+					//TODO how many ccID connections are from this pipe?
+					//     we must have N outgoing pipes from response or we can have a hang!!
+					//     URGENT design change required...
+					
 					boolean ok = ccId == Pipe.takeLong(localInputPipe);
 					assert(ok) : "Internal error";
 					
