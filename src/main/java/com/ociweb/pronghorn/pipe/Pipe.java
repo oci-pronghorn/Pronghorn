@@ -3614,13 +3614,8 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         assert(null != pipe.slabRing) : "Pipe must be init before use";
-        final boolean result = contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition, pipe.llWrite);
-        
-//        //there are times when result can be false but we have data which relate to our holding the position for some other reason. only when we hold back releases.
-//        assert(!result || result ==  (Pipe.contentRemaining(pipe)>0) ) : result+" != "+Pipe.contentRemaining(pipe)+">0    "
-//                     +pipe+"\n      hpCache:"+pipe.llWrite.llwHeadPosCache+"  writtenPos:"+pipe.llWrite.llwConfirmedWrittenPosition+"\n   "+
-//                    " pending release bytes "+Pipe.releasePendingByteCount(pipe); //value llWrite.llwHeadPosCache  is not written by high level API , can not mix???
-        return result;
+        return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition, pipe.llWrite);
+
     }
 
 	private static <S extends MessageSchema<S>> boolean contentToLowLevelRead2(Pipe<S> pipe, long target, LowLevelAPIWritePositionCache llWrite) {
