@@ -80,7 +80,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		assert(workingBlobHeadPosition>=0) : "working head position must not be negative";
 		writer.backingPipe.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-		writer.startPosition = writer.activePosition = workingBlobHeadPosition;
+		writer.startPosition = writer.activePosition = (writer.byteMask & workingBlobHeadPosition);
         writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
         writer.backPosition = writer.lastPosition;
         writer.keepIndexRoom = false;
@@ -143,7 +143,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	assert(pos>0) : "Can not write beyond the end.";
-    	assert(writer.lastPosition>=(4*pos));
+    	assert(writer.lastPosition >= (4*pos)) : "last pos "+writer.lastPosition+" pos "+pos;
     	
     	//logger.info("writing int {} to position {} to pipe {} ",value, (writer.lastPosition-(4*pos)), writer.getPipe().id);
     	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       

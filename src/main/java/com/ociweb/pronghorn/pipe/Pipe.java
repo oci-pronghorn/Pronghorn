@@ -575,13 +575,15 @@ public class Pipe<T extends MessageSchema<T>> {
         return pipe.isInBlobFieldWrite.get();
     }
     
-    public void openBlobFieldWrite() {        
+    public void openBlobFieldWrite() {  
+    	//System.out.println("open stream on "+id);
         if (!isInBlobFieldWrite.compareAndSet(false, true)) {
             throw new UnsupportedOperationException("only one open write against the blob at a time.");
         }        
     }
 
     public void closeBlobFieldWrite() {
+    	//System.out.println("close stream on "+id);
         if (!isInBlobFieldWrite.compareAndSet(true, false)) {
             throw new UnsupportedOperationException("can not close blob if not open.");
         }
