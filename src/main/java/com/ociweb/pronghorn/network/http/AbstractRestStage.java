@@ -36,7 +36,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 
 	public static final byte[] Switching_Protocols_101 = " 101 Switching Protocols\r\n".getBytes();
     protected static final byte[] OK_200                  = " 200 OK\r\n".getBytes();
-    protected static final byte[] X_400                   = " 400 OK\r\n".getBytes();
+    protected static final byte[] X_400                   = " 400 Bad Request\r\n".getBytes();
     protected static final byte[] Not_Found_404           = " 404 Not Found\r\n".getBytes();   
     protected static final byte[] X_500                   = " 500 OK\r\n".getBytes();
     

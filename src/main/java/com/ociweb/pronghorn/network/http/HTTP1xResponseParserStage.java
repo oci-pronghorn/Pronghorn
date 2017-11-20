@@ -6,6 +6,7 @@ import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
+	private int[] outputOwner; //tracking active use of the output
+	
 	private long[] inputPosition;
 	private long[] arrivalTimeAtPosition;
 	private long[] blockedPosition;
@@ -79,14 +82,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private static final int H_TRANSFER_ENCODING = 4;	
 	private static final int H_CONTENT_LENGTH = 5;
 	private static final int H_CONTENT_TYPE = 6;
-
 	
 	private int[] lastMessageParseSizes;
 	private int   lastMessageParseSizeCount = 0;
 	
 	private int lastMessageType=-1;   //does not change
 	private long lastPayloadSize=-1;  //does not change
-	
 	
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
@@ -120,6 +121,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	  @Override
 	    public void startup() {
+		  
+		  outputOwner = new int[output.length];
+		  Arrays.fill(outputOwner, -1);
+		  
 		  
 		  if (testingMode) {
 			  lastMessageParseSizes = new int[10];
@@ -217,9 +222,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		do {		
 			foundWork = 0;
 			
+			
 			int i = input.length;
 			while (--i>=0) {
-								
+			
+
 				final int memoIdx = i<<2; //base index is i  * 4;
 				final int posIdx   = memoIdx;
 				final int lenIdx   = memoIdx+1;
@@ -256,19 +263,32 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						&& 	((positionMemoData[lenIdx]+localInputPipe.maxVarLen+Pipe.releasePendingByteCount(localInputPipe)) < (Pipe.blobMask(localInputPipe) ) )  //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
 						) {
 					
+					////////////////
+					//before taking the data
+					//ensure that it can be consumed 
+					///////////////
+					ccId = Pipe.peekLong(localInputPipe, 1);
+					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
+					
+					if (null != cc) {
+						//do not process if an active write for a different pipe is in process
+						if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
+						    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
+							//move to the next pipe so we get it done.
+							continue;
+						}
+						outputOwner[(int)cc.readDestinationRouteId()] = i;
+					}
 					     
 					//////////////////////////////
-					//we have new data
-					//////////////////////////////
-			
+					//we have new data to consume
+					//////////////////////////////		
 					int msgIdx = Pipe.takeMsgIdx(localInputPipe);
 					if (msgIdx<0) {
 						throw new UnsupportedOperationException("no support for shutdown");
 					}
-					
-					//assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
-			
-					ccId = Pipe.takeLong(localInputPipe);
+					boolean ok = ccId == Pipe.takeLong(localInputPipe);
+					assert(ok) : "Internal error";
 					
 					long arrivalTime = Pipe.takeLong(localInputPipe);
 					//if already set do not set again, we want the leading edge of the data arrival.
@@ -392,7 +412,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
 						//We have no data in the local buffer and 
 						//We have no data on this pipe so go check the next one.
-			
 						continue;
 						
 					} else {
@@ -412,8 +431,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed						
 						//convert long id to the pipe index.
 						
-						targetPipe = output[(int)cc.readDestinationRouteId()]; 		
-							
+						targetPipe = output[(int)cc.readDestinationRouteId()];
+												
+												
 						///////////////////////
 						//the fastest code is the code which is never run
 						//do not parse again if nothing has changed
@@ -421,9 +441,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						final long headPos = Pipe.headPosition(localInputPipe);
 						
 						//TODO: this same approach should be used in server
-						if (blockedPosition[i] == headPos && blockedLen[i] == trieReader.sourceLen) {
-					
-							if (blockedOpenCount[i]==0 && Pipe.hasRoomForWrite(targetPipe) && blockedState[i] == positionMemoData[stateIdx] ) {								
+						if (blockedPosition[i] == headPos 
+							&& blockedLen[i] == trieReader.sourceLen) {
+												
+							if (blockedOpenCount[i]==0 
+								&& Pipe.hasRoomForWrite(targetPipe) 
+								&& blockedState[i] == positionMemoData[stateIdx] ) {								
 								//we have the same data but we do have room for write so continue to try parse again
 								//blockedPosition[i] = 0;	
 								blockedOpenCount[i]++;
@@ -440,17 +463,28 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					}
 				}
 	
-			
+				////////////
+				////////////
+				//do not process if an active write is in process
+				if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
+				    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
+					//multiple connections write to the same pipe, this keeps them organized.
+					//move to the next one because this one is blocked
+					continue;
+				}
+				outputOwner[(int)cc.readDestinationRouteId()] = i;
+				////////////
+				////////////
 				
 				if (Pipe.hasContentToRead(localInputPipe) || positionMemoData[lenIdx]>localInputPipe.maxVarLen   ) {
 					foundWork++;//do not leave if we are backed up
 				}
 
-				
 				int state = positionMemoData[stateIdx];
 
-				if (state==0) { //TODO: are two sharing the same pipe?
-					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+				if (state==0) {
+					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : 
+						   "for starting state expected pipe to NOT be in blob write";
 				}
 
 				
@@ -531,6 +565,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//DO NOT consume the target since we still need it.			
 	
 						positionMemoData[stateIdx] = state = 5;
+						
+						assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+
 						foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 						
 						TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -563,7 +600,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId>=0) {
-							
+													
 							payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
 														
 							//because we have started written the response we MUST do extra cleanup later.
@@ -572,9 +609,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 
-							TrieParserReader.writeCapturedShort(trieReader, 0, Pipe.openOutputStream(targetPipe)); //status code	
 							positionMemoData[stateIdx]= ++state;//state change is key
-							
+							TrieParserReader.writeCapturedShort(trieReader, 0, Pipe.openOutputStream(targetPipe)); //status code	
+										
 							int consumed = startingLength1 - trieReader.sourceLen;						
 							
 							runningHeaderBytes[i] = consumed;
@@ -636,6 +673,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//logger.trace("end of headers");
 									state = endOfHeaderProcessing(i, stateIdx, writer);
 									
+																		
 									//logger.trace("finished reading header now going to state {}",state);
 								
 									if (3==state) {
@@ -688,7 +726,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		//						logger.info("source position {} state {} length remaining to copy {} source len ",trieReader.sourcePos,state,lengthRemaining,trieReader.sourceLen);
 								
 								final DataOutputBlobWriter<NetResponseSchema> writer2 = Pipe.outputStream(targetPipe);
-								
+							
 								if (lengthRemaining>0 && trieReader.sourceLen>0) {
 													
 									int usedByIndex = DataOutputBlobWriter.countOfBytesUsedByIndex(writer2);
@@ -773,6 +811,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//expecting H to be the next valid char 
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
+									
+									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+
 									foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 									state = positionMemoData[stateIdx];
 									
@@ -843,6 +884,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);	
 										long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
+
+										
+										assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
 										foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 										
@@ -944,6 +988,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 5: //END SEND ACK
 						logger.info("source position {} state {} ",trieReader.sourcePos,state);
 						
+											
+						assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+
 					    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0);
 						if (initial>=0) {
 						    lastMessageParseSize(trieReader.sourcePos-initial);
@@ -1122,13 +1169,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {
 		
+		//clear the usage of this pipe for use again by other connections
+		outputOwner[(int)cc.readDestinationRouteId()]=-1; 
+
 		assert(positionMemoData[stateIdx]>=5);
 		
 		int foundWork = 0;
 		//only ack when all the data held has been consumed.
 		if (trieReader.sourceLen<=0 &&
 		    Pipe.contentRemaining(pipe)==0) {	//added second rule to minimize release messages.
-			//TODO: if not sent we should stay on ack step.
 			
 			foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
 			

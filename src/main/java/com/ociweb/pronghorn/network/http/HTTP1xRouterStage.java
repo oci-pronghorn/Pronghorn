@@ -612,7 +612,10 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
     	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data
-    	System.out.println("...\n///////////////////////////////////////////");
+    	if (trieReader.sourceLen>8192) {
+    		System.out.println("...");
+    	}
+    	System.out.println("\n///////////////////////////////////////////");
     }
 
 	int tempLen = trieReader.sourceLen;
@@ -627,15 +630,15 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
-    		
-    			//logger.info("start at pos "+tempPos+" for "+channel);
-        		
+    			logger.info("bad HTTP data recieved by server, channel will be closed.");
+    			sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
+    			
     			//we have bad data we have been sent, there is enough data yet the verb was not found
-    			trieReader.sourceLen = tempLen;
-    			trieReader.sourcePos = tempPos;
     			
     			boolean debug = false;
     			if(debug) {
+    				trieReader.sourceLen = tempLen;
+    				trieReader.sourcePos = tempPos;
     				StringBuilder builder = new StringBuilder();    			    			
     				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
     				logger.warn("{} looking for verb but found:\n{} at position {} \n\n",channel,builder,tempPos);
@@ -644,7 +647,10 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;    			
     			
-    			badClientError(channel);
+    			SSLConnection con = coordinator.connectionForSessionId(channel);
+				if (null!=con) {
+					con.clearPoolReservation();
+				}
     			//logger.info("success");
     			return SUCCESS;
     			    		    			
@@ -722,19 +728,26 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         		//logger.info("need more data D");        		
         		return NEED_MORE_DATA;    			
     		} else {
-
-    			//we have bad data we have been sent, there is enough data yet the revision was not found
-    			trieReader.sourceLen = tempLen;
-    			trieReader.sourcePos = tempPos;
+    			logger.info("bad HTTP data recieved by server, channel will be closed.");
+    			sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
     			
-    			StringBuilder builder = new StringBuilder();
-    			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*4);
-    			//logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
-    		    			
+    			boolean debug = false;
+    			if (debug) {
+	    			//we have bad data we have been sent, there is enough data yet the revision was not found
+	    			trieReader.sourceLen = tempLen;
+	    			trieReader.sourcePos = tempPos;
+	    			
+	    			StringBuilder builder = new StringBuilder();
+	    			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*4);
+	    			//logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
+    			}
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;
     			
-    			badClientError(channel);
+    			SSLConnection con = coordinator.connectionForSessionId(channel);
+				if (null!=con) {
+					con.clearPoolReservation();
+				}
     			//logger.info("success");
     			return SUCCESS;
     		}
