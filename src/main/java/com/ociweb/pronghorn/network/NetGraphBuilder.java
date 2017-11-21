@@ -45,10 +45,15 @@ public class NetGraphBuilder {
 	
 	private static final Logger logger = LoggerFactory.getLogger(NetGraphBuilder.class);	
 	
-	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
-			ClientCoordinator ccm, 
-			int responseQueue, 
-			final Pipe<NetPayloadSchema>[] requests, final Pipe<NetResponseSchema>[] responses) {
+	public static void buildHTTPClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue,
+			final Pipe<NetPayloadSchema>[] requests, final Pipe<NetResponseSchema>[] responses,
+			int netResponseBlob,
+			int netResponseCount, 
+			int releaseCount, 
+			int writeBufferMultiplier, 
+			int responseUnwrapCount,
+			int clientWrapperCount, 
+			int clientWriters) {
 		
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 
@@ -61,9 +66,10 @@ public class NetGraphBuilder {
 			}
 			
 		};
-		
-		buildClientGraph(gm, ccm, responseQueue, requests, 2, 2, 2, 
-				             2048, 64, 1<<19, factory, 20);
+		buildClientGraph(gm, ccm, responseQueue, requests, 
+				         responseUnwrapCount, clientWrapperCount, clientWriters, 
+				             releaseCount, netResponseCount, netResponseBlob, 
+				             factory, writeBufferMultiplier);
 	}
 	
 	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,

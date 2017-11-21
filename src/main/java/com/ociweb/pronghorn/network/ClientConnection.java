@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.network;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.util.Appendables;
+
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -422,8 +424,10 @@ public class ClientConnection extends SSLConnection {
 			
 		if (value>=0 && value<MAX_HIST_VALUE) {
 		
-			//Appendables.appendNearestTimeUnit(System.err, value, " client latency\n");
-		
+			boolean showAllTimes = false;
+			if (showAllTimes) {
+				Appendables.appendNearestTimeUnit(System.err, value, " client latency\n");
+			}
 			histRoundTrip.recordValue(value);
 		}
 	}

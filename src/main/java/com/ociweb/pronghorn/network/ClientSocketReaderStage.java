@@ -37,7 +37,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
-	private final int maxClients;
 	
 	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
@@ -45,8 +44,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 		this.output = output;
 		this.releasePipes = parseAck;
 
-		this.maxClients = coordinator.maxClientConnections();		
-		
 		coordinator.setStart(this);
 		
 		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
@@ -337,19 +334,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 				int id = Pipe.takeMsgIdx(ack);
 				if (id == ReleaseSchema.MSG_RELEASE_100) {
 					
-					long fieldConnectionId = Pipe.takeLong(ack);
-					long fieldPosition = Pipe.takeLong(ack);
-
-					consumeRelease(fieldConnectionId, fieldPosition);
+					consumeRelease(Pipe.takeLong(ack), Pipe.takeLong(ack));
 	    			
 	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
 				} else if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 					
-					long fieldConnectionID = Pipe.takeLong(ack);
-					long fieldPosition = Pipe.takeLong(ack);
+					consumeRelease(Pipe.takeLong(ack), Pipe.takeLong(ack));
 					int fieldSequenceNo = Pipe.takeInt(ack);
 					
-					consumeRelease(fieldConnectionID, fieldPosition);
 					
 					Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
 				}else {
@@ -370,6 +362,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == fieldPosition) {
 			assert(Pipe.contentRemaining(output[pipeIdx])==0) : "unexpected content on pipe detected";
 			assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
+			
+			//every connection is locked down to a single input pipe until
+			//the consumer "parser" finds a stopping point and can release the pipe for other usages.
 			
 			coordinator.releaseResponsePipeLineIdx(fieldConnectionId);
 

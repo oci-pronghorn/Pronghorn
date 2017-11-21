@@ -235,7 +235,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           channel.socket().setPerformancePreferences(0, 2, 1);
                  
                           
-                          //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);
+                          //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<18);
                           //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
                           
                           //	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000

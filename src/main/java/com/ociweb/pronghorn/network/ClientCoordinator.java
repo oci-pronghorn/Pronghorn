@@ -110,13 +110,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		super(tlsCertificates);
 		int maxUsers = 1<<connectionsInBits;
 		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
-		
+				
 		try {
 			//get values we can not modify from the networking subsystem
 			SocketChannel testChannel = SocketChannel.open();
 			//we read the receive buffer size here to ensure that the consuming pipe has the 
 			//same size.
 			receiveBufferSize = 1+testChannel.getOption(StandardSocketOptions.SO_RCVBUF);
+			
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -124,6 +125,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
 		hostTrie = new TrieParser(trieSize, 4, false, false);
 		hostTrieReader = new TrieParserReader();
+		
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		

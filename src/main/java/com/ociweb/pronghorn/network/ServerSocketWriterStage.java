@@ -94,7 +94,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.releasePipe = null;
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
-        
+
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
@@ -109,7 +109,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.releasePipe = releasePipe;
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
-        
+       
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
