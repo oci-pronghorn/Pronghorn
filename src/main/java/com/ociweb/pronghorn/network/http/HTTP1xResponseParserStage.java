@@ -269,7 +269,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					///////////////
 					ccId = Pipe.peekLong(localInputPipe, 1);
 					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
-					
+				
 					if (null != cc) {
 						//do not process if an active write for a different pipe is in process
 						if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
@@ -278,6 +278,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							continue;
 						}
 						outputOwner[(int)cc.readDestinationRouteId()] = i;
+						
 					}
 					     
 					//////////////////////////////
@@ -467,7 +468,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						}						
 					}
 				}
-	
+
 				////////////
 				////////////
 				//do not process if an active write is in process
@@ -745,7 +746,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//      continuation.
 										
 									//TODO: add and fix this feature...
-									if (false && lengthRemaining>0) {
+									if (lengthRemaining>0) {
+										logger.info("incomplete feature needs to be finshed.");
+										
 										if (writeIndex) {
 											logger.info("commit the back data indexes");
 											DataOutputBlobWriter.commitBackData(writer2);
@@ -811,6 +814,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 									int totalConsumed = Pipe.publishWrites(targetPipe);	
 									//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
+									//clear the usage of this pipe for use again by other connections
+									outputOwner[(int)cc.readDestinationRouteId()] = -1; 
 									long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
 									//expecting H to be the next valid char 
@@ -888,6 +893,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);	
+										
+										//clear the usage of this pipe for use again by other connections
+										outputOwner[(int)cc.readDestinationRouteId()] = -1; 
 										long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
 										
@@ -1174,8 +1182,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {
 		
-		//clear the usage of this pipe for use again by other connections
-		outputOwner[(int)cc.readDestinationRouteId()]=-1; 
 
 		assert(positionMemoData[stateIdx]>=5);
 		
