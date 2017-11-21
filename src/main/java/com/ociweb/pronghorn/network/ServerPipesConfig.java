@@ -80,7 +80,7 @@ public class ServerPipesConfig {
 		////////
 		
 		// do not need multiple writers until we have giant load
-		serverSocketWriters       = (moduleParallelism >= 16) ? (isTLS?1:2) : 1;
+		serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
 				
 		
 		writeBufferMultiplier     = (moduleParallelism >= 4) ? 16 : 4; //write buffer on server
@@ -95,7 +95,9 @@ public class ServerPipesConfig {
 			serverInputBlobs              = 1<<14;
 
 			serverOutputMsg               = isTLS? 32:512;
-			fromRouterToModuleCount 	  = isTLS? 512:2048;//impacts performance
+			
+			//TODO: must configure for file server cache...
+			fromRouterToModuleCount 	  = isTLS? 512:1<<16;//4096;//impacts performance
 			fromRouterToModuleBlob 		  = 1<<10;
 		} else {	//small
     	
