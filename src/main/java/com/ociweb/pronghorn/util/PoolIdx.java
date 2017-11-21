@@ -8,6 +8,7 @@ public final class PoolIdx  {
     private long locksReleased = 0;
     private Runnable firstUsage;
     private Runnable noLocks;
+    private int rollingKey = 0;
     
     public PoolIdx(int length) {
         this.keys = new long[length];
@@ -79,24 +80,32 @@ public final class PoolIdx  {
         long[] localKeys = that.keys;
         byte[] localLocked = that.locked;
         
-		int i = localKeys.length;
+		int j = localKeys.length;
         int idx = -1;
         
         //linear search for this key. TODO: if member array is bigger than 100 we should consider hashTable
-        while (--i>=0) {
+        while (--j>=0) {
+        	///////////
+        	if (--that.rollingKey<0) { //ensure we continue from where we left off
+        		that.rollingKey = that.keys.length-1;
+        	}
+        	int temp = that.rollingKey;
+            /////////
             //found and returned member that matches key and was locked
-            if (key == localKeys[i] && 1 == localLocked[i]) {
-                return i;
+            if (key == localKeys[temp] && 1 == localLocked[temp]) {
+                return temp;
             } else {
                 //this slot was not locked so remember it
                 //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == localLocked[i]) {
-                    idx = i;
+                if (idx < 0 && 0 == localLocked[temp]) {
+                    idx = temp;
                 }
             }
         }
         return startNewLock(that, key, idx);
     }
+    
+
     
     /**
      * 
@@ -105,20 +114,28 @@ public final class PoolIdx  {
      */
     public int get(long key, PoolIdxPredicate isOk) {   
     	
-        int i = keys.length;
+        int j = keys.length;
         int idx = -1;
         //linear search for this key. TODO: if member array is bigger than 100 we should consider hashTable
-        while (--i>=0) {
-            //found and returned member that matches key and was locked
-            if (key == keys[i] && 1 == locked[i]) {
-                return i;
+        while (--j>=0) {
+        	///////////
+        	if (--rollingKey<0) { //ensure we continue from where we left off
+        		rollingKey = keys.length-1;
+        	}
+        	int temp = rollingKey;
+            /////////
+        	
+        	//found and returned member that matches key and was locked
+            if (key == keys[temp] && 1 == locked[temp]) {
+                return temp;
             } else {
                 //this slot was not locked so remember it
                 //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == locked[i] && isOk.isOk(i)) {
-                    idx = i;
+                if (idx < 0 && 0 == locked[temp] && isOk.isOk(temp)) {
+                    idx = temp;
                 }
             }
+            
         }
         return startNewLock(this, key, idx);
     }
