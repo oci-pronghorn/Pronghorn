@@ -12,18 +12,14 @@ import java.util.logging.Logger;
 import java.util.ArrayList;
 // import apache.*;
 
-//import BinaryTree.BinaryTree;
-
 
 public class HuffmanDecoder {
-
-	//BinaryTree tree = new BinaryTree();
 
     public static void main(String[] args){
         int in;
         byte current = (byte)0xaa; //0xaa just because I needed something here. 
         byte last = (byte)0xaa;    //0xaa has no significance
-        int[] data;
+        byte[] data;
 
         try {
             // FileInputStream f = new FileInputStream("nathan.jpg");
@@ -34,19 +30,10 @@ public class HuffmanDecoder {
                 current = (byte)in;
                 
                 if(last == (byte)0xFF && current == (byte)0xc4){
-                    println(formatByte(current));
-                    println("Huffman Indicator found\n");
                     
                     data = grabData(f);
-                    
-                    println("The huffman data length is: " + data.length);
-                    
-                    printBytes(data);
 
-                    System.out.println();
-                    println("That is the data. Interpreting now");
-
-                    interpretHuffmanSegment(convertIntArrayToByteArray(data));
+                    interpretHuffmanSegment(data);
                     //handle huffman stuff here
                     break;
                 }
@@ -67,7 +54,6 @@ public class HuffmanDecoder {
         ArrayList<Byte>[] values2 = interpretDHT(bytes);
         ArrayList<Byte>[] values3 = interpretDHT(bytes);
         ArrayList<Byte>[] values4 = interpretDHT(bytes);
-
     }
 
     public static ArrayList<Byte>[] interpretDHT(ByteArrayInputStream bytes){
@@ -84,11 +70,6 @@ public class HuffmanDecoder {
         firstByte = (byte)bytes.read();
         firstHalf = (byte)(firstByte & 0xF0);
         secondHalf = (byte)(firstByte & 0x0F);
-
-        //info about the huffman table in question
-        println("Half bytes:");
-        println(formatByte(firstHalf));
-        println(formatByte(secondHalf));
 
         println("numbers of elements:");
         for(int i = 0; i < 16; ++i){
@@ -126,6 +107,10 @@ public class HuffmanDecoder {
         return codes;
     }
 
+    
+
+
+
     public static void printHuffCodes(ArrayList<Short>[] c){
         for(int i = 0; i < c.length; ++i){
             print((i + 1) + " ");
@@ -148,31 +133,6 @@ public class HuffmanDecoder {
         }
     }
 
-    //fill byte array with all 0xFF to help visualize huffman elements. 
-    //this will only be used temporarily, not in final release
-    // public static byte[][] fill(byte[][] m){
-    //     for(int i = 0; i < m.length; ++i){
-    //         for(int j = 0; j < m[i].length; ++j){
-    //             m[i][j] = (byte)0xFF;
-    //         }
-    //     }
-    //     return m;
-    // }
-
-    public static int[] grabData(FileInputStream f) throws IOException{
-        int length;
-        int[] data;
-
-        //The number denoting the length of data is two bytes long and follows the data indicator. 
-        length = ((f.read() << 8) | (f.read() & 0xFF)); //basically concatenation of two binary strings. 
-        data = new int[length];
-        for(int i = 0; i < length - 2; ++i){
-            data[i] = f.read();
-        }
-
-        return data;        
-    }
-
     //print an array of bytes as hex
     public static void printBytes(int[] bytes) {
         for(int i = 0; i < bytes.length; ++i) {
@@ -183,11 +143,18 @@ public class HuffmanDecoder {
         }
     }
 
-    //Interesting to note this is one line in python. return [(byte)x for x in bytes].
-    public static byte[] convertIntArrayToByteArray(int[] bytes) {
-        byte[] b = new byte[bytes.length];
-        for(int i = 0; i < bytes.length; ++i){ b[i] = (byte)bytes[i]; }
-        return b;
+    public static byte[] grabData(FileInputStream f) throws IOException{
+        short length;
+        byte[] data;
+
+        //The number denoting the length of data is two bytes long and follows the data indicator. 
+        length = (short)(((short)f.read() << 8) | ((short)f.read() & 0xFF)); //basically concatenation of two binary strings. 
+        data = new byte[length];
+        for(int i = 0; i < length - 2; ++i){
+            data[i] = (byte)f.read();
+        }
+
+        return data;
     }
 
     public static String formatByte(byte b){
@@ -200,31 +167,3 @@ public class HuffmanDecoder {
         System.out.println(o);
     }
 }
-
-
-
-/*
-public buildTree(byte[] numElements, ArrayList<byte>[] values) {
-
-        for(int i = 0; i < values.length; ++i) {
-            for(int j = 0; j < numElements[i]; ++j) {
-                placeNode(0, values[i][j], j + 1);
-                // 0 = root, values[i][j] = code, j + 1 = codeLength
-            }
-        }
-    }
-
-    //placing a node based on the jpg huffman tree rebuild algorithm
-    //https://www.imperialviolet.org/binary/jpeg/
-    public static void placeNode(int position, byte code, int codeLength) {
-        int currentPosition = 0;
-
-        for(int i = 0; i < codeLength; ++i){
-            if(tree.left(currentPosition) != null && tree.left(currentPosition).leaf == false) {
-                currentPosition = right(currentPosition);
-            } else(tree.right(currentPosition) != null && tree.left(currentPosition).leaf == true) {
-                currentPosition = left(currentPosition);
-            }
-        }
-    }
-    */
