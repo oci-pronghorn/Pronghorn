@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class PoolIdx  {
 
     private final long[] keys;
@@ -9,6 +12,7 @@ public final class PoolIdx  {
     private Runnable firstUsage;
     private Runnable noLocks;
     private int rollingKey = 0;
+    private final static Logger logger = LoggerFactory.getLogger(PoolIdx.class);
     
     public PoolIdx(int length) {
         this.keys = new long[length];
@@ -140,6 +144,8 @@ public final class PoolIdx  {
         return startNewLock(this, key, idx);
     }
 
+    private int failureCount = 0;
+    
     private static int startNewLock(PoolIdx that, long key, int idx) {
         if (idx>=0) {
         	if (0==that.locksTaken && that.firstUsage!=null) {
@@ -150,6 +156,12 @@ public final class PoolIdx  {
         	that.keys[idx] = key;
             return idx;
         } else {
+        	
+        	//unable to find a lock, report this.
+        	if (Integer.numberOfLeadingZeros(that.failureCount) != Integer.numberOfLeadingZeros(++that.failureCount)) {
+        		logger.info("Unable to find free value from the pool, consider modification of the graph/configuration.");
+        	}     	
+        	
             return -1;
         }
     }

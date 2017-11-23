@@ -14,4 +14,5 @@ public class PipeMonitorSchemaTest {
 		assertTrue(FROMValidation.checkSchema("/ringMonitor.xml", PipeMonitorSchema.class));
 	}
 
+
 }

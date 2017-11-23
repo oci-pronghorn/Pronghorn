@@ -191,8 +191,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			
 	    		} else {
 	    			//logger.info("write the channel");
-	    			    			
-	    			boolean hasRoomToWrite = workingBuffers[x].capacity()-workingBuffers[x].limit() > input[x].maxVarLen;
+	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
+	    			
+	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > input[x].maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
 	    			if (--writeToChannelBatchCountDown[x]<=0 
 	    				|| !hasRoomToWrite
@@ -215,9 +216,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				
 	    				
 	    				//unflip
-	    				int p = workingBuffers[x].limit();
-	    				workingBuffers[x].limit(workingBuffers[x].capacity());
-	    				workingBuffers[x].position(p);	    				
+	    				int p = localWorkingBuffer.limit();
+	    				localWorkingBuffer.limit(localWorkingBuffer.capacity());
+	    				localWorkingBuffer.position(p);	    				
 	    				
 	    				int h = 0;
 	    				while (	isNextMessageMergeable(input[x], writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
@@ -234,7 +235,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				if (h>0) {
 	    					Pipe.releaseAllPendingReadLock(input[x]);
 	    				}
-	    				workingBuffers[x].flip();
+	    				localWorkingBuffer.flip();
 	    				
 //	    				if ( Pipe.hasContentToRead(dataToSend[x]) || h==0) { //TODO: or if end disoverd?	    				
 //		    				writeToChannelMsg[x] = -1;		    				
@@ -249,14 +250,14 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	}
 	    	
     	} while (didWork);
-        
-    	boolean debug = false;
-    	if (debug) {					
-			if (lastTotalBytes!=totalBytesWritten) {
-				System.err.println("Server writer total bytes :"+totalBytesWritten);
-				lastTotalBytes =totalBytesWritten;
-			}
-    	}
+//        
+//    	boolean debug = false;
+//    	if (debug) {					
+//			if (lastTotalBytes!=totalBytesWritten) {
+//				System.err.println("Server writer total bytes :"+totalBytesWritten);
+//				lastTotalBytes =totalBytesWritten;
+//			}
+//    	}
     	
     }
     

@@ -164,17 +164,21 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 									    		targetThreadCount, 
 									    		pipes, countStages, enforceLimit);    
 	
-//		for(int stages=0; stages <= GraphManager.countStages(graphManager); stages++) { 
-//	    
-//	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
-//	    	if (null!=stage) {	    		
-//	    		int id = 		rootId(stage.stageId, rootsTable, lastKnownRoot);	    			
-//	    		
-//	    		System.err.println(id+"  "+stage.getClass().getSimpleName()+" "+stage.stageId);
-//	    		
-//	    	}
-//	    	
-//	    }
+	    boolean showRoots = false;
+	    if (showRoots) {
+	    		
+			for(int stages=0; stages <= GraphManager.countStages(graphManager); stages++) { 
+		    
+		    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
+		    	if (null!=stage) {	    		
+		    		int id = 		rootId(stage.stageId, rootsTable, lastKnownRoot);	    			
+		    		
+		    		System.err.println("root"+id+"  "+stage.getClass().getSimpleName()+" "+stage.stageId);
+		    		
+		    	}
+		    	
+		    }
+		}
 	    
 	    
 	    if (countStages>logLimit) {
@@ -305,12 +309,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		///////////////////////////////////////////////
 		//done combining the monitor stages.
 		///////////////////////////////////////////////
-			
-		//TODO: do producers first?
-		//      do not combine 2 producers..
-		
-		//loop over pipes once and stop early if total threads is smaller than or matches the target thread count goal
-	  
+
 		int i = pipes.length;
 	    while (--i>=0 /*&& totalThreads>targetThreadCount*/) {	    //can stop early but this may not be optimal??	
 	    	int ringId = pipes[i].id;
@@ -321,7 +320,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    	if (consumerId>0 && producerId>0) {	  
 
 	    		if (isValidToCombine(ringId, consumerId, producerId, graphManager, targetThreadCount)) {
-	    		
 	    		
 		    		//determine if they are already merged in the same tree?
 		    		int consRoot = rootId(consumerId, rootsTable, lastKnownRoot);
@@ -359,6 +357,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				}
 			}
 		}
+
 		
 		//these stages must always be isolated
 		if (GraphManager.hasNota(graphManager, producerId, GraphManager.ISOLATE)) {
@@ -369,7 +368,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 		
 		Pipe p = GraphManager.getPipe(graphManager, ringId);
-		
+		if (Pipe.schemaName(p).contains("Ack") || Pipe.schemaName(p).contains("Release") ) {
+			return false;//never use an Ack connection as the primary data flow.
+		}
+				
 		//if producer sends to n consumers each with the same scheme 
 		//and each with a heavy compute stage then keep the split, never join.
 		if (isSplittingHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
@@ -412,7 +414,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
         //NOTE: this also helps with the parallel work above, any large merge or split will show up here.
 		//do not combine with stages which are 2 standard deviations above the mean input/output count
-		if (GraphManager.countStages(graphManager)>100) {//only apply if we have large enough sample.
+		if (GraphManager.countStages(graphManager)>80) {//only apply if we have large enough sample.
 		    RunningStdDev pipesPerStage = GraphManager.stdDevPipesPerStage(graphManager);
 		    int thresholdToNeverCombine = (int) (RunningStdDev.mean(pipesPerStage)+ (2*RunningStdDev.stdDeviation(pipesPerStage)));
 		    if ((GraphManager.getInputPipeCount(graphManager,consumerId)

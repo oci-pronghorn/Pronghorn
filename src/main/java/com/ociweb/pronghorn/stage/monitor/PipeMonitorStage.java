@@ -8,10 +8,11 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class PipeMonitorStage extends PronghornStage {
 
-	private final Pipe observedPipe;
-	private final Pipe notifyRingBuffer;
+	private final Pipe<?> observedPipe;
+	private final Pipe<PipeMonitorSchema> notifyRingBuffer;
 	private final GraphManager gm;
 	private final String pipeName;
+	private final int slabSize;
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
 	 * controlling the rate of samples
@@ -31,6 +32,8 @@ public class PipeMonitorStage extends PronghornStage {
 		}
 		GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, this);
 		this.pipeName = GraphManager.getPipeName(gm, observedPipe).intern();
+		this.slabSize = observedPipe.sizeOfSlabRing;
+		
 	}
 	
 	@Override
@@ -40,19 +43,20 @@ public class PipeMonitorStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		Pipe output = notifyRingBuffer;
-		Pipe input = observedPipe;
+		Pipe<PipeMonitorSchema> output = notifyRingBuffer;
+		Pipe<?> localObserved = observedPipe;
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (Pipe.hasRoomForWrite(output)) {
 			
-			int size = Pipe.addMsgIdx(output, MSG_RINGSTATSAMPLE_100);
+			final int size = Pipe.addMsgIdx(output, MSG_RINGSTATSAMPLE_100);
 			
 			Pipe.addLongValue(System.currentTimeMillis(), output);
-			Pipe.addLongValue(Pipe.headPosition(input), output);
-			Pipe.addLongValue(Pipe.tailPosition(input), output);
-			Pipe.addIntValue(input.lastMsgIdx, output);
-			Pipe.addIntValue(input.sizeOfSlabRing, output);
-		
+			Pipe.addLongValue(Pipe.headPosition(localObserved), output);
+			Pipe.addLongValue(Pipe.tailPosition(localObserved), output);
+			Pipe.addIntValue(localObserved.lastMsgIdx, output);
+			Pipe.addIntValue(slabSize, output);
+            Pipe.addLongValue(localObserved.totalBlobBytesRead(), output);
+			
 			Pipe.confirmLowLevelWrite(output, size);
 			Pipe.publishWrites(output);
 			
@@ -66,10 +70,7 @@ public class PipeMonitorStage extends PronghornStage {
 		return pipeName;
 	}
 	
-	public long getObservedPipePublishedCount() {
-		return Pipe.headPosition(observedPipe);
-	}
-	
+
 	public long getObservedPipeBytesAllocated() {
 		return observedPipe.config().totalBytesAllocated();
 	}
@@ -77,4 +78,5 @@ public class PipeMonitorStage extends PronghornStage {
 	public int getObservedPipeId() {
 		return observedPipe.id;
 	}
+
 }

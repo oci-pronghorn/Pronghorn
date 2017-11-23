@@ -1,17 +1,17 @@
 package com.ociweb.pronghorn.stage.monitor;
 
+import java.util.Arrays;
+
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
-import com.ociweb.pronghorn.util.AppendableProxy;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -19,10 +19,14 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
 	private final Pipe[] inputs;
-	private PipeMonitorStage[] producers;
+
+	private int[] observedPipeId;
+	private long[] observedPipeBytesAllocated;
+	private String[] observedPipeName;
+	
 	private GraphManager graphManager;
 	private int[] percentileValues; 
-	private int[] trafficValues; 
+	private long[] trafficValues; 
 	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
 		
 	private Histogram[] hists;
@@ -64,7 +68,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	public void startup() {
 		super.startup();
 		percentileValues = new int[Pipe.totalPipes()+1];
-		trafficValues = new int[Pipe.totalPipes()+1];
+		trafficValues = new long[Pipe.totalPipes()+1];
 		
 		int i = inputs.length;
 		pctFull = new short[i];
@@ -75,14 +79,22 @@ public class MonitorConsoleStage extends PronghornStage {
 				
 		position = inputs.length;
 		
-		producers = new PipeMonitorStage[inputs.length];
+		observedPipeId = new int[inputs.length];
+		Arrays.fill(observedPipeId, -1);
+		observedPipeBytesAllocated = new long[inputs.length];
+		observedPipeName = new String[inputs.length];
 		
-		int j = producers.length;
+		int j = inputs.length;
 		while (--j>=0) {
 			int stageId = GraphManager.getRingProducerStageId(graphManager, inputs[j].id);	
             PronghornStage producer = GraphManager.getStage(graphManager, stageId);
             if (producer instanceof PipeMonitorStage) {
-            	producers[j] = (PipeMonitorStage)producer;
+            	PipeMonitorStage p = (PipeMonitorStage)producer;
+            	
+            	observedPipeId[j] = p.getObservedPipeId();
+            	observedPipeBytesAllocated[j] = p.getObservedPipeBytesAllocated();
+            	observedPipeName[j] = p.getObservedPipeName();
+            	
             }
             
 		}
@@ -111,15 +123,22 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, short[] pctFullAvg) {
 		Pipe<?> ring = localInputs[pos];
-		
+		long consumed = -1;
 		while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
 			int mgdIdx = Pipe.takeMsgIdx(ring);			
 			long time = Pipe.takeLong(ring);
 			long head = Pipe.takeLong(ring);
 			long tail = Pipe.takeLong(ring); 				
 			int lastMsgIdx = Pipe.takeInt(ring);
-			int ringSize = Pipe.takeInt(ring);			
-
+			int ringSize = Pipe.takeInt(ring);
+			long consumedBytes = Pipe.takeLong(ring); //this may be too large due to index
+			
+			consumed = tail;//Pipe.takeLong(ring)+(tail*4L); 
+			
+			//TODO: add a flag for these 2 events.
+			//TODO: when tail has cleared slab size
+			//TODO: when consumedBytes has cleared blob size
+			
 			int pctFull = (int)((10000*(head-tail))/ringSize);
 			if (null!=localHists && head>=0 && tail>=0) {
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
@@ -131,6 +150,9 @@ public class MonitorConsoleStage extends PronghornStage {
 			Pipe.confirmLowLevelRead(ring, SIZE_OF);
 			Pipe.releaseReadLock(ring);
 			
+		}
+		if (consumed>=0) {
+			trafficValues[this.observedPipeId[pos]] = consumed;
 		}
 	}
 
@@ -153,9 +175,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	protected void summarizeRuntime(boolean writeToConsole, 
 			                        ValueType pipePctFullType) {
 		Histogram[] localHists = hists;
-		int[] localTrafficValues = trafficValues;
 		int[] localPercentileValues = percentileValues;
-		PipeMonitorStage[] localProducers = producers;
 		
 		int i = localHists.length;
 		while (--i>=0) {
@@ -185,16 +205,13 @@ public class MonitorConsoleStage extends PronghornStage {
             String ringName = "Unknown";
             long published = 0;
             long allocated = 0;
-            if (null != localProducers[i]) {
+            if (observedPipeId[i]>=0) {
             	
-            	published = (localProducers[i]).getObservedPipePublishedCount();
-            	allocated = (localProducers[i]).getObservedPipeBytesAllocated();
-            	localTrafficValues[ (localProducers[i]).getObservedPipeId() ] = (int)published;
-            	ringName = (localProducers[i]).getObservedPipeName();
-            	
+            	allocated = observedPipeBytesAllocated[i];
+            	ringName = observedPipeName[i];
+            	            	
 	            if (inBounds && (sampleCount>=1)) {
-	            	localPercentileValues[ (localProducers[i]).getObservedPipeId() ] = (int)pctile;
-					
+	            	localPercentileValues[observedPipeId[i]] = (int)pctile;
 	            }
             }
             if (writeToConsole) {

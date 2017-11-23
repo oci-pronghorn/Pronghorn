@@ -895,37 +895,37 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
     long inChnl = inputChannels[idx];
 
     
-    boolean debug = false;
-    if (debug) {
-		logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
-	    		     Pipe.hasContentToRead(selectedInput), 
-	    		     hasNoActiveChannel(inChnl), 
-	    		     hasReachedEndOfStream(selectedInput), 
-	    		     hasContinuedData(selectedInput, inChnl) );
-    }
+//    boolean debug = false;
+//    if (debug) {
+//		logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
+//	    		     Pipe.hasContentToRead(selectedInput), 
+//	    		     hasNoActiveChannel(inChnl), 
+//	    		     hasReachedEndOfStream(selectedInput), 
+//	    		     hasContinuedData(selectedInput, inChnl) );
+//    }
 
     
     while ( //NOTE has content to read looks at slab position between last read and new head.
-            
-    	   Pipe.hasContentToRead(selectedInput) //must check first to ensure assert is happy
-    	   &&	
-           ( hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
-        	  hasContinuedData(selectedInput, inChnl) ||
-              hasReachedEndOfStream(selectedInput)  //if we have reached the end of the stream
-           )           
-            
+   
+    		Pipe.hasContentToRead(selectedInput) && (    //content checked first to ensure asserts pass		
+    				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
+    				hasContinuedData(selectedInput, inChnl) ||
+    				hasReachedEndOfStream(selectedInput) 
+    				//if we have reached the end of the stream       
+            )
           ) {
 
         
         messageIdx = Pipe.takeMsgIdx(selectedInput);
         
-        //logger.info("seen message id of {}"+messageIdx);
+        //logger.info("seen message id of {}",messageIdx);
         
         if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
             long channel   = Pipe.takeLong(selectedInput);
             long arrivalTime = Pipe.takeLong(selectedInput);
             
-            this.inputSlabPos[idx] = Pipe.takeLong(selectedInput);            
+            long slabPos;
+            this.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
           
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
             int length     = Pipe.takeRingByteLen(selectedInput);
@@ -935,34 +935,34 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             assert(length<=selectedInput.maxVarLen);
             assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
             
-			if (-1 == inputChannels[idx]) { //is freshStart
-				
+			if (-1 == inChnl) {
+				//is freshStart
 				assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
 				
 				//assign
-                inputChannels[idx]     = inChnl = channel;
-                inputLengths[idx]      = length;
-                inputBlobPos[idx]      = pos;
-                inputBlobPosLimit[idx] = pos + length;
-                
-                //logger.info("added new fresh start data of {}",length);
-               
-                assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
-                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+				inputChannels[idx]     = inChnl = channel;
+				inputLengths[idx]      = length;
+				inputBlobPos[idx]      = pos;
+				inputBlobPosLimit[idx] = pos + length;
+				
+				//logger.info("added new fresh start data of {}",length);
+				
+				assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
+				assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
             } else {
-                //confirm match
-                assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
-                   
-                //grow position
-                assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
-                inputLengths[idx] += length; 
-                inputBlobPosLimit[idx] += length;
-                
-                assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
-                                
-                //may only read up to safe point where head is       
-                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-                                
+            	//confirm match
+            	assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
+            	
+            	//grow position
+            	assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
+            	inputLengths[idx] += length; 
+            	inputBlobPosLimit[idx] += length;
+            	
+            	assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
+            	
+            	//may only read up to safe point where head is       
+            	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+            	
             }
 
 			assert(inputLengths[idx]>=0) : "error negative length not supported";
@@ -972,7 +972,7 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             Pipe.readNextWithoutReleasingReadLock(selectedInput); 
             
             
-            if (-1 == inputSlabPos[idx]) {
+            if (-1 == slabPos) {
             	inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
             }
             assert(inputSlabPos[idx]!=-1);
@@ -1012,18 +1012,19 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 }
 
 
+    // Warning Pipe.hasContentToRead(selectedInput) must be called first.
 	private boolean hasNoActiveChannel(long inChnl) {
 		return -1 == inChnl;
 	}
 
-
+	// Warning Pipe.hasContentToRead(selectedInput) must be called first.
 	private boolean hasContinuedData(Pipe<NetPayloadSchema> selectedInput, long inChnl) {
-		return (Pipe.hasContentToRead(selectedInput) && Pipe.peekLong(selectedInput, 1)==inChnl);
+		return Pipe.peekLong(selectedInput, 1)==inChnl;
 	}
 	
-	
+	// Warning Pipe.hasContentToRead(selectedInput) must be called first.
 	private static boolean hasReachedEndOfStream(Pipe<NetPayloadSchema> selectedInput) {
-	    return (Pipe.hasContentToRead(selectedInput) && Pipe.peekInt(selectedInput)<0);
+	    return Pipe.peekInt(selectedInput)<0;
 	}
 	
 	

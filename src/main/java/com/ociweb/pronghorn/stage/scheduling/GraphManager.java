@@ -1510,7 +1510,8 @@ public class GraphManager {
 		exportGraphDotFile(gm,filename,isVertical,null,null);
 	}
 	
-    public static void exportGraphDotFile(GraphManager gm, String filename, boolean isVertical, int[] percentileValues, int[] traffic) {
+    public static void exportGraphDotFile(GraphManager gm, String filename, boolean isVertical,
+    		                              int[] percentileValues, long[] traffic) {
     	
     //	new Exception("GENERATING NEW DOT FILE "+filename).printStackTrace();
     	
@@ -1544,7 +1545,8 @@ public class GraphManager {
     	writeAsDOT(m,target,isVertical,null,null);
     }
     
-	public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical, int[] percentileValues, int[] traffic) {
+	public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical,
+			                      int[] percentileValues, long[] traffic) {
 					    	
 	        int stages = GraphManager.countStages(m);
 	        	        
@@ -1733,7 +1735,18 @@ public class GraphManager {
 		                target.append(pipeIdBytes);
 		                
 		                target.append(LABEL_OPEN);
-		                if (pipe.config().showLabels()) {
+		                
+		                //NOTE: special logic to turn off labels
+		                boolean showLabels = true;
+		                
+		                if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)) {
+		                	if (GraphManager.getOutputPipeCount(m, producer)>2) {
+		                		showLabels = false; //do not show labels for large load balancers
+		                	}
+		                }
+		                ////////////////////////////////////////
+		                
+		                if (showLabels && pipe.config().showLabels()) {
 			                target.append(m.pipeDOTSchemaNames[pipe.id]);
 			                		                
 			                if (null!=percentileValues) {
@@ -1743,7 +1756,7 @@ public class GraphManager {
 			                }
 			     
 			                if (null!=traffic) {
-			                	int traf = traffic[pipe.id];
+			                	long traf = traffic[pipe.id];
 			                	if (traf>9999) {
 			                		Appendables.appendValue(target.append(" Vol:"), traf);
 			                	} else {
@@ -1804,12 +1817,12 @@ public class GraphManager {
 	
 	}
 
-	private static int computeLineWidth(int[] traffic, Pipe pipe) {
+	private static int computeLineWidth(long[] traffic, Pipe pipe) {
 		int lineWidth = 1; //default
 		if (null!=traffic) {
-			int trafficCount = traffic[pipe.id];
+			long trafficCount = traffic[pipe.id];
 			//compute the line width.
-			int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
+			int bitsUsed = 64-Long.numberOfLeadingZeros(trafficCount);		                	
 			lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);			                	
 		}
 		return lineWidth;

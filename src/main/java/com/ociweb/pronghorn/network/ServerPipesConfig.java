@@ -57,6 +57,16 @@ public class ServerPipesConfig {
 							 int decryptUnitsPerTrack,
 							 int concurrentChannelsPerDecryptUnit) {
 		
+		//these may need to be exposed..
+	    fromRouterToModuleCount 	  = 1<<8;//impacts performance
+	    //largest file to be cached in file server
+		fromRouterToModuleBlob		  = 1<<12;//impacts performance
+
+	    serverOutputMsg               = isTLS? 32: 1<<8; //512;//important for outgoing data and greatly impacts performance
+	    int serverInputMsg            = isTLS? 8 : 1<<8;
+	    									//TODO: set based on the socket values on the server??
+	    int serverInputBlobs          = isTLS? 1<<15 : 1<<8; //TODO: bump up for large posts 
+
 		
 		moduleParallelism = tracks;
 		maxConnectionBitsOnServer = maxConnectionBits;
@@ -81,32 +91,9 @@ public class ServerPipesConfig {
 		
 		// do not need multiple writers until we have giant load
 		serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
-				
-		
 		writeBufferMultiplier     = (moduleParallelism >= 4) ? 16 : 4; //write buffer on server
 
-	    int serverInputMsg        = isTLS? 8 : 64; 
-	    int serverInputBlobs; //TODO: set based on the socket values on the server??
-	    
-		//logger.info("cores in use {}", cores);
-		
-		if (moduleParallelism >= 4) {
-	    	
-			serverInputBlobs              = 1<<14;
 
-			serverOutputMsg               = isTLS? 32:512;
-			
-			//TODO: must configure for file server cache...
-			fromRouterToModuleCount 	  = isTLS? 512:1<<16;//4096;//impacts performance
-			fromRouterToModuleBlob 		  = 1<<10;
-		} else {	//small
-    	
-			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
-
-			serverOutputMsg               = isTLS? 8:16; //important for outgoing data and greatly impacts performance
-			fromRouterToModuleCount 	  = isTLS? 64:256; //impacts performance
-			fromRouterToModuleBlob		  = 1<<7;
-		}
 
 		
 		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off

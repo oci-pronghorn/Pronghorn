@@ -75,6 +75,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 	        setReadOptions(new HashSet<OpenOption>());
 	        getReadOptions().add(StandardOpenOption.READ);
 	        
+	      
 		}
 
 
@@ -240,6 +241,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         this.shutdownCount = inputs.length;
             
         GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "ModuleStage", this);
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         
         
     }

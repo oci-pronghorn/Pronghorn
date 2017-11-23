@@ -161,13 +161,15 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		//release tail so data can be written
 
 		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+		
+		Pipe.markBytesReadBase(ss.source, totalBytesCopy); //record the bytes consumed so far
 		Pipe.setBytesWorkingTail(ss.source, i);
-        Pipe.setBytesTail(ss.source, i);   
+        Pipe.setBytesTail(ss.source, i);
 		Pipe.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 		
 		//both end of pipe was sent AND we have consumed everything off that pipe.
-		if ((0 == (0xF&ss.checkShutdownCycle++)) &&	//TODO: Still testing to see if this helps..			
+		if ((0 == (0xF&ss.checkShutdownCycle++)) &&	
 			Pipe.isEndOfPipe(ss.source, ss.cachedTail) &&
 			Pipe.contentRemaining(ss.source)==0) {
 			//we have copied everything including the EOF marker to all the downstream consumers
@@ -218,8 +220,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 								Pipe<S> ringBuffer) {
 		
 		//copy the bytes
-		Pipe.copyBytesFromToRing(Pipe.blob(ss.source),                   byteTailPos, ss.source.byteMask, 
-		        Pipe.blob(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(ss.source),                   byteTailPos, ss.source.blobMask, 
+		        Pipe.blob(ringBuffer), Pipe.getBlobHeadPosition(ringBuffer), ringBuffer.blobMask, 
 									  totalBytesCopy);
 		
 		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));
