@@ -121,6 +121,7 @@ class StackStateWalker {
 				return false;
 			}
 		}
+		
 		return true;
 	}
 
@@ -149,7 +150,8 @@ class StackStateWalker {
 				return false;					
 			}
 		}
-      return true;//exit early because we do not have any nested closed groups to check for
+		
+        return true;//exit early because we do not have any nested closed groups to check for
 	}
 
 

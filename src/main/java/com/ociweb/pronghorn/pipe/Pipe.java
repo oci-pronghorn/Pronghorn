@@ -430,8 +430,6 @@ public class Pipe<T extends MessageSchema<T>> {
     private DataOutputBlobWriter<T> blobWriter;
     private DataInputBlobReader<T> blobReader;
     
-    
-
     //for writes validates that bytes of var length field is within the expected bounds.
     private int varLenMovingAverage = 0;//this is an exponential moving average
 
@@ -570,9 +568,16 @@ public class Pipe<T extends MessageSchema<T>> {
     }
  
     private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
+
+    //this is used along with tail position to capture the byte count
+	private long totalBlobBytesRead=0;
     
     public static <S extends MessageSchema<S>> boolean isInBlobFieldWrite(Pipe<S> pipe) {
         return pipe.isInBlobFieldWrite.get();
+    }
+    
+    public long totalBlobBytesRead() {
+    	return totalBlobBytesRead;
     }
     
     public void openBlobFieldWrite() {  
@@ -773,14 +778,26 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static <S extends MessageSchema<S>> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         //base has future pos added to it so this value must be masked and kept as small as possible
-                
-        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & (pipe.blobReadBase+bytesConsumed);
+
+    //TODO: bytes consumed is wrong when we are using an index...    
+        
+        pipe.totalBlobBytesRead = pipe.totalBlobBytesRead+bytesConsumed;        
+        pipe.blobReadBase = pipe.blobMask /*Pipe.BYTES_WRAP_MASK*/ & (pipe.blobReadBase+bytesConsumed);
         assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
     }
     
     public static <S extends MessageSchema<S>> void markBytesReadBase(Pipe<S> pipe) {
-        //base has future pos added to it so this value must be masked and kept as small as possible
-        pipe.blobReadBase = pipe.blobMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
+    	final int newBasePosition = pipe.blobMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
+    
+    	//do comparison to find the new consumed value?
+    	int bytesConsumed = newBasePosition - pipe.blobReadBase;
+    	if (bytesConsumed<0) {
+    		bytesConsumed += pipe.sizeOfBlobRing;
+    	}
+    	pipe.totalBlobBytesRead = pipe.totalBlobBytesRead+bytesConsumed;
+    	    	
+    	//base has future pos added to it so this value must be masked and kept as small as possible
+		pipe.blobReadBase = newBasePosition;
     }
     
     //;
@@ -2979,18 +2996,7 @@ public class Pipe<T extends MessageSchema<T>> {
     			      pipe.slabRingTail.workingTailPos.value,
     			      Pipe.bytesReadBase(pipe)
     			));
-        /**
-         * TODO: mask the result int to only the bits which contain the msgId.
-         *       The other bits can bet retrieved by the getMessagePackedBits
-         *       The limit for the byte length is also known so there is 
-         *       another method getFragmentPackedBits which come from the tail.
-         *   
-         *       This bits must be defined in the template/FROM and bounds checked at compile time.
-         * 
-         */
-        
-        
-       // assert(pipe.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(pipe)) : " tail is "+pipe.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(pipe);
+  
     	return pipe.lastMsgIdx = readValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
     }
     
@@ -3039,6 +3045,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumedByFragment = takeInt(pipe);
+
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
         assert(Pipe.contentRemaining(pipe)>=0); 
@@ -3828,6 +3835,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		target.activeBlobHead = -1;
 		return result;
 	}
+
 
 
 }
