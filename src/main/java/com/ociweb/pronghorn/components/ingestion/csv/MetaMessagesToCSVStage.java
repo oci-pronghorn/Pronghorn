@@ -175,7 +175,7 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			
 						//	System.err.println("data:"+new String(backing, readBytesPos, readBytesLength));
 							
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.blobMask, readBytesLength);
 							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
     			
 							
@@ -190,7 +190,7 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			byte[] backing      = PipeReader.readBytesBackingArray(stage.inputRing, MetaMessageDefs.NAMEDASCII_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 									        			
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.blobMask, readBytesLength);
 							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
 
 		        		}

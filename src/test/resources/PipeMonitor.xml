@@ -15,7 +15,7 @@
         <uInt32 name="BufferSize" id="5">
             <copy/>            
         </uInt32>
-        <uInt64 name="BlobConsumed" id="6">
+        <uInt64 name="Consumed" id="6">
             <delta/>
         </uInt64>
     </template>

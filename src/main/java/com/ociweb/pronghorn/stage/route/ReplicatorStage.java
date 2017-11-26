@@ -18,10 +18,12 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	private Pipe<T> source;
 	private Pipe<T>[] targets;
 	
+	private long totalWrittenFragments;
 	private int byteHeadPos;
     private long headPos;
     private long cachedTail;
 	private long totalPrimaryCopy;
+	private long totalFragmentsCopy;
 	private int[] working;
 	private int   workingPos;
     	
@@ -180,12 +182,23 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 
 
 	private static <S extends MessageSchema<S>> void findStableCutPoint(ReplicatorStage<S> ss) {
+		
+		long oldFragments = ss.totalWrittenFragments;
+		
 		ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
-        ss.headPos = Pipe.headPosition(ss.source);		
-		while(ss.byteHeadPos != Pipe.getBlobHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+		ss.totalWrittenFragments = Pipe.totalWrittenFragments(ss.source);
+        ss.headPos = Pipe.headPosition(ss.source);	
+        
+        //if any of these do not match try again until they all match a second time
+		while(ss.byteHeadPos != Pipe.getBlobHeadPosition(ss.source) 
+			  || ss.totalWrittenFragments != Pipe.totalWrittenFragments(ss.source)	
+			  || ss.headPos != Pipe.headPosition(ss.source) ) {
 			ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
+			ss.totalWrittenFragments = Pipe.totalWrittenFragments(ss.source);
 			ss.headPos = Pipe.headPosition(ss.source);
 		}
+		
+		ss.totalFragmentsCopy = ss.totalWrittenFragments-oldFragments;
 	}
 
 	
@@ -207,6 +220,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 			} else {
 			    Pipe.confirmLowLevelWriteUnchecked(ss.targets[working[j]], totalPrimaryCopy);	
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				
+				Pipe.sumWrittenFragments(ss.targets[working[j]], ss.totalFragmentsCopy);
 			}
 			j++;
 		}

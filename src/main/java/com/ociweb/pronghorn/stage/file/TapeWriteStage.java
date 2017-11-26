@@ -125,9 +125,9 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private static <S extends MessageSchema<S>> void setupBuffersToWriteFrom(TapeWriteStage<S> ss) {
         //collect all the constant values needed for doing the copy
-        ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
+        ss.tempByteTail = Pipe.getBlobTailPosition(ss.source);
         ss.totalBytesCopy =   ss.byteHeadPos -ss.tempByteTail;
-        ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;   
+        ss.byteTailPos = ss.source.blobMask & ss.tempByteTail;   
         
         int blobLimitA = ss.source.sizeOfBlobRing;
         int blobPosition = ss.byteTailPos;
@@ -135,7 +135,7 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
         
         if (blobLimitB>blobLimitA) {
             ss.blobBuffer1.limit(blobLimitA);
-            ss.blobBuffer2.limit(ss.source.byteMask & blobLimitB);
+            ss.blobBuffer2.limit(ss.source.blobMask & blobLimitB);
         } else {
             ss.blobBuffer1.limit(blobLimitB);
             ss.blobBuffer2.limit(        0  );                
@@ -234,10 +234,10 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 
 
     private static <S extends MessageSchema<S>> void findStableCutPoint(TapeWriteStage<S> ss) {
-        ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
+        ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);      
-        while(ss.byteHeadPos != Pipe.getBlobRingHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
-            ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
+        while(ss.byteHeadPos != Pipe.getBlobHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+            ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
             ss.headPos = Pipe.headPosition(ss.source);
         }
     }

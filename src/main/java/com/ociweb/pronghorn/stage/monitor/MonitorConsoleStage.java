@@ -6,12 +6,14 @@ import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableProxy;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -131,13 +133,11 @@ public class MonitorConsoleStage extends PronghornStage {
 			long tail = Pipe.takeLong(ring); 				
 			int lastMsgIdx = Pipe.takeInt(ring);
 			int ringSize = Pipe.takeInt(ring);
-			long consumedBytes = Pipe.takeLong(ring); //this may be too large due to index
+		   
+			consumed = Pipe.takeLong(ring);
 			
-			consumed = tail;//Pipe.takeLong(ring)+(tail*4L); 
-			
-			//TODO: add a flag for these 2 events.
-			//TODO: when tail has cleared slab size
-			//TODO: when consumedBytes has cleared blob size
+			Pipe.confirmLowLevelRead(ring, SIZE_OF);
+			Pipe.releaseReadLock(ring);
 			
 			int pctFull = (int)((10000*(head-tail))/ringSize);
 			if (null!=localHists && head>=0 && tail>=0) {
@@ -147,12 +147,10 @@ public class MonitorConsoleStage extends PronghornStage {
 			}
 			pctFullAvg[pos] = (short)Math.min(9999, (((99*pctFullAvg[pos])+pctFull)/100));
 			
-			Pipe.confirmLowLevelRead(ring, SIZE_OF);
-			Pipe.releaseReadLock(ring);
-			
 		}
+		
 		if (consumed>=0) {
-			trafficValues[this.observedPipeId[pos]] = consumed;
+			trafficValues[this.observedPipeId[pos]] = consumed; 
 		}
 	}
 

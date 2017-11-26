@@ -90,7 +90,7 @@ public abstract class StageScheduler {
 		final int countStages = GraphManager.countStages(gm);
 
 		//disabled until we find a large machine for testing
-		if (false && targetThreadCountLimit>countStages) { 
+		if (false || targetThreadCountLimit>countStages) { 
 				  //NOTE: this case will be rarely used, the other schedules are
 			      //      more efficient however this scheduler is much simpler.
 				  logger.info("Threads in use {}, one per stage.", countStages);

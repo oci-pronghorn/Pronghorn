@@ -15,6 +15,8 @@ public class ExampleProducerStage extends PronghornStage {
 		this.output = output;
 		GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000_000, this);
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+		
 	}
 
 	@Override

@@ -337,8 +337,8 @@ public class FieldSplitterStage extends PronghornStage {
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 			
 		int	bytePosition = Pipe.getBlobWorkingHeadPosition(output);		    	
-		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.byteMask, length1);
-		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.byteMask, length2);
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.blobMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.blobMask, length2);
 		int length3 = length1+length2;
 			
 		Pipe.validateVarLength(output, length3);
@@ -357,8 +357,8 @@ public class FieldSplitterStage extends PronghornStage {
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
 			
 		int bytePosition = Pipe.getBlobWorkingHeadPosition(output);
-		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.byteMask, length1);
-		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.byteMask, length2);
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.blobMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.blobMask, length2);
 		int length = length1+length2;
 
 		Pipe.validateVarLength(output, length);

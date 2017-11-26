@@ -76,7 +76,7 @@ public class RingBufferPipeline {
 		        	int pos = bytePosition(meta, inputRing, len);
 		        	
 					if (lastPos>=0) {
-						assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);
+						assertEquals((lastPos+len)&inputRing.blobMask,pos&inputRing.blobMask);
 					} 
 					lastPos = pos;
 											
@@ -180,9 +180,9 @@ public class RingBufferPipeline {
 							int pos = PipeReader.readBytesPosition(inputRing, FIELD_ID);
 
 							if (lastPos>=0) {
-								assertEquals(msgCount+" Expected pos to jump by length:"+len+" for mask "+inputRing.byteMask,
-								             (lastPos+len) & inputRing.byteMask, 
-								             pos           & inputRing.byteMask);
+								assertEquals(msgCount+" Expected pos to jump by length:"+len+" for mask "+inputRing.blobMask,
+								             (lastPos+len) & inputRing.blobMask, 
+								             pos           & inputRing.blobMask);
 							} 
 							lastPos = pos;
 							

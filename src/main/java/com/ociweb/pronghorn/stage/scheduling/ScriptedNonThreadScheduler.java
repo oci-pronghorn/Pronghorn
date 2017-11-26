@@ -474,11 +474,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	long wait = blockStartTime - System.nanoTime(); 
             if (wait > 0) {
             	
-            	if (wait > 2_000_000L) {  //2ms
-            		//timeout safety for bad nanoTime and long delays
-            		if (wait > 1_000_000_000) {//1sec
-            			blockStartTime = System.nanoTime() + schedule.commonClock;
-            		}
+            	if (wait > 1_000_000_000) {//1sec
+            		blockStartTime = System.nanoTime() + schedule.commonClock;
+            		logger.info("warning there may be an issue with the local clock");
             		break;
             	}
             	

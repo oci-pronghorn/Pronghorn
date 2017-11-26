@@ -45,6 +45,7 @@ public class PipeMonitorStage extends PronghornStage {
 	public void run() {
 		Pipe<PipeMonitorSchema> output = notifyRingBuffer;
 		Pipe<?> localObserved = observedPipe;
+		
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (Pipe.hasRoomForWrite(output)) {
 			
@@ -55,7 +56,7 @@ public class PipeMonitorStage extends PronghornStage {
 			Pipe.addLongValue(Pipe.tailPosition(localObserved), output);
 			Pipe.addIntValue(localObserved.lastMsgIdx, output);
 			Pipe.addIntValue(slabSize, output);
-            Pipe.addLongValue(localObserved.totalBlobBytesRead(), output);
+			Pipe.addLongValue(Pipe.totalWrittenFragments(localObserved), output);
 			
 			Pipe.confirmLowLevelWrite(output, size);
 			Pipe.publishWrites(output);
