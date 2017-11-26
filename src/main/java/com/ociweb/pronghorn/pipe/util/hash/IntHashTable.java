@@ -25,12 +25,14 @@ public class IntHashTable {
 	private final int mask;
 	private final long[] data;
 	private int space;
+	private final int bits;
 	
 	public static IntHashTable newTableExpectingCount(int count) {		
 		return new IntHashTable((int) (1+Math.ceil(Math.log(count)/Math.log(2)) ));
 	}
 	
 	public IntHashTable(int bits) {
+		this.bits = bits;
 		int size = 1<<bits;
 		mask = size-1;
 		
@@ -150,5 +152,19 @@ public class IntHashTable {
 		   }		   
 	   }	   
    }	
+   
+   public static IntHashTable doubleSize(IntHashTable ht) {
+	   IntHashTable newHT = new IntHashTable(ht.bits+1);
+	   int j = ht.mask+1;
+	   while (--j >= 0) {
+		   long block = ht.data[j];
+		   if (0!=block) {
+			   int key = (int)block;
+			   int value = (int)(block>>32);
+			   setItem(newHT, key, value);
+		   }		   
+	   }	   
+	   return newHT;
+   }
 	
 }
