@@ -533,7 +533,7 @@ public class PipeWriter {
 		
 		Pipe.validateVarLength(target,length);
 		long ringPos = target.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc);		
-		Pipe.slab(target)[target.slabMask & (int)ringPos] = (int)(target.sizeOfBlobRing + Pipe.unstoreBlobWorkingHeadPosition(target)-Pipe.bytesWriteBase(target)) & target.byteMask; //mask is needed for the negative case, does no harm in positive case
+		Pipe.slab(target)[target.slabMask & (int)ringPos] = (int)(target.sizeOfBlobRing + Pipe.unstoreBlobWorkingHeadPosition(target)-Pipe.bytesWriteBase(target)) & target.blobMask; //mask is needed for the negative case, does no harm in positive case
 		Pipe.slab(target)[target.slabMask & (int)(ringPos+1)] = length;	
 		Pipe.addAndGetBytesWorkingHeadPosition(target, length);
 		

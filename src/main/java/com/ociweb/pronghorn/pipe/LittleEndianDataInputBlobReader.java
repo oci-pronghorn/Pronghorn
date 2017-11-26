@@ -31,7 +31,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
         this.position  = PipeReader.readBytesPosition(pipe, loc);
         this.backing   = PipeReader.readBytesBackingArray(pipe, loc); 
         
-        this.bytesLimit = pipe.byteMask & (position + length);
+        this.bytesLimit = pipe.blobMask & (position + length);
         
     }
     
@@ -45,7 +45,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
         that.position  = Pipe.bytePosition(meta, that.pipe, that.length);
         that.backing   = Pipe.byteBackingArray(meta, that.pipe);      
         
-        that.bytesLimit = that.pipe.byteMask & (that.position + that.length);
+        that.bytesLimit = that.pipe.blobMask & (that.position + that.length);
         return that.length;
     }
     
@@ -54,7 +54,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
         reader.backing  = Pipe.blob(reader.pipe);      
         
         reader.length   = length;
-        reader.bytesLimit = reader.pipe.byteMask & (position + length);
+        reader.bytesLimit = reader.pipe.blobMask & (position + length);
     }
     
     
@@ -72,7 +72,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
             int len = Pipe.takeRingByteLen(that.pipe);
             
             that.length += len;
-            that.bytesLimit = that.pipe.byteMask & (that.bytesLimit + len);
+            that.bytesLimit = that.pipe.blobMask & (that.bytesLimit + len);
             
             return len;
         }

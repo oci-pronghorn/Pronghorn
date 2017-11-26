@@ -28,7 +28,7 @@ public class PipeSingleTemplateTest {
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
-        int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
+        int varDataMax = (ring.blobMask/(ring.slabMask>>1))/messageSize;        
         int testSize = (1<<primaryRingSizeInBits)/messageSize;
 
         populateRingBufferWithBytes(ring, varDataMax, testSize);
@@ -96,7 +96,7 @@ public class PipeSingleTemplateTest {
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         
-        final int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
+        final int varDataMax = (ring.blobMask/(ring.slabMask>>1))/messageSize;        
         final int testSize = (1<<primaryRingSizeInBits)/messageSize;
                 
     	Thread t = new Thread(new Runnable(){

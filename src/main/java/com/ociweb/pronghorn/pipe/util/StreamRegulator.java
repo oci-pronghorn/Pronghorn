@@ -43,7 +43,7 @@ public class StreamRegulator {
         Pipe.setPublishBatchSize(pipe, 0); 
         Pipe.setReleaseBatchSize(pipe, maxWrittenChunksInFlight/3);
         
-        if (this.pipe.byteMask<=0) {
+        if (this.pipe.blobMask<=0) {
             throw new UnsupportedOperationException("Pipe must have room to send blob data. Found size:"+ this.pipe.sizeOfBlobRing+" config: "+pipeConfig);
         }
         

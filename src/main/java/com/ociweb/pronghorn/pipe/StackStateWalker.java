@@ -213,7 +213,7 @@ class StackStateWalker {
 	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
 	            return false;
 	        }
-            if (byteCount>ringBuffer.byteMask) {
+            if (byteCount>ringBuffer.blobMask) {
                 log.error("if this is a new fragment then previous fragment byte count is larger than byte buffer, more likely this is NOT a valid fragment start. "+byteCount);
                 int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
                 int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
@@ -497,8 +497,8 @@ class StackStateWalker {
 				                spaceNeeded);
 		Pipe.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
-		Pipe.copyBytesFromToRing(Pipe.blob(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.byteMask, 
-		                               Pipe.blob(outputRing), Pipe.getBlobWorkingHeadPosition(outputRing), outputRing.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.blobMask, 
+		                               Pipe.blob(outputRing), Pipe.getBlobWorkingHeadPosition(outputRing), outputRing.blobMask, 
 				                       bytesToCopy);
 
         Pipe.addAndGetBytesWorkingHeadPosition(outputRing, bytesToCopy);		

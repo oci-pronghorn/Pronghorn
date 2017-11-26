@@ -49,7 +49,7 @@ public class RingStreams {
         //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
         //      That change may however increase latency.
         
-        int byteMask = inputRing.byteMask;
+        int byteMask = inputRing.blobMask;
         int byteSize = byteMask+1;
         
         while (true) {
@@ -148,7 +148,7 @@ public class RingStreams {
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
             	int len = takeRingByteLen(inputRing);
             	
-        		int byteMask = inputRing.byteMask;
+        		int byteMask = inputRing.blobMask;
 				byte[] data = byteBackingArray(meta, inputRing);
 				
 				int offset = bytePosition(meta,inputRing,len);        					
@@ -199,7 +199,7 @@ public class RingStreams {
 		long tailPosCache = tailPosition(outputRing);
 		
 		byte[] buffer = Pipe.byteBuffer(outputRing);
-		int byteMask = outputRing.byteMask;
+		int byteMask = outputRing.blobMask;
 		
 		int position = Pipe.getBlobWorkingHeadPosition(outputRing);
 
@@ -230,7 +230,7 @@ public class RingStreams {
 				}
 			}
 		} catch (IOException ioex) {
-			System.err.println("FAILURE detected at position: "+position+" last known sizes: "+size+" byteMask: "+outputRing.byteMask+
+			System.err.println("FAILURE detected at position: "+position+" last known sizes: "+size+" byteMask: "+outputRing.blobMask+
 					" rolloever "+((position&byteMask) >= ((position+maxBlockSize-1) & byteMask))+"  "+(position&byteMask)+" > "+((position+maxBlockSize-1) & byteMask));
 			throw ioex;
 		}
@@ -316,7 +316,7 @@ public class RingStreams {
 	    	
 	    	int msg = Pipe.takeMsgIdx(inputRing);
 
-	    	int byteMask = inputRing.byteMask;
+	    	int byteMask = inputRing.blobMask;
 	    				
 	    	if (msg<0) { //exit logic
 	    		int bytesCount = Pipe.takeInt(inputRing);

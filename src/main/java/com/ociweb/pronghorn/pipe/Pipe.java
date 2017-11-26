@@ -347,8 +347,6 @@ public class Pipe<T extends MessageSchema<T>> {
     public final int sizeOfBlobRing;
 
     public final int slabMask;
-    @Deprecated
-    public final int byteMask;
     public final int blobMask;
     
     public final byte bitsOfSlabRing;
@@ -386,6 +384,7 @@ public class Pipe<T extends MessageSchema<T>> {
     long lastReleasedSlabTail;
 
     int blobWriteLastConsumedPos = 0;
+    private long totalWrittenFragments = 0;
 
     //All references found in the messages/fragments to variable-length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
@@ -511,7 +510,18 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 		return true;
 	}
+	
+	/////////////////
+	/////////////////
+	
+	public static long totalWrittenFragments(Pipe<?> p) {
+		return p.totalWrittenFragments;
+	}
     
+	public static void sumWrittenFragments(Pipe<?> p, long sum) {
+		p.totalWrittenFragments+=sum;
+	}
+	
 	////////////////////
 	////////////////////
 	public Pipe(PipeConfig<T> config) {
@@ -550,7 +560,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
         this.sizeOfBlobRing =  1 << byteBits;
         this.blobMask = Math.max(1, sizeOfBlobRing - 1); //mask can no be any smaller than 1
-        this.byteMask= blobMask;
+
         FieldReferenceOffsetManager from = MessageSchema.from(config.schema); 
 
         this.blobConstBuffer = byteConstants;
@@ -2008,7 +2018,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param ringBuffer
      */
 	public static <S extends MessageSchema<S>> int bytesOfContent(Pipe<S> ringBuffer) {
-		int dif = (ringBuffer.blobMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
+		int dif = (ringBuffer.blobMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.blobMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
 		return ((dif>>31)<<ringBuffer.bitsOfBlogRing)+dif;
 	}
 
@@ -2221,10 +2231,10 @@ public class Pipe<T extends MessageSchema<T>> {
 			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
 			int t = tmp/10;
 			int r = tmp%10;
-			target[pipe.byteMask&--idx] = (byte)('0'+r);
+			target[pipe.blobMask&--idx] = (byte)('0'+r);
 			tmp = t;
 		} while (0!=tmp);
-		target[pipe.byteMask& (idx-1)] = (byte)'-';
+		target[pipe.blobMask& (idx-1)] = (byte)'-';
 		//to make it positive we jump over the sign.
 		idx -= (1&(value>>31));
 
@@ -2233,7 +2243,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		if (idx!=pipe.blobRingHead.byteWorkingHeadPos.value) {
 			int s = 0;
 			while (s<length) {
-				target[pipe.byteMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.byteMask & (s+idx)];
+				target[pipe.blobMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.blobMask & (s+idx)];
 				s++;
 			}
 		}
@@ -2251,10 +2261,10 @@ public class Pipe<T extends MessageSchema<T>> {
 			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
 			long t = tmp/10;
 			long r = tmp%10;
-			target[pipe.byteMask&--idx] = (byte)('0'+r);
+			target[pipe.blobMask&--idx] = (byte)('0'+r);
 			tmp = t;
 		} while (0!=tmp);
-		target[pipe.byteMask& (idx-1)] = (byte)'-';
+		target[pipe.blobMask& (idx-1)] = (byte)'-';
 		//to make it positive we jump over the sign.
 		idx -= (1&(value>>63));
 
@@ -2263,7 +2273,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		if (idx!=pipe.blobRingHead.byteWorkingHeadPos.value) {
 			int s = 0;
 			while (s<length) {
-				target[pipe.byteMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.byteMask & (s+idx)];
+				target[pipe.blobMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.blobMask & (s+idx)];
 				s++;
 			}
 		}
@@ -2281,15 +2291,15 @@ public class Pipe<T extends MessageSchema<T>> {
             //do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
             long t = tmp/10;
             long r = tmp%10;
-            target[pipe.byteMask&--idx] = (byte)('0'+r);
+            target[pipe.blobMask&--idx] = (byte)('0'+r);
             tmp = t;
             chars--;
         } while (0!=tmp);
         while(--chars>=0) {
-            target[pipe.byteMask&--idx] = '0';
+            target[pipe.blobMask&--idx] = '0';
         }
 
-        target[pipe.byteMask& (idx-1)] = (byte)'-';
+        target[pipe.blobMask& (idx-1)] = (byte)'-';
         //to make it positive we jump over the sign.
         idx -= (1&(value>>63));
 
@@ -2298,7 +2308,7 @@ public class Pipe<T extends MessageSchema<T>> {
         if (idx!=pipe.blobRingHead.byteWorkingHeadPos.value) {
             int s = 0;
             while (s<length) {
-                target[pipe.byteMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.byteMask & (s+idx)];
+                target[pipe.blobMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.blobMask & (s+idx)];
                 s++;
             }
         }
@@ -2440,7 +2450,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 	    if (sourceLen > 0) {
 	    	int tStart = p & rbRingBuffer.blobMask;
-	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.blobRing, tStart, 1+rbRingBuffer.byteMask - tStart);
+	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.blobRing, tStart, 1+rbRingBuffer.blobMask - tStart);
 	    }
 		return p;
 	}
@@ -2650,8 +2660,8 @@ public class Pipe<T extends MessageSchema<T>> {
 	   
 	public static <S extends MessageSchema<S>> void copyByteBuffer(ByteBuffer source, int length, Pipe<S> rb) {
 		validateVarLength(rb, length);
-		int idx = rb.blobRingHead.byteWorkingHeadPos.value & rb.byteMask;
-		int partialLength = 1 + rb.byteMask - idx;
+		int idx = rb.blobRingHead.byteWorkingHeadPos.value & rb.blobMask;
+		int partialLength = 1 + rb.blobMask - idx;
 		//may need to wrap around ringBuffer so this may need to be two copies
 		if (partialLength>=length) {
 		    source.get(rb.blobRing, idx, length);
@@ -2672,7 +2682,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	
     public static <S extends MessageSchema<S>> void setByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset, long slabPosition) {
 	        validateVarLength(outputRing, len);
-	        copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.byteMask, len);
+	        copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.blobMask, len);
             setBytePosAndLen(slab(outputRing), outputRing.slabMask, slabPosition, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos), len, bytesWriteBase(outputRing));
 	        PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
@@ -3448,6 +3458,9 @@ public class Pipe<T extends MessageSchema<T>> {
 
 		final int consumed = computeCountOfBytesConsumed(pipe);
 
+		//used by both pipe and pipe writer so ideal place to count fragments
+		pipe.totalWrittenFragments++;		
+		
 		pipe.slabRing[pipe.slabMask & (int)pos] = consumed;
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
 		return consumed;

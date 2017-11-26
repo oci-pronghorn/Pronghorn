@@ -169,7 +169,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 						  
 		  int i = targetloc;
 		  while (charAndPos<limit) {		      
-		      charAndPos = Pipe.decodeUTF8Fast(Pipe.byteBuffer(pipe), charAndPos, pipe.byteMask);    
+		      charAndPos = Pipe.decodeUTF8Fast(Pipe.byteBuffer(pipe), charAndPos, pipe.blobMask);    
 		      target[i++] = (char)charAndPos;		
 		  }
 		  return i - targetloc;
@@ -216,7 +216,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     private static void readASCIIRing(Pipe pipe, int len, char[] target, int targetloc, int pos) {
     	
         byte[] buffer = Pipe.blob(pipe);
-        int mask = pipe.byteMask;
+        int mask = pipe.blobMask;
         while (--len >= 0) {
             target[targetloc++]=(char)buffer[mask & pos++];
         }
@@ -303,7 +303,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	
         byte[] buffer = Pipe.blob(pipe);
         
-        int mask = pipe.byteMask;
+        int mask = pipe.blobMask;
         int i = 0;
         while (--len >= 0) {
             if (seq.charAt(i++)!=buffer[mask & pos++]) {
@@ -321,7 +321,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         long limit = ((long)ringPos+lenInBytes)<<32;
         
         
-        int mask = pipe.byteMask;
+        int mask = pipe.blobMask;
         int i = 0;
         int chars = seq.length();
         while (--chars>=0 && charAndPos<limit) {
@@ -360,7 +360,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     public static int readBytesMask(Pipe pipe, int loc) {
         assert(0!=loc) : "This field needed for swapping to different array per field, like the constants array";
-    	return pipe.byteMask;
+    	return pipe.blobMask;
     }
     
     public static int readBytesPosition(Pipe pipe, int loc) {
@@ -458,7 +458,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     private static void readBytesRing(Pipe pipe, int len, byte[] target, int targetloc, int pos) {
             byte[] buffer = Pipe.blob(pipe);
-            int mask = pipe.byteMask;
+            int mask = pipe.blobMask;
             while (--len >= 0) {
                 target[targetloc++]=buffer[mask & pos++]; //TODO:M replace with dual arrayCopy as seen elsewhere
             }
@@ -476,7 +476,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		        if (pos < 0) {
 		            readBytesConst(pipe,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
 		        } else {
-		            Pipe.copyBytesFromToRing(Pipe.blob(pipe), Pipe.restorePosition(pipe, pos), pipe.byteMask, target, targetOffset, targetMask,	len);
+		            Pipe.copyBytesFromToRing(Pipe.blob(pipe), Pipe.restorePosition(pipe, pos), pipe.blobMask, target, targetOffset, targetMask,	len);
 		        }
         	}
 	        return len;

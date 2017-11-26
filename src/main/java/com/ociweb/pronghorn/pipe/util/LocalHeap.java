@@ -767,7 +767,7 @@ public class LocalHeap {
 			final int pos = byteHeap.tat[offset];
 			final int len = byteHeap.tat[offset + 1] - pos;
 			
-			copyToRingBuffer(Pipe.byteBuffer(rbRingBuffer), p, rbRingBuffer.byteMask, pos, len, byteHeap.data);
+			copyToRingBuffer(Pipe.byteBuffer(rbRingBuffer), p, rbRingBuffer.blobMask, pos, len, byteHeap.data);
 
 	        Pipe.addAndGetBytesWorkingHeadPosition(rbRingBuffer,len);
 	    }      

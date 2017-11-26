@@ -30,7 +30,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	 */
 	public RingInputStream(Pipe pipe) {
 		this.pipe = pipe;
-		this.sourceByteMask = pipe.byteMask;
+		this.sourceByteMask = pipe.blobMask;
 		if (Pipe.from(pipe) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
