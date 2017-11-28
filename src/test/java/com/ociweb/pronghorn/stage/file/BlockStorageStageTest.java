@@ -96,7 +96,7 @@ public class BlockStorageStageTest {
 		
 		String value = results.toString();
 		
-		System.out.println(value);
+		//System.out.println(value);
 		
 		assertTrue(value, value.indexOf("WriteAck")>=0);
 		assertTrue(value, value.indexOf("hello world")>=0);

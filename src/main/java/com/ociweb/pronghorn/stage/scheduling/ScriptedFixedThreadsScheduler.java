@@ -1033,11 +1033,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 				while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
 					
-					nts.run();
-					
-					
-					
-					Thread.yield();
+						nts.run();
+										
 				}
 			}	
 			

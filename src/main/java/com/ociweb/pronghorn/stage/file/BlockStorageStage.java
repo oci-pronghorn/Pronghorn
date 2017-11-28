@@ -189,7 +189,7 @@ public class BlockStorageStage extends PronghornStage {
 					}
 		        break;
 		        case -1:
-		        	logger.info("shutdown count now "+shutdownCountdown);
+		        	logger.trace("shutdown count now "+shutdownCountdown);
 		        	shutdownCountdown--;		           
 		        break;
 		    }

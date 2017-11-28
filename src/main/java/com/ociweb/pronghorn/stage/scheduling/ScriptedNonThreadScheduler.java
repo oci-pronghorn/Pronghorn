@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,7 +15,8 @@ import com.ociweb.pronghorn.util.math.ScriptedSchedule;
 
 public class ScriptedNonThreadScheduler extends StageScheduler implements Runnable {
 
-    private AtomicBoolean shutdownRequested;
+    private static final int NS_OPERATOR_FLOOR = 10;
+	private AtomicBoolean shutdownRequested;
     private long[] rates;
     private long[] lastRun;
 
@@ -53,6 +53,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private ScriptedSchedule schedule = null;
     private int[] skipScript;
 
+    
+    
+    public static boolean debug = false;
+    
     private void buildSchedule(GraphManager graphManager, PronghornStage[] stages, boolean reverseOrder) {
 
     	if (null==stages) {
@@ -81,12 +85,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
       //  System.err.println("script: "+Arrays.toString( schedule.script ));
       //  System.err.println("skipsr: "+Arrays.toString(skipScript));
         
-        
-              
-        boolean debug = false;
+
         if (debug) {		
 	        System.err.println();
-	        System.err.println("----------full stages -------------");
+	        System.err.println("----------full stages -------------Clock:"+schedule.commonClock);
 	        for(int i = 0; i<stages.length; i++) {
 	        	
 	        	StringBuilder target = new StringBuilder();
@@ -448,6 +450,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     
     int totalWaitCount = 0;
     
+    private int platformThresholdForSleep = 0;
+    
     @Override
     public void run() {
 
@@ -464,7 +468,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         int length = schedule.script.length;
         int scheduleIdx = 0;
 		while (scheduleIdx < length) {
-
+    		
+			//long startBlockTime = System.nanoTime();
+    		
 			localWaitCount++;
         	        	
             // We need to wait between scheduler blocks, or else
@@ -488,130 +494,60 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
             		//this is because it will take a lot longer to return and may round
             		//up the time to the nearest MS
             		/////////////////////////////
-            		if (wait >= 100_000) {
-            			//when less than this do not call sleep since it may add 10x delay
+            		if (wait > platformThresholdForSleep) {
             			Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
             		}
 					long dif;
-					while ((dif = (blockStartTime-System.nanoTime()))>0) {
+					while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
 						//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
-						if (dif > 2000) {//only yeild if  will return in time.
+						if (dif > 2000) {//only yield if will return in time.
 							Thread.yield();
 						}
 					}
-					
+					if ((-dif) > platformThresholdForSleep) {
+						platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
+						logger.trace("new sleep threshold {}", platformThresholdForSleep);
+					}
             	} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;
 				}
             	
             }
-            scheduleIdx = runBlock(scheduleIdx);
-            //upon shutdown scheduleIdx is set to maxint so it exits
+
+            scheduleIdx = runBlock(scheduleIdx, schedule.script, stages, graphManager);
+
         }
 		
 		totalWaitCount+=localWaitCount;
 		
     }
 
-	private final int runBlock(int scheduleIdx) {
-		int inProgressIdx;
-		//int skipCounter=0;
-		//int skipCounterTarget=-1;
-		
-		// Used to indicate if we should shut down after this execution of stages.
+	private int runBlock(int scheduleIdx, int[] script, PronghornStage[] localStage, GraphManager gm) {
 		boolean shutDownRequestedHere = false;
-		int[] script = schedule.script;
-		PronghornStage[] localStage = stages;
-		GraphManager gm = graphManager;
-
+		int inProgressIdx;
+		final boolean recordTime = GraphManager.isTelemetryEnabled(gm);
+		
+		long start = recordTime ? System.nanoTime() : 0;
 		// Once we're done waiting for a block, we need to execute it!
 		top:
 		do {
-
 		    // Identify the index of the block we're starting with.
 			inProgressIdx = script[scheduleIdx];
 		    
 		    // If it isn't a block-end (-1), run it!
 		    if (inProgressIdx >= 0) {
 
-		    	PronghornStage stage = localStage[inProgressIdx];
-		    	
-		    	////////////
-		    	//Skip logic works but does not save as much as epxpected 
-		    	//due to its runtime expense of  isContentForStage check
-		    	//need a better solution
-		    	////////////
-		    	
-//		    	int rawSkip = skipScript[scheduleIdx];
-//		    	int skip = 0x7FFFFFFF & rawSkip;
-//		    	//check skip value first since -1 is also used as the stop signal
-//		    	if (skip>1) {
-//		    		if (rawSkip!=-2) {
-//		        		//we found a potential skip
-//		        		if (rawSkip<0) {
-//		        			//high bit is on so it is enabled
-//		        					        			
-//		        			boolean hasContent = isContentForStage(stage);
-//		        		
-//		        			if (hasContent) {
-//		        				//normal run...
-//		        				//clear and watch if we can turn it back on
-//		        				skipScript[scheduleIdx] = skip; //clears top bit
-//		        				skipCounter = skip;//watch while we run     
-//		        				skipCounterTarget = scheduleIdx;
-//		        			} else {
-//		        					
-//		        				//System.err.println("skipped "+skip);
-//		        				//skip running these stages and return to top.
-//		        				scheduleIdx += skip; 
-//		        				inProgressIdx = schedule.script[scheduleIdx];
-//		        				
-//		        				if ((inProgressIdx == -1) || shutdownRequested.get()) {
-//		        					break;
-//		        				} else {
-//		        					continue top;
-//		        				}
-//		        				//continue on we are already set up
-//		        			}
-//		        		
-//		        		} else {
-//		        			//high bit not on so call but watch for empty
-//		        			skipCounter = skip;
-//		        			skipCounterTarget = scheduleIdx;
-//		        		}
-//		    		}
-//		    	}
-		    	
-		    	//////////////
-		    	///////////////
-		    	
-		        long start = System.nanoTime();
-				boolean isRunning = run(gm, stage, this);
-		        long now = System.nanoTime();
+		    	if (!run(gm, localStage[inProgressIdx], this)) {
+					shutDownRequestedHere = true;
+				}
 		        
-		        GraphManager.accumRunTimeNS(gm, stage.stageId, now-start, now);
-		        if (!isRunning) {
-		        	shutDownRequestedHere = true;
-		        }
-		        
-//                if (skipCounter>0) {
-//                	//checks that this stage has no inputs waiting
-//                	
-//                	if ((rawSkip<0) || (!isContentForStage(stage))) {
-//                		if (--skipCounter == 0) {
-//                			
-//                			//do not enable until this works.
-//                			//System.err.println("can enable skipping");
-//                			skipScript[skipCounterTarget] |= 0x8000_0000;
-//                			
-//                			skipCounter=-1;//done with count for now
-//                		}
-//                	} else {
-//                		skipCounter=-1;//we will not enable
-//                	}
-//                }
-		        
+				if (recordTime) {
+					long now = System.nanoTime();		        
+		        	GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, now-start, now);
+		        	start = now;
+				}
+				
 		    }
 
 		    // Increment IDX 
@@ -621,7 +557,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 		// Update the block start time.
 		blockStartTime += schedule.commonClock;
-         
+        		
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
 		if (!(shutDownRequestedHere || shutdownRequested.get())) {
 			return scheduleIdx;
@@ -674,9 +610,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                 }
                 return false;
             }
-        } catch (AssertionError ae) {
-            recordTheException(stage, ae, that);
-            throw ae;
         } catch (Throwable t) {
             recordTheException(stage, t, that);
             throw t;

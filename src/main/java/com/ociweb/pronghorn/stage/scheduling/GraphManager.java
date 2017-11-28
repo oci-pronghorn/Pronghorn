@@ -547,7 +547,7 @@ public class GraphManager {
 		}
 	}
 
-	private static boolean isTelemetryEnabled(GraphManager gm) {
+	public static boolean isTelemetryEnabled(GraphManager gm) {
 		return gm.telemetryPort > 0;
 	}
 	
