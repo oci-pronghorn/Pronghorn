@@ -3011,38 +3011,38 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected) {
-        return Pipe.hasContentToRead(pipe) && peekInt(pipe)==expected;    	
+        return (Pipe.contentRemaining(pipe)>0) && peekInt(pipe)==expected;    	
     }
     
     public static <S extends MessageSchema<S>> boolean peekNotMsg(Pipe<S> pipe, int expected) {
-        return Pipe.hasContentToRead(pipe) && peekInt(pipe)!=expected;    	
+        return (Pipe.contentRemaining(pipe)>0) && peekInt(pipe)!=expected;    	
     }    
 
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2) {
-        return Pipe.hasContentToRead(pipe) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2);
+        return (Pipe.contentRemaining(pipe)>0) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2);
     }
     
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2, int expected3) {
-        return Pipe.hasContentToRead(pipe) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2 || peekInt(pipe)==expected3);
+        return (Pipe.contentRemaining(pipe)>0) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2 || peekInt(pipe)==expected3);
     }
     
     public static <S extends MessageSchema<S>> int peekInt(Pipe<S> pipe) {
-    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
+    	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
     }
     
     public static <S extends MessageSchema<S>> int peekInt(Pipe<S> pipe, int offset) {
-    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
+    	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value+offset);
     }
    
     public static <S extends MessageSchema<S>> long peekLong(Pipe<S> pipe, int offset) {
-    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
+    	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
         return readLong(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value+offset);
     }
     
     public static <S extends MessageSchema<S>, A extends Appendable> A peekUTF8(Pipe<S> pipe, int offset, A target) {
-    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
+    	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
     	return readUTF8(pipe, target, peekInt(pipe,offset),peekInt(pipe,offset+1));
     }
 
