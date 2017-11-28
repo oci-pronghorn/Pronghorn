@@ -419,7 +419,8 @@ public class ClientConnection extends SSLConnection {
 		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = time;		
 	}
 
-	public void recordArrivalTime(long time) {
+	//returns latency
+	public long recordArrivalTime(long time) {
 		long value = time - inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
 			
 		if (value>=0 && value<MAX_HIST_VALUE) {
@@ -430,6 +431,7 @@ public class ClientConnection extends SSLConnection {
 			}
 			histRoundTrip.recordValue(value);
 		}
+		return value;
 	}
 		
 	public boolean isBusy() {

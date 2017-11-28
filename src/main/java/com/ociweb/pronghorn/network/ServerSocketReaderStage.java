@@ -226,10 +226,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					
 					if (-1 == responsePipeLineIdx) { 
-						//logger.info("second check for relased pipe");
+						//logger.trace("second check for released pipe");
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+						if (-1 == responsePipeLineIdx) {
+							logger.info("too many concurrent requests, back off load or increase concurrent inputs");
+						}
+						
 					}
+					
 					if (responsePipeLineIdx >= 0) {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}

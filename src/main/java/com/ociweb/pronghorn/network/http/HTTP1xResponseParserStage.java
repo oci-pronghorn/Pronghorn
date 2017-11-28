@@ -492,101 +492,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : 
 						   "for starting state expected pipe to NOT be in blob write";
 				}
-
-				
-				//TODO: must support multiple file requests, responses are in order? so we can provide this with a script fileA, fileB fileC then repeat.
-				//      periodic confirm file and each file has seen header lengths to check.
-				
-				//TODO: only turn on feature after first 1000 or so normal requests with checks
-				
-				//almost always take this if when testing.
-				final int mask = 0xFFFFF;
-				if (((++responseCount&mask)!=0) && testingMode) {
-					int lastMessageParseSize = -1;
-					int p = lastMessageParseSizeCount;
-					while (--p>=0) {
-						int size = lastMessageParseSizes[p];
-						byte b= localInputPipe.blobRing[trieReader.sourceMask&(trieReader.sourcePos+size-1)];
-					
-						if (b==10) {
-							lastMessageParseSize = size;
-							break;
-						}
-						
-					}				
-				
-					if (0==state && testingMode && lastMessageParseSize>0 && trieReader.sourceLen>=lastMessageParseSize  && Pipe.hasRoomForWrite(targetPipe)) {
-						//This is a cheat to make the client go faster so we have the required speed to test the server
-						
-						{
-						int count = (int)(lastMessageParseSize-lastPayloadSize);
-						int skipped = TrieParserReader.parseSkip(trieReader, count);
-						if (skipped!=count) {
-							
-							throw new UnsupportedOperationException("Need to skip some bytes but they have not arrived yet, TODO: implement this for load testing...");
-							
-						}
-						Pipe.releasePendingAsReadLock(localInputPipe, lastMessageParseSize);
-						
-						
-						//because we have started writing the response we MUST do extra cleanup later.
-						Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
-						Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-
-						Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
-						
-						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-						DataOutputBlobWriter.openField(writer);
-							
-						//NOTE: this is fine because its only used when in testing mode.  TODO: more work needs to be done here, predefine the calls.
-						writer.writeShort(200);//OK
-						
-		
-						//NOTE: we will need to support addtional header types in the future.
-						int item = IntHashTable.getItem(headersSupported, HTTPHeader.HEADER_BIT | H_CONTENT_TYPE);
-						assert(0!=item) : "for this cache to work Content Type must be a supported header";
-						writer.writeShort((short)H_CONTENT_TYPE);
-						int writePosition = writer.position();
-						
-						//logger.trace("assumed content type and set value to {} ",lastMessageType);
-						
-						writer.writeShort((short)lastMessageType); //JSONType
-						if (writeIndex && 0!=item) {
-							//we did not write index above so write here.
-							DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
-						} 
-						writer.writeShort((short)-1); //END OF HEADER FIELDS
-						
-						//write index to where the body starts.
-						DataOutputBlobWriter.setIntBackData(writer, writer.position(), 1 + IntHashTable.count(headersSupported) + indexOffsetCount);
-						
-					    TrieParserReader.parseCopy(trieReader, lastPayloadSize, writer);
-				
-						if (writeIndex) {
-							DataOutputBlobWriter.commitBackData(writer);
-						}
-						writer.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-						Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
-						Pipe.publishWrites(targetPipe);	
-						//DO NOT consume the target since we still need it.			
+			
 	
-						positionMemoData[stateIdx] = state = 5;
-						
-						assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-
-						foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
-						
-						TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-						
-						//TODO: must tests 1 fraction of the requests.
-						}
-						
-						continue;
-					}
-				
-				}
-				
-				
 				int initial = -1;
 								
 				//TODO: may be faster with if rather than switch.
@@ -1205,7 +1112,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		//records the leading edge of arrival time.
 		long temp = arrivalTimeAtPosition[i];
 		if (0 != temp) {
-			cc.recordArrivalTime(temp);
+			long latencyNS = cc.recordArrivalTime(temp);
 			arrivalTimeAtPosition[i] = 0;
 		}
 
