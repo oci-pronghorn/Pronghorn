@@ -932,26 +932,26 @@ public class GraphManager {
 	
 	private static void setStateToNew(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_NEW);
+			gm.stageStateData.stageStateArray = setValue(stageStateArray(gm), stageId, GraphManagerStageStateData.STAGE_NEW);
 		}
 	}
 	
 	public static void setStateToStopping(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STOPPING);
+			gm.stageStateData.stageStateArray = setValue(stageStateArray(gm), stageId, GraphManagerStageStateData.STAGE_STOPPING);
 		}
 	}
 
 	public static void setStateToStarted(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STARTED);
+			gm.stageStateData.stageStateArray = setValue(stageStateArray(gm), stageId, GraphManagerStageStateData.STAGE_STARTED);
 			gm.stageStartTimeNs[stageId] = System.nanoTime();
 		}
 	}
 	
 	public static void setStateToShutdown(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_TERMINATED);
+			gm.stageStateData.stageStateArray = setValue(stageStateArray(gm), stageId, GraphManagerStageStateData.STAGE_TERMINATED);
 			//	assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
 			gm.stageShutdownTimeNs[stageId] = System.nanoTime();
 		}
@@ -1306,21 +1306,29 @@ public class GraphManager {
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
 		int producerStageId = getRingProducerId(m, ringId);
-        return producerStageId<0 || m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
+        return producerStageId<0 || stageStateArray(m)[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {
     	synchronized(m.stageStateData.lock) {
-    		return GraphManagerStageStateData.STAGE_TERMINATED <= m.stageStateData.stageStateArray[stageId];
+    		return GraphManagerStageStateData.STAGE_TERMINATED <= stageStateArray(m)[stageId];
     	}
     }
 
-    public static boolean isStageShuttingDown(GraphManager m, int stageId) {
-    	return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STOPPING; //or terminated
+    public static boolean isStageShuttingDown(final GraphManager m, final int stageId) {
+    	return isStageShuttingDown(stageStateArray(m), stageId);
     }
     
+    public static boolean isStageShuttingDown(final byte[] stateArray, final int stageId) {
+    	return stateArray[stageId]>=GraphManagerStageStateData.STAGE_STOPPING; //or terminated
+    }
+
+	public static byte[] stageStateArray(final GraphManager m) {
+		return m.stageStateData.stageStateArray;
+	}
+    
     public static boolean isStageStarted(GraphManager m, int stageId) {
-        return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STARTED; //or running or shuttingdown or terminated
+        return stageStateArray(m)[stageId]>=GraphManagerStageStateData.STAGE_STARTED; //or running or shuttingdown or terminated
     }
     
     public static PronghornStage[] allStagesByState(GraphManager graphManager, int state) {
@@ -1329,7 +1337,7 @@ public class GraphManager {
         int s = graphManager.stageIdToStage.length;
         while (--s>=0) {
             PronghornStage stage = graphManager.stageIdToStage[s];             
-            if (null!=stage && graphManager.stageStateData.stageStateArray[stage.stageId]==state) {
+            if (null!=stage && stageStateArray(graphManager)[stage.stageId]==state) {
                 count++;
             }
         }
@@ -1338,7 +1346,7 @@ public class GraphManager {
         s = graphManager.stageIdToStage.length;
         while (--s>=0) {
             PronghornStage stage = graphManager.stageIdToStage[s];             
-            if (null != stage && graphManager.stageStateData.stageStateArray[stage.stageId]==state) {
+            if (null != stage && stageStateArray(graphManager)[stage.stageId]==state) {
                 stages[--count] = stage;
             }
         }

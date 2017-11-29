@@ -167,19 +167,18 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
        
-    	//System.err.println("run of "+input.length);
-    	
     	boolean didWork = false;
     	do {
     		didWork = false;
 	    	int x = input.length;
 	    	while (--x>=0) {
-
+	    		Pipe<NetPayloadSchema> localInput = input[x];
+	    		
 	    		if (null == writeToChannel[x]) {
 	    			
-	    			if (Pipe.hasContentToRead(input[x])) {
+	    			if (Pipe.hasContentToRead(localInput)) {
 	    				didWork = true;
-		            	int activeMessageId = Pipe.takeMsgIdx(input[x]);		            			            	
+		            	int activeMessageId = Pipe.takeMsgIdx(localInput);		            			            	
 		            	processMessage(activeMessageId, x);
 		            	if (activeMessageId < 0) {
 		            		continue;
@@ -193,27 +192,17 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			//logger.info("write the channel");
 	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
 	    			
-	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > input[x].maxVarLen;
+	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
 	    			if (--writeToChannelBatchCountDown[x]<=0 
 	    				|| !hasRoomToWrite
-	    				|| !Pipe.hasContentToRead(input[x]) //myPipeHasNoData so fire now
+	    				|| !Pipe.hasContentToRead(localInput) //myPipeHasNoData so fire now
 	    				) {
 	    				writeToChannelMsg[x] = -1;
 		    			didWork = true;
 		    			writeToChannel(x); 
 		   		    			
 	    			} else {
-	    					   
-//	    				System.err.println("no sent "+
-//	    				
-//	    						writeToChannelBatchCountDown[x]+" "
-//	    						+hasRoomToWrite+"  "
-//	    						+Pipe.hasContentToRead(input[x])
-//	    						
-//	    						);
-	    				
-	    				
 	    				
 	    				//unflip
 	    				int p = localWorkingBuffer.limit();
@@ -221,28 +210,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				localWorkingBuffer.position(p);	    				
 	    				
 	    				int h = 0;
-	    				while (	isNextMessageMergeable(input[x], writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
+	    				while (	isNextMessageMergeable(localInput, writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
 	    					h++;
 	    					//logger.info("opportunity found to batch writes going to {} ", writeToChannelId[x]);
 	    						    					
-	    					mergeNextMessage(writeToChannelMsg[x], x, input[x], writeToChannelId[x]);
+	    					mergeNextMessage(writeToChannelMsg[x], x, localInput, writeToChannelId[x]);
 	    						    					
 	    				}	
-	    				if (Pipe.hasContentToRead(input[x])) {
+	    				if (Pipe.hasContentToRead(localInput)) {
 	    					writeToChannelBatchCountDown[x] = 0;//send now nothing else is mergable
 	    				}
 	    				
 	    				if (h>0) {
-	    					Pipe.releaseAllPendingReadLock(input[x]);
+	    					Pipe.releaseAllPendingReadLock(localInput);
 	    				}
 	    				localWorkingBuffer.flip();
-	    				
-//	    				if ( Pipe.hasContentToRead(dataToSend[x]) || h==0) { //TODO: or if end disoverd?	    				
-//		    				writeToChannelMsg[x] = -1;		    				
-//			    			didWork = true;
-//			    			writeToChannel(x); 
-//	    				}
-	    				
+
 	    			}
 	    			
 	    		}    		
@@ -250,15 +233,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	}
 	    	
     	} while (didWork);
-//        
-//    	boolean debug = false;
-//    	if (debug) {					
-//			if (lastTotalBytes!=totalBytesWritten) {
-//				System.err.println("Server writer total bytes :"+totalBytesWritten);
-//				lastTotalBytes =totalBytesWritten;
-//			}
-//    	}
-    	
+
     }
     
     long lastTotalBytes = 0;

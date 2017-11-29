@@ -53,12 +53,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private ScriptedSchedule schedule = null;
     private int[] skipScript;
 
-    
-    
+    private boolean recordTime;    
     public static boolean debug = false;
+    
+    private byte[] stateArray;
     
     private void buildSchedule(GraphManager graphManager, PronghornStage[] stages, boolean reverseOrder) {
 
+    	stateArray = GraphManager.stageStateArray(graphManager);    	
+    	recordTime = GraphManager.isTelemetryEnabled(graphManager);
+    	
     	if (null==stages) {
     		schedule = new ScriptedSchedule(0, new int[0], 0);
     		skipScript = new int[0];
@@ -447,87 +451,81 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // this value is continues to keep time across calls to run.
     private long blockStartTime = System.nanoTime();
     
-    
-    int totalWaitCount = 0;
-    
     private int platformThresholdForSleep = 0;
+
+	
     
     @Override
     public void run() {
 
     	assert(null != shutdownRequested) : "startup() must be called before run.";
-
-       // int inProgressIdx = 0;
-
-      //  int skipCounter = 0;
-      //  int skipCounterTarget = -1;
         
-        int localWaitCount = 0;
-        
+    	playScript(graphManager, stages, schedule.script, schedule.script.length, recordTime);
+				
+    }
+
+	private void playScript(GraphManager localGM, PronghornStage[] localStages, 
+			                int[] script, int length, final boolean recordTime) {
+		int scheduleIdx = 0;
+
         //play the script
-        int length = schedule.script.length;
-        int scheduleIdx = 0;
 		while (scheduleIdx < length) {
-    		
-			//long startBlockTime = System.nanoTime();
-    		
-			localWaitCount++;
-        	        	
+    		        	        	
             // We need to wait between scheduler blocks, or else
             // we'll just burn through the entire schedule nearly instantaneously.
             //
             // If we're still waiting, we need to wait until its time to run again.
-        	long wait = blockStartTime - System.nanoTime(); 
+        	final long wait = blockStartTime - System.nanoTime(); 
             if (wait > 0) {
-            	
             	if (wait > 1_000_000_000) {//1sec
             		blockStartTime = System.nanoTime() + schedule.commonClock;
             		logger.info("warning there may be an issue with the local clock");
             		break;
             	}
-            	
             	try {
-            		//some platforms will not sleep long enough so the spin yield is below 
-            		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
-            		/////////////////////////////
-            		//due to JVM limitations sleep should not be called for "short" delays
-            		//this is because it will take a lot longer to return and may round
-            		//up the time to the nearest MS
-            		/////////////////////////////
-            		if (wait > platformThresholdForSleep) {
-            			Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
-            		}
-					long dif;
-					while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
-						//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
-						if (dif > 2000) {//only yield if will return in time.
-							Thread.yield();
-						}
-					}
-					if ((-dif) > platformThresholdForSleep) {
-						platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
-						logger.trace("new sleep threshold {}", platformThresholdForSleep);
-					}
+            		platformThresholdForSleep = waitForBatch(wait, platformThresholdForSleep, blockStartTime);
             	} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;
 				}
-            	
             }
-
-            scheduleIdx = runBlock(scheduleIdx, schedule.script, stages, graphManager);
+			scheduleIdx = runBlock(scheduleIdx, script, localStages, localGM, recordTime);
 
         }
-		
-		totalWaitCount+=localWaitCount;
-		
-    }
+	}
 
-	private int runBlock(int scheduleIdx, int[] script, PronghornStage[] localStage, GraphManager gm) {
+	private static int waitForBatch(long wait, int platformThresholdForSleep, long blockStartTime) throws InterruptedException {
+		//some platforms will not sleep long enough so the spin yield is below 
+		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
+		/////////////////////////////
+		//due to JVM limitations sleep should not be called for "short" delays
+		//this is because it will take a lot longer to return and may round
+		//up the time to the nearest MS
+		/////////////////////////////
+		if (wait > platformThresholdForSleep) {
+			Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
+		}
+		
+		long dif;
+		while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
+			//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
+			if (dif > 800) {//only yield if will return in time.
+				Thread.yield();
+			}
+		}
+		if ((-dif) > platformThresholdForSleep) {
+			platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
+			//logger.trace("new sleep threshold {}", platformThresholdForSleep);
+		}
+		return platformThresholdForSleep;
+	}
+
+	private int runBlock(int scheduleIdx, int[] script, 
+			             PronghornStage[] localStage,
+			             GraphManager gm, final boolean recordTime) {
+		
 		boolean shutDownRequestedHere = false;
 		int inProgressIdx;
-		final boolean recordTime = GraphManager.isTelemetryEnabled(gm);
-		
 		long start = recordTime ? System.nanoTime() : 0;
 		// Once we're done waiting for a block, we need to execute it!
 		top:
@@ -581,22 +579,17 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return false;
 	}
 
-    private static boolean run(GraphManager graphManager, PronghornStage stage, ScriptedNonThreadScheduler that) {
+    private static boolean run(GraphManager graphManager, 
+    		                   PronghornStage stage, 
+    		                   ScriptedNonThreadScheduler that) {
         try {
-            if (!GraphManager.isStageShuttingDown(graphManager, stage.stageId)) {
-
+            if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
 
                 if (debugNonReturningStages) {
                     logger.info("begin run {}", stage);///for debug of hang
                 }
                 that.setCallerId(stage.boxedStageId);
-                //long start = System.nanoTime();
                 stage.run();
-                //long duration = System.nanoTime()-start;
-                //if (duration>1_000_000_000) {
-                //	new Exception("too long "+stage).printStackTrace();
-                //}
-
                 that.clearCallerId();
 
                 if (debugNonReturningStages) {
@@ -622,19 +615,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     @Override
     public void shutdown() {
     	
-
-        
-    	
         if (null!=stages && shutdownRequested.compareAndSet(false, true)) {
 
-        	
-        	
         	synchronized(key) {
                 boolean debug = false;
                 if (debug) {	
         	        System.err.println();
-        	        System.err.println("total wait count "+totalWaitCount+" at clock "+schedule.commonClock);
-        	        System.err.println("----------full stages -------------"+System.identityHashCode(this));
+        	        System.err.println("----------full stages ------------- clock:"+schedule.commonClock);
         	        for(int i = 0; i<stages.length; i++) {
         	        	
         	        	StringBuilder target = new StringBuilder();
