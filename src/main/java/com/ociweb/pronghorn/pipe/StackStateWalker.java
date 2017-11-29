@@ -294,7 +294,7 @@ class StackStateWalker {
     }
 
 
-	private static void prepReadMessage(Pipe pipe, StackStateWalker ringBufferConsumer, long tmpNextWokingTail) {
+	private static void prepReadMessage(Pipe pipe, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
 	    //Would like to add an assert like this but the logic is not right yet.
 	//    assert(pipe.ringWalker.nextWorkingTail == RingBuffer.getWorkingTailPosition(pipe) || 
 	  //          pipe.lastReleasedTail != pipe.ringWalker.nextWorkingTail) : "Must call release before trying to read next message.";

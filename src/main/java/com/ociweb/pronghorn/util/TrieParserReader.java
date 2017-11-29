@@ -693,7 +693,8 @@ public class TrieParserReader {
 	private static void scanForRun(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask,
 			final long unfoundResult, boolean hasSafePoint, final int run) {
 		//scan returns -1 for a perfect match
-		int r = scanForMismatch(reader, source, sourceMask, trie, run);
+		final int sourceMask1 = sourceMask;
+		int r = scanForMismatch(reader, source, sourceMask1, trie.data, trie.caseRuleMask, run, reader.pos, reader.localSourcePos);
 		if (r >= 0) {
 			if (!hasSafePoint) {                       	
 				if (reader.altStackPos > 0) {                                
@@ -1026,14 +1027,9 @@ public class TrieParserReader {
 		reader.type = localData[reader.pos++];
 	}
 
-	private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, TrieParser trie, int run) {
-
-
-		short[] localData = trie.data;
-		byte caseMask = trie.caseRuleMask;
-		int r = run;
-		int t1 = reader.pos;
-		int t2 = reader.localSourcePos;
+	private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, short[] localData,
+										byte caseMask, int r, int t1, int t2) {
+		
 		while ((--r >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask & t2++])) ) {
 		}
 		reader.pos = t1;
