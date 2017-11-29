@@ -481,7 +481,7 @@ public class HTTPSRoundTripTest {
 				                             responseUnwrapUnits,requestWrapUnits,
 											 clientWriterStages, 
 											 releaseCount, netResponseCount, 
-											 netResponseBlob, factory, writeBufferMultiplier);
+											 factory, writeBufferMultiplier);
 
 		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		

@@ -352,7 +352,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					}
 						
 					try {
-						;
+
 				    	//create new connection because one was not found or the old one was closed
 						SSLEngine engine =  ccm.isTLS ? ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port):null;
 						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 

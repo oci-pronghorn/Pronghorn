@@ -47,12 +47,11 @@ public class NetGraphBuilder {
 	
 	public static void buildHTTPClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue,
 			final Pipe<NetPayloadSchema>[] requests, final Pipe<NetResponseSchema>[] responses,
-			int netResponseBlob,
-			int netResponseCount, 
+			int netResponseCount,
 			int releaseCount, 
 			int writeBufferMultiplier, 
-			int responseUnwrapCount,
-			int clientWrapperCount, 
+			int responseUnwrapCount, 
+			int clientWrapperCount,
 			int clientWriters) {
 		
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
@@ -68,15 +67,14 @@ public class NetGraphBuilder {
 		};
 		buildClientGraph(gm, ccm, responseQueue, requests, 
 				         responseUnwrapCount, clientWrapperCount, clientWriters, 
-				             releaseCount, netResponseCount, netResponseBlob, 
-				             factory, writeBufferMultiplier);
+				             releaseCount, netResponseCount, factory, 
+				             writeBufferMultiplier);
 	}
 	
 	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,
 										int responseUnwrapCount, int clientWrapperCount, int clientWriters,
 										int releaseCount, 
-										int netResponseCount, int netResponseBlob, ClientResponseParserFactory parserFactory, 
-										int writeBufferMultiplier
+										int netResponseCount, ClientResponseParserFactory parserFactory, int writeBufferMultiplier
 										) {
 	
 		int maxPartialResponses = ccm.resposePoolSize();
@@ -90,7 +88,7 @@ public class NetGraphBuilder {
 		
 		//pipe holds data as it is parsed so making it larger is helpful
 		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(
-				NetPayloadSchema.instance, netResponseCount, netResponseBlob); 	
+				NetPayloadSchema.instance, netResponseCount, ccm.receiveBufferSize); 	
 		
 		
 		///////////////////
@@ -992,7 +990,7 @@ public class NetGraphBuilder {
 		int writeBufferMultiplier = 20;
 				
 		buildClientGraph(gm, ccm, responseQueue, clientRequests, responseUnwrapCount, clientWrapperCount, clientWriters,
-				         releaseCount, netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
+				         releaseCount, netResponseCount, factory, writeBufferMultiplier);
 	}
 	
 	public static void buildHTTPClientGraph(GraphManager gm, 

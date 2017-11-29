@@ -212,8 +212,8 @@ public class MQTTClientGraphBuilder {
 				
 		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, toBroker, responseUnwrapCount,
 				         clientWrapperCount, clientWriters,
-				         releaseCount, netResponseCount, netResponseBlob,
-				         factory, writeBufferMultiplier);
+				         releaseCount, netResponseCount, factory,
+				         writeBufferMultiplier);
 	}
 	
 	

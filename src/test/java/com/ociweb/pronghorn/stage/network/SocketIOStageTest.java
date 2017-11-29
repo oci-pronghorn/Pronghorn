@@ -45,8 +45,6 @@ public class SocketIOStageTest {
 
         
         PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 30);  
-        PipeConfig<NetPayloadSchema> payloadPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
-        PipeConfig<NetPayloadSchema> payloadServerPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
         PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
 		
         GraphManager gm = new GraphManager();
@@ -59,6 +57,13 @@ public class SocketIOStageTest {
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
         		maxConcurrentInputs, maxConcurrentOutputs, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null);
+
+		
+		PipeConfig<NetPayloadSchema> payloadPipeConfig 
+			= new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 4, 1<<20);    
+		
+		PipeConfig<NetPayloadSchema> payloadServerPipeConfig 
+		 	= new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 54, 1<<20);
 		
 		
 		///

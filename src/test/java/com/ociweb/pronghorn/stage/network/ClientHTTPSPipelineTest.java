@@ -95,7 +95,7 @@ public class ClientHTTPSPipelineTest {
 				                             10, clientRequests,
 				                             2,2,
 											 2, 
-											 2048, 64, 1<<19, factory, 20);
+											 2048, 64, factory, 20);
 		
 		int i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];
