@@ -53,7 +53,7 @@ public class GraphManager {
 	private final static int INIT_STAGES = 32;	
 	
 	//will show telemetry its self
-	public static boolean monitorAll = false;
+	public static boolean monitorAll = true;
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry

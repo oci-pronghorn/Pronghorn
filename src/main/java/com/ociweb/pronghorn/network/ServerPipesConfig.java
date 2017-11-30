@@ -20,7 +20,6 @@ public class ServerPipesConfig {
 	public final int serverOutputMsg;
 	
 	public final int fromRouterToModuleCount;
-	public final int fromRouterToModuleBlob;
 	public final int releaseMsg;
 	
 	public final int moduleParallelism; //scale of compute modules
@@ -28,6 +27,8 @@ public class ServerPipesConfig {
 	public final int maxConcurrentInputs; //concurrent actions count
 	public final int maxConcurrentOutputs;
 
+	
+	public int fromRouterToModuleBlob; //may grow based on largest post required
 	private int serverBlobToWrite; //may need to grow based on largest payload required
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerPipesConfig.class);
@@ -58,12 +59,13 @@ public class ServerPipesConfig {
 							 int concurrentChannelsPerDecryptUnit) {
 		
 		//these may need to be exposed..
-	    fromRouterToModuleCount 	  = 1<<8;//impacts performance
+	    fromRouterToModuleCount   = 64; //count of messages from router to module
+	    serverOutputMsg           = 32; //count of outgoing responses to writer
 	    //largest file to be cached in file server
-		fromRouterToModuleBlob		  = 1<<12;//impacts performance
-
-	    serverOutputMsg               = isTLS? 32: 1<<8; //512;//important for outgoing data and greatly impacts performance
-	    int serverInputMsg            = isTLS? 8 : 1<<8;
+   
+	    
+	    
+	    int serverInputMsg            = isTLS? 8 : 64;
 	    									//TODO: set based on the socket values on the server??
 	    int serverInputBlobs          = isTLS? 1<<15 : 1<<8; //TODO: bump up for large posts 
 
@@ -95,8 +97,10 @@ public class ServerPipesConfig {
 
 
 
-		
+		//defaults which are updated by method calls
+		fromRouterToModuleBlob		  = 1<<9; //impacts post performance
 		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+		
 		releaseMsg                    = 1024;
 				
 	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
@@ -112,6 +116,10 @@ public class ServerPipesConfig {
 	    handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
 	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake
 	    	    
+	}
+
+	public void ensureServerCanRead(int length) {
+		fromRouterToModuleBlob =  Math.max(fromRouterToModuleBlob, length);
 	}
 	
 	public void ensureServerCanWrite(int length) {

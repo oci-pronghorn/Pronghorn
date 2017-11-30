@@ -691,11 +691,19 @@ public class NetGraphBuilder {
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		boolean isTLS = tlsCertificates != null;
 		int maxConnectionBits = 12;
-		int tracks = 2;
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, maxConnectionBits, tracks, 1, 1, 1, 1);
+		int tracks = 1;
+		
+		int concurrentChannelsPerDecryptUnit = 8; //need large number for new requests
+		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
+		
+		
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, 
+				maxConnectionBits, tracks, 
+				2, concurrentChannelsPerEncryptUnit, 
+				1, concurrentChannelsPerDecryptUnit);
 				 		
-		serverConfig.ensureServerCanWrite(1<<19);//512K
-		 //This must be large enough for both partials and new handshakes.
+		//This must be large enough for both partials and new handshakes.
+		serverConfig.ensureServerCanWrite(1<<20);//1MB out
 		
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port,
 				                                              serverConfig.maxConnectionBitsOnServer, 
@@ -768,6 +776,10 @@ public class NetGraphBuilder {
 	}
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
+		
+		final int outputPipeChunk = 1<<9;//512B
+		final int outputPipeGraphChunk = 1<<19;//512K
+		
 		ModuleConfig config = new ModuleConfig(){
 
 			//TODO:rollup telemetry stage..
@@ -804,8 +816,7 @@ public class NetGraphBuilder {
 				
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
-				final int outputPipeChunkMax = 1<<19; //512K
-				final int outputPipeChunkMin = 1<<14; //16K
+
 				
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				
@@ -815,7 +826,7 @@ public class NetGraphBuilder {
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMin)), 
+										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/index.html", HTTPContentTypeDefaults.HTML);						
 						break;
@@ -823,7 +834,7 @@ public class NetGraphBuilder {
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 						          inputPipes, 
 						          staticFileOutputs = Pipe.buildPipes(instances, 
-						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 						          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
 						break;
@@ -831,14 +842,14 @@ public class NetGraphBuilder {
 						activeStage = DotModuleStage.newInstance(graphManager, 
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
-										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 3:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 							          inputPipes, 
 							          staticFileOutputs = Pipe.buildPipes(instances,
-							        		    	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+							        		    	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/jquery-3.2.1.min.js", HTTPContentTypeDefaults.JS);
 						break;
@@ -846,7 +857,7 @@ public class NetGraphBuilder {
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 							          inputPipes, 
 							          staticFileOutputs = Pipe.buildPipes(instances, 
-							        		  ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMin)), 
+							        		  ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
@@ -865,7 +876,7 @@ public class NetGraphBuilder {
 							activeStage = new DummyRestStage(graphManager, 
 									                          inputPipes, 
 									                          staticFileOutputs = Pipe.buildPipes(instances, 
-																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 						case 6:
@@ -873,7 +884,7 @@ public class NetGraphBuilder {
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
 			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 						case 7:
@@ -881,7 +892,7 @@ public class NetGraphBuilder {
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
 			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 						case 8:
@@ -893,7 +904,7 @@ public class NetGraphBuilder {
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 						          inputPipes, 
 						          staticFileOutputs = Pipe.buildPipes(instances, 
-						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 						          "telemetry/ws.html", HTTPContentTypeDefaults.HTML);
 						break;
@@ -903,7 +914,7 @@ public class NetGraphBuilder {
 							activeStage = new UpgradeToWebSocketStage(graphManager, 
 			                          inputPipes, 
 			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
+									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							
 						break;

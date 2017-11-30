@@ -504,18 +504,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		/////////////////////////////
 		if (wait > platformThresholdForSleep) {
 			Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
+			
+			//we did the sleep but the dif was too large
+			if ((System.nanoTime()-blockStartTime) > wait*8) {
+				platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
+				//logger.trace("new sleep threshold {}", platformThresholdForSleep);
+			}
 		}
 		
 		long dif;
+				
 		while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
 			//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
 			if (dif > 800) {//only yield if will return in time.
 				Thread.yield();
 			}
-		}
-		if ((-dif) > platformThresholdForSleep) {
-			platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
-			//logger.trace("new sleep threshold {}", platformThresholdForSleep);
 		}
 		return platformThresholdForSleep;
 	}
