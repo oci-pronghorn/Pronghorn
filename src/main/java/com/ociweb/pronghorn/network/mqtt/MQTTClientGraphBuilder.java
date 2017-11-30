@@ -56,13 +56,11 @@ public class MQTTClientGraphBuilder {
 											Pipe<MQTTClientResponseSchema> clientResponse,
 											final long rate, byte connectionsInBits,
 											short maxPartialResponses,
-											String username, String password) {
+											CharSequence username, CharSequence password) {
 		
 		byte[] cypherBlock = null; //default value if no user/pass is provided		
 		if (username!=null && password!=null) {
-			assert(username.length()>0);
-			assert(password.length()>0);
-			
+
 			cypherBlock = new byte[16];
 			SecureRandom sr = new SecureRandom((username+":"+password).getBytes());
 			sr.nextBytes(cypherBlock);
