@@ -47,7 +47,9 @@ class SSLEngineFactory {
                 String keyPassword = certificates.keyPassword();
                 String keyStorePassword = certificates.keyStorePassword();
 
-                privateService = TLSService.make(keyInputStream, keyStorePassword, trustInputStream, keyPassword, certificates.trustAllCerts());
+                privateService = TLSService.make(keyInputStream, keyStorePassword, 
+                		                         trustInputStream, keyPassword, 
+                		                         certificates.trustAllCerts());
             }
             finally {
                 if (keyInputStream != null ) {

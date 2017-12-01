@@ -234,22 +234,14 @@ public class ServerNewConnectionStage extends PronghornStage{
                           channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
                           channel.socket().setPerformancePreferences(0, 2, 1);
                  
-                          
-                          //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<18);
-                          //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
-                          
-                          //	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
-                          //	logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
-                          //    logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
-      
-                          						  
                           SSLEngine sslEngine = null;
                           if (coordinator.isTLS) {
 							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
 							  sslEngine.setUseClientMode(false); //here just to be complete and clear
-							//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
-							 // sslEngine.setWantClientAuth(true); //the auth is optional
-							  sslEngine.setNeedClientAuth(false); //required for openSSL/boringSSL
+							  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
+							  // sslEngine.setWantClientAuth(true); //the auth is optional
+							  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
+							  
 							  sslEngine.beginHandshake();
                           }
 						  

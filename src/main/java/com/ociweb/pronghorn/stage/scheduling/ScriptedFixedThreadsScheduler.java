@@ -950,6 +950,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	private static int rootId(int id, IntHashTable hashTable, IntArrayHolder lastKnownRoot) {
 		
+		//skip any non stages, this happens in unit tests.
+		if (id<0) {
+			return -1;
+		}
+		
 		int item = 0;
 		int orig = id;
 		do {

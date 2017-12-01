@@ -111,6 +111,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
     }
 
+    public ScriptedNonThreadScheduler(GraphManager graphManager) {
+    	this(graphManager, false);
+    }
+    
     public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder) {
         super(graphManager);
         this.graphManager = graphManager;
@@ -510,6 +514,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
 				//logger.trace("new sleep threshold {}", platformThresholdForSleep);
 			}
+		} else {
+			//TODO: if we have a "short term" issue we want to check again so set a timer here
+			//      and reset platformThresholdForSleep back down to zero if we are peging CPU
 		}
 		
 		long dif;

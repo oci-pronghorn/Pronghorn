@@ -1,335 +1,273 @@
 package com.ociweb.pronghorn.stage.network;
 
-import com.ociweb.pronghorn.network.*;
-import com.ociweb.pronghorn.network.config.*;
-import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
-import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
-import com.ociweb.pronghorn.network.http.ModuleConfig;
-import com.ociweb.pronghorn.network.http.RouterStageConfig;
-import com.ociweb.pronghorn.network.module.FileReadModuleStage;
-import com.ociweb.pronghorn.network.schema.*;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
-import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
-import org.junit.Ignore;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.fail;
+import org.junit.Test;
+
+import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerPipesConfig;
+import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
+import com.ociweb.pronghorn.network.http.ModuleConfig;
+import com.ociweb.pronghorn.network.http.RouterStageConfig;
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetResponseSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.ScriptedNonThreadScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class HTTPSRoundTripTest {
 
-
-    static boolean debug = false;
+        
+    @Test
+	public void allCertHTTPSTest() {
     
-	@Ignore
-    //@Test
-	public void roundTripTest2() {
-				
-
-	   
-		 //Netty bench 14,000 1m  1.5GB  32users
-		  //	ns per call: 5458.1562
-		//	calls per sec:   183,212.06
-			//mean latency   163,372
-			
-			//PhogLight  14,000 1m    0.5GB 32 users	
-			// mean latency  20,928
-			//ns per call: 749.3125
-			//calls per sec: 1,334,556.6
-			
-			//7x faster
-			
-			////////////////////////////// 8 way client tests.
-			
-			//nginx    .25GB              
-			//ns per call: 3524.0938      3803.0312         
-			//calls per sec: 283760.9     262948.12
-			
-			//3x faster nginx , using 3x memory.
-			
-			
-			//netty  3.3GB                  1.6GB
-			// latency  665,299            719,259
-			//ns per call: 5463.8125       6023.5312
-			//calls per sec: 183022.39   166015.58
-			
-			//Phog  1.3GB            .79G
-			// ltency  113506
-			//ns per call: 1080.625    1065.0312
-			//calls per sec: 925390.4  938939.56
-			
-			// 1/2 memory over netty and 5x faster
-			
-			//feb checks
-			//nginx    260K  with  160MB
-			
-			//GL small   505K        52MB  
-			//GL large   1.31M       900M
-			//netty      160K        600M  (not TLS) 
-			
-			//TLS			
-			//nginx     100K with     166M ?  4 clients			
-			//GL small  120K          600M
-			//GL large  124K          1.5GB
-			//netty      80K         1.7GB
-			
-//			#Java comparison of HTTPs TLS requests per second
-//			 74K RPS, 549 MB RAM - RxNetty
-//			117K RPS, 589 MB RAM - Green Lightning (over 50% more RPS)
-
-		
-			
-			boolean isTLS = false;
-			int port = isTLS?8443:8080;
-			String host =  //"10.201.200.24";//phi
-					      //"10.10.10.244";
-					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
-			
-			boolean isLarge = true;			
-			boolean useLocalServer = true;
-
-			final String testFile = "groovySum.json";
-			final int loadMultiplier = isTLS? 300_000 : 3_000_000;
-			
-			roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
-
-	}
-
-	@Ignore
-    //@Test
-	public void simpleHTTPTest() {
- 
-    	boolean isTLS = false;
-		int port = 8085;
-		String host = "127.0.0.1";
-		boolean useLocalServer = true;
-
-		final String testFile = "groovySum.json";
-		final int loadMultiplier = 2_000;
-		
-		roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
-
-    }
-    
-	@Ignore
-    //@Test
-	public void simpleHTTPSTest() {
-    
+    	int maxPartialResponses=10;
+    	int connectionsInBits = 6;		
+    	int clientRequestCount = 4;
+    	int clientRequestSize = 1<<15;
+    	final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
+    	String bindHost = "127.0.0.1";
+    	int port        = 8199;
+    	int processors  = 1;
+    	String testFile = "groovySum.json";
+    	int messagesToOrderingSuper = 1<<12;
+    	int messageSizeToOrderingSuper = 1<<12;
     	
-    	boolean isTLS = true;
-		int port = 9443;
-		String host = "127.0.0.1";
-		boolean useLocalServer = true;
+    	GraphManager gm = new GraphManager();
+    	
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
 
-		final String testFile = "groovySum.json";
-		final int loadMultiplier = 1_000;
+		int fieldDestination = 0;
+		int fieldSession = 0;
+		CharSequence fieldPath = "/"+testFile;
+		CharSequence fieldHeaders = null;
 		
-		roundTripHTTPTest(isTLS, port, host, useLocalServer, testFile, loadMultiplier);
+		httpRequestsPipe[0].initBuffers();
+		
+		ClientHTTPRequestSchema.instance.publishHTTPGet(
+														httpRequestsPipe[0], 
+														fieldDestination, 
+														fieldSession, 
+														port, 
+														bindHost, 
+														fieldPath, 
+														fieldHeaders);
+			
+		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
+								clientRequestCount, clientRequestSize, tlsCertificates);
+    	
+		String pathRoot = buildStaticFileFolderPath(testFile);
+		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
+	
+		StringBuilder results = new StringBuilder();
+		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
+		
+		NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, modules);
+    	
+		runRoundTrip(gm, results);
+    }
+    
+    @Test
+	public void certMatchHTTPSTest() {
+    
+    	final TLSCertificates tlsCertificates = new TLSCertificates() {
+    		
+            @Override
+            public String keyStoreResourceName() {
+                return "/certificates/testcert.jks";
+            }
 
+            @Override
+            public String trustStroreResourceName() {
+                return "/certificates/testcert.jks";
+            }
+
+            @Override
+            public String keyStorePassword() {
+                return "testcert";
+            }
+
+            @Override
+            public String keyPassword() {
+                return "testcert";
+            }
+
+            @Override
+            public boolean trustAllCerts() {
+                return false;
+            }
+        };
+        
+    	
+    	int maxPartialResponses=10;
+    	int connectionsInBits = 6;		
+    	int clientRequestCount = 4;
+    	int clientRequestSize = 1<<15;
+    	String bindHost = "127.0.0.1";
+    	int port        = 8197;
+    	int processors  = 1;
+    	String testFile = "groovySum.json";
+    	int messagesToOrderingSuper = 1<<12;
+    	int messageSizeToOrderingSuper = 1<<12;
+    	
+    	GraphManager gm = new GraphManager();
+    	
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
+
+		int fieldDestination = 0;
+		int fieldSession = 0;
+		CharSequence fieldPath = "/"+testFile;
+		CharSequence fieldHeaders = null;
+		
+		httpRequestsPipe[0].initBuffers();
+		
+		ClientHTTPRequestSchema.instance.publishHTTPGet(
+														httpRequestsPipe[0], 
+														fieldDestination, 
+														fieldSession, 
+														port, 
+														bindHost, 
+														fieldPath, 
+														fieldHeaders);
+			
+		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
+								clientRequestCount, clientRequestSize, tlsCertificates);
+    	
+		String pathRoot = buildStaticFileFolderPath(testFile);
+		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
+	
+		StringBuilder results = new StringBuilder();
+		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
+		
+		NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, modules);
+    	
+		runRoundTrip(gm, results);
+    }
+
+
+    @Test
+	public void certAuthMatchHTTPSTest() {
+    
+    	final TLSCertificates tlsCertificates = new TLSCertificates() {
+    		
+            @Override
+            public String keyStoreResourceName() {
+                return "/certificates/testcert.jks";
+            }
+
+            @Override
+            public String trustStroreResourceName() {
+                return "/certificates/testcert.jks";
+            }
+
+            @Override
+            public String keyStorePassword() {
+                return "testcert";
+            }
+
+            @Override
+            public String keyPassword() {
+                return "testcert";
+            }
+
+            @Override
+            public boolean trustAllCerts() {
+                return false;
+            }
+        };
+        
+    	
+    	int maxPartialResponses=10;
+    	int connectionsInBits = 6;		
+    	int clientRequestCount = 4;
+    	int clientRequestSize = 1<<15;
+    	String bindHost = "127.0.0.1";
+    	int port        = 8198;
+    	int processors  = 1;
+    	String testFile = "groovySum.json";
+    	int messagesToOrderingSuper = 1<<12;
+    	int messageSizeToOrderingSuper = 1<<12;
+    	
+    	GraphManager gm = new GraphManager();
+    	
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
+
+		int fieldDestination = 0;
+		int fieldSession = 0;
+		CharSequence fieldPath = "/"+testFile;
+		CharSequence fieldHeaders = null;
+		
+		httpRequestsPipe[0].initBuffers();
+		
+		ClientHTTPRequestSchema.instance.publishHTTPGet(
+														httpRequestsPipe[0], 
+														fieldDestination, 
+														fieldSession, 
+														port, 
+														bindHost, 
+														fieldPath, 
+														fieldHeaders);
+			
+		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
+								clientRequestCount, clientRequestSize, tlsCertificates);
+    	
+		String pathRoot = buildStaticFileFolderPath(testFile);
+		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
+	
+		StringBuilder results = new StringBuilder();
+		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
+				 
+		ServerPipesConfig serverConfig = NetGraphBuilder.simpleServerPipesConfig(tlsCertificates, processors);
+		
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, 
+				   serverConfig.maxConnectionBitsOnServer, 
+				   serverConfig.maxConcurrentInputs, 
+				   serverConfig.maxConcurrentOutputs,
+				   serverConfig.moduleParallelism, true);
+		
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
+		
+		runRoundTrip(gm, results);
     }
     
     
-	private void roundTripHTTPTest(boolean isTLS, int port, String host, 
-			                       boolean useLocalServer,
-			                       final String testFile, final int loadMultiplier) {
-	
-				GraphManager gm = new GraphManager();
+	public void runRoundTrip(GraphManager gm, StringBuilder results) {
+		ScriptedNonThreadScheduler scheduler = new ScriptedNonThreadScheduler(gm);
 		
-				if (debug) {
-					//monitor..
-					gm.enableTelemetry(8089);
-				}
-				
-				boolean printProgress = false;
-				//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
-				
-				
-				//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
-				//NOTE: smaller values here will allow for slightly lower latency values
-				//NOTE: by sleeping less we get more work done per stage, sometimes
-				GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000); //this is in ns, can be as low as 1_200
-				
-				//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
-				//TODO: urgent need to kill off expired pipe usages.
+		scheduler.startup();
+		int i = 3000;
+		while ( --i >= 0 && results.length()==0) {
+			scheduler.run();
+		}
+		scheduler.shutdown();
 		
-				 
-				ServerCoordinator serverCoord = null;
-				if (useLocalServer) {
-					serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port);
-					
-				}
-		
-				///TODO: when we have more clients than the server has pertials for TLS we can get a repetable hang situation.
-				//       confirm hanshake pipe releases
-				
-				/////////////////
-				/////////////////
-				int base2SimultaniousConnections = 3;
-				int clientCount = 2;
-					    	
-				//TODO: this number must be the limit of max simuantious handshakes.
-				int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
-				final int clientOutputCount = 1<<base2SimultaniousConnections;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
-				final int clientWriterStages = 1; //writer instances;	
-				
-				
-				/////////////
-				////////////
-				
-				//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
-				
-				
-				int clientResponseUnwrapUnits = 2;//maxPartialResponsesClient;//To be driven by core count,  this is for consuming get responses
-				int clientRequestWrapUnits = 2;//maxPartialResponsesClient;//isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
-				int requestQueue = 64; 
-		
-				int responseQueue = 64; //is this used for both socket writer and http builder? seems like this is not even used..
-				
-				//////////////
-		
-				final int totalUsersCount = 1<<base2SimultaniousConnections;
-		
-					    	
-				//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
-				//however should be deeper if we are sending lots of messages
-				int netRespQueue = 8;
-				
-				//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
-				int netRespSize = 1<<18;//must be just larger than the socket buffer 
-				//TODO: even with this there is still corruption in the clientSocketReader...
-				
-				
-				ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
-				RegulatedLoadTestStage[] clients = new RegulatedLoadTestStage[clientCount];
-				
-				int writeBufferMultiplier = 8;
-
-				int extraHashBits = 1;
-				int requestQueueBytes = 1<<8;
-				int responseQueueBytes = 1<<14;
-				int httpRequestQueueSize = isTLS? 32 : 128; 
-				int httpRequestQueueBytes = isTLS? 1<<15 : 1<<12; //NOTE: Must be 32K for encryption.
-				int releaseCount = 2048;
-				int netResponseCount = 4;
-				int netResponseBlob = 1<<18; //NOTE: must be 256K or larger for decyrption.
-								
-				
-				int cc = clientCount;
-				while (--cc>=0) {	    	
-					{
-						//holds new requests
-						Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
-						
-						int usersBits = 0;//2; //TODO: not working they stomp on same client pipe?
-						int usersPerPipe = 1<<usersBits;
-						TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
-						ClientCoordinator clientCoord1 = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, certs);
-												
-						Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
-								                                           input, clientCoord1, clientResponseUnwrapUnits, clientRequestWrapUnits,
-								                                           requestQueue, requestQueueBytes, responseQueue, clientWriterStages,
-								                                           netRespQueue, netRespSize, httpRequestQueueSize, 
-								                                           httpRequestQueueBytes,writeBufferMultiplier,releaseCount, 
-								                                           netResponseCount, netResponseBlob);
-						assert(toReactor.length == input.length);
-						clients[cc] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+cc,clientCoord1,printProgress);
-						clientCoords[cc]=clientCoord1;
-					}
-				}
-				
-				//if (base2SimultaniousConnections<=6) {
-					//GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");	
-				
-				//	MonitorConsoleStage.attach(gm); 
-				//	NetGraphBuilder.telemetryServerSetup(false, "127.0.0.1", 8098, gm);
-				
-					//}
-				
-				final ServerCoordinator serverCoord1 = serverCoord;
-				final ClientCoordinator[] clientCoord = clientCoords;
-				final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-						               
-				Runtime.getRuntime().addShutdownHook(new Thread() {
-				    public void run() {
-				    	scheduler.shutdown();
-				    	scheduler.awaitTermination(3, TimeUnit.SECONDS);
-				    	    if (null!=serverCoord1) {
-				    	    	serverCoord1.shutdown();
-				    	    }
-				            int i = clientCoord.length;
-				            while (--i>=0) {
-				            	clientCoord[i].shutdown();
-				            }
-				    }
-				});
-				
-				
-				long start = System.currentTimeMillis();
-				scheduler.startup();
-		
-				
-				/////////////////
-				/////////////////
-		
-				
-				long totalReceived = 0;
-				int c = clientCoords.length;
-				while (--c>=0) {
-					GraphManager.blockUntilStageBeginsShutdown(gm,  clients[c]);	
-					clientCoords[c].shutdown();
-					totalReceived += clients[c].totalReceived();
-				}
-		
-				long duration = System.currentTimeMillis()-start;
-		
-				if (null!=serverCoord) {
-					serverCoord.shutdown();
-				}
-		
-				
-				scheduler.shutdown();
-				scheduler.awaitTermination(2, TimeUnit.SECONDS);
-				
-		
-				
-		//	hist.outputPercentileDistribution(System.out, 0d);
-				
-		//	System.out.println("total bytes returned:"+cleaner.getTotalBlobCount()+" expected "+expectedData); //434_070  23_930_000
-								
-				
-				System.out.println("duration: "+duration);
-				
-				float msPerCall = duration/(float)totalReceived;
-				float nsPerCall = 1000000f*msPerCall;
-				System.out.println("ns per call: "+nsPerCall);		
-				System.out.println("calls per sec: "+(1000f/msPerCall)); //task manager its self can slow down results so avoid running it during test.
+		//System.err.println("got "+results);
+		assertTrue(results.toString().contains("0xff,0xff,0x7b,0x22,0x78,0x22,0x3a,0x39,0x2c,0x22,0x79,0x22,0x3a,0x31,0x37,0x2c,0x22,0x67,0x72,0x6f,0x6f,0x76,0x79,0x53,0x75,0x6d,0x22,0x3a,0x32,0x36,0x7d,0x0a"));
 	}
 
-	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, 
-			                                     String bindHost, int bindPort) {
-		final String pathRoot = buildStaticFileFolderPath(testFile);
-				
-		boolean isLarge = false;
-		System.out.println("init file path "+pathRoot);
-		gm.enableTelemetry(8098);
-		
-		//final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
-		//final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
-		final int messagesToOrderingSuper       = isLarge ? 1<<13 : 1<<8;	    		
-		final int messageSizeToOrderingSuper    = isLarge ? 1<<12 : 1<<9;	    		
 
-		int processors = isLarge ? 8 : -1;
-
-		TLSCertificates certs = isTLS ? TLSCertificates.defaultCerts : null;
-	
-		
+	public ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,
+			final int messageSizeToOrderingSuper) {
 		//using the basic no-fills API
 		ModuleConfig config = new ModuleConfig() { 
 		
@@ -368,10 +306,7 @@ public class HTTPSRoundTripTest {
 			}        
 		 	
 		 };
-
-		ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(certs, bindHost, bindPort, gm, processors, config);
-
-		 return serverCoord;
+		return config;
 	}
 	
 	
@@ -392,113 +327,5 @@ public class HTTPSRoundTripTest {
 	}
 
 
-	private StageScheduler setupScheduler(GraphManager gm, final ServerCoordinator serverCoord, final ClientCoordinator ... clientCoord) {
-
-       //TODO: determine which stages can support batching
-		//GraphManager.enableBatching(gm);
-		
-        final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-        
-		//TODO:: fix this to limit threads in use
-        //final StageScheduler scheduler = new FixedThreadsScheduler(gm, 16);
-                
-                       
-        //TODO: add this to scheduler so its done everywehre by default!!  TODO: urgent.
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                    scheduler.shutdown();
-                    scheduler.awaitTermination(3, TimeUnit.SECONDS);
-
-                    serverCoord.shutdown();
-                    int i = clientCoord.length;
-                    while (--i>=0) {
-                    	clientCoord[i].shutdown();
-                    }
-            }
-        });
-		return scheduler;
-	}
-	
-
-
-	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, int bitsPlusHashRoom,
-			int outputsCount, int maxPartialResponses, Pipe<ClientHTTPRequestSchema>[] input, ClientCoordinator ccm, int responseUnwrapUnits, int requestWrapUnits,
-			int requestQueue, int requestQueueBytes, int responseQueue, int clientWriterStages, int netRespQueue,
-			int netRespSize, int httpRequestQueueSize, int httpRequestQueueBytes, int writeBufferMultiplier, 
-			int releaseCount, int netResponseCount, int netResponseBlob) {
-					
-		
-		//create more pipes if more wrapers were requested.
-		if (requestWrapUnits>outputsCount) {
-			outputsCount = requestWrapUnits;
-		}
-		//out to the server, one of these for every client user
-		PipeConfig<ClientHTTPRequestSchema> netRequestConfig = new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, requestQueue, requestQueueBytes);
-		//System.err.println("in "+netRequestConfig);
-		//back from server, one of these for every client user.
-		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, ccm.receiveBufferSize);
-		//System.err.println("out "+netResponseConfig);	
-		
-		//second pipe which also impacts latency		
-		PipeConfig<NetPayloadSchema> httpRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,httpRequestQueueSize,httpRequestQueueBytes); 
-		
-		//////////////
-		//these 2 are small since we have so many
-		/////////////
-		
-		
-		//responses from the server	
-		final Pipe<NetResponseSchema>[] toReactor = new Pipe[input.length];	
-				
-		int m = input.length;
-		while (--m>=0) {
-			toReactor[m] = new Pipe<NetResponseSchema>(netResponseConfig);
-			input[m] = new Pipe<ClientHTTPRequestSchema>(netRequestConfig);	
-		}
-
-		
-		Pipe<NetPayloadSchema>[] clientRequests = new Pipe[outputsCount];
-		int r = outputsCount;
-		while (--r>=0) {
-			clientRequests[r] = new Pipe<NetPayloadSchema>(httpRequestConfig);		
-		}
-		
-		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
-
-			@Override
-			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
-								    Pipe<NetPayloadSchema>[] clearResponse,
-								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
-				
-				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, toReactor, clearResponse, ackReleaseForResponseParser);
-			}
-			
-		};
-
-
-		NetGraphBuilder.buildClientGraph(gm, ccm, 
-				                             netRespQueue, clientRequests,
-				                             responseUnwrapUnits,requestWrapUnits,
-											 clientWriterStages, 
-											 releaseCount, netResponseCount, 
-											 factory, writeBufferMultiplier);
-
-		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
-		
-		//TODO: JUST LIKE GROUPS THESE CAN NOT ACCESS ccm AT THE SAME TIME.
-//		Pipe[][] inputs = Pipe.splitPipes(2, input);
-//		Pipe[][] requests = Pipe.splitPipes(2, clientRequests);
-//				
-//		
-//		new HTTPClientRequestStage(gm, ccm, inputs[0], requests[0]);
-//		new HTTPClientRequestStage(gm, ccm, inputs[1], requests[1]);
-//				
-		
-		return toReactor;
-	}
-
-	
-	
-	
 	
 }

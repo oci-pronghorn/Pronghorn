@@ -12,11 +12,16 @@ public interface TLSCertificates {
     class Default implements TLSCertificates {
         @Override
         public String keyStoreResourceName() {
+        	// to gen:  keytool -genkey -keyalg RSA -alias tomcat -keystore selfsigned.jks -validity <days> -keysize 2048
+        	// these are the certs you are trying to be
+        	// keytool -list -keystore client.jks
             return "/certificates/client.jks";
         }
 
         @Override
         public String trustStroreResourceName() {
+        	// these are the certs you trust
+        	// keytool -list -keystore trustedCerts.jks
             return "/certificates/trustedCerts.jks";
         }
 
@@ -37,4 +42,5 @@ public interface TLSCertificates {
     }
 
     TLSCertificates defaultCerts = new Default();
+	
 }

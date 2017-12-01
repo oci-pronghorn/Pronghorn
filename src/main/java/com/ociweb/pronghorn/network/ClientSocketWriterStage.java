@@ -198,6 +198,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 								Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
 							}
 							
+								//no wrap is required so we have finished the TLS handshake and may continue
 						    	if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {
 		 						
 									if (null!=cc) {
@@ -401,24 +402,24 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
     private int totalB;
     
-	private int startsWith(StringBuilder stringBuilder, String expected2) {
-		
-		int count = 0;
-		int rem = stringBuilder.length();
-		int base = 0;
-		while(rem>=expected2.length()) {
-			int i = expected2.length();
-			while (--i>=0) {
-				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-					return count;
-				}
-			}
-			base+=expected2.length();
-			rem-=expected2.length();
-			count++;
-		}
-		return count;
-	}
+//	private int startsWith(StringBuilder stringBuilder, String expected2) {
+//		
+//		int count = 0;
+//		int rem = stringBuilder.length();
+//		int base = 0;
+//		while(rem>=expected2.length()) {
+//			int i = expected2.length();
+//			while (--i>=0) {
+//				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+//					return count;
+//				}
+//			}
+//			base+=expected2.length();
+//			rem-=expected2.length();
+//			count++;
+//		}
+//		return count;
+//	}
 	
 
 }

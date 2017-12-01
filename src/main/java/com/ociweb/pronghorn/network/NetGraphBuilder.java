@@ -657,12 +657,7 @@ public class NetGraphBuilder {
 													GraphManager gm,
 			                                        int processors, ModuleConfig modules) {
 	
-		boolean isTLS = tlsCertificates != null;
-		ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, 
-		  (processors >= 4) ? 20 : 12, 
-		   processors > 0? processors : ((processors >= 4) ? (isTLS?4:8) : 2),
-		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
-		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1);
+		ServerPipesConfig serverConfig = simpleServerPipesConfig(tlsCertificates, processors);
 				 
 		 //This must be large enough for both partials and new handshakes.
 	
@@ -670,11 +665,20 @@ public class NetGraphBuilder {
 				   serverConfig.maxConnectionBitsOnServer, 
 				   serverConfig.maxConcurrentInputs, 
 				   serverConfig.maxConcurrentOutputs,
-				   serverConfig.moduleParallelism);
+				   serverConfig.moduleParallelism, false);
 		
 		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		
 		return serverCoord;
+	}
+
+	public static ServerPipesConfig simpleServerPipesConfig(TLSCertificates tlsCertificates, int processors) {
+		ServerPipesConfig serverConfig = new ServerPipesConfig(tlsCertificates != null, 
+		  (processors >= 4) ? 20 : 12, 
+		   processors > 0? processors : ((processors >= 4) ? (tlsCertificates != null?4:8) : 2),
+		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
+		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1);
+		return serverConfig;
 	}
 	
 	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
@@ -709,7 +713,7 @@ public class NetGraphBuilder {
 				                                              serverConfig.maxConnectionBitsOnServer, 
 				                                              serverConfig.maxConcurrentInputs, 
 				                                              serverConfig.maxConcurrentOutputs, 
-				                                              serverConfig.moduleParallelism,
+				                                              serverConfig.moduleParallelism, false, 
 				                                              "Telemetry Server","");
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {

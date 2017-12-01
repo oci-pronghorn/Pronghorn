@@ -55,7 +55,7 @@ public class SocketIOStageTest {
 		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
 
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
-        		maxConcurrentInputs, maxConcurrentOutputs, routerCount);
+        		maxConcurrentInputs, maxConcurrentOutputs, routerCount, false);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null);
 
 		
@@ -148,7 +148,7 @@ public class SocketIOStageTest {
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
 				maxConcurrentInputs, 
 				maxConcurrentOutputs, 
-				routerCount);
+				routerCount, false);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null);
 					
 		///

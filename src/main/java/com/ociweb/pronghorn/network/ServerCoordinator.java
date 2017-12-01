@@ -58,7 +58,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final String serviceName;
     private final String defaultPath;
     
-    
+	public final boolean requireClientAuth;//clients must send their cert to connect
+	
 	public static boolean TEST_RECORDS = false;
 
 //	public static long acceptConnectionStart;
@@ -71,25 +72,34 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig){
+	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, 
+			                 ServerPipesConfig serverConfig, boolean requireClientAuth){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
-		   serverConfig.moduleParallelism,"Server", "");
+		   serverConfig.moduleParallelism,
+		   requireClientAuth,
+		   "Server", "");
 	}
 	
-	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath){
+	public ServerCoordinator(TLSCertificates tlsCertificates, 
+			                String bindHost, int port, ServerPipesConfig serverConfig, 
+			                String defaultPath, boolean requireClientAuth){
 		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
 		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
-		   serverConfig.moduleParallelism,"Server", defaultPath);
+		   serverConfig.moduleParallelism,
+		   requireClientAuth,
+		   "Server", defaultPath);
 	}
 	
 	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
             int maxConnectionsBits, 
             int maxConcurrentInputs, int maxConcurrentOutputs,
-            int moduleParallelism){
+            int moduleParallelism, boolean requireClientAuth){
 		this(tlsCertificates,bindHost,port,maxConnectionsBits, 
 				maxConcurrentInputs, maxConcurrentOutputs,
-				moduleParallelism,"Server", "");
+				moduleParallelism,
+				requireClientAuth,
+				"Server", "");
 	}
 	
     public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
@@ -97,9 +107,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
 							 int maxConcurrentInputs,
 							 int maxConcurrentOutputs,
 							 int moduleParallelism,
-							 String serviceName, String defaultPath){
+							 boolean requireClientAuth,
+							 String serviceName, 
+							 String defaultPath){
 
 		super(tlsCertificates);
+		
+		this.requireClientAuth = requireClientAuth;
+		
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
@@ -150,8 +165,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 	
 	private PipeLineFilter isOk = new PipeLineFilter();
-
-	
 	
 	//NOT thread safe only called by ServerSocketReaderStage
 	public int responsePipeLineIdx(final long ccId) {

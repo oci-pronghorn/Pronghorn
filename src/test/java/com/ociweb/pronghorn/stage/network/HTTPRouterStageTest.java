@@ -41,7 +41,7 @@ public class HTTPRouterStageTest {
         
     	HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> defaultSpec = HTTPSpecification.defaultSpec();
 		HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(defaultSpec); 
-    	ServerCoordinator coordinator = new ServerCoordinator(null, "127.0.0.1", 8080, 5, 5, 5 ,1);
+    	ServerCoordinator coordinator = new ServerCoordinator(null, "127.0.0.1", 8080, 5, 5, 5 ,1, false);
     	
     	for(CharSequence route: paths) {
     		routerConfig.registerRoute(route);//no headers
