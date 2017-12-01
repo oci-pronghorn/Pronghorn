@@ -16,14 +16,19 @@ public class TLSService {
 	public static final boolean LOG_CYPHERS = false;
 
 	public static TLSService make(InputStream keyStoreInputStream, String keystorePassword, InputStream trustStoreInputStream, String keyPassword, boolean trustAll) {
+		KeyManagerFactory keyManagerFactory=null;
+		TrustManagerFactory trustManagerFactory=null;
 		try {
-			KeyManagerFactory keyManagerFactory = keyStoreInputStream != null ? TLSCertificateTrust.createKeyManagers(keyStoreInputStream, keystorePassword, keyPassword) : null;
-			TrustManagerFactory trustManagerFactory = trustStoreInputStream != null ? TLSCertificateTrust.createTrustManagers(trustStoreInputStream, keystorePassword) : null;
-			// null SecureRandom uses default impl of new SecureRandom()
-			return new TLSService(keyManagerFactory, trustManagerFactory, trustAll, null);
+			keyManagerFactory = keyStoreInputStream != null ? TLSCertificateTrust.createKeyManagers(keyStoreInputStream, keystorePassword, keyPassword) : null;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+		try {
+			trustManagerFactory = trustStoreInputStream != null ? TLSCertificateTrust.createTrustManagers(trustStoreInputStream, keystorePassword) : null;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return new TLSService(keyManagerFactory, trustManagerFactory, trustAll, null);
 	}
 
 	private TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll, SecureRandom secureRandom) {
