@@ -55,6 +55,9 @@ public class BlockStorageStage extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		assert(null!=filePath && filePath.trim().length()>0);
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+		
 	}
 	
 	public String toString() {
