@@ -28,23 +28,18 @@ public class SSLUtil {
     
 	
 	public static boolean handShakeWrapIfNeeded(SSLConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
-		//synchronized (cc.engine) {
-				
+						
 		 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-		 
-	//	 System.err.println(cc.id+" handshake "+handshakeStatus);
-		 
-		 
+
 		 boolean didShake = false;
 		 while (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus && HandshakeStatus.FINISHED != handshakeStatus	 ) {
 			 			 
 			 didShake = true;
 			 if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {				 
-				 long nsDuration = cc.durationWaitingForNetwork();
-				 if (nsDuration > HANDSHAKE_TIMEOUT) {
-					 logger.warn("XXXXXXXXXXXXXXXXXXXXXXXXXXXx Handshake wrap abanonded for {} due to timeout of {} ns waiting for unwrap done by other stage.",cc,HANDSHAKE_TIMEOUT);
-					 cc.close();				 
-					 System.exit(-1);
+				 if (cc.durationWaitingForNetwork() > HANDSHAKE_TIMEOUT) {
+					
+					 logger.warn("Handshake wrap abanonded for {} due to timeout of {} ms waiting for unwrap done by reading stage.",cc,HANDSHAKE_TIMEOUT/1000000);
+					 cc.close();	
 				 }
 				 return true;//done by the other stage.
 			 }
@@ -69,7 +64,7 @@ public class SSLUtil {
 		//  logger.info("server {} wrap status is now {} for id {} ",isServer,handshakeStatus, cc.getId());
 		 
 		 return didShake;
-	  // }
+	 
 	}
 	
 	public static void handshakeWrapLogic(SSLConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {

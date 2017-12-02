@@ -72,7 +72,7 @@ public class NetGraphBuilder {
 	}
 	
 	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,
-										int responseUnwrapCount, int clientWrapperCount, int clientWriters,
+										final int responseUnwrapCount, int clientWrapperCount, int clientWriters,
 										int releaseCount, 
 										int netResponseCount, ClientResponseParserFactory parserFactory, int writeBufferMultiplier
 										) {
@@ -151,7 +151,8 @@ public class NetGraphBuilder {
 			Pipe<ReleaseSchema>[] acks) {
 		Pipe<NetPayloadSchema>[] hanshakePipes = null;
 		if (ccm.isTLS) {
-						
+			assert(socketResponse.length>=responseUnwrapCount) : "Can not split "+socketResponse.length+" repsonse pipes across "+responseUnwrapCount+" decrypt units";			
+			
 			int c = responseUnwrapCount;
 			Pipe<NetPayloadSchema>[][] sr = Pipe.splitPipes(c, socketResponse);
 			Pipe<NetPayloadSchema>[][] cr = Pipe.splitPipes(c, clearResponse);

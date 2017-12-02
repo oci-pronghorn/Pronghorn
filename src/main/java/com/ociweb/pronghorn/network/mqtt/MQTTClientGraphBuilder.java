@@ -200,12 +200,11 @@ public class MQTTClientGraphBuilder {
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, mqttClient);
 		
 		int clientWriters = 1;				
-		int responseUnwrapCount = 2;
-		int clientWrapperCount = 2;
+		int responseUnwrapCount = 1;
+		int clientWrapperCount = 1;
 		int responseQueue = maxInFlight;
 		int releaseCount = maxInFlight;
 		int netResponseCount = maxInFlight;
-		int netResponseBlob = maximumLenghOfVariableLengthFields;
 		int writeBufferMultiplier = 32;//bumped up to speed client writing
 				
 		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, toBroker, responseUnwrapCount,
