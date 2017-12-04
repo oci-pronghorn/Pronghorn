@@ -105,13 +105,15 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		if (fileIdx<0) {
 			
 			if (fileName.indexOf("..")>=0) {
-				logger.info("unable to find resource: {} ",fileName);
+				status = 404;
+				logger.info("unable to support resource: {} ",fileName);
 				return null;//can not look this up
 			}
 			
 			URL localURL = ResourceModuleStage.class.getClassLoader().getSystemClassLoader().getResource(prefix+fileName);
 			
 			if (null == localURL) {
+				status = 404;
 				logger.info("unable to find resource: {} ",fileName);
 				return null;
 			}

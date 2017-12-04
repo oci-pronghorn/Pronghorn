@@ -131,7 +131,8 @@ public class GraphManager {
 	private long[] stageRunNS = new long[INIT_STAGES];
 	private int[]  stageCPUPct = new int[INIT_STAGES];
 	private long[] stageLastTimeNs = new long[INIT_STAGES];
-	private Histogram[] stageElapsed = new Histogram[0];
+	
+	private ElapsedTimeRecorder[] stageElapsed = new ElapsedTimeRecorder[0];
 	
 	private Map<Object, StringBuilder> cachedRanks;
     
@@ -1640,15 +1641,13 @@ public class GraphManager {
 	                }
 	                
 	                if (recordElapsedTime) {
-	                	Histogram elapsed = m.stageElapsed[stage.stageId];
+	                	ElapsedTimeRecorder elapsed = m.stageElapsed[stage.stageId];
 	                	
 	                	///real time of elapsed?  need to add.
 	                	
 	                	long triggerLimitNS = 200_000; //200 µs
 	                		                	
-	                	long max = elapsed.getMaxValue();	        
-	                	
-	                	long atPct = elapsed.getValueAtPercentile(percentile);
+	                	long atPct = ElapsedTimeRecorder.elapsedAtPercentile(elapsed,(float)percentile);
 	                		                	
                 	    if (true || atPct > triggerLimitNS) {
                 	 		writeElapsed(target, atPct);
@@ -2330,7 +2329,7 @@ public class GraphManager {
 					if (recordElapsedTime) {
 						
 						buildHistogramsAsNeeded(graphManager, stageId);
-						graphManager.stageElapsed[stageId].recordValueWithExpectedInterval(duration, cycleDuration);
+						ElapsedTimeRecorder.record(graphManager.stageElapsed[stageId], duration);
 	
 					}
 	
@@ -2381,10 +2380,11 @@ public class GraphManager {
 		if (stageId >= graphManager.stageElapsed.length) {
 			int maxArray = 1+graphManager.stageCounter.get(); //largestId plus 1
 			//Does this need to grow??
-			Histogram[] newHE = new Histogram[maxArray];
+			
+			ElapsedTimeRecorder[] newHE = new ElapsedTimeRecorder[maxArray];
 			int i = maxArray;
 			while (--i>=0) {				
-				newHE[i] = new Histogram(0);
+				newHE[i] = new ElapsedTimeRecorder();
 			}
 			graphManager.stageElapsed = newHE;
 		}

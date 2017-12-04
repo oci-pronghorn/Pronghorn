@@ -39,6 +39,7 @@ public abstract class ByteArrayPayloadResponseStage <
 	private int activeFieldRequestContext = -1;	
 	private int workingPosition = 0;
 	private Pipe<ServerResponseSchema> activeOutput = null;
+	protected int status = 200;
 	
 	private int maximumAllocation = 1<<27; //128M largest file, should expose this
 	
@@ -177,6 +178,7 @@ public abstract class ByteArrayPayloadResponseStage <
 		
 		payloadBacking = null;
 		payloadLength = -1;
+		status = 200;
 		byte[] etagBytes = payload(graphManager, params, verb); //should return error and take args?
         assert(payloadLength>=0) : "definePayload must be called by payload";
 				
@@ -193,7 +195,7 @@ public abstract class ByteArrayPayloadResponseStage <
 		int contLocBytesMask = 0;
 		
 		writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
-		 		    200, activeFieldRequestContext, 
+				    status, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
 		 		    prefixCount()+payloadLength+suffixCount(), 

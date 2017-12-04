@@ -35,6 +35,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
 
+    //set to true for faster response times but much greater cpu usage.
+	public static final boolean lowLatencyEnforced = false;
+	
     private int[] producersIdx;
 
     private Pipe[] producerInputPipes;
@@ -518,13 +521,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			//TODO: if we have a "short term" issue we want to check again so set a timer here
 			//      and reset platformThresholdForSleep back down to zero if we are peging CPU
 		}
-		
-		long dif;
 				
-		while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
-			//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
-			if (dif > 800) {//only yield if will return in time.
-				Thread.yield();
+		if (lowLatencyEnforced) {
+			long dif;				
+			while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
+				//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
+				if (dif > 800) {//only yield if will return in time.
+					Thread.yield();
+				}
 			}
 		}
 		return platformThresholdForSleep;
