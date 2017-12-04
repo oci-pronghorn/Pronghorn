@@ -569,6 +569,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 		// Update the block start time.
 		blockStartTime += schedule.commonClock;
+		
+		//if we have long running cycles which are longer than then common clock
+		//bump up the time so it does not keep falling further behind.  this allows
+		//the script to stop on the first "fast" cycle instead of taking multiple
+		//runs at the script to catch up when this will not help the performance.
+		long now = System.nanoTime();
+		if (blockStartTime<now) {
+			blockStartTime = now;
+		}
         		
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
 		if (!(shutDownRequestedHere || shutdownRequested.get())) {
