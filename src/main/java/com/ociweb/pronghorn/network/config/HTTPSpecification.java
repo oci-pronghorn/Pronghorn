@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.module.FileReadModuleStage.FileReadModuleStageData;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -34,6 +35,9 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     private boolean trustAccurateStrings = true;
     private final TrieParser headerParser;
 	private TrieParser contentTypeTrie;
+	
+	public final IntHashTable fileExtHashTable;
+	
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> defaultSpec;
     
@@ -90,6 +94,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         this.revisions = supportedHTTPRevisions.getEnumConstants();
         this.contentTypes = supportedHTTPContentTypes.getEnumConstants();
         
+    	this.fileExtHashTable = buildFileExtHashTable(supportedHTTPContentTypes);
         this.contentTypeTrie = contentTypeTrieBuilder(contentTypes);
         
         //find ordinal values and max length
@@ -213,6 +218,57 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 
 	public long headerConsume(int headerId, ChannelReader stream) {
 		return headers[headerId].consumeValue(stream);
+	}
+	
+	public static HTTPContentType lookupContentTypeByExtension(HTTPSpecification httpSpec, String resourceName) {
+		int idxOfDot = resourceName.lastIndexOf('.');
+		int typeIdx = 0;
+		if (idxOfDot>=0) {
+			int extHash = HTTPSpecification.extHash(resourceName.substring(idxOfDot+1, resourceName.length()));
+			typeIdx = IntHashTable.getItem(httpSpec.fileExtHashTable, extHash);
+		}
+		HTTPContentType httpContentType = (HTTPContentType)httpSpec.contentTypes[typeIdx];
+		return httpContentType;
+	}
+
+	private static < T extends Enum<T> & HTTPContentType> IntHashTable buildFileExtHashTable(Class<T> supportedHTTPContentTypes) {
+	    int hashBits = 13; //8K
+	    IntHashTable localExtTable = new IntHashTable(hashBits);
+	    
+	    T[] conentTypes = supportedHTTPContentTypes.getEnumConstants();
+	    int c = conentTypes.length;
+	    while (--c >= 0) {            
+	        if (!conentTypes[c].isAlias()) {//never use an alias for the file Ext lookup.                
+	            int hash = HTTPSpecification.extHash(conentTypes[c].fileExtension());
+	            
+	            if ( IntHashTable.hasItem(localExtTable, hash) ) {                
+	                final int ord = IntHashTable.getItem(localExtTable, hash);
+	                throw new UnsupportedOperationException("Hash error, check for new values and algo. "+conentTypes[c].fileExtension()+" colides with existing "+conentTypes[ord].fileExtension());                
+	            } else {
+	                IntHashTable.setItem(localExtTable, hash, conentTypes[c].ordinal());
+	            }
+	        }
+	    }
+	    return localExtTable;
+	}
+
+	public static int extHash(byte[] back, int pos, int len, int mask) {
+	    int x = pos+len;
+	    int result = back[mask&(x-1)];
+	    int c;
+	    while((--len >= 0) && ('.' != (c = back[--x & mask])) ) {   
+	        result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F & c); //mask to ignore sign                       
+	    }        
+	    return result;
+	}
+
+	public static int extHash(CharSequence cs) {
+	    int len = cs.length();        
+	    int result = cs.charAt(len-1);//init with the last value, will be used twice.    
+	    while(--len >= 0) {
+	        result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F &  cs.charAt(len)); //mask to ignore sign    
+	    }        
+	    return result;
 	}
 
 

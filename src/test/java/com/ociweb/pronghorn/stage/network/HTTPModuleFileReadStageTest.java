@@ -149,8 +149,6 @@ public class HTTPModuleFileReadStageTest {
     
     @Test
     public void testFileExtCollide() {
-        IntHashTable table = FileReadModuleStage.buildFileExtHashTable(HTTPContentTypeDefaults.class);
-       
         final AtomicInteger count = new AtomicInteger();
         
         IntHashTableVisitor visitor = new IntHashTableVisitor(){
@@ -161,14 +159,14 @@ public class HTTPModuleFileReadStageTest {
              
              HTTPContentTypeDefaults type = HTTPContentTypeDefaults.values()[value];
              
-             Assert.assertEquals( FileReadModuleStage.extHash(type.fileExtension()), key);
+             Assert.assertEquals( HTTPSpecification.extHash(type.fileExtension()), key);
 
              count.incrementAndGet();             
               
           }
           
        };
-      IntHashTable.visit(table, visitor );
+      IntHashTable.visit(HTTPSpecification.defaultSpec().fileExtHashTable, visitor );
       
       int c = HTTPContentTypeDefaults.values().length;
       int total = 0;

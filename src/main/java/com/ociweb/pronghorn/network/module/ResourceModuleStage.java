@@ -20,145 +20,172 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> extends
-ByteArrayPayloadResponseStage<T,R,V,H> {
-//AbstractAppendablePayloadResponseStage<T,R,V,H> {
+									H extends Enum<H> & HTTPHeader> extends ByteArrayPayloadResponseStage<T,R,V,H> {
 
-	private byte[] eTag;
-	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
-	private byte[] resource;
-	private String resourceStr;
+	private final HTTPSpecification httpSpec;
+	private StringBuilder temp;
+	private TrieParserReader parserReader;
+	private TrieParser parser = new TrieParser(100);	
+	private int fileCount = 0;
 	
-	private final URL resourceURL;
+	private int activeFileIdx;
+	private byte[][] eTag = new byte[0][];
+	private byte[][] type = new byte[0][];
+	private byte[][] resource = new byte[0][];	
+	private URL[] resourceURL = new URL[0];
+		
+	private final String prefix;
+	private String defaultName;
 	
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
     		Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
-    		HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceName, HTTPContentType type) {
+    		HTTPSpecification<?, ?, ?, ?> httpSpec, String prefix, String resourceName) {
         
-    	return new ResourceModuleStage(graphManager, inputs, outputs, httpSpec, resourceName, type);
+    	return new ResourceModuleStage(graphManager, inputs, outputs, httpSpec, prefix, resourceName);
         
     }
     
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
     		Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
-    		HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceName, HTTPContentType type) {
+    		HTTPSpecification<?, ?, ?, ?> httpSpec, String prefix, String resourceName) {
 
-        return new ResourceModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceName, type);
+        return new ResourceModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, prefix, resourceName);
         
     }
 	
 	public ResourceModuleStage(GraphManager graphManager, 
 			                   Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
-			                   HTTPSpecification httpSpec, String resourceName, HTTPContentType type) {
+			                   HTTPSpecification httpSpec, String prefix, String resourceName) {
 		
 		super(graphManager, inputs, outputs, httpSpec);		
-			
-		//logger.info("loading resource {} ",resourceName);
-		ClassLoader loader = ResourceModuleStage.class.getClassLoader().getSystemClassLoader();
-		resourceURL = loader.getResource(resourceName);
-		//logger.trace("found url {}", resourceURL);
-		
-
-		if (null == resourceURL) {
-			//logger.info("unable to find resource: {} ",resourceName);
-			throw new RuntimeException("unable to find resource: "+resourceName);
-		} else {
-			//logger.info("found the resource: {}",resourceName);
-		}
-				
-		this.type = type.getBytes();
+		this.httpSpec = httpSpec;
+		this.defaultName = resourceName;
+		this.prefix = prefix;
 		
 		if (inputs.length>1) {
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		}
-        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+
 	}
 
 	@Override
 	public void startup() {
 		super.startup();
-		
-		try {
+		temp = new StringBuilder();
+		parserReader = new TrieParserReader();
 
-			InputStream stream = resourceURL.openStream();
-			
-			int x = stream.available();
-			//logger.info("file size {}",x);
-			
-			resource = new byte[x];
-		
-			long startTime = System.currentTimeMillis();
-			long timeout = startTime = 10_000;
-			int i = 0;
-			while(i<x) {
-				
-				int count = stream.read(resource, i, x-i);
-				assert(count>=0) : "since we know the length should not reach EOF";
-		
-				i += count;	
-				
-				if (0 == count) {
-					if (System.currentTimeMillis()>timeout) {
-						throw new RuntimeException("IO slow reading files from inside the jar.");
-					}
-				}
-
-			}
-			
-			resourceStr = new String(resource);
-			
-			StringBuilder temp = new StringBuilder();
-			int jenny = MurmurHash.hash32(resource, 0, resource.length, 8675309);
-			Appendables.appendHexDigits(temp.append("R-"), jenny).append("-00");
-			eTag = temp.toString().getBytes();
-		
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
 	}
-
-//	@Override
-//	protected byte[] payload(Appendable target, GraphManager gm, 
-//			                 DataInputBlobReader<HTTPRequestSchema> params,
-//			                 HTTPVerbDefaults verb) {
-//		
-//		if (verb != HTTPVerbDefaults.GET) {
-//			return null;
-//		}
-//		
-//		//TODO: this must extend the ByteArrayPayloadResponseStage but does not work....
-//		
-//		try {
-//			target.append(resourceStr);
-//		} catch (IOException e) {
-//			throw new RuntimeException(e);
-//		}
-//		//definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
-//		
-//		return eTag;
-//	}
 	
 	@Override
 	protected byte[] payload(GraphManager gm, 
 			                 DataInputBlobReader<HTTPRequestSchema> params,
 			                 HTTPVerbDefaults verb) {
 		
+		activeFileIdx = -1;//default
+		
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
 		}
+
+		String fileName = defaultName;
+		if (params.available()>0) {
+			fileName = params.readUTF();
+		}
 		
-		definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
+		int fileIdx = (int)TrieParserReader.query(parserReader, parser, fileName);
+
+		if (fileIdx<0) {
+			
+			if (fileName.indexOf("..")>=0) {
+				logger.info("unable to find resource: {} ",fileName);
+				return null;//can not look this up
+			}
+			
+			URL localURL = ResourceModuleStage.class.getClassLoader().getSystemClassLoader().getResource(prefix+fileName);
+			
+			if (null == localURL) {
+				logger.info("unable to find resource: {} ",fileName);
+				return null;
+			}
+
+			fileIdx = fileCount++;
+			parser.setUTF8Value(fileName, fileIdx);
+				
+			//grow arrays
+			eTag = grow(eTag, fileCount);
+			type = grow(type, fileCount);
+			resource = grow(resource, fileCount);
+			resourceURL = grow(resourceURL, fileCount);
+			
+			
+		    //logger.info("loading resource {} ",resourceName);
+			this.resourceURL[fileIdx] = localURL;
+			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByExtension(httpSpec, fileName).getBytes();
+
+			
+			try {
+
+				InputStream stream = resourceURL[fileIdx].openStream();
+				
+				final int fileSize = stream.available();			
+				resource[fileIdx] = new byte[fileSize];
+			
+				long startTime = System.currentTimeMillis();
+				long timeout = startTime + 10_000;
+				int i = 0;
+				while(i<fileSize) {
+					
+					int count = stream.read(resource[fileIdx], i, fileSize-i);
+					assert(count>=0) : "since we know the length should not reach EOF";
+			
+					i += count;	
+					
+					if (0 == count) {
+						if (System.currentTimeMillis()>timeout) {
+							throw new RuntimeException("IO slow reading files from inside the jar.");
+						}
+					}
+
+				}
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+						
+			temp.setLength(0);
+			int jenny = MurmurHash.hash32(resource[fileIdx], 0, resource[fileIdx].length, 8675309);
+			Appendables.appendHexDigits(temp.append("R-"), jenny).append("-00");
+			eTag[fileIdx] = temp.toString().getBytes();
+			
+		}
 		
-		return eTag;
+		activeFileIdx = fileIdx;
+		
+		definePayload(resource[fileIdx], 0, resource[fileIdx].length, Integer.MAX_VALUE);		
+		return eTag[fileIdx];
 	}
 	
+	private final URL[] grow(URL[] in, int idx) {
+		URL[] result = new URL[idx];
+		System.arraycopy(in, 0, result, 0, in.length);
+		return result;
+	}
+
+	private final byte[][] grow(byte[][] in, int idx) {
+		byte[][] result = new byte[idx][];
+		System.arraycopy(in, 0, result, 0, in.length);
+		return result;
+	}
+
 	@Override
 	protected byte[] contentType() {
-		return type;
+		return activeFileIdx>=0?type[activeFileIdx]:null;
 	}
 }

@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network.module;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -64,7 +65,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 
 		public FileReadModuleStageData(HTTPSpecification httpSpec, int maxFileCount) {
 		  	        
-	        fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
+	        fileExtensionTable = httpSpec.fileExtHashTable;
 
 	        setPaths(new Path[maxFileCount]);
 	        setFcId(new long[maxFileCount]);
@@ -196,7 +197,6 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     private final static int VERB_HEAD = 1;
 
     
-    //TODO: order supervisor needs more pipes to stop blocks
     //TODO: this class needs to extract the file load path
     
     //TOOD: we need FileChannel objects to be per instance? what about the FC id??
@@ -205,17 +205,17 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
     }
     
-    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
-        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, resourceRootFolder, resourceDefaultPath);
-    }
+//    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+//        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, resourceRootFolder, resourceDefaultPath);
+//    }
     
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, rootPath);
     }
     
-    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
-        return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
-    }
+//    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+//        return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
+//    }
     
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
@@ -233,7 +233,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         
         this.folderRootFile = rootPath.isFile()? rootPath.getParentFile() : rootPath;       
         this.folderRootString = folderRootFile.toString();
-        
+      
         if (rootPath.isFile()) {
         	defaultPathFile = rootPath.toString();
         }
@@ -246,37 +246,26 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         
     }
     
-    
-    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
-            HTTPSpecification<T,R,V,H> httpSpec,
-            String resourceRootFolder, String resourceDefaultPath) {
-
-		super(graphManager, inputs, outputs, httpSpec);
-		this.inputs = inputs; 
-		this.outputs = outputs;        
-		this.trailingReader = 0;
-		this.trailingBlobReader = 0;
-		assert( httpSpec.verbMatches(VERB_GET, "GET") );
-		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
-		this.inIdx = inputs.length;
-				
-		this.folderRootFile = null;//when this value is null we can only check the resources....  
-		this.folderRootString = resourceRootFolder;
-		this.defaultPathFile = resourceDefaultPath;
-	
-	}
-    
-    //TODO: use PipeHashTable to pull back values that are on the outgoing pipe for use again.
-    
-    //TODO: parse ahead to determine if we have the same request in a row, then prefix the send with the additional channel IDs
-    //      The socket writer will need to pick up this new message to send the same data to multiple callers
-    //      Enable some limited out of order processing as long as its on different channels to find more duplicates. 
-    
-    //TODO: HTTP2, build map of tuples for file IDs to determine the most frequent pairs to be rebuilt as a single file to limit seek time.
-    
-    //TODO: store the file offsets sent on the pipe, if its still in the pipe, copy to new location rather than use drive.
-    
-    
+ 
+    //This stage is file only and can not work with resources, that is a different stage
+//    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
+//            HTTPSpecification<T,R,V,H> httpSpec,
+//            String resourceRootFolder, String resourceDefaultPath) {
+//
+//		super(graphManager, inputs, outputs, httpSpec);
+//		this.inputs = inputs; 
+//		this.outputs = outputs;        
+//		this.trailingReader = 0;
+//		this.trailingBlobReader = 0;
+//		assert( httpSpec.verbMatches(VERB_GET, "GET") );
+//		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
+//		this.inIdx = inputs.length;
+//				
+//		this.folderRootFile = null;//when this value is null we can only check the resources....  
+//		this.folderRootString = resourceRootFolder;
+//		this.defaultPathFile = resourceDefaultPath;
+//	
+//	}
 
     
 //  
@@ -301,25 +290,6 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     
 
   
-    
-    public static int extHash(byte[] back, int pos, int len, int mask) {
-        int x = pos+len;
-        int result = back[mask&(x-1)];
-        int c;
-        while((--len >= 0) && ('.' != (c = back[--x & mask])) ) {   
-            result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F & c); //mask to ignore sign                       
-        }        
-        return result;
-    }
-    
-    public static int extHash(CharSequence cs) {
-        int len = cs.length();        
-        int result = cs.charAt(len-1);//init with the last value, will be used twice.    
-        while(--len >= 0) {
-            result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F &  cs.charAt(len)); //mask to ignore sign    
-        }        
-        return result;
-    }
     
     private static class FileChannelValidator implements ServiceObjectValidator<FileChannel> {
         
@@ -359,13 +329,9 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		}
 
         this.data = new FileReadModuleStageData(httpSpec, maxFileCount);
-        
-        
+                
         //TODO: pull out as common object for all instances
 		TrieParser pc = new TrieParser(initialMaxTotalPathLength, 2, false, false);
-		
-		
-		
 		
 		this.data.setPathCache(pc);
 		
@@ -376,17 +342,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 			collectAllKnownFiles(rootSize, pc, children);
 		}
         
-		
-		//TODO: GET PREFIX AND STORE THE RESOURCE FOLDER SO WE CAN PULL THE FILES IN AS REQUESTED LATER..
-		
-        
-        
         activeFileChannel = null;//NOTE: above method sets activeFileChannel and it must be cleared before run starts.
-  
-        //build private ring buffer of outgoing data files
-           
-        
-        int fields = 2; //pos and file id  
 
     }
 
@@ -428,53 +384,71 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         
     			//logger.info("loading new file: "+pathString);
             
-    			int newPathId;
                 try {
-                    Path path = fileSystem.getPath(pathString);
+                    final Path path = fileSystem.getPath(pathString);
                     fileSystem.provider().checkAccess(path);
-                    newPathId = ++pathCount;
+                    
+                    final int newPathId = ++pathCount;
+                    if (newPathId>data.getType().length) {
+                    	throw new UnsupportedOperationException("FileReader only supports "+data.getType().length+" files, attempted to add more than this.");
+                    }
+
                     byte[] asBytes = pathString.getBytes();
                     
                     if (pathString.equals(defaultPathFile)) {
-                
-                        //logger.trace("default path id {}",newPathId);
-                        
+                        //logger.trace("default path id {}",newPathId);                        
                     	defaultPathId = newPathId;
                     	defaultPathBytes = Arrays.copyOfRange(asBytes, rootSize, asBytes.length);
                     }
-                    
+					final int bytesLength = asBytes.length-rootSize;
+					                    
                     //logger.debug("FileReadStage is loading {} ",pathString);  
-                                        
-                    setupUnseenFile(trie, asBytes.length-rootSize, asBytes, rootSize, Integer.MAX_VALUE, newPathId, pathString, path, builder);
+                      				    
+				    //NOTE: the type will be 0 zero when not found
+				    int typeId = IntHashTable.getItem(data.fileExtensionTable, HTTPSpecification.extHash(asBytes, rootSize, bytesLength, Integer.MAX_VALUE));
+				    FileChannel activeFileChannel = data.fileSystem.provider().newFileChannel(path, data.getReadOptions());
+				    				    				    
+				    storeNewFileData(trie, rootSize, builder, 
+				    		path, newPathId, asBytes, bytesLength, typeId,
+							activeFileChannel);
+					
+				    return newPathId;
+				
                 } catch (IOException e) {
+                	logger.error("IO Exception on file {} ",pathString);
                     throw new RuntimeException(e);
                 }
-                return newPathId;
             }
+
+	private void storeNewFileData(TrieParser trie, final int rootSize, StringBuilder builder, Path path,
+			final int newPathId, byte[] asBytes, final int bytesLength, int typeId, FileChannel activeFileChannel)
+			throws IOException {
+		
+		data.getPaths()[newPathId] = path;
+		long fileSize = activeFileChannel.size();
+		trie.setValue(asBytes, rootSize, bytesLength, Integer.MAX_VALUE, newPathId);
+		builder.setLength(0);
+		data.getType()[newPathId] = typeId;
+		data.getFcId()[newPathId] = channelHolder.add(activeFileChannel);
+		data.getEtagBytes()[newPathId] = Appendables.appendHexDigits(builder, data.getFcId()[newPathId]).toString().getBytes();		                
+		data.getFileSizes()[newPathId] = fileSize;   
+		builder.setLength(0);
+	}
+
+	private void storeNewFileData(TrieParser trie, final int rootSize, StringBuilder builder, int newPathId,
+			byte[] asBytes, final int bytesLength, int typeId, FileChannel activeFileChannel) throws IOException {
+		
+		long fileSize = activeFileChannel.size();
+		trie.setValue(asBytes, rootSize, bytesLength, Integer.MAX_VALUE, newPathId);
+		builder.setLength(0);
+		data.getType()[newPathId] = typeId;
+		data.getFcId()[newPathId] = channelHolder.add(activeFileChannel);
+		data.getEtagBytes()[newPathId] = Appendables.appendHexDigits(builder, data.getFcId()[newPathId]).toString().getBytes();		                
+		data.getFileSizes()[newPathId] = fileSize;   
+		builder.setLength(0);
+	}
     
 
-    public static < T extends Enum<T> & HTTPContentType> IntHashTable buildFileExtHashTable(Class<T> supportedHTTPContentTypes) {
-        int hashBits = 13; //8K
-        IntHashTable localExtTable = new IntHashTable(hashBits);
-        
-        T[] conentTypes = supportedHTTPContentTypes.getEnumConstants();
-        int c = conentTypes.length;
-        while (--c >= 0) {            
-            if (!conentTypes[c].isAlias()) {//never use an alias for the file Ext lookup.                
-                int hash = extHash(conentTypes[c].fileExtension());
-                
-                if ( IntHashTable.hasItem(localExtTable, hash) ) {                
-                    final int ord = IntHashTable.getItem(localExtTable, hash);
-                    throw new UnsupportedOperationException("Hash error, check for new values and algo. "+conentTypes[c].fileExtension()+" colides with existing "+conentTypes[ord].fileExtension());                
-                } else {
-                    IntHashTable.setItem(localExtTable, hash, conentTypes[c].ordinal());
-                }
-            }
-        }
-        return localExtTable;
-    }
-
-    
     int totalRunCalls = 0;
     int totalFiles = 0;
     
@@ -557,60 +531,46 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     }
 
     private void beginReadingNextRequest(Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
-//        public static final int MSG_RESTREQUEST_300 = 0x00000000;
-    	
-//        public static final int MSG_RESTREQUEST_300_FIELD_CHANNELID_21 = 0x00800001;
-//        public static final int MSG_RESTREQUEST_300_FIELD_SEQUENCE_26 = 0x00400003;
-        
+
         activeChannelHigh = Pipe.takeInt(input);
         activeChannelLow  = Pipe.takeInt(input); 
            
         activeSequenceId = Pipe.takeInt(input);
-        
-//        logger.info("file request for channel {} {} seq {} ", activeChannelHigh, activeChannelLow, activeSequenceId);
 
-
-//        public static final int MSG_RESTREQUEST_300_FIELD_VERB_23 = 0x00000004;
         int routeVerb = Pipe.takeInt(input);
         int routeId = routeVerb >> HTTPVerb.BITS;
         int verb = routeVerb & HTTPVerb.MASK;
         
-                 
-//        public static final int MSG_RESTREQUEST_300_FIELD_PARAMS_32 = 0x01c00005;
         int meta = Pipe.takeRingByteMetaData(input);
         int bytesLength    = Pipe.takeRingByteLen(input);
 
         byte[] bytesBackingArray = Pipe.byteBackingArray(meta, input);
         int bytesPosition = Pipe.bytePosition(meta, input, bytesLength);
         int bytesMask = Pipe.blobMask(input);
-   
+           
+        //logger.info("fetch file name: {}", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask));
         
-        //logger.info("file name: {}", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask));
-        
-        
-//        public static final int MSG_RESTREQUEST_300_FIELD_REVISION_24 = 0x00000007;
         ///////////
         //NOTE we have added 2 because that is how it is sent from the routing stage! with a leading short for length
-        ////////////
+        ///////////
         int parallelRevision = Pipe.takeInt(input);
         int parallelId = parallelRevision >>> HTTPRevision.BITS;
         int httpRevision = parallelRevision & HTTPRevision.MASK;
                 
         assert(httpRevision <= HTTPRevisionDefaults.values().length) : "revision is too large found "+httpRevision;
         
-        int pathId = selectActiveFileChannel(pathCacheReader, data.getPathCache(), bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
+        int pathId = selectActiveFileChannel(pathCacheReader, data.getPathCache(), 
+        		                             bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
                 
-        //Appendables.appendUTF8(System.err, bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask);
-        //System.err.println("new path "+pathId);
-        
-//        public static final int MSG_RESTREQUEST_300_FIELD_REQUESTCONTEXT_25 = 0x00000008;
+       // logger.info("pathId for file request {}", pathId);
+
         int context = Pipe.takeInt(input);
         
-        if (pathId<0) {
+        if (pathId < 0) {
       	  
         	//send 404
         	//publishError(requestContext, sequence, status, writer, localOutput, channelIdHigh, channelIdLow, httpSpec, revision, contentType);
-        	publishErrorHeader(httpRevision, activeRequestContext, activeSequenceId, 404, input, output);  
+        	publishErrorHeader(activeRequestContext, activeSequenceId, 404, input, output);  
         	
         //	throw new UnsupportedOperationException("File not found: "+ Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         } else {
@@ -625,7 +585,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 	        if (pathId>=0) {
 	            beginSendingFile(httpRevision, activeRequestContext, pathId, verb, activeSequenceId, input, output);
 	        } else {
-	            publishErrorHeader(httpRevision, activeRequestContext, 0, activeSequenceId, null, output);
+	            publishErrorHeader(activeRequestContext, 0, activeSequenceId, null, output);
 	        }
         }
     }
@@ -653,10 +613,39 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             } else {
                 findAgainFileChannel(pathId);
             }
-        } else {  
-        	if (logger.isDebugEnabled()) {        	
-        		logger.debug("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
+        } else {
+        	//if bytesLength is 0 then use the defaultPathFile
+        	System.err.println("default: "+	defaultPathFile);
+        	        	
+        	
+        	//TODO: need to lookup the resource??
+        	StringBuilder builder = new StringBuilder();
+        	
+        	builder.append('/').append(folderRootString).append('/');
+        	Appendables.appendUTF8(builder, bytesBackingArray, bytesPosition, bytesLength, bytesMask);
+        	
+        	String name = builder.toString();
+			InputStream stream = FileReadModuleStage.class.getResourceAsStream(name);
+		
+        	if (null!=stream) {
+        		try {
+					long size = stream.available();
+					
+					logger.info("found as resource at {} size {}",name,size);
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+        		
+        				
+        	} else {
+        		logger.info("NOT found as resource at {}",name);
+        		
         	}
+        	
+        	
+        	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }
         return pathId;
         
@@ -681,34 +670,6 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         }
     }
 
-    private void setupUnseenFile(TrieParser trie, final int bytesLength, final byte[] bytesBackingArray,
-                                final int bytesPosition, final int bytesMask, int pathId, String pathString, Path path, StringBuilder builder) {
-        try {
-            //only set this new value if the file exists
-            trie.setValue(bytesBackingArray, bytesPosition, bytesLength, bytesMask, pathId);
-            
-            //NOTE: the type will be 0 zero when not found
-            if (pathId>data.getType().length) {
-                throw new UnsupportedOperationException("FileReader only supports "+data.getType().length+" files, attempted to add more than this.");
-            }
-            data.getType()[pathId] = IntHashTable.getItem(data.fileExtensionTable, extHash(bytesBackingArray,bytesPosition, bytesLength, bytesMask));
-
-            builder.setLength(0);
-            
-            FileChannel activeFileChannel = data.fileSystem.provider().newFileChannel(data.getPaths()[pathId] = path, data.getReadOptions());
-            data.getFcId()[pathId] = channelHolder.add(activeFileChannel);
-            data.getEtagBytes()[pathId] = Appendables.appendHexDigits(builder, data.getFcId()[pathId]).toString().getBytes();
-                        
-            data.getFileSizes()[pathId] = activeFileChannel.size();   
-            builder.setLength(0);
-          
-        } catch (IOException e) {
-            logger.error("IO Exception on file {} ",pathString);
-            throw new RuntimeException(e);
-        }
-    }
- 
-    
     private void beginSendingFile(int httpRevision, int requestContext, int pathId, int verb, int sequence, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         try {                                               
             //reposition to beginning of the file to be loaded and sent.
@@ -779,7 +740,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         Pipe.releaseReadLock(input);
     }
 
-    private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
+    private void publishErrorHeader(int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         
      	HTTPUtil.publishStatus(sequence, code, activeChannelHigh, activeChannelLow, output);
          
