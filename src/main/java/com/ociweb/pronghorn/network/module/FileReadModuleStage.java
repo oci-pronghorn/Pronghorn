@@ -205,17 +205,17 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
     }
     
-//    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
-//        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, resourceRootFolder, resourceDefaultPath);
-//    }
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, resourceRootFolder, resourceDefaultPath);
+    }
     
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, rootPath);
     }
     
-//    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
-//        return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
-//    }
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+        return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
+    }
     
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
@@ -248,24 +248,24 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     
  
     //This stage is file only and can not work with resources, that is a different stage
-//    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
-//            HTTPSpecification<T,R,V,H> httpSpec,
-//            String resourceRootFolder, String resourceDefaultPath) {
-//
-//		super(graphManager, inputs, outputs, httpSpec);
-//		this.inputs = inputs; 
-//		this.outputs = outputs;        
-//		this.trailingReader = 0;
-//		this.trailingBlobReader = 0;
-//		assert( httpSpec.verbMatches(VERB_GET, "GET") );
-//		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
-//		this.inIdx = inputs.length;
-//				
-//		this.folderRootFile = null;//when this value is null we can only check the resources....  
-//		this.folderRootString = resourceRootFolder;
-//		this.defaultPathFile = resourceDefaultPath;
-//	
-//	}
+    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
+            HTTPSpecification<T,R,V,H> httpSpec,
+            String resourceRootFolder, String resourceDefaultPath) {
+
+		super(graphManager, inputs, outputs, httpSpec);
+		this.inputs = inputs; 
+		this.outputs = outputs;        
+		this.trailingReader = 0;
+		this.trailingBlobReader = 0;
+		assert( httpSpec.verbMatches(VERB_GET, "GET") );
+		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
+		this.inIdx = inputs.length;
+				
+		this.folderRootFile = null;//when this value is null we can only check the resources....  
+		this.folderRootString = resourceRootFolder;
+		this.defaultPathFile = resourceDefaultPath;
+	
+	}
 
     
 //  
