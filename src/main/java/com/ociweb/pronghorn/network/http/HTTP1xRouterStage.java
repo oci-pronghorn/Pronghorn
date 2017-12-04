@@ -269,7 +269,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
     	
-        if (waitForOutputOn>=0 && waitForOutputOn<outputs.length) { //hack test
+        if (waitForOutputOn>=0 && waitForOutputOn<outputs.length) {
         	
         	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
         		waitForOutputOn=-1;
@@ -553,11 +553,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		    	                        //next read will start with new postion.
 		    		//send release if appropriate
        
-		    		if ((remainingBytes<=0) && consumedAllOfActiveFragment(selectedInput, p)) { 
-		    				                			
-		    			assert(0==Pipe.releasePendingByteCount(selectedInput));
-						sendRelease(channel, idx);
-												
+		    		if ((remainingBytes<=0) 
+		    			&& consumedAllOfActiveFragment(selectedInput, p)) { 
+		    	
+		    				assert(0==Pipe.releasePendingByteCount(selectedInput));
+							sendRelease(channel, idx);
+		    														
 					}
 
 		    	//when we have no more data to consume we must exit this loop and get more.
@@ -587,12 +588,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		return true;
 	}
 
-    
-    //TODO: this appears to be required to make this work with the shared routers however it also seems to break  multiple connections???
-    //      because some needed releases are missing??
+
 	private static boolean consumedAllOfActiveFragment(Pipe<NetPayloadSchema> selectedInput, int p) {
-		//TOOD: must check both not sure why it shows up both ways at different times.
-		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobRingTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) ||
+
+		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobRingTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) && 
 		       (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobHeadPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p);
 		
 	}
@@ -861,9 +860,8 @@ private boolean validateNextByte(TrieParserReader trieReader, int idx) {
 }
 
 private void sendRelease(long channel, final int idx) {
-	if (channel<0) {
-		throw new UnsupportedOperationException("channel must exist");
-	}
+
+	assert(channel>=0) : "channel must exist";
 	assert(inputSlabPos[idx]>=0);
 	Pipe.presumeRoomForWrite(releasePipe);
 	

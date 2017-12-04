@@ -114,17 +114,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     };    
     
-    private long connectionIdToRemove = -1;
-    private final Consumer<SelectionKey> selectionKeyRemoval = new Consumer<SelectionKey>(){
-			@Override
-			public void accept(SelectionKey selection) {
-				
-				if ((connectionIdToRemove == ((ConnectionContext)selection.attachment()).getChannelId())
-					&& (!doneSelectors.contains(selection))) {
-						removeSelection(selection);		
-				}
-			}
-    };  
+//    private long connectionIdToRemove = -1;
+//    private final Consumer<SelectionKey> selectionKeyRemoval = new Consumer<SelectionKey>(){
+//			@Override
+//			public void accept(SelectionKey selection) {
+//				
+//				if ((connectionIdToRemove == ((ConnectionContext)selection.attachment()).getChannelId())
+//					&& (!doneSelectors.contains(selection))) {
+//						removeSelection(selection);		
+//				}
+//			}
+//    };  
     
     @Override
     public void run() {
@@ -299,8 +299,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
 	    				    			
 	    			//remove any selection keys associated with this connection...	    			
-	    			connectionIdToRemove = connectionId;
-	    			selector.selectedKeys().forEach(selectionKeyRemoval);
+	    	//		connectionIdToRemove = connectionId;
+	    	//		selector.selectedKeys().forEach(selectionKeyRemoval);
 	    			
 	    			
 	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
@@ -313,8 +313,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			releaseIfUnused(msgIdx, connectionId, pos, -1);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
 	    			
-	    			connectionIdToRemove = connectionId;
-	    			selector.selectedKeys().forEach(selectionKeyRemoval);
+	    		//	connectionIdToRemove = connectionId;
+	    		//	selector.selectedKeys().forEach(selectionKeyRemoval);
 	    			
 	    		} else {
 	    			logger.info("unknown or shutdown on release");

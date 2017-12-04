@@ -792,15 +792,16 @@ public class NetGraphBuilder {
 						
 			private final String[] routes = new String[] {
 					 "/"
-					,"/jquery-3.2.1.min.js"
-					,"/viz-lite.js"
-					,"/webworker.js"
-					,"/ws.html"					
+					//,"/jquery-3.2.1.min.js"
+					//,"/viz-lite.js"
+					//,"/webworker.js"
+					//,"/ws.html"					
 					,"/graph.dot"
 					,"/dataView?pipeId=#{pipeId}"
 					,"/histogram/pipeFull?pipeId=#{pipeId}"
 					,"/histogram/stageElapsed?stageId=#{stageId}"
 					,"/WS1/example" //server side websocket example
+					,"/${path}"
 					
 			};
 			
@@ -834,46 +835,15 @@ public class NetGraphBuilder {
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/","index.html");						
 						break;
+
 						case 1:
-						activeStage = ResourceModuleStage.newInstance(graphManager, 
-								inputPipes, 
-								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-								"telemetry/","jquery-3.2.1.min.js");						
-						break;
-						case 2:
-						activeStage = ResourceModuleStage.newInstance(graphManager, 
-								inputPipes, 
-								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-								"telemetry/","viz-lite.js");						
-						break;
-						case 3:
-						activeStage = ResourceModuleStage.newInstance(graphManager, 
-								inputPipes, 
-								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-								"telemetry/","webworker.js");						
-						break;
-						case 4:
-						activeStage = ResourceModuleStage.newInstance(graphManager, 
-								inputPipes, 
-								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-								"telemetry/","ws.html");						
-						break;
-						case 5:
 						activeStage = DotModuleStage.newInstance(graphManager, 
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
 										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
-						case 6:
+						case 2:
 						
 					
 							//One module for each file??
@@ -891,7 +861,7 @@ public class NetGraphBuilder {
 																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
-						case 7:
+						case 3:
 						//TODO: replace this code with the actual pipe full histogram
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
@@ -899,7 +869,7 @@ public class NetGraphBuilder {
 									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
-						case 8:
+						case 4:
 						//TODO: replace this code with the actual stage elapsed histogram
 							activeStage = new DummyRestStage(graphManager, 
 			                          inputPipes, 
@@ -907,7 +877,7 @@ public class NetGraphBuilder {
 									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
-						case 9:
+						case 5:
 						//TODO: replace this code with the actual pipe full histogram
 							
 							activeStage = new UpgradeToWebSocketStage(graphManager, 
@@ -917,7 +887,38 @@ public class NetGraphBuilder {
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							
 							break;
-							
+							case 6:
+							activeStage = ResourceModuleStage.newInstance(graphManager, 
+									inputPipes, 
+									staticFileOutputs = Pipe.buildPipes(instances, 
+											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+									"telemetry/",null);						
+							break;
+//							case 2:
+//							activeStage = ResourceModuleStage.newInstance(graphManager, 
+//									inputPipes, 
+//									staticFileOutputs = Pipe.buildPipes(instances, 
+//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+//									"telemetry/","viz-lite.js");						
+//							break;
+//							case 3:
+//							activeStage = ResourceModuleStage.newInstance(graphManager, 
+//									inputPipes, 
+//									staticFileOutputs = Pipe.buildPipes(instances, 
+//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+//									"telemetry/","webworker.js");						
+//							break;
+//							case 4:
+//							activeStage = ResourceModuleStage.newInstance(graphManager, 
+//									inputPipes, 
+//									staticFileOutputs = Pipe.buildPipes(instances, 
+//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+//									"telemetry/","ws.html");						
+//							break;
 						default:
 							
 	
@@ -933,7 +934,7 @@ public class NetGraphBuilder {
 						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
 					}
 					
-				if (a==9) {
+				if (a==5) {
 					routerConfig.registerRoute(
 				             getPathRoute(a)
 //				             ,HTTPHeaderDefaults.ORIGIN.rootBytes()

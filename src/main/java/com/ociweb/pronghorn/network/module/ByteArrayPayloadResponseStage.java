@@ -91,6 +91,8 @@ public abstract class ByteArrayPayloadResponseStage <
 			
 		}		
 		
+		//TODO: we may need multiple pipes?? not sure about blocking..
+		
 		//only do when previous is complete.
 		if (null == activeOutput) {
 			int i = this.inputs.length;
