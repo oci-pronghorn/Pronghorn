@@ -2318,62 +2318,68 @@ public class GraphManager {
 		//Does not track this data if it will no be used by telemetry
 		//this saves CPU cycles
 		if (isTelemetryEnabled(graphManager)) {
-		
 			if (duration>0) {
-				
-				long last = graphManager.stageLastTimeNs[stageId];
-				
-				if (last>0 && last<now) {
-					long cycleDuration = now-last;
-					
-					if (recordElapsedTime) {
-						
-						buildHistogramsAsNeeded(graphManager, stageId);
-						ElapsedTimeRecorder.record(graphManager.stageElapsed[stageId], duration);
-	
-					}
-	
-					long newPct = ((100_000L*duration)/cycleDuration);
-					
-					int oldPct = graphManager.stageCPUPct[stageId];
-					long combined = newPct+(9999L*oldPct);//exponential moving avg
-					graphManager.stageCPUPct[stageId] = (int)(combined/10000L); 
-					
-					
-				}
-				
-				//we have the running pct since startup but we need a recent rolling value.
-				graphManager.stageLastTimeNs[stageId] = now;
-				
-				//this total duration is also used as the baseline for the histogram of elapsed time
-				graphManager.stageRunNS[stageId] += duration;			
+				accumPositiveTime(graphManager, stageId, duration, now);			
 			} else {
-				
-				PronghornStage stage = getStage(graphManager, stageId);
-				
-				if ((stage instanceof PipeCleanerStage) ||
-					(stage instanceof ReplicatorStage) ) {
-					
-					//these can be very fast and should not be logged.
-					
-				} else {
-				
-					int x = totalZeroDurations.incrementAndGet();
-									
-					if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
-						if (duration<0) {
-							logger.info("Bad duration {}",duration);
-						} else {
-							logger.info("Warning: the OS has measured stages taking zero ms {} times. "
-								+ "Most recent case is for {}.", x, stage);
-						}
-					}
-					
-					graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
-				}
+				accumWhenZero(graphManager, stageId, duration);
 			}
 		}
 		
+	}
+
+	private static void accumPositiveTime(GraphManager graphManager, int stageId, long duration, long now) {
+		long[] stageLastTimeNsLocal = graphManager.stageLastTimeNs;
+		long last = stageLastTimeNsLocal[stageId];
+		
+		if (last>0 && last<now) {
+			accumDuration(graphManager, stageId, duration, now, last); 
+		}
+		
+		//we have the running pct since startup but we need a recent rolling value.
+		stageLastTimeNsLocal[stageId] = now;
+		
+		//this total duration is also used as the baseline for the histogram of elapsed time
+		graphManager.stageRunNS[stageId] += duration;
+	}
+
+	private static void accumDuration(GraphManager graphManager, int stageId, long duration, long now, long last) {
+		if (recordElapsedTime) {
+			
+			buildHistogramsAsNeeded(graphManager, stageId);
+			ElapsedTimeRecorder.record(graphManager.stageElapsed[stageId], duration);
+
+		}
+
+		long newPct = ((100_000L*duration)/(now-last));		
+		int oldPct = graphManager.stageCPUPct[stageId];
+		
+		//exponential moving avg 8K average
+		graphManager.stageCPUPct[stageId] = (int)((newPct+( ((1L<<13)-1L) *oldPct)) >>13);
+	}
+
+	private static void accumWhenZero(GraphManager graphManager, int stageId, long duration) {
+		PronghornStage stage = getStage(graphManager, stageId);
+		
+		if ((stage instanceof PipeCleanerStage) ||
+			(stage instanceof ReplicatorStage) ) {
+			
+			//these can be very fast and should not be logged.
+			
+		} else {
+		
+			int x = totalZeroDurations.incrementAndGet();
+							
+			if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
+				if (duration<0) {
+					logger.info("Bad duration {}",duration);
+				} else {
+					logger.info("Warning: the OS has measured stages taking zero ms {} times. "
+						+ "Most recent case is for {}.", x, stage);
+				}
+			}
+			
+			graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
+		}
 	}
 
 	private static void buildHistogramsAsNeeded(GraphManager graphManager, int stageId) {
