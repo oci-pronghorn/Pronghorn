@@ -111,8 +111,9 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 		boolean didWork = false;
 		//NOTE: the output writer is the high level while input is the low level.
-		while ( Pipe.hasRoomForWrite(output) &&
-				Pipe.hasContentToRead(input)) {
+		while ( (activeChannelId == -1)
+				&& Pipe.hasRoomForWrite(output) 
+				&& Pipe.hasContentToRead(input)) {
 			
 			didWork = true;
 			//logger.trace("has room and has data to write out from "+input);
