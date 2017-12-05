@@ -109,8 +109,9 @@ public abstract class ByteArrayPayloadResponseStage <
 			             Pipe<ServerResponseSchema> output) {
 		
 		//output is using the high level and input is the low level
-		while ( PipeWriter.hasRoomForWrite(output) &&
-				Pipe.hasContentToRead(input)) {
+		while ( (activeChannelId == -1)//only call if we finished the previous run
+				 && PipeWriter.hasRoomForWrite(output) 
+				 && Pipe.hasContentToRead(input)) {
 			
 			//logger.trace("has room and has data to write out from "+input);
 		    
@@ -159,10 +160,12 @@ public abstract class ByteArrayPayloadResponseStage <
 	private int payloadMask;
 	
 	protected void definePayload(byte[] backing, int pos, int len, int mask) {
+
 		this.payloadBacking=backing;
 		this.payloadPos = pos;
 		this.payloadLength = len;
 		this.payloadMask = mask;
+		
 	}
 	
 
@@ -210,8 +213,9 @@ public abstract class ByteArrayPayloadResponseStage <
 		//logger.trace("built new header response of length "+length);
 		
 		appendPrefix(PipeWriter.outputStream(output));
-		
+
 		appendRemainingPayload(output);
+
 		return true;
 	}
 	
@@ -252,6 +256,7 @@ public abstract class ByteArrayPayloadResponseStage <
 			
 			}
 			workingPosition += sendLength;
+	
 		}
 		
 		if (workingPosition == payloadLength) {

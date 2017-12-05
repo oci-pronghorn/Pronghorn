@@ -97,11 +97,16 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 
 		String fileName = defaultName;
 		if (params.available()>0) {
-			fileName = params.readUTF();
+			final int len = params.readShort();	//will be zero length for plain root
+			if (len>0) {			
+				fileName = params.readUTFOfLength(len);			
+			}
+			//logger.info("request for {} len {}",fileName,fileName.length());
 		}
-		
 		int fileIdx = (int)TrieParserReader.query(parserReader, parser, fileName);
 
+		//logger.info("request for {} fileIdx {} ",fileName,fileIdx);
+		
 		if (fileIdx<0) {
 			
 			if (fileName.indexOf("..")>=0) {
@@ -169,7 +174,8 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		}
 		
 		activeFileIdx = fileIdx;
-		
+				
+		//logger.info("request for {} sent {} ",fileName, resource[fileIdx].length);
 		definePayload(resource[fileIdx], 0, resource[fileIdx].length, Integer.MAX_VALUE);		
 		return eTag[fileIdx];
 	}

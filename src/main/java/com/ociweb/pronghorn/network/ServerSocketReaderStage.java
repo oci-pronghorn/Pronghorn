@@ -7,7 +7,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -23,7 +22,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 public class ServerSocketReaderStage extends PronghornStage {
    
@@ -95,8 +93,7 @@ public class ServerSocketReaderStage extends PronghornStage {
            throw new RuntimeException(e);
         }
         //logger.debug("selector is registered for pipe {}",pipeIdx);
-        
-        
+       
     }
     
     @Override
@@ -105,7 +102,6 @@ public class ServerSocketReaderStage extends PronghornStage {
        
         logger.trace("server reader has shut down");
     }
-
     
     private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
 			@Override
@@ -113,18 +109,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 				processSelection(selection); 
 			}
     };    
-    
-//    private long connectionIdToRemove = -1;
-//    private final Consumer<SelectionKey> selectionKeyRemoval = new Consumer<SelectionKey>(){
-//			@Override
-//			public void accept(SelectionKey selection) {
-//				
-//				if ((connectionIdToRemove == ((ConnectionContext)selection.attachment()).getChannelId())
-//					&& (!doneSelectors.contains(selection))) {
-//						removeSelection(selection);		
-//				}
-//			}
-//    };  
     
     @Override
     public void run() {
@@ -259,11 +243,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            } else {		            	
 		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
-		           // logger.info("pushed data out");
+		            //logger.trace("pushed data out");
+		            
 		            if ((++rMask&0x3F) == 0) {
-		             releasePipesForUse(); //must run but not on every pass
+		            	releasePipesForUse(); //must run but not on every pass
 		            }
-		           // logger.info("finished pipe release");
+		            //logger.trace("finished pipe release");
 				}
 		        
 		}
@@ -291,18 +276,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			long connectionId = Pipe.takeLong(a);
 	    			
 	    			//logger.info("release with sequence id {}",connectionId);
-	    				    			
-	    			
+	    		
 	    			long pos = Pipe.takeLong(a);	    			
 	    			int seq = Pipe.takeInt(a);	    				    			
 	    			releaseIfUnused(msgIdx, connectionId, pos, seq);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
-	    				    			
-	    			//remove any selection keys associated with this connection...	    			
-	    	//		connectionIdToRemove = connectionId;
-	    	//		selector.selectedKeys().forEach(selectionKeyRemoval);
-	    			
-	    			
+
 	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
 	    			
 	    			logger.info("warning, legacy (client side) release use detected in the server.");
@@ -312,10 +291,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			long pos = Pipe.takeLong(a);	    					
 	    			releaseIfUnused(msgIdx, connectionId, pos, -1);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
-	    			
-	    		//	connectionIdToRemove = connectionId;
-	    		//	selector.selectedKeys().forEach(selectionKeyRemoval);
-	    			
+	  
 	    		} else {
 	    			logger.info("unknown or shutdown on release");
 	    			assert(-1==msgIdx);

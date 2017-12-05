@@ -192,7 +192,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (coordinator.isTLS) {
 			
 			HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-			//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
+			logger.info("has handshakeStatus data for {} {} {}",cc,cc.isValid(),handshakeStatus);
   
 			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 			

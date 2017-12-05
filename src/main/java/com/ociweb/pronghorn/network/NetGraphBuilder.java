@@ -791,18 +791,13 @@ public class NetGraphBuilder {
 			
 						
 			private final String[] routes = new String[] {
-					 "/"
-					//,"/jquery-3.2.1.min.js"
-					//,"/viz-lite.js"
-					//,"/webworker.js"
-					//,"/ws.html"					
+					 "/${path}"			
 					,"/graph.dot"
 					,"/dataView?pipeId=#{pipeId}"
 					,"/histogram/pipeFull?pipeId=#{pipeId}"
 					,"/histogram/stageElapsed?stageId=#{stageId}"
 					,"/WS1/example" //server side websocket example
-					,"/${path}"
-					
+							
 			};
 			
 			public CharSequence getPathRoute(int a) {
@@ -887,46 +882,9 @@ public class NetGraphBuilder {
 			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							
 							break;
-							case 6:
-							activeStage = ResourceModuleStage.newInstance(graphManager, 
-									inputPipes, 
-									staticFileOutputs = Pipe.buildPipes(instances, 
-											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-									"telemetry/",null);						
-							break;
-//							case 2:
-//							activeStage = ResourceModuleStage.newInstance(graphManager, 
-//									inputPipes, 
-//									staticFileOutputs = Pipe.buildPipes(instances, 
-//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-//									"telemetry/","viz-lite.js");						
-//							break;
-//							case 3:
-//							activeStage = ResourceModuleStage.newInstance(graphManager, 
-//									inputPipes, 
-//									staticFileOutputs = Pipe.buildPipes(instances, 
-//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-//									"telemetry/","webworker.js");						
-//							break;
-//							case 4:
-//							activeStage = ResourceModuleStage.newInstance(graphManager, 
-//									inputPipes, 
-//									staticFileOutputs = Pipe.buildPipes(instances, 
-//											 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-//									(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-//									"telemetry/","ws.html");						
-//							break;
-						default:
-							
-	
-							
-							
-							
-							
-							throw new RuntimeException("unknonw idx "+a);
+							default:
+														
+							throw new RuntimeException("unknown idx "+a);
 					}
 					
 					if (null!=activeStage) {
