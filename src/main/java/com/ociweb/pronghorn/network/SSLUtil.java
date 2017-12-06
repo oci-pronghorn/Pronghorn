@@ -1,18 +1,20 @@
 package com.ociweb.pronghorn.network;
 
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
 
 public class SSLUtil {
 
@@ -95,7 +97,7 @@ public class SSLUtil {
 				    }
 				    return;
 				}
-			} while(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_WRAP); //what about TODO: outgoing pipe will fill up?
+			} while(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_WRAP); 
 			
 					
 		} catch (SSLException e) {
@@ -233,7 +235,7 @@ public class SSLUtil {
 		int meta = Pipe.takeRingByteMetaData(source);
 		int len = Pipe.takeRingByteLen(source);		
 		ByteBuffer[] inputs =  Pipe.wrappedReadingBuffers(source, meta, len);
-			
+
 		assert(inputs[0].remaining()>0);
 		
 		cc.localRunningBytesProduced = 0;
@@ -241,7 +243,7 @@ public class SSLUtil {
 			//if we have some rolling data from previously
 			ByteBuffer firstPartOfBuffer = inputs[0];
 			
-			if (rolling.position()==0) {
+			if (rolling.position()==0) {			
 		//		System.err.println(source.id+"A "+firstPartOfBuffer+"  "+inputs[1]);
 				try {
 					result = unwrap(maxEncryptedContentLength, firstPartOfBuffer, targetBuffer, cc);
@@ -261,6 +263,7 @@ public class SSLUtil {
 				assert(0==firstPartOfBuffer.remaining());
 			}
 		} else {
+			
 			assert(inputs[0].hasRemaining());
 			assert(inputs[1].hasRemaining());
 			
@@ -287,11 +290,9 @@ public class SSLUtil {
 			/////////////
 			
 			assert(sourceBuffer.remaining()<=maxEncryptedContentLength);
-						
-			
+
 			result = cc.getEngine().unwrap(sourceBuffer, targetBuffer);//common case where we can unwrap directly from the pipe.
-			//System.err.println("B unwrapped bytes produced "+result.bytesProduced()+"  "+result.getStatus());
-			
+
 			sourceBuffer.limit(origLimit);//restore the limit so we can keep the remaining data (only critical for openSSL compatibility, see above)
 			assert(cc.localRunningBytesProduced>=0);
 			cc.localRunningBytesProduced += result.bytesProduced();
@@ -416,22 +417,19 @@ public class SSLUtil {
 		 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
 		 int didWork = 0;
 		 while (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus && HandshakeStatus.FINISHED != handshakeStatus) {
-			 //logger.info("handshake {} {}",handshakeStatus,cc.getId());
+			// logger.info("unwrap handshake {} {}",handshakeStatus,cc.getId());
 		
 			 if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 				handshakeWrapLogic(cc, handshakePipe, secureBuffer, isServer, arrivalTime);
-				handshakeStatus = cc.getEngine().getHandshakeStatus();	
-			 } else
-			 
-			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
-	                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
+				handshakeStatus = cc.getEngine().getHandshakeStatus();
+				
+			 } else if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+	                Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.
 	                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 	                	task.run();
 	                }
 	                handshakeStatus = cc.getEngine().getHandshakeStatus();
-			 } else
-			 
-			 if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {
+			 } else if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {
 				// logger.info("server {} doing the unwrap now for {}  {}",isServer, cc.getId(), System.identityHashCode(cc));
 			
 				 	if (!Pipe.hasContentToRead(source)) {
@@ -744,7 +742,7 @@ public class SSLUtil {
 					///////////
 					
 				} else if (didWork==1) {	
-				//	logger.info("finished shake");
+					//logger.info("finished shake");
 					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {						
 						sendRelease(source, releasePipe, cc, isServer);
 					}
@@ -754,12 +752,9 @@ public class SSLUtil {
 						///////////////////
 					}
 				} else {
-				//	logger.info("finished shake2");
+					//logger.info("finished shake2");
 					assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
 					//we can begin processing data now.
-					
-					
-					//send begin here??
 					
 					assert(null!=cc);
 					
@@ -845,9 +840,7 @@ public class SSLUtil {
 			
 			SSLEngineResult result = result1;
 			Status status = null==result?null:result.getStatus();			
-			
-		//	logger.info("input status {}", status);
-			
+	
 			if ((null==status || Status.OK==status) && rolling.position()>0) { //rolling has content to consume
 				rolling.flip();	
 				
