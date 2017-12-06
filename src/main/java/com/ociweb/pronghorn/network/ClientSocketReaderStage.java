@@ -113,7 +113,7 @@ public class ClientSocketReaderStage extends PronghornStage {
         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
 
            Set<SelectionKey> selectedKeys = selector.selectedKeys();
-            
+
            assert(selectedKeys.size()>0);	            
            
            doneSelectors.clear();
@@ -192,8 +192,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (coordinator.isTLS) {
 			
 			HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-			logger.info("has handshakeStatus data for {} {} {}",cc,cc.isValid(),handshakeStatus);
-  
+			//if (cc.isValid()) {
+			//	logger.info("has handshakeStatus data for {} {}",cc,handshakeStatus);
+			//}
+			
 			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 			
 		            Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.
