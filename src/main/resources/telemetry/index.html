@@ -240,11 +240,10 @@
                         $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") );
 
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
-                        $( ".minimap-node" ).remove(); //Remove the pre-filled mini map nodes
+                        isFirst = false;
+                        $( ".minimap-node" ).remove(); //Remove the pre-filled mini map
 
                         $("#minimap").append("<div class=\"minimap-node\" id=\"svg-preview\"></div>");
-
-                        isFirst = false;
                     }
 
                     $("#svg-preview").html(result);
@@ -254,12 +253,11 @@
 
                     $("#graph0 title").remove();
                     
-                    /*
                     $( "#demo svg #graph0 .edge path" ).hover(function() {
                         $(this).attr("stroke-width", "3px");
                     }).mouseleave(function() {
                         $(this).attr("stroke-width", "1px");
-                    });*/
+                    });
                 };
             }
         }
