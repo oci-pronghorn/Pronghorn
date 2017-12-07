@@ -111,25 +111,6 @@
 		function init() {
 			$minimap.find( ".minimap-node" ).remove();
 			//creating mini version of the supplied children
-			$mapSource.children().each( function() {
-				var $child = $( this );
-				var mini = $( "<div></div>" ).addClass( "minimap-node" );
-				$minimap.append( mini );
-				var ratioX = minimapWidth / $mapSource[ 0 ].scrollWidth;
-				var ratioY = minimapHeight / $mapSource[ 0 ].scrollHeight;
-
-				var wM = $child.width() * ratioX;
-				var hM = $child.height() * ratioY;
-				var xM = ($child.position().left + $mapSource.scrollLeft()) * ratioX;
-				var yM = ($child.position().top + $mapSource.scrollTop()) * ratioY;
-
-				mini.css( {
-					width : Math.round( wM ),
-					height : Math.round( hM ),
-					left : Math.round( xM ),
-					top : Math.round( yM + 200)
-				} );
-			} );
 		}
 
 		init();

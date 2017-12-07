@@ -1,4 +1,4 @@
-self.importScripts('viz-lite.js');
+self.importScripts('js/viz-lite.js');
 
 function httpGet(theUrl, onSuccess, onError) {
   var xmlHttp = new XMLHttpRequest();

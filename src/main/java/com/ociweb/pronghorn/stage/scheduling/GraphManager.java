@@ -2218,7 +2218,7 @@ public class GraphManager {
     private int    			telemetryPort=-1;
     
     //TODO: do not enable until the index.html can use https for its call back...
-    private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
+    private TLSCertificates telemetryCert = TLSCertificates.defaultCerts;
     
     public String enableTelemetry(String host, int port) {
     	telemetryHost = host;
