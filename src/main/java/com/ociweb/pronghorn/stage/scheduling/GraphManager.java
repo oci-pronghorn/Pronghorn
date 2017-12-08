@@ -1447,15 +1447,11 @@ public class GraphManager {
 	
 	@SuppressWarnings("unchecked")
     public static <S extends MessageSchema<S>> Pipe<S> getOutputPipe(GraphManager m, int stageId, int ordinalOutput) {
+		assert(ordinalOutput>0);
+		assert(ordinalOutput<=getOutputPipeCount(m,stageId));
 		
-		int ringId;
-		int idx = m.stageIdToOutputsBeginIdx[stageId];
-		while (-1 != (ringId=m.multOutputIds[idx++])) {		
-			if (--ordinalOutput<=0) {
-				return m.pipeIdToPipe[ringId];
-			}
-		}	
-		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinalOutput);
+		return m.pipeIdToPipe[m.multOutputIds[m.stageIdToOutputsBeginIdx[stageId]+ordinalOutput-1]];
+
 	}
 	
 	public static int getOutputPipeCount(GraphManager m, int stageId) {
@@ -1485,15 +1481,18 @@ public class GraphManager {
 	
 	@SuppressWarnings("unchecked")
     public static <S extends MessageSchema<S>> Pipe<S> getInputPipe(GraphManager m, int stageId, int ordinalInput) {
-		int ringId;
-		int idx = m.stageIdToInputsBeginIdx[stageId];
-		while (-1 != (ringId=m.multInputIds[idx++])) {	
-			if (--ordinalInput<=0) {
-				return m.pipeIdToPipe[ringId];
-			}				
-		}				
-		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested input ordinal "+ordinalInput);
+		assert(ordinalInput>0);
+		assert(ordinalInput<=getInputPipeCount(m,stageId));
+		return m.pipeIdToPipe[m.multInputIds[m.stageIdToInputsBeginIdx[stageId]+ordinalInput-1]];
 	}
+	
+    public static <S extends MessageSchema<S>> int getInputPipeId(GraphManager m, int stageId, int ordinalInput) {
+    	assert(ordinalInput>0);
+    	assert(ordinalInput<=getInputPipeCount(m,stageId));
+    	int idx = m.stageIdToInputsBeginIdx[stageId];
+	   	assert(m.multInputIds[idx+ordinalInput-1]>=0) : "bad value";
+    	return m.multInputIds[idx+ordinalInput-1];    	
+    }
 	
 	public static int getInputPipeCount(GraphManager m, PronghornStage stage) {
 		return getInputPipeCount(m, stage.stageId);

@@ -80,9 +80,20 @@ public class ServerNewConnectionStage extends PronghornStage{
     @Override
     public void startup() {
 
+    	/////////////////////////////////////////////////////////////////////////////////////
+    	//The trust manager MUST be established before any TLS connection work begins
+    	//If this is not done there can be race conditions as to which certs are trusted...
+    	if (coordinator.isTLS) {
+    		coordinator.engineFactory.initTLSService();
+    	}
+    	logger.trace("init of Server TLS called {}",coordinator.isTLS);
+    	/////////////////////////////////////////////////////////////////////////////////////
+    	
+
     	SocketAddress endPoint = null;
 
     	try {
+    		
             //logger.info("startup of new server");
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.

@@ -89,7 +89,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				int len1 = null==o1 ? -1 : mon1 ? Integer.MAX_VALUE : o1.length;
 				int len2 = null==o2 ? -1 : mon2 ? Integer.MAX_VALUE : o2.length;
 
-				return len2-len1;
+				return (len2>len1)?1:(len2<len1)?-1:0;
 			}
 	    	
 	    };
@@ -571,7 +571,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						lazyCreateOfArray(rootMemberCounter, stageArrays, root);
 						addsCount = add(stageArrays, stage, 
 												root, graphManager, rootsTable, 
-												lastKnownRoot, addsCount, rootMemberCounter, false);
+												lastKnownRoot, addsCount, 
+												rootMemberCounter, false, true);
 		    			
 		    		}
 					
@@ -598,7 +599,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						lazyCreateOfArray(rootMemberCounter, stageArrays, root);
 						addsCount = add(stageArrays, stage, 
 												root, graphManager, rootsTable, 
-												lastKnownRoot, addsCount, rootMemberCounter, false);
+												lastKnownRoot, addsCount, 
+												rootMemberCounter, false, true);
 		    			
 		    		}
 					
@@ -625,7 +627,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						lazyCreateOfArray(rootMemberCounter, stageArrays, root);
 						addsCount = add(stageArrays, stage, 
 												root, graphManager, rootsTable, 
-												lastKnownRoot, addsCount, rootMemberCounter, false);
+												lastKnownRoot, addsCount, 
+												rootMemberCounter, false, true);
 		    			
 		    		}
 					
@@ -654,7 +657,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 		    		addsCount = add(stageArrays, stage, 
 									root, graphManager, rootsTable, 
-									lastKnownRoot, addsCount, rootMemberCounter, true);
+									lastKnownRoot, addsCount, rootMemberCounter, true, false);
 					
 		    	}
 		    }
@@ -767,7 +770,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static int add(PronghornStage[][] stageArrays, PronghornStage stage,
 			              final int root, final GraphManager graphManager, 
 			              final IntHashTable rootsTable, IntArrayHolder lastKnownRoot,
-			              int count, int[] rootMemberCounter, boolean log) {
+			              int count, int[] rootMemberCounter, boolean log, boolean doNotOrder) {
 
 		PronghornStage[] pronghornStages = stageArrays[root];
 				
@@ -793,7 +796,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 		int outputCount = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
 		
-		if (GraphManager.hasNota(graphManager, stage.stageId, GraphManager.LOAD_BALANCER)) {
+		boolean simpleAddInOrder = GraphManager.hasNota(graphManager, stage.stageId, GraphManager.LOAD_BALANCER);
+		
+		if (simpleAddInOrder) {
 
 			//load balancer must add all left to right as they are defined.
 			for(int r = 1; r<=outputCount; r++) {
@@ -813,8 +818,31 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			}
 			
 			for(int r = 1; r<=outputCount; r++) {
-				int consumerId = GraphManager.getRingConsumerId(graphManager, GraphManager.getOutputPipe(graphManager, stage, r).id);
-				tempRanks[r] = getNearnessRank(consumerId, graphManager, pronghornStages);
+				
+				int consumerId = GraphManager.getRingConsumerId(
+						graphManager, 
+						GraphManager.getOutputPipe(
+								graphManager, 
+								stage, 
+								r).id);
+
+				if (doNotOrder) {
+				
+					if (GraphManager.hasNota(graphManager, consumerId, GraphManager.TRIGGER)) {
+						tempRanks[r] =  -1;
+					} else {
+						tempRanks[r] = 1;
+					}
+					
+				} else {
+					
+					tempRanks[r] = getNearnessRank(
+							consumerId, graphManager, pronghornStages);
+					
+				}
+				
+				
+				
 			}
 						
 			int targetRank = -1;
@@ -883,7 +911,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		if (localRootId==root) {
 			count = add(stageArrays, GraphManager.getStage(graphManager, consumerId),
 					     root, graphManager, rootsTable, lastKnownRoot, count, 
-					     rootMemberCounter, log);
+					     rootMemberCounter, log, false);
 		} else {
 			lazyCreateOfArray(rootMemberCounter, stageArrays, localRootId);
 			PronghornStage[] otherArray = stageArrays[localRootId];
@@ -892,7 +920,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//at this point we have changed nodes since this is an entry point.
 				count = add(stageArrays, GraphManager.getStage(graphManager, consumerId),
 						localRootId, graphManager, rootsTable, lastKnownRoot,
-						count, rootMemberCounter, log);
+						count, rootMemberCounter, log, true);
 			}
 		}
 		////////
@@ -918,22 +946,25 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 		
 		int maxSteps = 0;
+		final int stepsLimit = 200;//do not look past this point its not helpful
 		int inC = GraphManager.getInputPipeCount(graphManager, consumerId);
-		for(int j = 1; j<=inC; j++) {
+		for(int j = 1; j<= inC; j++) {
 			
-			int prodId = GraphManager.getRingProducerId(graphManager, GraphManager.getInputPipe(graphManager, consumerId, j).id);
+			int prodId = GraphManager.getRingProducerId(graphManager, GraphManager.getInputPipeId(graphManager, consumerId, j));
 			
 			int x = pronghornStages.length;
 			int steps = 0;
 			while (--x>=0) {
-				if (null != pronghornStages[x]) {
-					if (prodId == pronghornStages[x].stageId) {
+				PronghornStage pronghornStage = pronghornStages[x];
+				if (null != pronghornStage) {
+					if (prodId == pronghornStage.stageId || steps>=stepsLimit) {
 						break;
 					} else {
 						steps++;//count how many steps back
 					}
 				}
 			}
+
 			if (x<0) {
 				//was not found, so this gets the longest distance
 				steps = Integer.MAX_VALUE;
@@ -1011,7 +1042,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
         } catch (InterruptedException e) {
         } catch (BrokenBarrierException e) {
         }
-		logger.trace("all started up");
+		logger.trace("all stages started up");
 		
 	}
 

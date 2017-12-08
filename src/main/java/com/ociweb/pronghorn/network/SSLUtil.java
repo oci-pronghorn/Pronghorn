@@ -982,4 +982,40 @@ public class SSLUtil {
 		Pipe.publishWrites(release);
 	}
 
+	public static boolean handshakeProcessing(Pipe<NetPayloadSchema> pipe, SSLConnection con) {
+		boolean result = true;
+		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
+		do {
+		    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
+		         Runnable task;
+		         while ((task = con.getEngine().getDelegatedTask()) != null) {
+		            	task.run(); 
+		         }
+		       hanshakeStatus = con.getEngine().getHandshakeStatus();
+		    } 
+		    
+		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
+		    	if (Pipe.hasRoomForWrite(pipe)) {
+		    		
+		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+		    		Pipe.addLongValue(con.getId(), pipe);//connection
+		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
+		    		Pipe.addLongValue(HANDSHAKE_POS, pipe); //signal that WRAP is needed 
+		    		
+		    		Pipe.addByteArray(OrderSupervisorStage.EMPTY, 0, 0, pipe);
+		    		
+		    		Pipe.confirmLowLevelWrite(pipe, size);
+		    		Pipe.publishWrites(pipe);
+		    		
+		    	} else {
+		    		result = false;
+					//no room to request wrap, try later
+		        	break;
+				}
+		    } 
+		} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
+		assert(HandshakeStatus.NEED_UNWRAP != hanshakeStatus) : "Unexpected unwrap request";
+		return result;
+	}
+
 }

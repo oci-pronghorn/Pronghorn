@@ -24,6 +24,11 @@ class SSLEngineFactory {
         return getService().maxEncryptedContentLength();
     }
 
+    public void initTLSService() {
+    	//ensure that we have a trust manager in place BEFORE we start accepting connections
+    	getService();
+    }
+    
     private TLSService getService() {
         if (privateService==null) {
             InputStream keyInputStream = null;

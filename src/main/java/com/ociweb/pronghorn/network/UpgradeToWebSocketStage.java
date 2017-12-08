@@ -138,6 +138,7 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 		        	//* we will need to give it an id so the behaviors can see it as a serial device?
 		        	
 		        	System.err.println("web socket upgrade request XXXXXXXXXXXXXXXXXXXXXXxxx");
+		        	
 					long fieldChannelId = Pipe.takeLong(input);
 					int fieldSequence = Pipe.takeInt(input);
 					

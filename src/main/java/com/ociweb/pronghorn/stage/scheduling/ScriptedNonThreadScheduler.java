@@ -36,7 +36,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private static final long MS_TO_NS = 1_000_000;
 
     //set to true for faster response times but much greater cpu usage.
-	public static final boolean lowLatencyEnforced = false;
+	public static boolean lowLatencyEnforced = false;
 	
     private int[] producersIdx;
 
@@ -341,8 +341,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     /**
      * Stages have unknown dependencies based on their own internal locks and the pipe usages.  As a result we do not
-     * know the right order for starting them. Every stage is scheduled in a fixed thread pool to ensure every stage has
-     * the opportunity to be first, finish and wait on the others.
+     * know the right order for starting them. 
      */
     private void startupAllStages(final int stageCount) {
 
