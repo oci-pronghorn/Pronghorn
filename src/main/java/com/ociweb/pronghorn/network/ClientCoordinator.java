@@ -108,6 +108,17 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, TLSCertificates tlsCertificates) {
 		super(tlsCertificates);
+		
+		/////////////////////////////////////////////////////////////////////////////////////
+		//The trust manager MUST be established before any TLS connection work begins
+		//If this is not done there can be race conditions as to which certs are trusted...
+		if (isTLS) {
+			engineFactory.initTLSService();
+		}
+		logger.trace("init of Client TLS called {}",isTLS);
+		/////////////////////////////////////////////////////////////////////////////////////
+		
+		
 		int maxUsers = 1<<connectionsInBits;
 		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
 				

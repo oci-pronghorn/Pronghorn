@@ -340,27 +340,25 @@ public class ClientConnection extends SSLConnection {
 				int j = handshakeBegin.length;
 				while (--j>=0) {
 						
-					
-					Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
+					final Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
 					assert(null!=pipe);
 					
 					if (Pipe.hasRoomForWrite(pipe)) {
 					
-						logger.trace("ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
+						//Warning the follow on calls should be low level...
+						logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
 						
-						int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+						final int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 						Pipe.addLongValue(getId(), pipe);
 						Pipe.addLongValue(System.currentTimeMillis(), pipe);
 						Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe);
 						Pipe.addByteArray(EMPTY, 0, 0, pipe);
+						
 						Pipe.confirmLowLevelWrite(pipe, size);
 						Pipe.publishWrites(pipe);
 						
-						//we did it, hurrah
 						break;
-					} else {
-						logger.info("ERROR SCKIPPED THE REQUEST TO WRAP WRITE!!!!!!!!");
-					}
+					} 
 					
 					if (--c<0) {
 						c = handshakeBegin.length-1;

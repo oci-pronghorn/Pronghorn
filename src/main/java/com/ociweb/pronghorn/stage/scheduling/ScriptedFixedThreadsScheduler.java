@@ -1042,7 +1042,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
         } catch (InterruptedException e) {
         } catch (BrokenBarrierException e) {
         }
-		logger.trace("all started up");
+		logger.trace("all stages started up");
 		
 	}
 
