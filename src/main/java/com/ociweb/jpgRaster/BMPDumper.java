@@ -25,7 +25,7 @@ public class BMPDumper {
 		writeShort(file, height);
 		writeShort(file, 1);
 		writeShort(file, 24);
-		for (int i = 0; i < height; i++) {
+		for (int i = height - 1; i >= 0; i--) {
 			for (int j = 0; j < width; j++) {
 				file.writeByte(rgb[i * width + j].b);
 				file.writeByte(rgb[i * width + j].g);
@@ -48,8 +48,8 @@ public class BMPDumper {
 	}
 	
 	public static void writeShort(DataOutputStream stream, int v) throws IOException {
-		stream.writeByte((v & 0x000000FF));
-		stream.writeByte((v & 0x0000FF00) >>  8);
+		stream.writeByte((v & 0x00FF));
+		stream.writeByte((v & 0xFF00) >>  8);
 	}
 	
 	public static void main(String[] args) {
