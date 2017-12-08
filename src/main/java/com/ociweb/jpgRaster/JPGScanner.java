@@ -1,21 +1,23 @@
 package com.ociweb.jpgRaster;
 
+import java.io.DataInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.EOFException;
 import java.util.ArrayList;
 
 public class JPGScanner {
-	public static class HuffmanTable {
-		short tableID;
-		Boolean ACTable;
-		ArrayList<ArrayList<Integer>> symbols = new ArrayList<ArrayList<Integer>>();
-	}
-	
 	public static class QuantizationTable {
 		short tableID;
 		short precision;
-		ArrayList<Integer> table = new ArrayList<Integer>();
+		int[] table = new int[64];
+	}
+	
+	public static class HuffmanTable {
+		short tableID;
+		Boolean ACTable;
+		ArrayList<ArrayList<Integer>> symbols = new ArrayList<ArrayList<Integer>>(16);
 	}
 	
 	public static class FrameComponent {
@@ -32,37 +34,24 @@ public class JPGScanner {
 	}
 	
 	public static class Header {
-		// APP0
-		String identifier;
-		short versionMajor;
-		short versionMinor;
-		short densityUnits;
-		int xDensity;
-		int yDensity;
-		short xThumbnail;
-		short yThumbnail;
-		short[] thumbnailData;
-		
-		// DRI
-		int restartInterval;
+		// DQT
+		ArrayList<QuantizationTable> quantizationTables = new ArrayList<QuantizationTable>(4);
 		
 		// DHT
-		ArrayList<HuffmanTable> huffmanTables = new ArrayList<HuffmanTable>();
-		
-		// DQT
-		ArrayList<QuantizationTable> quantizationTables = new ArrayList<QuantizationTable>();
+		ArrayList<HuffmanTable> huffmanTables = new ArrayList<HuffmanTable>(4);
 		
 		// SOF
+		String frameType;
 		short precision;
 		int height;
 		int width;
-		ArrayList<FrameComponent> frameComponents = new ArrayList<FrameComponent>();
+		ArrayList<FrameComponent> frameComponents = new ArrayList<FrameComponent>(4);
 		
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
 		short successvieApproximation;
-		ArrayList<ScanComponent> scanComponents = new ArrayList<ScanComponent>();
+		ArrayList<ScanComponent> scanComponents = new ArrayList<ScanComponent>(4);
 		ArrayList<Integer> imageData = new ArrayList<Integer>();
 		
 		Boolean valid = true;
@@ -70,97 +59,131 @@ public class JPGScanner {
 	
 	public static Header ReadJPG(String filename) throws IOException {
 		Header header = new Header();
-		FileInputStream f = new FileInputStream(filename);
+		DataInputStream f = new DataInputStream(new FileInputStream(filename));
         
-		short last = (short)f.read();
-		short current = (short)f.read();
+		// JPG file must begin with 0xFFD8
+		short last = (short)f.readUnsignedByte();
+		short current = (short)f.readUnsignedByte();
 		if (last != 0xFF || current != 0xD8) {
 			header.valid = false;
 			f.close();
 			return header;
 		}
 		System.out.println("Start of Image");
-        last = (short)f.read();
-        current = (short)f.read();
+        last = (short)f.readUnsignedByte();
+        current = (short)f.readUnsignedByte();
 		
-        while (true) {            
-            if      (last == (short)0xFF && current == (short)0xE0) {
-            	ReadAPP0(f, header);
-            }
-            else if (last == (short)0xFF &&
-            		current >= (short)0xE1 && current <= (short)0xEF) {
-            	ReadAPPN(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xDB) {
-            	ReadQuantizationTable(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xC0) {
-            	ReadStartOfFrame_Baseline(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xC2) {
-            	ReadStartOfFrame_Progressive(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xC4) {
-            	ReadHuffmanTable(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xDA) {
-            	ReadStartOfScan(f, header);
-            	break;
-            }
-            else if (last == (short)0xFF && current == (short)0xDD) {
-            	ReadRestartInterval(f, header);
-            }
-            else if (last == (short)0xFF &&
-                	current >= (short)0xD0 && current <= (short)0xD7) {
-                ReadRSTN(f, header);
-            }
-            else if (last == (short)0xFF && current == (short)0xFE) {
-            	ReadComment(f, header);
-            }
-
-            else if (last == (short)0x0FF) {
-            	if (current == (short)0xD8) {
-            		System.err.println("This JPG contains an embedded JPG. This is not supported");
+        while (true) {
+        	if (last == 0xFF) {
+	            if      (current == 0xDB) {
+	            	ReadQuantizationTable(f, header);
+	            }
+	            else if (current == 0xC0) {
+	            	header.frameType = "Baseline";
+	            	ReadStartOfFrame(f, header);
+	            }
+	            else if (current == 0xC1) {
+	            	header.frameType = "Extended Sequential";
+	            	ReadStartOfFrame(f, header);
+	            }
+	            else if (current == 0xC2) {
+	            	header.frameType = "Progressive";
+	            	ReadStartOfFrame(f, header);
+	            }
+	            else if (current == 0xC3) {
+	            	header.frameType = "Lossless";
+	            	ReadStartOfFrame(f, header);
+	            }
+	            else if (current == 0xC4) {
+	            	ReadHuffmanTable(f, header);
+	            }
+	            else if (current == 0xDA) {
+	            	ReadStartOfScan(f, header);
+	            	break;
+	            }
+	            else if (current == 0xDD) {
+	            	ReadRestartInterval(f, header);
+	            }
+	            else if (current >= 0xD0 && current <= 0xD7) {
+	                ReadRSTN(f, header);
+	            }
+	            else if (current >= 0xE0 && current <= 0xEF) {
+	            	ReadAPPN(f, header);
+	            }
+	            else if (current == 0xFE) {
+	            	ReadComment(f, header);
+	            }
+	            else if (current == 0xFF) {
+	            	// skip
+	                current = (short)f.readUnsignedByte();
+	                continue;
+	            }
+	            else if (current == 0xF0 ||
+	            		 current == 0xFD ||
+	            		 current == 0xDC ||
+	            		 current == 0xDE ||
+	            		 current == 0xDF) {
+	            	// unsupported segments that can be skipped
+	            	ReadComment(f, header);
+	            }
+	            else if (current == 0x01) {
+	            	// unsupported segment with no size
+	            }
+	            else if (current == 0xD8) {
+            		System.err.println("Error - This JPG contains an embedded JPG; This is not supported");
             		header.valid = false;
             		f.close();
             		return header;
             	}
-            	else if (current == (short)0xD9) {
+            	else if (current == 0xD9) {
             		System.err.println("Error = EOI detected before SOS");
             		header.valid = false;
             		f.close();
             		return header;
             	}
-            	else {
-	            	System.out.println("Warning - Unknown Maker: " + current);
-	            	ReadAPPN(f, header);
-	            	//header.valid = false;
+            	else if (current == 0xCC) {
+            		System.err.println("Error - Arithmetic Table mode is not supported");
+            		header.valid = false;
+            		f.close();
+            		return header;
             	}
-            }
-            else { //if (last != (short)0xFF) {
+            	else if (current >= 0xC0 && current <= 0xCF) {
+            		System.err.println("Error - This Start of Frame marker is not supported: " + current);
+            		header.valid = false;
+            		f.close();
+            		return header;
+            	}
+            	else {
+	            	System.out.println("Error - Unknown Maker: " + current);
+	            	header.valid = false;
+            		f.close();
+            		return header;
+            	}
+        	}
+            else { //if (last != 0xFF) {
             	System.err.println("Error - Expected a marker");
             	header.valid = false;
         		f.close();
         		return header;
             }
             
-            last = (short)f.read();
-            current = (short)f.read();
+            last = (short)f.readUnsignedByte();
+            current = (short)f.readUnsignedByte();
         }
-        current = (short)f.read();
+        current = (short)f.readUnsignedByte();
         while (true) {
         	last = current;
-        	current = (short)f.read();
-        	if      (last == (short)0xFF && current == (short)0xD9) {
+        	current = (short)f.readUnsignedByte();
+        	if      (last == 0xFF && current == 0xD9) {
             	System.out.println("End of Image");
             	break;
             }
-        	else if (last == (short)0xFF && current == (short)0x00) {
+        	else if (last == 0xFF && current == 0x00) {
         		header.imageData.add((int)last);
         		// advance by a byte, to drop 0x00
-        		current = (short)f.read();
+        		current = (short)f.readUnsignedByte();
         	}
-        	/*else if (last == (short)0xFF) {
+        	/*else if (last == 0xFF) {
         		System.err.println("Invalid marker during compressed data scan: " + current);
         		header.valid = false;
         		f.close();
@@ -174,46 +197,13 @@ public class JPGScanner {
 		return header;
 	}
 	
-	public static void ReadAPP0(FileInputStream f, Header header) throws IOException {
-		System.out.println("Reading APP0");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
-		header.identifier = ReadString(f);
-		
-		header.versionMajor = (short)f.read();
-		header.versionMinor = (short)f.read();
-		header.densityUnits = (short)f.read();
-		header.xDensity = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		header.yDensity = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		header.xThumbnail = (short)f.read();
-		header.yThumbnail = (short)f.read();
-		header.thumbnailData = new short[header.xThumbnail * header.yThumbnail * 3];
-		for (int i = 0; i < header.thumbnailData.length; ++i) {
-			header.thumbnailData[i] = (short)f.read();
-		}
-		if (length - 11 - (header.identifier.length() + 1) - header.thumbnailData.length != 0) {
-			System.err.println("Error - APP0 Invalid");
-			header.valid = false;
-		}
-	}
-	
-	public static void ReadAPPN(FileInputStream f, Header header) throws IOException {
-		System.out.println("Reading APPN");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
-		// all of APPN markers can be ignored
-		for (int i = 0; i < length - 2; i++) {
-			f.read();
-		}
-	}
-	
-	public static void ReadQuantizationTable(FileInputStream f, Header header) throws IOException {
+	public static void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Quantization Tables");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
-			short info = (short)f.read();
+			short info = (short)f.readUnsignedByte();
 			QuantizationTable table = new QuantizationTable();
 			table.tableID = (short)(info & 0x0F);
 			if ((info & 0xF0) == 0) {
@@ -222,8 +212,11 @@ public class JPGScanner {
 			else {
 				table.precision = 2;
 			}
-			for (int i = 0; i < 64 * table.precision; i++) {
-				table.table.add(f.read());
+			for (int i = 0; i < 64; i++) {
+				table.table[i] = f.readUnsignedByte();
+				if (table.precision == 2) {
+					table.table[i] = table.table[i] << 8 + f.readUnsignedByte();
+				}
 			}
 			header.quantizationTables.add(table);
 			length -= 64 * table.precision + 1;
@@ -234,72 +227,49 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadStartOfFrame_Baseline(FileInputStream f, Header header) throws IOException {
-		System.out.println("Reading Start of Frame (Baseline)");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+	public static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
+		System.out.println("Reading Start of Frame");
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		header.precision = (short)f.read();
-		header.height = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		header.width = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		int numComponents = f.read();
+		header.precision = (short)f.readUnsignedByte();
+		header.height = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		header.width = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int numComponents = f.readUnsignedByte();
 		for (int i = 0; i < numComponents; i++) {
 			FrameComponent component = new FrameComponent();
-			component.componentID = (short)f.read();
-			short samplingFactor = (short)f.read();
+			component.componentID = (short)f.readUnsignedByte();
+			short samplingFactor = (short)f.readUnsignedByte();
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
-			component.quantizationTableID = (short)f.read();
+			component.quantizationTableID = (short)f.readUnsignedByte();
 			header.frameComponents.add(component);
 		}
 		if (length - 8 - (numComponents * 3) != 0) {
-			System.err.println("Error - SOF0 Invalid");
+			System.err.println("Error - SOF Invalid");
 			header.valid = false;
 		}
 	}
 	
-	public static void ReadStartOfFrame_Progressive(FileInputStream f, Header header) throws IOException {
-		System.out.println("Reading Start of Frame (Progressive)");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
-		header.precision = (short)f.read();
-		header.height = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		header.width = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
-		int numComponents = f.read();
-		for (int i = 0; i < numComponents; i++) {
-			FrameComponent component = new FrameComponent();
-			component.componentID = (short)f.read();
-			short samplingFactor = (short)f.read();
-			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
-			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
-			component.quantizationTableID = (short)f.read();
-			header.frameComponents.add(component);
-		}
-		if (length - 8 - (numComponents * 3) != 0) {
-			System.err.println("Error - SOF2 Invalid");
-			header.valid = false;
-		}
-	}
-	
-	public static void ReadHuffmanTable(FileInputStream f, Header header) throws IOException {
+	public static void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Huffman Tables");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
 			HuffmanTable table = new HuffmanTable();
-			short info = (short)f.read();
+			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
 			table.ACTable = (info & 0xF0) != 0;
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
 			for (int i = 0; i < 16; i++) {
-				numSymbols[i] = (short)f.read();
+				numSymbols[i] = (short)f.readUnsignedByte();
 				allSymbols += numSymbols[i];
 				table.symbols.add(new ArrayList<Integer>());
 			}
 			for (int i = 0; i < 16; i++) {
 				for (int j = 0; j < numSymbols[i]; j++) {
-					table.symbols.get(i).add(f.read());
+					table.symbols.get(i).add(f.readUnsignedByte());
 				}
 			}
 			header.huffmanTables.add(table);
@@ -311,61 +281,73 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadStartOfScan(FileInputStream f, Header header) throws IOException {
+	public static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Start of Scan");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		int numComponents = (int)f.read();
+		int numComponents = f.readUnsignedByte();
 		for (int i = 0; i < numComponents; i++) {
 			ScanComponent component = new ScanComponent();
-			component.componentID = (short)f.read();
-			short huffmanTableID = (short)f.read();
+			component.componentID = (short)f.readUnsignedByte();
+			short huffmanTableID = (short)f.readUnsignedByte();
 			component.huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			component.huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
 			header.scanComponents.add(component);
 		}
-		header.startOfSelection = (short)f.read();
-		header.endOfSelection = (short)f.read();
-		header.successvieApproximation = (short)f.read();
+		header.startOfSelection = (short)f.readUnsignedByte();
+		header.endOfSelection = (short)f.readUnsignedByte();
+		header.successvieApproximation = (short)f.readUnsignedByte();
 		if (length - 6 - (numComponents * 2) != 0) {
 			System.err.println("Error - SOS Invalid");
 			header.valid = false;
 		}
 	}
 	
-	public static void ReadRestartInterval(FileInputStream f, Header header) throws IOException {
+	public static void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Restart Interval");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		header.restartInterval = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		//int restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		f.readUnsignedByte();
+		f.readUnsignedByte();
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
 			header.valid = false;
 		}
 	}
 	
-	public static void ReadRSTN(FileInputStream f, Header header) throws IOException {
+	public static void ReadRSTN(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading RSTN");
 		// RSTN has no length
 	}
 	
-	public static void ReadComment(FileInputStream f, Header header) throws IOException {
+	public static void ReadAPPN(DataInputStream f, Header header) throws IOException {
+		System.out.println("Reading APPN");
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		//System.out.println("Length: " + (length + 2));
+		// all of APPN markers can be ignored
+		for (int i = 0; i < length - 2; i++) {
+			f.readUnsignedByte();
+		}
+	}
+	
+	public static void ReadComment(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Comment");
-		int length = ((int)f.read() << 8) + ((int)f.read() & 0xFF);
+		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		// all comment markers can be ignored
 		for (int i = 0; i < length - 2; i++) {
-			f.read();
+			f.readUnsignedByte();
 		}
 	}
 	
 	// read ASCII characters from f until a null terminator is reached
-	public static String ReadString(FileInputStream f) throws IOException {
+	public static String ReadString(DataInputStream f) throws IOException {
 		String s = new String("");
-		char curChar = (char)f.read();
+		char curChar = (char)f.readUnsignedByte();
 		while (curChar != '\0') {
 			s = s + curChar;
-			curChar = (char)f.read();
+			curChar = (char)f.readUnsignedByte();
 		}
 		return s;
 	}
@@ -373,39 +355,23 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("Simple.jpg");
+			header = ReadJPG("huff_simple0.jpg");
 			if (header != null && header.valid) {
-				System.out.println("APP0===========");
-				System.out.println("Identifier: " + header.identifier);
-				System.out.println("Version: " + header.versionMajor + "." + header.versionMinor);
-				System.out.println("Density Units: " + header.densityUnits);
-				System.out.println("X Density: " + header.xDensity);
-				System.out.println("Y Density: " + header.yDensity);
-				System.out.println("X Thumbnail: " + header.xThumbnail);
-				System.out.println("Y Thumbnail: " + header.yThumbnail);
-				System.out.println("Thumbnail Data:");
-				if (header.thumbnailData != null) {
-					for (int i = 0; i < header.thumbnailData.length; i++) {
-						if (i % 16 == 0) {
-							System.out.println();
-						}
-						System.out.print(header.thumbnailData[i] + " ");
-					}
-				}
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); i++) {
 					System.out.println("Table ID: " + header.quantizationTables.get(i).tableID);
 					System.out.println("Precision: " + header.quantizationTables.get(i).precision);
 					System.out.print("Table Data:");
-					for (int j = 0; j < header.quantizationTables.get(i).table.size(); j++) {
+					for (int j = 0; j < header.quantizationTables.get(i).table.length; j++) {
 						if (j % 16 == 0) {
 							System.out.println();
 						}
-						System.out.print(header.quantizationTables.get(i).table.get(j) + " ");
+						System.out.print(header.quantizationTables.get(i).table[j] + " ");
 					}
 					System.out.println();
 				}
 				System.out.println("SOF============");
+				System.out.println("Frame Type: " + header.frameType);
 				System.out.println("Precision: " + header.precision);
 				System.out.println("Height: " + header.height);
 				System.out.println("Width: " + header.width);
@@ -455,6 +421,8 @@ public class JPGScanner {
 			}
 		} catch(FileNotFoundException e) {
 			System.err.println("Error - JPG file not found");
+		} catch (EOFException e) {
+			System.err.println("Error - File ended early");
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
