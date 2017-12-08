@@ -230,7 +230,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 //    		}
 //    	}
 //	    
-	    //we have too many threads so start building some combindations
+	    //we have too many threads so start building some combos
 	    //this is done from the middle because the small 1's must be isolated and the
 	    //large ones already have too much work to do.
 	    int threadCountdown = (countOfGroups-targetThreadCount);
@@ -241,6 +241,15 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    	if (null == stageArrays[idx]) {
 	    		break;
 	    	}
+	    	
+	    	if (    GraphManager.hasNota(graphManager, stageArrays[idx][0].stageId, GraphManager.MONITOR)
+	    		||	GraphManager.hasNota(graphManager, stageArrays[idx-1][0].stageId, GraphManager.MONITOR)) {
+	    		//can not combine any further than this. TODO: or can we???
+	    		//the monitor can not be mixed in.
+	    		break;
+	    	}
+	    	
+	    	
 	    	assert(null!=stageArrays[idx]);
 	    	assert(null!=stageArrays[idx-1]);
 	    	

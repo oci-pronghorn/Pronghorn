@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2217,7 +2216,7 @@ public class GraphManager {
     private int    			telemetryPort=-1;
     
     //TODO: do not enable until the index.html can use https for its call back...
-    private TLSCertificates telemetryCert = TLSCertificates.defaultCerts;
+    private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
     
     public String enableTelemetry(String host, int port) {
     	telemetryHost = host;

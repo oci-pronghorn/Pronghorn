@@ -45,6 +45,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		validateSchema(inputs);
 		GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, this);
+		
 	}
 
 	private void validateSchema(Pipe[] inputs) {
@@ -148,6 +149,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		}
 		
 		if (consumed>=0) {
+						
 			trafficValues[this.observedPipeId[pos]] = consumed; 
 		}
 	}

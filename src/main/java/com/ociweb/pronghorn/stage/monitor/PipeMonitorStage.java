@@ -1,6 +1,10 @@
 package com.ociweb.pronghorn.stage.monitor;
 
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -13,6 +17,8 @@ public class PipeMonitorStage extends PronghornStage {
 	private final GraphManager gm;
 	private final String pipeName;
 	private final int slabSize;
+	private static final Logger logger = LoggerFactory.getLogger(PipeMonitorStage.class);
+	private long dropped = 0;
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
 	 * controlling the rate of samples
@@ -60,9 +66,16 @@ public class PipeMonitorStage extends PronghornStage {
 			
 			Pipe.confirmLowLevelWrite(output, size);
 			Pipe.publishWrites(output);
-			
+						
 		} else {
+			
 			//if unable to write then the values are dropped.
+			if (Long.numberOfLeadingZeros(dropped)!=Long.numberOfLeadingZeros(++dropped)) {			
+				logger.warn("Telemetry is not consuming collected data fast enough dropped:{} rate:{}ns  {}",dropped,(Number)GraphManager.getNota(gm, this, GraphManager.SCHEDULE_RATE, -1),output);
+			}
+			//if this is happening we probably have a blocking stage which does not release the thread??
+			
+			
 		}
 	}
 
