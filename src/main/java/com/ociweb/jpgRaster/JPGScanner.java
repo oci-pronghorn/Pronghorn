@@ -60,7 +60,7 @@ public class JPGScanner {
 	public static Header ReadJPG(String filename) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
-        
+		
 		// JPG file must begin with 0xFFD8
 		short last = (short)f.readUnsignedByte();
 		short current = (short)f.readUnsignedByte();
@@ -70,130 +70,130 @@ public class JPGScanner {
 			return header;
 		}
 		System.out.println("Start of Image");
-        last = (short)f.readUnsignedByte();
-        current = (short)f.readUnsignedByte();
+		last = (short)f.readUnsignedByte();
+		current = (short)f.readUnsignedByte();
 		
-        while (true) {
-        	if (last == 0xFF) {
-	            if      (current == 0xDB) {
-	            	ReadQuantizationTable(f, header);
-	            }
-	            else if (current == 0xC0) {
-	            	header.frameType = "Baseline";
-	            	ReadStartOfFrame(f, header);
-	            }
-	            else if (current == 0xC1) {
-	            	header.frameType = "Extended Sequential";
-	            	ReadStartOfFrame(f, header);
-	            }
-	            else if (current == 0xC2) {
-	            	header.frameType = "Progressive";
-	            	ReadStartOfFrame(f, header);
-	            }
-	            else if (current == 0xC3) {
-	            	header.frameType = "Lossless";
-	            	ReadStartOfFrame(f, header);
-	            }
-	            else if (current == 0xC4) {
-	            	ReadHuffmanTable(f, header);
-	            }
-	            else if (current == 0xDA) {
-	            	ReadStartOfScan(f, header);
-	            	break;
-	            }
-	            else if (current == 0xDD) {
-	            	ReadRestartInterval(f, header);
-	            }
-	            else if (current >= 0xD0 && current <= 0xD7) {
-	                ReadRSTN(f, header);
-	            }
-	            else if (current >= 0xE0 && current <= 0xEF) {
-	            	ReadAPPN(f, header);
-	            }
-	            else if (current == 0xFE) {
-	            	ReadComment(f, header);
-	            }
-	            else if (current == 0xFF) {
-	            	// skip
-	                current = (short)f.readUnsignedByte();
-	                continue;
-	            }
-	            else if (current == 0xF0 ||
-	            		 current == 0xFD ||
-	            		 current == 0xDC ||
-	            		 current == 0xDE ||
-	            		 current == 0xDF) {
-	            	// unsupported segments that can be skipped
-	            	ReadComment(f, header);
-	            }
-	            else if (current == 0x01) {
-	            	// unsupported segment with no size
-	            }
-	            else if (current == 0xD8) {
-            		System.err.println("Error - This JPG contains an embedded JPG; This is not supported");
-            		header.valid = false;
-            		f.close();
-            		return header;
-            	}
-            	else if (current == 0xD9) {
-            		System.err.println("Error = EOI detected before SOS");
-            		header.valid = false;
-            		f.close();
-            		return header;
-            	}
-            	else if (current == 0xCC) {
-            		System.err.println("Error - Arithmetic Table mode is not supported");
-            		header.valid = false;
-            		f.close();
-            		return header;
-            	}
-            	else if (current >= 0xC0 && current <= 0xCF) {
-            		System.err.println("Error - This Start of Frame marker is not supported: " + current);
-            		header.valid = false;
-            		f.close();
-            		return header;
-            	}
-            	else {
-	            	System.out.println("Error - Unknown Maker: " + current);
-	            	header.valid = false;
-            		f.close();
-            		return header;
-            	}
-        	}
-            else { //if (last != 0xFF) {
-            	System.err.println("Error - Expected a marker");
-            	header.valid = false;
-        		f.close();
-        		return header;
-            }
-            
-            last = (short)f.readUnsignedByte();
-            current = (short)f.readUnsignedByte();
-        }
-        current = (short)f.readUnsignedByte();
-        while (true) {
-        	last = current;
-        	current = (short)f.readUnsignedByte();
-        	if      (last == 0xFF && current == 0xD9) {
-            	System.out.println("End of Image");
-            	break;
-            }
-        	else if (last == 0xFF && current == 0x00) {
-        		header.imageData.add((int)last);
-        		// advance by a byte, to drop 0x00
-        		current = (short)f.readUnsignedByte();
-        	}
-        	/*else if (last == 0xFF) {
-        		System.err.println("Invalid marker during compressed data scan: " + current);
-        		header.valid = false;
-        		f.close();
-        		return header;
-        	}*/
-        	else {
-        		header.imageData.add((int)last);
-        	}
-        }
-        f.close();
+		while (true) {
+			if (last == 0xFF) {
+				if      (current == 0xDB) {
+					ReadQuantizationTable(f, header);
+				}
+				else if (current == 0xC0) {
+					header.frameType = "Baseline";
+					ReadStartOfFrame(f, header);
+				}
+				else if (current == 0xC1) {
+					header.frameType = "Extended Sequential";
+					ReadStartOfFrame(f, header);
+				}
+				else if (current == 0xC2) {
+					header.frameType = "Progressive";
+					ReadStartOfFrame(f, header);
+				}
+				else if (current == 0xC3) {
+					header.frameType = "Lossless";
+					ReadStartOfFrame(f, header);
+				}
+				else if (current == 0xC4) {
+					ReadHuffmanTable(f, header);
+				}
+				else if (current == 0xDA) {
+					ReadStartOfScan(f, header);
+					break;
+				}
+				else if (current == 0xDD) {
+					ReadRestartInterval(f, header);
+				}
+				else if (current >= 0xD0 && current <= 0xD7) {
+					ReadRSTN(f, header);
+				}
+				else if (current >= 0xE0 && current <= 0xEF) {
+					ReadAPPN(f, header);
+				}
+				else if (current == 0xFE) {
+					ReadComment(f, header);
+				}
+				else if (current == 0xFF) {
+					// skip
+					current = (short)f.readUnsignedByte();
+					continue;
+				}
+				else if (current == 0xF0 ||
+						 current == 0xFD ||
+						 current == 0xDC ||
+						 current == 0xDE ||
+						 current == 0xDF) {
+					// unsupported segments that can be skipped
+					ReadComment(f, header);
+				}
+				else if (current == 0x01) {
+					// unsupported segment with no size
+				}
+				else if (current == 0xD8) {
+					System.err.println("Error - This JPG contains an embedded JPG; This is not supported");
+					header.valid = false;
+					f.close();
+					return header;
+				}
+				else if (current == 0xD9) {
+					System.err.println("Error = EOI detected before SOS");
+					header.valid = false;
+					f.close();
+					return header;
+				}
+				else if (current == 0xCC) {
+					System.err.println("Error - Arithmetic Table mode is not supported");
+					header.valid = false;
+					f.close();
+					return header;
+				}
+				else if (current >= 0xC0 && current <= 0xCF) {
+					System.err.println("Error - This Start of Frame marker is not supported: " + current);
+					header.valid = false;
+					f.close();
+					return header;
+				}
+				else {
+					System.out.println("Error - Unknown Maker: " + current);
+					header.valid = false;
+					f.close();
+					return header;
+				}
+			}
+			else { //if (last != 0xFF) {
+				System.err.println("Error - Expected a marker");
+				header.valid = false;
+				f.close();
+				return header;
+			}
+			
+			last = (short)f.readUnsignedByte();
+			current = (short)f.readUnsignedByte();
+		}
+		current = (short)f.readUnsignedByte();
+		while (true) {
+			last = current;
+			current = (short)f.readUnsignedByte();
+			if      (last == 0xFF && current == 0xD9) {
+				System.out.println("End of Image");
+				break;
+			}
+			else if (last == 0xFF && current == 0x00) {
+				header.imageData.add((int)last);
+				// advance by a byte, to drop 0x00
+				current = (short)f.readUnsignedByte();
+			}
+			/*else if (last == 0xFF) {
+				System.err.println("Invalid marker during compressed data scan: " + current);
+				header.valid = false;
+				f.close();
+				return header;
+			}*/
+			else {
+				header.imageData.add((int)last);
+			}
+		}
+		f.close();
 		return header;
 	}
 	
@@ -265,9 +265,9 @@ public class JPGScanner {
 			for (int i = 0; i < 16; i++) {
 				numSymbols[i] = (short)f.readUnsignedByte();
 				allSymbols += numSymbols[i];
-				table.symbols.add(new ArrayList<Integer>());
 			}
 			for (int i = 0; i < 16; i++) {
+				table.symbols.add(new ArrayList<Integer>());
 				for (int j = 0; j < numSymbols[i]; j++) {
 					table.symbols.get(i).add(f.readUnsignedByte());
 				}
@@ -341,21 +341,10 @@ public class JPGScanner {
 		}
 	}
 	
-	// read ASCII characters from f until a null terminator is reached
-	public static String ReadString(DataInputStream f) throws IOException {
-		String s = new String("");
-		char curChar = (char)f.readUnsignedByte();
-		while (curChar != '\0') {
-			s = s + curChar;
-			curChar = (char)f.readUnsignedByte();
-		}
-		return s;
-	}
-	
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("huff_simple0.jpg");
+			header = ReadJPG("Simple.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); i++) {
@@ -363,10 +352,10 @@ public class JPGScanner {
 					System.out.println("Precision: " + header.quantizationTables.get(i).precision);
 					System.out.print("Table Data:");
 					for (int j = 0; j < header.quantizationTables.get(i).table.length; j++) {
-						if (j % 16 == 0) {
+						if (j % 8 == 0) {
 							System.out.println();
 						}
-						System.out.print(header.quantizationTables.get(i).table[j] + " ");
+						System.out.print(String.format("%02d ", header.quantizationTables.get(i).table[j]));
 					}
 					System.out.println();
 				}
@@ -404,17 +393,17 @@ public class JPGScanner {
 						System.out.println();
 					}
 				}
-		        System.out.println("SOS============");
-		        System.out.println("Start of Selection: " + header.startOfSelection);
-		        System.out.println("End of Selection: " + header.endOfSelection);
-		        System.out.println("Successive Approximation: " + header.successvieApproximation);
-		        System.out.println("Scan Components:");
+				System.out.println("SOS============");
+				System.out.println("Start of Selection: " + header.startOfSelection);
+				System.out.println("End of Selection: " + header.endOfSelection);
+				System.out.println("Successive Approximation: " + header.successvieApproximation);
+				System.out.println("Scan Components:");
 				for (int i = 0; i < header.scanComponents.size(); i++) {
 					System.out.println("\tComponent ID: " + header.scanComponents.get(i).componentID);
 					System.out.println("\tHuffman AC Table ID: " + header.scanComponents.get(i).huffmanACTableID);
 					System.out.println("\tHuffman DC Table ID: " + header.scanComponents.get(i).huffmanDCTableID);
 				}
-		        System.out.println("Length of Image Data: " + header.imageData.size());
+				System.out.println("Length of Image Data: " + header.imageData.size());
 			}
 			else {
 				System.err.println("Error - Not a valid JPG file");
