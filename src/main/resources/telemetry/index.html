@@ -22,6 +22,7 @@
         }
         #demo {
             padding-top: 65px;
+            text-align: center;
         }
         #loading {
             position: fixed;
@@ -166,6 +167,13 @@
         var webworkerInProgress = false;
         var paintAllinProgress = false;
 
+        var previewScale = 0.07;
+
+        var zoomWidth = 100;
+        var zoomHeight = 100;
+
+        var zoomStep = 15;
+
         function paintAll () {
             paintAllinProgress = true;
             if (webworker) {
@@ -182,7 +190,6 @@
                 webworker.onmessage = function (e) {
                     webworkerInProgress = false;
                     paintAllDrawing = true;
-                    $('.navbar').show();
 
                     var result = e.data.result;
                     $('#demo').html(result);
@@ -190,13 +197,14 @@
                     paintAllDrawing = false;
                     paintAllinProgress = false;
 
-                    var scale = 0.023;
-
                     var demo = $("#demo svg");
-                    var ratioWidth = demo.width() * scale;
-                    var ratioHeight = demo.height() * scale;
+                    var ratioWidth = demo.width() * previewScale;
+                    var ratioHeight = demo.height() * previewScale;
+
+                    $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
 
                     if (isFirst) {
+                        $('.navbar').show();
                         $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") );
 
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
@@ -262,7 +270,6 @@
                 return element === newArray[index];
             });
             if ((!is_same && !isFirst) && !paintAllinProgress){
-                console.log("not the same, changing!");
                 doingUpdate = false;
                 paintAll();
             }
@@ -326,11 +333,19 @@
             });
 
             $("#zoom-in-btn").click(function () {
-                console.log("Zoom in not yet implemented.");
+                //WIP!
+                zoomWidth += zoomStep;
+                zoomHeight += zoomStep;
+                $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                $("body").scroll();
             });
 
             $("#zoom-out-btn").click(function () {
-                console.log("Zoom out not yet implemented.");
+                //WIP!
+                zoomWidth -= zoomStep;
+                zoomHeight -= zoomStep;
+                $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                $("body").scroll();
             });
 
             $("#download-btn").click(function() {
