@@ -57,32 +57,41 @@ public class BMPDumper {
 		for (int i = 0; i < rgb.length; i++) {
 			rgb[i] = new RGB();
 		}
+		// red
 		rgb[0].r = 255;
 		rgb[0].g = 0;
 		rgb[0].b = 0;
+		// green
 		rgb[1].r = 0;
 		rgb[1].g = 255;
 		rgb[1].b = 0;
+		// blue
 		rgb[2].r = 0;
 		rgb[2].g = 0;
 		rgb[2].b = 255;
-		rgb[3].r = 255;
-		rgb[3].g = 0;
-		rgb[3].b = 0;
-		rgb[4].r = 0;
-		rgb[4].g = 255;
-		rgb[4].b = 0;
-		rgb[5].r = 0;
-		rgb[5].g = 0;
-		rgb[5].b = 255;
-		rgb[6].r = 255;
+		// cyan
+		rgb[3].r = 0;
+		rgb[3].g = 255;
+		rgb[3].b = 255;
+		// magenta
+		rgb[4].r = 255;
+		rgb[4].g = 0;
+		rgb[4].b = 255;
+		// yellow
+		rgb[5].r = 255;
+		rgb[5].g = 255;
+		rgb[5].b = 0;
+		// black
+		rgb[6].r = 0;
 		rgb[6].g = 0;
 		rgb[6].b = 0;
-		rgb[7].r = 0;
-		rgb[7].g = 255;
-		rgb[7].b = 0;
-		rgb[8].r = 0;
-		rgb[8].g = 0;
+		// gray
+		rgb[7].r = 128;
+		rgb[7].g = 128;
+		rgb[7].b = 128;
+		// white
+		rgb[8].r = 255;
+		rgb[8].g = 255;
 		rgb[8].b = 255;
 		try {
 			Dump(rgb, (short)3, (short)3, "bmp_test.bmp");
