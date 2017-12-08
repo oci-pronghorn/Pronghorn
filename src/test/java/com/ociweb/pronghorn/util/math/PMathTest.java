@@ -191,7 +191,7 @@ public class PMathTest {
         
         assertEquals(394, schedule.script.length);
         assertEquals(10, schedule.commonClock);
-        assertEquals(4, schedule.maxRun);     
+        assertEquals(3, schedule.maxRun);     
         
     }
     

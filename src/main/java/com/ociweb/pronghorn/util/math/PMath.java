@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.util.math;
 
+import java.util.Arrays;
+
 /*
  * @Author Nathan Tippy
  */
@@ -195,7 +197,7 @@ public class PMath {
      * @return
      */
     private static int primeAtIdx(int i) {
-        
+
         int[] localPrimes = primes;
         while (i>=localPrimes.length) {
             //Must build out primes to the required index
@@ -242,7 +244,7 @@ public class PMath {
      * @return new scripted schedule object to be used at runtime.
      */
     public static ScriptedSchedule buildScriptedSchedule(long[] schedulePeriods, final boolean reverseOrder) {
- 
+
     	assert(schedulePeriods.length<Integer.MAX_VALUE) : "Maximum schedule can only be "+Integer.MAX_VALUE;
     	
         int maxPrimeBits  = 4;
@@ -300,8 +302,6 @@ public class PMath {
         int groupsCount = factorsToInt(repeatLength, 0, maxPrimes, maxPrimesMask);
         int scriptLength = groupsCount;//one for the -1 (stop flag) of each iteration
        
-        int activeBase = 0;
-        final int base = largestPrimeIdx+1;//we want to stay above the largest prime previously used.
         for(int i=0;i<schedulePeriods.length;i++) {
             assert(0 == (groupsCount%steps[i])): "Internal compute error";
             scriptLength += (groupsCount/steps[i]);
@@ -311,11 +311,10 @@ public class PMath {
                         
             //what if everything with same freq has same prime?
             //then those in a run.... are expected to run together.
-            activeBase = primeAtIdx(base+steps[i]); //NOTE: base+i and accumulated.. for flat distribution...
-            
+
             //each must start at a different base to minimize collision.
             //by using increasing prime numbers we ensure a good distribution
-            bases[i]=activeBase;
+            bases[i]=primeAtIdx(++largestPrimeIdx);
  
         }
     
