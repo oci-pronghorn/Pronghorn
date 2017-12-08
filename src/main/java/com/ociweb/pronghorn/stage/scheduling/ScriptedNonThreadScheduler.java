@@ -36,7 +36,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private static final long MS_TO_NS = 1_000_000;
 
     //set to true for faster response times but much greater cpu usage.
-	public static final boolean lowLatencyEnforced = false;
+	public static boolean lowLatencyEnforced = false;
 	
     private int[] producersIdx;
 

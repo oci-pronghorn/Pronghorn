@@ -2,8 +2,6 @@ package com.ociweb.pronghorn.network;
 
 import java.util.Arrays;
 
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +20,7 @@ import com.ociweb.pronghorn.util.Appendables;
 public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
     private static final int SIZE_OF_TO_CHNL = Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100);
-    private static final byte[] EMPTY = new byte[0];
+    static final byte[] EMPTY = new byte[0];
     
 	private static Logger logger = LoggerFactory.getLogger(OrderSupervisorStage.class);
 
@@ -195,7 +193,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
 		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);
-		    Pipe<NetPayloadSchema> myPipe = null;
+		    Pipe<NetPayloadSchema> outPipe = null;
 		    int myPipeIdx = -1;
 		    int sequenceNo = 0;
 		    long channelId = -2;		        
@@ -204,14 +202,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
 		    			  
 		        myPipeIdx = (int)(channelId % poolMod);
-		        myPipe = outgoingPipes[myPipeIdx];
+		        outPipe = outgoingPipes[myPipeIdx];
 		        
 		        //logger.trace("sending new content out for channelId {} ", channelId);
 		        
 		        ///////////////////////////////
 		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 		        ///////////////////////////////
-		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
+		    	if (!Pipe.hasRoomForWrite(outPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		//logger.info("no room to write out, try again later");
 		    		break;
@@ -282,10 +280,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 		        }
 		        
-
 		        if (coordinator.isTLS) {
-		            handshakeProcessing(myPipe, channelId);	                    
-		        }
+					SSLConnection con = coordinator.connectionForSessionId(channelId);			
+					if (!SSLUtil.handshakeProcessing(outPipe, con)) {
+						//TODO: we must wait until later...
+					}
+				}	                    
 		         
 		        assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        
@@ -319,7 +319,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    }
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 			
-		    copyDataBlock(sourcePipe, peekMsgId, myPipe, myPipeIdx, sequenceNo, channelId);
+		    copyDataBlock(sourcePipe, peekMsgId, outPipe, myPipeIdx, sequenceNo, channelId);
 						
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}
@@ -465,42 +465,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(Pipe.bytesReadBase(input)>=0);
 
 	}
-
-	private void handshakeProcessing(Pipe<NetPayloadSchema> pipe, long channelId) {
-		SSLConnection con = coordinator.connectionForSessionId(channelId);
-		
-		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
-		do {
-		    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
-		         Runnable task;
-		         while ((task = con.getEngine().getDelegatedTask()) != null) {
-		            	task.run(); 
-		         }
-		       hanshakeStatus = con.getEngine().getHandshakeStatus();
-		    } 
-		    
-		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
-		    	if (Pipe.hasRoomForWrite(pipe)) {
-		    		
-		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
-		    		Pipe.addLongValue(con.getId(), pipe);//connection
-		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
-		    		Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe); //signal that WRAP is needed 
-		    		
-		    		Pipe.addByteArray(EMPTY, 0, 0, pipe);
-		    		
-		    		Pipe.confirmLowLevelWrite(pipe, size);
-		    		Pipe.publishWrites(pipe);
-		    		
-		    	} else {
-					//no room to request wrap, try later
-		        	break;
-				}
-		    } 
-		} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
-		assert(HandshakeStatus.NEED_UNWRAP != hanshakeStatus) : "Unexpected unwrap request";
-	}
-
 
 	private void writeToNextStage(Pipe<NetPayloadSchema> output, 
 			final long channelId, int len, int requestContext,

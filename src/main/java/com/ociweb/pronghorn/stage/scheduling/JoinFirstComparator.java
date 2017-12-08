@@ -34,7 +34,7 @@ public class JoinFirstComparator implements Comparator<Pipe> {
 				PronghornStage producer = GraphManager.getStage(graphManager, producerId);
 				int count = GraphManager.getInputPipeCount(graphManager, producer);
 				while (--count>=0) {
-					Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count);
+					Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count+1);
 					result = Math.max(result, inputPipe.config().slabBits());
 				}
 			} else {

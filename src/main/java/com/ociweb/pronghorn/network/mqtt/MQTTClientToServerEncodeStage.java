@@ -133,6 +133,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			processInputAcks(connectionId);
 									
 			processInput(connectionId);
+				
 			
 		} else {
 			if (Integer.numberOfLeadingZeros(countOfBlocksWaitingForPersistLoad) != Integer.numberOfLeadingZeros(++countOfBlocksWaitingForPersistLoad)) {
@@ -518,9 +519,21 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			}
 					
 
+			
+			   
 			int msgIdx = Pipe.takeMsgIdx(input);
 			assert(Pipe.isForSchema(toBroker[activeConnection.requestPipeLineIdx()], NetPayloadSchema.instance)) : "found unexpected "+Pipe.schemaName(toBroker[activeConnection.requestPipeLineIdx()]);
 			Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
+			
+			//TODO: new test code for finish the wrap??   test code..
+			
+//	        if (coordinator.isTLS) {
+//				SSLConnection con = coordinator.connectionForSessionId(channelId);			
+//				if (!SSLUtil.handshakeProcessing(outPipe, con)) {
+//					//TODO: we must wait until later...
+//				}
+//			}	     
+			
 			if (writeToBroker(connectionId, server, msgIdx)) {
 				
 				Pipe.confirmLowLevelRead(input, Pipe.sizeOf(MQTTClientToServerSchema.instance,msgIdx));

@@ -17,16 +17,17 @@ public class TelemetryTestTool {
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(8, 8);
 			ExampleProducerStage producer = new ExampleProducerStage(gm, output);
 						
-			int i = 100;
+			int i = 155;
 			Pipe[] targets = new Pipe[i];
 			while (--i>=0) {
 				targets[i] = new Pipe(output.config().grow2x());
 				Pipe temp = null;
 				Pipe prev = targets[i];
 				
-				int k = 10; //batching stage
+				int k = 22; //batching stage
 				while (--k>=0) {
-					temp = new Pipe(prev.config().grow2x());
+					//only grow some of these because this will take up too much memory
+					temp = new Pipe(k<5 ? prev.config().grow2x() : prev.config());
 					//slow replicator so it batches
 					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000_000, 
 					new BatchingStage(gm, .90, prev, temp) );
