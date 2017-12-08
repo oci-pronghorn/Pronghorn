@@ -430,15 +430,11 @@ class StackStateWalker {
 	static void prepWriteFragment(Pipe pipe, final int cursorPosition, FieldReferenceOffsetManager from, int fragSize) {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
 		//      nested long sequences where we don't know the length until after they are all written.
-		
+
 		prepWriteFragmentSpecificProcessing(pipe, cursorPosition, from);
-		
 		Pipe.addAndGetWorkingHead(pipe, fragSize);
 		pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + fragSize;
-
-		//when publish is called this new byte will be appended due to this request
-
-				
+	
 	}
 
 

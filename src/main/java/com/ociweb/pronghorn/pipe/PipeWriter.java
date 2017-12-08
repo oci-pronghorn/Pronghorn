@@ -81,14 +81,16 @@ public class PipeWriter {
 
     public static void writeLong(Pipe pipe, int loc, long value) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
-  	
-        int[] buffer = Pipe.slab(pipe);
-		int rbMask = pipe.slabMask;	
-		
-		long p = structuredPositionForLOC(pipe, loc);	
-		
-		assert(p+1L <= pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe)+" Or message?";
+
+		long p = structuredPositionForLOC(pipe, loc);
+		assert(p+1L < pipe.ringWalker.nextWorkingHead) :
+			  "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe)+" Or message? "+
+		      "\n next write position is "+p+" next limit is "+pipe.ringWalker.nextWorkingHead+
+			  "\n Pipe "+pipe+
+		      "\n loc "+loc;
 				
+		int[] buffer = Pipe.slab(pipe);
+		int rbMask = pipe.slabMask;	
 		buffer[rbMask & (int)p] = (int)(value >>> 32);
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
     }

@@ -2787,7 +2787,7 @@ public class Pipe<T extends MessageSchema<T>> {
     //TODO: How can we test that the msgIdx that is passed in is only applicable to S ?? we need a way to check this.
     
     //must be called by low-level API when starting a new message
-    public static <S extends MessageSchema<S>> int addMsgIdx(Pipe<S> pipe, int msgIdx) {
+    public static <S extends MessageSchema<S>> int addMsgIdx(final Pipe<S> pipe, int msgIdx) {
          assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+ pipe.sizeOfSlabRing  /*    pipe.slabMask*/  )) : "Working position is now writing into published(unreleased) tail "+
                 Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.sizeOfSlabRing /*pipe.slabMask*/+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
         
@@ -2805,7 +2805,18 @@ public class Pipe<T extends MessageSchema<T>> {
      	 assert(null != pipe.slabRing) : "Pipe must be init before use";
      	 
 		 pipe.slabRing[pipe.slabMask & (int)pipe.slabRingHead.workingHeadPos.value++] = msgIdx;
-		 return Pipe.from(pipe).fragDataSize[msgIdx];
+		 
+		 final int size = Pipe.from(pipe).fragDataSize[msgIdx];
+	   	    
+		    //////////////////////////////////////
+		    //this block is here to allow high level calls to follow low level calls.
+		    //////////////////////////////////////
+		    if (null != pipe.ringWalker) {
+		    	pipe.ringWalker.nextWorkingHead += size;
+		    }//for mixing high and low calls
+		    //////////////////////////////////////
+		 
+		 return size;
 		 
 	}
 
@@ -3571,7 +3582,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
 	   
 	    assert(verifySize(output, size));
-	   	    
+	    
 	    return  output.llRead.llwConfirmedPosition += size;
 
 	}
