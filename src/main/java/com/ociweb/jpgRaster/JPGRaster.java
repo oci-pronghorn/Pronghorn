@@ -1,5 +1,11 @@
 package com.ociweb.jpgRaster;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.MCU;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
@@ -16,16 +22,25 @@ public class JPGRaster {
 
 	public static void main(String[] args) {
 		
-		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./nathan.jpg");
+		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./Simple.jpg");
 
-		GraphManager gm = new GraphManager();
+		//GraphManager gm = new GraphManager();
 		
-		populateGraph(gm, inputFilePath);
+		//populateGraph(gm, inputFilePath);
 		
-		gm.enableTelemetry(8089);
+		//gm.enableTelemetry(8089);
 		
-		StageScheduler.defaultScheduler(gm).startup();
+		//StageScheduler.defaultScheduler(gm).startup();
 		
+		try {
+			Header header = JPGScanner.ReadJPG(inputFilePath);
+			ArrayList<MCU> mcus = HuffmanDecoder.decodeFourTables(header);
+			for (int i = 0; i < mcus.size(); ++i) {
+				System.out.println(mcus.get(i));
+			}
+		} catch (IOException e) {
+			
+		}
 	}
 
 

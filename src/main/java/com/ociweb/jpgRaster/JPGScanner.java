@@ -1,5 +1,11 @@
 package com.ociweb.jpgRaster;
 
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.jpgRaster.JPG.HuffmanTable;
+import com.ociweb.jpgRaster.JPG.FrameComponent;
+import com.ociweb.jpgRaster.JPG.ScanComponent;
+
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,55 +14,6 @@ import java.io.EOFException;
 import java.util.ArrayList;
 
 public class JPGScanner {
-	public static class QuantizationTable {
-		short tableID;
-		short precision;
-		int[] table = new int[64];
-	}
-	
-	public static class HuffmanTable {
-		short tableID;
-		Boolean ACTable;
-		ArrayList<ArrayList<Integer>> symbols = new ArrayList<ArrayList<Integer>>(16);
-	}
-	
-	public static class FrameComponent {
-		short componentID;
-		short horizontalSamplingFactor;
-		short verticalSamplingFactor;
-		short quantizationTableID;
-	}
-	
-	public static class ScanComponent {
-		short componentID;
-		short huffmanACTableID;
-		short huffmanDCTableID;
-	}
-	
-	public static class Header {
-		// DQT
-		ArrayList<QuantizationTable> quantizationTables = new ArrayList<QuantizationTable>(4);
-		
-		// DHT
-		ArrayList<HuffmanTable> huffmanTables = new ArrayList<HuffmanTable>(4);
-		
-		// SOF
-		String frameType;
-		short precision;
-		int height;
-		int width;
-		ArrayList<FrameComponent> frameComponents = new ArrayList<FrameComponent>(4);
-		
-		// SOS
-		short startOfSelection;
-		short endOfSelection;
-		short successvieApproximation;
-		ArrayList<ScanComponent> scanComponents = new ArrayList<ScanComponent>(4);
-		ArrayList<Integer> imageData = new ArrayList<Integer>();
-		
-		Boolean valid = true;
-	}
-	
 	public static Header ReadJPG(String filename) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
@@ -179,7 +136,7 @@ public class JPGScanner {
 				break;
 			}
 			else if (last == 0xFF && current == 0x00) {
-				header.imageData.add((int)last);
+				header.imageData.add(last);
 				// advance by a byte, to drop 0x00
 				current = (short)f.readUnsignedByte();
 			}
@@ -190,14 +147,14 @@ public class JPGScanner {
 				return header;
 			}*/
 			else {
-				header.imageData.add((int)last);
+				header.imageData.add(last);
 			}
 		}
 		f.close();
 		return header;
 	}
 	
-	public static void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
+	private static void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Quantization Tables");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
@@ -212,7 +169,7 @@ public class JPGScanner {
 			else {
 				table.precision = 2;
 			}
-			for (int i = 0; i < 64; i++) {
+			for (int i = 0; i < 64; ++i) {
 				table.table[i] = f.readUnsignedByte();
 				if (table.precision == 2) {
 					table.table[i] = table.table[i] << 8 + f.readUnsignedByte();
@@ -227,7 +184,7 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
+	private static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Start of Frame");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
@@ -235,7 +192,7 @@ public class JPGScanner {
 		header.height = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		header.width = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		int numComponents = f.readUnsignedByte();
-		for (int i = 0; i < numComponents; i++) {
+		for (int i = 0; i < numComponents; ++i) {
 			FrameComponent component = new FrameComponent();
 			component.componentID = (short)f.readUnsignedByte();
 			short samplingFactor = (short)f.readUnsignedByte();
@@ -250,7 +207,7 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
+	private static void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Huffman Tables");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
@@ -262,14 +219,14 @@ public class JPGScanner {
 			table.ACTable = (info & 0xF0) != 0;
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
-			for (int i = 0; i < 16; i++) {
+			for (int i = 0; i < 16; ++i) {
 				numSymbols[i] = (short)f.readUnsignedByte();
 				allSymbols += numSymbols[i];
 			}
-			for (int i = 0; i < 16; i++) {
-				table.symbols.add(new ArrayList<Integer>());
-				for (int j = 0; j < numSymbols[i]; j++) {
-					table.symbols.get(i).add(f.readUnsignedByte());
+			for (int i = 0; i < 16; ++i) {
+				table.symbols.add(new ArrayList<Short>());
+				for (int j = 0; j < numSymbols[i]; ++j) {
+					table.symbols.get(i).add((short)f.readUnsignedByte());
 				}
 			}
 			header.huffmanTables.add(table);
@@ -281,12 +238,12 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
+	private static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		int numComponents = f.readUnsignedByte();
-		for (int i = 0; i < numComponents; i++) {
+		for (int i = 0; i < numComponents; ++i) {
 			ScanComponent component = new ScanComponent();
 			component.componentID = (short)f.readUnsignedByte();
 			short huffmanTableID = (short)f.readUnsignedByte();
@@ -303,7 +260,7 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
+	private static void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Restart Interval");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
@@ -316,27 +273,27 @@ public class JPGScanner {
 		}
 	}
 	
-	public static void ReadRSTN(DataInputStream f, Header header) throws IOException {
+	private static void ReadRSTN(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading RSTN");
 		// RSTN has no length
 	}
 	
-	public static void ReadAPPN(DataInputStream f, Header header) throws IOException {
+	private static void ReadAPPN(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading APPN");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		// all of APPN markers can be ignored
-		for (int i = 0; i < length - 2; i++) {
+		for (int i = 0; i < length - 2; ++i) {
 			f.readUnsignedByte();
 		}
 	}
 	
-	public static void ReadComment(DataInputStream f, Header header) throws IOException {
+	private static void ReadComment(DataInputStream f, Header header) throws IOException {
 		System.out.println("Reading Comment");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		// all comment markers can be ignored
-		for (int i = 0; i < length - 2; i++) {
+		for (int i = 0; i < length - 2; ++i) {
 			f.readUnsignedByte();
 		}
 	}
@@ -347,11 +304,11 @@ public class JPGScanner {
 			header = ReadJPG("Simple.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
-				for (int i = 0; i < header.quantizationTables.size(); i++) {
+				for (int i = 0; i < header.quantizationTables.size(); ++i) {
 					System.out.println("Table ID: " + header.quantizationTables.get(i).tableID);
 					System.out.println("Precision: " + header.quantizationTables.get(i).precision);
 					System.out.print("Table Data:");
-					for (int j = 0; j < header.quantizationTables.get(i).table.length; j++) {
+					for (int j = 0; j < header.quantizationTables.get(i).table.length; ++j) {
 						if (j % 8 == 0) {
 							System.out.println();
 						}
@@ -365,14 +322,14 @@ public class JPGScanner {
 				System.out.println("Height: " + header.height);
 				System.out.println("Width: " + header.width);
 				System.out.println("Frame Components:");
-				for (int i = 0; i < header.frameComponents.size(); i++) {
+				for (int i = 0; i < header.frameComponents.size(); ++i) {
 					System.out.println("\tComponent ID: " + header.frameComponents.get(i).componentID);
 					System.out.println("\tHorizontal Sampling Factor: " + header.frameComponents.get(i).horizontalSamplingFactor);
 					System.out.println("\tVertical Sampling Factor: " + header.frameComponents.get(i).verticalSamplingFactor);
 					System.out.println("\tQuantization Table ID: " + header.frameComponents.get(i).quantizationTableID);
 				}
 				System.out.println("DHT============");
-				for (int i = 0; i < header.huffmanTables.size(); i++) {
+				for (int i = 0; i < header.huffmanTables.size(); ++i) {
 					System.out.println("Table ID: " + header.huffmanTables.get(i).tableID);
 					System.out.print("Table Type: ");
 					if (header.huffmanTables.get(i).ACTable) {
@@ -382,9 +339,9 @@ public class JPGScanner {
 						System.out.println("DC");
 					}
 					System.out.println("Symbols:");
-					for (int j = 0; j < header.huffmanTables.get(i).symbols.size(); j++) {
+					for (int j = 0; j < header.huffmanTables.get(i).symbols.size(); ++j) {
 						System.out.print((j + 1) + ": ");
-						for (int k = 0; k < header.huffmanTables.get(i).symbols.get(j).size(); k++) {
+						for (int k = 0; k < header.huffmanTables.get(i).symbols.get(j).size(); ++k) {
 							System.out.print(header.huffmanTables.get(i).symbols.get(j).get(k));
 							if (k < header.huffmanTables.get(i).symbols.get(j).size() - 1) {
 								System.out.print(", ");
@@ -398,7 +355,7 @@ public class JPGScanner {
 				System.out.println("End of Selection: " + header.endOfSelection);
 				System.out.println("Successive Approximation: " + header.successvieApproximation);
 				System.out.println("Scan Components:");
-				for (int i = 0; i < header.scanComponents.size(); i++) {
+				for (int i = 0; i < header.scanComponents.size(); ++i) {
 					System.out.println("\tComponent ID: " + header.scanComponents.get(i).componentID);
 					System.out.println("\tHuffman AC Table ID: " + header.scanComponents.get(i).huffmanACTableID);
 					System.out.println("\tHuffman DC Table ID: " + header.scanComponents.get(i).huffmanDCTableID);
