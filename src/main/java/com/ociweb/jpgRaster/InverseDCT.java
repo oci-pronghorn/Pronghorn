@@ -1,40 +1,50 @@
 package com.ociweb.jpgRaster;
 
 public class InverseDCT {
-	public static short[][] MCUInverseDCT(float[][] mcu) {
+	public static short[][] MCUInverseDCT(double[][] mcu) {
 		short[][] IDCTresult = new short[8][8];
 		for (int y = 0; y < 8; y++) {
 			for (int x = 0; x < 8; x++) {
-				float outerSum = 0;
+				double sum = 0.0;
 				for (int i = 0; i < 8; i++) {
-					float innerSum = 0;
 					for (int j = 0; j < 8; j++) {
-						float Cu = 1.0f;
-						float Cv = 1.0f;
-						if (i == 0 && j == 0) {
-							Cu = Cv = 1 / (float)Math.sqrt(2.0f);
+						double Cu = 1.0;
+						double Cv = 1.0;
+						if (i == 0) {
+							Cv = 1 / Math.sqrt(2.0);
 						}
-						innerSum += Cu * Cv * mcu[i][j] *
-									Math.cos(((2 * x + 1) * j * Math.PI) / 16) *
-								    Math.cos(((2 * y + 1) * i * Math.PI) / 16);
+						if (j == 0) {
+							Cu = 1 / Math.sqrt(2.0);
+						}
+						sum += Cu * Cv * mcu[i][j] *
+							   Math.cos((2.0 * x + 1.0) * j * Math.PI / 16.0) *
+							   Math.cos((2.0 * y + 1.0) * i * Math.PI / 16.0);
 					}
-					outerSum += innerSum;
 				}
-				IDCTresult[y][x] = (short)(outerSum / 4.0f);
+				sum /= 4.0;
+				if (sum > 255.0) {
+					sum = 255.0;
+				}
+				if (sum < 0.0) {
+					sum = 0.0;
+				}
+				IDCTresult[y][x] = (short)sum;
 			}
 		}
 		return IDCTresult;
 	}
 	
 	public static void main(String[] args) {
-		float[][] mcu = new float[][] {{ (float)  -370, (float) -29.7, (float) -2.6, (float) -2.5, (float) -1.1, (float) -3.7, (float) -1.5, (float) -0.08 },
-									   { (float)  -231, (float) -44.9, (float) 24.5, (float) -0.3, (float)  9.3, (float)  3.9, (float)  4.3, (float)  -1.4 },
-									   { (float)  62.8, (float)  -8.5, (float) -7.6, (float) -2.7, (float)  0.3, (float) -0.4, (float)  0.5, (float)  -0.8 },
-									   { (float)  12.5, (float) -14.6, (float) -3.5, (float) -3.4, (float)  2.4, (float) -1.3, (float)  2.7, (float)  -0.4 },
-									   { (float)  -4.9, (float)  -3.9, (float)  0.9, (float)  3.6, (float)  0.1, (float)  5.1, (float)  1.1, (float)   0.5 },
-									   { (float)  -0.5, (float)   3.1, (float) -1.4, (float)  0.2, (float) -1.1, (float) -1.5, (float) -1.1, (float)   0.9 },
-									   { (float)  -4.4, (float)   2.3, (float) -1.7, (float) -1.6, (float)  1.1, (float) -2.7, (float)  1.1, (float)  -1.4 },
-									   { (float) -10.2, (float)  -1.8, (float)  5.9, (float) -0.4, (float)  0.3, (float)  0.4, (float) -1.0, (float)   0.0 }};
+		double[][] mcu = new double[][] {
+			{  6.1917, -0.3411,  1.2418,  0.1492,  0.1583,  0.2742, -0.0724,  0.0561 },
+			{  0.2205,  0.0214,  0.4503,  0.3947, -0.7846, -0.4391,  0.1001, -0.2554 },
+			{  1.0423,  0.2214, -1.0017, -0.2720,  0.0789, -0.1952,  0.2801,  0.4713 },
+			{ -0.2340, -0.0392, -0.2617, -0.2866,  0.6351,  0.3501, -0.1433,  0.3550 },
+			{  0.2750,  0.0226,  0.1229,  0.2183, -0.2583, -0.0742, -0.2042, -0.5906 },
+			{  0.0653,  0.0428, -0.4721, -0.2905,  0.4745,  0.2875, -0.0284, -0.1311 },
+			{  0.3169,  0.0541, -0.1033, -0.0225, -0.0056,  0.1017, -0.1650, -0.1500 },
+			{ -0.2970, -0.0627,  0.1960,  0.0644, -0.1136, -0.1031,  0.1887,  0.1444 }
+		};
 		short[][] result = MCUInverseDCT(mcu);
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
