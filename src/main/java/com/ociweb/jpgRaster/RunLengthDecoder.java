@@ -32,7 +32,7 @@ public class RunLengthDecoder {
 	public static final int INIT_SIZE = 8;
 
 
-	private static short[] decodeRLE(short inputArr[]) {
+	private static void decodeRLE(short inputArr[]) {
 		dynamicArray arr = new dynamicArray(INIT_SIZE);
 		for (int i = 0; i < inputArr.length; ++i) {
 			// First value in nibble should be number of zeros in run
@@ -43,20 +43,16 @@ public class RunLengthDecoder {
 			// Second value in nibble is an actual value
 			arr.insert(inputArr[i]);
 		}
-		return arr.byteArray;
+		inputArr = arr.byteArray;
+		return;
 	}
 	
-	public static ArrayList<MCU> decodeRLEMCUs(ArrayList<MCU> mcus) {
-		ArrayList<MCU> decodedMCUs = new ArrayList<MCU>(mcus.size());
+	public static void decodeRLEMCUs(ArrayList<MCU> mcus) {
 		for (int i = 0; i < mcus.size(); ++i) {
-			decodedMCUs.add(new MCU());
-			decodedMCUs.get(i).yDc = mcus.get(i).yDc;
-			decodedMCUs.get(i).cbDc = mcus.get(i).cbDc;
-			decodedMCUs.get(i).crDc = mcus.get(i).crDc;
-			decodedMCUs.get(i).yAc = decodeRLE(mcus.get(i).yAc);
-			decodedMCUs.get(i).cbAc = decodeRLE(mcus.get(i).cbAc);
-			decodedMCUs.get(i).crAc = decodeRLE(mcus.get(i).crAc);
+			decodeRLE(mcus.get(i).yAc);
+			decodeRLE(mcus.get(i).cbAc);
+			decodeRLE(mcus.get(i).crAc);
 		}
-		return decodedMCUs;
+		return;
 	}
 }

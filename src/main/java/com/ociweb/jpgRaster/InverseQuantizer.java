@@ -2,28 +2,21 @@ package com.ociweb.jpgRaster;
 
 import static java.lang.Math.sqrt;
 
+import java.util.ArrayList;
+
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
+
 public class InverseQuantizer {
-    int quantizationTable[];
-
-    // TODO populate/read in quantization table
-    void readTable(int[] inputArr, int length) {
-        quantizationTable = new int[length];
-        for (int i = 0; i < length; ++i) {
-            quantizationTable[i] = inputArr[i];
-        }
-    }
-
-    void dequantize(int[][][] MCU) {
+    public static void dequantize(short[] MCU, QuantizationTable table) {
         for (int i = 0; i < MCU.length; ++i) {
-            for (int j = 0; j < MCU[0].length; ++j) {
-                for (int k = 0; k < MCU[0][0].length; ++k) {
-                    MCU[i][j][k] = MCU[i][j][k] * quantizationTable[k];
-                }
-            }
+        	// type casting is unsafe for 16-bit precision quantization tables
+            MCU[i] = (short)(MCU[i] * table.table[i]);
         }
     }
 
-    int[][] reverseZigZag(int[] inputArr, int length) {
+    public static int[][] reverseZigZag(int[] inputArr, int length) {
         final int EAST = 0;
         final int SOUTH = 1;
         final int SOUTHWEST = 2;
@@ -69,5 +62,14 @@ public class InverseQuantizer {
             }
         }
         return result;
+    }
+    
+    public static void Dequantize(ArrayList<MCU> mcus, Header header) {
+		for (int i = 0; i < mcus.size(); ++i) {
+			dequantize(mcus.get(i).yAc, header.quantizationTables.get(0));
+			dequantize(mcus.get(i).cbAc, header.quantizationTables.get(0));
+			dequantize(mcus.get(i).crAc, header.quantizationTables.get(0));
+		}
+		return;
     }
 }

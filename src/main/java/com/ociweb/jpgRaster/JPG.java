@@ -6,6 +6,8 @@ public class JPG {
 	public static class QuantizationTable {
 		short tableID;
 		short precision;
+		// using ints instead of shorts because
+		//  precision might be 16 instead of 8
 		int[] table = new int[64];
 	}
 	
