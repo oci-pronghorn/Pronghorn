@@ -19,5 +19,6 @@ RemoteSystemsTempFiles/\.project
 
 *.class
 
-src/main/java/apache/*
-
+# Ignore Intellij stuff
+.idea/
+*.iml
