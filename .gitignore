@@ -12,3 +12,12 @@ buildNumber.properties
 !/.mvn/wrapper/maven-wrapper.jar
 /.classpath
 /.project
+
+/.metadata/*
+
+RemoteSystemsTempFiles/\.project
+
+*.class
+
+src/main/java/apache/*
+
