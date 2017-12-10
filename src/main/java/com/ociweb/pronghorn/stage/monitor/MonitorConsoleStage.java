@@ -33,7 +33,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	private short[] pctFull;
     private int position;
     private final int batchSize;
-	
+	private int reportSlowSpeed = 10;
+    
 	private boolean recorderOn=true;
 	
 	private MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
@@ -109,49 +110,70 @@ public class MonitorConsoleStage extends PronghornStage {
 
 		int j = batchSize; //max to check before returning thread.
 		int pos = position;
-		Pipe[] localInputs = inputs;
 		Histogram[] localHists = recorderOn ? hists : null;
 		
 		while (--j>=0) {
 			if (--pos<0) {
-				pos = localInputs.length-1;
+				pos = inputs.length-1;
 			}			
 			//can pass in null for local hists when not gatering history
-			consumeSamples(pos, localInputs, localHists, pctFull);
+			consumeSamples(pos, inputs, localHists, pctFull);
 		}
 		position = pos;
 	}
 
+	//TODO: for large 8K telemetry must update this:
+	//       1. add custom histogram this loop must run very fast
+	//       2. add muliple MonitorConsoleStages, 1 per group of a few thousand??
+	
 	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, short[] pctFullAvg) {
-		Pipe<?> ring = localInputs[pos];
+		Pipe<?> pipe = localInputs[pos];
 		long consumed = -1;
-		while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
-			int mgdIdx = Pipe.takeMsgIdx(ring);			
-			long time = Pipe.takeLong(ring);
-			long head = Pipe.takeLong(ring);
-			long tail = Pipe.takeLong(ring); 				
-			int lastMsgIdx = Pipe.takeInt(ring);
-			int ringSize = Pipe.takeInt(ring);
+		long head = -1;
+		long tail = -1;
+		int ringSize = -1;
+		int msgSkipped = -1;
+		
+		while (Pipe.hasContentToRead(pipe)) {
+			msgSkipped++;
+			int msgIdx = Pipe.takeMsgIdx(pipe);
+			assert(PipeMonitorSchema.MSG_RINGSTATSAMPLE_100 == msgIdx);
+			long time = Pipe.takeLong(pipe);
+			head = Pipe.takeLong(pipe);
+			tail = Pipe.takeLong(pipe); 				
+			int lastMsgIdx = Pipe.takeInt(pipe);
+			ringSize = Pipe.takeInt(pipe);
 		   
-			consumed = Pipe.takeLong(ring);
+			consumed = Pipe.takeLong(pipe);
 			
-			Pipe.confirmLowLevelRead(ring, SIZE_OF);
-			Pipe.releaseReadLock(ring);
+			Pipe.confirmLowLevelRead(pipe, SIZE_OF);
+			Pipe.releaseReadLock(pipe);
+		}
+
+		/////////////////////
+		//to minimize monitoring work we only use the last value after reading all the data
+		/////////////////////		
+		if (consumed>=0) {
 			
-			int pctFull = (int)((10000*(head-tail))/ringSize);
-			if (null!=localHists && head>=0 && tail>=0) {
-				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
-				
-				localHists[pos].recordValue(pctFull>=0 ? (pctFull<=10000 ? pctFull : 9999) : 0);
-			}
-			pctFullAvg[pos] = (short)Math.min(9999, (((99*pctFullAvg[pos])+pctFull)/100));
-			
+			recordPctFull(pos, localHists, pctFullAvg, consumed, head, tail, ringSize, msgSkipped); 
+		}
+	}
+
+	private void recordPctFull(int pos, Histogram[] localHists, short[] pctFullAvg, long consumed, long head, long tail,
+			int ringSize, int msgSkipped) {
+		if (msgSkipped>10 && --reportSlowSpeed>0) {			
+			logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
+			//this should not happen unless the system is overloaded and scheduler needs to be updated.			
 		}
 		
-		if (consumed>=0) {
-						
-			trafficValues[this.observedPipeId[pos]] = consumed; 
+		int pctFull = (int)((10000*(head-tail))/ringSize);
+		if (null!=localHists && head>=0 && tail>=0) {
+			//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
+			localHists[pos].recordValue(pctFull>=0 ? (pctFull<=10000 ? pctFull : 9999) : 0);
 		}
+		pctFullAvg[pos] = (short)Math.min(9999, (((99*pctFullAvg[pos])+pctFull)/100));
+					
+		trafficValues[this.observedPipeId[pos]] = consumed;
 	}
 
 	@Override
@@ -265,7 +287,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 	}
 
-	private static final Long defaultMonitorRate = Long.valueOf(80_000_000); //80 ms, 12.5 fps
+	private static final Long defaultMonitorRate = Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE); 
 	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 15, 0);
 	
 	public static MonitorConsoleStage attach(GraphManager gm) {
@@ -283,10 +305,10 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param ringBufferMonitorConfig
 	 */
 	public static MonitorConsoleStage attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
+		
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
-		
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate>>5, stage);
 		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
 		return stage;
 	}

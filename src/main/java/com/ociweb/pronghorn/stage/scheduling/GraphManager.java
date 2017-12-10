@@ -63,8 +63,8 @@ public class GraphManager {
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
 	//must be set before graph starts and impacts the latency of the graph.dot calls
-	//this does NOT impact the data poll rate which is fixed at 80ms
-	public static int TELEMTRY_SERVER_RATE = 20000;//20 mirco seconds
+	//this does NOT impact the data poll rate which is fixed at 160ms
+	public final static int TELEMTRY_SERVER_RATE = 160000000;//160ms 6.25fps
 	
     private class GraphManagerStageStateData {
     	
@@ -1661,11 +1661,11 @@ public class GraphManager {
 	                
 	                target.append(AQUOTE);
 	                
-	                if (pct>=6000) {
+	                if (pct>=60000) {
                 		target.append(",color=red,penwidth=5");	    
-                	} else if (pct>=4000) {
+                	} else if (pct>=40000) {
                 		target.append(",color=orange,penwidth=5");	    
-                	} else if (pct>=2000) {
+                	} else if (pct>=20000) {
                 		target.append(",color=blue,penwidth=5");
                 	}
 	                
