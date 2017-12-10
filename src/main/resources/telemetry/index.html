@@ -315,6 +315,13 @@
             };
         }());
 
+        function zoom(factor) {
+            zoomWidth += factor;
+            zoomHeight += factor;
+            $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+            $("body").scroll();
+        }
+
         $(document).ready(function() {
             $("#refresh-rate-dropdown a").click(function () {
                 $("#refresh-rate-dropdown a").removeClass("active");
@@ -334,18 +341,12 @@
 
             $("#zoom-in-btn").click(function () {
                 //WIP!
-                zoomWidth += zoomStep;
-                zoomHeight += zoomStep;
-                $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
-                $("body").scroll();
+                zoom(zoomStep);
             });
 
             $("#zoom-out-btn").click(function () {
                 //WIP!
-                zoomWidth -= zoomStep;
-                zoomHeight -= zoomStep;
-                $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
-                $("body").scroll();
+                zoom(zoomStep * -1);
             });
 
             $("#download-btn").click(function() {
