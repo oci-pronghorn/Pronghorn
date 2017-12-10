@@ -93,7 +93,6 @@
                     </a>
                     <div id="refresh-rate-dropdown" class="dropdown-menu dropdown-right" aria-labelledby="refreshRateDropdown">
                         <a class="dropdown-item" href="#" data-interval="0">No refresh</a>
-                        <a class="dropdown-item" href="#" data-interval="40">40 ms</a>
                         <a class="dropdown-item" href="#" data-interval="160">160 ms</a>
                         <a class="dropdown-item active" href="#" data-interval="1000">1 sec</a>
                         <a class="dropdown-item" href="#" data-interval="20000">20 sec</a>
@@ -169,7 +168,7 @@
 
         var previewScale = 0.07;
 
-        var zoomWidth = 100;
+        var zoomWidth = 100; //zoom is WIP
         var zoomHeight = 100;
 
         var zoomStep = 15;
@@ -236,6 +235,9 @@
         var eoldfeatureArray = [];
         var enewfeatureArray = [];
 
+        //this is where the repetition bug could be, I have the faint suspicion that we don't update the array
+        //js is not pass by reference but pretty sure it is for arrays?
+        //can't test after refactor because main telemetry will not load os x/win
         function paintPart(startIndex, stopIndex, whole, feature, oldArray, selector) {
             console.log("painting a part!");
             var increment = 1;
@@ -270,6 +272,7 @@
                 return element === newArray[index];
             });
             if ((!is_same && !isFirst) && !paintAllinProgress){
+                console.log("detected a change");
                 doingUpdate = false;
                 paintAll();
             }
