@@ -118,6 +118,15 @@
                 <img src="img/spinner.svg" />
             </div>
         </div>
+        <div class="modal fade" id="errorModal" data-backdrop="static">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <div class="alert alert-danger" style="margin-bottom: 0px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
     <script type="text/javascript">
         $(".navbar,#minimap").hide();
@@ -136,6 +145,25 @@
             };
             xmlHttp.open("GET", theUrl, true );
             xmlHttp.send();
+        }
+
+        var errorShown = false;
+
+        function showError(message) {
+            if(!errorShown) {
+                $('#errorModal').modal('show');
+                $('#errorModal .alert').html(message + " | Retrying...");
+                errorShown = true;
+            }
+        }
+
+        function hideError() {
+            if(errorShown) {
+                $('#errorModal').modal('hide');
+                $('.modal-backdrop').hide();
+
+                errorShown = false;
+            }
         }
 
         var doingUpdate = false;
@@ -157,6 +185,8 @@
 
         function handleError(error) {
             console.log('Error: ' + error);
+            showError("Error: " + error);
+
             doingUpdate = false;
         }
 
@@ -185,6 +215,8 @@
 
                 //message returned from the webworker
                 webworker.onmessage = function (e) {
+                    hideError();
+
                     webworkerInProgress = false;
                     paintAllDrawing = true;
 
@@ -235,8 +267,7 @@
             var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
                 return element === newArray[index];
             });
-            if ((!is_same && !isFirst) && !paintAllinProgress){
-                console.log("detected graphical change... redrawing all!");
+            if ((!is_same && !isFirst) && !paintAllinProgress) {
                 doingUpdate = false;
                 paintAll();
             }
@@ -246,7 +277,6 @@
 
         //function that updates the text values
         function paintParts(dot) {
-            //console.log("paintParts - interval: " + interval);
             var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
             var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
             var numberOfNodeIds = numberOfTotalIds - numberOfEdgeIds; //Number of node IDs
@@ -266,7 +296,6 @@
             return 0;
         }
 
-        //this is where the repetition is
         function paintElement(element, startIndex, stopIndex, whole, feature, oldArray) {
             //console.log("trying to paint part for " + element);
             var ss = 1;
@@ -281,16 +310,13 @@
 
                 var sel = '#demo svg #' + element + ss;
                 $(sel).children("text").each(function(itemIdx, item) {
-                    //console.log("!!!!! going through " + sel);
                     if (itemIdx !== 0) { //skips title line which doesn't change
                         item = $(item);
                         if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
                             if ((item.text().length !== iteration[itemIdx].length) && !paintAllinProgress) { //if the length is different redraw
                                 doingUpdate = false;
-                                console.log("paintPart len is different so redraw!");
                                 paintAll();
                             }
-                            //console.log("paintPart setting text for " + iteration[itemIdx]);
                             item.text(iteration[itemIdx]);
                         }
                     }
