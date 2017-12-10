@@ -1661,11 +1661,11 @@ public class GraphManager {
 	                
 	                target.append(AQUOTE);
 	                
-	                if (pct>=6000) {
+	                if (pct>=60000) {
                 		target.append(",color=red,penwidth=5");	    
-                	} else if (pct>=4000) {
+                	} else if (pct>=40000) {
                 		target.append(",color=orange,penwidth=5");	    
-                	} else if (pct>=2000) {
+                	} else if (pct>=20000) {
                 		target.append(",color=blue,penwidth=5");
                 	}
 	                
