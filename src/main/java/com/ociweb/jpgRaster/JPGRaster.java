@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
-
+import com.ociweb.jpgRaster.JPG.RGB;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
@@ -38,6 +38,7 @@ public class JPGRaster {
 			RunLengthDecoder.decodeRLE(mcus);
 			InverseQuantizer.dequantize(mcus, header);
 			InverseDCT.inverseDCT(mcus);
+			ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);
 			} catch (IOException e) {
 			
 		}

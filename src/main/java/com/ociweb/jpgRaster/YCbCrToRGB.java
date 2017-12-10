@@ -1,24 +1,12 @@
 package com.ociweb.jpgRaster;
 
-public class YCbCrToRGB {
-	public static class RGB {
-		public short r;
-		public short g;
-		public short b;
-	}
-	
-	public static short[] convertAllToRGB(short[] ycbcr) {
-		assert(ycbcr.length % 3 == 0);
-		short[] rgbArray = new short[ycbcr.length];
-		for (int i = 0; i < ycbcr.length ; i += 3) {
-			RGB rgb = convertToRGB(ycbcr[i + 0], ycbcr[i + 1], ycbcr[i + 2]);
-			rgbArray[i + 0] = rgb.r;
-			rgbArray[i + 1] = rgb.g;
-			rgbArray[i + 2] = rgb.b;
-		}
-		return rgbArray;
-	}
-	
+import java.util.ArrayList;
+
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.RGB;
+
+public class YCbCrToRGB {	
 	public static RGB convertToRGB(short Y, short Cb, short Cr) {
 		RGB rgb = new RGB();
 		rgb.r = (short)Math.min(Math.max(0, Math.floor((double)Y + 1.402 * ((double)Cr - 128) + 0.5)), 255);
@@ -27,11 +15,21 @@ public class YCbCrToRGB {
 		return rgb;
 	}
 	
-	public static void main(String[] args) {
+	public static ArrayList<RGB> convertYCbCrToRGB(ArrayList<MCU> mcus, Header header) {
+		ArrayList<RGB> rgb = new ArrayList<RGB>(header.height * header.width);
+		for (int i = 0; i < mcus.size(); ++i) {
+			for (int j = 0; j < 64; ++j) {
+				rgb.add(convertToRGB(mcus.get(i).yAc[j], mcus.get(i).cbAc[j], mcus.get(i).crAc[j]));
+			}
+		}
+		return rgb;
+	}
+	
+	/*public static void main(String[] args) {
 		short[] testArray = {120, 120, 120, 180, 180, 180};
 		short[] converted = convertAllToRGB(testArray);
 		for (int i = 0; i < converted.length ; i += 3) {
 			System.out.println(converted[i + 0] + ", " + converted[i + 1] + ", " + converted[i + 2]);
 		}
-	}
+	}*/
 }

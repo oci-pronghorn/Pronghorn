@@ -63,4 +63,10 @@ public class JPG {
 		short[] cbAc = new short[64];
 		short[] crAc = new short[64];
 	}
+
+	public static class RGB {
+		public short r;
+		public short g;
+		public short b;
+	}
 }
