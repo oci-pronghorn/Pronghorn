@@ -133,7 +133,7 @@ public class HuffmanDecoder {
 			//get the Y DC value for this MCU
 			int currentCode = b.nextBit();
 			boolean found = false;
-			for (int i = 0; i < 16 && !found; ++i) {
+			for (int i = 0; i < 16; ++i) {
 				for (int j = 0; j < DCTableCodes.get(yDCTableID).get(i).size(); ++j) {
 					if (currentCode == DCTableCodes.get(yDCTableID).get(i).get(j)) {
 						int length = DCTables.get(yDCTableID).symbols.get(i).get(j);
@@ -142,6 +142,9 @@ public class HuffmanDecoder {
 						found = true;
 						break;
 					}
+				}
+				if (found) {
+					break;
 				}
 				currentCode = (currentCode << 1) | b.nextBit();
 				readBits += 1;
@@ -167,11 +170,11 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						if (found) {
-							break;
-						}
 						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
+					}
+					if (found) {
+						break;
 					}
 				}
 			}
@@ -221,11 +224,11 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						if (found) {
-							break;
-						}
 						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
+					}
+					if (found) {
+						break;
 					}
 				}
 			}
@@ -275,11 +278,11 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						if (found) {
-							break;
-						}
 						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
+					}
+					if (found) {
+						break;
 					}
 				}
 			}
