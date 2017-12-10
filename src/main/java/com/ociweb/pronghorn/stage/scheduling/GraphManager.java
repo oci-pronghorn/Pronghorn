@@ -1763,9 +1763,9 @@ public class GraphManager {
 			                if (null!=traffic) {
 			                	long traf = traffic[pipe.id];
 			                	if (traf>9999) {
-			                		Appendables.appendValue(target.append(" Vol:"), traf);
+			                		Appendables.appendValue(target.append("Vol:"), traf);
 			                	} else {
-			                		Appendables.appendFixedDecimalDigits(target.append(" Vol:"), traf, 1000);
+			                		Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
 			                	}
 			                	target.append(WHITE_NEWLINE);			                	
 			                } 
@@ -2346,13 +2346,18 @@ public class GraphManager {
 			buildHistogramsAsNeeded(graphManager, stageId);
 			ElapsedTimeRecorder.record(graphManager.stageElapsed[stageId], duration);
 
-		}
-
-		long newPct = ((100_000L*duration)/(now-last));		
+		}		
+		
+		long newPct = ( (100_000L*duration) / (now-last) );		
 		int oldPct = graphManager.stageCPUPct[stageId];
 		
-		//exponential moving avg 8K average
-		graphManager.stageCPUPct[stageId] = (int)((newPct+( ((1L<<13)-1L) *oldPct)) >>13);
+		final int bits = 16;//long is 64 bits, the PCT only needs 17 bits and we use 40 more for the moving average.
+		graphManager.stageCPUPct[stageId] = (int) 
+				(0==oldPct ? newPct:
+									((newPct
+				                                  +( ((1L<<bits)-1L)*(long)oldPct)) >> bits));
+	
+
 	}
 
 	private static void accumWhenZero(GraphManager graphManager, int stageId, long duration) {

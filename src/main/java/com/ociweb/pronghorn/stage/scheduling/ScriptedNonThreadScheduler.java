@@ -539,7 +539,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		
 		boolean shutDownRequestedHere = false;
 		int inProgressIdx;
-		long start = recordTime ? System.nanoTime() : 0;
 		// Once we're done waiting for a block, we need to execute it!
 		top:
 		do {
@@ -549,16 +548,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    // If it isn't a block-end (-1), run it!
 		    if (inProgressIdx >= 0) {
 
+		    	long start = recordTime ? System.nanoTime() : 0;
+		    	
 		    	if (!run(gm, localStage[inProgressIdx], this)) {
 					shutDownRequestedHere = true;
 				}
 		        
 				if (recordTime) {
 					long now = System.nanoTime();		        
-		        	GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, now-start, now);
-		        	start = now;
+		        	GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, now-start, now);        	
 				}
-				
 		    }
 
 		    // Increment IDX 
