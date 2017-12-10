@@ -4,6 +4,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.ScriptedNonThreadScheduler;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
@@ -11,13 +12,15 @@ public class TelemetryTestTool {
 
 	public static void main(String[] args) {
 	
+			//ScriptedNonThreadScheduler.debug = true;
+		
 			GraphManager gm = new GraphManager();
 			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500_000);
 
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(8, 8);
 			ExampleProducerStage producer = new ExampleProducerStage(gm, output);
 						
-			int i = 155;
+			int i = 40;//155;
 			Pipe[] targets = new Pipe[i];
 			while (--i>=0) {
 				targets[i] = new Pipe(output.config().grow2x());

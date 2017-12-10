@@ -685,15 +685,14 @@ public class NetGraphBuilder {
 	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
 			                                GraphManager gm, int baseRate) {
 		///////////////
-		//telemetry latency can be as large as 40ms so we run this sever very slow
+		//telemetry latency can be as large as 160ms so we run this sever very slow
 		//this ensures that the application runs normally without starvation 
 		///////////////
 		//The graph.dot must respond in less than 40ms but 20ms is nominal
 		///////////////
-		final int serverRate = Math.max(2000000, baseRate); //2ms
-		final int rate = serverRate;// actual modules rates
+		final int serverRate = baseRate>>6;
 		
-		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
+		final ModuleConfig modules = buildTelemetryModuleConfig(serverRate);
 		boolean isTLS = tlsCertificates != null;
 		int maxConnectionBits = 12;
 		int tracks = 1;
