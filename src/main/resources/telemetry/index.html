@@ -176,12 +176,10 @@
         function paintAll () {
             paintAllinProgress = true;
             if (webworker) {
-
                 if (!webworkerInProgress){
                     webworkerInProgress = true;
                     webworker.postMessage("");
-                }
-                else {
+                } else {
                     paintAll();
                 }
 
@@ -203,13 +201,11 @@
                     $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
 
                     if (isFirst) {
-                        $('.navbar').show();
-                        $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") );
+                        $(".navbar").show();
+                        $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") ).append('<div class="minimap-node" id="svg-preview"></div>');
 
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
                         isFirst = false;
-
-                        $("#minimap").append('<div class="minimap-node" id="svg-preview"></div>');
                     }
 
                     $("#svg-preview").html(result);
@@ -235,10 +231,45 @@
         var eoldfeatureArray = [];
         var enewfeatureArray = [];
 
+        function updateOnDifferent(oldArray, newArray) {
+            var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
+                return element === newArray[index];
+            });
+            if ((!is_same && !isFirst) && !paintAllinProgress){
+                console.log("detected a change");
+                doingUpdate = false;
+                paintAll();
+            }
+            newArray = Array.from(oldArray); //assign old array to new array
+            oldArray.length = 0; //empty old array so we can repeat the process
+        }
+
+        //function that updates the text values
+        function paintParts(dot) {
+            //console.log("paintParts - interval: " + interval);
+            var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
+            var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
+            var numberOfNodeIds = numberOfTotalIds - numberOfEdgeIds; //Number of node IDs
+            var whole = dot.match(node); //section matches starting with label=" and ending with "
+            var featureSection = dot.match(features); //grabs all features
+
+            //updates paintAll for nodes depending on changes to color and thickness
+            paintElement(0, numberOfNodeIds, whole, featureSection, oldfeatureArray, "#node");
+            updateOnDifferent(oldfeatureArray, newfeatureArray);
+
+            //updates paintAll for edges depending on changes to color and thickness
+            paintElement(numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray, "#edge");
+            updateOnDifferent(eoldfeatureArray, enewfeatureArray);
+
+            doingUpdate = false;
+
+            return 0;
+        }
+
         //this is where the repetition bug could be, I have the faint suspicion that we don't update the array
         //js is not pass by reference but pretty sure it is for arrays?
         //can't test after refactor because main telemetry will not load os x/win
-        function paintPart(startIndex, stopIndex, whole, feature, oldArray, selector) {
+        function paintElement(startIndex, stopIndex, whole, feature, oldArray, selector) {
             console.log("painting a part!");
             var increment = 1;
             for (var s = startIndex; s < stopIndex; s++) {   // is the number of nodes
@@ -265,41 +296,6 @@
                 });
                 increment++;
             }
-        }
-
-        function updateOnDifferent(oldArray, newArray) {
-            var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
-                return element === newArray[index];
-            });
-            if ((!is_same && !isFirst) && !paintAllinProgress){
-                console.log("detected a change");
-                doingUpdate = false;
-                paintAll();
-            }
-            newArray = Array.from(oldArray); //assign old array to new array
-            oldArray = []; //empty old array so we can repeat the process
-        }
-
-        //function that updates the text values
-        function paintParts(dot) {
-            //console.log("paintParts - interval: " + interval);
-            var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
-            var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
-            var numberOfNodeIds = numberOfTotalIds - numberOfEdgeIds; //Number of node IDs
-            var whole = dot.match(node); //section matches starting with label=" and ending with "
-            var featureSection = dot.match(features); //grabs all features
-
-            //updates paintAll for nodes depending on changes to color and thickness
-            paintPart(0, numberOfNodeIds, whole, featureSection, oldfeatureArray, "#node");
-            updateOnDifferent(oldfeatureArray, newfeatureArray);
-
-            //updates paintAll for edges depending on changes to color and thickness
-            paintPart(numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray, "#edge");
-            updateOnDifferent(eoldfeatureArray, enewfeatureArray);
-
-            doingUpdate = false;
-
-            return 0;
         }
 
         paintAll(); //runs first initial paintAll();
