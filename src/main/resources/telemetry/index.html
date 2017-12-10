@@ -168,8 +168,8 @@
 
         var previewScale = 0.07;
 
-        var zoomWidth = 100; //zoom is WIP
-        var zoomHeight = 100;
+        var zoomWidth = 500; //zoom is WIP
+        var zoomHeight = 500;
 
         var zoomStep = 15;
 
@@ -236,7 +236,7 @@
                 return element === newArray[index];
             });
             if ((!is_same && !isFirst) && !paintAllinProgress){
-                console.log("detected a change");
+                console.log("detected graphical change... redrawing all!");
                 doingUpdate = false;
                 paintAll();
             }
@@ -254,11 +254,11 @@
             var featureSection = dot.match(features); //grabs all features
 
             //updates paintAll for nodes depending on changes to color and thickness
-            paintElement(0, numberOfNodeIds, whole, featureSection, oldfeatureArray, "#node");
+            paintElement("node", 0, numberOfNodeIds, whole, featureSection, oldfeatureArray);
             updateOnDifferent(oldfeatureArray, newfeatureArray);
 
             //updates paintAll for edges depending on changes to color and thickness
-            paintElement(numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray, "#edge");
+            paintElement("edge", numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray);
             updateOnDifferent(eoldfeatureArray, enewfeatureArray);
 
             doingUpdate = false;
@@ -266,35 +266,36 @@
             return 0;
         }
 
-        //this is where the repetition bug could be, I have the faint suspicion that we don't update the array
-        //js is not pass by reference but pretty sure it is for arrays?
-        //can't test after refactor because main telemetry will not load os x/win
-        function paintElement(startIndex, stopIndex, whole, feature, oldArray, selector) {
-            console.log("painting a part!");
-            var increment = 1;
-            for (var s = startIndex; s < stopIndex; s++) {   // is the number of nodes
+        //this is where the repetition is
+        function paintElement(element, startIndex, stopIndex, whole, feature, oldArray) {
+            //console.log("trying to paint part for " + element);
+            var ss = 1;
+            for (var s = startIndex; s < stopIndex; s++) {
                 var iteration = whole[s].match(newline).map(function(item) {
                     var formattedSection = feature[s].replace(/"|]/g, '');
                     oldArray.push(formattedSection);
                     feature[s] = formattedSection;
+                    //console.log("have match! " + feature[s]);
                     return item.replace(/label|"|=/g, '');
                 });
 
-                $(selector + increment).children("text").each(function(itemIdx, item) {
+                var sel = '#demo svg #' + element + ss;
+                $(sel).children("text").each(function(itemIdx, item) {
+                    //console.log("!!!!! going through " + sel);
                     if (itemIdx !== 0) { //skips title line which doesn't change
                         item = $(item);
                         if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
                             if ((item.text().length !== iteration[itemIdx].length) && !paintAllinProgress) { //if the length is different redraw
                                 doingUpdate = false;
+                                console.log("paintPart len is different so redraw!");
                                 paintAll();
-                            } else{
-                                item.text(iteration[itemIdx]); // if there is a change but length is same just update that line
                             }
+                            //console.log("paintPart setting text for " + iteration[itemIdx]);
                             item.text(iteration[itemIdx]);
                         }
                     }
                 });
-                increment++;
+                ss++;
             }
         }
 
