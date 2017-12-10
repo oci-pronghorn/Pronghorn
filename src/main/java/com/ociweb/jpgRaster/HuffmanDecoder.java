@@ -56,7 +56,7 @@ public class HuffmanDecoder {
 		for (int i = 0; i < 16; ++i) {
 			codes.add(new ArrayList<Integer>());
 		}
-
+		
 		int code = 0;
 		for(int i = 0; i < 16; ++i){
 			for(int j = 0; j < table.symbols.get(i).size(); ++j){
@@ -68,45 +68,54 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
-	public static ArrayList<MCU> decodeFourTables(Header header) throws IOException {
-		ArrayList<ArrayList<Integer>> table1Codes = generateCodes(header.huffmanTables.get(0));
-		ArrayList<ArrayList<Integer>> table2Codes = generateCodes(header.huffmanTables.get(1));
-		ArrayList<ArrayList<Integer>> table3Codes = generateCodes(header.huffmanTables.get(2));
-		ArrayList<ArrayList<Integer>> table4Codes = generateCodes(header.huffmanTables.get(3));
-
+	public static ArrayList<MCU> decodeHuffmanData(Header header) throws IOException {
+		ArrayList<ArrayList<ArrayList<Integer>>> tableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(4); 
+		tableCodes.add(generateCodes(header.huffmanTables.get(0))); 
+		tableCodes.add(generateCodes(header.huffmanTables.get(1)));
+		if (header.huffmanTables.size() == 4) {
+			tableCodes.add(generateCodes(header.huffmanTables.get(2))); 
+			tableCodes.add(generateCodes(header.huffmanTables.get(3)));
+		}
+		
+		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+		System.out.println("Number of MCUs: " + numMCUs);
 		BitReader b = new BitReader(header.imageData);
-		int currentCode = b.nextBit();
 		ArrayList<MCU> out = new ArrayList<MCU>();
 		// ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-		while (!b.done()) {
-			System.out.println("Entering decode...");
+		
+		int readBits = 0;
+		while (out.size() != numMCUs && !b.done()) {
 			MCU newMCU = new MCU();
+			readBits += 1;
 			
 			//Y ======================================================================
 			
 			//get the Y DC value for this MCU
+			int currentCode = b.nextBit();
 			boolean found = false;
 			for (int i = 0; i < 16 && !found; ++i) {
-				for (int j = 0; j <= table1Codes.get(i).size(); ++j) {
-					if (currentCode == table1Codes.get(i).get(j)) {
+				for (int j = 0; j < tableCodes.get(header.colorComponents.get(0).huffmanDCTableID).get(i).size(); ++j) {
+					if (currentCode == tableCodes.get(header.colorComponents.get(0).huffmanDCTableID).get(i).get(j)) {
 						int length = header.huffmanTables.get(0).symbols.get(i).get(j);
-						newMCU.yDc = (int)b.nextBits(length);
+						newMCU.yDc = b.nextBits(length);
+						readBits += length;
 						found = true;
 						break;
 					}
 				}
 				currentCode = (currentCode << 1) & b.nextBit();
+				readBits += 1;
 			}
 			
 			//Get the Y AC values for this MCU
 			boolean acFinish = false;
 			found = false;
 			for (int k = 0; k < 64 && !acFinish; ++k) {
-				currentCode = (0 & b.nextBit());
+				currentCode = b.nextBit();
+				readBits += 1;
 				for (int i = 0; i < 16 && !found; ++i) {
-					for (int j = 0; j <= table2Codes.get(i).size(); ++j) {
-						if (currentCode == table2Codes.get(i).get(j)) {
+					for (int j = 0; j < tableCodes.get(header.colorComponents.get(0).huffmanACTableID).get(i).size(); ++j) {
+						if (currentCode == tableCodes.get(header.colorComponents.get(0).huffmanACTableID).get(i).get(j)) {
 							newMCU.yAc[k] = header.huffmanTables.get(1).symbols.get(i).get(j);
 							if (header.huffmanTables.get(1).symbols.get(i).get(j) == 0) {
 								for (; k < 64; ++k) {
@@ -118,6 +127,7 @@ public class HuffmanDecoder {
 							break;
 						}
 						currentCode = (currentCode << 1) & b.nextBit();
+						readBits += 1;
 					}
 				}
 			}
@@ -125,29 +135,33 @@ public class HuffmanDecoder {
 			
 			//CB=========================================================================
 			
-			currentCode = (0 & b.nextBit());
+			currentCode = b.nextBit();
+			readBits += 1;
 			//get the cb DC value for this MCU
 			found = false;
 			for (int i = 0; i < 16 && !found; ++i) {
-				for (int j = 0; j <= table3Codes.get(i).size(); ++j) {
-					if (currentCode == table3Codes.get(i).get(j)) {
+				for (int j = 0; j < tableCodes.get(header.colorComponents.get(1).huffmanDCTableID).get(i).size(); ++j) {
+					if (currentCode == tableCodes.get(header.colorComponents.get(1).huffmanDCTableID).get(i).get(j)) {
 						int length = header.huffmanTables.get(2).symbols.get(i).get(j);
-						newMCU.cbDc = (int)b.nextBits(length);
+						newMCU.cbDc = b.nextBits(length);
+						readBits += length;
 						found = true;
 						break;
 					}
 				}
 				currentCode = (currentCode << 1) & b.nextBit();
+				readBits += 1;
 			}
 			
 			//Get the cb AC values for this MCU
 			acFinish = false;
 			found = false;
 			for (int k = 0; k < 64 && !acFinish; ++k) {
-				currentCode = (0 & b.nextBit());
+				currentCode = b.nextBit();
+				readBits += 1;
 				for (int i = 0; i < 16 && !found; ++i) {
-					for (int j = 0; j <= table4Codes.get(i).size(); ++j) {
-						if (currentCode == table4Codes.get(i).get(j)) {
+					for (int j = 0; j < tableCodes.get(header.colorComponents.get(1).huffmanACTableID).get(i).size(); ++j) {
+						if (currentCode == tableCodes.get(header.colorComponents.get(1).huffmanACTableID).get(i).get(j)) {
 							newMCU.cbAc[k] = header.huffmanTables.get(3).symbols.get(i).get(j);
 							if (header.huffmanTables.get(3).symbols.get(i).get(j) == 0) {
 								for(; k < 64; ++k) {
@@ -159,6 +173,7 @@ public class HuffmanDecoder {
 							break;
 						}
 						currentCode = (currentCode << 1) & b.nextBit();
+						readBits += 1;
 					}
 				}
 			}
@@ -166,29 +181,33 @@ public class HuffmanDecoder {
 			
 			//CR ===========================================================================
 			
-			currentCode = (0 & b.nextBit());
+			currentCode = b.nextBit();
+			readBits += 1;
 			//get the cr DC value for this MCU
 			found = false;
 			for (int i = 0; i < 16 && !found; ++i) {
-				for (int j = 0; j <= table3Codes.get(i).size(); ++j) {
-					if (currentCode == table3Codes.get(i).get(j)) {
+				for (int j = 0; j < tableCodes.get(header.colorComponents.get(2).huffmanDCTableID).get(i).size(); ++j) {
+					if (currentCode == tableCodes.get(header.colorComponents.get(2).huffmanDCTableID).get(i).get(j)) {
 						int length = header.huffmanTables.get(2).symbols.get(i).get(j);
-						newMCU.cbDc = (int)b.nextBits(length);
+						newMCU.cbDc = b.nextBits(length);
+						readBits += length;
 						found = true;
 						break;
 					}
 				}
 				currentCode = (currentCode << 1) & b.nextBit();
+				readBits += 1;
 			}
 			
 			//Get the cr AC values for this MCU
 			acFinish = false;
 			found = false;
 			for (int k = 0; k < 64 && !acFinish; ++k) {
-				currentCode = (0 & b.nextBit());
+				currentCode = b.nextBit();
+				readBits += 1;
 				for (int i = 0; i < 16 && !found; ++i) {
-					for (int j = 0; j <= table4Codes.get(i).size(); ++j) {
-						if (currentCode == table4Codes.get(i).get(j)) {
+					for (int j = 0; j < tableCodes.get(header.colorComponents.get(2).huffmanACTableID).get(i).size(); ++j) {
+						if (currentCode == tableCodes.get(header.colorComponents.get(2).huffmanACTableID).get(i).get(j)) {
 							newMCU.crAc[k] = header.huffmanTables.get(3).symbols.get(i).get(j);
 							if (header.huffmanTables.get(3).symbols.get(i).get(j) == 0) {
 								for (; k < 64; ++k) {
@@ -200,11 +219,12 @@ public class HuffmanDecoder {
 							break;
 						}
 						currentCode = (currentCode << 1) & b.nextBit();
+						readBits += 1;
 					}
 				}
 			}
-			System.out.println("Adding MCU...");
 			out.add(newMCU);
+			System.out.println("Read bits: " + readBits);
 		} //end while
 		
 		return out;
@@ -260,11 +280,29 @@ public class HuffmanDecoder {
 			System.out.println();
 		}*/
 		
-		// test decodeFourTables
+		// test decodeHuffmanData
 		Header header = JPGScanner.ReadJPG("Simple.jpg");
-		ArrayList<MCU> mcus = decodeFourTables(header);
+		System.out.println("Decoding Huffman data...");
+		ArrayList<MCU> mcus = decodeHuffmanData(header);
 		for (int i = 0; i < mcus.size(); ++i) {
-			System.out.println(mcus.get(i));
+			System.out.println("yDC: " + mcus.get(i).yDc);
+			System.out.println("cbDC: " + mcus.get(i).cbDc);
+			System.out.println("crDC: " + mcus.get(i).crDc);
+			System.out.print("yAC: ");
+			for (int j = 0; j  < mcus.get(i).yAc.length; ++j) {
+				System.out.print(mcus.get(i).yAc[j] + " ");
+			}
+			System.out.println();
+			System.out.print("cbAC: ");
+			for (int j = 0; j  < mcus.get(i).cbAc.length; ++j) {
+				System.out.print(mcus.get(i).cbAc[j] + " ");
+			}
+			System.out.println();
+			System.out.print("crAC: ");
+			for (int j = 0; j  < mcus.get(i).crAc.length; ++j) {
+				System.out.print(mcus.get(i).crAc[j] + " ");
+			}
+			System.out.println();
 		}
 	}
 }
