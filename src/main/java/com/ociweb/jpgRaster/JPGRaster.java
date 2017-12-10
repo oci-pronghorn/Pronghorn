@@ -35,8 +35,9 @@ public class JPGRaster {
 		try {
 			Header header = JPGScanner.ReadJPG(inputFilePath);
 			ArrayList<MCU> mcus = HuffmanDecoder.decodeFourTables(header);
-			RunLengthDecoder.decodeRLEMCUs(mcus);
-			InverseQuantizer.Dequantize(mcus, header);
+			RunLengthDecoder.decodeRLE(mcus);
+			InverseQuantizer.dequantize(mcus, header);
+			InverseDCT.inverseDCT(mcus);
 			} catch (IOException e) {
 			
 		}

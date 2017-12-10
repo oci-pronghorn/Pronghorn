@@ -32,7 +32,7 @@ public class RunLengthDecoder {
 	public static final int INIT_SIZE = 8;
 
 
-	private static void decodeRLE(short inputArr[]) {
+	private static void decodeRLEMCU(short inputArr[]) {
 		dynamicArray arr = new dynamicArray(INIT_SIZE);
 		for (int i = 0; i < inputArr.length; ++i) {
 			// First value in nibble should be number of zeros in run
@@ -47,11 +47,11 @@ public class RunLengthDecoder {
 		return;
 	}
 	
-	public static void decodeRLEMCUs(ArrayList<MCU> mcus) {
+	public static void decodeRLE(ArrayList<MCU> mcus) {
 		for (int i = 0; i < mcus.size(); ++i) {
-			decodeRLE(mcus.get(i).yAc);
-			decodeRLE(mcus.get(i).cbAc);
-			decodeRLE(mcus.get(i).crAc);
+			decodeRLEMCU(mcus.get(i).yAc);
+			decodeRLEMCU(mcus.get(i).cbAc);
+			decodeRLEMCU(mcus.get(i).crAc);
 		}
 		return;
 	}

@@ -1,8 +1,11 @@
 package com.ociweb.jpgRaster;
 
+import java.util.ArrayList;
+
+import com.ociweb.jpgRaster.JPG.MCU;
+
 public class InverseDCT {
-	public static short[][] MCUInverseDCT(double[][] mcu) {
-		short[][] IDCTresult = new short[8][8];
+	public static void MCUInverseDCT(short[] mcu) {
 		for (int y = 0; y < 8; y++) {
 			for (int x = 0; x < 8; x++) {
 				double sum = 0.0;
@@ -16,7 +19,7 @@ public class InverseDCT {
 						if (j == 0) {
 							Cu = 1 / Math.sqrt(2.0);
 						}
-						sum += Cu * Cv * mcu[i][j] *
+						sum += Cu * Cv * mcu[i * 8 + j] *
 							   Math.cos((2.0 * x + 1.0) * j * Math.PI / 16.0) *
 							   Math.cos((2.0 * y + 1.0) * i * Math.PI / 16.0);
 					}
@@ -28,13 +31,22 @@ public class InverseDCT {
 				if (sum < 0.0) {
 					sum = 0.0;
 				}
-				IDCTresult[y][x] = (short)sum;
+				mcu[y * 8 + x] = (short)sum;
 			}
 		}
-		return IDCTresult;
+		return;
 	}
 	
-	public static void main(String[] args) {
+	public static void inverseDCT(ArrayList<MCU> mcus) {
+		for (int i = 0; i < mcus.size(); ++i) {
+			MCUInverseDCT(mcus.get(i).yAc);
+			MCUInverseDCT(mcus.get(i).cbAc);
+			MCUInverseDCT(mcus.get(i).crAc);
+		}
+		return;
+	}
+	
+	/*public static void main(String[] args) {
 		double[][] mcu = new double[][] {
 			{  6.1917, -0.3411,  1.2418,  0.1492,  0.1583,  0.2742, -0.0724,  0.0561 },
 			{  0.2205,  0.0214,  0.4503,  0.3947, -0.7846, -0.4391,  0.1001, -0.2554 },
@@ -52,5 +64,5 @@ public class InverseDCT {
 			}
 			System.out.println();
 		}
-	}
+	}*/
 }
