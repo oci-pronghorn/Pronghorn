@@ -17,15 +17,11 @@ public class JPG {
 		ArrayList<ArrayList<Short>> symbols = new ArrayList<ArrayList<Short>>(16);
 	}
 	
-	public static class FrameComponent {
+	public static class ColorComponent {
 		short componentID;
 		short horizontalSamplingFactor;
 		short verticalSamplingFactor;
 		short quantizationTableID;
-	}
-	
-	public static class ScanComponent {
-		short componentID;
 		short huffmanACTableID;
 		short huffmanDCTableID;
 	}
@@ -42,13 +38,13 @@ public class JPG {
 		short precision;
 		int height;
 		int width;
-		ArrayList<FrameComponent> frameComponents = new ArrayList<FrameComponent>(4);
 		
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
 		short successvieApproximation;
-		ArrayList<ScanComponent> scanComponents = new ArrayList<ScanComponent>(4);
+
+		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
 		ArrayList<Short> imageData = new ArrayList<Short>();
 		
 		Boolean valid = true;

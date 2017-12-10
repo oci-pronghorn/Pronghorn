@@ -3,8 +3,7 @@ package com.ociweb.jpgRaster;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
-import com.ociweb.jpgRaster.JPG.FrameComponent;
-import com.ociweb.jpgRaster.JPG.ScanComponent;
+import com.ociweb.jpgRaster.JPG.ColorComponent;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -31,6 +30,10 @@ public class JPGScanner {
 		current = (short)f.readUnsignedByte();
 		
 		while (true) {
+			if (header.valid == false) {
+				break;
+			}
+			
 			if (last == 0xFF) {
 				if      (current == JPGConstants.DQT) {
 					ReadQuantizationTable(f, header);
@@ -106,13 +109,13 @@ public class JPGScanner {
 					return header;
 				}
 				else if (current >= JPGConstants.SOF0 && current <= JPGConstants.SOF15) {
-					System.err.println("Error - This Start of Frame marker is not supported: " + current);
+					System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
 					header.valid = false;
 					f.close();
 					return header;
 				}
 				else {
-					System.out.println("Error - Unknown Maker: " + current);
+					System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
 					header.valid = false;
 					f.close();
 					return header;
@@ -128,30 +131,47 @@ public class JPGScanner {
 			last = (short)f.readUnsignedByte();
 			current = (short)f.readUnsignedByte();
 		}
-		current = (short)f.readUnsignedByte();
-		while (true) {
-			last = current;
+		if (header.valid) {
 			current = (short)f.readUnsignedByte();
-			if      (last == 0xFF && current == JPGConstants.EOI) {
-				System.out.println("End of Image");
-				break;
-			}
-			else if (last == 0xFF && current == 0x00) {
-				header.imageData.add(last);
-				// advance by a byte, to drop 0x00
+			while (true) {
+				last = current;
 				current = (short)f.readUnsignedByte();
-			}
-			/*else if (last == 0xFF) {
-				System.err.println("Invalid marker during compressed data scan: " + current);
-				header.valid = false;
-				f.close();
-				return header;
-			}*/
-			else {
-				header.imageData.add(last);
+				if      (last == 0xFF && current == JPGConstants.EOI) {
+					System.out.println("End of Image");
+					break;
+				}
+				else if (last == 0xFF && current == 0x00) {
+					header.imageData.add(last);
+					// advance by a byte, to drop 0x00
+					current = (short)f.readUnsignedByte();
+				}
+				// this doesn't seem to be true for SOF2
+				else if (last == 0xFF) {
+					System.err.println("Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+					header.valid = false;
+					f.close();
+					return header;
+				}
+				else {
+					header.imageData.add(last);
+				}
 			}
 		}
 		f.close();
+		
+		if (header.quantizationTables.size() != 2) {
+			System.err.println("Error - " + header.quantizationTables.size() + " Quantization tables given (2 required)");
+			header.valid = false;
+		}
+		if (header.huffmanTables.size() != 2 && header.huffmanTables.size() != 4) {
+			System.err.println("Error - " + header.huffmanTables.size() + " Huffman tables given (2 or 4 required)");
+			header.valid = false;
+		}
+		if (header.colorComponents.size() != 3) {
+			System.err.println("Error - " + header.colorComponents.size() + " color components given (3 required)");
+			header.valid = false;
+		}
+		
 		return header;
 	}
 	
@@ -164,6 +184,13 @@ public class JPGScanner {
 			short info = (short)f.readUnsignedByte();
 			QuantizationTable table = new QuantizationTable();
 			table.tableID = (short)(info & 0x0F);
+			
+			if (table.tableID > 1) {
+				System.err.println("Error - Invalid Quantization table ID: " + table.tableID);
+				header.valid = false;
+				return;
+			}
+			
 			if ((info & 0xF0) == 0) {
 				table.precision = 1;
 			}
@@ -186,21 +213,40 @@ public class JPGScanner {
 	}
 	
 	private static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
+		if (header.colorComponents.size() != 0) {
+			System.err.println("Error = Multiple SOFs detected");
+			header.valid = false;
+			return;
+		}
 		System.out.println("Reading Start of Frame");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		header.precision = (short)f.readUnsignedByte();
+		
+		if (header.precision != 8) {
+			System.err.println("Error - Invalid precision: " + header.precision);
+			header.valid = false;
+			return;
+		}
+		
 		header.height = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		header.width = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		
+		if (header.height == 0 || header.width == 0) {
+			System.err.println("Error - Invalid dimensions");
+			header.valid = false;
+			return;
+		}
+		
 		int numComponents = f.readUnsignedByte();
 		for (int i = 0; i < numComponents; ++i) {
-			FrameComponent component = new FrameComponent();
+			ColorComponent component = new ColorComponent();
 			component.componentID = (short)f.readUnsignedByte();
 			short samplingFactor = (short)f.readUnsignedByte();
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
 			component.quantizationTableID = (short)f.readUnsignedByte();
-			header.frameComponents.add(component);
+			header.colorComponents.add(component);
 		}
 		if (length - 8 - (numComponents * 3) != 0) {
 			System.err.println("Error - SOF Invalid");
@@ -218,12 +264,26 @@ public class JPGScanner {
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
 			table.ACTable = (info & 0xF0) != 0;
+			
+			if (table.tableID > 1) {
+				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
+				header.valid = false;
+				return;
+			}
+			
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
 			for (int i = 0; i < 16; ++i) {
 				numSymbols[i] = (short)f.readUnsignedByte();
 				allSymbols += numSymbols[i];
 			}
+			
+			if (allSymbols > 256) {
+				System.err.println("Error - Invalid Huffman table");
+				header.valid = false;
+				return;
+			}
+			
 			for (int i = 0; i < 16; ++i) {
 				table.symbols.add(new ArrayList<Short>());
 				for (int j = 0; j < numSymbols[i]; ++j) {
@@ -240,21 +300,59 @@ public class JPGScanner {
 	}
 	
 	private static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
+		if (header.colorComponents.size() == 0) {
+			System.err.println("Error = SOS detected before SOF");
+			header.valid = false;
+			return;
+		}
 		System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		int numComponents = f.readUnsignedByte();
+		if (numComponents != header.colorComponents.size()) {
+			System.err.println("Error - Frame/Scan Color Component mismatch");
+			header.valid = false;
+			return;
+		}
 		for (int i = 0; i < numComponents; ++i) {
-			ScanComponent component = new ScanComponent();
-			component.componentID = (short)f.readUnsignedByte();
+			short componentID = (short)f.readUnsignedByte();
 			short huffmanTableID = (short)f.readUnsignedByte();
-			component.huffmanACTableID = (short)(huffmanTableID & 0x0F);
-			component.huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
-			header.scanComponents.add(component);
+			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
+			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
+			
+			if (huffmanACTableID > 1 || huffmanDCTableID > 1) {
+				System.err.println("Error - Invalid Huffman table ID in scan components");
+				header.valid = false;
+				return;
+			}
+			
+			Boolean found = false;
+			for (int j = 0; j < header.colorComponents.size(); ++j) {
+				if (componentID == header.colorComponents.get(j).componentID) {
+					header.colorComponents.get(j).huffmanACTableID = huffmanACTableID;
+					header.colorComponents.get(j).huffmanDCTableID = huffmanDCTableID;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				System.err.println("Error - Invalid Color Component ID: " + componentID);
+				header.valid = false;
+				return;
+			}
 		}
 		header.startOfSelection = (short)f.readUnsignedByte();
 		header.endOfSelection = (short)f.readUnsignedByte();
 		header.successvieApproximation = (short)f.readUnsignedByte();
+		
+		if (header.startOfSelection != 0 ||
+			header.endOfSelection != 63 ||
+			header.successvieApproximation != 0) {
+			System.err.println("Error - Non-standard selection and successive approximation not yet supported");
+			header.valid = false;
+			return;
+		}
+		
 		if (length - 6 - (numComponents * 2) != 0) {
 			System.err.println("Error - SOS Invalid");
 			header.valid = false;
@@ -302,7 +400,7 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("Simple.jpg");
+			header = ReadJPG("turtle.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -322,13 +420,6 @@ public class JPGScanner {
 				System.out.println("Precision: " + header.precision);
 				System.out.println("Height: " + header.height);
 				System.out.println("Width: " + header.width);
-				System.out.println("Frame Components:");
-				for (int i = 0; i < header.frameComponents.size(); ++i) {
-					System.out.println("\tComponent ID: " + header.frameComponents.get(i).componentID);
-					System.out.println("\tHorizontal Sampling Factor: " + header.frameComponents.get(i).horizontalSamplingFactor);
-					System.out.println("\tVertical Sampling Factor: " + header.frameComponents.get(i).verticalSamplingFactor);
-					System.out.println("\tQuantization Table ID: " + header.frameComponents.get(i).quantizationTableID);
-				}
 				System.out.println("DHT============");
 				for (int i = 0; i < header.huffmanTables.size(); ++i) {
 					System.out.println("Table ID: " + header.huffmanTables.get(i).tableID);
@@ -355,11 +446,14 @@ public class JPGScanner {
 				System.out.println("Start of Selection: " + header.startOfSelection);
 				System.out.println("End of Selection: " + header.endOfSelection);
 				System.out.println("Successive Approximation: " + header.successvieApproximation);
-				System.out.println("Scan Components:");
-				for (int i = 0; i < header.scanComponents.size(); ++i) {
-					System.out.println("\tComponent ID: " + header.scanComponents.get(i).componentID);
-					System.out.println("\tHuffman AC Table ID: " + header.scanComponents.get(i).huffmanACTableID);
-					System.out.println("\tHuffman DC Table ID: " + header.scanComponents.get(i).huffmanDCTableID);
+				System.out.println("Color Components:");
+				for (int i = 0; i < header.colorComponents.size(); ++i) {
+					System.out.println("\tComponent ID: " + header.colorComponents.get(i).componentID);
+					System.out.println("\tHorizontal Sampling Factor: " + header.colorComponents.get(i).horizontalSamplingFactor);
+					System.out.println("\tVertical Sampling Factor: " + header.colorComponents.get(i).verticalSamplingFactor);
+					System.out.println("\tQuantization Table ID: " + header.colorComponents.get(i).quantizationTableID);
+					System.out.println("\tHuffman AC Table ID: " + header.colorComponents.get(i).huffmanACTableID);
+					System.out.println("\tHuffman DC Table ID: " + header.colorComponents.get(i).huffmanDCTableID);
 				}
 				System.out.println("Length of Image Data: " + header.imageData.size());
 			}
