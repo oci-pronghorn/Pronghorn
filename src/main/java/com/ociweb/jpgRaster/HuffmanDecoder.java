@@ -125,7 +125,7 @@ public class HuffmanDecoder {
 						break;
 					}
 				}
-				currentCode = (currentCode << 1) & b.nextBit();
+				currentCode = (currentCode << 1) | b.nextBit();
 				readBits += 1;
 			}
 			
@@ -148,7 +148,7 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						currentCode = (currentCode << 1) & b.nextBit();
+						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
 					}
 				}
@@ -171,7 +171,7 @@ public class HuffmanDecoder {
 						break;
 					}
 				}
-				currentCode = (currentCode << 1) & b.nextBit();
+				currentCode = (currentCode << 1) | b.nextBit();
 				readBits += 1;
 			}
 			
@@ -194,7 +194,7 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						currentCode = (currentCode << 1) & b.nextBit();
+						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
 					}
 				}
@@ -217,7 +217,7 @@ public class HuffmanDecoder {
 						break;
 					}
 				}
-				currentCode = (currentCode << 1) & b.nextBit();
+				currentCode = (currentCode << 1) | b.nextBit();
 				readBits += 1;
 			}
 			
@@ -240,7 +240,7 @@ public class HuffmanDecoder {
 							found = true;
 							break;
 						}
-						currentCode = (currentCode << 1) & b.nextBit();
+						currentCode = (currentCode << 1) | b.nextBit();
 						readBits += 1;
 					}
 				}
