@@ -3,16 +3,13 @@ package com.ociweb.jpgRaster;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+
+import com.ociweb.jpgRaster.JPG.RGB;
 
 public class BMPDumper {
-	public static class RGB {
-		public short r;
-		public short g;
-		public short b;
-	}
-	
-	public static void Dump(RGB[] rgb, short height, short width, String filename) throws IOException {
-		int size = 14 + 12 + 3 * rgb.length + height * (4 - (width * 3) % 4);
+	public static void Dump(ArrayList<RGB> rgb, int height, int width, String filename) throws IOException {
+		int size = 14 + 12 + 3 * rgb.size() + height * (4 - (width * 3) % 4);
 		
 		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename));
 		file.writeByte('B');
@@ -27,9 +24,9 @@ public class BMPDumper {
 		writeShort(file, 24);
 		for (int i = height - 1; i >= 0; i--) {
 			for (int j = 0; j < width; j++) {
-				file.writeByte(rgb[i * width + j].b);
-				file.writeByte(rgb[i * width + j].g);
-				file.writeByte(rgb[i * width + j].r);
+				file.writeByte(rgb.get(i * width + j).b);
+				file.writeByte(rgb.get(i * width + j).g);
+				file.writeByte(rgb.get(i * width + j).r);
 			}
 			if ((width * 3) % 4 != 0) {
 				for (int j = 0; j < 4 - (width * 3) % 4; j++) {
@@ -53,48 +50,48 @@ public class BMPDumper {
 	}
 	
 	public static void main(String[] args) {
-		RGB[] rgb = new RGB[9];
-		for (int i = 0; i < rgb.length; i++) {
-			rgb[i] = new RGB();
+		ArrayList<RGB> rgb = new ArrayList<RGB>(9);
+		for (int i = 0; i < 9; i++) {
+			rgb.add(new RGB());
 		}
 		// red
-		rgb[0].r = 255;
-		rgb[0].g = 0;
-		rgb[0].b = 0;
+		rgb.get(0).r = 255;
+		rgb.get(0).g = 0;
+		rgb.get(0).b = 0;
 		// green
-		rgb[1].r = 0;
-		rgb[1].g = 255;
-		rgb[1].b = 0;
+		rgb.get(1).r = 0;
+		rgb.get(1).g = 255;
+		rgb.get(1).b = 0;
 		// blue
-		rgb[2].r = 0;
-		rgb[2].g = 0;
-		rgb[2].b = 255;
+		rgb.get(2).r = 0;
+		rgb.get(2).g = 0;
+		rgb.get(2).b = 255;
 		// cyan
-		rgb[3].r = 0;
-		rgb[3].g = 255;
-		rgb[3].b = 255;
+		rgb.get(3).r = 0;
+		rgb.get(3).g = 255;
+		rgb.get(3).b = 255;
 		// magenta
-		rgb[4].r = 255;
-		rgb[4].g = 0;
-		rgb[4].b = 255;
+		rgb.get(4).r = 255;
+		rgb.get(4).g = 0;
+		rgb.get(4).b = 255;
 		// yellow
-		rgb[5].r = 255;
-		rgb[5].g = 255;
-		rgb[5].b = 0;
+		rgb.get(5).r = 255;
+		rgb.get(5).g = 255;
+		rgb.get(5).b = 0;
 		// black
-		rgb[6].r = 0;
-		rgb[6].g = 0;
-		rgb[6].b = 0;
+		rgb.get(6).r = 0;
+		rgb.get(6).g = 0;
+		rgb.get(6).b = 0;
 		// gray
-		rgb[7].r = 128;
-		rgb[7].g = 128;
-		rgb[7].b = 128;
+		rgb.get(7).r = 128;
+		rgb.get(7).g = 128;
+		rgb.get(7).b = 128;
 		// white
-		rgb[8].r = 255;
-		rgb[8].g = 255;
-		rgb[8].b = 255;
+		rgb.get(8).r = 255;
+		rgb.get(8).g = 255;
+		rgb.get(8).b = 255;
 		try {
-			Dump(rgb, (short)3, (short)3, "bmp_test.bmp");
+			Dump(rgb, 3, 3, "bmp_test.bmp");
 		} catch (IOException e) {
 			System.out.println("Error - Unknown error creating BMP file");
 		}

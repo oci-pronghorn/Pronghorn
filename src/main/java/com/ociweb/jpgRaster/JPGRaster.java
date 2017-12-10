@@ -39,6 +39,7 @@ public class JPGRaster {
 			InverseQuantizer.dequantize(mcus, header);
 			InverseDCT.inverseDCT(mcus);
 			ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);
+			BMPDumper.Dump(rgb, header.height, header.width, "Simple.bmp");
 			} catch (IOException e) {
 			
 		}
