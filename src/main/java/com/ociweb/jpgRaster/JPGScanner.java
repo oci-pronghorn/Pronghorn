@@ -21,7 +21,7 @@ public class JPGScanner {
 		// JPG file must begin with 0xFFD8
 		short last = (short)f.readUnsignedByte();
 		short current = (short)f.readUnsignedByte();
-		if (last != 0xFF || current != 0xD8) {
+		if (last != 0xFF || current != JPGConstants.SOI) {
 			header.valid = false;
 			f.close();
 			return header;
@@ -32,42 +32,43 @@ public class JPGScanner {
 		
 		while (true) {
 			if (last == 0xFF) {
-				if      (current == 0xDB) {
+				if      (current == JPGConstants.DQT) {
 					ReadQuantizationTable(f, header);
 				}
-				else if (current == 0xC0) {
+				else if (current == JPGConstants.SOF0) {
 					header.frameType = "Baseline";
 					ReadStartOfFrame(f, header);
 				}
-				else if (current == 0xC1) {
+				// only Baseline is supported for now
+				/*else if (current == JPGConstants.SOF1) {
 					header.frameType = "Extended Sequential";
 					ReadStartOfFrame(f, header);
 				}
-				else if (current == 0xC2) {
+				else if (current == JPGConstants.SOF2) {
 					header.frameType = "Progressive";
 					ReadStartOfFrame(f, header);
 				}
-				else if (current == 0xC3) {
+				else if (current == JPGConstants.SOF3) {
 					header.frameType = "Lossless";
 					ReadStartOfFrame(f, header);
-				}
-				else if (current == 0xC4) {
+				}*/
+				else if (current == JPGConstants.DHT) {
 					ReadHuffmanTable(f, header);
 				}
-				else if (current == 0xDA) {
+				else if (current == JPGConstants.SOS) {
 					ReadStartOfScan(f, header);
 					break;
 				}
-				else if (current == 0xDD) {
+				else if (current == JPGConstants.DRI) {
 					ReadRestartInterval(f, header);
 				}
-				else if (current >= 0xD0 && current <= 0xD7) {
+				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
 					ReadRSTN(f, header);
 				}
-				else if (current >= 0xE0 && current <= 0xEF) {
+				else if (current >= JPGConstants.APP0 && current <= JPGConstants.APP15) {
 					ReadAPPN(f, header);
 				}
-				else if (current == 0xFE) {
+				else if (current == JPGConstants.COM) {
 					ReadComment(f, header);
 				}
 				else if (current == 0xFF) {
@@ -75,36 +76,36 @@ public class JPGScanner {
 					current = (short)f.readUnsignedByte();
 					continue;
 				}
-				else if (current == 0xF0 ||
-						 current == 0xFD ||
-						 current == 0xDC ||
-						 current == 0xDE ||
-						 current == 0xDF) {
+				else if (current == JPGConstants.JPG0 ||
+						 current == JPGConstants.JPG13 ||
+						 current == JPGConstants.DNL ||
+						 current == JPGConstants.DHP ||
+						 current == JPGConstants.EXP) {
 					// unsupported segments that can be skipped
 					ReadComment(f, header);
 				}
-				else if (current == 0x01) {
+				else if (current == JPGConstants.TEM) {
 					// unsupported segment with no size
 				}
-				else if (current == 0xD8) {
+				else if (current == JPGConstants.SOI) {
 					System.err.println("Error - This JPG contains an embedded JPG; This is not supported");
 					header.valid = false;
 					f.close();
 					return header;
 				}
-				else if (current == 0xD9) {
+				else if (current == JPGConstants.EOI) {
 					System.err.println("Error = EOI detected before SOS");
 					header.valid = false;
 					f.close();
 					return header;
 				}
-				else if (current == 0xCC) {
+				else if (current == JPGConstants.DAC) {
 					System.err.println("Error - Arithmetic Table mode is not supported");
 					header.valid = false;
 					f.close();
 					return header;
 				}
-				else if (current >= 0xC0 && current <= 0xCF) {
+				else if (current >= JPGConstants.SOF0 && current <= JPGConstants.SOF15) {
 					System.err.println("Error - This Start of Frame marker is not supported: " + current);
 					header.valid = false;
 					f.close();
@@ -131,7 +132,7 @@ public class JPGScanner {
 		while (true) {
 			last = current;
 			current = (short)f.readUnsignedByte();
-			if      (last == 0xFF && current == 0xD9) {
+			if      (last == 0xFF && current == JPGConstants.EOI) {
 				System.out.println("End of Image");
 				break;
 			}
