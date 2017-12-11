@@ -15,7 +15,7 @@ import java.util.ArrayList;
 public class JPGScanner {
 	public static Header ReadJPG(String filename) throws IOException {
 		Header header = new Header();
-		DataInputStream f = new DataInputStream(new FileInputStream("/home/tyler/Desktop/repo/jpg-to-raster-conversion/src/main/java/com/ociweb/jpgRaster/huff_simple0.jpg"));
+		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
 		// JPG file must begin with 0xFFD8
 		short last = (short)f.readUnsignedByte();
@@ -262,14 +262,14 @@ public class JPGScanner {
 		while (length > 0) {
 			HuffmanTable table = new HuffmanTable();
 			short info = (short)f.readUnsignedByte();
-			table.YTable = (short)(info & 0x0F) == 0; // 0 for a Y table, 1 for a CbCr table
+			table.tableID = (short)(info & 0x0F);
 			table.ACTable = (info & 0xF0) != 0;
 			
-//			if (table.tableID > 1) {
-//				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
-//				header.valid = false;
-//				return;
-//			}
+			if (table.tableID > 1) {
+				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
+				header.valid = false;
+				return;
+			}
 			
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
@@ -400,7 +400,7 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("nathan.jpg");
+			header = ReadJPG("Simple.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {

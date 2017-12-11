@@ -12,7 +12,7 @@ public class JPG {
 	}
 	
 	public static class HuffmanTable {
-		Boolean YTable;
+		short tableID;
 		Boolean ACTable;
 		ArrayList<ArrayList<Short>> symbols = new ArrayList<ArrayList<Short>>(16);
 	}
