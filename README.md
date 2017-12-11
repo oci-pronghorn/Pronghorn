@@ -16,12 +16,12 @@ Lock free non-blocking message passing enables cores to make continuous progress
 Staged pipeline scheduler enables optimization of the workload across cores.  
 
 
-#Simple stage examples
+## Simple stage examples
 
 - https://github.com/oci-pronghorn/PronghornExampleInputStages
 - https://github.com/oci-pronghorn/PronghornExampleOutputStages
 
-#Why Pronghorn
+## Why Pronghorn
 
 1. Broad compatibility   
 	  Android (Java 7 subset) no Lambdas used  
@@ -75,7 +75,7 @@ Staged pipeline scheduler enables optimization of the workload across cores.
 	Scales well in docker and cloud deployments   
 	Targests absolute minimum resources consumed   
 
-#Expected usage plan
+## Expected usage plan
 
 Most projects using this framework will follow these steps.
 
@@ -85,7 +85,7 @@ Most projects using this framework will follow these steps.
 
 NOTE: this is being proved out in the PronghornGateway project.
 
-#Usage
+## Usage
 
   To use this in your maven project add the following dependency.
 
