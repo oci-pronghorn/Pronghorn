@@ -81,6 +81,12 @@
 			z-index: 1;
 			cursor: move;
 		}
+        .oci-popover {
+            padding: 15px;
+            border: thin solid #32383e;
+            border-radius: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +125,7 @@
                 <img src="img/spinner.svg" />
             </div>
         </div>
-        <div class="modal fade" id="errorModal" data-backdrop="static">
+        <div class="modal fade" id="errorModal">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-body">
@@ -163,7 +169,7 @@
         function hideError() {
             if(errorShowing) {
                 $('#errorModal').modal('hide');
-                $('.modal-backdrop').remove();
+                $('.modal-backdrop').remove(); //bootstrap 4.0 is buggy so we have to manually remove backdrop
 
                 errorShowing = false;
             }
@@ -199,12 +205,12 @@
         var webworkerInProgress = false;
         var paintAllRunning = false;
 
-        var previewScale = 0.07;
+        var previewScale = 0.065;
 
         var zoomWidth = 500; //100 is current screen size, anything above that is zommed in
         var zoomHeight = 500;
 
-        var zoomStep = 15;
+        var zoomStep = 20; //percentage of initial width/height
 
         function paintAll () {
             paintAllRunning = true;
@@ -235,6 +241,8 @@
 
                     $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
 
+                    $("#popover-container").width($("#demo").width()).height($("#demo").height());
+
                     if (isFirst) {
                         $(".navbar").show();
                         $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") ).append('<div class="minimap-node" id="svg-preview"></div>');
@@ -242,6 +250,14 @@
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
                         isFirst = false;
                     }
+
+                    $('#demo svg #graph0').children('g .node').each(function () {
+                        $(this).popover( {
+                            title: $(this).find('text').html(),
+                            content: 'Hello World!',
+                            placement: 'auto'
+                        });
+                    });
 
                     $("#svg-preview").html(result);
                     $("#svg-preview svg").attr('width', ratioWidth + 'px').attr('height', ratioHeight + 'px');
@@ -306,7 +322,6 @@
                     var formattedSection = feature[s].replace(/"|]/g, '');
                     oldArray.push(formattedSection);
                     feature[s] = formattedSection;
-                    //console.log("have match! " + feature[s]);
                     return item.replace(/label|"|=/g, '');
                 });
 
@@ -332,7 +347,6 @@
 
         var saveData = (function () {
             var a = document.createElement("a");
-            $("body").append("");
             a.style = "display: none";
             return function (data, fileName) {
                 var blob = new Blob([data], {type: "octet/stream"}),
@@ -373,7 +387,16 @@
             });
 
             $("#zoom-out-btn").click(function () {
-                zoom(zoomStep * -1);
+                zoom(-zoomStep);
+            });
+
+            $('body').on('scroll', function () {
+                $(this).find('.popover').each(function () {
+                    console.log("offset top: " + $(this).offset().top + " | scrollTop: " + $("body").scrollTop());
+                    $(this).css({
+                        top: - $("body").scrollTop()
+                    });
+                });
             });
 
             $("#download-btn").click(function() {
