@@ -10,6 +10,13 @@ import com.ociweb.jpgRaster.JPG.RGB;
 public class BMPDumper {
 	public static void Dump(ArrayList<RGB> rgb, int height, int width, String filename) throws IOException {
 		int size = 14 + 12 + 3 * rgb.size() + height * (4 - (width * 3) % 4);
+		int apparentWidth;
+		if (width % 8 == 0) {
+			apparentWidth = width;
+		}
+		else {
+			apparentWidth = width + (8 - (width % 8));
+		}
 		
 		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename));
 		file.writeByte('B');
@@ -24,9 +31,9 @@ public class BMPDumper {
 		writeShort(file, 24);
 		for (int i = height - 1; i >= 0; i--) {
 			for (int j = 0; j < width; j++) {
-				file.writeByte(rgb.get(i * width + j).b);
-				file.writeByte(rgb.get(i * width + j).g);
-				file.writeByte(rgb.get(i * width + j).r);
+				file.writeByte(rgb.get(i * apparentWidth + j).b);
+				file.writeByte(rgb.get(i * apparentWidth + j).g);
+				file.writeByte(rgb.get(i * apparentWidth + j).r);
 			}
 			if ((width * 3) % 4 != 0) {
 				for (int j = 0; j < 4 - (width * 3) % 4; j++) {

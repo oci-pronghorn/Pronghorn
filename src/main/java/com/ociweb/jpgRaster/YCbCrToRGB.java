@@ -16,10 +16,18 @@ public class YCbCrToRGB {
 	}
 	
 	public static ArrayList<RGB> convertYCbCrToRGB(ArrayList<MCU> mcus, Header header) {
-		ArrayList<RGB> rgb = new ArrayList<RGB>(header.height * header.width);
-		for (int i = 0; i < mcus.size(); ++i) {
-			for (int j = 0; j < 64; ++j) {
-				rgb.add(convertToRGB(mcus.get(i).y[j], mcus.get(i).cb[j], mcus.get(i).cr[j]));
+		int mcuHeight = (header.height + 7) / 8;
+		int mcuWidth = (header.width + 7) / 8;
+		ArrayList<RGB> rgb = new ArrayList<RGB>(mcuHeight * mcuWidth);
+		for (int i = 0; i < mcuHeight; ++i) {         // mcu height
+			for (int y = 0; y < 8; ++y) {             // pixel height
+				for (int j = 0; j < mcuWidth; ++j) {  // mcu width
+					for (int x = 0; x < 8; ++x) {     // pixel width
+						rgb.add(convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
+											 mcus.get(i * mcuWidth + j).cb[y * 8 + x],
+											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]));
+					}
+				}
 			}
 		}
 		return rgb;

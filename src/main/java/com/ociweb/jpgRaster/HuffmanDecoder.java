@@ -165,7 +165,7 @@ public class HuffmanDecoder {
 		short cbACTableID = header.colorComponents.get(1).huffmanACTableID;
 		short crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
 		short crACTableID = header.colorComponents.get(2).huffmanACTableID;
-		while (out.size() != numMCUs && !b.done()) {
+		while (out.size() != numMCUs) { // && !b.done()) {
 			MCU mcu = new MCU();
 			
 			decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),

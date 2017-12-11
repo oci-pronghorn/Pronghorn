@@ -21,8 +21,8 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		
-		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./Simple.jpg");
+		String file = "huff_simple0";
+		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./" + file + ".jpg");
 
 		//GraphManager gm = new GraphManager();
 		
@@ -35,12 +35,12 @@ public class JPGRaster {
 		try {
 			Header header = JPGScanner.ReadJPG(inputFilePath);
 			ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
-			RunLengthDecoder.decodeRLE(mcus);
+			//RunLengthDecoder.decodeRLE(mcus);
 			InverseQuantizer.dequantize(mcus, header);
 			InverseDCT.inverseDCT(mcus);
 			ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);
-			BMPDumper.Dump(rgb, header.height, header.width, "Simple.bmp");
-			} catch (IOException e) {
+			BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
+		} catch (IOException e) {
 			
 		}
 	}
