@@ -39,9 +39,9 @@ public class InverseDCT {
 	
 	public static void inverseDCT(ArrayList<MCU> mcus) {
 		for (int i = 0; i < mcus.size(); ++i) {
-			MCUInverseDCT(mcus.get(i).yAc);
-			MCUInverseDCT(mcus.get(i).cbAc);
-			MCUInverseDCT(mcus.get(i).crAc);
+			MCUInverseDCT(mcus.get(i).y);
+			MCUInverseDCT(mcus.get(i).cb);
+			MCUInverseDCT(mcus.get(i).cr);
 		}
 		return;
 	}

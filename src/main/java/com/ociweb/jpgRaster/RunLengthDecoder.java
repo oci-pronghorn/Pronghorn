@@ -49,9 +49,9 @@ public class RunLengthDecoder {
 	
 	public static void decodeRLE(ArrayList<MCU> mcus) {
 		for (int i = 0; i < mcus.size(); ++i) {
-			decodeRLEMCU(mcus.get(i).yAc);
-			decodeRLEMCU(mcus.get(i).cbAc);
-			decodeRLEMCU(mcus.get(i).crAc);
+			decodeRLEMCU(mcus.get(i).y);
+			decodeRLEMCU(mcus.get(i).cb);
+			decodeRLEMCU(mcus.get(i).cr);
 		}
 		return;
 	}

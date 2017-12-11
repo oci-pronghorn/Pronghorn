@@ -19,7 +19,7 @@ public class YCbCrToRGB {
 		ArrayList<RGB> rgb = new ArrayList<RGB>(header.height * header.width);
 		for (int i = 0; i < mcus.size(); ++i) {
 			for (int j = 0; j < 64; ++j) {
-				rgb.add(convertToRGB(mcus.get(i).yAc[j], mcus.get(i).cbAc[j], mcus.get(i).crAc[j]));
+				rgb.add(convertToRGB(mcus.get(i).y[j], mcus.get(i).cb[j], mcus.get(i).cr[j]));
 			}
 		}
 		return rgb;

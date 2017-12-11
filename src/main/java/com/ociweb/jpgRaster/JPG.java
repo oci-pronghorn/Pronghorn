@@ -50,14 +50,10 @@ public class JPG {
 		Boolean valid = true;
 	}
 	
-	public static class MCU {
-		int yDc;
-		int cbDc;
-		int crDc;
-		
-		short[] yAc = new short[64];
-		short[] cbAc = new short[64];
-		short[] crAc = new short[64];
+	public static class MCU {		
+		short[] y = new short[64];
+		short[] cb = new short[64];
+		short[] cr = new short[64];
 	}
 
 	public static class RGB {
