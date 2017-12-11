@@ -9,9 +9,9 @@ import com.ociweb.jpgRaster.JPG.RGB;
 public class YCbCrToRGB {	
 	public static RGB convertToRGB(short Y, short Cb, short Cr) {
 		RGB rgb = new RGB();
-		rgb.r = (short)Math.min(Math.max(0, Math.floor((double)Y + 1.402 * ((double)Cr - 128) + 0.5)), 255);
-		rgb.g = (short)Math.min(Math.max(0, Math.floor((double)Y - (0.114 * 1.772 * ((double)Cb - 128) + 0.299 * 1.402 * ((double)Cr - 128)) / 0.587 + 0.5)), 255);
-		rgb.b = (short)Math.min(Math.max(0, Math.floor((double)Y + 1.772 * ((double)Cb - 128) + 0.5)), 255);
+		rgb.r = (short)Math.min(Math.max(0, Math.floor((double)Y + 1.402 * ((double)Cr) + 0.5)), 255);
+		rgb.g = (short)Math.min(Math.max(0, Math.floor((double)Y - (0.114 * 1.772 * ((double)Cb) + 0.299 * 1.402 * ((double)Cr)) / 0.587 + 0.5)), 255);
+		rgb.b = (short)Math.min(Math.max(0, Math.floor((double)Y + 1.772 * ((double)Cb) + 0.5)), 255);
 		return rgb;
 	}
 	
