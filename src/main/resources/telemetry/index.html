@@ -42,6 +42,7 @@
         }
         .nav-link img {
             width: 30px;
+            cursor: pointer;
         }
         .navbar {
             padding: 0px;
@@ -147,22 +148,24 @@
             xmlHttp.send();
         }
 
-        var errorShown = false;
+        var errorShowing = false;
 
         function showError(message) {
-            if(!errorShown) {
+            if(!errorShowing) {
                 $('#errorModal').modal('show');
                 $('#errorModal .alert').html(message + " | Retrying...");
-                errorShown = true;
+                $('body').removeClass();
+
+                errorShowing = true;
             }
         }
 
         function hideError() {
-            if(errorShown) {
+            if(errorShowing) {
                 $('#errorModal').modal('hide');
-                $('.modal-backdrop').hide();
+                $('.modal-backdrop').remove();
 
-                errorShown = false;
+                errorShowing = false;
             }
         }
 
@@ -194,17 +197,17 @@
         var paintingTimer;
         var paintAllDrawing = false;
         var webworkerInProgress = false;
-        var paintAllinProgress = false;
+        var paintAllRunning = false;
 
         var previewScale = 0.07;
 
-        var zoomWidth = 500; //zoom is WIP
+        var zoomWidth = 500; //100 is current screen size, anything above that is zommed in
         var zoomHeight = 500;
 
         var zoomStep = 15;
 
         function paintAll () {
-            paintAllinProgress = true;
+            paintAllRunning = true;
             if (webworker) {
                 if (!webworkerInProgress){
                     webworkerInProgress = true;
@@ -224,7 +227,7 @@
                     $('#demo').html(result);
 
                     paintAllDrawing = false;
-                    paintAllinProgress = false;
+                    paintAllRunning = false;
 
                     var demo = $("#demo svg");
                     var ratioWidth = demo.width() * previewScale;
@@ -267,7 +270,7 @@
             var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
                 return element === newArray[index];
             });
-            if ((!is_same && !isFirst) && !paintAllinProgress) {
+            if ((!is_same && !isFirst) && !paintAllRunning) {
                 doingUpdate = false;
                 paintAll();
             }
@@ -297,7 +300,6 @@
         }
 
         function paintElement(element, startIndex, stopIndex, whole, feature, oldArray) {
-            //console.log("trying to paint part for " + element);
             var ss = 1;
             for (var s = startIndex; s < stopIndex; s++) {
                 var iteration = whole[s].match(newline).map(function(item) {
@@ -313,11 +315,12 @@
                     if (itemIdx !== 0) { //skips title line which doesn't change
                         item = $(item);
                         if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
-                            if ((item.text().length !== iteration[itemIdx].length) && !paintAllinProgress) { //if the length is different redraw
+                            if ((item.text().length !== iteration[itemIdx].length) && !paintAllRunning) { //if the length is different redraw
                                 doingUpdate = false;
                                 paintAll();
                             }
                             item.text(iteration[itemIdx]);
+                            hideError(); //hide error message because obv. we are still receiving data
                         }
                     }
                 });
@@ -366,12 +369,10 @@
             });
 
             $("#zoom-in-btn").click(function () {
-                //WIP!
                 zoom(zoomStep);
             });
 
             $("#zoom-out-btn").click(function () {
-                //WIP!
                 zoom(zoomStep * -1);
             });
 
