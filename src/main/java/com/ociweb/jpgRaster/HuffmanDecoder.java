@@ -113,6 +113,11 @@ public class HuffmanDecoder {
 						else {
 							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
 							short coefLength = (short)(decoderValue & 0x0F);
+							
+							System.out.println("k: " + k);
+							System.out.println("numZeroes: " + numZeroes);
+							System.out.println("coefLength: " + coefLength);
+							
 							for (int l = 0; l < numZeroes; ++l){
 								component[k] = 0;
 								++k;
@@ -120,13 +125,17 @@ public class HuffmanDecoder {
 							if (coefLength > 11){
 								System.out.println("error: coeflength > 11");
 							}
+							
 							if (coefLength != 0) {
 								component[k] = (short)b.nextBits(coefLength);
+								
+								
 	
 								if (component[k] < (1 << (coefLength - 1))) {
 									component[k] -= (1 << coefLength) - 1;
 								}
-								++k;
+								System.out.println("AC Value: " + component[k]);
+//								++k; //We never needed to increment k here
 							}
 						}
 						found = true;
