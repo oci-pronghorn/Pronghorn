@@ -163,13 +163,37 @@ public class JPGScanner {
 			System.err.println("Error - " + header.quantizationTables.size() + " Quantization tables given (2 required)");
 			header.valid = false;
 		}
-		if (header.huffmanTables.size() != 2 && header.huffmanTables.size() != 4) {
-			System.err.println("Error - " + header.huffmanTables.size() + " Huffman tables given (2 or 4 required)");
+		if ((header.huffmanDCTables.size() != 1 || header.huffmanACTables.size() != 1) &&
+			(header.huffmanDCTables.size() != 2 || header.huffmanACTables.size() != 2)) {
+			System.err.println("Error - " + (header.huffmanDCTables.size() + header.huffmanACTables.size()) + " Huffman tables given (2 or 4 required)");
 			header.valid = false;
 		}
 		if (header.colorComponents.size() != 3) {
 			System.err.println("Error - " + header.colorComponents.size() + " color components given (3 required)");
 			header.valid = false;
+		}
+		
+		if (header.huffmanDCTables.size() == 2) {
+			if (header.huffmanDCTables.get(0).tableID == header.huffmanDCTables.get(1).tableID) {
+				System.err.println("Error - Huffman DC tables given same ID");
+				header.valid = false;
+			}
+			else if (header.huffmanDCTables.get(0).tableID > header.huffmanDCTables.get(1).tableID) {
+				HuffmanTable temp = header.huffmanDCTables.get(0);
+				header.huffmanDCTables.remove(0);
+				header.huffmanDCTables.add(temp);
+			}
+		}
+		if (header.huffmanACTables.size() == 2) {
+			if (header.huffmanACTables.get(0).tableID == header.huffmanACTables.get(1).tableID) {
+				System.err.println("Error - Huffman AC tables given same ID");
+				header.valid = false;
+			}
+			else if (header.huffmanACTables.get(0).tableID > header.huffmanACTables.get(1).tableID) {
+				HuffmanTable temp = header.huffmanACTables.get(0);
+				header.huffmanACTables.remove(0);
+				header.huffmanACTables.add(temp);
+			}
 		}
 		
 		return header;
@@ -263,7 +287,7 @@ public class JPGScanner {
 			HuffmanTable table = new HuffmanTable();
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
-			table.ACTable = (info & 0xF0) != 0;
+			Boolean ACTable = (info & 0xF0) != 0;
 			
 			if (table.tableID > 1) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
@@ -290,7 +314,12 @@ public class JPGScanner {
 					table.symbols.get(i).add((short)f.readUnsignedByte());
 				}
 			}
-			header.huffmanTables.add(table);
+			if (ACTable) {
+				header.huffmanACTables.add(table);
+			}
+			else {
+				header.huffmanDCTables.add(table);
+			}
 			length -= allSymbols + 17;
 		}
 		if (length != 0) {
@@ -421,21 +450,30 @@ public class JPGScanner {
 				System.out.println("Height: " + header.height);
 				System.out.println("Width: " + header.width);
 				System.out.println("DHT============");
-				for (int i = 0; i < header.huffmanTables.size(); ++i) {
-					System.out.println("Table ID: " + header.huffmanTables.get(i).tableID);
-					System.out.print("Table Type: ");
-					if (header.huffmanTables.get(i).ACTable) {
-						System.out.println("AC");
-					}
-					else {
-						System.out.println("DC");
-					}
+				System.out.println("DC Tables:");
+				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
+					System.out.println("Table ID: " + header.huffmanDCTables.get(i).tableID);
 					System.out.println("Symbols:");
-					for (int j = 0; j < header.huffmanTables.get(i).symbols.size(); ++j) {
+					for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
 						System.out.print((j + 1) + ": ");
-						for (int k = 0; k < header.huffmanTables.get(i).symbols.get(j).size(); ++k) {
-							System.out.print(header.huffmanTables.get(i).symbols.get(j).get(k));
-							if (k < header.huffmanTables.get(i).symbols.get(j).size() - 1) {
+						for (int k = 0; k < header.huffmanDCTables.get(i).symbols.get(j).size(); ++k) {
+							System.out.print(header.huffmanDCTables.get(i).symbols.get(j).get(k));
+							if (k < header.huffmanDCTables.get(i).symbols.get(j).size() - 1) {
+								System.out.print(", ");
+							}
+						}
+						System.out.println();
+					}
+				}
+				System.out.println("AC Tables:");
+				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
+					System.out.println("Table ID: " + header.huffmanACTables.get(i).tableID);
+					System.out.println("Symbols:");
+					for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+						System.out.print((j + 1) + ": ");
+						for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
+							System.out.print(header.huffmanACTables.get(i).symbols.get(j).get(k));
+							if (k < header.huffmanACTables.get(i).symbols.get(j).size() - 1) {
 								System.out.print(", ");
 							}
 						}

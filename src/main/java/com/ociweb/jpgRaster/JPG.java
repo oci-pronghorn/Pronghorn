@@ -13,7 +13,6 @@ public class JPG {
 	
 	public static class HuffmanTable {
 		short tableID;
-		Boolean ACTable;
 		ArrayList<ArrayList<Short>> symbols = new ArrayList<ArrayList<Short>>(16);
 	}
 	
@@ -31,7 +30,8 @@ public class JPG {
 		ArrayList<QuantizationTable> quantizationTables = new ArrayList<QuantizationTable>(4);
 		
 		// DHT
-		ArrayList<HuffmanTable> huffmanTables = new ArrayList<HuffmanTable>(4);
+		ArrayList<HuffmanTable> huffmanDCTables = new ArrayList<HuffmanTable>(2);
+		ArrayList<HuffmanTable> huffmanACTables = new ArrayList<HuffmanTable>(2);
 		
 		// SOF
 		String frameType;
