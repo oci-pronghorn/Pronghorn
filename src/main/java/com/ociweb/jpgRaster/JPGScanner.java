@@ -429,7 +429,7 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("huff_simple0.jpg");
+			header = ReadJPG("test_jpgs/bmp_test6.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -494,6 +494,7 @@ public class JPGScanner {
 					System.out.println("\tHuffman DC Table ID: " + header.colorComponents.get(i).huffmanDCTableID);
 				}
 				System.out.println("Length of Image Data: " + header.imageData.size());
+				System.out.println("Byte 0: " + header.imageData.get(0));
 			}
 			else {
 				System.err.println("Error - Not a valid JPG file");

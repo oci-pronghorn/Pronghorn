@@ -97,19 +97,37 @@ public class HuffmanDecoder {
 		}
 		
 		//Get the AC values for this MCU
-		boolean acFinish = false;
-		found = false;
-		for (int k = 1; k < 64 && !acFinish; ++k) {
+		for (int k = 1; k < 64; ++k) {
+			found = false;
 			currentCode = b.nextBit();
 			for (int i = 0; i < 16; ++i) {
 				for (int j = 0; j < ACTableCodes.get(i).size(); ++j) {
 					if (currentCode == ACTableCodes.get(i).get(j)) {
-						component[k] = ACTable.symbols.get(i).get(j);
-						if (ACTable.symbols.get(i).get(j) == 0) {
+						short decoderValue = ACTable.symbols.get(i).get(j);
+						
+						if (decoderValue == 0) {
 							for (; k < 64; ++k) {
 								component[k] = 0;
 							}
-							acFinish = true;
+						}
+						else {
+							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
+							short coefLength = (short)(decoderValue & 0x0F);
+							for (int l = 0; l < numZeroes; ++l){
+								component[k] = 0;
+								++k;
+							}
+							if (coefLength > 11){
+								System.out.println("error: coeflength > 11");
+							}
+							if (coefLength != 0) {
+								component[k] = (short)b.nextBits(coefLength);
+	
+								if (component[k] < (1 << (coefLength - 1))) {
+									component[k] -= (1 << coefLength) - 1;
+								}
+								++k;
+							}
 						}
 						found = true;
 						break;
@@ -165,6 +183,14 @@ public class HuffmanDecoder {
 		short cbACTableID = header.colorComponents.get(1).huffmanACTableID;
 		short crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
 		short crACTableID = header.colorComponents.get(2).huffmanACTableID;
+		
+//		for(int i =0; i < 1000; ++i) {
+//			System.out.print(b.nextBit());
+//		}
+		
+		
+		
+		
 		while (out.size() != numMCUs) { // && !b.done()) {
 			MCU mcu = new MCU();
 			
