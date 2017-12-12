@@ -2,7 +2,6 @@ package com.ociweb.jpgRaster;
 
 import java.util.ArrayList;
 
-import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.jpgRaster.JPG.RGB;
 
@@ -22,9 +21,9 @@ public class YCbCrToRGB {
 		return rgb;
 	}
 	
-	public static ArrayList<RGB> convertYCbCrToRGB(ArrayList<MCU> mcus, Header header) {
-		int mcuHeight = (header.height + 7) / 8;
-		int mcuWidth = (header.width + 7) / 8;
+	public static ArrayList<RGB> convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
+		int mcuHeight = (height + 7) / 8;
+		int mcuWidth = (width + 7) / 8;
 		ArrayList<RGB> rgb = new ArrayList<RGB>(mcuHeight * mcuWidth);
 		for (int i = 0; i < mcuHeight; ++i) {         // mcu height
 			for (int y = 0; y < 8; ++y) {             // pixel height
@@ -40,11 +39,22 @@ public class YCbCrToRGB {
 		return rgb;
 	}
 	
-	/*public static void main(String[] args) {
-		short[] testArray = {120, 120, 120, 180, 180, 180};
-		short[] converted = convertAllToRGB(testArray);
-		for (int i = 0; i < converted.length ; i += 3) {
-			System.out.println(converted[i + 0] + ", " + converted[i + 1] + ", " + converted[i + 2]);
+	public static void main(String[] args) {
+		ArrayList<MCU> testArray =  new ArrayList<MCU>(1);
+		MCU mcu = new MCU();
+		mcu.y[0]  = -63;
+		mcu.cb[0] =  -1;
+		mcu.cr[0] =   6;
+		mcu.y[1]  = -74;
+		mcu.cb[1] = -12;
+		mcu.cr[1] =  11;
+		mcu.y[2]  = 106;
+		mcu.cb[2] =   6;
+		mcu.cr[2] = -16;
+		testArray.add(mcu);
+		ArrayList<RGB> converted = convertYCbCrToRGB(testArray, 1, 3);
+		for (int i = 0; i < converted.size() ; i += 3) {
+			System.out.println(converted.get(i).r + ", " + converted.get(i).g + ", " + converted.get(i).b);
 		}
-	}*/
+	}
 }

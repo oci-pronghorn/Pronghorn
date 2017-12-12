@@ -18,10 +18,6 @@ public class HuffmanDecoder {
 			data = d;
 		}
 		
-		public Boolean done() {
-			return (nextByte >= data.size());
-		}
-		
 		public int nextBit() {
 			if (nextByte >= data.size()) {
 				return -1;
@@ -68,7 +64,7 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
-	public static void decodeMCUComponent(BitReader b,
+	public static Boolean decodeMCUComponent(BitReader b,
 										  ArrayList<ArrayList<Integer>> DCTableCodes,
 										  ArrayList<ArrayList<Integer>> ACTableCodes,
 										  HuffmanTable DCTable,
@@ -76,7 +72,7 @@ public class HuffmanDecoder {
 										  short[] component,
 										  short previousDC) {
 		
-		//get the DC value for this MCU
+		// get the DC value for this MCU
 		int currentCode = b.nextBit();
 		boolean found = false;
 		for (int i = 0; i < 16; ++i) {
@@ -98,8 +94,12 @@ public class HuffmanDecoder {
 			}
 			currentCode = (currentCode << 1) | b.nextBit();
 		}
+		if (!found ) {
+			System.out.println("Error - Invalid DC Value");
+			return false;
+		}
 		
-		//Get the AC values for this MCU
+		// get the AC values for this MCU
 		for (int k = 1; k < 64; ++k) {
 			found = false;
 			currentCode = b.nextBit();
@@ -116,27 +116,27 @@ public class HuffmanDecoder {
 						}
 						else {
 							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
-							short coefLength = (short)(decoderValue & 0x0F);
+							short coeffLength = (short)(decoderValue & 0x0F);
 							
 							//System.out.println("k: " + k);
 							//System.out.println("numZeroes: " + numZeroes);
-							//System.out.println("coefLength: " + coefLength);
+							//System.out.println("coeffLength: " + coefLength);
 							
 							for (int l = 0; l < numZeroes; ++l){
 								component[JPG.zigZagMap[k]] = 0;
 								++k;
 							}
-							if (coefLength > 11){
+							if (coeffLength > 11){
 								System.out.println("Error - coeflength > 11");
 							}
 							
-							if (coefLength != 0) {
-								component[JPG.zigZagMap[k]] = (short)b.nextBits(coefLength);
+							if (coeffLength != 0) {
+								component[JPG.zigZagMap[k]] = (short)b.nextBits(coeffLength);
 								
 								
 	
-								if (component[JPG.zigZagMap[k]] < (1 << (coefLength - 1))) {
-									component[JPG.zigZagMap[k]] -= (1 << coefLength) - 1;
+								if (component[JPG.zigZagMap[k]] < (1 << (coeffLength - 1))) {
+									component[JPG.zigZagMap[k]] -= (1 << coeffLength) - 1;
 								}
 								//System.out.println("AC Value: " + component[map[k]]);
 							}
@@ -149,6 +149,10 @@ public class HuffmanDecoder {
 					break;
 				}
 				currentCode = (currentCode << 1) | b.nextBit();
+			}
+			if (!found ) {
+				System.out.println("Error - Invalid AC Value");
+				return false;
 			}
 		}
 		
@@ -163,7 +167,7 @@ public class HuffmanDecoder {
 		}
 		System.out.println();*/
 		
-		return;
+		return true;
 	}
 	
 	public static ArrayList<MCU> decodeHuffmanData(Header header) throws IOException {
@@ -214,14 +218,25 @@ public class HuffmanDecoder {
 			MCU mcu = new MCU();
 			
 			//System.out.println("Decoding Y Component...");
-			decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
+			Boolean success = decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
 					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
+			if (!success) {
+				return null;
+			}
+			
 			//System.out.println("Decoding Cb Component...");
-			decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
+			success = decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
 					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+			if (!success) {
+				return null;
+			}
+			
 			//System.out.println("Decoding Cr Component...");
-			decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
+			success = decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
 					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+			if (!success) {
+				return null;
+			}
 			
 			previousYDC = mcu.y[0];
 			previousCbDC = mcu.cb[0];
@@ -250,7 +265,6 @@ public class HuffmanDecoder {
 		// test generateCodes
 		/*HuffmanTable table = new HuffmanTable();
 		table.tableID = 0;
-		table.ACTable = false;
 		for (int i = 0; i < 16; ++i) {
 			table.symbols.add(new ArrayList<Short>());
 		}
@@ -274,7 +288,7 @@ public class HuffmanDecoder {
 			System.out.println();
 		}
 		System.out.println();
-		ArrayList<ArrayList<Short>> codes = generateCodes(table);
+		ArrayList<ArrayList<Integer>> codes = generateCodes(table);
 		for (int i = 0; i < codes.size(); ++i) {
 			System.out.print((i + 1) + ": ");
 			for (int j = 0; j < codes.get(i).size(); ++j) {
@@ -284,7 +298,7 @@ public class HuffmanDecoder {
 		}*/
 		
 		// test decodeHuffmanData
-		Header header = JPGScanner.ReadJPG("huff_simple0.jpg");
+		Header header = JPGScanner.ReadJPG("test_jpgs/huff_simple0.jpg");
 		System.out.println("Decoding Huffman data...");
 		ArrayList<MCU> mcus = decodeHuffmanData(header);
 		for (int i = 0; i < mcus.size(); ++i) {
