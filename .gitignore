@@ -22,3 +22,6 @@ RemoteSystemsTempFiles/\.project
 # Ignore Intellij stuff
 .idea/
 *.iml
+
+# BMP files
+*.bmp
