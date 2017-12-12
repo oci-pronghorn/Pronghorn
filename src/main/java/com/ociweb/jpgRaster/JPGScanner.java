@@ -429,7 +429,7 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/cat.jpg");
+			header = ReadJPG("test_jpgs/white.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {

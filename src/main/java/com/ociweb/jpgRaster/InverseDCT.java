@@ -6,11 +6,24 @@ import com.ociweb.jpgRaster.JPG.MCU;
 
 public class InverseDCT {
 	public static void MCUInverseDCT(short[] mcu) {
-		for (int y = 0; y < 8; y++) {
-			for (int x = 0; x < 8; x++) {
+		System.out.print("Before Inverse DCT:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				if (j % 8 == 0) {
+					System.out.println();
+				}
+				System.out.print(mcu[i * 8 + j] + " ");
+			}
+		}
+		System.out.println();
+		
+		short[] result = new short[64];
+		
+		for (int y = 0; y < 8; ++y) {
+			for (int x = 0; x < 8; ++x) {
 				double sum = 0.0;
-				for (int i = 0; i < 8; i++) {
-					for (int j = 0; j < 8; j++) {
+				for (int i = 0; i < 8; ++i) {
+					for (int j = 0; j < 8; ++j) {
 						double Cu = 1.0;
 						double Cv = 1.0;
 						if (i == 0) {
@@ -31,9 +44,22 @@ public class InverseDCT {
 				if (sum < 0.0) {
 					sum = 0.0;
 				}
-				mcu[y * 8 + x] = (short)sum;
+				result[y * 8 + x] = (short)sum;
 			}
 		}
+		mcu = result;
+		
+		System.out.print("After Inverse DCT:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				if (j % 8 == 0) {
+					System.out.println();
+				}
+				System.out.print(mcu[i * 8 + j] + " ");
+			}
+		}
+		System.out.println();
+		
 		return;
 	}
 	

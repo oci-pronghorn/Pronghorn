@@ -73,7 +73,8 @@ public class HuffmanDecoder {
 										  ArrayList<ArrayList<Integer>> ACTableCodes,
 										  HuffmanTable DCTable,
 										  HuffmanTable ACTable,
-										  short[] component) {
+										  short[] component,
+										  short previousDC) {
 		
 		//get the DC value for this MCU
 		int currentCode = b.nextBit();
@@ -86,6 +87,8 @@ public class HuffmanDecoder {
 					if (component[0] < (1 << (length - 1))) {
 						component[0] -= (1 << length) - 1;
 					}
+					component[0] += previousDC;
+					System.out.println("DC Value: " + component[0]);
 					found = true;
 					break;
 				}
@@ -115,6 +118,7 @@ public class HuffmanDecoder {
 				for (int j = 0; j < ACTableCodes.get(i).size(); ++j) {
 					if (currentCode == ACTableCodes.get(i).get(j)) {
 						short decoderValue = ACTable.symbols.get(i).get(j);
+						System.out.println("Code -> Value : " + currentCode + " -> " + decoderValue);
 						
 						if (decoderValue == 0) {
 							for (; k < 64; ++k) {
@@ -134,7 +138,7 @@ public class HuffmanDecoder {
 								++k;
 							}
 							if (coefLength > 11){
-								System.out.println("error: coeflength > 11");
+								System.out.println("Error - coeflength > 11");
 							}
 							
 							if (coefLength != 0) {
@@ -160,6 +164,17 @@ public class HuffmanDecoder {
 			}
 		}
 		
+		System.out.print("Component Coefficients:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				if (j % 8 == 0) {
+					System.out.println();
+				}
+				System.out.print(component[i * 8 + j] + " ");
+			}
+		}
+		System.out.println();
+		
 		return;
 	}
 	
@@ -173,7 +188,7 @@ public class HuffmanDecoder {
 			ACTableCodes.add(generateCodes(header.huffmanACTables.get(i)));
 		}
 		
-		/*for (int k = 0; k < DCTableCodes.size(); ++k) {
+		for (int k = 0; k < DCTableCodes.size(); ++k) {
 			for (int i = 0; i < DCTableCodes.get(k).size(); ++i) {
 				System.out.print((i + 1) + ": ");
 				for (int j = 0; j < DCTableCodes.get(k).get(i).size(); ++j) {
@@ -190,7 +205,7 @@ public class HuffmanDecoder {
 				}
 				System.out.println();
 			}
-		}*/
+		}
 		
 		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 		System.out.println("Number of MCUs: " + numMCUs);
@@ -203,23 +218,26 @@ public class HuffmanDecoder {
 		short cbACTableID = header.colorComponents.get(1).huffmanACTableID;
 		short crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
 		short crACTableID = header.colorComponents.get(2).huffmanACTableID;
-		
-//		for(int i =0; i < 1000; ++i) {
-//			System.out.print(b.nextBit());
-//		}
-		
-		
-		
-		
+
+		short previousYDC = 0;
+		short previousCbDC = 0;
+		short previousCrDC = 0;
 		while (out.size() != numMCUs) { // && !b.done()) {
 			MCU mcu = new MCU();
 			
+			System.out.println("Decoding Y Component...");
 			decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
-					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y);
+					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
+			System.out.println("Decoding Cb Component...");
 			decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
-					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb);
+					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+			System.out.println("Decoding Cr Component...");
 			decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
-					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr);
+					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+			
+			previousYDC = mcu.y[0];
+			previousCbDC = mcu.cb[0];
+			previousCrDC = mcu.cr[0];
 			
 			out.add(mcu);
 		}

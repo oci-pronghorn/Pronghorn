@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		String file = "test_jpgs/cat";
+		String file = "test_jpgs/white";
 		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./" + file + ".jpg");
 
 		//GraphManager gm = new GraphManager();
@@ -33,12 +33,21 @@ public class JPGRaster {
 		//StageScheduler.defaultScheduler(gm).startup();
 		
 		try {
+			System.out.println("Reading JPG file...");
 			Header header = JPGScanner.ReadJPG(inputFilePath);
-			ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
-			InverseQuantizer.dequantize(mcus, header);
-			InverseDCT.inverseDCT(mcus);
-			ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);
-			BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
+			if (header.valid) {
+				System.out.println("Performing Huffman Decoding...");
+				ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
+				System.out.println("Performing Inverse Quantization...");
+				InverseQuantizer.dequantize(mcus, header);
+				System.out.println("Performing Inverse DCT...");
+				InverseDCT.inverseDCT(mcus);
+				System.out.println("Performing YCbCr to RGB Conversion...");
+				ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);
+				System.out.println("Writing BMP file...");
+				BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
+				System.out.println("Done.");
+			}
 		} catch (IOException e) {
 			
 		}
