@@ -24,6 +24,7 @@ For now, it decompresses one JPG file at a time from start to finish.
 ### Planned Features
  - Use Pronghorn-Pipes
  - Support more Start of Frame markers (i.e. Progressive)
+ - Support files with one color component (grayscale)
  - Support horizontal and vertical sampling factors other than 1
  - Support 16-bit precision quantization tables
  - Support non-standard start/end of selection and successive
