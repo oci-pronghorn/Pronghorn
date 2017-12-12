@@ -95,7 +95,7 @@ public class HuffmanDecoder {
 			currentCode = (currentCode << 1) | b.nextBit();
 		}
 		if (!found ) {
-			System.out.println("Error - Invalid DC Value");
+			System.err.println("Error - Invalid DC Value");
 			return false;
 		}
 		
@@ -151,7 +151,7 @@ public class HuffmanDecoder {
 				currentCode = (currentCode << 1) | b.nextBit();
 			}
 			if (!found ) {
-				System.out.println("Error - Invalid AC Value");
+				System.err.println("Error - Invalid AC Value");
 				return false;
 			}
 		}

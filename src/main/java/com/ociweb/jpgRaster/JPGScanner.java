@@ -198,8 +198,8 @@ public class JPGScanner {
 		
 		for (int i = 0; i < header.colorComponents.size(); ++i) {
 			if (header.colorComponents.get(i).horizontalSamplingFactor != 1 ||
-				header.colorComponents.get(i).horizontalSamplingFactor != 1) {
-				System.out.println("Error - Sampling Factors not yet supported");
+				header.colorComponents.get(i).verticalSamplingFactor != 1) {
+				System.err.println("Error - Sampling Factors not yet supported");
 				header.valid = false;
 				break;
 			}
