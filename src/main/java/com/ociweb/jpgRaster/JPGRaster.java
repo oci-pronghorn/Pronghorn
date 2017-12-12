@@ -35,7 +35,6 @@ public class JPGRaster {
 		try {
 			Header header = JPGScanner.ReadJPG(inputFilePath);
 			ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
-			//RunLengthDecoder.decodeRLE(mcus);
 			InverseQuantizer.dequantize(mcus, header);
 			InverseDCT.inverseDCT(mcus);
 			ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header);

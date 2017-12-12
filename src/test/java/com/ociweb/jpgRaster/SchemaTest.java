@@ -28,12 +28,6 @@ public class SchemaTest {
 	}
 	
 	@Test
-	public void RunLengthSchemaFROMTest() {
-		
-		assertTrue(FROMValidation.checkSchema("/RunLength.xml", RunLengthSchema.class));
-	}
-	
-	@Test
 	public void InverseQuantizerSchemaFROMTest() {
 		
 		assertTrue(FROMValidation.checkSchema("/InverseQuantizer.xml", InverseQuantizerSchema.class));
