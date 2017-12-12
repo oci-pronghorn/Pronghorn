@@ -19,7 +19,7 @@ Then it will produce a `.bmp` file with the same name after decompressing the JP
 If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.
 BMP was chosen as the output file type due to its very small header (26 bytes) followed by the raw, uncompressed RGB values.
 Eventually, J2R will use Pronghorn-Pipes for multi-threading and dataflow management to speed up decompression and to process many JPG files at once.
-For now, it decompresses on JPG file at a time from start to finish.
+For now, it decompresses one JPG file at a time from start to finish.
 
 ### Planned Features
  - Use Pronghorn-Pipes
