@@ -38,12 +38,6 @@ public class InverseDCT {
 					}
 				}
 				sum /= 4.0;
-				if (sum > 255.0) {
-					sum = 255.0;
-				}
-				if (sum < 0.0) {
-					sum = 0.0;
-				}
 				result[y * 8 + x] = (short)sum;
 			}
 		}

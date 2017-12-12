@@ -99,17 +99,6 @@ public class HuffmanDecoder {
 			currentCode = (currentCode << 1) | b.nextBit();
 		}
 		
-		int[] map = new int[]  { 0,
-				1, 8, 16, 15, 2, 3, 10, 17, 
-				24, 32, 25, 18, 11, 4, 5,
-				12, 19, 26, 33, 40, 48,
-				41, 34, 27, 20, 13, 6,
-				7, 14, 21, 28, 34, 42, 49, 56,
-				57, 50, 43, 36, 29, 22, 15,
-				23, 30, 37, 44, 51, 58,
-				59, 52, 45, 38, 31, 39,
-				46, 53, 60, 61, 54, 47, 55, 62, 63};
-		
 		//Get the AC values for this MCU
 		for (int k = 1; k < 64; ++k) {
 			found = false;
@@ -122,7 +111,7 @@ public class HuffmanDecoder {
 						
 						if (decoderValue == 0) {
 							for (; k < 64; ++k) {
-								component[map[k]] = 0;
+								component[JPG.zigZagMap[k]] = 0;
 							}
 						}
 						else {
@@ -134,7 +123,7 @@ public class HuffmanDecoder {
 							//System.out.println("coefLength: " + coefLength);
 							
 							for (int l = 0; l < numZeroes; ++l){
-								component[map[k]] = 0;
+								component[JPG.zigZagMap[k]] = 0;
 								++k;
 							}
 							if (coefLength > 11){
@@ -142,12 +131,12 @@ public class HuffmanDecoder {
 							}
 							
 							if (coefLength != 0) {
-								component[map[k]] = (short)b.nextBits(coefLength);
+								component[JPG.zigZagMap[k]] = (short)b.nextBits(coefLength);
 								
 								
 	
-								if (component[map[k]] < (1 << (coefLength - 1))) {
-									component[map[k]] -= (1 << coefLength) - 1;
+								if (component[JPG.zigZagMap[k]] < (1 << (coefLength - 1))) {
+									component[JPG.zigZagMap[k]] -= (1 << coefLength) - 1;
 								}
 								//System.out.println("AC Value: " + component[map[k]]);
 							}
