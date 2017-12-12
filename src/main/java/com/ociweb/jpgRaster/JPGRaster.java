@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		String file = "test_jpgs/white";
+		String file = "test_jpgs/turtle";
 		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./" + file + ".jpg");
 
 		//GraphManager gm = new GraphManager();

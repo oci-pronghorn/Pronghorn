@@ -196,6 +196,15 @@ public class JPGScanner {
 			}
 		}
 		
+		for (int i = 0; i < header.colorComponents.size(); ++i) {
+			if (header.colorComponents.get(i).horizontalSamplingFactor != 1 ||
+				header.colorComponents.get(i).horizontalSamplingFactor != 1) {
+				System.out.println("Error - Sampling Factors not yet supported");
+				header.valid = false;
+				break;
+			}
+		}
+		
 		return header;
 	}
 	
@@ -429,7 +438,7 @@ public class JPGScanner {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/white.jpg");
+			header = ReadJPG("test_jpgs/huff_simple0.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -494,7 +503,6 @@ public class JPGScanner {
 					System.out.println("\tHuffman DC Table ID: " + header.colorComponents.get(i).huffmanDCTableID);
 				}
 				System.out.println("Length of Image Data: " + header.imageData.size());
-				System.out.println("Byte 0: " + header.imageData.get(0));
 			}
 			else {
 				System.err.println("Error - Not a valid JPG file");

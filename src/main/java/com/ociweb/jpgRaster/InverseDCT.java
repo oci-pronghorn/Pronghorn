@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import com.ociweb.jpgRaster.JPG.MCU;
 
 public class InverseDCT {
-	public static void MCUInverseDCT(short[] mcu) {
-		System.out.print("Before Inverse DCT:");
+	public static short[] MCUInverseDCT(short[] mcu) {
+		/*System.out.print("Before Inverse DCT:");
 		for (int i = 0; i < 8; ++i) {
 			for (int j = 0; j < 8; ++j) {
 				if (j % 8 == 0) {
@@ -15,7 +15,7 @@ public class InverseDCT {
 				System.out.print(mcu[i * 8 + j] + " ");
 			}
 		}
-		System.out.println();
+		System.out.println();*/
 		
 		short[] result = new short[64];
 		
@@ -47,27 +47,26 @@ public class InverseDCT {
 				result[y * 8 + x] = (short)sum;
 			}
 		}
-		mcu = result;
 		
-		System.out.print("After Inverse DCT:");
+		/*System.out.print("After Inverse DCT:");
 		for (int i = 0; i < 8; ++i) {
 			for (int j = 0; j < 8; ++j) {
 				if (j % 8 == 0) {
 					System.out.println();
 				}
-				System.out.print(mcu[i * 8 + j] + " ");
+				System.out.print(result[i * 8 + j] + " ");
 			}
 		}
-		System.out.println();
+		System.out.println();*/
 		
-		return;
+		return result;
 	}
 	
 	public static void inverseDCT(ArrayList<MCU> mcus) {
 		for (int i = 0; i < mcus.size(); ++i) {
-			MCUInverseDCT(mcus.get(i).y);
-			MCUInverseDCT(mcus.get(i).cb);
-			MCUInverseDCT(mcus.get(i).cr);
+			mcus.get(i).y =  MCUInverseDCT(mcus.get(i).y);
+			mcus.get(i).cb = MCUInverseDCT(mcus.get(i).cb);
+			mcus.get(i).cr = MCUInverseDCT(mcus.get(i).cr);
 		}
 		return;
 	}
