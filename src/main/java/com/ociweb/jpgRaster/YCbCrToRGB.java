@@ -8,15 +8,19 @@ import com.ociweb.jpgRaster.JPG.RGB;
 public class YCbCrToRGB {	
 	private static RGB convertToRGB(short Y, short Cb, short Cr) {
 		RGB rgb = new RGB();
-		rgb.r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
-		rgb.g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
-		rgb.b = (short)((double)Y + 1.772 * ((double)Cb) + 128);
-		if (rgb.r < 0)   rgb.r = 0;
-		if (rgb.r > 255) rgb.r = 255;
-		if (rgb.g < 0)   rgb.g = 0;
-		if (rgb.g > 255) rgb.g = 255;
-		if (rgb.b < 0)   rgb.b = 0;
-		if (rgb.b > 255) rgb.b = 255;
+		short r, g, b;
+		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
+		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
+		b = (short)((double)Y + 1.772 * ((double)Cb) + 128);
+		if (r < 0)   r = 0;
+		if (r > 255) r = 255;
+		if (g < 0)   g = 0;
+		if (g > 255) g = 255;
+		if (b < 0)   b = 0;
+		if (b > 255) b = 255;
+		rgb.r = (byte)r;
+		rgb.g = (byte)g;
+		rgb.b = (byte)b;
 		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")");
 		return rgb;
 	}

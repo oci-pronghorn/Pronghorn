@@ -64,41 +64,41 @@ public class BMPDumper {
 			rgb.add(new RGB());
 		}
 		// red
-		rgb.get(0 * 8 + 0).r = 255;
+		rgb.get(0 * 8 + 0).r = (byte)255;
 		rgb.get(0 * 8 + 0).g = 0;
 		rgb.get(0 * 8 + 0).b = 0;
 		// green
 		rgb.get(0 * 8 + 1).r = 0;
-		rgb.get(0 * 8 + 1).g = 255;
+		rgb.get(0 * 8 + 1).g = (byte)255;
 		rgb.get(0 * 8 + 1).b = 0;
 		// blue
 		rgb.get(0 * 8 + 2).r = 0;
 		rgb.get(0 * 8 + 2).g = 0;
-		rgb.get(0 * 8 + 2).b = 255;
+		rgb.get(0 * 8 + 2).b = (byte)255;
 		// cyan
 		rgb.get(1 * 8 + 0).r = 0;
-		rgb.get(1 * 8 + 0).g = 255;
-		rgb.get(1 * 8 + 0).b = 255;
+		rgb.get(1 * 8 + 0).g = (byte)255;
+		rgb.get(1 * 8 + 0).b = (byte)255;
 		// magenta
-		rgb.get(1 * 8 + 1).r = 255;
+		rgb.get(1 * 8 + 1).r = (byte)255;
 		rgb.get(1 * 8 + 1).g = 0;
-		rgb.get(1 * 8 + 1).b = 255;
+		rgb.get(1 * 8 + 1).b = (byte)255;
 		// yellow
-		rgb.get(1 * 8 + 2).r = 255;
-		rgb.get(1 * 8 + 2).g = 255;
+		rgb.get(1 * 8 + 2).r = (byte)255;
+		rgb.get(1 * 8 + 2).g = (byte)255;
 		rgb.get(1 * 8 + 2).b = 0;
 		// black
 		rgb.get(2 * 8 + 0).r = 0;
 		rgb.get(2 * 8 + 0).g = 0;
 		rgb.get(2 * 8 + 0).b = 0;
 		// gray
-		rgb.get(2 * 8 + 1).r = 128;
-		rgb.get(2 * 8 + 1).g = 128;
-		rgb.get(2 * 8 + 1).b = 128;
+		rgb.get(2 * 8 + 1).r = (byte)128;
+		rgb.get(2 * 8 + 1).g = (byte)128;
+		rgb.get(2 * 8 + 1).b = (byte)128;
 		// white
-		rgb.get(2 * 8 + 2).r = 255;
-		rgb.get(2 * 8 + 2).g = 255;
-		rgb.get(2 * 8 + 2).b = 255;
+		rgb.get(2 * 8 + 2).r = (byte)255;
+		rgb.get(2 * 8 + 2).g = (byte)255;
+		rgb.get(2 * 8 + 2).b = (byte)255;
 		try {
 			Dump(rgb, 3, 3, "bmp_test.bmp");
 		} catch (IOException e) {

@@ -36,7 +36,7 @@ public class JPGRaster {
 		for (int i = 0; i < inputFiles.length; ++i) {
 			String file = inputFiles[i];
 			try {
-				System.out.println("Reading JPG file...");
+				System.out.println("Reading '" + file + "' JPG file...");
 				Header header = JPGScanner.ReadJPG("test_jpgs/" + file + ".jpg");
 				if (header.valid) {
 					System.out.println("Performing Huffman Decoding...");
