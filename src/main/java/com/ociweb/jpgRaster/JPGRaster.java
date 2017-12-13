@@ -21,9 +21,9 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		String file = "./test_jpgs/huff_simple0";
-		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, file);
-		inputFilePath = inputFilePath + ".jpg";
+		String[] inputFiles = { "car", "cat", "dice", "earth", "nathan", "pyramids", "robot", "squirrel", "static", "turtle" };
+		//String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, file);
+		//inputFilePath = inputFilePath + ".jpg";
 
 		//GraphManager gm = new GraphManager();
 		
@@ -33,26 +33,29 @@ public class JPGRaster {
 		
 		//StageScheduler.defaultScheduler(gm).startup();
 		
-		try {
-			System.out.println("Reading JPG file...");
-			Header header = JPGScanner.ReadJPG(inputFilePath);
-			if (header.valid) {
-				System.out.println("Performing Huffman Decoding...");
-				ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
-				if (mcus != null) {
-					System.out.println("Performing Inverse Quantization...");
-					InverseQuantizer.dequantize(mcus, header);
-					System.out.println("Performing Inverse DCT...");
-					InverseDCT.inverseDCT(mcus);
-					System.out.println("Performing YCbCr to RGB Conversion...");
-					ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width);
-					System.out.println("Writing BMP file...");
-					BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
-					System.out.println("Done.");
+		for (int i = 0; i < inputFiles.length; ++i) {
+			String file = inputFiles[i];
+			try {
+				System.out.println("Reading JPG file...");
+				Header header = JPGScanner.ReadJPG("test_jpgs/" + file + ".jpg");
+				if (header.valid) {
+					System.out.println("Performing Huffman Decoding...");
+					ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
+					if (mcus != null) {
+						System.out.println("Performing Inverse Quantization...");
+						InverseQuantizer.dequantize(mcus, header);
+						System.out.println("Performing Inverse DCT...");
+						InverseDCT.inverseDCT(mcus);
+						System.out.println("Performing YCbCr to RGB Conversion...");
+						ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width);
+						System.out.println("Writing BMP file...");
+						BMPDumper.Dump(rgb, header.height, header.width, "test_jpgs/" + file + ".bmp");
+						System.out.println("Done.");
+					}
 				}
+			} catch (IOException e) {
+				System.err.println("Error - Unknown error");
 			}
-		} catch (IOException e) {
-			
 		}
 	}
 
