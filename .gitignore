@@ -12,3 +12,16 @@ buildNumber.properties
 !/.mvn/wrapper/maven-wrapper.jar
 /.classpath
 /.project
+
+/.metadata/*
+
+RemoteSystemsTempFiles/\.project
+
+*.class
+
+# Ignore Intellij stuff
+.idea/
+*.iml
+
+# BMP files
+*.bmp
