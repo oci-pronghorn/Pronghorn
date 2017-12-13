@@ -39,6 +39,7 @@
         .bg-oci {
             background: #0f53b3;
             box-shadow: 0px 0px 7px rgba(0,0,0,0.4);
+            z-index: 1000;
         }
         .nav-link img {
             width: 30px;
@@ -81,11 +82,17 @@
 			z-index: 1;
 			cursor: move;
 		}
-        .oci-popover {
-            padding: 15px;
-            border: thin solid #32383e;
-            border-radius: 5px;
-            display: block;
+        #preview-container {
+            position: absolute;
+            z-index: 100;
+            top: 0px;
+            left: 0px;
+        }
+        #demo svg .node {
+            cursor: pointer;
+        }
+        .popover {
+            z-index: 0 !important;
         }
     </style>
 </head>
@@ -125,6 +132,7 @@
                 <img src="img/spinner.svg" />
             </div>
         </div>
+        <div id="popover-container"></div>
         <div class="modal fade" id="errorModal">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -207,8 +215,8 @@
 
         var previewScale = 0.065;
 
-        var zoomWidth = 500; //100 is current screen size, anything above that is zommed in
-        var zoomHeight = 500;
+        var zoomWidth = 100; //100 is current screen size, anything above that is zommed in
+        var zoomHeight = 100;
 
         var zoomStep = 20; //percentage of initial width/height
 
@@ -241,23 +249,14 @@
 
                     $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
 
-                    $("#popover-container").width($("#demo").width()).height($("#demo").height());
-
                     if (isFirst) {
                         $(".navbar").show();
                         $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") ).append('<div class="minimap-node" id="svg-preview"></div>');
 
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
+
                         isFirst = false;
                     }
-
-                    $('#demo svg #graph0').children('g .node').each(function () {
-                        $(this).popover( {
-                            title: $(this).find('text').html(),
-                            content: 'Hello World!',
-                            placement: 'auto'
-                        });
-                    });
 
                     $("#svg-preview").html(result);
                     $("#svg-preview svg").attr('width', ratioWidth + 'px').attr('height', ratioHeight + 'px');
@@ -265,6 +264,21 @@
                     $("#svg-preview svg #graph0 g text, #svg-preview svg #graph0 g polygon[fill='black']").remove();
 
                     $("#graph0 title").remove();
+
+                    $('#demo svg #graph0').children('g .node').each(function () {
+                        var $popover = $(this).popover( {
+                            title: $(this).find('text').html(),
+                            content: 'Heuristics',
+                            placement: 'auto',
+                            container: '#popover-container'
+                        });
+
+                        $popover.on('shown.bs.popover', function () {
+                            // ADD THE DATA-OFFSET-Y HERE
+                            console.log("shown!");
+                            $("#popover-container").children().last().attr("data-offset-y", $("body").scrollTop());
+                        })
+                    });
                 };
             }
         }
@@ -392,9 +406,8 @@
 
             $('body').on('scroll', function () {
                 $(this).find('.popover').each(function () {
-                    console.log("offset top: " + $(this).offset().top + " | scrollTop: " + $("body").scrollTop());
                     $(this).css({
-                        top: - $("body").scrollTop()
+                        top: $(this).data("offset-y") - $("body").scrollTop()
                     });
                 });
             });
@@ -409,6 +422,7 @@
                 var sec = date.getSeconds().toString();
                 saveData($("#demo").html(), `telemetry_${year}-${month}-${day}_${hour}-${min}-${sec}.svg`);
             });
+
         });
     </script>
 </body>
