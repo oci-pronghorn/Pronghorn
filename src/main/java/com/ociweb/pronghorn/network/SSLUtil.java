@@ -35,7 +35,7 @@ public class SSLUtil {
 
 		 boolean didShake = false;
 		 while (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus && HandshakeStatus.FINISHED != handshakeStatus	 ) {
-			 			 
+
 			 didShake = true;
 			 if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {				 
 				 if (cc.durationWaitingForNetwork() > HANDSHAKE_TIMEOUT) {

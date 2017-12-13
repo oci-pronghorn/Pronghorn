@@ -151,12 +151,12 @@ public class HTTPClientUtil {
 			Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3, activeWriter);
 			
 			int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER 7
-			int headersLen  = Pipe.takeRingByteMetaData(requestPipe);
+			int headersLen  = Pipe.takeRingByteLen(requestPipe);
 			int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
 			
 			
 			int payloadMeta = Pipe.takeRingByteMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
-			int payloadLen  = Pipe.takeRingByteMetaData(requestPipe);
+			int payloadLen  = Pipe.takeRingByteLen(requestPipe);
 			
 			
 			//For chunked must pass in -1
