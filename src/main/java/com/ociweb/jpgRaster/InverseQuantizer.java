@@ -7,7 +7,7 @@ import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
 
 public class InverseQuantizer {
-	public static void dequantizeMCU(short[] MCU, QuantizationTable table) {
+	private static void dequantizeMCU(short[] MCU, QuantizationTable table) {
 		/*System.out.print("Before Inverse Quantization:");
 		for (int i = 0; i < 8; ++i) {
 			for (int j = 0; j < 8; ++j) {

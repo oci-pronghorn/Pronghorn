@@ -46,14 +46,14 @@ public class BMPDumper {
 		file.close();
 	}
 	
-	public static void writeInt(DataOutputStream stream, int v) throws IOException {
+	private static void writeInt(DataOutputStream stream, int v) throws IOException {
 		stream.writeByte((v & 0x000000FF));
 		stream.writeByte((v & 0x0000FF00) >>  8);
 		stream.writeByte((v & 0x00FF0000) >> 16);
 		stream.writeByte((v & 0xFF000000) >> 24);
 	}
 	
-	public static void writeShort(DataOutputStream stream, int v) throws IOException {
+	private static void writeShort(DataOutputStream stream, int v) throws IOException {
 		stream.writeByte((v & 0x00FF));
 		stream.writeByte((v & 0xFF00) >>  8);
 	}

@@ -6,7 +6,7 @@ import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.jpgRaster.JPG.RGB;
 
 public class YCbCrToRGB {	
-	public static RGB convertToRGB(short Y, short Cb, short Cr) {
+	private static RGB convertToRGB(short Y, short Cb, short Cr) {
 		RGB rgb = new RGB();
 		rgb.r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
 		rgb.g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);

@@ -5,7 +5,22 @@ import java.util.ArrayList;
 import com.ociweb.jpgRaster.JPG.MCU;
 
 public class InverseDCT {
-	public static short[] MCUInverseDCT(short[] mcu) {
+	private static double[] idctMap = new double[64];
+	
+	// prepare idctMap
+	static {
+		for (int u = 0; u < 8; ++u) {
+			double c = 1.0f;
+			if (u == 0) {
+				c = 1 / Math.sqrt(2.0);
+			}
+			for (int x = 0; x < 8; ++x) {
+				idctMap[u * 8 + x] = c * Math.cos((2.0 * x + 1.0) * u * Math.PI / 16.0);
+			}
+		}
+	}
+	
+	private static short[] MCUInverseDCT(short[] mcu) {
 		/*System.out.print("Before Inverse DCT:");
 		for (int i = 0; i < 8; ++i) {
 			for (int j = 0; j < 8; ++j) {
@@ -24,17 +39,9 @@ public class InverseDCT {
 				double sum = 0.0;
 				for (int i = 0; i < 8; ++i) {
 					for (int j = 0; j < 8; ++j) {
-						double Cu = 1.0;
-						double Cv = 1.0;
-						if (i == 0) {
-							Cv = 1 / Math.sqrt(2.0);
-						}
-						if (j == 0) {
-							Cu = 1 / Math.sqrt(2.0);
-						}
-						sum += Cu * Cv * mcu[i * 8 + j] *
-							   Math.cos((2.0 * x + 1.0) * j * Math.PI / 16.0) *
-							   Math.cos((2.0 * y + 1.0) * i * Math.PI / 16.0);
+						sum += mcu[i * 8 + j] *
+							   idctMap[j * 8 + x] *
+							   idctMap[i * 8 + y];
 					}
 				}
 				sum /= 4.0;

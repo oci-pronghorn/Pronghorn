@@ -64,13 +64,13 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
-	public static Boolean decodeMCUComponent(BitReader b,
-										  ArrayList<ArrayList<Integer>> DCTableCodes,
-										  ArrayList<ArrayList<Integer>> ACTableCodes,
-										  HuffmanTable DCTable,
-										  HuffmanTable ACTable,
-										  short[] component,
-										  short previousDC) {
+	private static Boolean decodeMCUComponent(BitReader b,
+											  ArrayList<ArrayList<Integer>> DCTableCodes,
+											  ArrayList<ArrayList<Integer>> ACTableCodes,
+											  HuffmanTable DCTable,
+											  HuffmanTable ACTable,
+											  short[] component,
+											  short previousDC) {
 		
 		// get the DC value for this MCU
 		int currentCode = b.nextBit();
