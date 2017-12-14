@@ -3,22 +3,11 @@ package com.ociweb.jpgRaster;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-
-import com.ociweb.jpgRaster.JPG.RGB;
 
 public class BMPDumper {
-	public static void Dump(ArrayList<RGB> rgb, int height, int width, String filename) throws IOException {
-		int size = 14 + 12 + 3 * rgb.size() + height * (4 - (width * 3) % 4);
-		int apparentWidth;
-		if (width % 8 == 0) {
-			apparentWidth = width;
-		}
-		else {
-			apparentWidth = width + (8 - (width % 8));
-		}
-		//System.out.println("Width: " + width);
-		//System.out.println("Apparent Width: " + apparentWidth);
+	public static void Dump(byte[][] rgb, int height, int width, String filename) throws IOException {
+		int paddingSize = (4 - (width * 3) % 4) % 4;
+		int size = 14 + 12 + rgb.length * rgb[0].length + height * paddingSize;
 		
 		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename));
 		file.writeByte('B');
@@ -31,16 +20,14 @@ public class BMPDumper {
 		writeShort(file, height);
 		writeShort(file, 1);
 		writeShort(file, 24);
-		for (int i = height - 1; i >= 0; i--) {
-			for (int j = 0; j < width; j++) {
-				file.writeByte(rgb.get(i * apparentWidth + j).b);
-				file.writeByte(rgb.get(i * apparentWidth + j).g);
-				file.writeByte(rgb.get(i * apparentWidth + j).r);
+		for (int i = height - 1; i >= 0; --i) {
+			for (int j = 0; j < width * 3 - 2; j += 3) {
+				file.writeByte(rgb[i][j + 2]);
+				file.writeByte(rgb[i][j + 1]);
+				file.writeByte(rgb[i][j + 0]);
 			}
-			if ((width * 3) % 4 != 0) {
-				for (int j = 0; j < 4 - (width * 3) % 4; j++) {
-					file.writeByte(0);
-				}
+			for (int j = 0; j < paddingSize; j++) {
+				file.writeByte(0);
 			}
 		}
 		file.close();
@@ -59,46 +46,43 @@ public class BMPDumper {
 	}
 	
 	public static void main(String[] args) {
-		ArrayList<RGB> rgb = new ArrayList<RGB>(8 * 8);
-		for (int i = 0; i < 64; i++) {
-			rgb.add(new RGB());
-		}
+		byte[][] rgb = new byte[8][8 * 3];
 		// red
-		rgb.get(0 * 8 + 0).r = (byte)255;
-		rgb.get(0 * 8 + 0).g = 0;
-		rgb.get(0 * 8 + 0).b = 0;
+		rgb[0][0 * 3 + 0] = (byte)255;
+		rgb[0][0 * 3 + 1] = 0;
+		rgb[0][0 * 3 + 2] = 0;
 		// green
-		rgb.get(0 * 8 + 1).r = 0;
-		rgb.get(0 * 8 + 1).g = (byte)255;
-		rgb.get(0 * 8 + 1).b = 0;
+		rgb[0][1 * 3 + 0] = 0;
+		rgb[0][1 * 3 + 1] = (byte)255;
+		rgb[0][1 * 3 + 2] = 0;
 		// blue
-		rgb.get(0 * 8 + 2).r = 0;
-		rgb.get(0 * 8 + 2).g = 0;
-		rgb.get(0 * 8 + 2).b = (byte)255;
+		rgb[0][2 * 3 + 0] = 0;
+		rgb[0][2 * 3 + 1] = 0;
+		rgb[0][2 * 3 + 2] = (byte)255;
 		// cyan
-		rgb.get(1 * 8 + 0).r = 0;
-		rgb.get(1 * 8 + 0).g = (byte)255;
-		rgb.get(1 * 8 + 0).b = (byte)255;
+		rgb[1][0 * 3 + 0] = 0;
+		rgb[1][0 * 3 + 1] = (byte)255;
+		rgb[1][0 * 3 + 2] = (byte)255;
 		// magenta
-		rgb.get(1 * 8 + 1).r = (byte)255;
-		rgb.get(1 * 8 + 1).g = 0;
-		rgb.get(1 * 8 + 1).b = (byte)255;
+		rgb[1][1 * 3 + 0] = (byte)255;
+		rgb[1][1 * 3 + 1] = 0;
+		rgb[1][1 * 3 + 2] = (byte)255;
 		// yellow
-		rgb.get(1 * 8 + 2).r = (byte)255;
-		rgb.get(1 * 8 + 2).g = (byte)255;
-		rgb.get(1 * 8 + 2).b = 0;
+		rgb[1][2 * 3 + 0] = (byte)255;
+		rgb[1][2 * 3 + 1] = (byte)255;
+		rgb[1][2 * 3 + 2] = 0;
 		// black
-		rgb.get(2 * 8 + 0).r = 0;
-		rgb.get(2 * 8 + 0).g = 0;
-		rgb.get(2 * 8 + 0).b = 0;
+		rgb[2][0 * 3 + 0] = 0;
+		rgb[2][0 * 3 + 1] = 0;
+		rgb[2][0 * 3 + 2] = 0;
 		// gray
-		rgb.get(2 * 8 + 1).r = (byte)128;
-		rgb.get(2 * 8 + 1).g = (byte)128;
-		rgb.get(2 * 8 + 1).b = (byte)128;
+		rgb[2][1 * 3 + 0] = (byte)128;
+		rgb[2][1 * 3 + 1] = (byte)128;
+		rgb[2][1 * 3 + 2] = (byte)128;
 		// white
-		rgb.get(2 * 8 + 2).r = (byte)255;
-		rgb.get(2 * 8 + 2).g = (byte)255;
-		rgb.get(2 * 8 + 2).b = (byte)255;
+		rgb[2][2 * 3 + 0] = (byte)255;
+		rgb[2][2 * 3 + 1] = (byte)255;
+		rgb[2][2 * 3 + 2] = (byte)255;
 		try {
 			Dump(rgb, 3, 3, "bmp_test.bmp");
 		} catch (IOException e) {

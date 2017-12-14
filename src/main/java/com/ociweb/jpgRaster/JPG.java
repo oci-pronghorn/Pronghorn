@@ -55,12 +55,6 @@ public class JPG {
 		short[] cb = new short[64];
 		short[] cr = new short[64];
 	}
-
-	public static class RGB {
-		public byte r;
-		public byte g;
-		public byte b;
-	}
 	
 	public static int[] zigZagMap = new int[]  {
 			0,   1,  8, 16,  9,  2,  3, 10,

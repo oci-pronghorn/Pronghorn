@@ -3,11 +3,10 @@ package com.ociweb.jpgRaster;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.RGB;
 
 public class YCbCrToRGB {	
-	private static RGB convertToRGB(short Y, short Cb, short Cr) {
-		RGB rgb = new RGB();
+	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
+		byte[] rgb = new byte[3];
 		short r, g, b;
 		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
 		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
@@ -18,29 +17,42 @@ public class YCbCrToRGB {
 		if (g > 255) g = 255;
 		if (b < 0)   b = 0;
 		if (b > 255) b = 255;
-		rgb.r = (byte)r;
-		rgb.g = (byte)g;
-		rgb.b = (byte)b;
-		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")");
+		rgb[0] = (byte)r;
+		rgb[1] = (byte)g;
+		rgb[2] = (byte)b;
+		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ")");
 		return rgb;
 	}
 	
-	public static ArrayList<RGB> convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
+	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
 		int mcuHeight = (height + 7) / 8;
 		int mcuWidth = (width + 7) / 8;
-		ArrayList<RGB> rgb = new ArrayList<RGB>(mcuHeight * mcuWidth);
+		int unusedRows = (mcuHeight * 8) - height;
+		int unusedColumns = (mcuWidth * 8) - width;
+		//ArrayList<RGB> rgb = new ArrayList<RGB>(mcuHeight * mcuWidth);
+		byte[][] pixels = new byte[height][width * 3];
+		byte[] pixel;
 		for (int i = 0; i < mcuHeight; ++i) {         // mcu height
 			for (int y = 0; y < 8; ++y) {             // pixel height
 				for (int j = 0; j < mcuWidth; ++j) {  // mcu width
 					for (int x = 0; x < 8; ++x) {     // pixel width
-						rgb.add(convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
+						if (i == mcuHeight - 1 && y >= (8 - unusedRows)) {
+							break;
+						}
+						if (j == mcuWidth - 1 && x >= (8 - unusedColumns)) {
+							break;
+						}
+						pixel = convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
 											 mcus.get(i * mcuWidth + j).cb[y * 8 + x],
-											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]));
+											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]);
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
 					}
 				}
 			}
 		}
-		return rgb;
+		return pixels;
 	}
 	
 	public static void main(String[] args) {
@@ -56,9 +68,10 @@ public class YCbCrToRGB {
 		mcu.cb[2] =   6;
 		mcu.cr[2] = -16;
 		testArray.add(mcu);
-		ArrayList<RGB> converted = convertYCbCrToRGB(testArray, 1, 3);
-		for (int i = 0; i < converted.size() ; i += 3) {
-			System.out.println(converted.get(i).r + ", " + converted.get(i).g + ", " + converted.get(i).b);
+		byte[][] converted = convertYCbCrToRGB(testArray, 1, 3);
+		for (int i = 0; i < converted.length ; ++i) {
+			for (int j = 0; j < converted[0].length; j += 3)
+			System.out.println(converted[i][j + 0] + ", " + converted[i][j + 1] + ", " + converted[i][j + 2]);
 		}
 	}
 }

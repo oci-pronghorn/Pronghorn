@@ -5,7 +5,6 @@ import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.RGB;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
@@ -47,7 +46,7 @@ public class JPGRaster {
 						System.out.println("Performing Inverse DCT...");
 						InverseDCT.inverseDCT(mcus);
 						System.out.println("Performing YCbCr to RGB Conversion...");
-						ArrayList<RGB> rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width);
+						byte[][] rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width);
 						System.out.println("Writing BMP file...");
 						BMPDumper.Dump(rgb, header.height, header.width, "test_jpgs/" + file + ".bmp");
 						System.out.println("Done.");
