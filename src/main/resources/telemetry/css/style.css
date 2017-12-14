@@ -101,7 +101,7 @@ body {
 #ghost-container .ghost-node {
     width: 100px;
     height: 50px;
-    background-color: blue;
+    background-color: transparent;
     position: absolute;
     cursor: pointer;
 }
