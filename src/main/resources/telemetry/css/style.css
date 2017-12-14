@@ -9,6 +9,7 @@ body {
     font-size: 15px;
 }
 #demo {
+    float: left;
     padding-top: 65px;
     text-align: center;
 }
@@ -83,4 +84,32 @@ body {
     z-index: 0 !important;
     width: 400px;
     height: 200px;
+}
+.wrapper {
+    overflow-x:auto;
+    overflow-y: auto;
+    padding: 0px !important;
+    background-color: #ffffff;
+    position: relative;
+}
+#ghost-container {
+    overflow: hidden;
+    left: 0px;
+    float: left;
+    position: absolute;
+}
+#ghost-container .ghost-node {
+    width: 100px;
+    height: 50px;
+    background-color: blue;
+    position: absolute;
+    cursor: pointer;
+}
+#ghost-container .ghost-node a {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.popover-header {
+    background-color: #ffffff;
 }

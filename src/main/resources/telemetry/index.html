@@ -44,12 +44,15 @@
     </nav>
     <main role="main">
         <div id="minimap"></div>
-        <div id="demo">
-            <div id="loading">
-                <img src="img/spinner.svg" />
+        <div class="wrapper">
+            <div id="demo">
+                <div id="loading">
+                    <img src="img/spinner.svg" />
+                </div>
+            </div>
+            <div id="ghost-container">
             </div>
         </div>
-        <div id="popover-container"></div>
         <div class="modal fade" id="errorModal">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -68,15 +71,14 @@
          * - better way to find difference besides comparing large arrays?
          * - general jQuery cleanup (inefficient selectors etc)/jquery-ify javascript snippets (ie download)
          * - event driven vs functions
-         * Features:
-         * - finish zoom (ie add zoom limits)
-         * - fix zoom with popovers
-         * - fix popover lag
-         * - add heuristics
-         * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
-         * - httpGet duplication/httpGet to jQuery/AJAX?
          * - better error management
          * - better way to manage bootstrap interactions (ie the clicks on navbar)
+         * Features:
+         * - !add heuristics
+         * - !zoom ghost layer/scrollbar issues/broke the preview!
+         * - !update ghost layer on major paintAll
+         * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
+         * - httpGet duplication/httpGet to jQuery/AJAX?
          */
         $(".navbar,#minimap").hide();
         function httpGet(theUrl, onSuccess, onError) {
@@ -132,14 +134,23 @@
 
             doingUpdate = false;
         }
+        function getAbsoluteXY(element) {
+            var viewportElement = document.documentElement;
+            var box = element.getBoundingClientRect();
+            var scrollLeft = viewportElement.scrollLeft;
+            var scrollTop = viewportElement.scrollTop;
+            var x = box.left + scrollLeft;
+            var y = box.top + scrollTop;
+            return {"x": x, "y": y, "width": box.width, "height": box.height}
+        }
         var isFirst = true;
         var paintingTimer;
         var paintAllDrawing = false;
         var webworkerInProgress = false;
         var paintAllRunning = false;
         var previewScale = 0.065;
-        var zoomWidth = 250; //100 is current screen size, anything above that is zoomed in
-        var zoomHeight = 250;
+        var zoomWidth = 500; //100 is current screen size, anything above that is zoomed in
+        var zoomHeight = 500;
         var zoomStep = 20; //percentage of initial width/height
         function paintAll () {
             paintAllRunning = true;
@@ -167,7 +178,7 @@
                     var ratioWidth = demo.width() * previewScale;
                     var ratioHeight = demo.height() * previewScale;
 
-                    $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                    $("#demo svg, #ghost-container").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
 
                     if (isFirst) {
                         $(".navbar").show();
@@ -176,6 +187,30 @@
                         paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
 
                         isFirst = false;
+
+                        //$("#ghost-container").css("width", $("#demo svg").width()).css("height", $("#demo svg").height());
+                        $('#demo svg #graph0').children('g .node').each(function () {
+                            var point = getAbsoluteXY($(this).find("ellipse")[0]);
+                            var $id = $(this).attr("id");
+                            var node = $('<div class="ghost-node" id="ghost-' + $id + '"></div>').css("left", point.x).css("top", point.y).width(point.width).height(point.height);
+                            var $popover = node.popover( {
+                                title: $(this).find('text').html(),
+                                html: true,
+                                content: '<div id="chart-' + $id + '" class="ct-chart ct-golden-section"></div>',
+                                placement: 'auto',
+                                container: '#ghost-container'
+                            });
+                            $popover.on('shown.bs.popover', function () {
+                                new Chartist.Line('#chart-' + $id, {
+                                    labels: [ 0, 1]
+                                }, {
+                                    fullWidth: true,
+                                    lineSmooth: false
+                                });
+                            });
+
+                            $("#ghost-container").append(node);
+                        });
                     }
 
                     $("#svg-preview").html(result);
@@ -184,31 +219,6 @@
                     $("#svg-preview svg #graph0 g text, #svg-preview svg #graph0 g polygon[fill='black']").remove();
 
                     $("#graph0 title").remove();
-
-                    $('#demo svg #graph0').children('g .node').each(function () {
-                        var $popover = $(this).popover( {
-                            title: $(this).find('text').html(),
-                            html: true,
-                            content: '<div id="chart-' + $(this).attr("id") + '" class="ct-chart ct-golden-section"></div>',
-                            placement: 'auto',
-                            container: '#popover-container'
-                        });
-                        $popover.on('shown.bs.popover', function () {
-                            $("#popover-container").children().last().attr("data-offset-y", $("body").scrollTop()).attr("data-offset-x", $("body").scrollLeft());
-
-                            new Chartist.Line('#chart-' + $(this).attr("id"), {
-                                labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                                series: [
-                                    [12, 9, 7, 8, 5],
-                                    [2, 1, 3.5, 7, 3],
-                                    [1, 3, 4, 5, 6]
-                                ]
-                            }, {
-                                fullWidth: true,
-                                lineSmooth: false
-                            });
-                        })
-                    });
                 };
             }
         }
@@ -291,12 +301,20 @@
                 window.URL.revokeObjectURL(url);
             };
         }());
+        var minZoom = 1000;
+        var maxZoom = 50;
         function zoom(factor) {
-            zoomWidth += factor;
-            zoomHeight += factor;
-            $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
-            $("body").scroll();
+            if(zoomWidth + factor >= maxZoom && zoomWidth + factor <= minZoom) {
+                zoomWidth += factor;
+                zoomHeight += factor;
+                $("#demo svg, #ghost-container").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                $("body").scroll();
+            }
         }
+        $( window ).resize(function() {
+            console.log("resizing!");
+            $("#ghost-container").css("width", $("#demo svg").width()).css("height", $("#demo svg").height());
+        });
         $(document).ready(function() {
             $("#refresh-rate-dropdown a").click(function () {
                 $("#refresh-rate-dropdown a").removeClass("active");
@@ -317,14 +335,6 @@
             });
             $("#zoom-out-btn").click(function () {
                 zoom(-zoomStep);
-            });
-            $('body').on('scroll', function () {
-                $(this).find('.popover').each(function () {
-                    $(this).css({
-                        top: $(this).data("offset-y") - $("body").scrollTop(),
-                        left: $(this).data("offset-x") - $("body").scrollLeft()
-                    });
-                });
             });
             $("#download-btn").click(function() {
                 var date = new Date();
