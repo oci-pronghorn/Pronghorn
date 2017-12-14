@@ -30,7 +30,7 @@ public class PhastCodecSchemaTest {
 	
     @Test
 	public void testFROMMatchesXML() {
-		assertTrue(FROMValidation.testForMatchingFROMs("/phastCodec.xml", PhastCodecSchema.instance));
+		assertTrue(FROMValidation.checkSchema("/phastCodec.xml", PhastCodecSchema.class));
 	}
 	
 	@Test
