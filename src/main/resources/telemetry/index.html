@@ -61,6 +61,23 @@
         </div>
     </main>
     <script type="text/javascript">
+        /* TODO:
+         * Refactoring:
+         * - find a more declarative approach (loops etc)
+         * - less flags/weird booleans
+         * - better way to find difference besides comparing large arrays?
+         * - general jQuery cleanup (inefficient selectors etc)/jquery-ify javascript snippets (ie download)
+         * - event driven vs functions
+         * Features:
+         * - finish zoom (ie add zoom limits)
+         * - fix zoom with popovers
+         * - fix popover lag
+         * - add heuristics
+         * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
+         * - httpGet duplication/httpGet to jQuery/AJAX?
+         * - better error management
+         * - better way to manage bootstrap interactions (ie the clicks on navbar)
+         */
         $(".navbar,#minimap").hide();
         function httpGet(theUrl, onSuccess, onError) {
             var xmlHttp = new XMLHttpRequest();
@@ -121,7 +138,7 @@
         var webworkerInProgress = false;
         var paintAllRunning = false;
         var previewScale = 0.065;
-        var zoomWidth = 250; //100 is current screen size, anything above that is zommed in
+        var zoomWidth = 250; //100 is current screen size, anything above that is zoomed in
         var zoomHeight = 250;
         var zoomStep = 20; //percentage of initial width/height
         function paintAll () {
