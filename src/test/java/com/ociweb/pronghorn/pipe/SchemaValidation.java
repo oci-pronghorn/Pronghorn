@@ -11,8 +11,7 @@ public class SchemaValidation {
     
     @Test
     public void rawDataFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/rawDataSchema.xml", RawDataSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(RawDataSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/rawDataSchema.xml", RawDataSchema.class));
         
         int testSlabSize = 128;
         int computedCountOfChunks = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(RawDataSchema.FROM, testSlabSize);

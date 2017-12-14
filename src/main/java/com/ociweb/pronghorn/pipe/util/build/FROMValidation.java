@@ -28,7 +28,9 @@ public class FROMValidation {
 	
 	public static boolean forceCodeGen = false;
 	
-    public static <S extends MessageSchema<S>> boolean testForMatchingFROMs(String templateFile, S schema) {
+    private static <S extends MessageSchema<S>> boolean testForMatchingFROMs(String templateFile, S schema) {
+    	boolean result = false;
+    	StringBuilder target = new StringBuilder();
         try {
             FieldReferenceOffsetManager encodedFrom = null;
             try {
@@ -36,42 +38,40 @@ public class FROMValidation {
             } catch (NullPointerException npe) {
                 //continue with no previous FROM
             }
-            return testForMatchingFROMs(templateFile, encodedFrom);           
-            
+            result = testForMatchingFROMs(templateFile, encodedFrom, target);           
+            if (!result) {
+            	System.out.println(target);
+            }            
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            result = false;
         }
 
+        return result;
     }
 
 
-	private static boolean testForMatchingFROMs(String templateFile, FieldReferenceOffsetManager encodedFrom)
+	private static boolean testForMatchingFROMs(String templateFile,
+			FieldReferenceOffsetManager encodedFrom, Appendable target)
 			throws ParserConfigurationException, SAXException, IOException {
+
+		boolean result = true;
 		FieldReferenceOffsetManager expectedFrom = TemplateHandler.loadFrom(templateFile);
 		if (null==expectedFrom) {
 		    logger.error("Unable to find: "+templateFile);
-		    return false;
-		}
-		if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
+		    result = false;
+		} else if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
 		    logger.error("Encoded source:"+expectedFrom);
 		    if (null!=encodedFrom) {
 		        logger.error("Template file:"+encodedFrom);
 		    }
 		    logger.error("//replacement source");
-		    StringBuilder target = new StringBuilder();
 		    String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
 		    
 		    FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);  
-		    
-
-		    System.out.println();
-		    System.out.println(target.toString());
-		    
-		    
-		    return false;
+		    result = false;
 		}
-		return true;
+		return result;
 	}
     
 	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz, boolean forceCode) {
@@ -84,63 +84,106 @@ public class FROMValidation {
 	}
 	
 	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz) {
-		if (!testForMatchingFROMs(templateFile, clazz)) {
-			return false;
+		StringBuilder target = new StringBuilder();
+		S schemaInstance = MessageSchema.findInstance(clazz);		
+		
+		boolean result = true;
+		FieldReferenceOffsetManager expectedFrom = null;
+		try {
+			expectedFrom = TemplateHandler.loadFrom(templateFile);
+		} catch (Exception e2) {
+			e2.printStackTrace();
 		}		
-		return testForMatchingLocators(clazz);
-	}
-	
-    public static <S extends MessageSchema<S>> boolean testForMatchingFROMs(String templateFile, Class<S> clazz) {
-    	
-    	S found = MessageSchema.findInstance(clazz);
-    	if (null!=found) {
-    		return testForMatchingFROMs(templateFile, found);
-    	} else {
-    		try {
-				boolean result = testForMatchingFROMs(templateFile, (FieldReferenceOffsetManager)null);
-				
-			    //public static final RawDataSchema instance = new RawDataSchema();
-			    if (!result) {
-			    	//show the new constructor
-			    	System.out.println();
-			    	System.out.println("protected "+clazz.getSimpleName()+"() { ");
-			    	System.out.println("    super(FROM);");
-			    	System.out.println("}");
-			    	System.out.println();
-			    	//show the line needed for adding the instance
-			    	System.out.println("public static final "+clazz.getSimpleName()+" instance = new "+clazz.getSimpleName()+"();");
+		if (null==expectedFrom) {
+			logger.error("Unable to find: {}",templateFile);
+			return false;
+		}
+		if (null!=schemaInstance) {
+						
+			try {
+			    FieldReferenceOffsetManager encodedFrom = null;
+			    try {
+			        encodedFrom = MessageSchema.from(schemaInstance);
+					
+					if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
+					    logger.error("Encoded source:"+expectedFrom);
+					    if (null!=encodedFrom) {
+					        logger.error("Template file:"+encodedFrom);
+					    }
+					    logger.error("//replacement source");
+					    String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
+					    
+					    FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);  
+					    result = false;
+					} 			        
+			    } catch (NullPointerException npe) {
+			        //continue with no previous FROM
+			    	buildConstructor(target, clazz);
+			    	result = false;
 			    }
-				
-				return result;
-			} catch (Exception e) {
-				logger.error("unable to build FROM {} {}",e.getClass().getSimpleName(),e.getMessage());
-				return false;
+          
+			} catch (Exception e1) {
+			    e1.printStackTrace();
+			    result = false;
 			}
-    	}
-    	
-    }
-    
-	/**
-	 * Confirm test target has all the right constants if not export the right source code.
-	 */
-    public static <S extends MessageSchema<S>> boolean testForMatchingLocators(Class<S> clazz) {
+		
+			try {					
+				if (null!=schemaInstance) {
+					result &= testForMatchingLocators(schemaInstance, expectedFrom, target);
+				}
+									
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		
+			
+		} else {
+			result = false;
+			try {
+				buildConstructor(target, clazz);
+		
+			    logger.error("Encoded source: {}",expectedFrom);
+				logger.error("//replacement source");
+				FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", templateFile.substring(1+templateFile.lastIndexOf('/') ));  
+			
+			   
+			} catch (Exception e1) {
+				logger.error("unable to build FROM {} {}",e1.getClass().getSimpleName(),e1.getMessage());
+		
+			}
+		}
 
-    	S found = MessageSchema.findInstance(clazz);
-    	if (null!=found) {
-    		return testForMatchingLocators(found);
-    	}
-    	return false;
-    }
+		if (!result) {
+			System.out.println(target);
+		}
+
+		return result;
+	}
 
 
-	/**
-	 * Confirm test target has all the right constants if not export the right source code.
-	 */
-	public static <S extends MessageSchema> boolean testForMatchingLocators(S schema) {
 
-	    FieldReferenceOffsetManager encodedFrom = MessageSchema.from(schema);
-	    
-	    Field[] fields = schema.getClass().getFields();
+	private static <S extends MessageSchema<S>> void buildConstructor(Appendable target, Class<S> clazz) {
+		//show the new constructor
+		try {
+			target.append("\n");
+			target.append("protected "+clazz.getSimpleName()+"() { \n");
+			target.append("    super(FROM);\n");
+			target.append("}\n");
+			target.append("\n");
+			//show the line needed for adding the instance
+			target.append("public static final "+clazz.getSimpleName()+" instance = new "+clazz.getSimpleName()+"();\n");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private static <S extends MessageSchema> boolean testForMatchingLocators(
+			S schema,
+			FieldReferenceOffsetManager encodedFrom,
+			Appendable target) throws IOException {
+		Field[] fields = schema.getClass().getFields();
 	    
 	    if (MessageSchema.class != schema.getClass().getSuperclass()) {
 	        System.out.println("all Schema objects must directly extend "+MessageSchema.class.getCanonicalName());
@@ -159,9 +202,32 @@ public class FROMValidation {
 	    StringBuilder generatedProducersTemp2 = new StringBuilder();
 	    
 	    StringBuilder generatedProducers = new StringBuilder();
+	    	    
+	    boolean success = generateSchemaBehavior(schema, encodedFrom, 
+	    		fields, msgStart, generatedConstants,
+				generatedSwitch, generatedConsumers, 
+				generatedProducersTemp1, generatedProducersTemp2,
+				generatedProducers);
+    		    
+	    if (!success || forceCodeGen) {
+	    	//to target, do not log.
+	    	target.append(generatedConstants);
+	    	target.append("\n");
+	    	target.append(generatedSwitch);
+	    	target.append(generatedConsumers);
+	    	target.append(generatedProducers);
+	    }
 	    
-	    
-	    boolean generateExampleMethods = encodedFrom.hasSimpleMessagesOnly;
+	    return success;
+	}
+
+
+	private static <S extends MessageSchema> boolean generateSchemaBehavior(S schema,
+			FieldReferenceOffsetManager encodedFrom, Field[] fields, int[] msgStart, StringBuilder generatedConstants,
+			StringBuilder generatedSwitch, StringBuilder generatedConsumers, StringBuilder generatedProducersTemp1,
+			StringBuilder generatedProducersTemp2, StringBuilder generatedProducers) {
+		
+		boolean generateExampleMethods = encodedFrom.hasSimpleMessagesOnly;
 	    
 	    if (generateExampleMethods) {
 	    	generatedSwitch.append("public static void consume(Pipe<").append(schema.getClass().getSimpleName()).append("> input) {\n");
@@ -180,9 +246,6 @@ public class FROMValidation {
 	        if (null!=name) {
 	            
     	        String messageConstantName = FieldReferenceOffsetManager.buildMsgConstName(encodedFrom, expectedMsgIdx);
-    	        
-    	        
-    	        		
     	        
     	        appendAssignmentCode(generatedConstants, messageConstantName, expectedMsgIdx, TokenBuilder.tokenToString(encodedFrom.tokens[expectedMsgIdx]));
     	        if (generateExampleMethods) {
@@ -216,7 +279,7 @@ public class FROMValidation {
     	        }
     	        if (!found) {
     	            success = false;
-    	            //logger.error(("//unable to find: "+messageConstantName);
+    	            logger.error("//unable to find: {}",messageConstantName);
     	        }
     	        
     	        
@@ -273,7 +336,7 @@ public class FROMValidation {
     	                }
     	                if (!found) {
     	                    success = false;
-    	                    //logger.error(("//unable to find: "+messageFieldConstantName);
+    	                    logger.error("//unable to find: {}",messageFieldConstantName);
     	                }    	                
     	               
     	            }
@@ -294,20 +357,11 @@ public class FROMValidation {
 
 	    }
 	    
-    	success = checkForExampleCode(schema, success, "consume"); //must find at least 1 consume method
-    	success = checkForExampleCode(schema, success, "publish"); //must find at least 1 publish method
-    	
-	    
-	    if (!success || forceCodeGen) {
-	    	//to console, do not log.
-	    	System.out.println(generatedConstants);
-	        System.out.println();
-	        System.out.println(generatedSwitch);
-	        System.out.println(generatedConsumers);
-	        System.out.println(generatedProducers);
+	    if (generateExampleMethods) {
+	    	success = checkForExampleCode(schema, success, "consume"); //must find at least 1 consume method
+    		success = checkForExampleCode(schema, success, "publish"); //must find at least 1 publish method
 	    }
-	    
-	    return success;
+		return success;
 	}
 
 

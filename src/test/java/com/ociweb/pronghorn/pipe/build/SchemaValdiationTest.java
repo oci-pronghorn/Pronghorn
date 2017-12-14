@@ -20,7 +20,7 @@ public class SchemaValdiationTest {
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
 					System.setOut(new PrintStream(baos));
 					System.setErr(new PrintStream(new ByteArrayOutputStream()));			
-					assertFalse(FROMValidation.testForMatchingFROMs("/NetSOMETHINGPayload.xml", BlankSchemaExample.class));
+					assertFalse(FROMValidation.checkSchema("/NetSOMETHINGPayload.xml", BlankSchemaExample.class));
 											
 			} finally {
 				System.setOut(temp);
@@ -38,7 +38,9 @@ public class SchemaValdiationTest {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			System.setOut(new PrintStream(baos));
 			System.setErr(new PrintStream(new ByteArrayOutputStream()));
-			assertFalse(FROMValidation.testForMatchingFROMs("/rawDataSchema.xml", BlankSchemaExample.class));
+			
+			
+			assertFalse(FROMValidation.checkSchema("/rawDataSchema.xml", BlankSchemaExample.class));
 
 			actual = new String(baos.toByteArray());
 			assertTrue(actual.contains("public static final BlankSchemaExample instance = new BlankSchemaExample();"));
@@ -64,9 +66,9 @@ public class SchemaValdiationTest {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			System.setOut(new PrintStream(baos));
 			System.setErr(new PrintStream(new ByteArrayOutputStream()));
-			assertFalse(	FROMValidation.checkSchema("/rawDataSchema.xml", BlankSchemaExample2.class) );
+			assertFalse(FROMValidation.checkSchema("/rawDataSchema.xml", BlankSchemaExample2.class) );
 			actual = new String(baos.toByteArray());
-			
+			System.err.println(actual);
 			assertTrue(actual.contains("public static final int MSG_"));
 			assertTrue(actual.contains("PipeReader.getMsgIdx"));
 						
