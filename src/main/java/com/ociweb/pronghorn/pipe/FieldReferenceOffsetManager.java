@@ -907,7 +907,7 @@ public class FieldReferenceOffsetManager {
 
     public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager from, String varName, String fromName) throws IOException {
         //write out the expected source.
-        target.append("public final static FieldReferenceOffsetManager ");
+        target.append("\npublic final static FieldReferenceOffsetManager ");
         target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
     
         target.append("    new int[]{");
@@ -992,7 +992,7 @@ public class FieldReferenceOffsetManager {
             throw new RuntimeException(e);
         }
     
-        target.append(");\n");
+        target.append(");\n\n");
     
     }
 

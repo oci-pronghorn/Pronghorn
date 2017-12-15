@@ -19,8 +19,7 @@ public class SchemaValidation {
         assertEquals(expected, computedCountOfChunks);
 
     }
-    
-    
+        
     @Test
     public void rawDataTest() {
         assertTrue(FROMValidation.checkSchema("/rawDataSchema.xml", RawDataSchema.class));

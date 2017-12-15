@@ -84,70 +84,82 @@ public class FROMValidation {
 	}
 	
 	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz) {
+		
 		StringBuilder target = new StringBuilder();
+		buildConstructor(target, clazz);		
 		S schemaInstance = MessageSchema.findInstance(clazz);		
 		
-		boolean result = true;
+		/////////////////////////
+		/////////////////////////
 		FieldReferenceOffsetManager expectedFrom = null;
 		try {
 			expectedFrom = TemplateHandler.loadFrom(templateFile);
 		} catch (Exception e2) {
 			e2.printStackTrace();
-		}		
+		}
 		if (null==expectedFrom) {
 			logger.error("Unable to find: {}",templateFile);
 			return false;
 		}
+		/////////////////////////
+		/////////////////////////
+		
+		boolean result = true;
+		
 		if (null!=schemaInstance) {
 						
 			try {
 			    FieldReferenceOffsetManager encodedFrom = null;
-			    try {
-			        encodedFrom = MessageSchema.from(schemaInstance);
-					
-					if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
-					    logger.error("Encoded source:"+expectedFrom);
-					    if (null!=encodedFrom) {
-					        logger.error("Template file:"+encodedFrom);
-					    }
-					    logger.error("//replacement source");
-					    String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
-					    
-					    FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);  
-					    result = false;
-					} 			        
-			    } catch (NullPointerException npe) {
-			        //continue with no previous FROM
-			    	buildConstructor(target, clazz);
-			    	result = false;
-			    }
+			
+		        encodedFrom = MessageSchema.from(schemaInstance);
+				
+				if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
+				    logger.error("Encoded source:"+expectedFrom);
+				    if (null!=encodedFrom) {
+				        logger.error("Template file:"+encodedFrom);
+				    }
+				    logger.error("//replacement source");
+				    result = false;
+				}
+				    				    
+			    FieldReferenceOffsetManager.buildFROMConstructionSource(
+			    		target, expectedFrom, 
+			    		"FROM", templateFile.substring(1+templateFile.lastIndexOf('/') ));  
           
+			    //////////////////
+			    //////////////////
+			    if (!result) {
+			    	forceCodeGen = true;
+			    }
+			    result &= testForMatchingLocators(clazz, expectedFrom, target);
+			    //////////////////
+			    //////////////////
+			    
 			} catch (Exception e1) {
 			    e1.printStackTrace();
 			    result = false;
 			}
-		
-			try {					
-				if (null!=schemaInstance) {
-					result &= testForMatchingLocators(schemaInstance, expectedFrom, target);
-				}
-									
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		
 			
 		} else {
 			result = false;
 			try {
-				buildConstructor(target, clazz);
-		
 			    logger.error("Encoded source: {}",expectedFrom);
 				logger.error("//replacement source");
-				FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", templateFile.substring(1+templateFile.lastIndexOf('/') ));  
-			
-			   
+				
+				FieldReferenceOffsetManager.buildFROMConstructionSource(
+						target, 
+						expectedFrom, 
+						"FROM", 
+						templateFile.substring(1+templateFile.lastIndexOf('/') ));
+				
+			    //////////////////
+			    //////////////////
+			    forceCodeGen = true;
+			    testForMatchingLocators(clazz, expectedFrom, target);
+			    //////////////////
+			    //////////////////
+								
+				
 			} catch (Exception e1) {
 				logger.error("unable to build FROM {} {}",e1.getClass().getSimpleName(),e1.getMessage());
 		
@@ -166,6 +178,12 @@ public class FROMValidation {
 	private static <S extends MessageSchema<S>> void buildConstructor(Appendable target, Class<S> clazz) {
 		//show the new constructor
 		try {
+			
+			target.append("\n");
+			target.append("protected "+clazz.getSimpleName()+"("+FieldReferenceOffsetManager.class.getSimpleName()+" from) { \n");
+			target.append("    super(from);\n");
+			target.append("}\n");
+			
 			target.append("\n");
 			target.append("protected "+clazz.getSimpleName()+"() { \n");
 			target.append("    super(FROM);\n");
@@ -180,12 +198,14 @@ public class FROMValidation {
 	}
 
 	private static <S extends MessageSchema> boolean testForMatchingLocators(
-			S schema,
+			Class<S> schemaClass,
 			FieldReferenceOffsetManager encodedFrom,
 			Appendable target) throws IOException {
-		Field[] fields = schema.getClass().getFields();
+		
+		
+		Field[] fields = schemaClass.getFields();
 	    
-	    if (MessageSchema.class != schema.getClass().getSuperclass()) {
+	    if (MessageSchema.class != schemaClass.getSuperclass()) {
 	        System.out.println("all Schema objects must directly extend "+MessageSchema.class.getCanonicalName());
 	        return false;
 	    }
@@ -202,19 +222,26 @@ public class FROMValidation {
 	    StringBuilder generatedProducersTemp2 = new StringBuilder();
 	    
 	    StringBuilder generatedProducers = new StringBuilder();
+		
+		boolean success1 = generateSchemaBehavior(encodedFrom, fields, msgStart, generatedConstants, generatedSwitch,
+				generatedConsumers, generatedProducersTemp1, generatedProducersTemp2, generatedProducers,
+				schemaClass.getSimpleName(), encodedFrom.hasSimpleMessagesOnly);
+		
+		if (encodedFrom.hasSimpleMessagesOnly) {
+			success1 = checkForExampleCode(schemaClass, success1, "consume"); //must find at least 1 consume method
+			success1 = checkForExampleCode(schemaClass, success1, "publish"); //must find at least 1 publish method
+		}
 	    	    
-	    boolean success = generateSchemaBehavior(schema, encodedFrom, 
-	    		fields, msgStart, generatedConstants,
-				generatedSwitch, generatedConsumers, 
-				generatedProducersTemp1, generatedProducersTemp2,
-				generatedProducers);
+	    boolean success = success1;
     		    
 	    if (!success || forceCodeGen) {
 	    	//to target, do not log.
 	    	target.append(generatedConstants);
 	    	target.append("\n");
 	    	target.append(generatedSwitch);
+	    	target.append("\n");
 	    	target.append(generatedConsumers);
+	    	target.append("\n");
 	    	target.append(generatedProducers);
 	    }
 	    
@@ -222,15 +249,14 @@ public class FROMValidation {
 	}
 
 
-	private static <S extends MessageSchema> boolean generateSchemaBehavior(S schema,
-			FieldReferenceOffsetManager encodedFrom, Field[] fields, int[] msgStart, StringBuilder generatedConstants,
-			StringBuilder generatedSwitch, StringBuilder generatedConsumers, StringBuilder generatedProducersTemp1,
-			StringBuilder generatedProducersTemp2, StringBuilder generatedProducers) {
+	private static boolean generateSchemaBehavior(FieldReferenceOffsetManager encodedFrom, Field[] fields,
+			int[] msgStart, StringBuilder generatedConstants, StringBuilder generatedSwitch,
+			StringBuilder generatedConsumers, StringBuilder generatedProducersTemp1,
+			StringBuilder generatedProducersTemp2, StringBuilder generatedProducers, final String schemaClassName,
+			boolean generateExampleMethods) {
 		
-		boolean generateExampleMethods = encodedFrom.hasSimpleMessagesOnly;
-	    
-	    if (generateExampleMethods) {
-	    	generatedSwitch.append("public static void consume(Pipe<").append(schema.getClass().getSimpleName()).append("> input) {\n");
+		if (generateExampleMethods) {
+			generatedSwitch.append("public static void consume(Pipe<").append(schemaClassName).append("> input) {\n");
 	    	generatedSwitch.append("    while (PipeReader.tryReadFragment(input)) {\n");
 	    	generatedSwitch.append("        int msgIdx = PipeReader.getMsgIdx(input);\n");
 	    	generatedSwitch.append("        switch(msgIdx) {\n");	    	
@@ -251,7 +277,7 @@ public class FROMValidation {
     	        if (generateExampleMethods) {
     	        	methodName = FieldReferenceOffsetManager.buildName(encodedFrom, expectedMsgIdx);
     	        	appendSwitchCase(generatedSwitch, messageConstantName, methodName);
-    	        	appendConsumeMethodBegin(generatedConsumers, methodName, schema);
+    	        	appendConsumeMethodBegin(generatedConsumers, methodName, schemaClassName);
     	        	generatedProducersTemp1.setLength(0);
     	        	generatedProducersTemp2.setLength(0);
     	        }
@@ -309,7 +335,7 @@ public class FROMValidation {
     	    	        if (generateExampleMethods) {
     	    	        	String varName = "field"+(msgFieldName.replace(' ','_'));    	    	        	
     	    	        	int token = encodedFrom.tokens[fieldIdx];
-    	    	        	appendConsumeMethodField(generatedConsumers, varName, messageFieldConstantName, token, schema);
+    	    	        	appendConsumeMethodField(generatedConsumers, varName, messageFieldConstantName, token, schemaClassName);
     	    	        	appendProduceMethodField(generatedProducersTemp1, generatedProducersTemp2, varName, messageFieldConstantName, token);
     	    	        }
     	                
@@ -342,7 +368,7 @@ public class FROMValidation {
     	            }
     	        }
     	        if (generateExampleMethods) {
-    	        	appendProduceMethodEnd(generatedProducersTemp1, generatedProducersTemp2, generatedProducers, methodName, messageConstantName, schema);
+    	        	appendProduceMethodEnd(generatedProducersTemp1, generatedProducersTemp2, generatedProducers, methodName, messageConstantName, schemaClassName);
     	        	appendConsumeMethodEnd(generatedConsumers);
     	        }
 	        }
@@ -356,19 +382,14 @@ public class FROMValidation {
 	    	generatedSwitch.append("        PipeReader.releaseReadLock(input);\n    }\n}\n");
 
 	    }
-	    
-	    if (generateExampleMethods) {
-	    	success = checkForExampleCode(schema, success, "consume"); //must find at least 1 consume method
-    		success = checkForExampleCode(schema, success, "publish"); //must find at least 1 publish method
-	    }
 		return success;
 	}
 
 
 
-	private static <S extends MessageSchema<S>> boolean checkForExampleCode(S schema, boolean success, String startsWith) {
+	private static <S extends MessageSchema<S>> boolean checkForExampleCode(Class<S> schemaClass, boolean success, String startsWith) {
 		boolean found = false;
-    	for(Method m :schema.getClass().getMethods()) {
+    	for(Method m :schemaClass.getMethods()) {
     		if (m.getName().startsWith(startsWith)) {
     			found = true;
     		}
@@ -379,7 +400,9 @@ public class FROMValidation {
 		return success;
 	}
 
-	private static <S extends MessageSchema<S>> void appendConsumeMethodField(StringBuilder generatedConsumers, String varName, String constName, int token, S schema) {
+	private static <S extends MessageSchema<S>> void appendConsumeMethodField(StringBuilder generatedConsumers, 
+			                                                                  String varName, String constName, 
+			                                                                  int token, String schemaClassName) {
 		
 		int type = TokenBuilder.extractType(token);
 		
@@ -404,7 +427,7 @@ public class FROMValidation {
 						
 		} else if (TypeMask.isByteVector(type)) {
 			generatedConsumers
-								.append("    DataInputBlobReader<").append(schema.getClass().getSimpleName()).append("> ")
+								.append("    DataInputBlobReader<").append(schemaClassName).append("> ")
 								.append(varName)
 								.append(" = PipeReader.inputStream(input, ")
 								.append(constName)
@@ -455,8 +478,8 @@ public class FROMValidation {
 	}
 
 	
-    private static void appendConsumeMethodBegin(StringBuilder generatedConsumers, String methodName, MessageSchema schema ) {
-    	generatedConsumers.append("public static void consume").append(methodName).append("(Pipe<").append(schema.getClass().getSimpleName()).append("> input) {\n");
+    private static void appendConsumeMethodBegin(StringBuilder generatedConsumers, String methodName, String schemaClassName ) {
+    	generatedConsumers.append("public static void consume").append(methodName).append("(Pipe<").append(schemaClassName).append("> input) {\n");
 	}
 
     
@@ -465,13 +488,13 @@ public class FROMValidation {
 	}
     
     private static void appendProduceMethodEnd(StringBuilder argsTemp, StringBuilder bodyTemp, StringBuilder generatedProducers, 
-    		                                    String methodName, String messageConst, MessageSchema schema) {
+    		                                    String methodName, String messageConst, String schemaClassName) {
 
     	if (argsTemp.length()>0) {//remove last comma and space if found
     		argsTemp.setLength(argsTemp.length()-2);
     	}
 		
-		generatedProducers.append("public static void publish").append(methodName).append("(Pipe<").append(schema.getClass().getSimpleName()).append("> output");
+		generatedProducers.append("public static void publish").append(methodName).append("(Pipe<").append(schemaClassName).append("> output");
 		if (argsTemp.length()>0) {
 			generatedProducers.append(", ").append(argsTemp);
 		}
