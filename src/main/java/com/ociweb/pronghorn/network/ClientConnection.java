@@ -61,6 +61,7 @@ public class ClientConnection extends SSLConnection {
 	private int inFlightRoutesRespPos;
 	private long[] inFlightRoutes;
 
+	private final long creationTimeNS;
 	
 	private boolean isTLS;
 	boolean isFinishedConnection = false;
@@ -110,6 +111,8 @@ public class ClientConnection extends SSLConnection {
 		this.inFlightRoutes = new long[maxInFlight];
 		
 		this.isTLS = isTLS;
+		
+		this.creationTimeNS = System.nanoTime();
 		
 		if (isTLS) {
 			getEngine().setUseClientMode(true);
@@ -298,15 +301,29 @@ public class ClientConnection extends SSLConnection {
 			return true;
 		} else {
 			try {
-				
+								
 				boolean finishConnect = getSocketChannel().finishConnect();
-			    isFinishedConnection |= finishConnect;
+				isFinishedConnection |= finishConnect;
+			    				
+			    if (!finishConnect ) {
+
+			    	if (System.nanoTime() > creationTimeNS+(resolveWithDNSTimeoutMS*1000000L)) {
+			    		logger.info("connection timeout {} {}ms",this,resolveWithDNSTimeoutMS);
+			    		beginDisconnect();
+			    	}
+			    	
+			    } else {
+			    	clearWaitingForNetwork();
+			    }
+			    
 				return finishConnect;
 				
 			} catch (IOException io) {
+				logger.info("finish connection exception ",io);
 				return false;
 			} catch (NoConnectionPendingException ncpe) {
 				close();
+				logger.warn("no pending connection ",ncpe);
 				return false;
 			}
 		}
@@ -391,6 +408,10 @@ public class ClientConnection extends SSLConnection {
 	}
 
 
+	public boolean isDisconnecting() {
+		return isDisconnecting;
+	}
+	
 	public void beginDisconnect() {
 
 		try {

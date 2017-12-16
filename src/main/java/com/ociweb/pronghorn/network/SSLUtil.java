@@ -610,7 +610,7 @@ public class SSLUtil {
 			if (handShakeWrapIfNeeded(cc, target, buffer, isServer, Pipe.peekLong(source, 3))) {
 				
 				//we know the message is plain but what was the position? if this is an empty message just for handshake then clear it
-				long pos = Pipe.peekLong(source, 5);
+				long pos = Pipe.peekLong(source, 0xFFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206);
 				if (pos == HANDSHAKE_POS) {
 					Pipe.skipNextFragment(source);
 				}				
@@ -789,6 +789,7 @@ public class SSLUtil {
 			if (Pipe.hasContentToRead(source)) {
 				
 				int msgIdx = Pipe.takeMsgIdx(source); 
+
 				if (msgIdx<0) {	
 					shutdownUnwrapper(source, target, rolling, isServer, maxEncryptedContentLength, System.currentTimeMillis(), cc);
 					return -1;

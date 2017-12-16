@@ -370,9 +370,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 								        :null;
 						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 
 								                  connectionId, ccm.isTLS, inFlightBits, outputs[pipeIdx].maxVarLen);
-						ccm.connections.setValue(connectionId, cc);						
-						ccm.hostTrieLock.writeLock().lock();
+						ccm.connections.setValue(connectionId, cc);	
 						
+						
+						ccm.hostTrieLock.writeLock().lock();						
 						try {
 							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);
 						} finally {
@@ -386,11 +387,16 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					}
 									                	
 				}
-			
+				
+				if (cc.isDisconnecting()) {
+					return cc;
+				}
+				
 				if (cc.isRegistered()) {
 					//logger.info("is registered {}",cc);
 					return cc;
 				}
+				
 				//not yet done so ensure it is marked.
 				//cc.isFinishedConnection = false;
 				//not registered
@@ -404,7 +410,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   ClientConnection cc) {
 		try {
 			if (!cc.isFinishConnect()) {				
-				//logger.info("unable to finish connect, must try again later {}",cc);				
+				//	logger.trace("unable to finish connect, must try again later {}",cc);	
+				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);

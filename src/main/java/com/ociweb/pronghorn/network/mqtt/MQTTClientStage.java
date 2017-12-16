@@ -96,6 +96,7 @@ public class MQTTClientStage extends PronghornStage {
 	}
 
 	public void processClientRequests() {
+	
 		while(  
 				(!Pipe.hasContentToRead(serverToClient)) //server response is always more important.
 				

@@ -64,10 +64,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 				DataInputBlobReader<NetPayloadSchema> inputStream = Pipe.openInputStream(server); 
 
 				byte commandByte = inputStream.readByte();
-	
-				//logger.trace("parse data from from broker {}",Integer.toHexString(commandByte));
-				
-				
+
 				switch (commandByte) {
 					case (byte)0xD0: //PingResp
 						
