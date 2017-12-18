@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.Appendables;
 public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
     private static final int SIZE_OF_TO_CHNL = Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100);
-    static final byte[] EMPTY = new byte[0];
+    public static final byte[] EMPTY = new byte[0];
     
 	private static Logger logger = LoggerFactory.getLogger(OrderSupervisorStage.class);
 

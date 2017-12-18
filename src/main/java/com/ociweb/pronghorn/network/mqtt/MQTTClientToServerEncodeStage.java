@@ -1,10 +1,14 @@
 package com.ociweb.pronghorn.network.mqtt;
 
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.OrderSupervisorStage;
+import com.ociweb.pronghorn.network.SSLUtil;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
@@ -518,28 +522,62 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 			}
 					
-
-			
-			   
-			int msgIdx = Pipe.takeMsgIdx(input);
-			assert(Pipe.isForSchema(toBroker[activeConnection.requestPipeLineIdx()], NetPayloadSchema.instance)) : "found unexpected "+Pipe.schemaName(toBroker[activeConnection.requestPipeLineIdx()]);
 			Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
 			
-			//TODO: new test code for finish the wrap??   test code..
+//			long count1 = Pipe.totalWrittenFragments(server);
+//			logger.info("total messages so far {}",count1);
+//		
+	
+	        if (ccm.isTLS) {	
+	        	//NOTE: this will continue triggering handshake work until complete.
+				if (!SSLUtil.handshakeProcessing(server, clientConnection)) {
+					///logger.trace("during handshake later {} ", Pipe.totalWrittenFragments(server));
+					//we must wait until later...
+					return;
+				}
+				
+				if (HandshakeStatus.NEED_UNWRAP == clientConnection.getEngine().getHandshakeStatus()) {
+					return;//wait until this is cleared before continuing
+				}
+				//logger.info("after handshake done {} status {} "
+				//		, Pipe.totalWrittenFragments(server)
+				//		, clientConnection.getEngine().getHandshakeStatus());
+				
+				//send empt block??
+				if (Pipe.hasRoomForWrite(server)) {
+		    		//logger.trace("write handshake plain to trigger wrap");
+		    		int size = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+		    		Pipe.addLongValue(connectionId, server);//connection
+		    		Pipe.addLongValue(System.currentTimeMillis(), server);
+		    		Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, server); //signal that WRAP is needed 
+		    		
+		    		Pipe.addByteArray(OrderSupervisorStage.EMPTY, 0, 0, server);
+		    		
+		    		Pipe.confirmLowLevelWrite(server, size);
+		    		Pipe.publishWrites(server);
+		    		//wait for this to be consumed		    		
+		    	}
+				
+				
+			}
+
+	        if (!Pipe.hasRoomForWrite(server)) {
+	        	break;//try again later, no room to write out to server.
+	        }
+	        			   
+			final int msgIdx = Pipe.takeMsgIdx(input);
+			assert(Pipe.isForSchema(toBroker[activeConnection.requestPipeLineIdx()], NetPayloadSchema.instance)) : "found unexpected "+Pipe.schemaName(toBroker[activeConnection.requestPipeLineIdx()]);
 			
-//	        if (coordinator.isTLS) {
-//				SSLConnection con = coordinator.connectionForSessionId(channelId);			
-//				if (!SSLUtil.handshakeProcessing(outPipe, con)) {
-//					//TODO: we must wait until later...
-//				}
-//			}	     
-			
-			if (writeToBroker(connectionId, server, msgIdx)) {
+			if (writeToBrokerServer(connectionId, server, msgIdx)) {
+				
+				//logger.trace("after write to broker done {} ", Pipe.totalWrittenFragments(server));
 				
 				Pipe.confirmLowLevelRead(input, Pipe.sizeOf(MQTTClientToServerSchema.instance,msgIdx));
 				Pipe.releaseReadLock(input);
 				
 			} else {
+				
+				//logger.trace("did not write to broker {} ", Pipe.totalWrittenFragments(server));
 				
 				inPersistSize = Pipe.sizeOf(MQTTClientToServerSchema.instance,msgIdx);						
 				isInPersistWrite = true;
@@ -560,8 +598,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		if (-1==replayFromPosition) {			
 			return true;
 		} else {
-	
+			//NOTE: this rePublish may be happening far too often if the pipe is too short...
+			
 			rePublish(server);
+	
 			if (-1==replayFromPosition) {			
 				return true;
 			}
@@ -852,8 +892,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	
 	
-	private boolean writeToBroker(long connectionId, Pipe<NetPayloadSchema> server, int msgIdx) {
+	private boolean writeToBrokerServer(long connectionId, Pipe<NetPayloadSchema> server, int msgIdx) {
 
+		
 		assert(FieldReferenceOffsetManager.isGroupTemplate(Pipe.from(server),NetPayloadSchema.MSG_PLAIN_210));
 	
 		long arrivalTime = 0;
@@ -863,17 +904,16 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		final long slabPos = Pipe.getSlabHeadPosition(server);
 		final int blobPos = Pipe.getBlobHeadPosition(server);
 		
-		
 		//logger.info("write plain message at position {} ",Pipe.workingHeadPosition(server));
-		//////
-		Pipe.presumeRoomForWrite(server);
 
 		lastActvityTime = System.currentTimeMillis();
 
+		//logger.info("send message value {}",msgIdx);
+		
 		switch (msgIdx) {
 				case MQTTClientToServerSchema.MSG_CONNECT_1:
 					{
-						
+			
 						int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
 						DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 						
@@ -955,7 +995,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 									
 						Pipe.confirmLowLevelWrite(server, plainSize);
 						Pipe.publishWrites(server);
-						//logger.info("wrote block of {}",len);
+						//logger.trace("wrote connect block ");
 					}
 				break;
 				case MQTTClientToServerSchema.MSG_DISCONNECT_14:

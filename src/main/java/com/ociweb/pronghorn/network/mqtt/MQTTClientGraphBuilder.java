@@ -153,9 +153,11 @@ public class MQTTClientGraphBuilder {
 		
 		int independentClients = 1; 
 		
+		int minimumFragmentsOnRing = 2*maxInFlight+8;//extra space Now added extra for the replays!
+				
 		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, 
 				                        NetPayloadSchema.instance.newPipeConfig(
-				                        		(2*maxInFlight+8),//extra space Now added extra for the replays!
+				                        		minimumFragmentsOnRing,//extra space Now added extra for the replays!
 				                        		maximumLenghOfVariableLengthFields));
 		
 		//take input request and write the bytes to the broker socket

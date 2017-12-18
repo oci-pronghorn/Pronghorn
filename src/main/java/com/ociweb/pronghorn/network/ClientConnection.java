@@ -365,6 +365,9 @@ public class ClientConnection extends SSLConnection {
 						//Warning the follow on calls should be low level...
 						logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
 						
+						////////////////////////////////////
+						//NOTE: must repeat this until the handshake is finished.
+						///////////////////////////////////
 						final int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 						Pipe.addLongValue(getId(), pipe);
 						Pipe.addLongValue(System.currentTimeMillis(), pipe);

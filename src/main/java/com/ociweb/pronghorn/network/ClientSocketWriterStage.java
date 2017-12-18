@@ -285,7 +285,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 						
 						} else if (NetPayloadSchema.MSG_BEGIN_208 == msgIdx) {
 							
-							throw new UnsupportedOperationException("Begin connection message was not expected here.");
+							int seq = Pipe.takeInt(pipe);
+							Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, NetPayloadSchema.MSG_BEGIN_208));
+							Pipe.releaseReadLock(pipe);
+							
 							
 						} else if (NetPayloadSchema.MSG_DISCONNECT_203 == msgIdx) {
 							

@@ -543,7 +543,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		top:
 		do {
 		    // Identify the index of the block we're starting with.
-			inProgressIdx = script[scheduleIdx];
+			inProgressIdx = script[scheduleIdx++];
 		    
 		    // If it isn't a block-end (-1), run it!
 		    if (inProgressIdx >= 0) {
@@ -558,12 +558,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					long now = System.nanoTime();		        
 		        	GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, now-start, now);        	
 				}
+		    } else {
+		    	break;
 		    }
-
-		    // Increment IDX 
-		    scheduleIdx++;
-
-		} while (inProgressIdx != -1 && !shutdownRequested.get());
+		} while (true);
 
 		// Update the block start time.
 		blockStartTime += schedule.commonClock;

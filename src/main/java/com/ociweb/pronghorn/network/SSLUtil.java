@@ -58,12 +58,12 @@ public class SSLUtil {
 	             }
 	             handshakeStatus = cc.getEngine().getHandshakeStatus();
 	                
-	               // return (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus) && (HandshakeStatus.FINISHED != handshakeStatus);
+	            //return (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus) && (HandshakeStatus.FINISHED != handshakeStatus);
 			 }
 		 }
 		 cc.clearWaitingForNetwork();
 		
-		//  logger.info("server {} wrap status is now {} for id {} ",isServer,handshakeStatus, cc.getId());
+		 // logger.info("server {} wrap status is now {} for id {} ",isServer,handshakeStatus, cc.getId());
 		 
 		 return didShake;
 	 
@@ -430,7 +430,7 @@ public class SSLUtil {
 	                }
 	                handshakeStatus = cc.getEngine().getHandshakeStatus();
 			 } else if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {
-				// logger.info("server {} doing the unwrap now for {}  {}",isServer, cc.getId(), System.identityHashCode(cc));
+				    //logger.trace("server {} doing the unwrap now for {}  {}",isServer, cc.getId(), System.identityHashCode(cc));
 			
 				 	if (!Pipe.hasContentToRead(source)) {
 				 		
@@ -535,7 +535,7 @@ public class SSLUtil {
 					SSLEngineResult result = gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, workspace, isServer, source);
 
 					rolling.flip();	
-					//logger.info("server {} unwrap rolling data {} for {} ", isServer, rolling, cc);
+					//logger.trace("server {} unwrap rolling data {} for {} ", isServer, rolling, cc);
 										
 					
 					try {
@@ -578,8 +578,7 @@ public class SSLUtil {
 
 		 assert(handshakeStatus.equals(cc.getEngine().getHandshakeStatus()));
 		 
-		 
-///		 logger.info("unwrap done with server {} handshake for {} needs {} did work {} rolling {} source {}", isServer, cc.id, cc.getEngine().getHandshakeStatus(), didWork, rolling, source);
+		 //logger.trace("unwrap done with server {} handshake for {} needs {} did work {} rolling {} source {}", isServer, cc.id, cc.getEngine().getHandshakeStatus(), didWork, rolling, source);
 		 return didWork;
 
 	}
@@ -597,6 +596,7 @@ public class SSLUtil {
 			final SSLConnection cc = ccm.connectionForSessionId(Pipe.peekLong(source, 1));
 						
 			if (null==cc || !cc.isValid) {
+				logger.info("connection has dropped and data with it");
 				buffer.clear();
 				//do not process this message because the connection has dropped				
 				Pipe.skipNextFragment(source);
@@ -607,16 +607,16 @@ public class SSLUtil {
 
 		//	logger.info("wrap data for {} ",cc.getId());
 			
-			if (handShakeWrapIfNeeded(cc, target, buffer, isServer, Pipe.peekLong(source, 3))) {
-				
+			if (handShakeWrapIfNeeded(cc, target, buffer, isServer, Pipe.peekLong(source, 0xFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_ARRIVALTIME_210))) {
+			
 				//we know the message is plain but what was the position? if this is an empty message just for handshake then clear it
-				long pos = Pipe.peekLong(source, 0xFFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206);
-				if (pos == HANDSHAKE_POS) {
+				if (Pipe.peekLong(source, 0xFFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206) == HANDSHAKE_POS) {
+					//only skip this if we no longer need it for further checks.					
 					Pipe.skipNextFragment(source);
-				}				
-				
-				return didWork;
+					return didWork;
+				}
 			}
+			//logger.trace("handshake not needed now continue sending data");
 			
 			int msgIdx = Pipe.takeMsgIdx(source);
 			assert( NetPayloadSchema.MSG_PLAIN_210==msgIdx);
@@ -703,11 +703,11 @@ public class SSLUtil {
 			if (!Pipe.hasRoomForWrite(target)) {
 				return didWork;//try again later when there is room in the output
 			}			
-				
+
 			SSLConnection cc = null;
 			long arrivalTime = 0;
 			if ( Pipe.peekMsg(source, NetPayloadSchema.MSG_ENCRYPTED_200)) { 	
-	
+				
 				assert(Pipe.peekInt(source) == NetPayloadSchema.MSG_ENCRYPTED_200);
 				
 				final long connectionId = Pipe.peekLong(source, 1);
@@ -732,7 +732,6 @@ public class SSLUtil {
 				
 				if (didWork<0) {
 					
-				//	logger.info("still doing handshake");
 					if (rolling.position()==0) {
 						//send release because handshake is incomplete, waiting on other side or the connection has been closed
 						sendRelease(source, releasePipe, cc, isServer);						
@@ -742,7 +741,7 @@ public class SSLUtil {
 					///////////
 					
 				} else if (didWork==1) {	
-					//logger.info("finished shake");
+					//logger.trace("finished shake");
 					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {						
 						sendRelease(source, releasePipe, cc, isServer);
 					}
@@ -752,7 +751,7 @@ public class SSLUtil {
 						///////////////////
 					}
 				} else {
-					//logger.info("finished shake2");
+					//logger.trace("finished shake2");
 					assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
 					//we can begin processing data now.
 					
@@ -772,13 +771,11 @@ public class SSLUtil {
 					
 					Pipe.publishWrites(target);
 					Pipe.releaseReadLock(source);					
-					
-	//				logger.info("FINISHED BEGIN, NOW CONTINUE.."+source);
-					
+		
 					//only need to release the read, the write has already been published to target
 					continue;
 				}
-				//assert(null!=cc);
+
 			}
 			
 			assert(rolling.limit()==rolling.capacity());
@@ -863,7 +860,7 @@ public class SSLUtil {
 						
 			//else rolling has no data so nothing to do.
 			assert(rolling.limit()==rolling.capacity());			
-			
+
 			publishWrittenPayloadForUnwrap(source, target, rolling, releasePipe, cc, arrivalTime);
 					
 		//	System.err.println("rolling for id "+cc.id+" holds "+rolling+" "+cc.getEngine().getHandshakeStatus()+"  "+cc.getEngine().getSession()+"  "+status);
@@ -899,7 +896,7 @@ public class SSLUtil {
 	}
 
 	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, SSLConnection cc, long arrivalTime) {
-	
+			
 		if(cc.localRunningBytesProduced>0) {
 			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
 			Pipe.addLongValue(cc.getId(), target); //connection id	
@@ -987,17 +984,18 @@ public class SSLUtil {
 		boolean result = true;
 		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
 		do {
+			//logger.trace("handshake status {} ",hanshakeStatus);
 		    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
 		         Runnable task;
 		         while ((task = con.getEngine().getDelegatedTask()) != null) {
 		            	task.run(); 
 		         }
-		       hanshakeStatus = con.getEngine().getHandshakeStatus();
+		         hanshakeStatus = con.getEngine().getHandshakeStatus();
 		    } 
 		    
 		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
 		    	if (Pipe.hasRoomForWrite(pipe)) {
-		    		
+		    		//logger.trace("write handshake plain to trigger wrap");
 		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 		    		Pipe.addLongValue(con.getId(), pipe);//connection
 		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
@@ -1007,12 +1005,12 @@ public class SSLUtil {
 		    		
 		    		Pipe.confirmLowLevelWrite(pipe, size);
 		    		Pipe.publishWrites(pipe);
-		    		
+		    		//wait for this to be consumed		    		
 		    	} else {
-		    		result = false;
-					//no room to request wrap, try later
-		        	break;
+		    		//no room to request wrap so try again later					
 				}
+		    	result = false;
+		    	break;
 		    } 
 		} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
 		assert(HandshakeStatus.NEED_UNWRAP != hanshakeStatus) : "Unexpected unwrap request";

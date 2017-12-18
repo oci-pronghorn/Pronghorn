@@ -228,11 +228,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 						}
 				}
 				
-				Pipe.presumeRoomForWrite(ackReleaseForResponseParser);
-				FragmentWriter.writeLL(ackReleaseForResponseParser, 
-						 ReleaseSchema.MSG_RELEASE_100, 
-						 connectionId,
-						 netPosition);
+				releaseSocketData(connectionId, netPosition);
 				
 			} else {
 				if (-1==idx) {
@@ -240,24 +236,38 @@ public class MQTTClientResponseStage extends PronghornStage {
 					return;
 				} else {
 								
-					if (idx==NetPayloadSchema.MSG_DISCONNECT_203) {
+					if (NetPayloadSchema.MSG_DISCONNECT_203 == idx) {
+						
+						long connectionId = Pipe.takeLong(server);
 						
 						Pipe.presumeRoomForWrite(out);
 						FragmentWriter.writeL(out, MQTTServerToClientSchema.MSG_DISCONNECT_14, System.currentTimeMillis());
-	
-						
+							
 					} else {
-						
-						logger.trace("support yet for NetPayloadSchema msg "+idx);
+				
+						if (NetPayloadSchema.MSG_BEGIN_208 == idx) {
+							
+							long sequienceNo = Pipe.takeInt(server);
+							
+						} else {
+							logger.warn("support yet for NetPayloadSchema msg "+idx);
+						}
 					}
 				}
-				
 			}
 			
 			Pipe.confirmLowLevelRead(server, Pipe.sizeOf(server, idx));			
 			Pipe.releaseReadLock(server);
 			
 		}
+	}
+
+	private void releaseSocketData(long connectionId, long netPosition) {
+		Pipe.presumeRoomForWrite(ackReleaseForResponseParser);
+		FragmentWriter.writeLL(ackReleaseForResponseParser, 
+				 ReleaseSchema.MSG_RELEASE_100, 
+				 connectionId,
+				 netPosition);
 	}
 
 	public static int decodeLength(DataInputBlobReader<NetPayloadSchema> inputStream) {

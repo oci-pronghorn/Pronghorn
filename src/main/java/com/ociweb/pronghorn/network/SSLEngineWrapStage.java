@@ -99,6 +99,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 //				}
 				
 				try {
+					
 					didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer);	
 			
 				} catch (Throwable t) {
