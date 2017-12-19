@@ -260,21 +260,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 			
 				logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
 				
-			//	logger.info("client reading {} for id {}",readCount,cc.getId());
-				
-				boolean newBeginning = Pipe.getSlabHeadPosition(target)==0;
-				if (newBeginning) {	
-					
-					Pipe.presumeRoomForWrite(target);
-					
-					int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_BEGIN_208);
-					Pipe.addIntValue(cc.getSequenceNo(), target);						
-					Pipe.confirmLowLevelWrite(target, size);
-					Pipe.publishWrites(target);
-					
-				}
-				/////////////////////////
-				
 				if (coordinator.isTLS) {
 					assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 					
