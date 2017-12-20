@@ -2,9 +2,7 @@ package com.ociweb.pronghorn.stage.phast;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -28,7 +26,7 @@ public class PhastPackingStage extends PronghornStage {
     public static final int ESCAPE_VALUE = -63;//in packed encoding this is the biggest negative value which takes only 1 byte
     
     protected PhastPackingStage(GraphManager graphManager, Pipe<PhastCodecSchema> input1, Pipe<RawDataSchema> input2, Pipe<RawDataSchema> output) {
-        super(graphManager, input1, output);
+        super(graphManager, join(input1,input2), output);
         this.input1 = input1;
         this.input2 = input2;
         this.output = output;

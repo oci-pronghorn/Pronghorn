@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.stage.phast;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -24,7 +23,7 @@ public class PhastUnpackingStage extends PronghornStage {
     private static final int ESCAPE = -63;
   
     protected PhastUnpackingStage(GraphManager graphManager, Pipe<RawDataSchema> input, Pipe<PhastCodecSchema> output1, Pipe<RawDataSchema> output2) {
-        super(graphManager, input, new Pipe[]{output1, output2});
+        super(graphManager, input, join(output1, output2));
         this.input = input;
         this.output1 = output1;
         this.output2 = output2;        

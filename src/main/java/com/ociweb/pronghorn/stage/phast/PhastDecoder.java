@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.stage.phast;
 
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 
 public class PhastDecoder {
 	
@@ -9,39 +9,39 @@ public class PhastDecoder {
 	public static final long MOST_FREQUENT_CASE = 0;
 	public static final long LEAST_FREQUENT_CASE = 1;
 
-    public static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static long decodeDeltaLong(long[] longDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)){
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map&bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : longDictionary[idx];
+            return (MOST_FREQUENT_CASE == (map&bitMask)) ? (longDictionary[idx] += reader.readPackedLong()) : longDictionary[idx];
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : longDictionary[idx];
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (longDictionary[idx] += reader.readPackedLong()) : longDictionary[idx];
         }
     }
 
-    public static int decodeDefaultInt(DataInputBlobReader reader, long map, int[] defaultValues, long bitMask, int idx, Boolean isOptional) {
+    public static int decodeDefaultInt(ChannelReader reader, long map, int[] defaultValues, long bitMask, int idx, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedInt(reader);
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : reader.readPackedInt();
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedInt(reader);
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : reader.readPackedInt();
         }
     }
 
-    public static int decodeDeltaInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static int decodeDeltaInt(int[] intDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (intDictionary[idx] += DataInputBlobReader.readPackedInt(reader)) : intDictionary[idx];
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (intDictionary[idx] += reader.readPackedInt()) : intDictionary[idx];
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (intDictionary[idx] += DataInputBlobReader.readPackedInt(reader)) : intDictionary[idx];
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? (intDictionary[idx] += reader.readPackedInt()) : intDictionary[idx];
         }
     }
 
-    public static int decodeCopyInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static int decodeCopyInt(int[] intDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? intDictionary[idx] : (intDictionary[idx] = DataInputBlobReader.readPackedInt(reader));
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? intDictionary[idx] : (intDictionary[idx] = reader.readPackedInt());
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? intDictionary[idx] : (intDictionary[idx] = DataInputBlobReader.readPackedInt(reader));
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? intDictionary[idx] : (intDictionary[idx] = reader.readPackedInt());
         }
     }
     
@@ -56,18 +56,18 @@ public class PhastDecoder {
     }
     
     //decodes present int
-    public static int decodePresentInt(DataInputBlobReader reader, long map, long bitMask, Boolean isOptional){
+    public static int decodePresentInt(ChannelReader reader, long map, long bitMask, Boolean isOptional){
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? DataInputBlobReader.readPackedInt(reader) : null;
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? reader.readPackedInt() : null;
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? DataInputBlobReader.readPackedInt(reader) : null;
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? reader.readPackedInt() : null;
         }
     }
     
     //decodes string
-    public static String decodeString(DataInputBlobReader reader, Boolean isOptional){
-    	if (DataInputBlobReader.readPackedInt(reader) == INCOMING_VARIABLE){
+    public static String decodeString(ChannelReader reader, Boolean isOptional){
+    	if (reader.readPackedInt() == INCOMING_VARIABLE){
     		return reader.readUTF();
     	}
     	else
@@ -85,30 +85,30 @@ public class PhastDecoder {
     }
     
     //decodes present long
-    public static long decodePresentLong(DataInputBlobReader reader, long map, long bitMask, Boolean isOptional){
+    public static long decodePresentLong(ChannelReader reader, long map, long bitMask, Boolean isOptional){
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? DataInputBlobReader.readPackedLong(reader) : null;
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? reader.readPackedLong() : null;
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? DataInputBlobReader.readPackedLong(reader) : null;
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? reader.readPackedLong() : null;
         }
     }
     //decode default long
-    public static long decodeDefaultLong(DataInputBlobReader reader, long map, long[] defaultValues, long bitMask, int idx, Boolean isOptional) {
+    public static long decodeDefaultLong(ChannelReader reader, long map, long[] defaultValues, long bitMask, int idx, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedLong(reader);
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : reader.readPackedLong();
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedLong(reader);
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : reader.readPackedLong();
         }
      }
     //decode copy long
-    public static long decodeCopyLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static long decodeCopyLong(long[] longDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? longDictionary[idx] : (longDictionary[idx] = DataInputBlobReader.readPackedLong(reader));
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? longDictionary[idx] : (longDictionary[idx] = reader.readPackedLong());
         } else {
-            return (MOST_FREQUENT_CASE == (map & bitMask)) ? longDictionary[idx] : (longDictionary[idx] = DataInputBlobReader.readPackedLong(reader));
+            return (MOST_FREQUENT_CASE == (map & bitMask)) ? longDictionary[idx] : (longDictionary[idx] = reader.readPackedLong());
         }
     }
     
@@ -124,7 +124,7 @@ public class PhastDecoder {
     }
     
     //decodes present short
-    public static short decodePresentShort(DataInputBlobReader reader, long map, long bitMask, Boolean isOptional){
+    public static short decodePresentShort(ChannelReader reader, long map, long bitMask, Boolean isOptional){
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
             return (MOST_FREQUENT_CASE == (map & bitMask)) ? reader.readPackedShort() : null;
@@ -133,7 +133,7 @@ public class PhastDecoder {
         }
     }
     //decode default short
-    public static short decodeDefaultShort(DataInputBlobReader reader, long map, short[] defaultValues, long bitMask, int idx, Boolean isOptional) {
+    public static short decodeDefaultShort(ChannelReader reader, long map, short[] defaultValues, long bitMask, int idx, Boolean isOptional) {
             if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
                 bitMask = bitMask << 1;
                 return (MOST_FREQUENT_CASE == (map & bitMask)) ? defaultValues[idx] : reader.readPackedShort();
@@ -142,7 +142,7 @@ public class PhastDecoder {
         }
      }
     //decode copy short
-    public static short decodeCopyShort(short[] shortDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static short decodeCopyShort(short[] shortDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
             return (MOST_FREQUENT_CASE == (map & bitMask)) ? shortDictionary[idx] : (shortDictionary[idx] = reader.readPackedShort());
@@ -151,7 +151,7 @@ public class PhastDecoder {
         }
     }
     
-    public static short decodeDeltaShort(short[] shortDictionary, DataInputBlobReader reader, long map, int idx, long bitMask, Boolean isOptional) {
+    public static short decodeDeltaShort(short[] shortDictionary, ChannelReader reader, long map, int idx, long bitMask, Boolean isOptional) {
         if (isOptional && MOST_FREQUENT_CASE == (map & bitMask)) {
             bitMask = bitMask << 1;
             return (MOST_FREQUENT_CASE == (map & bitMask)) ? (shortDictionary[idx] += reader.readPackedShort()) : shortDictionary[idx];

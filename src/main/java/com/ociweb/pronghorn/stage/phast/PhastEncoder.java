@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.stage.phast;
 
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -77,28 +77,28 @@ public class PhastEncoder {
 		return pmap;
 	}
 	
-	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, int value, Boolean isOptional) {
+	public static void encodeIntPresent(ChannelWriter writer, long pmapHeader, long bitMask, int value, Boolean isOptional) {
         if (isOptional){
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
-                    DataOutputBlobWriter.writePackedInt(writer, value);
+                    writer.writePackedInt(value);
                 }
             }
         }
         else{
             if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
-                DataOutputBlobWriter.writePackedInt(writer, value);
+                writer.writePackedInt(value);
             }
         }
     }
 
-	public static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, int value, Boolean isOptional) {
+	public static void encodeDeltaInt(int[] intDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, int value, Boolean isOptional) {
 		if (isOptional) {
 			if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
 				bitMask = bitMask << 1;
 				if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-					DataOutputBlobWriter.writePackedInt(writer, value - intDictionary[idx]);
+					writer.writePackedInt(value - intDictionary[idx]);
 					intDictionary[idx] = value;
 				} else {
 					//do nothing
@@ -106,7 +106,7 @@ public class PhastEncoder {
 			}
 		} else {
 			if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-				DataOutputBlobWriter.writePackedInt(writer, value - intDictionary[idx]);
+				writer.writePackedInt(value - intDictionary[idx]);
 				intDictionary[idx] = value;
 			} else {
 				//do nothing
@@ -114,12 +114,12 @@ public class PhastEncoder {
 		}
 	}
     
-	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, long value, Boolean isOptional) {
+	public static void encodeDeltaLong(long[] longDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, long value, Boolean isOptional) {
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedLong(writer, value - longDictionary[idx]);
+                    writer.writePackedLong(value - longDictionary[idx]);
                     longDictionary[idx] = value;
                 } else {
                     //do nothing
@@ -127,7 +127,7 @@ public class PhastEncoder {
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedLong(writer, value - longDictionary[idx]);
+                writer.writePackedLong(value - longDictionary[idx]);
                 longDictionary[idx] = value;
             } else {
                 //do nothing
@@ -136,12 +136,12 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-	public static void encodeString(DataOutputBlobWriter writer, StringBuilder value, long pmapHeader, long bitMask, Boolean isOptional){
+	public static void encodeString(ChannelWriter writer, StringBuilder value, long pmapHeader, long bitMask, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 bitMask = bitMask << 1;
                 //encode -63 so it knows it is variable length
-                DataOutputBlobWriter.writePackedInt(writer, INCOMING_VARIABLE);
+                writer.writePackedInt(INCOMING_VARIABLE);
 
                 //write string using utf
                 writer.writeUTF(value.toString());
@@ -151,7 +151,7 @@ public class PhastEncoder {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 //encode -63 so it knows it is variable length
                 //make constant -63
-                DataOutputBlobWriter.writePackedInt(writer, INCOMING_VARIABLE);
+                writer.writePackedInt(INCOMING_VARIABLE);
 
                 //write string using utf
                 writer.writeUTF(value.toString());
@@ -160,7 +160,7 @@ public class PhastEncoder {
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
+	public static void incrementInt(int[] intDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
@@ -176,63 +176,63 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-	public static void copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, int value, Boolean isOptional){
+	public static void copyInt(int[] intDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, int value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
+                    writer.writePackedInt(intDictionary[idx]);
                 } else {
-                    DataOutputBlobWriter.writePackedInt(writer, value);
+                    writer.writePackedInt(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedInt(writer, value);
+                writer.writePackedInt(value);
             }
         }
     }
     
     //encodes the default value from the default value dictionary
-	public static void encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, int value, Boolean isOptional){
+	public static void encodeDefaultInt(int[] defaultIntDictionary, ChannelWriter writer, long pmapHeader, long bitmask, int idx, int value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                     //do nothing
                 } else {
-                    DataOutputBlobWriter.writePackedInt(writer, value);
+                    writer.writePackedInt(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedInt(writer, value);
+                writer.writePackedInt(value);
             }
         }
     }
     
     //encodes long that is present in the pmap
-	public static void encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, long value, Boolean isOptional) {
+	public static void encodeLongPresent(ChannelWriter writer, long pmapHeader, long bitMask, long value, Boolean isOptional) {
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedLong(writer, value);
+                    writer.writePackedLong(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedLong(writer, value);
+            	writer.writePackedLong(value);
             }
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
+	public static void incrementLong(long[] longDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
@@ -248,63 +248,63 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-	public static void copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, long value, Boolean isOptional){
+	public static void copyLong(long[] longDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, long value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedLong(writer, longDictionary[idx]);
+                    writer.writePackedLong(longDictionary[idx]);
                 } else {
-                    DataOutputBlobWriter.writePackedLong(writer, value);
+                    writer.writePackedLong(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedLong(writer, value);
+                writer.writePackedLong(value);
             }
         }
     }
     
     //encodes default value for a long
-	public static void encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, long value, Boolean isOptional){
+	public static void encodeDefaultLong(long[] defaultLongDictionary, ChannelWriter writer, long pmapHeader, long bitmask, int idx, long value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                     //do nothing
                 } else {
-                    DataOutputBlobWriter.writePackedLong(writer, value);
+                    writer.writePackedLong(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedLong(writer, value);
+                writer.writePackedLong(value);
             }
         }
     }
     
     //encodes short that is present in the pmap
-	public static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, short value, Boolean isOptional) {
+	public static void encodeShortPresent(ChannelWriter writer, long pmapHeader, long bitMask, short value, Boolean isOptional) {
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedShort(writer, value);
+                    writer.writePackedShort(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedShort(writer, value);
+                writer.writePackedShort(value);
             }
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
+	public static void incrementShort(short[] shortDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
@@ -320,52 +320,52 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-	public static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, short value, Boolean isOptional){
+	public static void copyShort(short[] shortDictionary, ChannelWriter writer, long pmapHeader, long bitMask, int idx, short value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
+                    writer.writePackedShort(shortDictionary[idx]);
                 } else {
-                    DataOutputBlobWriter.writePackedShort(writer, value);
+                	writer.writePackedShort(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedShort(writer, value);
+                writer.writePackedShort(value);
             }
         }
     }
     
     //encodes default value for a short
-	public static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, short value, Boolean isOptional){
+	public static void encodeDefaultShort(short[] defaultShortDictionary, ChannelWriter writer, long pmapHeader, long bitmask, int idx, short value, Boolean isOptional){
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                     //do nothing
                 } else {
-                    DataOutputBlobWriter.writePackedShort(writer, value);
+                    writer.writePackedShort(value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
                 //do nothing
             } else {
-                DataOutputBlobWriter.writePackedShort(writer, value);
+                writer.writePackedShort(value);
             }
         }
     }
     
     //encodes the change in value of a short
-	public static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, long bitMask, short value, Boolean isOptional) {
+	public static void encodeDeltaShort(short[] shortDictionary, ChannelWriter writer, long pmapHeader, int idx, long bitMask, short value, Boolean isOptional) {
         if (isOptional) {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)){
                 bitMask = bitMask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                    DataOutputBlobWriter.writePackedShort(writer, (short) (value - shortDictionary[idx]));
+                    writer.writePackedShort((short) (value - shortDictionary[idx]));
                     shortDictionary[idx] = value;
                 } else{
                     //do nothing
@@ -373,7 +373,7 @@ public class PhastEncoder {
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedShort(writer, (short) (value - shortDictionary[idx]));
+                writer.writePackedShort((short) (value - shortDictionary[idx]));
                 shortDictionary[idx] = value;
             }else{
                 //do nothing
