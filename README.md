@@ -1,9 +1,9 @@
 # JPG-Raster
-### What is it?
-JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decompressor.
+## What is it?
+JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder.
 It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel values.
 
-### How does it work?
+## How does it work?
 From the JPG file, it reads the quantization tables and the Huffman tables, which are the rules that were used by the encoder that created the file.
 It then parses the compressed image data and expands it into many 8x8 pixel blocks - called MCUs - based on the Huffman tables.
 Then using the quantization tables, it scales each value in the MCUs which now represent coefficients of a sum of 8^2 cosine functions that describe how much each cosine function contributes to the relative frequency changes of each pixel within the MCU.
@@ -13,15 +13,16 @@ Lastly, it exports this array of RGB pixels to a bitmap file with the same name 
 
 Currently, it supports and successfully decompresses the most standard JPG format, with wider support coming soon.
 
-### How to use it?
-From the command line, you can specify an input JPG file with the `-f` option (do not include the `.jpg` extension).
+## How to use it?
+From the command line, you can specify an input JPG file with the `-f` option (you do not have to include the `.jpg` extension).
+You can also provide a space-separated list of many JPG files.
 Then it will produce a `.bmp` file with the same name after decompressing the JPG file.
 If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.
 BMP was chosen as the output file type due to its very small header (26 bytes) followed by the raw, uncompressed RGB values.
 Eventually, J2R will use Pronghorn-Pipes for multi-threading and dataflow management to speed up decompression and to process many JPG files at once.
-For now, it decompresses one JPG file at a time from start to finish.
+For now, it decompresses one JPG file at a time from start to finish before beginning the next input JPG file.
 
-### Planned Features
+## Planned Features
  - Use Pronghorn-Pipes
  - Support more Start of Frame markers (i.e. Progressive)
  - Support files with one color component (grayscale)

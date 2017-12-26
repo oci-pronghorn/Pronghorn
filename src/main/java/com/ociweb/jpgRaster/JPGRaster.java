@@ -20,9 +20,9 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		String[] inputFiles = { "car", "cat", "dice", "earth", "nathan", "pyramids", "robot", "squirrel", "static", "turtle" };
-		//String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, file);
-		//inputFilePath = inputFilePath + ".jpg";
+		String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
+		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
+		String[] inputFiles = inputFilePaths.split(" ");
 
 		//GraphManager gm = new GraphManager();
 		
@@ -34,9 +34,12 @@ public class JPGRaster {
 		
 		for (int i = 0; i < inputFiles.length; ++i) {
 			String file = inputFiles[i];
+			if (file.length() > 4 && file.substring(file.length() - 4).equals(".jpg")) {
+				file = file.substring(0, file.length() - 4);
+			}
 			try {
 				System.out.println("Reading '" + file + "' JPG file...");
-				Header header = JPGScanner.ReadJPG("test_jpgs/" + file + ".jpg");
+				Header header = JPGScanner.ReadJPG(file + ".jpg");
 				if (header.valid) {
 					System.out.println("Performing Huffman Decoding...");
 					ArrayList<MCU> mcus = HuffmanDecoder.decodeHuffmanData(header);
@@ -48,7 +51,7 @@ public class JPGRaster {
 						System.out.println("Performing YCbCr to RGB Conversion...");
 						byte[][] rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width);
 						System.out.println("Writing BMP file...");
-						BMPDumper.Dump(rgb, header.height, header.width, "test_jpgs/" + file + ".bmp");
+						BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
 						System.out.println("Done.");
 					}
 				}
