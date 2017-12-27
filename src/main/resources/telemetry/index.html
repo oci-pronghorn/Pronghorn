@@ -75,7 +75,7 @@
          * - better way to manage bootstrap interactions (ie the clicks on navbar)
          * Features:
          * - !add heuristics
-         * - !zoom ghost layer/scrollbar issues/broke the preview!
+         * - !zoom and resize ghost layer/scrollbar issues/broke the preview!
          * - !update ghost layer on major paintAll
          * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
          * - httpGet duplication/httpGet to jQuery/AJAX?
@@ -151,7 +151,7 @@
         var previewScale = 0.065;
         var zoomWidth = 500; //100 is current screen size, anything above that is zoomed in
         var zoomHeight = 500;
-        var zoomStep = 20; //percentage of initial width/height
+        var zoomStep = 0.2; //percentage of initial width/height
         function paintAll () {
             paintAllRunning = true;
             if (webworker) {
@@ -178,7 +178,8 @@
                     var ratioWidth = demo.width() * previewScale;
                     var ratioHeight = demo.height() * previewScale;
 
-                    $("#demo svg, #ghost-container").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                    $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                    $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height() + 65);
 
                     if (isFirst) {
                         $(".navbar").show();
@@ -301,19 +302,23 @@
                 window.URL.revokeObjectURL(url);
             };
         }());
-        var minZoom = 1000;
-        var maxZoom = 50;
+        var minZoom = 5.0;
+        var maxZoom = 0.1;
+
+        var currentZoom = 1.0;
         function zoom(factor) {
-            if(zoomWidth + factor >= maxZoom && zoomWidth + factor <= minZoom) {
-                zoomWidth += factor;
-                zoomHeight += factor;
-                $("#demo svg, #ghost-container").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+            if(currentZoom + factor >= maxZoom && currentZoom + factor <= minZoom) {
+                //zoomWidth += factor;
+                //zoomHeight += factor;
+                //$("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+                currentZoom += factor;
+                $(".wrapper").css("transform", "scale(" + currentZoom + ")");
                 $("body").scroll();
             }
         }
         $( window ).resize(function() {
-            console.log("resizing!");
-            $("#ghost-container").css("width", $("#demo svg").width()).css("height", $("#demo svg").height());
+            //Resize ghost container here!
+            $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height());
         });
         $(document).ready(function() {
             $("#refresh-rate-dropdown a").click(function () {
