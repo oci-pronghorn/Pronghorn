@@ -92,6 +92,8 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		activeFileIdx = -1;//default
 		
 		if (verb != HTTPVerbDefaults.GET) {
+			logger.warn("unsupported verb {} when requesting a resource, this should be GET", verb);
+			definePayload();
 			return null;
 		}
 
@@ -110,16 +112,18 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		if (fileIdx<0) {
 			
 			if (fileName.indexOf("..")>=0) {
+				definePayload();
 				status = 404;
-				logger.info("unable to support resource: {} ",fileName);
+				logger.warn("unable to support resource: {} ",fileName);
 				return null;//can not look this up
 			}
 			
 			URL localURL = ResourceModuleStage.class.getClassLoader().getSystemClassLoader().getResource(prefix+fileName);
 			
 			if (null == localURL) {
+				definePayload();
 				status = 404;
-				logger.info("unable to find resource: {} ",fileName);
+				logger.warn("unable to find resource: {} ",fileName);
 				return null;
 			}
 
