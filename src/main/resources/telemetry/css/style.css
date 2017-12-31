@@ -86,8 +86,6 @@ body {
     height: 200px;
 }
 .wrapper {
-    overflow-x:auto;
-    overflow-y: auto;
     padding: 0px !important;
     background-color: #ffffff;
     position: relative;
