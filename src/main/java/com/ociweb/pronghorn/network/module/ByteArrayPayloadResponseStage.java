@@ -168,6 +168,11 @@ public abstract class ByteArrayPayloadResponseStage <
 		
 	}
 	
+	//to define no-payload
+	protected void definePayload() {
+		definePayload(null,0,0,0);
+		
+	}
 
 	private final boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
 			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
