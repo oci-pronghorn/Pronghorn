@@ -4,7 +4,54 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-public class BMPDumper {
+import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupFieldLocator;
+import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupTemplateLocator;
+
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+
+public class BMPDumper extends PronghornStage {
+
+	private final Pipe<YCbCrToRGBSchema> input;
+
+	private final FieldReferenceOffsetManager FROM;
+	
+	private final int MSG_HEADER;
+	private final int FIELD_HEIGHT;
+	private final int FIELD_WIDTH;
+	private final int FIELD_FILENAME;
+	
+	private final int MSG_PIXEL;
+	private final int FIELD_RED;
+	private final int FIELD_GREEN;
+	private final int FIELD_BLUE;
+	
+	int width;
+	int height;
+	Appendable filename;
+	
+	byte[][] pixels;
+	protected BMPDumper(GraphManager graphManager, Pipe<YCbCrToRGBSchema> input) {
+		super(graphManager, input, NONE);
+		this.input = input;
+		
+		FROM = Pipe.from(input);
+		
+		MSG_HEADER = lookupTemplateLocator("HeaderMessage", FROM);
+		FIELD_HEIGHT = lookupFieldLocator("height", MSG_HEADER, FROM);
+		FIELD_WIDTH = lookupFieldLocator("width", MSG_HEADER, FROM);
+		FIELD_FILENAME = lookupFieldLocator("filename", MSG_HEADER, FROM);
+		
+		MSG_PIXEL = lookupTemplateLocator("PixelMessage", FROM);
+		FIELD_RED = lookupFieldLocator("red", MSG_PIXEL, FROM);
+		FIELD_GREEN = lookupFieldLocator("green", MSG_PIXEL, FROM);
+		FIELD_BLUE = lookupFieldLocator("blue", MSG_PIXEL, FROM);
+		
+	}
+
 	public static void Dump(byte[][] rgb, int height, int width, String filename) throws IOException {
 		int paddingSize = (4 - (width * 3) % 4) % 4;
 		int size = 14 + 12 + rgb.length * rgb[0].length + height * paddingSize;
@@ -88,5 +135,44 @@ public class BMPDumper {
 		} catch (IOException e) {
 			System.out.println("Error - Unknown error creating BMP file");
 		}
+	}
+
+	@Override
+	public void run() {
+		
+		int count = 0;
+		
+		while(PipeReader.tryReadFragment(input)) {
+			
+			int msgIdx = PipeReader.getMsgIdx(input);
+			
+			if(msgIdx == MSG_HEADER){
+				height = PipeReader.readInt(input, FIELD_HEIGHT);
+				width = PipeReader.readInt(input,  FIELD_WIDTH);
+				filename = PipeReader.readASCII(input,  FIELD_FILENAME, null);
+				
+				pixels = new byte[height][width * 3];
+			} else {
+				byte red = PipeReader.readByte(input, FIELD_RED);
+				byte green = PipeReader.readByte(input,  FIELD_GREEN);
+				byte blue = PipeReader.readByte(input,  FIELD_BLUE);
+				
+				pixels[count / width][(count % width) * 3] = red;
+				pixels[count / width][(count % width) * 3 + 1] = green;
+				pixels[count / width][(count % width) * 3 + 2] = blue;
+				
+				count += 1;
+			}
+			
+			
+			if(count > (width * height)){
+				try {
+					Dump(pixels, height, width, filename.toString());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	
 	}
 }

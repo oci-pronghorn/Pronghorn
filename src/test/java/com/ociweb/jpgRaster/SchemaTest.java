@@ -45,11 +45,4 @@ public class SchemaTest {
 		assertTrue(FROMValidation.checkSchema("/YCbCrToRGB.xml", YCbCrToRGBSchema.class));
 	}
 	
-	@Test
-	public void BMPSchemaFROMTest() {
-		
-		assertTrue(FROMValidation.checkSchema("/BMP.xml", BMPSchema.class));
-	}
-	
-	
 }

@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
+		/*String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
 		String[] inputFiles = inputFilePaths.split(" ");
 
@@ -58,13 +58,21 @@ public class JPGRaster {
 			} catch (IOException e) {
 				System.err.println("Error - Unknown error");
 			}
-		}
+		}*/
+		
+		GraphManager gm = new GraphManager();
+		
+		populateGraph(gm);
+				
+		gm.enableTelemetry(8089);
+				
+		StageScheduler.defaultScheduler(gm).startup();
 	}
 
 
-	private static void populateGraph(GraphManager gm, String inputFilePath) {
+	private static void populateGraph(GraphManager gm) {
 				
-		Pipe<RawDataSchema> pipe1  = RawDataSchema.instance.newPipe(10, 10_000); // 10 chunks each 10K in  size
+		/*Pipe<RawDataSchema> pipe1  = RawDataSchema.instance.newPipe(10, 10_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1A = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1B = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 		
@@ -81,6 +89,14 @@ public class JPGRaster {
 		new PipeCleanerStage<>(gm, pipe1B); // dumps all data which came in 
 		
 		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
+		*/
+		
+		Pipe<YCbCrToRGBSchema> pipe1 = YCbCrToRGBSchema.instance.newPipe(3, 1000);
+		
+		new J2RStage(gm, pipe1);
+		
+		new BMPDumper(gm, pipe1);
+		
 		
 		
 	}

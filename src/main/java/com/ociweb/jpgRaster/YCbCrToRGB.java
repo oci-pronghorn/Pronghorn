@@ -3,6 +3,8 @@ package com.ociweb.jpgRaster;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class YCbCrToRGB {	
 	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
@@ -24,7 +26,8 @@ public class YCbCrToRGB {
 		return rgb;
 	}
 	
-	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
+	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width, Pipe<YCbCrToRGBSchema> output,
+			int red, int green, int blue) {
 		int mcuHeight = (height + 7) / 8;
 		int mcuWidth = (width + 7) / 8;
 		int unusedRows = (mcuHeight * 8) - height;
@@ -45,9 +48,13 @@ public class YCbCrToRGB {
 						pixel = convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
 											 mcus.get(i * mcuWidth + j).cb[y * 8 + x],
 											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]);
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
+//						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
+//						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
+//						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
+						
+						PipeWriter.writeByte(output, red, pixel[0]);
+						PipeWriter.writeByte(output, green, pixel[1]);
+						PipeWriter.writeByte(output, blue, pixel[2]);
 					}
 				}
 			}
@@ -55,7 +62,7 @@ public class YCbCrToRGB {
 		return pixels;
 	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		ArrayList<MCU> testArray =  new ArrayList<MCU>(1);
 		MCU mcu = new MCU();
 		mcu.y[0]  = -63;
@@ -73,5 +80,5 @@ public class YCbCrToRGB {
 			for (int j = 0; j < converted[0].length; j += 3)
 			System.out.println(converted[i][j + 0] + ", " + converted[i][j + 1] + ", " + converted[i][j + 2]);
 		}
-	}
+	}*/
 }
