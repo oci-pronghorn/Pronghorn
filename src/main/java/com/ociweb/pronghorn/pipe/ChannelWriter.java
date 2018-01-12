@@ -82,6 +82,10 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 
 	 abstract public void writeBoolean(boolean v);
 	 
+	 abstract public void writeBooleanNull();
+
+	 abstract public void writePackedNull();
+	 
 	 abstract public void write(byte b[], int off, int len);
 	 
 	 abstract public void write(byte b[]);

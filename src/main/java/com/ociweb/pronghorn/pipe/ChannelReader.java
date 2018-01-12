@@ -41,6 +41,10 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	
 	public abstract <A extends Appendable> A readPackedChars(A target);
 	
+	public abstract boolean wasPackedNull();
+	
+	public abstract boolean wasDecimalNull();
+	
 	public abstract long readPackedLong();
 	
 	public abstract int readPackedInt();
@@ -68,6 +72,8 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	public abstract int read();
 	
 	public abstract boolean readBoolean();
+	
+	public abstract boolean wasBooleanNull();
 	
 	public abstract int skipBytes(int n);
 	

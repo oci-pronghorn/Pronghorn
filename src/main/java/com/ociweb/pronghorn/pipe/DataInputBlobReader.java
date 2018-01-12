@@ -29,6 +29,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     private static TrieParser textToNumberParser;
     private TrieParserReader reader;
     
+    private long mostRecentPacked=-1; //used for asserts;
+    
     private int EOF_MARKER = -1;
     
     public DataInputBlobReader(Pipe<S> pipe) {
@@ -318,7 +320,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 
     @Override
     public boolean readBoolean() {
-        return 0!=backing[byteMask & position++];
+        return backing[byteMask & position++]>0; //positive is true, zero is false, neg is null
+    }
+    
+    @Override
+    public boolean wasBooleanNull() {
+    	return backing[byteMask & (position-1)]<0;
     }
 
     @Override
@@ -418,13 +425,13 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     @Override
     public String readUTF() { //use this two line implementation
         int length = readShort(); //read first 2 byte for length in bytes to convert.
-        return readUTFOfLength(length);
+        return length>=0?readUTFOfLength(length):null;
     }
     
     @Override
     public <A extends Appendable> A readUTF(A target) {
         int length = readShort(); //read first 2 byte for length in bytes to convert.    
-        return readUTFOfLength(length, target);
+        return length>=0?readUTFOfLength(length, target):target;
     }
 
     @Override
@@ -440,6 +447,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     @Override
     public String readUTFOfLength(int length) {
         workspace.setLength(0);
+        
         try {
         	return readUTF(this, length, workspace).toString();
         } catch (Exception e) {
@@ -509,7 +517,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	
 	
     public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
-        long charAndPos = ((long)reader.position)<<32;
+    	assert(reader.storeMostRecentPacked(-1));
+    	long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+length)<<32;
         assert(length <= reader.available()) : "malformed data";
 
@@ -657,17 +666,45 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
      */
     @Override
     public long readPackedLong() {   
-            return readPackedLong(this);
+            long result = readPackedLong(this);
+            assert(storeMostRecentPacked(result));
+            return result;
     }
 
+    private boolean storeMostRecentPacked(long result) {
+    	mostRecentPacked=result;
+    	return true;
+	}
+
+	@Override
+    public final boolean wasPackedNull() {
+    	assert checkRecentPacked(this) : "Must not check for null unless value was read as zero first";
+        return wasPackedNull(this);
+    }
+    
+    @Override
+    public final boolean wasDecimalNull() {
+    	assert checkRecentPacked(this) : "Must not check for null unless value was read as zero first";
+    	return wasDecimalNull(this);
+    }
+    
     @Override
     public int readPackedInt() {   
-        return readPackedInt(this);
+        int result = readPackedInt(this);
+        assert(storeMostRecentPacked(result));
+        return result;
     }
     
     @Override
     public double readDecimalAsDouble() {
-    	return Decimal.asDouble(readPackedLong(), readByte());
+    	long m = readPackedLong();
+    	assert(storeMostRecentPacked(m));
+    	if (0!=m) {
+    		return Decimal.asDouble(m, readByte());
+    	} else {
+    		position++;//must consume last byte (not needed);
+    		return wasPackedNull() ? Double.NaN: 0;
+    	}
     }
     
     @Override
@@ -677,12 +714,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     @Override
     public long readDecimalAsLong() {
-    	return Decimal.asLong(readPackedLong(), readByte());
+    	//packed nulls will appear as zero in this case.
+    	long m = readPackedLong();
+    	assert(storeMostRecentPacked(m));
+		return Decimal.asLong(m, readByte());
     }
     
     @Override
     public short readPackedShort() {
-        return (short)readPackedInt(this);
+        short result = (short)readPackedInt(this);
+        assert(storeMostRecentPacked(result));
+        return result;
     }
 
     public static <S extends MessageSchema<S>> Pipe<S> getBackingPipe(DataInputBlobReader<S> that) {
@@ -694,7 +736,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
         return (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that) : (accumulator) |(v & 0x7F);
     }
-
+    
     public static <S extends MessageSchema<S>> int readPackedInt(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
@@ -707,7 +749,36 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
 
     private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
-        assert(a!=0 || v!=0) : "malformed data";
+        //Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
+        return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that) : a | (v & 0x7Fl);
+    }
+
+    public static <S extends MessageSchema<S>> boolean wasPackedNull(DataInputBlobReader<S> that) {
+     	return wasPackedNull(that.backing, that.byteMask, that.position);
+    }
+    
+    public static <S extends MessageSchema<S>> boolean wasDecimalNull(DataInputBlobReader<S> that) {
+       	return wasPackedNull(that.backing, that.byteMask, that.position-1); //skip over trailing e
+    }
+
+	private static <S extends MessageSchema<S>> boolean checkRecentPacked(DataInputBlobReader<S> that) {
+		boolean result = 0 == that.mostRecentPacked;
+		that.mostRecentPacked = -1;//can only be checked once.
+		return result;
+	}
+
+	private static boolean wasPackedNull(byte[] localBacking, int localMask, int localPos) {
+		assert( 0 != (0x80&localBacking[localMask & (localPos-1)]) ) : "Must only call wasPackedNull AFTER a packed number read";
+    	
+    	return (((byte)0x80)==localBacking[localMask & (localPos-1)])
+    		   && 0==localBacking[localMask & (localPos-2)]
+    	       && 0==localBacking[localMask & (localPos-3)];
+	}
+
+    private static <S extends MessageSchema<S>> long readPackedLongB(boolean[] isNaN, long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
+        if (0==a && v==0) {
+        	isNaN[0] = true;
+        }
         return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that) : a | (v & 0x7Fl);
     }
        

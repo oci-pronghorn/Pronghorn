@@ -299,6 +299,11 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     @Override
+    public void writeBooleanNull() {
+        byteBuffer[byteMask & activePosition++] = (byte) -1;
+    }
+    
+    @Override
     public void writeByte(int v) {
         byteBuffer[byteMask & activePosition++] = (byte)v;
     }
@@ -361,12 +366,21 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 
     @Override
     public void writeUTF(String s) {
-        activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
+    	if (null!=s) {
+    		activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
+    	} else {
+    		writeShort(-1);
+    	}
+    	
     }
     
 	@Override
     public void writeUTF8Text(CharSequence s) {
-    	encodeAsUTF8(this,s);
+	    if (null!=s) {
+			encodeAsUTF8(this,s);
+		} else {
+			writeShort(-1);
+		}
     }
 
 	@Override
@@ -442,18 +456,26 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
 	@Override
     public void writeUTF(CharSequence s) {
-        activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
-    }    
+		if (null!=s) {
+			activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
+		} else {
+    		writeShort(-1);
+    	}		
+	}    
     
 	@Override
     public void writeASCII(CharSequence s) {
+		
         byte[] localBuf = byteBuffer;
         int mask = byteMask;
         int pos = activePosition;
-        int len = s.length();        
-        for (int i = 0; i < len; i ++) {
-            localBuf[mask & pos++] = (byte)s.charAt(i);
+        if (null!=s) {
+	        int len = s.length();        
+	        for (int i = 0; i < len; i++) {
+	            localBuf[mask & pos++] = (byte)s.charAt(i);
+	        }
         }
+        localBuf[mask & pos++] = 0;//terminator
         activePosition = pos;
     }
          
@@ -664,6 +686,11 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     public final void writePackedLong(long value) {
         writePackedLong(this,value);
     }
+	
+	@Override
+    public final void writePackedNull() {
+        writePackedNull(this);
+    }
     
 	@Override
     public final void writePackedInt(int value) {
@@ -675,18 +702,31 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         writePackedInt(this,value);
     }
     
+	public static final <T extends MessageSchema<T>> void writePackedNull(DataOutputBlobWriter<T> that) {
+		that.write(0);
+		that.write(0);
+		that.write((byte)0x80);  
+	}
+	
     public static final <T extends MessageSchema<T>> void writePackedLong(DataOutputBlobWriter<T> that, long value) {
 
-        long mask = (value>>63);         // FFFFF  or 000000
-        long check = (mask^value)-mask;  //absolute value
-        int bit = (int)(check>>>63);     //is this the special value?
+    	that.activePosition = writePackedLong(value, that.byteBuffer, that.byteMask, that.activePosition);
+
+    }
+
+	public static int writePackedLong(long value, byte[] byteBuffer, int byteMask, int position) {
+		final long mask = (value>>63);         // FFFFF  or 000000
+        final long check = (mask^value)-mask;  //absolute value
+        final int bit = (int)(check>>>63);     //is this the special value?
         
         //    Result of the special MIN_VALUE after abs logic                     //8000000000000000
         //    In order to get the right result we must pass something larger than //0x4000000000000000L;
        
-        that.activePosition = writeLongUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-
-    }
+		return writeLongUnified(value, (check>>>bit)+bit,
+        		byteBuffer, 
+        		byteMask, 
+        		position, (byte)0x7F);
+	}
 
     public static final <T extends MessageSchema<T>> void writePackedInt(DataOutputBlobWriter<T> that, int value) {
 
