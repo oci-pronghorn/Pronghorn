@@ -86,7 +86,13 @@ public class DataInputOutputTest {
         r = new Random(101);
         long start = System.nanoTime();
         for(int i = 0; i<testSize; i++) {
-            out.writePackedLong(testLongValueGenerator(r,i));
+        	if (0==i) {
+        		//two leading zeros would never be supported so we will use this as null..
+        		//this is a zero however it is a "special" zero...
+        		out.writePackedNull();     		
+        	} else {        	
+        		out.writePackedLong(testLongValueGenerator(r,i));
+        	}
         }
         long duration = System.nanoTime()-start;
         long nsPerWrite = duration/testSize;
@@ -108,8 +114,20 @@ public class DataInputOutputTest {
         r = new Random(101);
         start = System.nanoTime();
         for(int i = 0; i<testSize; i++) {
-            long expected = testLongValueGenerator(r,i);
-            long actual = in.readPackedLong();
+            long expected = 0==i ? 0 : testLongValueGenerator(r,i);
+            
+            boolean wasNull = false;
+            long actual = DataInputBlobReader.readPackedLong(in);
+            if (0==actual) {
+            	wasNull = DataInputBlobReader.wasPackedNull(in);
+            }
+                        
+            if (wasNull) {
+            	assertEquals("null or NaN was used in position 0",0, i);
+            } else {
+            	assertNotEquals("null or NaN was used in position 0",0, i);
+            }
+            
             if (expected!=actual) {
                 String expBinaryString = Long.toBinaryString(expected);
                 String actBinaryString = Long.toBinaryString(actual);
@@ -119,7 +137,7 @@ public class DataInputOutputTest {
                 
        //         System.err.println("Expected:"+expBinaryString);
       //          System.err.println("Actual  :"+actBinaryString);                
-                assertEquals(expected, actual);
+                assertEquals("at pos "+i, expected, actual);
             }
         }
         duration = System.nanoTime()-start;
@@ -193,6 +211,8 @@ public class DataInputOutputTest {
        
         
     }
+    
+    
     
     @Test
     public void testPackedChars() {
