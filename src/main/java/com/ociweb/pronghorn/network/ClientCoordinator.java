@@ -380,9 +380,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 								                  connectionId, ccm.isTLS, inFlightBits);
 						ccm.connections.setValue(connectionId, cc);	
 						
-						System.err.println("XXXXXXXXXXx "+cc.recvBufferSize()+" VS "+ccm.receiveBufferSize);
-						
-						
 						ccm.hostTrieLock.writeLock().lock();						
 						try {
 							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);

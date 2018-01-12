@@ -52,7 +52,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		int i = output.length;
 		while (--i >= 0) {
 			
-			System.err.println((output[i].maxVarLen+1)+" vs "+coordinator.receiveBufferSize);
+			//System.err.println((output[i].maxVarLen+1)+" vs "+coordinator.receiveBufferSize);
 			
 			if ((output[i].maxVarLen+1) < coordinator.receiveBufferSize) {
 				throw new UnsupportedOperationException(
