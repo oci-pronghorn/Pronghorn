@@ -457,7 +457,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 				if (hasUnackPublished()) {	
 					if (keepAliveMS>0 || quiet>quietRepublish) {
-						rePublish(toBroker[activeConnection.requestPipeLineIdx()]);
+						
+						Pipe<NetPayloadSchema> pipe = toBroker[activeConnection.requestPipeLineIdx()];
+						if (0 == Pipe.contentRemaining(pipe))  {
+							rePublish(pipe);
+						}
+						//else when there is conten remaining the system is busy and doing
+						//a replublish will not help plus it may cause repeats of the 
+						//republish on the same pipes at the same time.
 					}
 					//if rePublish does something then lastActivityTime will have been set
 				} else {
