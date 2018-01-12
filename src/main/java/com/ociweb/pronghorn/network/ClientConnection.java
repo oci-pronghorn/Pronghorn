@@ -100,7 +100,7 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	public ClientConnection(SSLEngine engine, CharSequence host, int port, int sessionId, int pipeIdx,
-			                 long conId, boolean isTLS, int inFlightBits, int maxRecBuf) throws IOException {
+			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
 		
@@ -127,25 +127,40 @@ public class ClientConnection extends SSLConnection {
 		this.host = host instanceof String ? (String)host : host.toString();
 		this.port = port;
 					
-		this.getSocketChannel().configureBlocking(false);  
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
-	
-		//TCP_NODELAY is required for HTTP/2 get used to to being on.
-		this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
-	
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
+		SocketChannel localSocket = this.getSocketChannel();
+		initSocket(localSocket);
+		//TODO: this is still broken on the MAC!!!
+		//this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
 		
 		//TODO: we know the pipe size but the socket takes this as a suggestion...
 		
 		
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
+		localSocket.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
+				
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 	
 		resolveAddressAndConnect(port);		
 	}
 
+	public static void initSocket(SocketChannel socket) throws IOException {
+		socket.configureBlocking(false);  
+		socket.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+	
+		//TCP_NODELAY is required for HTTP/2 get used to to being on.
+		socket.setOption(StandardSocketOptions.TCP_NODELAY, true);
+	}
+
+	public int recvBufferSize() {
+		
+		try {
+			return this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
+		} catch (Throwable e) {
+			return -1;
+		}
+		
+	}
 
 	private void resolveAddressAndConnect(int port) throws IOException {
 

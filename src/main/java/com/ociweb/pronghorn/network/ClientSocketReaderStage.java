@@ -38,12 +38,31 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
 	
-	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output) {
+	public ClientSocketReaderStage(GraphManager graphManager,
+			                       ClientCoordinator coordinator, 
+			                       Pipe<ReleaseSchema>[] parseAck, 
+			                       Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
 		this.coordinator = coordinator;
 		this.output = output;
 		this.releasePipes = parseAck;
 
+		////////////////
+		//confirm that the pipes are built to be large enough for the buffer
+		int i = output.length;
+		while (--i >= 0) {
+			
+			System.err.println((output[i].maxVarLen+1)+" vs "+coordinator.receiveBufferSize);
+			
+			if ((output[i].maxVarLen+1) < coordinator.receiveBufferSize) {
+				throw new UnsupportedOperationException(
+						"The target buffer must be larger than the input buffer. "+
+						output[i].maxVarLen+" vs "+coordinator.receiveBufferSize);
+
+			}
+		}
+		////////////////
+		
 		coordinator.setStart(this);
 		
 		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
@@ -239,7 +258,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 
 			assert(target.maxVarLen+1 >= recvBufferSize(cc)) : 
-				"The target buffer must be larger than the input buffer. "+target.maxVarLen+" vs "+recvBufferSize(cc);
+				"The target buffer must be larger than the input buffer. "+
+			    target.maxVarLen+" vs "+recvBufferSize(cc)+" vs "+coordinator.receiveBufferSize;
 			
 			//TODO: warning note cast to int.
 			int readCount=-1; 

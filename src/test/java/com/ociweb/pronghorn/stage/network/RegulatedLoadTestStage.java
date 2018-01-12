@@ -256,7 +256,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 									if (useSlow) {
 										System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
 										
-										connectionId = clientCoord.lookup(host, port, userId, workspace, hostTrieReader);
+										connectionId = clientCoord.lookup(
+												hostBytes, 0, hostBytes.length, Integer.MAX_VALUE,
+												port, userId, workspace, hostTrieReader);
 										
 										if (-1!=connectionIdCache[userId]) {
 											throw new UnsupportedOperationException("already set ");

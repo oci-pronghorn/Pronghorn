@@ -216,7 +216,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
-							logger.info("too many concurrent requests, back off load or increase concurrent inputs");
+							logger.trace("too many concurrent requests, back off load or increase concurrent inputs");
 						}
 						
 					}

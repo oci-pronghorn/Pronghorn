@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -35,7 +36,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static boolean TEST_RECORDS = false;
 	
-	
+
+	public final int receiveBufferSize;
 
 	
     public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
@@ -104,7 +106,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.firstStage = startStage;
 	}
 	
-	public final int receiveBufferSize;
 	
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, TLSCertificates tlsCertificates) {
 		super(tlsCertificates);
@@ -124,7 +125,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 		try {
 			//get values we can not modify from the networking subsystem
-			SocketChannel testChannel = SocketChannel.open();
+			
+			//the fake InetSocketAddress is set to ensure the RCVBUF is established as some value
+			SocketChannel testChannel = SocketChannel.open(new InetSocketAddress(443));
+			ClientConnection.initSocket(testChannel);
+			
 			//we read the receive buffer size here to ensure that the consuming pipe has the 
 			//same size.
 			receiveBufferSize = 1+testChannel.getOption(StandardSocketOptions.SO_RCVBUF);
@@ -198,7 +203,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return lookup(host, port, sessionId, guidWorkspace, hostTrieReader);
 	}
 	
-	public long lookup(CharSequence host, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
+	private long lookup(CharSequence host,
+			           int port, int sessionId, byte[] workspace, TrieParserReader reader) {
 		
 		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
 		int len = ClientConnection.buildGUID(workspace, host, port, sessionId);	
@@ -213,11 +219,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId) {
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask,
+			           int port, int sessionId) {
 		return lookup(hostBack, hostPos, hostLen, hostMask, port, sessionId, guidWorkspace, hostTrieReader);
 	}
 
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, 
+			           int port, int sessionId, byte[] workspace, TrieParserReader reader) {
 		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
 		int len = ClientConnection.buildGUID(workspace, 
 				hostBack, hostPos, hostLen, hostMask, port, sessionId);	
@@ -369,8 +377,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 								        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
 								        :null;
 						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 
-								                  connectionId, ccm.isTLS, inFlightBits, outputs[pipeIdx].maxVarLen);
+								                  connectionId, ccm.isTLS, inFlightBits);
 						ccm.connections.setValue(connectionId, cc);	
+						
+						System.err.println("XXXXXXXXXXx "+cc.recvBufferSize()+" VS "+ccm.receiveBufferSize);
 						
 						
 						ccm.hostTrieLock.writeLock().lock();						
