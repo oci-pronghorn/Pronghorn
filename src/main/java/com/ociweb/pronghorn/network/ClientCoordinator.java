@@ -134,6 +134,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			//same size.
 			receiveBufferSize = 1+testChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 			
+			testChannel.close();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
