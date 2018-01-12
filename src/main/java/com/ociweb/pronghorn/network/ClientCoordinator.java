@@ -127,11 +127,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			//get values we can not modify from the networking subsystem
 			
 			//the fake InetSocketAddress is set to ensure the RCVBUF is established as some value
-			SocketChannel testChannel = SocketChannel.open(new InetSocketAddress(443));
+			SocketChannel testChannel = SocketChannel.open();
 			ClientConnection.initSocket(testChannel);
-			
-			//we read the receive buffer size here to ensure that the consuming pipe has the 
-			//same size.
 			receiveBufferSize = 1+testChannel.getOption(StandardSocketOptions.SO_RCVBUF);
 			
 			testChannel.close();
@@ -378,7 +375,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 								        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
 								        :null;
 						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 
-								                  connectionId, ccm.isTLS, inFlightBits);
+								                  connectionId, ccm.isTLS, inFlightBits, 
+								                  ccm.receiveBufferSize);
 						ccm.connections.setValue(connectionId, cc);	
 						
 						ccm.hostTrieLock.writeLock().lock();						

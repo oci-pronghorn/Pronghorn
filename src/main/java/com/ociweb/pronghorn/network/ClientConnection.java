@@ -100,7 +100,7 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	public ClientConnection(SSLEngine engine, CharSequence host, int port, int sessionId, int pipeIdx,
-			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
+			                 long conId, boolean isTLS, int inFlightBits, int recBufSize) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
 		
@@ -129,12 +129,10 @@ public class ClientConnection extends SSLConnection {
 					
 		SocketChannel localSocket = this.getSocketChannel();
 		initSocket(localSocket);
-		//TODO: this is still broken on the MAC!!!
-		//this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
+
+		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, recBufSize); 
 		
 		//TODO: we know the pipe size but the socket takes this as a suggestion...
-		
-		
 		localSocket.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
 				

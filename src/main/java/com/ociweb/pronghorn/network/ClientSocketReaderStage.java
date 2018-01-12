@@ -46,22 +46,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 		this.coordinator = coordinator;
 		this.output = output;
 		this.releasePipes = parseAck;
-
-		////////////////
-		//confirm that the pipes are built to be large enough for the buffer
-		int i = output.length;
-		while (--i >= 0) {
-			
-			//System.err.println((output[i].maxVarLen+1)+" vs "+coordinator.receiveBufferSize);
-			
-			if ((output[i].maxVarLen+1) < coordinator.receiveBufferSize) {
-				throw new UnsupportedOperationException(
-						"The target buffer must be larger than the input buffer. "+
-						output[i].maxVarLen+" vs "+coordinator.receiveBufferSize);
-
-			}
-		}
-		////////////////
 		
 		coordinator.setStart(this);
 		
@@ -254,7 +238,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
 		if (Pipe.hasRoomForWrite(target)) {
 	
-			//these buffers are only big enought to accept 1 target.maxAvgVarLen
+			//these buffers are only big enough to accept 1 target.maxAvgVarLen
 			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 
 			assert(target.maxVarLen+1 >= recvBufferSize(cc)) : 
@@ -263,8 +247,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 			
 			//TODO: warning note cast to int.
 			int readCount=-1; 
-			try {					    									    			
-				readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
+			try {					    			
+				
+				SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
+				readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
 				
 			} catch (IOException ioex) {
 				readCount = -1;
