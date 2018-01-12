@@ -34,7 +34,7 @@ public class PackedBitsTest {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+		DataOutputBlobWriter.closeLowLevelField(out);
 		Pipe.confirmLowLevelWrite(p);
 		Pipe.publishWrites(p);
 		
