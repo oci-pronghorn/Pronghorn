@@ -1331,6 +1331,7 @@ public class TrieParserReader {
 	}
 
 	public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
+		//TODO: cofirm this field is next...
 		int meta = Pipe.takeRingByteMetaData(input);
 		int length    = Pipe.takeRingByteLen(input);
 		parseSetup(trieReader, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input));
@@ -1408,7 +1409,6 @@ public class TrieParserReader {
 	public static int capturedFieldBytes(TrieParserReader reader, int idx, ByteConsumer target) {
 		assert(null!=reader);
 		assert(null!=target);
-
 		int pos = idx*4;
 		assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
 
@@ -1418,7 +1418,11 @@ public class TrieParserReader {
 		int blen = reader.capturedValues[pos++];
 		int bmsk = reader.capturedValues[pos++];
 
-		target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
+		try {
+			target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
 		return blen;
 
 	}
