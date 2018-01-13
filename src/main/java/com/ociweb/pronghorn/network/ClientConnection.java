@@ -63,8 +63,10 @@ public class ClientConnection extends SSLConnection {
 
 	private final long creationTimeNS;
 	
-	private boolean isTLS;
+	public final boolean isTLS;
 	boolean isFinishedConnection = false;
+	
+	private final int payloadSize;
 	
 	static {
 		
@@ -135,10 +137,15 @@ public class ClientConnection extends SSLConnection {
 		//TODO: we know the pipe size but the socket takes this as a suggestion...
 		localSocket.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
-				
+		this.recBufferSize = this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
+		
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 	
+		this.payloadSize = isTLS ?
+				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200) :
+				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
+				
 		resolveAddressAndConnect(port);		
 	}
 
@@ -150,14 +157,10 @@ public class ClientConnection extends SSLConnection {
 		socket.setOption(StandardSocketOptions.TCP_NODELAY, true);
 	}
 
+	public final int recBufferSize; //cache
+	
 	public int recvBufferSize() {
-		
-		try {
-			return this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
-		} catch (Throwable e) {
-			return -1;
-		}
-		
+		return recBufferSize;
 	}
 
 	private void resolveAddressAndConnect(int port) throws IOException {
@@ -502,5 +505,10 @@ public class ClientConnection extends SSLConnection {
 			return usingStage == stageId;
 		}
 	}
+
+	public int spaceReq(int maxVarLen) {
+		return payloadSize*(1 + (recBufferSize / (maxVarLen+2)));
+	}
+
 	
 }

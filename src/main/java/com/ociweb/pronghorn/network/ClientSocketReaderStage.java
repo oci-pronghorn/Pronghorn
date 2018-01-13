@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
-import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -236,20 +235,20 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 
 	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
-		if (Pipe.hasRoomForWrite(target)) {
+		
+		assert(cc.spaceReq(target.maxVarLen) <= target.sizeOfSlabRing) : "can not fit input buffer on ring";		
+		
+		if (Pipe.hasRoomForWrite(target, cc.spaceReq(target.maxVarLen))) {
 	
 			//these buffers are only big enough to accept 1 target.maxAvgVarLen
-			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
+			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(
+					Pipe.storeBlobWorkingHeadPosition(target),target);
 
-			assert(target.maxVarLen+1 >= recvBufferSize(cc)) : 
-				"The target buffer must be larger than the input buffer. "+
-			    target.maxVarLen+" vs "+recvBufferSize(cc)+" vs "+coordinator.receiveBufferSize;
-			
-			//TODO: warning note cast to int.
 			int readCount=-1; 
 			try {					    			
 				
 				SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
+				//NOTE: warning note cast to int.
 				readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
 				
 			} catch (IOException ioex) {
@@ -267,40 +266,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 				logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
 				
 				if (coordinator.isTLS) {
-					assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
-					
-					int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-					Pipe.addLongValue(cc.getId(), target);
-					Pipe.addLongValue(System.nanoTime(), target);
-					
-					int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-					Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-					
-					Pipe.confirmLowLevelWrite(target, size);
-					Pipe.publishWrites(target);
-												    		
+					writeEncrypted(cc, target, readCount);
 				} else {
-					assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
-					
-					Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
-					Pipe.addLongValue(cc.getId(), target);         //connection
-					Pipe.addLongValue(System.nanoTime(), target);
-					Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
-					
-					int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-					Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-		 
-					
-					if (showResponse) {
-								    System.err.println("//////////////////////");
-						   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-						   			System.err.println("//////////////////////");
-					}
-
-					
-					Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
-					Pipe.publishWrites(target);
-													    			
+					writePlain(cc, target, readCount);
 				}						    		
 				
 			} else {
@@ -312,17 +280,76 @@ public class ClientSocketReaderStage extends PronghornStage {
 		return didWork;
 	}
 
-	private int recvBufferSize(ClientConnection cc) {
+	private void writePlain(ClientConnection cc, Pipe<NetPayloadSchema> target, int readCount) {
+		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 		
-		try {
-			return cc.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
-		} catch (Throwable e) {
-			return -1;
+		Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
+		Pipe.addLongValue(cc.getId(), target);         //connection
+		Pipe.addLongValue(System.nanoTime(), target);
+		Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
+		
+		int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
+		//blob head position is moved forward
+		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
+			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
 		}
+		//record the new start and length to the slab for this blob
+		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
+		////////////////////////////////////////////////////////////
 		
+		if (showResponse) {
+					    System.err.println("//////////////////////");
+			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+			   			System.err.println("//////////////////////");
+		}
+
+		
+		Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
+		Pipe.publishWrites(target);
+				
+		//add dummy holders to keep ring in check
+		while ((readCount-=target.maxVarLen)>0) {
+			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
+			Pipe.addLongValue(cc.getId(), target);
+			Pipe.addLongValue(System.nanoTime(), target);
+			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
+			Pipe.addNullByteArray(target);
+			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
+			Pipe.publishWrites(target);
+		}
 	}
 
-
+	private void writeEncrypted(ClientConnection cc, Pipe<NetPayloadSchema> target, int readCount) {
+		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+		
+		int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+		Pipe.addLongValue(cc.getId(), target);
+		Pipe.addLongValue(System.nanoTime(), target);
+		
+		int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
+		//blob head position is moved forward
+		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
+			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
+		}
+		//record the new start and length to the slab for this blob
+		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
+		//////////////////////////////////////////////////////////
+		
+		Pipe.confirmLowLevelWrite(target, size);
+		Pipe.publishWrites(target);
+		
+		//add dummy holders to keep ring in check
+		while ((readCount-=target.maxVarLen)>0) {
+			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+			Pipe.addLongValue(cc.getId(), target);
+			Pipe.addLongValue(System.nanoTime(), target);
+			Pipe.addNullByteArray(target);
+			Pipe.confirmLowLevelWrite(target, size);
+			Pipe.publishWrites(target);
+		}
+	}
 
 	long lastTotalBytes = 0;
 
