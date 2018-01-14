@@ -147,7 +147,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	    		return;
 	    	} else {
 	        	if (se.getMessage().contains("already in use")) {
-	                logger.warn("{}",endPoint,se.getMessage());
+	                logger.warn("Already in use: {}",endPoint,se.getMessage());
 	                coordinator.shutdown();
 	                return;
 	            }
