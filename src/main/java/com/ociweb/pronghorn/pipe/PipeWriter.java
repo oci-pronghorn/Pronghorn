@@ -517,6 +517,7 @@ public class PipeWriter {
 	
 	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int maxLength, int loc) {
 		assert(maxLength>=0) : "bad length of "+maxLength;
+		assert(maxLength<=target.maxVarLen+1);
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
 		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target, maxLength);

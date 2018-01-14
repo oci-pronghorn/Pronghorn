@@ -1394,17 +1394,14 @@ public class Pipe<T extends MessageSchema<T>> {
     	return wrappedWritingBuffers(originalBlobPosition, output, output.maxVarLen);
     }
 
-	public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition,
-			Pipe<S> output, int maxLen) {
+	public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition,	Pipe<S> output,
+			int maxLen) {
+		
 		assert(maxLen>=0);
 		
 		int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
-    	
-		int endPos = writeToPos+Math.min(maxLen, output.maxVarLen);
-    	    	
-    	assert(verifyHasRoomForWrite(output.maxVarLen, output));
-    	    	
-    	
+		int endPos = writeToPos+maxLen;
+
     	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
 		aBuf.limit(aBuf.capacity());
 		aBuf.position(writeToPos);   
