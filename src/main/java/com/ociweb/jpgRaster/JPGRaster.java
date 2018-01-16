@@ -91,13 +91,11 @@ public class JPGRaster {
 		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		*/
 		
-		Pipe<YCbCrToRGBSchema> pipe1 = YCbCrToRGBSchema.instance.newPipe(3, 1000);
+		Pipe<YCbCrToRGBSchema> pipe1 = YCbCrToRGBSchema.instance.newPipe(1, 1000);
 		
 		new J2RStage(gm, pipe1);
 		
 		new BMPDumper(gm, pipe1);
-		
-		
 		
 	}
 	

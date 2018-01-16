@@ -12,6 +12,7 @@ import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.MainArgs;
@@ -40,9 +41,10 @@ public class J2RStage extends PronghornStage {
 		FROM = Pipe.from(output);
 		
 		MSG_HEADER = lookupTemplateLocator("HeaderMessage", FROM);
+		FIELD_FILENAME = lookupFieldLocator("filename", MSG_HEADER, FROM);
 		FIELD_HEIGHT = lookupFieldLocator("height", MSG_HEADER, FROM);
 		FIELD_WIDTH = lookupFieldLocator("width", MSG_HEADER, FROM);
-		FIELD_FILENAME = lookupFieldLocator("filename", MSG_HEADER, FROM);
+		
 		
 		MSG_PIXEL = lookupTemplateLocator("PixelMessage", FROM);
 		FIELD_RED = lookupFieldLocator("red", MSG_PIXEL, FROM);
@@ -56,7 +58,8 @@ public class J2RStage extends PronghornStage {
 		
 //		String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
 		String defaultFiles = "test_jpgs/car";
-		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", null, defaultFiles);
+		//String inputFilePaths = MainArgs.getOptArg("fileName", "-f", null, defaultFiles);
+		String inputFilePaths = defaultFiles;
 		String[] inputFiles = inputFilePaths.split(" ");
 
 		//GraphManager gm = new GraphManager();
@@ -84,12 +87,19 @@ public class J2RStage extends PronghornStage {
 						System.out.println("Performing Inverse DCT...");
 						InverseDCT.inverseDCT(mcus);
 						System.out.println("Performing YCbCr to RGB Conversion...");
-						byte[][] rgb = YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width, output,
-								FIELD_RED, FIELD_GREEN, FIELD_BLUE);
-						System.out.println("Writing BMP file...");
 						
-//						BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
-						System.out.println("Done.");
+						if(PipeWriter.tryWriteFragment(output, MSG_HEADER)){
+							PipeWriter.writeInt(output, FIELD_HEIGHT, header.height);
+							PipeWriter.writeInt(output, FIELD_WIDTH, header.width);
+							PipeWriter.writeASCII(output, FIELD_FILENAME, file);
+							
+							YCbCrToRGB.convertYCbCrToRGB(mcus, header.height, header.width, output,
+									MSG_PIXEL, FIELD_RED, FIELD_GREEN, FIELD_BLUE);
+							System.out.println("Writing BMP file...");
+							
+	//						BMPDumper.Dump(rgb, header.height, header.width, file + ".bmp");
+							System.out.println("Done.");
+						}
 					}
 				}
 			} catch (IOException e) {

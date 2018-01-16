@@ -33,7 +33,8 @@ public class BMPDumper extends PronghornStage {
 	int height;
 	Appendable filename;
 	
-	byte[][] pixels;
+	int[][] pixels;
+	
 	protected BMPDumper(GraphManager graphManager, Pipe<YCbCrToRGBSchema> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -52,7 +53,7 @@ public class BMPDumper extends PronghornStage {
 		
 	}
 
-	public static void Dump(byte[][] rgb, int height, int width, String filename) throws IOException {
+	public static void Dump(int[][] rgb, int height, int width, String filename) throws IOException {
 		int paddingSize = (4 - (width * 3) % 4) % 4;
 		int size = 14 + 12 + rgb.length * rgb[0].length + height * paddingSize;
 		
@@ -92,7 +93,8 @@ public class BMPDumper extends PronghornStage {
 		stream.writeByte((v & 0xFF00) >>  8);
 	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
+		
 		byte[][] rgb = new byte[8][8 * 3];
 		// red
 		rgb[0][0 * 3 + 0] = (byte)255;
@@ -135,7 +137,8 @@ public class BMPDumper extends PronghornStage {
 		} catch (IOException e) {
 			System.out.println("Error - Unknown error creating BMP file");
 		}
-	}
+		
+	}*/
 
 	@Override
 	public void run() {
@@ -151,11 +154,13 @@ public class BMPDumper extends PronghornStage {
 				width = PipeReader.readInt(input,  FIELD_WIDTH);
 				filename = PipeReader.readASCII(input,  FIELD_FILENAME, null);
 				
-				pixels = new byte[height][width * 3];
+				pixels = new int[height][width * 3];
+			} else if(msgIdx == -1) {
+				//die
 			} else {
-				byte red = PipeReader.readByte(input, FIELD_RED);
-				byte green = PipeReader.readByte(input,  FIELD_GREEN);
-				byte blue = PipeReader.readByte(input,  FIELD_BLUE);
+				int red = PipeReader.readInt(input, FIELD_RED);
+				int green = PipeReader.readInt(input,  FIELD_GREEN);
+				int blue = PipeReader.readInt(input,  FIELD_BLUE);
 				
 				pixels[count / width][(count % width) * 3] = red;
 				pixels[count / width][(count % width) * 3 + 1] = green;
@@ -165,11 +170,12 @@ public class BMPDumper extends PronghornStage {
 			}
 			
 			
-			if(count > (width * height)){
+			if(count >= (width * height)){
 				try {
 					Dump(pixels, height, width, filename.toString());
 				} catch (IOException e) {
 					e.printStackTrace();
+//					throw new RuntimeException;
 				}
 			}
 		}

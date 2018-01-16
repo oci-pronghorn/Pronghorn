@@ -27,7 +27,7 @@ public class YCbCrToRGB {
 	}
 	
 	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width, Pipe<YCbCrToRGBSchema> output,
-			int red, int green, int blue) {
+			int msgId, int red, int green, int blue) {
 		int mcuHeight = (height + 7) / 8;
 		int mcuWidth = (width + 7) / 8;
 		int unusedRows = (mcuHeight * 8) - height;
@@ -52,9 +52,11 @@ public class YCbCrToRGB {
 //						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
 //						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
 						
-						PipeWriter.writeByte(output, red, pixel[0]);
-						PipeWriter.writeByte(output, green, pixel[1]);
-						PipeWriter.writeByte(output, blue, pixel[2]);
+						if(PipeWriter.tryWriteFragment(output, msgId)) {
+							PipeWriter.writeInt(output, red, pixel[0]);
+							PipeWriter.writeInt(output, green, pixel[1]);
+							PipeWriter.writeInt(output, blue, pixel[2]);
+						}
 					}
 				}
 			}
