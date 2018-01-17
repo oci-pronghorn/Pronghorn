@@ -34,15 +34,14 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>PronghornPipes</artifactId>
-            <version>[0.0.15-SNAPSHOT,0.1.0)</version>
+            <version>0.0.15</version>
         </dependency> 
         
-             <dependency>
-            	<groupId>com.ociweb</groupId>
-            	<!--  artifactId>${tls.artifact}</artifactId -->
-            	<artifactId>Ph-TLS-pureJava</artifactId>
-            	<version>[0.0.6-SNAPSHOT,0.1.0)</version>
-       		 </dependency>
+        <dependency>
+         	<groupId>com.ociweb</groupId>
+         	<artifactId>Ph-TLS-pureJava</artifactId>
+         	<version>0.0.6</version>
+    	</dependency>
         
       	<dependency>
 			<groupId>junit</groupId>
@@ -71,7 +70,6 @@
     <connection>scm:git:git://github.com/oci-pronghorn/Pronghorn.git</connection>
     <url>https://github.com/oci-pronghorn/Pronghorn</url>
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Pronghorn.git</developerConnection>
-    <tag>Pronghorn-0.0.10</tag>
   </scm>
     
   <distributionManagement>
