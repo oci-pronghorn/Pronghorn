@@ -97,7 +97,7 @@ public class JPGScanner {
 					return header;
 				}
 				else if (current == JPGConstants.EOI) {
-					System.err.println("Error = EOI detected before SOS");
+					System.err.println("Error - EOI detected before SOS");
 					header.valid = false;
 					f.close();
 					return header;
@@ -247,7 +247,7 @@ public class JPGScanner {
 	
 	private static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
 		if (header.colorComponents.size() != 0) {
-			System.err.println("Error = Multiple SOFs detected");
+			System.err.println("Error - Multiple SOFs detected");
 			header.valid = false;
 			return;
 		}
@@ -339,7 +339,7 @@ public class JPGScanner {
 	
 	private static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
 		if (header.colorComponents.size() == 0) {
-			System.err.println("Error = SOS detected before SOF");
+			System.err.println("Error - SOS detected before SOF");
 			header.valid = false;
 			return;
 		}

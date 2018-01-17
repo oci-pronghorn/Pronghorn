@@ -4,10 +4,6 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupFieldLocator;
-import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupTemplateLocator;
-
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -16,18 +12,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class BMPDumper extends PronghornStage {
 
 	private final Pipe<YCbCrToRGBSchema> input;
-
-	private final FieldReferenceOffsetManager FROM;
-	
-	private final int MSG_HEADER;
-	private final int FIELD_HEIGHT;
-	private final int FIELD_WIDTH;
-	private final int FIELD_FILENAME;
-	
-	private final int MSG_PIXEL;
-	private final int FIELD_RED;
-	private final int FIELD_GREEN;
-	private final int FIELD_BLUE;
 	
 	int width;
 	int height;
@@ -37,20 +21,7 @@ public class BMPDumper extends PronghornStage {
 	
 	protected BMPDumper(GraphManager graphManager, Pipe<YCbCrToRGBSchema> input) {
 		super(graphManager, input, NONE);
-		this.input = input;
-		
-		FROM = Pipe.from(input);
-		
-		MSG_HEADER = lookupTemplateLocator("HeaderMessage", FROM);
-		FIELD_HEIGHT = lookupFieldLocator("height", MSG_HEADER, FROM);
-		FIELD_WIDTH = lookupFieldLocator("width", MSG_HEADER, FROM);
-		FIELD_FILENAME = lookupFieldLocator("filename", MSG_HEADER, FROM);
-		
-		MSG_PIXEL = lookupTemplateLocator("PixelMessage", FROM);
-		FIELD_RED = lookupFieldLocator("red", MSG_PIXEL, FROM);
-		FIELD_GREEN = lookupFieldLocator("green", MSG_PIXEL, FROM);
-		FIELD_BLUE = lookupFieldLocator("blue", MSG_PIXEL, FROM);
-		
+		this.input = input;	
 	}
 
 	public static void Dump(int[][] rgb, int height, int width, String filename) throws IOException {
@@ -145,22 +116,20 @@ public class BMPDumper extends PronghornStage {
 		
 		int count = 0;
 		
-		while(PipeReader.tryReadFragment(input)) {
+		while (PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			
-			if(msgIdx == MSG_HEADER){
-				height = PipeReader.readInt(input, FIELD_HEIGHT);
-				width = PipeReader.readInt(input,  FIELD_WIDTH);
-				filename = PipeReader.readASCII(input,  FIELD_FILENAME, null);
+			if (msgIdx == YCbCrToRGBSchema.MSG_HEADER) {
+				height = PipeReader.readInt(input, YCbCrToRGBSchema.FIELD_HEIGHT);
+				width = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_WIDTH);
+				filename = PipeReader.readASCII(input,  YCbCrToRGBSchema.FIELD_FILENAME, null);
 				
 				pixels = new int[height][width * 3];
-			} else if(msgIdx == -1) {
-				//die
-			} else {
-				int red = PipeReader.readInt(input, FIELD_RED);
-				int green = PipeReader.readInt(input,  FIELD_GREEN);
-				int blue = PipeReader.readInt(input,  FIELD_BLUE);
+			} else if (msgIdx == YCbCrToRGBSchema.MSG_PIXEL) {
+				int red = PipeReader.readInt(input, YCbCrToRGBSchema.FIELD_RED);
+				int green = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_GREEN);
+				int blue = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_BLUE);
 				
 				pixels[count / width][(count % width) * 3] = red;
 				pixels[count / width][(count % width) * 3 + 1] = green;
@@ -168,14 +137,17 @@ public class BMPDumper extends PronghornStage {
 				
 				count += 1;
 			}
+			else {
+				requestShutdown();
+			}
 			
 			
-			if(count >= (width * height)){
+			if (count >= (width * height)) {
 				try {
 					Dump(pixels, height, width, filename.toString());
-				} catch (IOException e) {
-					e.printStackTrace();
-//					throw new RuntimeException;
+				}
+				catch (IOException e) {
+					throw new RuntimeException(e);
 				}
 			}
 		}
