@@ -11,7 +11,7 @@ public class PackedBits {
 	private byte[] bitsData;
 	
 	public PackedBits() {
-		bitsData = new byte[0];
+		bitsData = new byte[1];
 	}
 	
 	public void clear() {
@@ -40,7 +40,7 @@ public class PackedBits {
 		boolean scanning = true;
 		while (--i >= 0) {			
 			int b = (int)bitsData[i];
-			if ((!scanning) || 0!=b) {
+			if ((!scanning) || 0!=b || i==0) {
 				if (scanning) {
 					//stop skipping since we found a non zero
 					scanning = false;
