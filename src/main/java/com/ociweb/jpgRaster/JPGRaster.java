@@ -92,17 +92,17 @@ public class JPGRaster {
 		*/
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(1, 1000);
-		//Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 10_000);
 		
 		new JPGScanner(gm, pipe1);
-		//new HuffmanDecoder(gm, pipe1, pipe2);
-		//new InverseQuantizer(gm, pipe2, pipe3);
-		//new InverseDCT(gm, pipe3, pipe4);
-		//new YCbCrToRGB(gm, pipe4, pipe5);
-		//new BMPDumper(gm, pipe5);
+		new HuffmanDecoder(gm, pipe1, pipe2);
+		new InverseQuantizer(gm, pipe2, pipe3);
+		new InverseDCT(gm, pipe3, pipe4);
+		new YCbCrToRGB(gm, pipe4, pipe5);
+		new BMPDumper(gm, pipe5);
 		
 	}
 	

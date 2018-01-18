@@ -12,12 +12,6 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	    super(from);
 	}
 
-	protected JPGSchema() { 
-	    super(FROM);
-	}
-
-	public static final JPGSchema instance = new JPGSchema();
-
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
 	    new int[]{0xc0400004,0x88000000,0x88000001,0xa0000000,0xc0200004,0xc0400003,0x88000002,0xb8000001,0xc0200003,0xc0400004,0x88000003,0x88000004,0xb8000002,0xc0200004,0xc0400003,0x88000005,0xb8000003,0xc0200003,0xc0400004,0xb8000004,0xb8000005,0xb8000006,0xc0200004,0xc0400002,0xb8000007,0xc0200002},
 	    (short)0,
@@ -31,6 +25,12 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	    "JPGSchema.xml",
 	    new long[]{2, 2, 0},
 	    new int[]{2, 2, 0});
+
+	protected JPGSchema() { 
+	    super(FROM);
+	}
+
+	public static final JPGSchema instance = new JPGSchema();
 
 	public static final int MSG_HEADERMESSAGE_1 = 0x00000000; //Group/OpenTempl/4
 	public static final int MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101 = 0x00400001; //IntegerSigned/None/0
