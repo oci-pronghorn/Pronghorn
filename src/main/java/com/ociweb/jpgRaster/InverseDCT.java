@@ -3,8 +3,22 @@ package com.ociweb.jpgRaster;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class InverseDCT {
+public class InverseDCT extends PronghornStage {
+
+	private final Pipe<JPGSchema> input;
+	private final Pipe<JPGSchema> output;
+	
+	
+	protected InverseDCT(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+		super(graphManager, input, output);
+		this.input = input;
+		this.output = output;
+	}
+	
 	private static double[] idctMap = new double[64];
 	
 	// prepare idctMap
@@ -71,8 +85,13 @@ public class InverseDCT {
 		}
 		return;
 	}
+
+	@Override
+	public void run() {
+		
+	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		short[] mcu = new short[] {
 				-252, -36,  -5, -6, 15, -4, 6, 0,
 				  55,  84, -14,  7,  0,  0, 0, 0,
@@ -90,5 +109,5 @@ public class InverseDCT {
 			}
 			System.out.println();
 		}
-	}
+	}*/
 }

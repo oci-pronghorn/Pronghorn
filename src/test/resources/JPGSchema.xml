@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+	<!-- <template name="RawMessage" id="1">
+		<byteVector name="RawData" id="101"/>
+	</template> -->
+
+	<template name="HeaderMessage" id="1">
+		<int32 name="height" id="101"/>
+		<int32 name="width" id="201"/>
+		<string name="filename" id="301"/>
+	</template>
+
+	<template name="CompressedMessageData" id="2">
+		<int32 name="length" id="102"/>
+		<byteVector name="data" id="202"/>
+	</template>
+
+	<template name="HuffmanTableMessage" id="3">
+		<int32 name="tableId" id="103"/>
+		<int32 name="length" id="203"/>
+		<byteVector name="table" id="303"/>
+	</template>
+
+	<template name="QuantizationTableMessage" id="4">
+		<int32 name="tableId" id="104"/>
+		<byteVector name="table" id="204"/>
+	</template>
+
+	<template name="MCUMessage" id="5">
+		<byteVector name="y" id="105"/>
+		<byteVector name="cb" id="205"/>
+		<byteVector name="cr" id="305"/>
+	</template>
+
+	<template name="PixelRowMessage" id="6">
+		<byteVector name="pixels" id="106"/>
+	</template>
+
+</templates>

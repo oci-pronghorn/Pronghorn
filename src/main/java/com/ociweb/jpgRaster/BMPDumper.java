@@ -11,24 +11,25 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class BMPDumper extends PronghornStage {
 
-	private final Pipe<YCbCrToRGBSchema> input;
+	private final Pipe<JPGSchema> input;
 	
-	int width;
-	int height;
-	Appendable filename;
+	static int width;
+	static int height;
+	static Appendable filename;
 	
-	int[][] pixels;
+	static int[][] pixels;
+	static int count;
 	
-	protected BMPDumper(GraphManager graphManager, Pipe<YCbCrToRGBSchema> input) {
+	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
 		super(graphManager, input, NONE);
-		this.input = input;	
+		this.input = input;
 	}
 
-	public static void Dump(int[][] rgb, int height, int width, String filename) throws IOException {
+	public static void Dump() throws IOException {
 		int paddingSize = (4 - (width * 3) % 4) % 4;
-		int size = 14 + 12 + rgb.length * rgb[0].length + height * paddingSize;
+		int size = 14 + 12 + pixels.length * pixels[0].length + height * paddingSize;
 		
-		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename));
+		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename.toString()));
 		file.writeByte('B');
 		file.writeByte('M');
 		writeInt(file, size);
@@ -41,9 +42,9 @@ public class BMPDumper extends PronghornStage {
 		writeShort(file, 24);
 		for (int i = height - 1; i >= 0; --i) {
 			for (int j = 0; j < width * 3 - 2; j += 3) {
-				file.writeByte(rgb[i][j + 2]);
-				file.writeByte(rgb[i][j + 1]);
-				file.writeByte(rgb[i][j + 0]);
+				file.writeByte(pixels[i][j + 2]);
+				file.writeByte(pixels[i][j + 1]);
+				file.writeByte(pixels[i][j + 0]);
 			}
 			for (int j = 0; j < paddingSize; j++) {
 				file.writeByte(0);
@@ -62,6 +63,48 @@ public class BMPDumper extends PronghornStage {
 	private static void writeShort(DataOutputStream stream, int v) throws IOException {
 		stream.writeByte((v & 0x00FF));
 		stream.writeByte((v & 0xFF00) >>  8);
+	}
+
+	@Override
+	public void run() {
+		
+		/*while (PipeReader.tryReadFragment(input)) {
+			
+			int msgIdx = PipeReader.getMsgIdx(input);
+			
+			if (msgIdx == JPGSchema.MSG_HEADER) {
+				height = PipeReader.readInt(input, JPGSchema.FIELD_HEIGHT);
+				width = PipeReader.readInt(input, JPGSchema.FIELD_WIDTH);
+				filename = PipeReader.readASCII(input, JPGSchema.FIELD_FILENAME, null);
+				
+				pixels = new int[height][width * 3];
+				count = 0;
+			} else if (msgIdx == JPGSchema.MSG_PIXEL) {
+				int red = PipeReader.readInt(input, JPGSchema.FIELD_RED);
+				int green = PipeReader.readInt(input, JPGSchema.FIELD_GREEN);
+				int blue = PipeReader.readInt(input, JPGSchema.FIELD_BLUE);
+				
+				pixels[count / width][(count % width) * 3 + 0] = red;
+				pixels[count / width][(count % width) * 3 + 1] = green;
+				pixels[count / width][(count % width) * 3 + 2] = blue;
+				
+				count += 1;
+			}
+			else {
+				requestShutdown();
+			}
+			
+			
+			if (count >= (width * height)) {
+				try {
+					Dump();
+				}
+				catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}*/
+	
 	}
 	
 	/*public static void main(String[] args) {
@@ -110,47 +153,4 @@ public class BMPDumper extends PronghornStage {
 		}
 		
 	}*/
-
-	@Override
-	public void run() {
-		
-		int count = 0;
-		
-		while (PipeReader.tryReadFragment(input)) {
-			
-			int msgIdx = PipeReader.getMsgIdx(input);
-			
-			if (msgIdx == YCbCrToRGBSchema.MSG_HEADER) {
-				height = PipeReader.readInt(input, YCbCrToRGBSchema.FIELD_HEIGHT);
-				width = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_WIDTH);
-				filename = PipeReader.readASCII(input,  YCbCrToRGBSchema.FIELD_FILENAME, null);
-				
-				pixels = new int[height][width * 3];
-			} else if (msgIdx == YCbCrToRGBSchema.MSG_PIXEL) {
-				int red = PipeReader.readInt(input, YCbCrToRGBSchema.FIELD_RED);
-				int green = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_GREEN);
-				int blue = PipeReader.readInt(input,  YCbCrToRGBSchema.FIELD_BLUE);
-				
-				pixels[count / width][(count % width) * 3] = red;
-				pixels[count / width][(count % width) * 3 + 1] = green;
-				pixels[count / width][(count % width) * 3 + 2] = blue;
-				
-				count += 1;
-			}
-			else {
-				requestShutdown();
-			}
-			
-			
-			if (count >= (width * height)) {
-				try {
-					Dump(pixels, height, width, filename.toString());
-				}
-				catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			}
-		}
-	
-	}
 }

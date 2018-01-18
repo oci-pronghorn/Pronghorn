@@ -56,6 +56,12 @@ public class JPG {
 		short[] cr = new short[64];
 	}
 	
+	public static class byteMCU {
+		byte[] y = new byte[64];
+		byte[] cb = new byte[64];
+		byte[] cr = new byte[64];
+	}
+	
 	public static int[] zigZagMap = new int[]  {
 			0,   1,  8, 16,  9,  2,  3, 10,
 			17, 24, 32, 25, 18, 11,  4,  5,

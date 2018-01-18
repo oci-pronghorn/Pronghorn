@@ -5,8 +5,22 @@ import java.util.ArrayList;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class InverseQuantizer {
+public class InverseQuantizer extends PronghornStage {
+
+	private final Pipe<JPGSchema> input;
+	private final Pipe<JPGSchema> output;
+	
+	
+	protected InverseQuantizer(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+		super(graphManager, input, output);
+		this.input = input;
+		this.output = output;
+	}
+	
 	private static void dequantizeMCU(short[] MCU, QuantizationTable table) {
 		/*System.out.print("Before Inverse Quantization:");
 		for (int i = 0; i < 8; ++i) {
@@ -43,5 +57,10 @@ public class InverseQuantizer {
 			dequantizeMCU(mcus.get(i).cr, header.quantizationTables.get(header.colorComponents.get(2).quantizationTableID));
 		}
 		return;
+	}
+
+	@Override
+	public void run() {
+		
 	}
 }

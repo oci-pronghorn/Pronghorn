@@ -2,6 +2,9 @@ package com.ociweb.jpgRaster;
 
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 
@@ -12,7 +15,16 @@ import java.io.FileNotFoundException;
 import java.io.EOFException;
 import java.util.ArrayList;
 
-public class JPGScanner {
+public class JPGScanner extends PronghornStage {
+
+	private final Pipe<JPGSchema> output;
+	
+	
+	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
+		super(graphManager, NONE, output);
+		this.output = output;
+	}
+	
 	public static Header ReadJPG(String filename) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
@@ -434,8 +446,13 @@ public class JPGScanner {
 			f.readUnsignedByte();
 		}
 	}
+
+	@Override
+	public void run() {
+		
+	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		Header header = null;
 		try {
 			header = ReadJPG("test_jpgs/huff_simple0.jpg");
@@ -514,5 +531,5 @@ public class JPGScanner {
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
-	}
+	}*/
 }

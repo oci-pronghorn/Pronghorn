@@ -3,10 +3,25 @@ package com.ociweb.jpgRaster;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.byteMCU;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class YCbCrToRGB {	
+public class YCbCrToRGB extends PronghornStage {
+
+	private final Pipe<JPGSchema> input;
+	private final Pipe<JPGSchema> output;
+	
+	
+	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+		super(graphManager, input, output);
+		this.input = input;
+		this.output = output;
+	}
+
 	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
 		byte[] rgb = new byte[3];
 		short r, g, b;
@@ -26,8 +41,7 @@ public class YCbCrToRGB {
 		return rgb;
 	}
 	
-	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width, Pipe<YCbCrToRGBSchema> output,
-			int msgId, int red, int green, int blue) {
+	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
 		int mcuHeight = (height + 7) / 8;
 		int mcuWidth = (width + 7) / 8;
 		int unusedRows = (mcuHeight * 8) - height;
@@ -48,20 +62,56 @@ public class YCbCrToRGB {
 						pixel = convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
 											 mcus.get(i * mcuWidth + j).cb[y * 8 + x],
 											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]);
-//						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
-//						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
-//						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
-						
-						if(PipeWriter.tryWriteFragment(output, msgId)) {
-							PipeWriter.writeInt(output, red, pixel[0]);
-							PipeWriter.writeInt(output, green, pixel[1]);
-							PipeWriter.writeInt(output, blue, pixel[2]);
-						}
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
+						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
 					}
 				}
 			}
 		}
 		return pixels;
+	}
+
+	@Override
+	public void run() {
+		/*while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+			
+			int msgIdx = PipeReader.getMsgIdx(input);
+			
+			if (msgIdx == InverseDCTSchema.MSG_HEADER) {
+				int height = PipeReader.readInt(input, InverseDCTSchema.FIELD_HEIGHT);
+				int width = PipeReader.readInt(input, InverseDCTSchema.FIELD_WIDTH);
+				Appendable filename = PipeReader.readASCII(input, InverseDCTSchema.FIELD_FILENAME, null);
+				
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADER)) {
+					PipeWriter.writeInt(output, JPGSchema.FIELD_HEIGHT, height);
+					PipeWriter.writeInt(output, JPGSchema.FIELD_WIDTH, width);
+					PipeWriter.writeASCII(output, JPGSchema.FIELD_FILENAME, filename.toString());
+				}
+			}
+			else if (msgIdx == InverseDCTSchema.MSG_MCU) {
+				byteMCU bmcu = new byteMCU();
+				PipeReader.readBytes(input, InverseDCTSchema.FIELD_Y, bmcu.y, 0);
+				PipeReader.readBytes(input, InverseDCTSchema.FIELD_CB, bmcu.cb, 0);
+				PipeReader.readBytes(input, InverseDCTSchema.FIELD_CR, bmcu.cr, 0);
+				
+				MCU mcu = new MCU();
+				for (int i = 0; i < 64; ++i) {
+					mcu.y[i] = bmcu.y[i];
+					mcu.cb[i] = bmcu.cb[i];
+					mcu.cr[i] = bmcu.cr[i];
+				}
+				convertYCbCrToRGB(mcu);
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCU)) {
+					PipeWriter.writeInt(output, JPGSchema.FIELD_HEIGHT, height);
+					PipeWriter.writeInt(output, JPGSchema.FIELD_WIDTH, width);
+					PipeWriter.writeASCII(output, JPGSchema.FIELD_FILENAME, filename.toString());
+				}
+			}
+			else {
+				requestShutdown();
+			}
+		}*/
 	}
 	
 	/*public static void main(String[] args) {

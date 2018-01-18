@@ -4,11 +4,25 @@ package com.ociweb.jpgRaster;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class HuffmanDecoder {
+public class HuffmanDecoder extends PronghornStage {
+
+	private final Pipe<JPGSchema> input;
+	private final Pipe<JPGSchema> output;
+	
+	
+	protected HuffmanDecoder(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+		super(graphManager, input, output);
+		this.input = input;
+		this.output = output;
+	}
+	
 	private static class BitReader {
 		private int nextByte = 0;
 		private int nextBit = 0;
@@ -247,10 +261,15 @@ public class HuffmanDecoder {
 		
 		return out;
 	}
+
+	@Override
+	public void run() {
+		
+	}
 	
-	public static void main(String[] args) throws Exception {
+	/*public static void main(String[] args) throws Exception {
 		// test BitReader
-		/*ArrayList<Short> data = new ArrayList<Short>();
+		ArrayList<Short> data = new ArrayList<Short>();
 		data.add((short)5);
 		data.add((short)10);
 		data.add((short)15);
@@ -260,10 +279,10 @@ public class HuffmanDecoder {
 			System.out.println(b.nextBit());
 		}
 		
-		System.out.println();*/
+		System.out.println();
 		
 		// test generateCodes
-		/*HuffmanTable table = new HuffmanTable();
+		HuffmanTable table = new HuffmanTable();
 		table.tableID = 0;
 		for (int i = 0; i < 16; ++i) {
 			table.symbols.add(new ArrayList<Short>());
@@ -295,7 +314,7 @@ public class HuffmanDecoder {
 				System.out.print(codes.get(i).get(j) + " ");
 			}
 			System.out.println();
-		}*/
+		}
 		
 		// test decodeHuffmanData
 		Header header = JPGScanner.ReadJPG("test_jpgs/huff_simple0.jpg");
@@ -327,5 +346,5 @@ public class HuffmanDecoder {
 			}
 			System.out.println();
 		}
-	}
+	}*/
 }
