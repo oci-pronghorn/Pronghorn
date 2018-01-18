@@ -11,7 +11,7 @@
 		<string name="filename" id="301"/>
 	</template>
 
-	<template name="CompressedMessageData" id="2">
+	<template name="CompressedDataMessage" id="2">
 		<int32 name="length" id="102"/>
 		<byteVector name="data" id="202"/>
 	</template>

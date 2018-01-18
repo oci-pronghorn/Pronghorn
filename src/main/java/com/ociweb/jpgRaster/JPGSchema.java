@@ -15,7 +15,7 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
 	    new int[]{0xc0400004,0x88000000,0x88000001,0xa0000000,0xc0200004,0xc0400003,0x88000002,0xb8000001,0xc0200003,0xc0400004,0x88000003,0x88000004,0xb8000002,0xc0200004,0xc0400003,0x88000005,0xb8000003,0xc0200003,0xc0400004,0xb8000004,0xb8000005,0xb8000006,0xc0200004,0xc0400002,0xb8000007,0xc0200002},
 	    (short)0,
-	    new String[]{"HeaderMessage","height","width","filename",null,"CompressedMessageData","length",
+	    new String[]{"HeaderMessage","height","width","filename",null,"CompressedDataMessage","length",
 	    "data",null,"HuffmanTableMessage","tableId","length","table",null,"QuantizationTableMessage",
 	    "tableId","table",null,"MCUMessage","y","cb","cr",null,"PixelRowMessage","pixels",
 	    null},
@@ -36,9 +36,9 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	public static final int MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101 = 0x00400001; //IntegerSigned/None/0
 	public static final int MSG_HEADERMESSAGE_1_FIELD_WIDTH_201 = 0x00400002; //IntegerSigned/None/1
 	public static final int MSG_HEADERMESSAGE_1_FIELD_FILENAME_301 = 0x01000003; //ASCII/None/0
-	public static final int MSG_COMPRESSEDMESSAGEDATA_2 = 0x00000005; //Group/OpenTempl/3
-	public static final int MSG_COMPRESSEDMESSAGEDATA_2_FIELD_LENGTH_102 = 0x00400001; //IntegerSigned/None/2
-	public static final int MSG_COMPRESSEDMESSAGEDATA_2_FIELD_DATA_202 = 0x01c00002; //ByteVector/None/1
+	public static final int MSG_COMPRESSEDDATAMESSAGE_2 = 0x00000005; //Group/OpenTempl/3
+	public static final int MSG_COMPRESSEDDATAMESSAGE_2_FIELD_LENGTH_102 = 0x00400001; //IntegerSigned/None/2
+	public static final int MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202 = 0x01c00002; //ByteVector/None/1
 	public static final int MSG_HUFFMANTABLEMESSAGE_3 = 0x00000009; //Group/OpenTempl/4
 	public static final int MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103 = 0x00400001; //IntegerSigned/None/3
 	public static final int MSG_HUFFMANTABLEMESSAGE_3_FIELD_LENGTH_203 = 0x00400002; //IntegerSigned/None/4
@@ -60,8 +60,8 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	            case MSG_HEADERMESSAGE_1:
 	                consumeHeaderMessage(input);
 	            break;
-	            case MSG_COMPRESSEDMESSAGEDATA_2:
-	                consumeCompressedMessageData(input);
+	            case MSG_COMPRESSEDDATAMESSAGE_2:
+	                consumeCompressedDataMessage(input);
 	            break;
 	            case MSG_HUFFMANTABLEMESSAGE_3:
 	                consumeHuffmanTableMessage(input);
@@ -88,9 +88,9 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	    int fieldwidth = PipeReader.readInt(input,MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 	    StringBuilder fieldfilename = PipeReader.readUTF8(input,MSG_HEADERMESSAGE_1_FIELD_FILENAME_301,new StringBuilder(PipeReader.readBytesLength(input,MSG_HEADERMESSAGE_1_FIELD_FILENAME_301)));
 	}
-	public static void consumeCompressedMessageData(Pipe<JPGSchema> input) {
-	    int fieldlength = PipeReader.readInt(input,MSG_COMPRESSEDMESSAGEDATA_2_FIELD_LENGTH_102);
-	    DataInputBlobReader<JPGSchema> fielddata = PipeReader.inputStream(input, MSG_COMPRESSEDMESSAGEDATA_2_FIELD_DATA_202);
+	public static void consumeCompressedDataMessage(Pipe<JPGSchema> input) {
+	    int fieldlength = PipeReader.readInt(input,MSG_COMPRESSEDDATAMESSAGE_2_FIELD_LENGTH_102);
+	    DataInputBlobReader<JPGSchema> fielddata = PipeReader.inputStream(input, MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202);
 	}
 	public static void consumeHuffmanTableMessage(Pipe<JPGSchema> input) {
 	    int fieldtableId = PipeReader.readInt(input,MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103);
@@ -117,10 +117,10 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	        PipeWriter.writeUTF8(output,MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, fieldfilename);
 	        PipeWriter.publishWrites(output);
 	}
-	public static void publishCompressedMessageData(Pipe<JPGSchema> output, int fieldlength, byte[] fielddataBacking, int fielddataPosition, int fielddataLength) {
-	        PipeWriter.presumeWriteFragment(output, MSG_COMPRESSEDMESSAGEDATA_2);
-	        PipeWriter.writeInt(output,MSG_COMPRESSEDMESSAGEDATA_2_FIELD_LENGTH_102, fieldlength);
-	        PipeWriter.writeBytes(output,MSG_COMPRESSEDMESSAGEDATA_2_FIELD_DATA_202, fielddataBacking, fielddataPosition, fielddataLength);
+	public static void publishCompressedDataMessage(Pipe<JPGSchema> output, int fieldlength, byte[] fielddataBacking, int fielddataPosition, int fielddataLength) {
+	        PipeWriter.presumeWriteFragment(output, MSG_COMPRESSEDDATAMESSAGE_2);
+	        PipeWriter.writeInt(output,MSG_COMPRESSEDDATAMESSAGE_2_FIELD_LENGTH_102, fieldlength);
+	        PipeWriter.writeBytes(output,MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202, fielddataBacking, fielddataPosition, fielddataLength);
 	        PipeWriter.publishWrites(output);
 	}
 	public static void publishHuffmanTableMessage(Pipe<JPGSchema> output, int fieldtableId, int fieldlength, byte[] fieldtableBacking, int fieldtablePosition, int fieldtableLength) {

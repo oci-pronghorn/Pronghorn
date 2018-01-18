@@ -20,19 +20,12 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-		/*String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
+		//String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
+		String defaultFiles = "test_jpgs/car";
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
 		String[] inputFiles = inputFilePaths.split(" ");
-
-		//GraphManager gm = new GraphManager();
 		
-		//populateGraph(gm, inputFilePath);
-		
-		//gm.enableTelemetry(8089);
-		
-		//StageScheduler.defaultScheduler(gm).startup();
-		
-		for (int i = 0; i < inputFiles.length; ++i) {
+		/*for (int i = 0; i < inputFiles.length; ++i) {
 			String file = inputFiles[i];
 			if (file.length() > 4 && file.substring(file.length() - 4).equals(".jpg")) {
 				file = file.substring(0, file.length() - 4);
@@ -62,7 +55,7 @@ public class JPGRaster {
 		
 		GraphManager gm = new GraphManager();
 		
-		populateGraph(gm);
+		populateGraph(gm, inputFiles);
 				
 		gm.enableTelemetry(8089);
 				
@@ -70,7 +63,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateGraph(GraphManager gm) {
+	private static void populateGraph(GraphManager gm, String[] inputFiles) {
 				
 		/*Pipe<RawDataSchema> pipe1  = RawDataSchema.instance.newPipe(10, 10_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1A = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
@@ -91,19 +84,28 @@ public class JPGRaster {
 		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		*/
 		
-		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(1, 1000);
-		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 10_000);
-		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 10_000);
-		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 10_000);
-		Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(10, 1000);
+		//Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 10_000);
+		//Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 10_000);
+		//Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 10_000);
+		//Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 10_000);
 		
-		new JPGScanner(gm, pipe1);
-		new HuffmanDecoder(gm, pipe1, pipe2);
-		new InverseQuantizer(gm, pipe2, pipe3);
-		new InverseDCT(gm, pipe3, pipe4);
-		new YCbCrToRGB(gm, pipe4, pipe5);
-		new BMPDumper(gm, pipe5);
+		JPGScanner scanner = new JPGScanner(gm, pipe1);
+		//new HuffmanDecoder(gm, pipe1, pipe2);
+		//new InverseQuantizer(gm, pipe2, pipe3);
+		//new InverseDCT(gm, pipe3, pipe4);
+		//new YCbCrToRGB(gm, pipe4, pipe5);
+		//new BMPDumper(gm, pipe5);
 		
+		new ConsoleJSONDumpStage<JPGSchema>(gm, pipe1);
+		
+		for (int i = 0; i < inputFiles.length; ++i) {
+			String file = inputFiles[i];
+			if (file.length() > 4 && file.substring(file.length() - 4).equals(".jpg")) {
+				file = file.substring(0, file.length() - 4);
+			}
+			scanner.queueFile(file);
+		}
 	}
 	
 

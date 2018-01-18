@@ -3,6 +3,7 @@ package com.ociweb.jpgRaster;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
@@ -11,12 +12,14 @@ import com.ociweb.jpgRaster.JPG.ColorComponent;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.io.FileNotFoundException;
 import java.io.EOFException;
 import java.util.ArrayList;
 
 public class JPGScanner extends PronghornStage {
 
+	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	
 	
@@ -446,10 +449,117 @@ public class JPGScanner extends PronghornStage {
 			f.readUnsignedByte();
 		}
 	}
+	
+	public void queueFile(String inFile) {
+		inputFiles.add(inFile);
+	}
 
 	@Override
 	public void run() {
-		
+		while (!inputFiles.isEmpty() && PipeWriter.hasRoomForWrite(output)) {
+			String file = inputFiles.get(0);
+			inputFiles.remove(0);
+			try {
+				Header header = ReadJPG(file + ".jpg");
+				if (header == null || !header.valid) {
+					System.err.println("Error - JPG file " + file + " invalid");
+					continue;
+				}
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
+					// write header to pipe
+					System.out.println("Writing header to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
+				}
+				else {
+					requestShutdown();
+				}
+				// write huffman tables to pipe
+				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
+					System.out.println("Attempting to write huffman table to pipe...");
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3)) {
+						System.out.println("Writing huffman table to pipe...");
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103, header.huffmanACTables.get(i).tableID);
+						int tableSize = 0;
+						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+							tableSize += header.huffmanACTables.get(i).symbols.get(j).size();
+						}
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_LENGTH_203, tableSize * 2);
+						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
+						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+							for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
+								buffer.putShort(header.huffmanACTables.get(i).symbols.get(j).get(k));
+							}
+						}
+						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+							PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
+						}
+					}
+					else {
+						requestShutdown();
+					}
+				}
+				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
+					System.out.println("Attempting to write huffman table to pipe...");
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3)) {
+						System.out.println("Writing huffman table to pipe...");
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103, header.huffmanDCTables.get(i).tableID);
+						int tableSize = 0;
+						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
+							tableSize += header.huffmanDCTables.get(i).symbols.get(j).size();
+						}
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_LENGTH_203, tableSize * 2);
+						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
+						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
+							for (int k = 0; k < header.huffmanDCTables.get(i).symbols.get(j).size(); ++k) {
+								buffer.putShort(header.huffmanDCTables.get(i).symbols.get(j).get(k));
+							}
+						}
+						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
+							PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
+						}
+					}
+					else {
+						requestShutdown();
+					}
+				}
+				// write quantization tables to pipe
+				for (int i = 0; i < header.quantizationTables.size(); ++i) {
+					System.out.println("Attempting to write quantization table to pipe...");
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4)) {
+						System.out.println("Writing quantization table to pipe...");
+						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4_FIELD_TABLEID_104, header.quantizationTables.get(i).tableID);
+						ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
+						for (int j = 0; j < 64; ++j) {
+							buffer.putInt(header.quantizationTables.get(i).table[j]);
+						}
+						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4_FIELD_TABLE_204, buffer);
+					}
+					else {
+						requestShutdown();
+					}
+				}
+				System.out.println("Attempting to write compressed data to pipe...");
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2)) {
+					System.out.println("Writing compressed data to pipe...");
+					// write compressed image data tables to pipe
+					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2_FIELD_LENGTH_102, header.imageData.size() * 2);
+					ByteBuffer buffer = ByteBuffer.allocate(header.imageData.size() * 2);
+					for (int i = 0; i < header.imageData.size(); ++i) {
+						buffer.putShort(header.imageData.get(i));
+					}
+					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202, buffer);
+				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
+			}
+			catch (IOException e) {
+				System.err.println("Error - Unknown error reading " + file);
+			}
+		}
 	}
 	
 	/*public static void main(String[] args) {
