@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
-<head>
+
+  <head>
     <title>Telemetry - Pronghorn</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
@@ -12,346 +13,364 @@
     <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="css/chartist.min.css">
     <link rel="stylesheet" type="text/css" href="css/style.css">
-</head>
-<body>
+  </head>
+
+  <body>
     <nav class="navbar navbar-expand-md navbar-dark bg-oci fixed-top">
-        <div class="collapse navbar-collapse" id="navbarOCIDefault">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="refresh-rate-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      <div class="collapse navbar-collapse" id="navbarOCIDefault">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="refresh-rate-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <img src="img/speed.png" alt="Change Interval" />
                         <span class="refresh-label">1 sec</span>
                     </a>
-                    <div id="refresh-rate-dropdown" class="dropdown-menu dropdown-right" aria-labelledby="refreshRateDropdown">
-                        <a class="dropdown-item" href="#" data-interval="0">No refresh</a>
-                        <a class="dropdown-item" href="#" data-interval="160">160 ms</a>
-                        <a class="dropdown-item active" href="#" data-interval="1000">1 sec</a>
-                        <a class="dropdown-item" href="#" data-interval="20000">20 sec</a>
-                        <a class="dropdown-item" href="#" data-interval="60000">1 min</a>
-                        <a class="dropdown-item" href="#" data-interval="1200000">20 min</a>
-                        <a class="dropdown-item" href="#" data-interval="3600000">1 hour</a>
-                    </div>
-                </li>
-                <li class="divider-vertical"></li>
-                <li class="nav-item"><a class="nav-link" id="preview-btn" href="#"><img src="img/preview.png" alt="Show/Hide Preview" /></a></li>
-                <li class="divider-vertical"></li>
-                <li class="nav-item"><a class="nav-link" href="#" id="zoom-in-btn"><img src="img/zoom-in.png" alt="Zoom In" /></a></li>
-                <li class="nav-item"><a class="nav-link" href="#" id="zoom-out-btn"><img src="img/zoom-out.png" alt="Zoom Out" /></a></li>
-                <li class="divider-vertical"></li>
-                <li class="nav-item"><a class="nav-link" href="#" id="download-btn"><img src="img/download.png" alt="Download SVG" /></a></li>
-            </ul>
-        </div>
+            <div id="refresh-rate-dropdown" class="dropdown-menu dropdown-right" aria-labelledby="refreshRateDropdown">
+              <a class="dropdown-item" href="#" data-interval="0">No refresh</a>
+              <a class="dropdown-item" href="#" data-interval="160">160 ms</a>
+              <a class="dropdown-item active" href="#" data-interval="1000">1 sec</a>
+              <a class="dropdown-item" href="#" data-interval="20000">20 sec</a>
+              <a class="dropdown-item" href="#" data-interval="60000">1 min</a>
+              <a class="dropdown-item" href="#" data-interval="1200000">20 min</a>
+              <a class="dropdown-item" href="#" data-interval="3600000">1 hour</a>
+            </div>
+          </li>
+          <li class="divider-vertical"></li>
+          <li class="nav-item"><a class="nav-link" id="preview-btn" href="#"><img src="img/preview.png" alt="Show/Hide Preview" /></a></li>
+          <li class="divider-vertical"></li>
+          <li class="nav-item"><a class="nav-link" href="#" id="download-btn"><img src="img/download.png" alt="Download SVG" /></a></li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item"><a href="#" class="nav-link" data-toggle="tooltip" data-placement="bottom" title="To zoom in and out, press CTRL and +/-, respectively."><img src="img/question-mark.png" alt="Need help?"></a></li>
+        </ul>
+      </div>
     </nav>
     <main role="main">
-        <div id="minimap"></div>
-        <div class="wrapper">
-            <div id="demo">
-                <div id="loading">
-                    <img src="img/spinner.svg" />
-                </div>
-            </div>
-            <div id="ghost-container">
-            </div>
+      <div id="minimap"></div>
+      <div class="wrapper">
+        <div id="demo">
+          <div id="loading">
+            <img src="img/spinner.svg" />
+          </div>
         </div>
-        <div class="modal fade" id="errorModal">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-body">
-                        <div class="alert alert-danger" style="margin-bottom: 0px;"></div>
-                    </div>
-                </div>
-            </div>
+        <div id="ghost-container">
         </div>
+      </div>
+      <div class="modal fade" id="errorModal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-body">
+              <div class="alert alert-danger" style="margin-bottom: 0px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
     <script type="text/javascript">
-        /* TODO:
-         * Refactoring:
-         * - find a more declarative approach (loops etc)
-         * - less flags/weird booleans
-         * - better way to find difference besides comparing large arrays?
-         * - general jQuery cleanup (inefficient selectors etc)/jquery-ify javascript snippets (ie download)
-         * - event driven vs functions
-         * - better error management
-         * - better way to manage bootstrap interactions (ie the clicks on navbar)
-         * Features:
-         * - !add heuristics
-         * - !zoom and resize ghost layer/scrollbar issues/broke the preview!
-         * - !update ghost layer on major paintAll
-         * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
-         * - httpGet duplication/httpGet to jQuery/AJAX?
-         */
-        $(".navbar,#minimap").hide();
-        function httpGet(theUrl, onSuccess, onError) {
-            var xmlHttp = new XMLHttpRequest();
-            xmlHttp.timeout = 2000;
-            xmlHttp.onreadystatechange = function() {
-                if (this.readyState === 4) {
-                    if (this.status >= 200 && this.status < 300) {
-                        onSuccess(this.responseText);
-                    } else{
-                        onError("Received " + this.status + " from server.");
-                    }
-                }
-            };
-            xmlHttp.open("GET", theUrl, true );
-            xmlHttp.send();
-        }
-        var errorShowing = false;
-        function showError(message) {
-            if(!errorShowing) {
-                $('#errorModal').modal('show');
-                $('#errorModal .alert').html(message + " | Retrying...");
-                $('body').removeClass();
+      /* TODO:
+       * Refactoring:
+       * - find a more declarative approach (loops etc)
+       * - less flags/weird booleans
+       * - better way to find difference besides comparing large arrays?
+       * - general jQuery cleanup (inefficient selectors etc)/jquery-ify javascript snippets (ie download)
+       * - event driven vs functions
+       * - better error management
+       * - better way to manage bootstrap interactions (ie the clicks on navbar)
+       * Features:
+       * - !add heuristics
+       * - !zoom and resize ghost layer/scrollbar issues/broke the preview!
+       * - !update ghost layer on major paintAll
+       * - better performance overall especially with the pronghorn testing page (>1000 nodes/edges)
+       * - httpGet duplication/httpGet to jQuery/AJAX?
+       */
+      $(".navbar,#minimap").hide();
 
-                errorShowing = true;
-            }
-        }
-        function hideError() {
-            if(errorShowing) {
-                $('#errorModal').modal('hide');
-                $('.modal-backdrop').remove(); //bootstrap 4.0 is buggy so we have to manually remove backdrop
-
-                errorShowing = false;
-            }
-        }
-        var doingUpdate = false;
-        var interval = 1000;
-        function doUpdate() {
-            if (!doingUpdate || !paintAllDrawing) {
-                doingUpdate = true;
-                httpGet("graph.dot", paintParts, handleError);
+      function httpGet(theUrl, onSuccess, onError) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.timeout = 2000;
+        xmlHttp.onreadystatechange = function() {
+          if (this.readyState === 4) {
+            if (this.status >= 200 && this.status < 300) {
+              onSuccess(this.responseText);
             } else {
-                doUpdate();
+              onError("Received " + this.status + " from server.");
             }
-        }
-        var webworker;
-        if (window.Worker) {
-            webworker = new Worker("webworker.js");
-        }
-        function handleError(error) {
-            console.log('Error: ' + error);
-            showError("Error: " + error);
+          }
+        };
+        xmlHttp.open("GET", theUrl, true);
+        xmlHttp.send();
+      }
+      var errorShowing = false;
 
-            doingUpdate = false;
+      function showError(message) {
+        if (!errorShowing) {
+          $('#errorModal').modal('show');
+          $('#errorModal .alert').html(message + " | Retrying...");
+          $('body').removeClass();
+
+          errorShowing = true;
         }
-        function getAbsoluteXY(element) {
-            var viewportElement = document.documentElement;
-            var box = element.getBoundingClientRect();
-            var scrollLeft = viewportElement.scrollLeft;
-            var scrollTop = viewportElement.scrollTop;
-            var x = box.left + scrollLeft;
-            var y = box.top + scrollTop;
-            return {"x": x, "y": y, "width": box.width, "height": box.height}
+      }
+
+      function hideError() {
+        if (errorShowing) {
+          $('#errorModal').modal('hide');
+          $('.modal-backdrop').remove(); //bootstrap 4.0 is buggy so we have to manually remove backdrop
+
+          errorShowing = false;
         }
-        var isFirst = true;
-        var paintingTimer;
-        var paintAllDrawing = false;
-        var webworkerInProgress = false;
-        var paintAllRunning = false;
-        var previewScale = 0.065;
-        var zoomWidth = 500; //100 is current screen size, anything above that is zoomed in
-        var zoomHeight = 500;
-        var zoomStep = 0.2; //percentage of initial width/height
-        function paintAll () {
-            paintAllRunning = true;
-            if (webworker) {
-                if (!webworkerInProgress){
-                    webworkerInProgress = true;
-                    webworker.postMessage("");
-                } else {
-                    paintAll();
+      }
+      var doingUpdate = false;
+      var interval = 1000;
+
+      function doUpdate() {
+        if (!doingUpdate || !paintAllDrawing) {
+          doingUpdate = true;
+          httpGet("graph.dot", paintParts, handleError);
+        } else {
+          doUpdate();
+        }
+      }
+      var webworker;
+      if (window.Worker) {
+        webworker = new Worker("webworker.js");
+      }
+
+      function handleError(error) {
+        console.log('Error: ' + error);
+        showError("Error: " + error);
+
+        doingUpdate = false;
+      }
+
+      function getAbsoluteXY(element) {
+        var viewportElement = document.documentElement;
+        var box = element.getBoundingClientRect();
+        var scrollLeft = viewportElement.scrollLeft;
+        var scrollTop = viewportElement.scrollTop;
+        var x = box.left + scrollLeft;
+        var y = box.top + scrollTop;
+        return {
+          "x": x,
+          "y": y,
+          "width": box.width,
+          "height": box.height
+        }
+      }
+      var isFirst = true;
+      var paintingTimer;
+      var paintAllDrawing = false;
+      var webworkerInProgress = false;
+      var paintAllRunning = false;
+      var previewScale = 0.065;
+      var zoomWidth = 500; //100 is current screen size, anything above that is zoomed in
+      var zoomHeight = 500;
+      var zoomStep = 0.2; //percentage of initial width/height
+      function paintAll() {
+        paintAllRunning = true;
+        if (webworker) {
+          if (!webworkerInProgress) {
+            webworkerInProgress = true;
+            webworker.postMessage("");
+          } else {
+            paintAll();
+          }
+          //message returned from the webworker
+          webworker.onmessage = function(e) {
+            hideError();
+
+            webworkerInProgress = false;
+            paintAllDrawing = true;
+
+            var result = e.data.result;
+            $('#demo').html(result);
+
+            paintAllDrawing = false;
+            paintAllRunning = false;
+
+            var demo = $("#demo svg");
+            var ratioWidth = demo.width() * previewScale;
+            var ratioHeight = demo.height() * previewScale;
+
+            $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+            $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height() + 65);
+
+            if (isFirst) {
+              $(".navbar").show();
+              $("#minimap").width(ratioWidth).height(ratioHeight).minimap($("body")).append('<div class="minimap-node" id="svg-preview"></div>');
+
+              paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
+
+              isFirst = false;
+
+              //$("#ghost-container").css("width", $("#demo svg").width()).css("height", $("#demo svg").height());
+              $('#demo svg #graph0').children('g .node').each(function() {
+                var point = getAbsoluteXY($(this).find("ellipse")[0]);
+                var $id = $(this).attr("id");
+                var node = $('<div class="ghost-node" id="ghost-' + $id + '"></div>').css("left", point.x).css("top", point.y).width(point.width).height(point.height);
+                var $popover = node.popover({
+                  title: $(this).find('text').html(),
+                  html: true,
+                  content: '<div id="chart-' + $id + '" class="ct-chart ct-golden-section"></div>',
+                  placement: 'auto',
+                  container: '#ghost-container'
+                });
+                $popover.on('shown.bs.popover', function() {
+                  new Chartist.Line('#chart-' + $id, {
+                    labels: [0, 1]
+                  }, {
+                    fullWidth: true,
+                    lineSmooth: false
+                  });
+                });
+
+                $("#ghost-container").append(node);
+              });
+            }
+
+            $("#svg-preview").html(result);
+            $("#svg-preview svg").attr('width', ratioWidth + 'px').attr('height', ratioHeight + 'px');
+
+            $("#svg-preview svg #graph0 g text, #svg-preview svg #graph0 g polygon[fill='black']").remove();
+
+            $("#graph0 title").remove();
+          };
+        }
+      }
+      var edgeid = new RegExp(/" -> "/g); //edge ids
+      var totalids = new RegExp(/label/g); //total ids
+      var node = new RegExp(/label="([^"]+)"/g); //grabs the section
+      var newline = new RegExp(/([^\n]+)/g); //grabs each line in the section
+      var features = new RegExp(/\"(.*)\]/g); //grabs everything between " and ]
+      var oldfeatureArray = [];
+      var newfeatureArray = [];
+      var eoldfeatureArray = [];
+      var enewfeatureArray = [];
+
+      function updateOnDifferent(oldArray, newArray) {
+        var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
+          return element === newArray[index];
+        });
+        if ((!is_same && !isFirst) && !paintAllRunning) {
+          doingUpdate = false;
+          paintAll();
+        }
+        newArray = Array.from(oldArray); //assign old array to new array
+        oldArray.length = 0; //empty old array so we can repeat the process
+      }
+      //function that updates the text values
+      function paintParts(dot) {
+        var numberOfEdgeIds = dot.match(edgeid).length; // Number of edge IDs
+        var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
+        var numberOfNodeIds = numberOfTotalIds - numberOfEdgeIds; //Number of node IDs
+        var whole = dot.match(node); //section matches starting with label=" and ending with "
+        var featureSection = dot.match(features); //grabs all features
+
+        //updates paintAll for nodes depending on changes to color and thickness
+        paintElement("node", 0, numberOfNodeIds, whole, featureSection, oldfeatureArray);
+        updateOnDifferent(oldfeatureArray, newfeatureArray);
+
+        //updates paintAll for edges depending on changes to color and thickness
+        paintElement("edge", numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray);
+        updateOnDifferent(eoldfeatureArray, enewfeatureArray);
+
+        doingUpdate = false;
+
+        return 0;
+      }
+
+      function paintElement(element, startIndex, stopIndex, whole, feature, oldArray) {
+        var ss = 1;
+        for (var s = startIndex; s < stopIndex; s++) {
+          var iteration = whole[s].match(newline).map(function(item) {
+            var formattedSection = feature[s].replace(/"|]/g, '');
+            oldArray.push(formattedSection);
+            feature[s] = formattedSection;
+            return item.replace(/label|"|=/g, '');
+          });
+          var selector = '#demo svg #' + element + ss;
+          $(selector).children("text").each(function(itemIdx, item) {
+            if (itemIdx !== 0) { //skips title line which doesn't change
+              item = $(item);
+              if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
+                if ((item.text().length !== iteration[itemIdx].length) && !paintAllRunning) { //if the length is different redraw
+                  doingUpdate = false;
+                  paintAll();
                 }
-                //message returned from the webworker
-                webworker.onmessage = function (e) {
-                    hideError();
-
-                    webworkerInProgress = false;
-                    paintAllDrawing = true;
-
-                    var result = e.data.result;
-                    $('#demo').html(result);
-
-                    paintAllDrawing = false;
-                    paintAllRunning = false;
-
-                    var demo = $("#demo svg");
-                    var ratioWidth = demo.width() * previewScale;
-                    var ratioHeight = demo.height() * previewScale;
-
-                    $("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
-                    $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height() + 65);
-
-                    if (isFirst) {
-                        $(".navbar").show();
-                        $("#minimap").width(ratioWidth).height(ratioHeight).minimap( $("body") ).append('<div class="minimap-node" id="svg-preview"></div>');
-
-                        paintingTimer = setInterval(doUpdate, interval); //initially set paintParts
-
-                        isFirst = false;
-
-                        //$("#ghost-container").css("width", $("#demo svg").width()).css("height", $("#demo svg").height());
-                        $('#demo svg #graph0').children('g .node').each(function () {
-                            var point = getAbsoluteXY($(this).find("ellipse")[0]);
-                            var $id = $(this).attr("id");
-                            var node = $('<div class="ghost-node" id="ghost-' + $id + '"></div>').css("left", point.x).css("top", point.y).width(point.width).height(point.height);
-                            var $popover = node.popover( {
-                                title: $(this).find('text').html(),
-                                html: true,
-                                content: '<div id="chart-' + $id + '" class="ct-chart ct-golden-section"></div>',
-                                placement: 'auto',
-                                container: '#ghost-container'
-                            });
-                            $popover.on('shown.bs.popover', function () {
-                                new Chartist.Line('#chart-' + $id, {
-                                    labels: [ 0, 1]
-                                }, {
-                                    fullWidth: true,
-                                    lineSmooth: false
-                                });
-                            });
-
-                            $("#ghost-container").append(node);
-                        });
-                    }
-
-                    $("#svg-preview").html(result);
-                    $("#svg-preview svg").attr('width', ratioWidth + 'px').attr('height', ratioHeight + 'px');
-
-                    $("#svg-preview svg #graph0 g text, #svg-preview svg #graph0 g polygon[fill='black']").remove();
-
-                    $("#graph0 title").remove();
-                };
+                item.text(iteration[itemIdx]);
+                hideError(); //hide error message because obv. we are still receiving data
+              }
             }
+          });
+          ss++;
         }
-        var edgeid = new RegExp(/" -> "/g); //edge ids
-        var totalids = new RegExp (/label/g); //total ids
-        var node = new RegExp(/label="([^"]+)"/g); //grabs the section
-        var newline = new RegExp(/([^\n]+)/g); //grabs each line in the section
-        var features = new RegExp(/\"(.*)\]/g); //grabs everything between " and ]
-        var oldfeatureArray = [];
-        var newfeatureArray = [];
-        var eoldfeatureArray = [];
-        var enewfeatureArray = [];
-        function updateOnDifferent(oldArray, newArray) {
-            var is_same = oldArray.length === newArray.length && oldArray.every(function(element, index) {
-                return element === newArray[index];
-            });
-            if ((!is_same && !isFirst) && !paintAllRunning) {
-                doingUpdate = false;
-                paintAll();
-            }
-            newArray = Array.from(oldArray); //assign old array to new array
-            oldArray.length = 0; //empty old array so we can repeat the process
+      }
+      paintAll(); //runs first initial paintAll();
+      var saveData = (function() {
+        var a = document.createElement("a");
+        a.style = "display: none";
+        return function(data, fileName) {
+          var blob = new Blob([data], {
+              type: "octet/stream"
+            }),
+            url = window.URL.createObjectURL(blob);
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        };
+      }());
+      var minZoom = 5.0;
+      var maxZoom = 0.1;
+
+      var currentZoom = 1.0;
+
+      function zoom(factor) {
+        if (currentZoom + factor >= maxZoom && currentZoom + factor <= minZoom) {
+          //zoomWidth += factor;
+          //zoomHeight += factor;
+          //$("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
+          currentZoom += factor;
+          $(".wrapper").css("transform", "scale(" + currentZoom + ")");
+          $("body").scroll();
         }
-        //function that updates the text values
-        function paintParts(dot) {
-            var numberOfEdgeIds  = dot.match(edgeid).length;   // Number of edge IDs
-            var numberOfTotalIds = dot.match(totalids).length; // Number of total IDs
-            var numberOfNodeIds = numberOfTotalIds - numberOfEdgeIds; //Number of node IDs
-            var whole = dot.match(node); //section matches starting with label=" and ending with "
-            var featureSection = dot.match(features); //grabs all features
+      }
+      $(window).resize(function() {
+        //Resize ghost container here!
+        $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height());
+      });
+      $(document).ready(function() {
+        $("#refresh-rate-dropdown a").click(function() {
+          $("#refresh-rate-dropdown a").removeClass("active");
+          $(".refresh-label").html($(this).text());
 
-            //updates paintAll for nodes depending on changes to color and thickness
-            paintElement("node", 0, numberOfNodeIds, whole, featureSection, oldfeatureArray);
-            updateOnDifferent(oldfeatureArray, newfeatureArray);
+          interval = $(this).data("interval");
+          clearInterval(paintingTimer);
 
-            //updates paintAll for edges depending on changes to color and thickness
-            paintElement("edge", numberOfNodeIds, numberOfTotalIds, whole, featureSection, eoldfeatureArray);
-            updateOnDifferent(eoldfeatureArray, enewfeatureArray);
+          if (interval > 0) paintingTimer = setInterval(doUpdate, interval);
 
-            doingUpdate = false;
-
-            return 0;
-        }
-        function paintElement(element, startIndex, stopIndex, whole, feature, oldArray) {
-            var ss = 1;
-            for (var s = startIndex; s < stopIndex; s++) {
-                var iteration = whole[s].match(newline).map(function(item) {
-                    var formattedSection = feature[s].replace(/"|]/g, '');
-                    oldArray.push(formattedSection);
-                    feature[s] = formattedSection;
-                    return item.replace(/label|"|=/g, '');
-                });
-                var selector = '#demo svg #' + element + ss;
-                $(selector).children("text").each(function(itemIdx, item) {
-                    if (itemIdx !== 0) { //skips title line which doesn't change
-                        item = $(item);
-                        if (item.text() !== iteration[itemIdx]) { //if there is a change in the html
-                            if ((item.text().length !== iteration[itemIdx].length) && !paintAllRunning) { //if the length is different redraw
-                                doingUpdate = false;
-                                paintAll();
-                            }
-                            item.text(iteration[itemIdx]);
-                            hideError(); //hide error message because obv. we are still receiving data
-                        }
-                    }
-                });
-                ss++;
-            }
-        }
-        paintAll(); //runs first initial paintAll();
-        var saveData = (function () {
-            var a = document.createElement("a");
-            a.style = "display: none";
-            return function (data, fileName) {
-                var blob = new Blob([data], {type: "octet/stream"}),
-                    url = window.URL.createObjectURL(blob);
-                a.href = url;
-                a.download = fileName;
-                a.click();
-                window.URL.revokeObjectURL(url);
-            };
-        }());
-        var minZoom = 5.0;
-        var maxZoom = 0.1;
-
-        var currentZoom = 1.0;
-        function zoom(factor) {
-            if(currentZoom + factor >= maxZoom && currentZoom + factor <= minZoom) {
-                //zoomWidth += factor;
-                //zoomHeight += factor;
-                //$("#demo svg").css("width", zoomWidth + "%").css("height", zoomHeight + "%");
-                currentZoom += factor;
-                $(".wrapper").css("transform", "scale(" + currentZoom + ")");
-                $("body").scroll();
-            }
-        }
-        $( window ).resize(function() {
-            //Resize ghost container here!
-            $("#ghost-container").width($("#demo svg").width()).height($("#demo svg").height());
+          $(this).addClass("active");
         });
-        $(document).ready(function() {
-            $("#refresh-rate-dropdown a").click(function () {
-                $("#refresh-rate-dropdown a").removeClass("active");
-                $(".refresh-label").html($(this).text());
-
-                interval = $(this).data("interval");
-                clearInterval(paintingTimer);
-
-                if (interval > 0) paintingTimer = setInterval(doUpdate, interval);
-
-                $(this).addClass("active");
-            });
-            $("#preview-btn").click(function () {
-                $("#minimap").toggle("fast");
-            });
-            $("#zoom-in-btn").click(function () {
-                zoom(zoomStep);
-            });
-            $("#zoom-out-btn").click(function () {
-                zoom(-zoomStep);
-            });
-            $("#download-btn").click(function() {
-                var date = new Date();
-                var year = date.getFullYear().toString();
-                var month = (date.getMonth()+1).toString();
-                var day = date.getDate().toString();
-                var hour = date.getHours().toString();
-                var min = date.getMinutes().toString();
-                var sec = date.getSeconds().toString();
-                saveData($("#demo").html(), `telemetry_${year}-${month}-${day}_${hour}-${min}-${sec}.svg`);
-            });
+        $("#preview-btn").click(function() {
+          $("#minimap").toggle("fast");
         });
+        $("#zoom-in-btn").click(function() {
+          zoom(zoomStep);
+        });
+        $("#zoom-out-btn").click(function() {
+          zoom(-zoomStep);
+        });
+        $("#download-btn").click(function() {
+          var date = new Date();
+          var year = date.getFullYear().toString();
+          var month = (date.getMonth() + 1).toString();
+          var day = date.getDate().toString();
+          var hour = date.getHours().toString();
+          var min = date.getMinutes().toString();
+          var sec = date.getSeconds().toString();
+          saveData($("#demo").html(), `telemetry_${year}-${month}-${day}_${hour}-${min}-${sec}.svg`);
+        });
+      });
     </script>
-</body>
+  </body>
+
 </html>
