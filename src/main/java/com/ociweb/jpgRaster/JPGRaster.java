@@ -84,11 +84,11 @@ public class JPGRaster {
 		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		*/
 		
-		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(10, 1000);
-		//Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 10_000);
-		//Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 10_000);
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(10, 100_000);
+		//Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 100_000);
+		//Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 100_000);
+		//Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 100_000);
+		//Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 100_000);
 		
 		JPGScanner scanner = new JPGScanner(gm, pipe1);
 		//new HuffmanDecoder(gm, pipe1, pipe2);

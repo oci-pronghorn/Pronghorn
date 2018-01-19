@@ -492,9 +492,8 @@ public class JPGScanner extends PronghornStage {
 								buffer.putShort(header.huffmanACTables.get(i).symbols.get(j).get(k));
 							}
 						}
-						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-							PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
-						}
+						buffer.position(0);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
 					}
 					else {
 						requestShutdown();
@@ -516,9 +515,8 @@ public class JPGScanner extends PronghornStage {
 								buffer.putShort(header.huffmanDCTables.get(i).symbols.get(j).get(k));
 							}
 						}
-						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
-							PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
-						}
+						buffer.position(0);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
 					}
 					else {
 						requestShutdown();
@@ -534,6 +532,7 @@ public class JPGScanner extends PronghornStage {
 						for (int j = 0; j < 64; ++j) {
 							buffer.putInt(header.quantizationTables.get(i).table[j]);
 						}
+						buffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4_FIELD_TABLE_204, buffer);
 					}
 					else {
@@ -549,6 +548,7 @@ public class JPGScanner extends PronghornStage {
 					for (int i = 0; i < header.imageData.size(); ++i) {
 						buffer.putShort(header.imageData.get(i));
 					}
+					buffer.position(0);
 					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202, buffer);
 				}
 				else {
