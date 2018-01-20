@@ -79,11 +79,11 @@ public class JPGRaster {
 		Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 100_000);
 		
 		JPGScanner scanner = new JPGScanner(gm, pipe1);
-		new HuffmanDecoder(gm, pipe1, pipe2);
-		new InverseQuantizer(gm, pipe2, pipe3);
-		new InverseDCT(gm, pipe3, pipe4);
-		new YCbCrToRGB(gm, pipe4, pipe5);
-		new BMPDumper(gm, pipe5);
+//		new HuffmanDecoder(gm, pipe1, pipe2);
+		new InverseQuantizer(gm, pipe1, pipe2);
+		new InverseDCT(gm, pipe2, pipe3);
+		new YCbCrToRGB(gm, pipe3, pipe4);
+		new BMPDumper(gm, pipe4);
 		
 		//new ConsoleJSONDumpStage<JPGSchema>(gm, pipe5);
 		

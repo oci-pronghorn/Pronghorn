@@ -81,7 +81,7 @@ public class InverseQuantizer extends PronghornStage {
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
-					System.out.println("Writing header to pipe...");
+					System.out.println("Inverse Quantizer writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, filename);
@@ -110,7 +110,7 @@ public class InverseQuantizer extends PronghornStage {
 				// write color component data to pipe
 				System.out.println("Attempting to write color component to pipe...");
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-					System.out.println("Writing color component to pipe...");
+					System.out.println("Inverse Quantizer writing color component to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
@@ -137,6 +137,7 @@ public class InverseQuantizer extends PronghornStage {
 				header.quantizationTables.add(table);
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
+				System.out.println("Quantizer receiving MCU message");
 				MCU mcu = new MCU();
 				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
 				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
@@ -161,6 +162,7 @@ public class InverseQuantizer extends PronghornStage {
 				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
 				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
 				PipeWriter.publishWrites(output);
+				System.out.println("Quantizer exit after writing mcu");
 			}
 			else {
 				requestShutdown();

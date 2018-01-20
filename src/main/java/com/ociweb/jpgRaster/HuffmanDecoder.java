@@ -151,8 +151,6 @@ public class HuffmanDecoder extends PronghornStage {
 							if (coeffLength != 0) {
 								component[JPG.zigZagMap[k]] = (short)b.nextBits(coeffLength);
 								
-								
-	
 								if (component[JPG.zigZagMap[k]] < (1 << (coeffLength - 1))) {
 									component[JPG.zigZagMap[k]] -= (1 << coeffLength) - 1;
 								}
@@ -198,25 +196,6 @@ public class HuffmanDecoder extends PronghornStage {
 			ACTableCodes.add(generateCodes(header.huffmanACTables.get(i)));
 		}
 		
-		/*for (int k = 0; k < DCTableCodes.size(); ++k) {
-			for (int i = 0; i < DCTableCodes.get(k).size(); ++i) {
-				System.out.print((i + 1) + ": ");
-				for (int j = 0; j < DCTableCodes.get(k).get(i).size(); ++j) {
-					System.out.print(String.format(("%" + (i + 1) + "s"), Integer.toBinaryString(DCTableCodes.get(k).get(i).get(j))).replace(' ', '0') + " ");
-				}
-				System.out.println();
-			}
-		}
-		for (int k = 0; k < ACTableCodes.size(); ++k) {
-			for (int i = 0; i < ACTableCodes.get(k).size(); ++i) {
-				System.out.print((i + 1) + ": ");
-				for (int j = 0; j < ACTableCodes.get(k).get(i).size(); ++j) {
-					System.out.print(String.format(("%" + (i + 1) + "s"), Integer.toBinaryString(ACTableCodes.get(k).get(i).get(j))).replace(' ', '0') + " ");
-				}
-				System.out.println();
-			}
-		}*/
-		
 		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 		System.out.println("Number of MCUs: " + numMCUs);
 		BitReader b = new BitReader(header.imageData);
@@ -233,55 +212,62 @@ public class HuffmanDecoder extends PronghornStage {
 		short previousCbDC = 0;
 		short previousCrDC = 0;
 		while (numProcessed != numMCUs) { // && !b.done()) {
-			MCU mcu = new MCU();
+			//The rest of this while loop should be located in its own Pronghorn run() function
 			
-			//System.out.println("Decoding Y Component...");
-			Boolean success = decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
-					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
-			if (!success) {
-				return false;
-			}
-			
-			//System.out.println("Decoding Cb Component...");
-			success = decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
-					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
-			if (!success) {
-				return false;
-			}
-			
-			//System.out.println("Decoding Cr Component...");
-			success = decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
-					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
-			if (!success) {
-				return false;
-			}
-			
-			previousYDC = mcu.y[0];
-			previousCbDC = mcu.cb[0];
-			previousCrDC = mcu.cr[0];
-			
-			numProcessed += 1;
-			
-			// write mcu to pipe
-			if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
-				for (int i = 0; i < 64; ++i) {
-					yBuffer.putShort(mcu.y[i]);
-					cbBuffer.putShort(mcu.cb[i]);
-					crBuffer.putShort(mcu.cr[i]);
+			//Will get stuck on next line if output pipe has no room (so, any image other than huff_simple0)
+			System.out.println("Huffman ready to process MCU if output Pipe has room");
+			if(PipeWriter.hasRoomForWrite(output)) {
+				MCU mcu = new MCU();
+				
+				//System.out.println("Decoding Y Component...");
+				Boolean success = decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
+						  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
+				if (!success) {
+					return false;
 				}
-				yBuffer.position(0);
-				cbBuffer.position(0);
-				crBuffer.position(0);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
-				PipeWriter.publishWrites(output);
-			}
-			else {
-				return false;
+				
+				//System.out.println("Decoding Cb Component...");
+				success = decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
+						  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+				if (!success) {
+					return false;
+				}
+				
+				//System.out.println("Decoding Cr Component...");
+				success = decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
+						  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+				if (!success) {
+					return false;
+				}
+				
+				previousYDC = mcu.y[0];
+				previousCbDC = mcu.cb[0];
+				previousCrDC = mcu.cr[0];
+				
+				numProcessed += 1;
+				
+				// write mcu to pipe
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+					ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
+					ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
+					ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+					for (int i = 0; i < 64; ++i) {
+						yBuffer.putShort(mcu.y[i]);
+						cbBuffer.putShort(mcu.cb[i]);
+						crBuffer.putShort(mcu.cr[i]);
+					}
+					yBuffer.position(0);
+					cbBuffer.position(0);
+					crBuffer.position(0);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+					System.out.println("Huffman about to publish an MCU");
+					PipeWriter.publishWrites(output);
+				}
+				else {
+					return false;
+				}
 			}
 		}
 		
@@ -290,6 +276,7 @@ public class HuffmanDecoder extends PronghornStage {
 
 	@Override
 	public void run() {
+		/*
 		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -422,6 +409,7 @@ public class HuffmanDecoder extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		*/
 	}
 	
 	/*public static void main(String[] args) throws Exception {
