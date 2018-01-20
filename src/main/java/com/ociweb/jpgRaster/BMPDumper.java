@@ -21,6 +21,9 @@ public class BMPDumper extends PronghornStage {
 	
 	short[][] pixels;
 	int count;
+	int numMCUs;
+	int mcuHeight;
+	int mcuWidth;
 	
 	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
 		super(graphManager, input, NONE);
@@ -90,6 +93,9 @@ public class BMPDumper extends PronghornStage {
 
 				pixels = new short[header.height][header.width * 3];
 				count = 0;
+				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				mcuHeight = (header.height + 7) / 8;
+				mcuWidth = (header.width + 7) / 8;
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
@@ -99,18 +105,29 @@ public class BMPDumper extends PronghornStage {
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
-				
-				int curPixel = count * 64;
+				yBuffer.position(0);
+				cbBuffer.position(0);
+				crBuffer.position(0);
 				for (int i = 0; i < 64; ++i) {
-					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 0] = mcu.y[i];
-					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 1] = mcu.cb[i];
-					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 2] = mcu.cr[i];
-					curPixel += 1;
+					mcu.y[i] = yBuffer.getShort();
+					mcu.cb[i] = cbBuffer.getShort();
+					mcu.cr[i] = crBuffer.getShort();
+				}
+
+				int curPixelY = (count / mcuWidth) * 8;
+				int curPixelX = (count % mcuWidth) * 8;
+				for (int i = curPixelY; i < curPixelY + 8; ++i) {
+					for (int j = curPixelX; j < curPixelX + 8; ++j) {
+						if (i < header.height && j < header.width) {
+							pixels[i][j * 3 + 0] = mcu.y[i * 8 + j];
+							pixels[i][j * 3 + 1] = mcu.cb[i * 8 + j];
+							pixels[i][j * 3 + 2] = mcu.cr[i * 8 + j];
+						}
+					}
 				}
 				
 				count += 1;
 				
-				int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				if (count >= numMCUs) {
 					try {
 						Dump(pixels, filename);

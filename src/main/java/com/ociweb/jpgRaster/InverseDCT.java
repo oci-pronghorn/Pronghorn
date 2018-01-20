@@ -159,6 +159,15 @@ public class InverseDCT extends PronghornStage {
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+				yBuffer.position(0);
+				cbBuffer.position(0);
+				crBuffer.position(0);
+				for (int i = 0; i < 64; ++i) {
+					mcu.y[i] = yBuffer.getShort();
+					mcu.cb[i] = cbBuffer.getShort();
+					mcu.cr[i] = crBuffer.getShort();
+				}
+				
 				inverseDCT(mcu);
 				
 				ByteBuffer yBuffer2 = ByteBuffer.allocate(64 * 2);
