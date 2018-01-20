@@ -1,7 +1,10 @@
 package com.ociweb.jpgRaster;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import com.ociweb.jpgRaster.JPG.ColorComponent;
+import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
@@ -40,77 +43,107 @@ public class YCbCrToRGB extends PronghornStage {
 		return rgb;
 	}
 	
-	public static byte[][] convertYCbCrToRGB(ArrayList<MCU> mcus, int height, int width) {
-		int mcuHeight = (height + 7) / 8;
-		int mcuWidth = (width + 7) / 8;
-		int unusedRows = (mcuHeight * 8) - height;
-		int unusedColumns = (mcuWidth * 8) - width;
-		//ArrayList<RGB> rgb = new ArrayList<RGB>(mcuHeight * mcuWidth);
-		byte[][] pixels = new byte[height][width * 3];
-		byte[] pixel;
-		for (int i = 0; i < mcuHeight; ++i) {         // mcu height
-			for (int y = 0; y < 8; ++y) {             // pixel height
-				for (int j = 0; j < mcuWidth; ++j) {  // mcu width
-					for (int x = 0; x < 8; ++x) {     // pixel width
-						if (i == mcuHeight - 1 && y >= (8 - unusedRows)) {
-							break;
-						}
-						if (j == mcuWidth - 1 && x >= (8 - unusedColumns)) {
-							break;
-						}
-						pixel = convertToRGB(mcus.get(i * mcuWidth + j).y[y * 8 + x],
-											 mcus.get(i * mcuWidth + j).cb[y * 8 + x],
-											 mcus.get(i * mcuWidth + j).cr[y * 8 + x]);
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 0] = pixel[0];
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 1] = pixel[1];
-						pixels[i * 8 + y][(j * 8 + x) * 3 + 2] = pixel[2];
-					}
-				}
-			}
+	public static void convertYCbCrToRGB(MCU mcu) {
+		for (int i = 0; i < 64; ++i) {
+			byte[] rgb = convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
+			mcu.y[i] = rgb[0];
+			mcu.cb[i] = rgb[1];
+			mcu.cr[i] = rgb[2];
 		}
-		return pixels;
+		return;
 	}
 
 	@Override
 	public void run() {
-		/*while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			
-			if (msgIdx == InverseDCTSchema.MSG_HEADER) {
-				int height = PipeReader.readInt(input, InverseDCTSchema.FIELD_HEIGHT);
-				int width = PipeReader.readInt(input, InverseDCTSchema.FIELD_WIDTH);
-				Appendable filename = PipeReader.readASCII(input, InverseDCTSchema.FIELD_FILENAME, null);
-				
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADER)) {
-					PipeWriter.writeInt(output, JPGSchema.FIELD_HEIGHT, height);
-					PipeWriter.writeInt(output, JPGSchema.FIELD_WIDTH, width);
-					PipeWriter.writeASCII(output, JPGSchema.FIELD_FILENAME, filename.toString());
+			if (msgIdx == JPGSchema.MSG_HEADERMESSAGE_1) {
+				// read header from pipe
+				Header header = new Header();
+				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
+				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
+				String filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				header.frameType = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, new StringBuilder()).toString();
+				header.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501);
+				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
+				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
+				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+
+				// write header to pipe
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
+					System.out.println("Writing header to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, filename);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
 				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
 			}
-			else if (msgIdx == InverseDCTSchema.MSG_MCU) {
-				byteMCU bmcu = new byteMCU();
-				PipeReader.readBytes(input, InverseDCTSchema.FIELD_Y, bmcu.y, 0);
-				PipeReader.readBytes(input, InverseDCTSchema.FIELD_CB, bmcu.cb, 0);
-				PipeReader.readBytes(input, InverseDCTSchema.FIELD_CR, bmcu.cr, 0);
+			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
+				// read color component data from pipe
+				ColorComponent component = new ColorComponent();
+				component.componentID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102);
+				component.horizontalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202);
+				component.verticalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302);
+				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
+				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
+				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
 				
+				// write color component data to pipe
+				System.out.println("Attempting to write color component to pipe...");
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
+					System.out.println("Writing color component to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
+				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
+			}
+			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
-				for (int i = 0; i < 64; ++i) {
-					mcu.y[i] = bmcu.y[i];
-					mcu.cb[i] = bmcu.cb[i];
-					mcu.cr[i] = bmcu.cr[i];
-				}
+				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
 				convertYCbCrToRGB(mcu);
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCU)) {
-					PipeWriter.writeInt(output, JPGSchema.FIELD_HEIGHT, height);
-					PipeWriter.writeInt(output, JPGSchema.FIELD_WIDTH, width);
-					PipeWriter.writeASCII(output, JPGSchema.FIELD_FILENAME, filename.toString());
+				
+				ByteBuffer yBuffer2 = ByteBuffer.allocate(64 * 2);
+				ByteBuffer cbBuffer2 = ByteBuffer.allocate(64 * 2);
+				ByteBuffer crBuffer2 = ByteBuffer.allocate(64 * 2);
+				for (int i = 0; i < 64; ++i) {
+					yBuffer2.putShort(mcu.y[i]);
+					cbBuffer2.putShort(mcu.cb[i]);
+					crBuffer2.putShort(mcu.cr[i]);
 				}
+				yBuffer2.position(0);
+				cbBuffer2.position(0);
+				crBuffer2.position(0);
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
+				PipeWriter.publishWrites(output);
 			}
 			else {
 				requestShutdown();
 			}
-		}*/
+		}
 	}
 	
 	/*public static void main(String[] args) {
