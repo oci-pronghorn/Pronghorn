@@ -480,6 +480,22 @@ public class JPGScanner extends PronghornStage {
 				else {
 					requestShutdown();
 				}
+				// write color component data to pipe
+				for (int i = 0; i < header.colorComponents.size(); ++i) {
+					System.out.println("Attempting to color component to pipe...");
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
+						System.out.println("Writing color component to pipe...");
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents.get(i).componentID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents.get(i).horizontalSamplingFactor);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents.get(i).verticalSamplingFactor);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, header.colorComponents.get(i).quantizationTableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, header.colorComponents.get(i).huffmanACTableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, header.colorComponents.get(i).huffmanDCTableID);
+					}
+					else {
+						requestShutdown();
+					}
+				}
 				// write huffman tables to pipe
 				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
 					System.out.println("Attempting to write huffman table to pipe...");
