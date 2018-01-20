@@ -85,19 +85,19 @@ public class JPGRaster {
 		*/
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(10, 100_000);
-		//Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 100_000);
+		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 100_000);
 		//Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 100_000);
 		//Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 100_000);
 		//Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(10, 100_000);
 		
 		JPGScanner scanner = new JPGScanner(gm, pipe1);
-		//new HuffmanDecoder(gm, pipe1, pipe2);
+		new HuffmanDecoder(gm, pipe1, pipe2);
 		//new InverseQuantizer(gm, pipe2, pipe3);
 		//new InverseDCT(gm, pipe3, pipe4);
 		//new YCbCrToRGB(gm, pipe4, pipe5);
 		//new BMPDumper(gm, pipe5);
 		
-		new ConsoleJSONDumpStage<JPGSchema>(gm, pipe1);
+		new ConsoleJSONDumpStage<JPGSchema>(gm, pipe2);
 		
 		for (int i = 0; i < inputFiles.length; ++i) {
 			String file = inputFiles[i];

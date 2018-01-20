@@ -3,7 +3,6 @@ package com.ociweb.jpgRaster;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.byteMCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;

@@ -1,14 +1,13 @@
-//for some reason adding to the package is breaking this. 
 package com.ociweb.jpgRaster;
 
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.HuffmanTable;
-import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.*;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class HuffmanDecoder extends PronghornStage {
@@ -16,6 +15,7 @@ public class HuffmanDecoder extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	
+	Header header;
 	
 	protected HuffmanDecoder(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
@@ -184,7 +184,7 @@ public class HuffmanDecoder extends PronghornStage {
 		return true;
 	}
 	
-	public static ArrayList<MCU> decodeHuffmanData(Header header) throws IOException {
+	public static Boolean decodeHuffmanData(Header header, Pipe<JPGSchema> output) {
 		ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
 		ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
 		for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
@@ -216,7 +216,7 @@ public class HuffmanDecoder extends PronghornStage {
 		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 		System.out.println("Number of MCUs: " + numMCUs);
 		BitReader b = new BitReader(header.imageData);
-		ArrayList<MCU> out = new ArrayList<MCU>();
+		int numProcessed = 0;
 
 		short yDCTableID  = header.colorComponents.get(0).huffmanDCTableID;
 		short yACTableID  = header.colorComponents.get(0).huffmanACTableID;
@@ -228,43 +228,193 @@ public class HuffmanDecoder extends PronghornStage {
 		short previousYDC = 0;
 		short previousCbDC = 0;
 		short previousCrDC = 0;
-		while (out.size() != numMCUs) { // && !b.done()) {
+		while (numProcessed != numMCUs) { // && !b.done()) {
 			MCU mcu = new MCU();
 			
 			//System.out.println("Decoding Y Component...");
 			Boolean success = decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
 					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
 			if (!success) {
-				return null;
+				return false;
 			}
 			
 			//System.out.println("Decoding Cb Component...");
 			success = decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
 					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
 			if (!success) {
-				return null;
+				return false;
 			}
 			
 			//System.out.println("Decoding Cr Component...");
 			success = decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
 					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
 			if (!success) {
-				return null;
+				return false;
 			}
 			
 			previousYDC = mcu.y[0];
 			previousCbDC = mcu.cb[0];
 			previousCrDC = mcu.cr[0];
 			
-			out.add(mcu);
+			numProcessed += 1;
+			
+			// write mcu to pipe
+			if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+				for (int i = 0; i < 64; ++i) {
+					yBuffer.putShort(mcu.y[i]);
+					cbBuffer.putShort(mcu.cb[i]);
+					crBuffer.putShort(mcu.cr[i]);
+				}
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
+				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+				PipeWriter.publishWrites(output);
+			}
+			else {
+				return false;
+			}
 		}
 		
-		return out;
+		return true;
 	}
 
 	@Override
 	public void run() {
-		
+		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+			
+			int msgIdx = PipeReader.getMsgIdx(input);
+			
+			if (msgIdx == JPGSchema.MSG_HEADERMESSAGE_1) {
+				// read header from pipe
+				header = new Header();
+				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
+				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
+				String filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				header.frameType = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, new StringBuilder()).toString();
+				header.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501);
+				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
+				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
+				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+
+				// write header to pipe
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
+					System.out.println("Writing header to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, filename);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
+				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
+			}
+			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
+				// read color component data from pipe
+				ColorComponent component = new ColorComponent();
+				component.componentID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102);
+				component.horizontalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202);
+				component.verticalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302);
+				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
+				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
+				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
+				header.colorComponents.add(component);
+				
+				// write color component data to pipe
+				System.out.println("Attempting to write color component to pipe...");
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
+					System.out.println("Writing color component to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
+				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
+			}
+			else if (msgIdx == JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3) {
+				int size = PipeReader.readInt(input, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103);
+				ByteBuffer buffer = ByteBuffer.allocate(size * 2);
+				PipeReader.readBytes(input, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_DATA_203, buffer);
+				buffer.position(0);
+				for (int i = 0; i < size; ++i) {
+					header.imageData.add(buffer.getShort());
+				}
+				if (!decodeHuffmanData(header, output)) {
+					requestShutdown();
+				}
+			}
+			else if (msgIdx == JPGSchema.MSG_HUFFMANTABLEMESSAGE_4) {
+				HuffmanTable table = new HuffmanTable();
+				table.tableID = (short) PipeReader.readInt(input, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104);
+				ByteBuffer lengthsBuffer = ByteBuffer.allocate(16 * 2);
+				PipeReader.readBytes(input, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
+				short[] sizes = new short[16];
+				int size = 0;
+				lengthsBuffer.position(0);
+				for (int i = 0; i < 16; ++i) {
+					sizes[i]= lengthsBuffer.getShort();
+					size += sizes[i];
+				}
+				ByteBuffer buffer = ByteBuffer.allocate(size * 2);
+				PipeReader.readBytes(input, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
+				buffer.position(0);
+				for (int i = 0; i < 16; ++i) {
+					table.symbols.add(new ArrayList<Short>());
+					for (int j = 0; j < sizes[i]; ++j) {
+						table.symbols.get(i).add(buffer.getShort());
+					}
+				}
+				if (table.tableID > 1) {
+					table.tableID -= 2;
+					header.huffmanACTables.add(table);
+				}
+				else {
+					header.huffmanDCTables.add(table);
+				}
+			}
+			else if (msgIdx == JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5) {
+				// read quantization table from pipe
+				QuantizationTable table = new QuantizationTable();
+				table.tableID = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
+				table.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
+				ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
+				PipeReader.readBytes(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+				buffer.position(0);
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = buffer.getInt();
+				}
+				header.quantizationTables.add(table);
+				
+				// write quantization table to pipe
+				System.out.println("Attempting to write quantization table to pipe...");
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
+					System.out.println("Writing quantization table to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105, table.tableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205, table.precision);
+					buffer.position(0);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+				}
+				else {
+					requestShutdown();
+				}
+				PipeWriter.publishWrites(output);
+			}
+			else {
+				requestShutdown();
+			}
+		}
 	}
 	
 	/*public static void main(String[] args) throws Exception {

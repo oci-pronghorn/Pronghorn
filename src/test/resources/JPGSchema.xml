@@ -38,7 +38,8 @@
 
 	<template name="QuantizationTableMessage" id="5">
 		<int32 name="tableId" id="105"/>
-		<byteVector name="table" id="205"/>
+		<int32 name="precision" id="205"/>
+		<byteVector name="table" id="305"/>
 	</template>
 
 	<template name="MCUMessage" id="6">

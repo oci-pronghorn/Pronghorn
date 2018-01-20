@@ -13,18 +13,18 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	}
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
-		new int[]{0xc0400009,0x88000000,0x88000001,0xa0000000,0xa0000001,0x88000002,0x88000003,0x88000004,0x88000005,0xc0200009,0xc0400007,0x88000006,0x88000007,0x88000008,0x88000009,0x8800000a,0x8800000b,0xc0200007,0xc0400003,0x8800000c,0xb8000002,0xc0200003,0xc0400004,0x8800000d,0xb8000003,0xb8000004,0xc0200004,0xc0400003,0x8800000e,0xb8000005,0xc0200003,0xc0400004,0xb8000006,0xb8000007,0xb8000008,0xc0200004,0xc0400002,0xb8000009,0xc0200002},
+		new int[]{0xc0400009,0x88000000,0x88000001,0xa0000000,0xa0000001,0x88000002,0x88000003,0x88000004,0x88000005,0xc0200009,0xc0400007,0x88000006,0x88000007,0x88000008,0x88000009,0x8800000a,0x8800000b,0xc0200007,0xc0400003,0x8800000c,0xb8000002,0xc0200003,0xc0400004,0x8800000d,0xb8000003,0xb8000004,0xc0200004,0xc0400004,0x8800000e,0x8800000f,0xb8000005,0xc0200004,0xc0400004,0xb8000006,0xb8000007,0xb8000008,0xc0200004,0xc0400002,0xb8000009,0xc0200002},
 		(short)0,
 		new String[]{"HeaderMessage","height","width","filename","frameType","precision","startOfSelection",
 		"endOfSelection","successiveApproximation",null,"ColorComponentMessage","componentID",
 		"horizontalSamplingFactor","verticalSamplingFactor","quantizationTableID","huffmanACTableID",
 		"huffmanDCTableID",null,"CompressedDataMessage","length","data",null,"HuffmanTableMessage",
-		"tableId","lengths","table",null,"QuantizationTableMessage","tableId","table",null,
-		"MCUMessage","y","cb","cr",null,"PixelRowMessage","pixels",null},
-		new long[]{1, 101, 201, 301, 401, 501, 601, 701, 801, 0, 2, 102, 202, 302, 402, 502, 602, 0, 3, 103, 203, 0, 4, 104, 204, 304, 0, 5, 105, 205, 0, 6, 106, 206, 306, 0, 7, 107, 0},
+		"tableId","lengths","table",null,"QuantizationTableMessage","tableId","precision",
+		"table",null,"MCUMessage","y","cb","cr",null,"PixelRowMessage","pixels",null},
+		new long[]{1, 101, 201, 301, 401, 501, 601, 701, 801, 0, 2, 102, 202, 302, 402, 502, 602, 0, 3, 103, 203, 0, 4, 104, 204, 304, 0, 5, 105, 205, 305, 0, 6, 106, 206, 306, 0, 7, 107, 0},
 		new String[]{"global",null,null,null,null,null,null,null,null,null,"global",null,null,null,null,
 		null,null,null,"global",null,null,null,"global",null,null,null,null,"global",null,
-		null,null,"global",null,null,null,null,"global",null,null},
+		null,null,null,"global",null,null,null,null,"global",null,null},
 		"JPGSchema.xml",
 		new long[]{2, 2, 0},
 		new int[]{2, 2, 0});
@@ -58,14 +58,15 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	public static final int MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104 = 0x00400001; //IntegerSigned/None/13
 	public static final int MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204 = 0x01c00002; //ByteVector/None/3
 	public static final int MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304 = 0x01c00004; //ByteVector/None/4
-	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5 = 0x0000001b; //Group/OpenTempl/3
+	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5 = 0x0000001b; //Group/OpenTempl/4
 	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105 = 0x00400001; //IntegerSigned/None/14
-	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_205 = 0x01c00002; //ByteVector/None/5
-	public static final int MSG_MCUMESSAGE_6 = 0x0000001f; //Group/OpenTempl/4
+	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205 = 0x00400002; //IntegerSigned/None/15
+	public static final int MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305 = 0x01c00003; //ByteVector/None/5
+	public static final int MSG_MCUMESSAGE_6 = 0x00000020; //Group/OpenTempl/4
 	public static final int MSG_MCUMESSAGE_6_FIELD_Y_106 = 0x01c00001; //ByteVector/None/6
 	public static final int MSG_MCUMESSAGE_6_FIELD_CB_206 = 0x01c00003; //ByteVector/None/7
 	public static final int MSG_MCUMESSAGE_6_FIELD_CR_306 = 0x01c00005; //ByteVector/None/8
-	public static final int MSG_PIXELROWMESSAGE_7 = 0x00000024; //Group/OpenTempl/2
+	public static final int MSG_PIXELROWMESSAGE_7 = 0x00000025; //Group/OpenTempl/2
 	public static final int MSG_PIXELROWMESSAGE_7_FIELD_PIXELS_107 = 0x01c00001; //ByteVector/None/9
 
 	public static void consume(Pipe<JPGSchema> input) {
@@ -130,7 +131,8 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	}
 	public static void consumeQuantizationTableMessage(Pipe<JPGSchema> input) {
 		int fieldtableId = PipeReader.readInt(input,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
-		DataInputBlobReader<JPGSchema> fieldtable = PipeReader.inputStream(input, MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_205);
+		int fieldprecision = PipeReader.readInt(input,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
+		DataInputBlobReader<JPGSchema> fieldtable = PipeReader.inputStream(input, MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
 	}
 	public static void consumeMCUMessage(Pipe<JPGSchema> input) {
 		DataInputBlobReader<JPGSchema> fieldy = PipeReader.inputStream(input, MSG_MCUMESSAGE_6_FIELD_Y_106);
@@ -176,10 +178,11 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 		PipeWriter.writeBytes(output,MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, fieldtableBacking, fieldtablePosition, fieldtableLength);
 		PipeWriter.publishWrites(output);
 	}
-	public static void publishQuantizationTableMessage(Pipe<JPGSchema> output, int fieldtableId, byte[] fieldtableBacking, int fieldtablePosition, int fieldtableLength) {
+	public static void publishQuantizationTableMessage(Pipe<JPGSchema> output, int fieldtableId, int fieldprecision, byte[] fieldtableBacking, int fieldtablePosition, int fieldtableLength) {
 		PipeWriter.presumeWriteFragment(output, MSG_QUANTIZATIONTABLEMESSAGE_5);
 		PipeWriter.writeInt(output,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105, fieldtableId);
-		PipeWriter.writeBytes(output,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_205, fieldtableBacking, fieldtablePosition, fieldtableLength);
+		PipeWriter.writeInt(output,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205, fieldprecision);
+		PipeWriter.writeBytes(output,MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, fieldtableBacking, fieldtablePosition, fieldtableLength);
 		PipeWriter.publishWrites(output);
 	}
 	public static void publishMCUMessage(Pipe<JPGSchema> output, byte[] fieldyBacking, int fieldyPosition, int fieldyLength, byte[] fieldcbBacking, int fieldcbPosition, int fieldcbLength, byte[] fieldcrBacking, int fieldcrPosition, int fieldcrLength) {

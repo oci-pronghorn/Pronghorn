@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -88,7 +90,23 @@ public class InverseDCT extends PronghornStage {
 
 	@Override
 	public void run() {
-		
+		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+			
+			int msgIdx = PipeReader.getMsgIdx(input);
+			
+			if (msgIdx == JPGSchema.MSG_HEADERMESSAGE_1) {
+				
+			}
+			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
+				
+			}
+			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
+				
+			}
+			else {
+				requestShutdown();
+			}
+		}
 	}
 	
 	/*public static void main(String[] args) {

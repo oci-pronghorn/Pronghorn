@@ -482,7 +482,7 @@ public class JPGScanner extends PronghornStage {
 				}
 				// write color component data to pipe
 				for (int i = 0; i < header.colorComponents.size(); ++i) {
-					System.out.println("Attempting to color component to pipe...");
+					System.out.println("Attempting to write color component to pipe...");
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 						System.out.println("Writing color component to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents.get(i).componentID);
@@ -503,11 +503,11 @@ public class JPGScanner extends PronghornStage {
 						System.out.println("Writing huffman table to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanDCTables.get(i).tableID);
 						int tableSize = 0;
-						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16);
+						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16 * 2);
 						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
 							int size = header.huffmanDCTables.get(i).symbols.get(j).size();
 							tableSize += size;
-							lengthsBuffer.put((byte)size);
+							lengthsBuffer.putShort((short)size);
 						}
 						lengthsBuffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
@@ -530,11 +530,11 @@ public class JPGScanner extends PronghornStage {
 						System.out.println("Writing huffman table to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanACTables.get(i).tableID + 2);
 						int tableSize = 0;
-						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16);
+						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16 * 2);
 						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
 							int size = header.huffmanACTables.get(i).symbols.get(j).size();
 							tableSize += size;
-							lengthsBuffer.put((byte)size);
+							lengthsBuffer.putShort((short)size);
 						}
 						lengthsBuffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
@@ -557,12 +557,13 @@ public class JPGScanner extends PronghornStage {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
 						System.out.println("Writing quantization table to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105, header.quantizationTables.get(i).tableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205, header.quantizationTables.get(i).precision);
 						ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
 						for (int j = 0; j < 64; ++j) {
 							buffer.putInt(header.quantizationTables.get(i).table[j]);
 						}
 						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_205, buffer);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
 					}
 					else {
 						requestShutdown();
@@ -572,7 +573,7 @@ public class JPGScanner extends PronghornStage {
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3)) {
 					System.out.println("Writing compressed data to pipe...");
 					// write compressed image data tables to pipe
-					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103, header.imageData.size() * 2);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103, header.imageData.size());
 					ByteBuffer buffer = ByteBuffer.allocate(header.imageData.size() * 2);
 					for (int i = 0; i < header.imageData.size(); ++i) {
 						buffer.putShort(header.imageData.get(i));
