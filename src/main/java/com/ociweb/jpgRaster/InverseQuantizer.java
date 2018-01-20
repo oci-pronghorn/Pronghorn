@@ -1,16 +1,16 @@
 package com.ociweb.jpgRaster;
 
-import java.nio.ByteBuffer;
-
-import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+
+import java.nio.ByteBuffer;
 
 public class InverseQuantizer extends PronghornStage {
 

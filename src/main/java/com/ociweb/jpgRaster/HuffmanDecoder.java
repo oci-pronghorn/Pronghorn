@@ -1,6 +1,10 @@
 package com.ociweb.jpgRaster;
 
-import com.ociweb.jpgRaster.JPG.*;
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.ColorComponent;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.jpgRaster.JPG.HuffmanTable;
+import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;

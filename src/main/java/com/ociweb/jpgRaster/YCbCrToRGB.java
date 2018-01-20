@@ -1,8 +1,5 @@
 package com.ociweb.jpgRaster;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -12,11 +9,14 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+import java.nio.ByteBuffer;
+
 public class YCbCrToRGB extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	
+	Header header;
 	
 	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
@@ -61,7 +61,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 			
 			if (msgIdx == JPGSchema.MSG_HEADERMESSAGE_1) {
 				// read header from pipe
-				Header header = new Header();
+				header = new Header();
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				String filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
@@ -97,22 +97,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
-				
-				// write color component data to pipe
-				System.out.println("Attempting to write color component to pipe...");
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-					System.out.println("Writing color component to pipe...");
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
-				}
-				else {
-					requestShutdown();
-				}
-				PipeWriter.publishWrites(output);
+				header.colorComponents.add(component);
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();

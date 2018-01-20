@@ -1,13 +1,13 @@
 package com.ociweb.jpgRaster;
 
 import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.jpgRaster.JPG.HuffmanTable;
-import com.ociweb.jpgRaster.JPG.ColorComponent;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -456,14 +456,14 @@ public class JPGScanner extends PronghornStage {
 
 	@Override
 	public void run() {
-		while (!inputFiles.isEmpty() && PipeWriter.hasRoomForWrite(output)) {
+		if (!inputFiles.isEmpty() && PipeWriter.hasRoomForWrite(output)) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			try {
 				Header header = ReadJPG(file + ".jpg");
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
-					continue;
+					return;
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe

@@ -1,31 +1,35 @@
 package com.ociweb.jpgRaster;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class BMPDumper extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	
-	static int width;
-	static int height;
-	static Appendable filename;
+	Header header;
+	String filename;
 	
-	static int[][] pixels;
-	static int count;
+	short[][] pixels;
+	int count;
 	
 	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
 	}
 
-	public static void Dump() throws IOException {
+	public static void Dump(short[][] pixels, String filename) throws IOException {
+		int width = pixels[0].length / 3;
+		int height = pixels.length;
 		int paddingSize = (4 - (width * 3) % 4) % 4;
 		int size = 14 + 12 + pixels.length * pixels[0].length + height * paddingSize;
 		
@@ -68,42 +72,58 @@ public class BMPDumper extends PronghornStage {
 	@Override
 	public void run() {
 		
-		/*while (PipeReader.tryReadFragment(input)) {
+		while (PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			
-			if (msgIdx == JPGSchema.MSG_HEADER) {
-				height = PipeReader.readInt(input, JPGSchema.FIELD_HEIGHT);
-				width = PipeReader.readInt(input, JPGSchema.FIELD_WIDTH);
-				filename = PipeReader.readASCII(input, JPGSchema.FIELD_FILENAME, null);
-				
-				pixels = new int[height][width * 3];
+			if (msgIdx == JPGSchema.MSG_HEADERMESSAGE_1) {
+				// read header from pipe
+				header = new Header();
+				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
+				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
+				filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				header.frameType = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, new StringBuilder()).toString();
+				header.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501);
+				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
+				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
+				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+
+				pixels = new short[header.height][header.width * 3];
 				count = 0;
-			} else if (msgIdx == JPGSchema.MSG_PIXEL) {
-				int red = PipeReader.readInt(input, JPGSchema.FIELD_RED);
-				int green = PipeReader.readInt(input, JPGSchema.FIELD_GREEN);
-				int blue = PipeReader.readInt(input, JPGSchema.FIELD_BLUE);
+			}
+			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
+				MCU mcu = new MCU();
+				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
+				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
+				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
 				
-				pixels[count / width][(count % width) * 3 + 0] = red;
-				pixels[count / width][(count % width) * 3 + 1] = green;
-				pixels[count / width][(count % width) * 3 + 2] = blue;
+				int curPixel = count * 64;
+				for (int i = 0; i < 64; ++i) {
+					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 0] = mcu.y[i];
+					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 1] = mcu.cb[i];
+					pixels[curPixel / header.width][(curPixel % header.width) * 3 + 2] = mcu.cr[i];
+					curPixel += 1;
+				}
 				
 				count += 1;
+				
+				int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				if (count >= numMCUs) {
+					try {
+						Dump(pixels, filename);
+					}
+					catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				}
 			}
 			else {
 				requestShutdown();
 			}
-			
-			
-			if (count >= (width * height)) {
-				try {
-					Dump();
-				}
-				catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			}
-		}*/
+		}
 	
 	}
 	

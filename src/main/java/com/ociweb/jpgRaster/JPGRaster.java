@@ -1,20 +1,8 @@
 package com.ociweb.jpgRaster;
 
-import java.io.IOException;
-import java.util.ArrayList;
-
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
-import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
-import com.ociweb.pronghorn.stage.file.FileBlobWriteStage;
-import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
-import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
-import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
-import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.util.MainArgs;
 
 public class JPGRaster {
@@ -95,9 +83,9 @@ public class JPGRaster {
 		new InverseQuantizer(gm, pipe2, pipe3);
 		new InverseDCT(gm, pipe3, pipe4);
 		new YCbCrToRGB(gm, pipe4, pipe5);
-		//new BMPDumper(gm, pipe5);
+		new BMPDumper(gm, pipe5);
 		
-		new ConsoleJSONDumpStage<JPGSchema>(gm, pipe5);
+		//new ConsoleJSONDumpStage<JPGSchema>(gm, pipe5);
 		
 		for (int i = 0; i < inputFiles.length; ++i) {
 			String file = inputFiles[i];
