@@ -42,7 +42,7 @@ public class JPG {
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
-		short successvieApproximation;
+		short successiveApproximation;
 
 		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
 		ArrayList<Short> imageData = new ArrayList<Short>();

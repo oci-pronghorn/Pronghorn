@@ -21,7 +21,7 @@ public class JPGRaster {
 
 	public static void main(String[] args) {
 		//String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
-		String defaultFiles = "test_jpgs/car";
+		String defaultFiles = "test_jpgs/huff_simple0";
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
 		String[] inputFiles = inputFilePaths.split(" ");
 		

@@ -396,11 +396,11 @@ public class JPGScanner extends PronghornStage {
 		}
 		header.startOfSelection = (short)f.readUnsignedByte();
 		header.endOfSelection = (short)f.readUnsignedByte();
-		header.successvieApproximation = (short)f.readUnsignedByte();
+		header.successiveApproximation = (short)f.readUnsignedByte();
 		
 		if (header.startOfSelection != 0 ||
 			header.endOfSelection != 63 ||
-			header.successvieApproximation != 0) {
+			header.successiveApproximation != 0) {
 			System.err.println("Error - Non-standard selection and successive approximation not yet supported");
 			header.valid = false;
 			return;
@@ -471,44 +471,30 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
 				}
 				else {
 					requestShutdown();
 				}
 				// write huffman tables to pipe
-				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
-					System.out.println("Attempting to write huffman table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3)) {
-						System.out.println("Writing huffman table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103, header.huffmanACTables.get(i).tableID);
-						int tableSize = 0;
-						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-							tableSize += header.huffmanACTables.get(i).symbols.get(j).size();
-						}
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_LENGTH_203, tableSize * 2);
-						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
-						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-							for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
-								buffer.putShort(header.huffmanACTables.get(i).symbols.get(j).get(k));
-							}
-						}
-						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
-					}
-					else {
-						requestShutdown();
-					}
-				}
 				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
 					System.out.println("Attempting to write huffman table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3)) {
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4)) {
 						System.out.println("Writing huffman table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLEID_103, header.huffmanDCTables.get(i).tableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanDCTables.get(i).tableID);
 						int tableSize = 0;
+						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16);
 						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
-							tableSize += header.huffmanDCTables.get(i).symbols.get(j).size();
+							int size = header.huffmanDCTables.get(i).symbols.get(j).size();
+							tableSize += size;
+							lengthsBuffer.put((byte)size);
 						}
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_LENGTH_203, tableSize * 2);
+						lengthsBuffer.position(0);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
 						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
 						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
 							for (int k = 0; k < header.huffmanDCTables.get(i).symbols.get(j).size(); ++k) {
@@ -516,7 +502,34 @@ public class JPGScanner extends PronghornStage {
 							}
 						}
 						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_3_FIELD_TABLE_303, buffer);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
+					}
+					else {
+						requestShutdown();
+					}
+				}
+				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
+					System.out.println("Attempting to write huffman table to pipe...");
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4)) {
+						System.out.println("Writing huffman table to pipe...");
+						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanACTables.get(i).tableID + 2);
+						int tableSize = 0;
+						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16);
+						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+							int size = header.huffmanACTables.get(i).symbols.get(j).size();
+							tableSize += size;
+							lengthsBuffer.put((byte)size);
+						}
+						lengthsBuffer.position(0);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
+						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
+						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
+							for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
+								buffer.putShort(header.huffmanACTables.get(i).symbols.get(j).get(k));
+							}
+						}
+						buffer.position(0);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
 					}
 					else {
 						requestShutdown();
@@ -525,31 +538,31 @@ public class JPGScanner extends PronghornStage {
 				// write quantization tables to pipe
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
 					System.out.println("Attempting to write quantization table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4)) {
+					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
 						System.out.println("Writing quantization table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4_FIELD_TABLEID_104, header.quantizationTables.get(i).tableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105, header.quantizationTables.get(i).tableID);
 						ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
 						for (int j = 0; j < 64; ++j) {
 							buffer.putInt(header.quantizationTables.get(i).table[j]);
 						}
 						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_4_FIELD_TABLE_204, buffer);
+						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_205, buffer);
 					}
 					else {
 						requestShutdown();
 					}
 				}
 				System.out.println("Attempting to write compressed data to pipe...");
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2)) {
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3)) {
 					System.out.println("Writing compressed data to pipe...");
 					// write compressed image data tables to pipe
-					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2_FIELD_LENGTH_102, header.imageData.size() * 2);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103, header.imageData.size() * 2);
 					ByteBuffer buffer = ByteBuffer.allocate(header.imageData.size() * 2);
 					for (int i = 0; i < header.imageData.size(); ++i) {
 						buffer.putShort(header.imageData.get(i));
 					}
 					buffer.position(0);
-					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_2_FIELD_DATA_202, buffer);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_DATA_203, buffer);
 				}
 				else {
 					requestShutdown();
@@ -619,7 +632,7 @@ public class JPGScanner extends PronghornStage {
 				System.out.println("SOS============");
 				System.out.println("Start of Selection: " + header.startOfSelection);
 				System.out.println("End of Selection: " + header.endOfSelection);
-				System.out.println("Successive Approximation: " + header.successvieApproximation);
+				System.out.println("Successive Approximation: " + header.successiveApproximation);
 				System.out.println("Color Components:");
 				for (int i = 0; i < header.colorComponents.size(); ++i) {
 					System.out.println("\tComponent ID: " + header.colorComponents.get(i).componentID);
