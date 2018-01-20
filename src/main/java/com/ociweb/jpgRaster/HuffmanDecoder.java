@@ -268,6 +268,9 @@ public class HuffmanDecoder extends PronghornStage {
 					cbBuffer.putShort(mcu.cb[i]);
 					crBuffer.putShort(mcu.cr[i]);
 				}
+				yBuffer.position(0);
+				cbBuffer.position(0);
+				crBuffer.position(0);
 				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
 				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
 				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
