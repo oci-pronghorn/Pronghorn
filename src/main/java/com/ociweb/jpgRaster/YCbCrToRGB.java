@@ -70,6 +70,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
 				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
 				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+				PipeReader.releaseReadLock(input);
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
@@ -82,11 +83,12 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
 				// read color component data from pipe
@@ -98,6 +100,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
 				header.colorComponents.add(component);
+				PipeReader.releaseReadLock(input);
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
@@ -107,6 +110,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+				PipeReader.releaseReadLock(input);
 				yBuffer.position(0);
 				cbBuffer.position(0);
 				crBuffer.position(0);
@@ -117,24 +121,27 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				}
 				
 				convertYCbCrToRGB(mcu);
-				
-				ByteBuffer yBuffer2 = ByteBuffer.allocate(64 * 2);
-				ByteBuffer cbBuffer2 = ByteBuffer.allocate(64 * 2);
-				ByteBuffer crBuffer2 = ByteBuffer.allocate(64 * 2);
-				for (int i = 0; i < 64; ++i) {
-					yBuffer2.putShort(mcu.y[i]);
-					cbBuffer2.putShort(mcu.cb[i]);
-					crBuffer2.putShort(mcu.cr[i]);
+
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+					ByteBuffer yBuffer2 = ByteBuffer.allocate(64 * 2);
+					ByteBuffer cbBuffer2 = ByteBuffer.allocate(64 * 2);
+					ByteBuffer crBuffer2 = ByteBuffer.allocate(64 * 2);
+					for (int i = 0; i < 64; ++i) {
+						yBuffer2.putShort(mcu.y[i]);
+						cbBuffer2.putShort(mcu.cb[i]);
+						crBuffer2.putShort(mcu.cr[i]);
+					}
+					yBuffer2.position(0);
+					cbBuffer2.position(0);
+					crBuffer2.position(0);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
+					PipeWriter.publishWrites(output);
 				}
-				yBuffer2.position(0);
-				cbBuffer2.position(0);
-				crBuffer2.position(0);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
-				PipeWriter.publishWrites(output);
 			}
 			else {
+				System.err.println("Requesting shutdown");
 				requestShutdown();
 			}
 		}

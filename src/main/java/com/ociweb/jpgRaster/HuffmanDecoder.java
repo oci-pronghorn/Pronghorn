@@ -305,6 +305,7 @@ public class HuffmanDecoder extends PronghornStage {
 				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
 				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
 				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+				PipeReader.releaseReadLock(input);
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
@@ -317,11 +318,12 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
 				// read color component data from pipe
@@ -333,6 +335,7 @@ public class HuffmanDecoder extends PronghornStage {
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
 				header.colorComponents.add(component);
+				PipeReader.releaseReadLock(input);
 				
 				// write color component data to pipe
 				System.out.println("Attempting to write color component to pipe...");
@@ -344,21 +347,24 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			else if (msgIdx == JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3) {
 				int size = PipeReader.readInt(input, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103);
 				ByteBuffer buffer = ByteBuffer.allocate(size * 2);
 				PipeReader.readBytes(input, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_DATA_203, buffer);
+				PipeReader.releaseReadLock(input);
 				buffer.position(0);
 				for (int i = 0; i < size; ++i) {
 					header.imageData.add(buffer.getShort());
 				}
 				if (!decodeHuffmanData(header, output)) {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -376,6 +382,7 @@ public class HuffmanDecoder extends PronghornStage {
 				}
 				ByteBuffer buffer = ByteBuffer.allocate(size * 2);
 				PipeReader.readBytes(input, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
+				PipeReader.releaseReadLock(input);
 				buffer.position(0);
 				for (int i = 0; i < 16; ++i) {
 					table.symbols.add(new ArrayList<Short>());
@@ -398,6 +405,7 @@ public class HuffmanDecoder extends PronghornStage {
 				table.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
 				ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
 				PipeReader.readBytes(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+				PipeReader.releaseReadLock(input);
 				buffer.position(0);
 				for (int i = 0; i < 64; ++i) {
 					table.table[i] = buffer.getInt();
@@ -412,13 +420,15 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205, table.precision);
 					buffer.position(0);
 					PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			else {
+				System.err.println("Requesting shutdown");
 				requestShutdown();
 			}
 		}

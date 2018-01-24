@@ -476,8 +476,10 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
@@ -491,8 +493,10 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, header.colorComponents.get(i).quantizationTableID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, header.colorComponents.get(i).huffmanACTableID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, header.colorComponents.get(i).huffmanDCTableID);
+						PipeWriter.publishWrites(output);
 					}
 					else {
+						System.err.println("Requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -519,8 +523,10 @@ public class JPGScanner extends PronghornStage {
 						}
 						buffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
+						PipeWriter.publishWrites(output);
 					}
 					else {
+						System.err.println("Requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -546,8 +552,10 @@ public class JPGScanner extends PronghornStage {
 						}
 						buffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
+						PipeWriter.publishWrites(output);
 					}
 					else {
+						System.err.println("Requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -564,15 +572,17 @@ public class JPGScanner extends PronghornStage {
 						}
 						buffer.position(0);
 						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+						PipeWriter.publishWrites(output);
 					}
 					else {
+						System.err.println("Requesting shutdown");
 						requestShutdown();
 					}
 				}
 				System.out.println("Attempting to write compressed data to pipe...");
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3)) {
 					System.out.println("Writing compressed data to pipe...");
-					// write compressed image data tables to pipe
+					// write compressed image data to pipe
 					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103, header.imageData.size());
 					ByteBuffer buffer = ByteBuffer.allocate(header.imageData.size() * 2);
 					for (int i = 0; i < header.imageData.size(); ++i) {
@@ -580,11 +590,12 @@ public class JPGScanner extends PronghornStage {
 					}
 					buffer.position(0);
 					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_DATA_203, buffer);
+					PipeWriter.publishWrites(output);
 				}
 				else {
+					System.err.println("Requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			catch (IOException e) {
 				System.err.println("Error - Unknown error reading " + file);

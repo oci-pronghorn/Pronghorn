@@ -21,9 +21,9 @@ public class BMPDumper extends PronghornStage {
 	
 	short[][] pixels;
 	int count;
-	int numMCUs;
 	int mcuHeight;
 	int mcuWidth;
+	int numMCUs;
 	
 	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
 		super(graphManager, input, NONE);
@@ -90,12 +90,13 @@ public class BMPDumper extends PronghornStage {
 				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
 				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
 				header.successiveApproximation = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
+				PipeReader.releaseReadLock(input);
 
 				pixels = new short[header.height][header.width * 3];
 				count = 0;
-				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				mcuHeight = (header.height + 7) / 8;
 				mcuWidth = (header.width + 7) / 8;
+				numMCUs = mcuHeight * mcuWidth;
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
@@ -105,6 +106,7 @@ public class BMPDumper extends PronghornStage {
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
 				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+				PipeReader.releaseReadLock(input);
 				yBuffer.position(0);
 				cbBuffer.position(0);
 				crBuffer.position(0);
@@ -119,9 +121,10 @@ public class BMPDumper extends PronghornStage {
 				for (int i = curPixelY; i < curPixelY + 8; ++i) {
 					for (int j = curPixelX; j < curPixelX + 8; ++j) {
 						if (i < header.height && j < header.width) {
-							pixels[i][j * 3 + 0] = mcu.y[i * 8 + j];
-							pixels[i][j * 3 + 1] = mcu.cb[i * 8 + j];
-							pixels[i][j * 3 + 2] = mcu.cr[i * 8 + j];
+							System.out.println(i + ", " + j);
+							pixels[i][j * 3 + 0] = mcu.y[(i % 8) * 8 + (j % 8)];
+							pixels[i][j * 3 + 1] = mcu.cb[(i % 8) * 8 + (j % 8)];
+							pixels[i][j * 3 + 2] = mcu.cr[(i % 8) * 8 + (j % 8)];
 						}
 					}
 				}
@@ -130,7 +133,8 @@ public class BMPDumper extends PronghornStage {
 				
 				if (count >= numMCUs) {
 					try {
-						Dump(pixels, filename);
+						System.out.println("Writing pixels to BMP file...");
+						Dump(pixels, filename + ".bmp");
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
@@ -138,6 +142,7 @@ public class BMPDumper extends PronghornStage {
 				}
 			}
 			else {
+				System.err.println("Requesting shutdown");
 				requestShutdown();
 			}
 		}
