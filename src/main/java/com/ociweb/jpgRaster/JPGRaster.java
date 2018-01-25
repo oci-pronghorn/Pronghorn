@@ -3,6 +3,7 @@ package com.ociweb.jpgRaster;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.util.MainArgs;
 
 public class JPGRaster {
@@ -95,6 +96,5 @@ public class JPGRaster {
 			scanner.queueFile(file);
 		}
 	}
-	
 
 }

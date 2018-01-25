@@ -158,10 +158,16 @@ public class InverseQuantizer extends PronghornStage {
 				yBuffer2.position(0);
 				cbBuffer2.position(0);
 				crBuffer2.position(0);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
-				PipeWriter.publishWrites(output);
+				if(PipeWriter.tryWriteFragment(output,  JPGSchema.MSG_MCUMESSAGE_6)) {
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
+					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
+					PipeWriter.publishWrites(output);
+				}
+				else {
+					requestShutdown();
+				}
+				
 				System.out.println("Quantizer exit after writing mcu");
 			}
 			else {

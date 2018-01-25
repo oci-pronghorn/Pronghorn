@@ -255,6 +255,7 @@ public class HuffmanDecoder extends PronghornStage {
 						yBuffer.putShort(mcu.y[i]);
 						cbBuffer.putShort(mcu.cb[i]);
 						crBuffer.putShort(mcu.cr[i]);
+//						System.out.println("\n" + String.format("%2x", mcu.y[i]));
 					}
 					yBuffer.position(0);
 					cbBuffer.position(0);
