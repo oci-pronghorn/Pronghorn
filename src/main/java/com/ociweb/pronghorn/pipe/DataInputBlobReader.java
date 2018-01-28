@@ -446,13 +446,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     @Override
     public String readUTFOfLength(int length) {
-        workspace.setLength(0);
-        
-        try {
-        	return readUTF(this, length, workspace).toString();
-        } catch (Exception e) {
-        	throw new RuntimeException(e);
-        }
+    	if (length >= 0) {
+	        workspace.setLength(0);
+	        
+	        try {
+	        	return readUTF(this, length, workspace).toString();
+	        } catch (Exception e) {
+	        	throw new RuntimeException(e);
+	        }
+    	} else {
+    		return null;
+    	}
     }
     
     @Override
@@ -517,16 +521,18 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	
 	
     public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
-    	assert(reader.storeMostRecentPacked(-1));
-    	long charAndPos = ((long)reader.position)<<32;
-        long limit = ((long)reader.position+length)<<32;
-        assert(length <= reader.available()) : "malformed data";
-
-        while (charAndPos<limit) {
-            charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);
-            target.append((char)charAndPos);
-        }
-        reader.position+=length;
+    	if (length>=0) {
+	    	assert(reader.storeMostRecentPacked(-1));
+	    	long charAndPos = ((long)reader.position)<<32;
+	        long limit = ((long)reader.position+length)<<32;
+	        assert(length <= reader.available()) : "malformed data";
+	
+	        while (charAndPos<limit) {
+	            charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);
+	            target.append((char)charAndPos);
+	        }
+	        reader.position+=length;
+    	}
         return target;
     }
         

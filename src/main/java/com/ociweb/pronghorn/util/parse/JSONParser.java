@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.util.parse;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -176,7 +175,7 @@ public class JSONParser {
 		return new TrieParserReader(4);
 	}
 	
-	public static <A extends Appendable> void parse(Pipe pipe, TrieParserReader reader, JSONVisitor visitor) {
+	public static <A extends Appendable> void parse(Pipe<?> pipe, TrieParserReader reader, JSONVisitor visitor) {
 		
 		TrieParserReader.parseSetup(reader, pipe);
 		

@@ -65,20 +65,33 @@ public class JSONStreamParser {
 		TrieParser trie = new TrieParser(256,2,false,true);
 		
 		for (T key: keys.getEnumConstants()) {			
-			int value = key.ordinal()<<8;
+			int value = toValue(key.ordinal());
 			assert(value>=0);
 			
 			trie.setUTF8Value("\"", key.getKey(), "\"", value);
+			//TODO: should we add the same key without quotes ??
 			
 		}
 		
+		populateWithJSONTokens(trie);
+	
+		return trie;
+	}
+
+
+	public static int toValue(int idx) {
+		return idx<<8;
+	}
+
+	public static int fromValue(int idx) {
+		return idx>>8;
+	}
+
+	
+	public static void populateWithJSONTokens(TrieParser trie) {
 		trie.setValue(JSONConstants.string221, STRING_PART);
 		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values		
 		addTokens(trie);
-
-		
-		
-		return trie;
 	}
 	
 	
@@ -87,10 +100,7 @@ public class JSONStreamParser {
 			
 	    	TrieParser trie = new TrieParser(256,1,false,true);
 
-			trie.setValue(JSONConstants.string221, STRING_PART); //begin string - for this change to stringEndParser
-			trie.setValue(JSONConstants.string222, STRING_END); //begin string
-		
-			addTokens(trie);
+			populateWithJSONTokens(trie);
 			
 			return trie;
 	}
@@ -173,7 +183,8 @@ public class JSONStreamParser {
 				
 				final int id  = (int)TrieParserReader.parseNext(reader, customParser);
 				
-				//logger.info("position is now {} vs ring buffer size {}", reader.sourcePos, reader.sourceMask);
+				//logger.info("start pos {} position is now {} vs ring buffer len {}", 
+				//		pos, reader.sourcePos, reader.sourceLen);
 				
 				if (-1 == id) {
 					assert(pos == reader.sourcePos) : "did not return to start position";
@@ -239,7 +250,7 @@ public class JSONStreamParser {
 						//if less than longest known this is not an error we just need more data...
 						//TODO:confirm grows.
 						if (reader.parseHasContentLength(reader) > customParser.longestKnown()) {
-							
+							System.err.println("at position "+reader.sourcePos);
 							System.err.print("Unable to parse: '");
 							TrieParserReader.debugAsUTF8(reader, System.err,100,false);
 							System.err.println("'");
@@ -257,7 +268,7 @@ public class JSONStreamParser {
 					default:
 					
 						//the only values here are the ones matching the custom strings 	
-						visitor.customString(id>>8);	
+						visitor.customString(fromValue(id));	
 				}			
 				
 			} else {
@@ -269,7 +280,7 @@ public class JSONStreamParser {
 				
 				if (id!=-1) {
 					int type = 0xFF&id;
-					int value = (id>>8);
+					int value = (fromValue(id));
 					
 					if (0x75!=value) {
 					
@@ -377,7 +388,7 @@ public class JSONStreamParser {
 				
 				if (id!=-1) {
 					int type = 0xFF&id;
-					int value = (id>>8);
+					int value = (fromValue(id));
 					
 					if (0x75 != value) {
 						
@@ -399,12 +410,15 @@ public class JSONStreamParser {
 				} else {
 					//TrieParserReader.debugAsUTF8(reader, System.err);
 					reader.moveBack(1);//we need the new call to see teh slash
-					return;
+					//exit the parse because we have run out of data, will continue later
+					return;  
 				}
 				
 			}
 		}
 		
 	}
+
+
 
 }
