@@ -77,12 +77,11 @@ public abstract class StageScheduler {
 	public static StageScheduler defaultScheduler(GraphManager gm) {
 		
 		final boolean threadLimitHard = true;//must make this a hard limit or we can saturate the system easily.
-		final int ideal = idealThreadCount();
-		return defaultSchedulerImpl(gm, threadLimitHard, ideal);
+		return defaultSchedulerImpl(gm, threadLimitHard, idealThreadCount());
 	}
 	
 	public static StageScheduler defaultScheduler(GraphManager gm, int maxThreads, boolean threadLimitHard) {
-		return defaultSchedulerImpl(gm, threadLimitHard, Math.min(idealThreadCount(),maxThreads));
+		return defaultSchedulerImpl(gm, threadLimitHard, maxThreads);
 	}
 
 	private static StageScheduler defaultSchedulerImpl(GraphManager gm, final boolean threadLimitHard, final int targetThreadCountLimit) {
@@ -90,7 +89,8 @@ public abstract class StageScheduler {
 		final int countStages = GraphManager.countStages(gm);
 
 		//disabled until we find a large machine for testing
-		if (false || targetThreadCountLimit>countStages) { 
+		if (targetThreadCountLimit>countStages+
+				                   (GraphManager.isTelemetryEnabled(gm)?20:0)) { 
 				  //NOTE: this case will be rarely used, the other schedules are
 			      //      more efficient however this scheduler is much simpler.
 				  logger.info("Threads in use {}, one per stage.", countStages);

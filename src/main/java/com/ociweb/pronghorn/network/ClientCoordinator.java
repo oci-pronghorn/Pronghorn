@@ -1,22 +1,27 @@
 package com.ociweb.pronghorn.network;
 
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.PronghornStageProcessor;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.*;
-import org.HdrHistogram.Histogram;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.SSLEngine;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import javax.net.ssl.SSLEngine;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.PoolIdx;
+import com.ociweb.pronghorn.util.ServiceObjectHolder;
+import com.ociweb.pronghorn.util.ServiceObjectValidator;
+import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
@@ -83,7 +88,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     	    	
     	//logger.trace("Begin hisogram build");
     	
-    	Histogram histRoundTrip = new Histogram(40_000_000_000L,0);
+    	ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
     	
     	int c = 5;
     	ClientConnection cc = connections.next();
@@ -95,8 +100,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     	} while (--c>=0 && null!=(cc = connections.next()));
     	
     	if (showHistogramResults) {
-    		//
-    		histRoundTrip.outputPercentileDistribution(System.out, 1.0); 
+    		
+    		histRoundTrip.report(System.out);
     	}
     	
     }

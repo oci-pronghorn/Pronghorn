@@ -1,24 +1,26 @@
 package com.ociweb.pronghorn.network;
 
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.util.Appendables;
-
-import org.HdrHistogram.Histogram;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
 import java.nio.channels.NoConnectionPendingException;
+
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 public class ClientConnection extends SSLConnection {
@@ -47,7 +49,7 @@ public class ClientConnection extends SSLConnection {
 	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
-	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
+	private ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
 
 	private final int maxInFlightBits;
 	public  final int maxInFlight;
@@ -449,7 +451,7 @@ public class ClientConnection extends SSLConnection {
 
 
 	
-	public Histogram histogram() {
+	public ElapsedTimeRecorder histogram() {
 		return histRoundTrip;
 	}
 
@@ -467,7 +469,7 @@ public class ClientConnection extends SSLConnection {
 			if (showAllTimes) {
 				Appendables.appendNearestTimeUnit(System.err, value, " client latency\n");
 			}
-			histRoundTrip.recordValue(value);
+			ElapsedTimeRecorder.record(histRoundTrip, value);
 		}
 		return value;
 	}

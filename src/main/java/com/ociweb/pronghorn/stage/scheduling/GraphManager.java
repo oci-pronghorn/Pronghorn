@@ -57,7 +57,7 @@ public class GraphManager {
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
 	
-	private static final double percentile = 99.999;
+	private static final double percentile = .999;
 	
 
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
@@ -490,7 +490,7 @@ public class GraphManager {
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
 				NetGraphBuilder.telemetryServerSetup(gm.telemetryCert, gm.telemetryHost, gm.telemetryPort, gm, TELEMTRY_SERVER_RATE);
-				logger.info("total count of stages {} ",gm.stageCounter.get());
+				logger.info("total count of stages including telemetry {} ",gm.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");
 			}
@@ -1597,7 +1597,14 @@ public class GraphManager {
 	                target.append(AQUOTE);
 	                target.append(stageId);
 	                target.append(LABEL_OPEN);
-	                target.append(m.stageDOTNames[stage.stageId]);	           	           
+	                
+	                byte[] stageDisplayName = m.stageDOTNames[stage.stageId];
+	                if (null!=stageDisplayName) {
+	                	target.append(stageDisplayName);	        
+		        	} else {
+		        		stageDisplayName = buldStageDOTName(m, stage);
+		        		target.append(stageDisplayName);	           	           
+		        	}
 	                               
 	                
 	                //if supported give PCT used
@@ -1868,9 +1875,11 @@ public class GraphManager {
 		String stageDisplayName;
 		Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
 		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
+
 		if (null!=group) {
-			stageDisplayName+=(" grp:"+group.toString());
+			stageDisplayName+=(" T:"+group.toString()+"\n");
 		}
+		
 		return m.stageDOTNames[stage.stageId] = stageDisplayName.getBytes();
 	}
 
@@ -2217,6 +2226,7 @@ public class GraphManager {
     
     //TODO: do not enable until the index.html can use https for its call back...
     private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
+	private int fastestResponse = 200_000_000;
     
     public String enableTelemetry(String host, int port) {
     	telemetryHost = host;
@@ -2228,6 +2238,13 @@ public class GraphManager {
     	telemetryHost = NetGraphBuilder.bindHost();
     	telemetryPort = port;
     	return telemetryHost;
+	}
+
+	public static void recordThreadGroup(PronghornStage stage, final int group, final GraphManager graphManager) {
+		//logger.info("recorded group for {} {}",group,stage);
+		
+		addNota(graphManager, THREAD_GROUP, group, stage);
+		buldStageDOTName(graphManager, stage);
 	}
 
 	public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {
@@ -2309,8 +2326,7 @@ public class GraphManager {
     
     private static final int defaultDurationWhenZero = 1;
     private static AtomicInteger totalZeroDurations = new AtomicInteger();
-    
-    
+     
 	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
 
 		//Does not track this data if it will no be used by telemetry
@@ -2318,29 +2334,48 @@ public class GraphManager {
 		if (isTelemetryEnabled(graphManager)) {
 			if (duration>0) {
 				accumPositiveTime(graphManager, stageId, duration, now);			
-			} else {
+			} else {				
 				accumWhenZero(graphManager, stageId, duration);
 			}
 		}
 		
 	}
 
+	private static final long AVG_BITS = 12;
+	private static final long AVG_BASE = (1L<<AVG_BITS)-1L;
+	
+	
 	private static void accumPositiveTime(GraphManager graphManager, int stageId, long duration, long now) {
 		long[] stageLastTimeNsLocal = graphManager.stageLastTimeNs;
 		long last = stageLastTimeNsLocal[stageId];
 		
 		if (last>0 && last<now) {
-			accumDuration(graphManager, stageId, duration, now, last); 
-		}
+			long fullPeriod = now-last;
+			
+			if (duration>0 && duration<Integer.MAX_VALUE) {
+				//TODO: switch to fastest responses per stage, since they each have different behavior!!
+				graphManager.fastestResponse = Math.min(graphManager.fastestResponse, (int)duration);
+			}
+			//NOTE: anything this fast is just a check for data and does not count as work done.
+			//      if this check is not here we may show artificially high CPU usages.
+			//      NOTE: MessagePubSub takes 20* times in order to check for data. should investigate.
+			long localDuration =  (duration<(graphManager.fastestResponse*20))
+					              && (fullPeriod<2000) //below the accuracy threshold in NS.
+					              ?1
+					              :duration;
+			accumDuration(graphManager, stageId, localDuration, fullPeriod); 
+
+			//this total duration is also used as the baseline for the histogram of elapsed time
+			graphManager.stageRunNS[stageId] += localDuration;
+		} 
 		
 		//we have the running pct since startup but we need a recent rolling value.
 		stageLastTimeNsLocal[stageId] = now;
 		
-		//this total duration is also used as the baseline for the histogram of elapsed time
-		graphManager.stageRunNS[stageId] += duration;
 	}
 
-	private static void accumDuration(GraphManager graphManager, int stageId, long duration, long now, long last) {
+		
+	private static void accumDuration(GraphManager graphManager, int stageId, long duration, long fullPeriod) {
 		if (recordElapsedTime) {
 			
 			buildHistogramsAsNeeded(graphManager, stageId);
@@ -2348,16 +2383,11 @@ public class GraphManager {
 
 		}		
 		
-		long newPct = ( (100_000L*duration) / (now-last) );		
+		long newPct = ( (100_000L*(duration)) / (fullPeriod) );		
 		int oldPct = graphManager.stageCPUPct[stageId];
 		
-		final int bits = 16;//long is 64 bits, the PCT only needs 17 bits and we use 40 more for the moving average.
 		graphManager.stageCPUPct[stageId] = (int) 
-				(0==oldPct ? newPct:
-									((newPct
-				                                  +( ((1L<<bits)-1L)*(long)oldPct)) >> bits));
-	
-
+				(0==oldPct ? newPct: (newPct + (AVG_BASE*(long)oldPct)) >> AVG_BITS );
 	}
 
 	private static void accumWhenZero(GraphManager graphManager, int stageId, long duration) {

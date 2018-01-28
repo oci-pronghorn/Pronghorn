@@ -29,7 +29,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	private ExecutorService executorService;
 	private volatile Throwable firstException;//will remain null if nothing is wrong
-	private static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
+	static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
 	private ScriptedNonThreadScheduler[] ntsArray;
 
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager) {
@@ -211,7 +211,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		countOfGroups++;
 	    	}
 	    }
-	    
+	 
 //    	
 //    	for(int i = 0; i<stageArrays.length; i++) {
 //    		PronghornStage[] array = stageArrays[i];
@@ -236,6 +236,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    int threadCountdown = (countOfGroups-targetThreadCount);
 	    boolean debug = false;
 	    while (--threadCountdown>=0) {
+	    	
 	    	int idx = countOfGroups/2;
 	    	
 	    	if (null == stageArrays[idx]) {
@@ -353,7 +354,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
 				
 		if (targetThreadCount>=3) {
-			//these stages must be isolated from their neibors.
+			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic
 			//  2. they may be blocking calls
 			if (GraphManager.hasNota(graphManager, producerId, GraphManager.ROUTER_HUB)) {
@@ -407,6 +408,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}	
 		
+		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
+		if (totalInputsCount>1) {
+			//do not combine with super if it has multiple inputs
+			if ((consumerStage instanceof OrderSupervisorStage)) {
+				return false;
+			}
+		}
 		
 		//this server pipe is only used for 404 based on route failures
 		//since this is not a priority it should not be an optimized relationship
@@ -746,6 +754,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			}
 		}
 		threadCount=count;
+		logger.info("actual thread count {}", threadCount);
 		
 		/////////////
 	    //for each array of stages create a scheduler
@@ -769,7 +778,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//      Each individual part of the graph can have its own custom setting... 
 				boolean reverseOrder = false;
 	    		
-	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(graphManager, reverseOrder, stageArrays[k], name, true);
+	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(ntsIdx, graphManager, reverseOrder, stageArrays[k], name, true);
 	    	}
 	    }
 	}
@@ -796,9 +805,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 //		if (log) {
 //			logger.info("added stage {}",stage);
 //		}
-
 		
-		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, root, stage);
 		count++;
 		
 		//Recursively add the ones under the same root.

@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import com.ociweb.pronghorn.util.Appendables;
+
 public class ElapsedTimeRecorder {
 
 	private final int[] buckets; 
@@ -9,6 +11,21 @@ public class ElapsedTimeRecorder {
 		
 		buckets = new int[64];
 		
+	}
+	
+	public String toString() {
+		return report(new StringBuilder()).toString();
+	}
+	
+	public <A extends Appendable> A report(A target) {
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .50f), " 50 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .80f), " 80 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .98f), " 98 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .99f), " 99 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .999f), " 99.9 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .9999f), " 99.99 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, 1f), " max update\n");
+		return target;
 	}
 	
 	public static void record(ElapsedTimeRecorder that, long valueNS) {		
@@ -46,6 +63,14 @@ public class ElapsedTimeRecorder {
 		} else {
 			return 0;
 		}
+	}
+
+	public void add(ElapsedTimeRecorder source) {
+		int i = buckets.length;
+		while (--i>=0) {
+			buckets[i] += source.buckets[i];
+		}
+		
 	}
 	
 	
