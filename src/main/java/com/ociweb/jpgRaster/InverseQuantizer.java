@@ -94,7 +94,7 @@ public class InverseQuantizer extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -123,7 +123,7 @@ public class InverseQuantizer extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -179,12 +179,12 @@ public class InverseQuantizer extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Requesting shutdown");
+				System.err.println("Inverse Quantizer requesting shutdown");
 				requestShutdown();
 			}
 		}

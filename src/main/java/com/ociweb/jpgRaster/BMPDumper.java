@@ -121,7 +121,6 @@ public class BMPDumper extends PronghornStage {
 				for (int i = curPixelY; i < curPixelY + 8; ++i) {
 					for (int j = curPixelX; j < curPixelX + 8; ++j) {
 						if (i < header.height && j < header.width) {
-							System.out.println(i + ", " + j);
 							pixels[i][j * 3 + 0] = mcu.y[(i % 8) * 8 + (j % 8)];
 							pixels[i][j * 3 + 1] = mcu.cb[(i % 8) * 8 + (j % 8)];
 							pixels[i][j * 3 + 2] = mcu.cr[(i % 8) * 8 + (j % 8)];
@@ -142,7 +141,7 @@ public class BMPDumper extends PronghornStage {
 				}
 			}
 			else {
-				System.err.println("Requesting shutdown");
+				System.err.println("BMPDumper requesting shutdown");
 				requestShutdown();
 			}
 		}

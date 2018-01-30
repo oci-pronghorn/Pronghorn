@@ -55,7 +55,7 @@ public class YCbCrToRGB extends PronghornStage {
 
 	@Override
 	public void run() {
-while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			
@@ -86,7 +86,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -141,7 +141,7 @@ while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) 
 				}
 			}
 			else {
-				System.err.println("Requesting shutdown");
+				System.err.println("YCbCrToRGB requesting shutdown");
 				requestShutdown();
 			}
 		}

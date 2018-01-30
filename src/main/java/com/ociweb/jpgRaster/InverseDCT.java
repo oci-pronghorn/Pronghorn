@@ -122,10 +122,9 @@ public class InverseDCT extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
-				PipeWriter.publishWrites(output);
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
 				// read color component data from pipe
@@ -152,7 +151,7 @@ public class InverseDCT extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -194,12 +193,12 @@ public class InverseDCT extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Requesting shutdown");
+				System.err.println("Inverse DCT requesting shutdown");
 				requestShutdown();
 			}
 		}

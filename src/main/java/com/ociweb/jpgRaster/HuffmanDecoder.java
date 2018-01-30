@@ -321,7 +321,7 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Huffman requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -350,7 +350,7 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Huffman requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -364,7 +364,7 @@ public class HuffmanDecoder extends PronghornStage {
 					header.imageData.add(buffer.getShort());
 				}
 				if (!decodeHuffmanData(header, output)) {
-					System.err.println("Requesting shutdown");
+					System.err.println("Huffman requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -423,12 +423,12 @@ public class HuffmanDecoder extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Huffman requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Requesting shutdown");
+				System.err.println("Huffman requesting shutdown");
 				requestShutdown();
 			}
 		}
