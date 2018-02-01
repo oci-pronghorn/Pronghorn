@@ -25,12 +25,15 @@ public class BMPDumper extends PronghornStage {
 	int mcuWidth;
 	int numMCUs;
 	
-	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
+	long time;
+	
+	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, long time) {
 		super(graphManager, input, NONE);
 		this.input = input;
+		this.time = time;
 	}
 
-	public static void Dump(short[][] pixels, String filename) throws IOException {
+	public static void Dump(short[][] pixels, String filename, long time) throws IOException {
 		int width = pixels[0].length / 3;
 		int height = pixels.length;
 		int paddingSize = (4 - (width * 3) % 4) % 4;
@@ -58,6 +61,13 @@ public class BMPDumper extends PronghornStage {
 			}
 		}
 		file.close();
+		
+		if (filename.equals("test_jpgs/static.bmp")) {
+			long end = System.nanoTime();
+			
+			double duration = (double)(end - time) / 1000000;
+			System.out.println("Time in milliseconds: " + duration);
+		}
 	}
 	
 	private static void writeInt(DataOutputStream stream, int v) throws IOException {
@@ -133,7 +143,7 @@ public class BMPDumper extends PronghornStage {
 				if (count >= numMCUs) {
 					try {
 						System.out.println("Writing pixels to BMP file...");
-						Dump(pixels, filename + ".bmp");
+						Dump(pixels, filename + ".bmp", time);
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
