@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.util.math.Decimal;
 
 public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<K> & TrieKeyable> implements JSONStreamVisitor {
 
-	//TODO: this would be much fast if it were code generated, but we must ensure the dynamic behavior is right first.
+	//TODO: this would be much faster if it were code generated, but we must ensure the dynamic behavior is right first.
 	
 	
 	//private final FieldReferenceOffsetManager from;
@@ -20,8 +20,8 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<
 	//map array sequence check against field in a message then apply
 	
 	///////////////
-	//these stacks are helpfull for debugging
-	private final long[] uStack;//these are the unuiqe positions, (prev*len)+pos path
+	//these stacks are helpful for debugging
+	private final long[] uStack;//these are the unique positions, (prev*len)+pos path
 	private final K[] enumStack;
 	private final K[] keys;
 	
@@ -35,7 +35,7 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<
 	private int activeFieldLoc = 0;
 	private int activeFieldBit = 0;
 	
-	//for "no mach" we will use this object to ensume the data
+	//for "no mach" we will use this object to consume the data
 	private final ByteConsumer nullByteConsumer = new ByteConsumer() {
 		@Override
 		public void consume(byte[] backing, int pos, int len, int mask) {	
