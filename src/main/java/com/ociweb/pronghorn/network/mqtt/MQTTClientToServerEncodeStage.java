@@ -165,8 +165,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	private void storePublishedPosPersisted(int blobPosition, int blobConsumed, byte[] blob, final int packetId) {
-		//logger.trace("AAAA  store disk need ack for {} ",packetId);
-		
 		Pipe.presumeRoomForWrite(persistBlobStore);
 		FragmentWriter.writeLV(persistBlobStore, PersistedBlobStoreSchema.MSG_BLOCK_1,
 				packetId, //persist store supports long but we only have a packetId.
@@ -175,8 +173,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	private void storePublishedPosLocal(long slabPosition, int blobPosition, final int packetId) {
-		//logger.trace("AAAA  store local need ack for {} ",packetId);
-
 		if (-1==replayFromPosition) {
 			replayFromPosition = slabPosition;
 		} else {
