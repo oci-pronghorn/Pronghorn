@@ -184,8 +184,8 @@ public class SSLUtil {
 
 				} else if (status == Status.BUFFER_OVERFLOW){
 				
-					logger.info("ZZZZZ Buffer overflow {} ",buffer);
-					System.exit(-1);
+					logger.warn("wrapResultStatusState Buffer overflow {} ",buffer);
+					return status;
 					
 				} else {
 					
