@@ -327,8 +327,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	//logger.info("accum off this pipe "+isOpen[idx]+"   "+inputChannels[idx]);
         	int[] localInputLengths = inputLengths;
         	final int start = localInputLengths[idx];
-            int messageIdx = accumulateRunningBytes(idx, selectedInput);
-            if (messageIdx < 0) {
+            if (accumulateRunningBytes(idx, selectedInput) < 0) {//message idx
             	//logger.trace("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consumed.
                 isOpen[idx] = false;
@@ -347,7 +346,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             }            
         }
 
-        long channel   = inputChannels[idx];
+        return parseIfOpen(idx, selectedInput);
+    }
+
+
+	private int parseIfOpen(final int idx, Pipe<NetPayloadSchema> selectedInput) {
+		long channel   = inputChannels[idx];
         activeChannel = channel;
 
         if (channel >= 0) {
@@ -364,7 +368,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	return result ? 1 : 0;
         }
         return 0;
-    }
+	}
 
 
 	private boolean parseAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel) {
@@ -919,87 +923,12 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         //logger.info("seen message id of {}",messageIdx);
         
         if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
-            long channel   = Pipe.takeLong(selectedInput);
-            long arrivalTime = Pipe.takeLong(selectedInput);
-            
-            long slabPos;
-            this.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
-          
-            int meta       = Pipe.takeRingByteMetaData(selectedInput);
-            int length     = Pipe.takeRingByteLen(selectedInput);
-            int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
-            
-            assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
-            assert(length<=selectedInput.maxVarLen);
-            assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
-            
-			if (-1 == inChnl) {
-				//is freshStart
-				assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
-				
-				//assign
-				inputChannels[idx]     = inChnl = channel;
-				inputLengths[idx]      = length;
-				inputBlobPos[idx]      = pos;
-				inputBlobPosLimit[idx] = pos + length;
-				
-				//logger.info("added new fresh start data of {}",length);
-				
-				assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
-				assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-            } else {
-            	//confirm match
-            	assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
-            	
-            	//grow position
-            	assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
-            	inputLengths[idx] += length; 
-            	inputBlobPosLimit[idx] += length;
-            	
-            	assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
-            	
-            	//may only read up to safe point where head is       
-            	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-            	
-            }
-
-			assert(inputLengths[idx]>=0) : "error negative length not supported";
-
-            //if we do not move this forward we will keep reading the same spot up to the new head
-            Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
-            Pipe.readNextWithoutReleasingReadLock(selectedInput); 
-            
-            
-            if (-1 == slabPos) {
-            	inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
-            }
-            assert(inputSlabPos[idx]!=-1);
+            inChnl = processPlain(idx, selectedInput, inChnl);
         } else {
-        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {
-        		
-        		assert(hasNoActiveChannel(inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
-        		assert(0==Pipe.releasePendingByteCount(selectedInput));
-        			     
-  	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
-         // 	  ServerCoordinator.start = System.nanoTime();
-        	  
-        		//logger.info("accumulate begin");
-        		//keep this as the base for our counting of sequence
-        		sequences[idx] = Pipe.takeInt(selectedInput);
-        		
-        		Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
-        		//Pipe.releaseReadLock(selectedInput);
-        		Pipe.readNextWithoutReleasingReadLock(selectedInput);
-        		//do not return, we will go back arround the while again.     		
+        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {        		
+        		processBegin(idx, selectedInput);        		
         	} else {
-	            assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
-	            if (-1 != messageIdx) {
-	            	throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
-	            }
-	            
-	            Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
-	            Pipe.readNextWithoutReleasingReadLock(selectedInput);
-	            return messageIdx;//do not loop again just exit now
+	            return processShutdown(selectedInput, messageIdx);
         	}
         }        
     }
@@ -1007,6 +936,106 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 
  
     return messageIdx;
+}
+
+
+private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+	final long channel = Pipe.takeLong(selectedInput);
+	final long arrivalTime = Pipe.takeLong(selectedInput);
+	
+	long slabPos;
+	this.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
+        
+	final int meta       = Pipe.takeRingByteMetaData(selectedInput);
+	final int length     = Pipe.takeRingByteLen(selectedInput);
+	final int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
+	
+	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
+	assert(length<=selectedInput.maxVarLen);
+	assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
+	
+	if (-1 != inChnl) {
+		plainMatch(idx, selectedInput, channel, length);
+	} else {
+		inChnl = plainFreshStart(idx, selectedInput, channel, length, pos);		
+	}
+
+	assert(inputLengths[idx]>=0) : "error negative length not supported";
+
+	//if we do not move this forward we will keep reading the same spot up to the new head
+	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
+	Pipe.readNextWithoutReleasingReadLock(selectedInput); 
+		
+	if (-1 == slabPos) {
+		inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
+	}
+	assert(inputSlabPos[idx]!=-1);
+	return inChnl;
+}
+
+
+private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput, long channel, int length) {
+	//confirm match
+	assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
+	
+	//grow position
+	assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
+	inputLengths[idx] += length; 
+	inputBlobPosLimit[idx] += length;
+	
+	assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
+	
+	//may only read up to safe point where head is       
+	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+}
+
+
+private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput, long channel, int length, int pos) {
+	long inChnl;
+	//is freshStart
+	assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
+	
+	//assign
+	inputChannels[idx]     = inChnl = channel;
+	inputLengths[idx]      = length;
+	inputBlobPos[idx]      = pos;
+	inputBlobPosLimit[idx] = pos + length;
+	
+	//logger.info("added new fresh start data of {}",length);
+	
+	assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
+	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+	return inChnl;
+}
+
+
+private int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx) {
+	assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
+	if (-1 != messageIdx) {
+		throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
+	}
+	
+	Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
+	Pipe.readNextWithoutReleasingReadLock(selectedInput);
+	return messageIdx;//do not loop again just exit now
+}
+
+
+private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
+	assert(hasNoActiveChannel(inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
+	assert(0==Pipe.releasePendingByteCount(selectedInput));
+		     
+	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
+       // 	  ServerCoordinator.start = System.nanoTime();
+     	  
+	//logger.info("accumulate begin");
+	//keep this as the base for our counting of sequence
+	sequences[idx] = Pipe.takeInt(selectedInput);
+	
+	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
+	//Pipe.releaseReadLock(selectedInput);
+	Pipe.readNextWithoutReleasingReadLock(selectedInput);
+	//do not return, we will go back arround the while again. 
 }
 
 

@@ -250,6 +250,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		break;
 	    	}
 	    	
+	    	if (    GraphManager.hasNota(graphManager, stageArrays[idx][0].stageId, GraphManager.ISOLATE)
+		    	||	GraphManager.hasNota(graphManager, stageArrays[idx-1][0].stageId, GraphManager.ISOLATE)) {
+		    		//can not combine any further than this. TODO: or can we???
+		    		break;
+		    }
+	    	
 	    	
 	    	assert(null!=stageArrays[idx]);
 	    	assert(null!=stageArrays[idx-1]);
@@ -391,6 +397,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}
 
+		//TODO: for a matrix of two rows of behaviors only let prod take on n consumers
+		//      where n is the count of producers per consumers over the consumers...
+		
 		PronghornStage consumerStage = GraphManager.getStage(graphManager, consumerId);
 		PronghornStage producerStage = GraphManager.getStage(graphManager, producerId);
 

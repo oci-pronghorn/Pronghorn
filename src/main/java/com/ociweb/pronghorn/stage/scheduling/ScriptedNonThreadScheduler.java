@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.scheduling;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,8 @@ import com.ociweb.pronghorn.util.math.ScriptedSchedule;
 
 public class ScriptedNonThreadScheduler extends StageScheduler implements Runnable {
 
+    public static boolean debugStageOrder = false; //turn on to investigate performance issues.
+	
     private static final int NS_OPERATOR_FLOOR = 10;
 	private AtomicBoolean shutdownRequested;
     private long[] rates;
@@ -59,7 +62,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private int[] sequenceLookup; //schedule
 
     private boolean recordTime;    
-    public static boolean debug = false;
+
     
     private byte[] stateArray;
     
@@ -137,7 +140,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
              
 
-        if (debug) {		
+        if (debugStageOrder) {		
 	        System.err.println();
 	        System.err.println("----------full stages -------------Clock:"+schedule.commonClock);
 	        for(int i = 0; i<stages.length; i++) {
@@ -580,18 +583,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				
 		
 		long dif;	
-		if (lowLatencyEnforced) {
-			
+		if (lowLatencyEnforced) {			
 			while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
-				
-				//on i7 haswell Thread.yield() can take 280-1700ns avg of 400
-				if (dif > 400) {//only yield if will return in time.
-										
-						Thread.yield();		
-						if (dif > 2400) {
-							Thread.yield();
-						}
-					
+				if (dif>4_000) {
+					LockSupport.parkNanos(dif);
+				} else {
+					Thread.yield();
 				}
 			}
 		} else {
