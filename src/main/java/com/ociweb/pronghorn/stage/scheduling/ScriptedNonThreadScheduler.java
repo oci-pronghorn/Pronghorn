@@ -38,10 +38,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
 
-    //set to true for faster response times but much greater cpu usage.
-	public static boolean lowLatencyEnforced = false;
-	//TODO: is there a rational approach so some stages may use low latency but not others??
-	
+    //when false this uses low granularity timer, this will optimize volume not latency
+	public boolean lowLatencyEnforced = true;
+
     private int[] producersIdx;
 
     private Pipe[] producerInputPipes;
@@ -66,8 +65,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     
     private byte[] stateArray;
     
-    private void buildSchedule(int scheduleId, GraphManager graphManager, PronghornStage[] stages, boolean reverseOrder) {
-
+    private void buildSchedule(int scheduleId, GraphManager graphManager, 
+    		                   PronghornStage[] stages, 
+    		                   boolean reverseOrder) {
+    	
     	stateArray = GraphManager.stageStateArray(graphManager);    	
     	recordTime = GraphManager.isTelemetryEnabled(graphManager);
     	
@@ -161,6 +162,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
     }
 
+    //NOTE: this can be toggled at runtime as needed.
+    public void setLowLatencyEnforced(boolean value) {
+    	lowLatencyEnforced = value;
+    }
+    
     public ScriptedNonThreadScheduler(GraphManager graphManager) {
     	this(graphManager, false);
     }
@@ -168,7 +174,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     public ScriptedNonThreadScheduler(GraphManager graphManager, boolean reverseOrder) {
         super(graphManager);
         this.graphManager = graphManager;
-      
+        
         
         PronghornStage[] temp = null;
 
