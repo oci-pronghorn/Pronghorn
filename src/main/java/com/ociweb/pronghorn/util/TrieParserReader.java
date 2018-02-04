@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.math.Decimal;
 
 public class TrieParserReader {
@@ -276,9 +277,13 @@ public class TrieParserReader {
 			//TrieMap data
 			int p = pos;
 			int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & localSourcePos], data[p++]);
-			//System.out.println("jumpMask:"+jumpMask);
-			pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;// u will get a specific jump location
-
+		
+			if (0==(0xFFFFFF&jumpMask)) {
+				pos = 2+p;
+			} else {
+				pos = computeJump(data, p);//only computed when we must
+			}
+			
 			visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);//only that jump
 		}
 		else{
@@ -584,7 +589,7 @@ public class TrieParserReader {
 		}
 
 		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, unfoundResult);        
-		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult);
+		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult, false, 0);
 
 		if (reader.normalExit) {
 			return exitUponParse(reader, trie);        	       	 
@@ -652,15 +657,14 @@ public class TrieParserReader {
 		return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
 	}
 
-	private static void processEachType(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
-			int sourceMask, final long unfoundResult) {
-
-		boolean hasSafePoint = false;
-		int t = 0;
+	private static void processEachType(TrieParserReader reader, 
+			TrieParser trie, byte[] source, long sourceLength,
+			int sourceMask, final long unfoundResult,
+			boolean hasSafePoint, int t) {
 
 		while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
 
-			if (t == TrieParser.TYPE_RUN) {                
+			if (TrieParser.TYPE_RUN == t) {                
 				parseRun(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
 			} else {
 				hasSafePoint = lessCommonActions(reader, trie, source, sourceLength, sourceMask, unfoundResult,	hasSafePoint, t);
@@ -717,21 +721,14 @@ public class TrieParserReader {
 		}
 	}
 
+	
+	
 	private static boolean lessCommonActions(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
-			int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
+			int sourceMask, final long unfoundResult, 
+			boolean hasSafePoint, int t) {
+		
 		if (t==TrieParser.TYPE_BRANCH_VALUE) {   
-			if (reader.runLength<sourceLength) {              
-				short[] data = trie.data;
-				int p = reader.pos;
-
-				int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos], data[p++]);
-
-				reader.pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;
-			} else {
-				reader.normalExit=false;
-				reader.result = unfoundResult;
-
-			}
+			processBinaryBranch(reader, trie, source, sourceLength, sourceMask, unfoundResult);
 		} else if (t == TrieParser.TYPE_ALT_BRANCH) {
 			processAltBranch(reader, trie.data);
 		} else {
@@ -740,8 +737,39 @@ public class TrieParserReader {
 		return hasSafePoint;
 	}
 
-	private static int computeJump(short[] data, int p, int jumpMask) {
-		return 1+(jumpMask&((((int)data[p++])<<15) | (0x7FFF&data[p])))+p;
+	private static void processBinaryBranch(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
+			int sourceMask, final long unfoundResult) {
+		
+		if (reader.runLength<sourceLength) {              
+			int p = reader.pos;
+
+			if (0==(TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos],
+					                                  trie.data[p++])&0xFFFFFF)) {
+				reader.pos = 2+p;
+			} else {	
+				farBinaryJump(reader, trie, p);				
+			}
+		} else {
+			reader.normalExit=false;
+			reader.result = unfoundResult;
+		}
+	}
+
+	private static void farBinaryJump(TrieParserReader reader, TrieParser trie, int p) {
+		int value = trie.cachedJump(p);
+		if (value!=0) {
+			reader.pos = value;
+		} else {
+			reader.pos = computeJump(trie.data, p);//only computed when we must
+			trie.storeCachedJump(p, reader.pos);
+		}
+	}
+
+	private static int computeJump(final short[] data, final int p) {
+		
+		//return 2+p+(0x7FFF&data[1+p])+(0==data[p]?0:(data[p]<<15));
+		
+		return 2+p+((((int)data[p])<<15) | (0x7FFF&data[1+p]));
 	}
 
 	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
@@ -758,8 +786,8 @@ public class TrieParserReader {
 	private static void parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
 			final long sourceLength, final int sourceMask, final long unfoundResult) {
 
-		if ((reader.runLength < sourceLength) && parseBytes(reader, trie, source, sourceLength, sourceMask)) {
-		} else {
+		if ( (!(reader.runLength < sourceLength)) 
+			||  (!parseBytes(reader, trie, source, sourceLength, sourceMask))) {
 			reader.normalExit = false;
 			reader.result = unfoundResult;
 		}

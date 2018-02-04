@@ -64,6 +64,7 @@ public class JSONStreamParser {
 		//2 because we need 2 shorts for the number
 		TrieParser trie = new TrieParser(256,2,false,true);
 		
+		
 		for (T key: keys.getEnumConstants()) {			
 			int value = toValue(key.ordinal());
 			assert(value>=0);
@@ -72,8 +73,9 @@ public class JSONStreamParser {
 			//TODO: should we add the same key without quotes ??
 			
 		}
-		
 		populateWithJSONTokens(trie);
+		
+		trie.enableCache(true);
 	
 		return trie;
 	}
@@ -89,9 +91,33 @@ public class JSONStreamParser {
 
 	
 	public static void populateWithJSONTokens(TrieParser trie) {
+		//code for strings with escape sequences
 		trie.setValue(JSONConstants.string221, STRING_PART);
-		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values		
-		addTokens(trie);
+		trie.setValue(JSONConstants.continuedString, CONTINUED_STRING);
+		/////
+		
+		trie.setValue(JSONConstants.ws2, WHITE_SPACE_2);
+		trie.setValue(JSONConstants.ws3, WHITE_SPACE_3);
+		trie.setValue(JSONConstants.ws4, WHITE_SPACE_4);
+		
+		trie.setValue(JSONConstants.falseLiteral, FALSE_ID);
+		trie.setValue(JSONConstants.nullLiteral, NULL_ID);
+		trie.setValue(JSONConstants.trueLiteral, TRUE_ID);
+				
+		trie.setValue(JSONConstants.beginArray, BEGIN_ARRAY);
+		trie.setValue(JSONConstants.endArray, END_ARRAY);			
+		
+		trie.setValue(JSONConstants.beginObject, BEGIN_OBJECT);
+		trie.setValue(JSONConstants.endObject, END_OBJECT);
+		trie.setValue(JSONConstants.ws1, WHITE_SPACE_1);
+		
+		trie.setValue(JSONConstants.number, NUMBER_ID);		
+		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values
+		
+		trie.setValue(JSONConstants.valueSeparator, VALUE_SEPARATOR);
+		trie.setValue(JSONConstants.nameSeparator, NAME_SEPARATOR);			
+
+
 	}
 	
 	
@@ -102,34 +128,13 @@ public class JSONStreamParser {
 
 			populateWithJSONTokens(trie);
 			
+			trie.enableCache(true);
+			
 			return trie;
 	}
 
 
-	private static void addTokens(TrieParser trie) {
-		
-		trie.setValue(JSONConstants.nameSeparator, NAME_SEPARATOR);	
-		
-		trie.setValue(JSONConstants.endObject, END_OBJECT);
-		trie.setValue(JSONConstants.valueSeparator, VALUE_SEPARATOR);
-		trie.setValue(JSONConstants.beginArray, BEGIN_ARRAY);
-		trie.setValue(JSONConstants.beginObject, BEGIN_OBJECT);
-		trie.setValue(JSONConstants.endArray, END_ARRAY);			
-		
-		trie.setValue(JSONConstants.continuedString, CONTINUED_STRING);
-		
-		trie.setValue(JSONConstants.ws1, WHITE_SPACE_1);
-		trie.setValue(JSONConstants.ws2, WHITE_SPACE_2);
-		trie.setValue(JSONConstants.ws3, WHITE_SPACE_3);
-		trie.setValue(JSONConstants.ws4, WHITE_SPACE_4);
-						
-		trie.setValue(JSONConstants.number, NUMBER_ID);
-		trie.setValue(JSONConstants.falseLiteral, FALSE_ID);
-		trie.setValue(JSONConstants.nullLiteral, NULL_ID);
-		trie.setValue(JSONConstants.trueLiteral, TRUE_ID);
-	}
-	
-    private static TrieParser stringEndParser() {
+	private static TrieParser stringEndParser() {
 		
     	TrieParser trie = new TrieParser(256,1,false,true);
 
@@ -156,7 +161,7 @@ public class JSONStreamParser {
 		
 		trie.setValue(JSONConstants.string751, STRING_PART_75);
 		trie.setValue(JSONConstants.string752, STRING_END_75);
-		
+				
 		trie.setValue(JSONConstants.string221, STRING_PART_22);
 		trie.setValue(JSONConstants.string222, STRING_END_22);
 						

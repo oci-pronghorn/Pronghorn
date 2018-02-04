@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 
 /**
  * Optimized for fast lookup and secondarily size. 
@@ -98,6 +99,9 @@ public class TrieParser implements Serializable {
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
+    private IntHashTable jumpCache = new IntHashTable(10);
+    
+    private boolean jumpCachedEnabled = false;
     
     private final static int MAX_ALT_DEPTH = 128;
     private int altStackPos = 0;
@@ -113,6 +117,19 @@ public class TrieParser implements Serializable {
     public byte[] lastSetValueExtractonPattern() {
     	return Arrays.copyOfRange(extractions, 0, extractionCount);
     }    
+    
+    public void storeCachedJump(int key, int value) {
+    	IntHashTable.setItem(jumpCache, key, value);
+    }
+    
+    public int cachedJump(int key) {
+    	return jumpCachedEnabled ? IntHashTable.getItem(jumpCache, key) : 0;
+    }
+    
+    public void enableCache(boolean value) {
+    	jumpCachedEnabled = value;
+    	IntHashTable.clear(jumpCache);
+    }
     
     public int lastSetValueExtractionCount() {
     	return extractionCount;
@@ -680,6 +697,9 @@ public class TrieParser implements Serializable {
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
 
+    	if (jumpCachedEnabled) {
+    		throw new UnsupportedOperationException("Cache can not be on while mutating");    		
+    	}
     	extractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
@@ -1444,13 +1464,30 @@ public class TrieParser implements Serializable {
     
     static long readEndValue(short[] data, int pos, int resultSize) {
         
-        long result = 0;
-        int s = resultSize;
-        while (--s >= 0) {            
-            result = (result<<16) | (0xFFFFL & data[pos++]);        
-        }
-        
-        return result;
+    	if (resultSize<=2) {
+    		if (resultSize == 2) {
+    			//2 -- most common choice
+    			return (((int)data[pos])<<16) | (0xFFFFL & data[1+pos]);
+    		} else {
+    			//1
+    			return data[pos];
+    		}
+    	} else {
+    		if (resultSize == 3) {
+    			//3
+    			return (((long)data[pos])<<32) 
+    					| ((0xFFFFL & data[1+pos])<<16) 
+    					| (0xFFFFL & data[2+pos]);
+    		} else {
+    			//4
+      			return (((long)data[pos])<<48) 
+      					| ((0xFFFFL & data[1+pos])<<32) 
+    					| ((0xFFFFL & data[2+pos])<<16) 
+    					| (0xFFFFL & data[3+pos]);
+    			
+    		}    		
+    	}
+    	
     }
  
     private int writeBytesExtract(int pos, short stop) {
