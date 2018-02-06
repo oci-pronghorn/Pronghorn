@@ -28,7 +28,7 @@ public class JSONFieldSchema {
 		 parser = new TrieParser(256,2,false,true);
 		 JSONStreamParser.populateWithJSONTokens(parser);
 		 parser.enableCache(true);
-		 
+
  		 parserReader = new TrieParserReader(maxFields, completeFields);
 		 
 	 }
@@ -55,20 +55,23 @@ public class JSONFieldSchema {
 		return parser;
 	 }
 	 
-	 public int lookupId(String value) {
+	 public int lookupId(String text) {
 		 //adds new one if it is not found.
 		 	
 		 long idx = TrieParserReader.query(parserReader, 
 				                           parser, 
-				                           value);
+				                           text);
 		 
 		 if (idx < 0) {
 			 idx = ++totalCount;
 			 
 			 int hashVal = JSONStreamParser.toValue((int)idx);
 			 parser.enableCache(false);
-			 parser.setUTF8Value(value, hashVal);
-			 parser.setUTF8Value("\"", value, "\"", hashVal);
+			 parser.setUTF8Value(text, hashVal);
+			 
+			 //This pattern may cause an alt check of string capture
+			 //NOTE: this is only true for the keys
+			 parser.setUTF8Value("\"", text, "\"", hashVal);
 			 parser.enableCache(true);
 			 //logger.info("added token {} with value {} to parser", value, hashVal);
 			 

@@ -76,7 +76,7 @@ public class JSONStreamParser {
 		populateWithJSONTokens(trie);
 		
 		trie.enableCache(true);
-	
+			
 		return trie;
 	}
 

@@ -1,5 +1,6 @@
 package com.ociweb.json;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,12 +14,49 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	private final JSONFieldSchema schema;
 	private JSONFieldMapping activeMapping;
 	private List<String> path;
+	private boolean writeDot = false;
 	
 	public JSONExtractor() {
 		schema = new JSONFieldSchema();
 	}
 
 	public TrieParser trieParser() {
+		if (writeDot) {
+				
+			File createTempFile;
+			try {
+				
+				createTempFile = File.createTempFile("parser", ".dot");
+				schema.parser().toDOTFile(createTempFile);
+				
+				String absPath = createTempFile.getAbsolutePath();
+				System.err.println("file: "+absPath);
+				
+				String filename = createTempFile.getName();
+				String command = "dot -Tsvg -o"+filename+".svg "+filename;
+				System.err.println(command);
+//	            //to produce the png we must call
+//	            //  dot -Tpng -O deviceGraph.dot        
+//				Process result = Runtime.getRuntime()
+//	            		.exec(command);
+//	            
+//	            // dot -Tsvg -oparser2030661959993832585.dot.svg parser2030661959993832585.dot
+//	            
+//	            if (0!=result.waitFor()) {
+//	                System.err.println("error");
+//	            }
+	           
+				
+				
+			} catch (Throwable t) {
+				t.printStackTrace();
+			}
+			
+			
+			
+		}
+		
+		writeDot = false;
 		return schema.parser();
 	}
 	

@@ -1,6 +1,9 @@
 package com.ociweb.pronghorn.util;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.Arrays;
 
@@ -8,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 
@@ -485,7 +487,11 @@ public class TrieParser implements Serializable {
         while (--len >= 0) {
         	        	            
         	if ((data[i]>=32) && (data[i]<=126)) {
-                builder.append((char)data[i]); 
+                char c = (char)data[i];
+                if (c=='"' || c=='\\') {
+                	builder.append('\\');
+                }                
+				builder.append(c); 
             } else {
             	builder.append("{");
             	Appendables.appendValue(builder,data[i]).append("}");
@@ -1043,16 +1049,21 @@ public class TrieParser implements Serializable {
         assert(jump>0) : "Jump must be postitive but found "+jump;
         
         //put extract first so its at the bottom of the stack
-        if (TrieParser.TYPE_VALUE_BYTES == peekNextType || TrieParser.TYPE_VALUE_NUMERIC==peekNextType) {
+        if (TrieParser.TYPE_VALUE_BYTES == peekNextType 
+        || TrieParser.TYPE_VALUE_NUMERIC==peekNextType
+        || TrieParser.TYPE_ALT_BRANCH==peekNextType) {
             //Take the Jump value first, the local value has an extraction.
-            //push the LocalValue
-            recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
-            recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);           
+            //push the LocalValue        	
+        	recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
+        	recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset); 
+            
         } else {
             //Take the Local value first
             //push the JumpValue
-            recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);
-            recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
+        	recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);
+        	recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
+        	
+           
         }
     }
     
@@ -1600,6 +1611,20 @@ public class TrieParser implements Serializable {
 	public void setValue(byte[] bytes, long value) {
 		setValue(bytes, 0, bytes.length, Integer.MAX_VALUE, value);
 		
+	}
+
+	public void toDOTFile(File targetFile) {
+		
+		try {
+			
+			PrintStream printStream = new PrintStream(targetFile);
+			toDOT(printStream);
+			printStream.close();
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 

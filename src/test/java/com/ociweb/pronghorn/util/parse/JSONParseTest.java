@@ -468,7 +468,9 @@ public class JSONParseTest {
 			parser.parse( reader,
 					extractor.trieParser(), 
 					visitor);
+			
 			/////write the captured data into the pipe
+			Pipe.presumeRoomForWrite(targetData);
 			int writeSize = Pipe.addMsgIdx(targetData, 0);
 			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
 			visitor.export(stream);		

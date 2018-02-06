@@ -662,8 +662,10 @@ public class TrieParserReader {
 			int sourceMask, final long unfoundResult,
 			boolean hasSafePoint, int t) {
 
+		//int c = 0;
 		while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
 
+			//c++;
 			if (TrieParser.TYPE_RUN == t) {                
 				parseRun(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
 			} else {
@@ -672,6 +674,7 @@ public class TrieParserReader {
 			}
 
 		}
+		//System.err.println("depth "+c); //TODO: print the tree.
 	}
 
 	private static void parseRun(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
@@ -730,7 +733,7 @@ public class TrieParserReader {
 		if (t==TrieParser.TYPE_BRANCH_VALUE) {   
 			processBinaryBranch(reader, trie, source, sourceLength, sourceMask, unfoundResult);
 		} else if (t == TrieParser.TYPE_ALT_BRANCH) {
-			processAltBranch(reader, trie.data);
+			processAltBranch(reader, source, trie.data);
 		} else {
 			hasSafePoint = lessCommonActions2(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
 		}
@@ -989,7 +992,7 @@ public class TrieParserReader {
 		reader.type = trie.data[reader.pos++];
 	}
 
-	private static void processAltBranch(TrieParserReader reader, short[] localData) {
+	private static void processAltBranch(TrieParserReader reader, byte[] source, short[] localData) {
 		assert(localData[reader.pos]>=0): "bad value "+localData[reader.pos];
 		assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
 
@@ -1001,21 +1004,43 @@ public class TrieParserReader {
 		int runLength = reader.runLength;
 		assert(jump>0) : "Jump must be postitive but found "+jump;
 
-		int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE;
+		int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE; 
 		int bJump = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
 
 		int localType = localData[aLocal];
 
-		assert(isAltType(localType) || TrieParser.TYPE_BRANCH_VALUE == localType) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
+		assert(TrieParser.TYPE_VALUE_BYTES == localType || 
+		TrieParser.TYPE_VALUE_NUMERIC  == localType ||
+		TrieParser.TYPE_ALT_BRANCH == localType || 
+		TrieParser.TYPE_BRANCH_VALUE == localType) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
 
+		//simply logic to only do one side since that is the only side which will match.
+		if (   TrieParser.TYPE_VALUE_NUMERIC  == localType ) {
+	
+			if ( TrieParser.TYPE_VALUE_NUMERIC  != localData[bJump]	) {
+				char c = (char)source[reader.sourceMask & reader.localSourcePos];
+				reader.pos = (c>='0' && c<='9') ? aLocal : bJump;
+			} else {
+				
+				//this is the normal expected case
+				//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+				pushAlt(reader, aLocal, offset, runLength);
 
-		if (isAltType(localType)) {  
+				//take the jump   		    
+				reader.pos = bJump;
+				
+			}
+			return;
+		}		
+
+		if (TrieParser.TYPE_VALUE_BYTES == localType || 
+		    TrieParser.TYPE_ALT_BRANCH == localType) {  
 
 			//this is the normal expected case
 			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
 			pushAlt(reader, aLocal, offset, runLength);
 
-			//take the jump   		    
+			//take the jump, this is the part we will run first.   		    
 			reader.pos = bJump;
 
 		} else {
@@ -1028,12 +1053,6 @@ public class TrieParserReader {
 			reader.pos = aLocal;
 		}
 
-	}
-
-	private static boolean isAltType(int localType) {
-		return TrieParser.TYPE_VALUE_BYTES == localType || 
-				TrieParser.TYPE_VALUE_NUMERIC  == localType ||
-				TrieParser.TYPE_ALT_BRANCH == localType;
 	}
 
 	private static long useSafePointNow(TrieParserReader reader) {
