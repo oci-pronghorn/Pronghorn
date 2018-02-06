@@ -51,7 +51,7 @@ public class JSONParseTest {
 			.key("root").key("[]").key("keya")
 			.completePath();
 	
-	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor()
+	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor(true)
 			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 			.key("root").key("[]").key("[]").key("keyb")
 			.completePath()

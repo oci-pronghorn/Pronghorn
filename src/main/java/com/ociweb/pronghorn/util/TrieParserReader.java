@@ -1015,21 +1015,24 @@ public class TrieParserReader {
 		TrieParser.TYPE_BRANCH_VALUE == localType) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
 
 		//simply logic to only do one side since that is the only side which will match.
-		if (   TrieParser.TYPE_VALUE_NUMERIC  == localType ) {
+		if (  TrieParser.TYPE_VALUE_NUMERIC  == localType ) {
 	
+			
 			if ( TrieParser.TYPE_VALUE_NUMERIC  != localData[bJump]	) {
 				char c = (char)source[reader.sourceMask & reader.localSourcePos];
-				reader.pos = (c>='0' && c<='9') ? aLocal : bJump;
-			} else {
-				
-				//this is the normal expected case
-				//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-				pushAlt(reader, aLocal, offset, runLength);
-
-				//take the jump   		    
-				reader.pos = bJump;
-				
+				if (c>='0' && c<='9') { //not done if we see + or - symbols
+					reader.pos = aLocal;
+					return;
+				}
 			}
+				
+			//this is the normal expected case
+			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+			pushAlt(reader, aLocal, offset, runLength);
+
+			//take the jump   		    
+			reader.pos = bJump;
+							
 			return;
 		}		
 

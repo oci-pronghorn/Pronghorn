@@ -14,10 +14,16 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	private final JSONFieldSchema schema;
 	private JSONFieldMapping activeMapping;
 	private List<String> path;
-	private boolean writeDot = false;
+	private boolean writeDot;
 	
 	public JSONExtractor() {
 		schema = new JSONFieldSchema();
+		writeDot = false;	
+	}
+	
+	public JSONExtractor(boolean writeDot) {
+		this.schema = new JSONFieldSchema();
+		this.writeDot = writeDot;
 	}
 
 	public TrieParser trieParser() {

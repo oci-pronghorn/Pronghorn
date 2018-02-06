@@ -37,23 +37,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 abstract public void writeUTF(CharSequence s);
 	 
 	 abstract public void writeASCII(CharSequence s);
-	 
-	 abstract public void writeByteArray(byte[] bytes);
-	 
-	 abstract public void writeCharArray(char[] chars);
-	 
-	 abstract public void writeIntArray(int[] ints);
-	 
-	 abstract public void writeLongArray(long[] longs);
-	 
-	 abstract public void writeDoubleArray(double[] doubles);
-	 
-	 abstract public void writeFloatArray(float[] floats);
-	 
-	 abstract public void writeShortArray(short[] shorts);
-	 
-	 abstract public void writeBooleanArray(boolean[] booleans);
-	 
+	 	 
 	 abstract public void writeRational(long numerator, long denominator);
 	 
 	 abstract public void writeUTFArray(String[] utfs);

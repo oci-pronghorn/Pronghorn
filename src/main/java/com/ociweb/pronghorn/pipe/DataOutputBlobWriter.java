@@ -490,102 +490,103 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		byteBuffer[byteMask & activePosition++] = value;
 	}
     
-	@Override
+	@Deprecated
     public void writeByteArray(byte[] bytes) {
         activePosition = writeByteArray(this, bytes, bytes.length, byteBuffer, byteMask, activePosition);
     }
     
     private static <T extends MessageSchema<T>> int writeByteArray(DataOutputBlobWriter<T> writer, byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         Pipe.copyBytesFromToRing(bytes, 0, Integer.MAX_VALUE, writer.byteBuffer, pos, writer.byteMask, len); 
 		return pos+len;
     }
 
-	@Override
+    @Deprecated
     public void writeCharArray(char[] chars) {
         activePosition = writeCharArray(chars, chars.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeCharArray(char[] chars, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);    	
         for(int i=0;i<len;i++) {
             pos = write16(bufLocal, mask, pos, (int) chars[i]);
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeIntArray(int[] ints) {
         activePosition = writeIntArray(ints, ints.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeIntArray(int[] ints, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = write32(bufLocal, mask, pos, ints[i]);
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeLongArray(long[] longs) {
         activePosition = writeLongArray(longs, longs.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeLongArray(long[] longs, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = write64(bufLocal, mask, pos, longs[i]);
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeDoubleArray(double[] doubles) {
         activePosition = writeDoubleArray(doubles, doubles.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeDoubleArray(double[] doubles, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = write64(bufLocal, mask, pos, Double.doubleToLongBits(doubles[i]));
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeFloatArray(float[] floats) {
         activePosition = writeFloatArray(floats, floats.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeFloatArray(float[] floats, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = write32(bufLocal, mask, pos, Float.floatToIntBits(floats[i]));
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeShortArray(short[] shorts) {
         activePosition = writeShortArray(shorts, shorts.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeShortArray(short[] shorts, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = write16(bufLocal, mask, pos, shorts[i]);
         }
         return pos;
     }
 
-	@Override
+    @Deprecated
     public void writeBooleanArray(boolean[] booleans) {
         activePosition = writeBooleanArray(booleans, booleans.length, byteBuffer, byteMask, activePosition);
     }
 
     private int writeBooleanArray(boolean[] booleans, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	//writePackedInt(this,value);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             bufLocal[mask & pos++] = (byte) (booleans[i] ? 1 : 0);
         }
@@ -598,7 +599,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     private int writeUTFArray(String[] utfs, int len, byte[] bufLocal, int mask, int pos) {
-        pos = write32(bufLocal, mask, pos, len);
+    	pos = writePackedInt(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
             pos = writeUTF(this, utfs[i], utfs[i].length(), mask, bufLocal, pos);
         }
@@ -730,13 +731,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 
     public static final <T extends MessageSchema<T>> void writePackedInt(DataOutputBlobWriter<T> that, int value) {
 
-        int mask = (value>>31);         // FFFFF  or 000000
-        int check = (mask^value)-mask;  //absolute value
-        int bit = (int)(check>>>31);     //is this the special value?
-        
-        that.activePosition = writeIntUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+    	that.activePosition = writePackedInt(that.byteBuffer, that.byteMask, that.activePosition, value);
 
     }
+
+	private static <T extends MessageSchema<T>> int writePackedInt(byte[] buf, int bufMask, int pos, int value) {
+		int mask = (value>>31);         // FFFFF  or 000000
+        int check = (mask^value)-mask;  //absolute value
+        int bit = (int)(check>>>31);     //is this the special value?        
+        return writeIntUnified(value, (check>>>bit)+bit, buf, bufMask, pos, (byte)0x7F);
+		
+	}
     
     public static final <T extends MessageSchema<T>> void writePackedShort(DataOutputBlobWriter<T> that, short value) {
         

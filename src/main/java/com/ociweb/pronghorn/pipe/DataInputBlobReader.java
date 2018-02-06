@@ -809,6 +809,4 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		TrieParserReader.parseSetup(reader, input.backing, input.position, Math.min(bytesRemaining(input), length), input.byteMask); 
 	}
     
-    
-    
 }

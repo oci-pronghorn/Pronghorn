@@ -29,6 +29,8 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	
 	public abstract int read(byte b[]);
 	
+	public abstract int read(byte b[], int off, int len);
+	
 	public abstract boolean equalBytes(byte[] bytes);
 	
 	public abstract boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen);
@@ -78,6 +80,10 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	public abstract int skipBytes(int n);
 	
 	public abstract int absolutePosition();
+	
+	
+	
+	
 	
 	
 }
