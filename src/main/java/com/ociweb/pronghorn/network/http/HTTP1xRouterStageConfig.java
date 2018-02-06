@@ -3,15 +3,12 @@ package com.ociweb.pronghorn.network.http;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
-import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -32,6 +29,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
     private IntHashTable[] requestHeaderMask = new IntHashTable[4];
     private TrieParser[] requestHeaderParser = new TrieParser[4];
+    private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
     
     private final int defaultLength = 4;
     private byte[][] requestExtractions = new byte[defaultLength][];
@@ -171,7 +169,18 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			System.arraycopy(requestHeaderParser, 0, newArray, 0, i);
 			requestHeaderParser = newArray;
 		}
-		requestHeaderParser[routesCount]=headers;
+		requestHeaderParser[routesCount] = headers;
+	}
+	
+	private void storeRequestedJSONMapping(JSONExtractorCompleted extractor) {
+		
+		if (routesCount>=requestJSONExtractor.length) {
+			int i = requestJSONExtractor.length;
+			JSONExtractorCompleted[] newArray = new JSONExtractorCompleted[i*2]; //only grows on startup as needed
+			System.arraycopy(requestJSONExtractor, 0, newArray, 0, i);
+			requestJSONExtractor = newArray;
+		}
+		requestJSONExtractor[routesCount] = extractor;
 	}
 	
 	public int routesCount() {
@@ -196,15 +205,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return routeId<requestHeaderParser.length ? requestHeaderParser[routeId] : httpSpec.headerParser();
 	}
 
-    private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
+    private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser, JSONExtractorCompleted extractor) {
 
 		boolean trustText = false; 
 		URLTemplateParser parser = routeParser();
+		
 		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
-
 		storeRequestedHeaders(headers);
 		storeRequestedHeaderParser(headerParser);
+		storeRequestedJSONMapping(extractor);
 		
 		int pipeIdx = routesCount;
 		routesCount++;
@@ -214,12 +224,20 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public int headerId(byte[] h) {
     	return httpSpec.headerId(h, localReader);
     }
-
-
+    
 	public int registerRoute(CharSequence route, byte[] ... headers) {
-		return registerRoute(route, HeaderUtil.headerTable(localReader, httpSpec, headers), httpSpec.headerParser());
+		return registerRoute(route, 
+				HeaderUtil.headerTable(localReader, httpSpec, headers), 
+				httpSpec.headerParser(), null);
 	}
 
+	public int registerRoute(CharSequence route, JSONExtractorCompleted extractor, byte[] ... headers) {
+		return registerRoute(route, 
+				HeaderUtil.headerTable(localReader, httpSpec, headers), 
+				httpSpec.headerParser(), extractor);
+	}
+
+	
 	@Override
 	public HTTPSpecification httpSpec() {
 		return httpSpec;
