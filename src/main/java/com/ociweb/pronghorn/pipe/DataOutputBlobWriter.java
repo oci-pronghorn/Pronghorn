@@ -868,5 +868,15 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writePackedLong(this,denominator);
 	}
 
+	public static void copyBackData(DataOutputBlobWriter that, byte[] backing, int start, int copyLen, int byteMask2) {
+		Pipe.copyBytesFromToRing(backing, start, byteMask2, 
+                that.byteBuffer, 
+                that.activePosition, //??this value not right 
+                that.byteMask, 
+                copyLen);
+
+       commitBackData(that);//must call before close!!
+	}
+
     
 }

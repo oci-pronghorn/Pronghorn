@@ -104,6 +104,19 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		   (0xFF & backing[byteMask & position++]) );
     }
     
+    
+	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
+		
+		//TODO: refactor, have the pipe keep 1 more index so we do not use maxvar but -1
+		//      this last value is the lenght of the data to be kept as indexes...
+		
+		final int copyLen = outputStream.remaining();		
+		final int end = (bytesLowBound + pipe.maxVarLen);
+		DataOutputBlobWriter.copyBackData(outputStream, backing, end-copyLen, copyLen, byteMask);
+
+	}
+	
+    
     public int openLowLevelAPIField() {
         int meta = Pipe.takeRingByteMetaData(this.pipe);
 		this.length    = Math.max(0, Pipe.takeRingByteLen(this.pipe));
@@ -802,5 +815,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader, int length) {
 		TrieParserReader.parseSetup(reader, input.backing, input.position, Math.min(bytesRemaining(input), length), input.byteMask); 
 	}
+
+
     
 }
