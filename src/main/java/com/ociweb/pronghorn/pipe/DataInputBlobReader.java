@@ -87,7 +87,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	
     	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
 
-    	//logger.info("backing len:{} low {} max {} off {} pos {}",backing.length,bytesLowBound,pipe.maxVarLen,(4*negativeIntOffset),position);
+//    	logger.info("backing len:{} low {} max {} off {} pos {}",backing.length,bytesLowBound,pipe.maxVarLen,(4*negativeIntOffset),position);
     	
 //    	logger.info("reading int from position {} value {} from pipe {}",position,
 //    			(backing[byteMask & position]<<24) |
@@ -740,23 +740,24 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     public static <S extends MessageSchema<S>> long readPackedLong(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
-        return (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that) : (accumulator) |(v & 0x7F);
+        return (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that, 0) : (accumulator) |(v & 0x7F);
     }
     
     public static <S extends MessageSchema<S>> int readPackedInt(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
-        return (v >= 0) ? readPackedInt((accumulator | v) << 7,that.backing,that.byteMask,that) : accumulator |(v & 0x7F);
+        return (v >= 0) ? readPackedInt((accumulator | v) << 7,that.backing,that.byteMask,that, 0) : accumulator |(v & 0x7F);
     }
     
     //recursive use of the stack turns out to be a good way to unroll this loop.
-    private static <S extends MessageSchema<S>> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that) {
-        return readPackedLongB(a, buf, mask, that, buf[mask & that.position++]);
+    private static <S extends MessageSchema<S>> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that, int depth) {
+        return readPackedLongB(a, buf, mask, that, buf[mask & that.position++], depth+1);
     }
 
-    private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
-        //Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
-        return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that) : a | (v & 0x7Fl);
+    private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v, int depth) {
+    	assert(depth<11) : "Error malformed data";
+    	//Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
+        return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7Fl);
     }
 
     public static <S extends MessageSchema<S>> boolean wasPackedNull(DataInputBlobReader<S> that) {
@@ -780,21 +781,14 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     		   && 0==localBacking[localMask & (localPos-2)]
     	       && 0==localBacking[localMask & (localPos-3)];
 	}
-
-    private static <S extends MessageSchema<S>> long readPackedLongB(boolean[] isNaN, long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
-        if (0==a && v==0) {
-        	isNaN[0] = true;
-        }
-        return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that) : a | (v & 0x7Fl);
-    }
        
-    private static <S extends MessageSchema<S>> int readPackedInt(int a, byte[] buf, int mask, DataInputBlobReader<S> that) {
-        return readPackedIntB(a, buf, mask, that, buf[mask & that.position++]);
+    private static <S extends MessageSchema<S>> int readPackedInt(int a, byte[] buf, int mask, DataInputBlobReader<S> that, int depth) {
+    	return readPackedIntB(a, buf, mask, that, buf[mask & that.position++], depth+1);
     }
 
-    private static <S extends MessageSchema<S>> int readPackedIntB(int a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
-        assert(a!=0 || v!=0) : "malformed data";
-        return (v >= 0) ? readPackedInt((a | v) << 7, buf, mask, that) : a | (v & 0x7F);
+    private static <S extends MessageSchema<S>> int readPackedIntB(int a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v, int depth) {
+    	assert(depth<7) : "Error malformed data";
+        return (v >= 0) ? readPackedInt((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7F);
     }
 
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
