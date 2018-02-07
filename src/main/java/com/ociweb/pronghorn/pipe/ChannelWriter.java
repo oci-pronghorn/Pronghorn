@@ -17,6 +17,10 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 abstract public int remaining();
 	 
 	 abstract public int length();
+
+	 abstract public int absolutePosition();
+
+	 abstract public void setAbsolutePosition(int absolutePosition);
 	 
 	 abstract public byte[] toByteArray();
 	 

@@ -230,6 +230,16 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         return length(this);
     }
 
+    @Override
+    public int absolutePosition() {
+        return activePosition;
+    }
+
+    @Override
+    public void setAbsolutePosition(int absolutePosition) {
+        activePosition = absolutePosition;
+    }
+
     public static <T extends MessageSchema<T>> int length(DataOutputBlobWriter<T> writer) {
        
     	return dif(writer, writer.startPosition, writer.activePosition);
