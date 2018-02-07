@@ -531,7 +531,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							if (writeIndex) {
 								//clear header indexes
-								DataOutputBlobWriter.tryClearIntBackData(Pipe.outputStream(targetPipe), IntHashTable.count(headersSupported)); 
+								DataOutputBlobWriter.tryClearIntBackData(Pipe.outputStream(targetPipe),
+										                 IntHashTable.count(headersSupported)+indexOffsetCount); 
 							}
 							
 						} else {

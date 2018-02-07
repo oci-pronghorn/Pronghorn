@@ -44,6 +44,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public static boolean showHeader = false; //set to true for debug to see headers in console.
     
     
+	private static final boolean writeIndex = true; //must be on to ensure we can index to the header locations.
+    private final int indexOffsetCount = 1;
+    
+    
     private TrieParserReader trieReader;
     private long activeChannel;
     
@@ -611,8 +615,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx) {    
-    
-	boolean writeIndex = true; //must be on to ensure we can index to the header locations.
 
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
@@ -714,6 +716,17 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		                                                                                                                          //write 2   7
         DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
 
+        if (writeIndex) {
+        	//this is writing room for the position of the body later.
+        	int i = indexOffsetCount; //provide room for these (if there is more than one)
+        	while (--i>=0) {
+				if (!DataOutputBlobWriter.tryWriteIntBackData(writer, 0)) {//we write zero for now
+					throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+writer.getPipe());
+				}
+        	}
+        }
+        
+        
         try {
 		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, writeIndex);
 		} catch (IOException e) {        
@@ -789,7 +802,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		//not an error we just looked past the end and need more data
 	    if (trieReader.sourceLen<0) {
 	    	Pipe.resetHead(outputPipe);
-	    	//logger.info("need more data F");
 		    return NEED_MORE_DATA;
 		} 
 
@@ -1122,8 +1134,10 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 		   		//full length is done here as a single call, the pipe must be large enough to hold the entire payload
 		   		
 		   		assert(postLength<Integer.MAX_VALUE);
+		   		
 		   		//read data directly
-				int writePosition = writer.position();    
+				final int writePosition = writer.position();  
+				
 				if (writePosition+postLength+DataOutputBlobWriter.countOfBytesUsedByIndex(writer) >writer.getPipe().maxVarLen) {
 					logger.warn("unable to take large post at this time");	
 					requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
@@ -1135,11 +1149,18 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 					requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				} else {	           			
 		   			if (writeIndex) {
+		   				
+		   				//NOTE: record position of the body in the new way, at beginning of the index
+		   				DataOutputBlobWriter.setIntBackData(writer, writePosition,1);
+						
+		   				//TODO: remove this someday.
+		   				//NOTE: record position of the body in the old way, at the end of the index
 						boolean ok = DataOutputBlobWriter.tryWriteIntBackData(writer, writePosition);
 						assert(ok) : "the pipe is too small for the payload";
 						if (!ok) {
 							logger.warn("unable to take large post at this time");
 							requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+						
 						}
 					}
 				}
