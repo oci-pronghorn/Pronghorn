@@ -718,6 +718,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	//this is writing room for the position of the body later.
         	int i = indexOffsetCount; //provide room for these (if there is more than one)
         	while (--i>=0) {
+        		
 				if (!DataOutputBlobWriter.tryWriteIntBackData(writer, 0)) {//we write zero for now
 					throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+writer.getPipe());
 				}
@@ -772,8 +773,12 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////also write the requested headers out to the payload
         /////////////////////////////////////////////////////////////////////////
-        int requestContext = parseHeaderFields(writer, errorReporter, 
-											 config.extractionParser(routeId).getIndexCount(), 
+        
+        //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
+        
+        int countOfAllPreviousFields = config.extractionParser(routeId).getIndexCount()+indexOffsetCount;
+		int requestContext = parseHeaderFields(writer, errorReporter, 
+											 countOfAllPreviousFields, 
 											 config.headerCount(routeId),
 											 config.headerToPositionTable(routeId), 
 											 writeIndex, 
@@ -1147,19 +1152,19 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 					requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				} else {	           			
 		   			if (writeIndex) {
-		   				
+		   				//logger.info("write the position of the body");
 		   				//NOTE: record position of the body in the new way, at beginning of the index
-		   				DataOutputBlobWriter.setIntBackData(writer, writePosition,1);
+		   				DataOutputBlobWriter.setIntBackData(writer, writePosition, 1);
 						
-		   				//TODO: remove this someday.
-		   				//NOTE: record position of the body in the old way, at the end of the index
-						boolean ok = DataOutputBlobWriter.tryWriteIntBackData(writer, writePosition);
-						assert(ok) : "the pipe is too small for the payload";
-						if (!ok) {
-							logger.warn("unable to take large post at this time");
-							requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-						
-						}
+//		   				//TODO: remove this someday.
+//		   				//NOTE: record position of the body in the old way, at the end of the index
+//						boolean ok = DataOutputBlobWriter.tryWriteIntBackData(writer, writePosition);
+//						assert(ok) : "the pipe is too small for the payload";
+//						if (!ok) {
+//							logger.warn("unable to take large post at this time");
+//							requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+//						
+//						}
 					}
 				}
 		   	}     

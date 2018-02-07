@@ -32,7 +32,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
     
     private final int defaultLength = 4;
-    private byte[][] requestExtractions = new byte[defaultLength][];
+ //   private byte[][] requestExtractions = new byte[defaultLength][];
     private FieldExtractionDefinitions[] routeDefinitions = new FieldExtractionDefinitions[defaultLength];
     
 	private int routesCount = 0;
@@ -140,13 +140,13 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	private void storeRequestedExtractions(byte[] lastSetValueExtractonPattern) {
-		if (routesCount>=requestExtractions.length) {
-			int i = requestExtractions.length;
-			byte[][] newArray = new byte[i*2][]; //only grows on startup as needed
-			System.arraycopy(requestExtractions, 0, newArray, 0, i);
-			requestExtractions = newArray;
-		}
-		requestExtractions[routesCount]=lastSetValueExtractonPattern;		
+//		if (routesCount>=requestExtractions.length) {
+//			int i = requestExtractions.length;
+//			byte[][] newArray = new byte[i*2][]; //only grows on startup as needed
+//			System.arraycopy(requestExtractions, 0, newArray, 0, i);
+//			requestExtractions = newArray;
+//		}
+//		requestExtractions[routesCount]=lastSetValueExtractonPattern;		
 	}
 
 

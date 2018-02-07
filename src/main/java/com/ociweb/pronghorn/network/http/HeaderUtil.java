@@ -99,7 +99,7 @@ public class HeaderUtil {
 				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
 				if (writeIndex) {					
 					//we did not write index above so write here.
-					DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
+					DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
 				}					
 			} catch (IOException e) {
 				throw new RuntimeException(e);
