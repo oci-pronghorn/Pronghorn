@@ -11,6 +11,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
@@ -20,6 +21,7 @@ import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.http.HTTPRequestJSONExtractionStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.DotModuleStage;
@@ -328,8 +330,8 @@ public class NetGraphBuilder {
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(coordinator.moduleParallelism(), fromModule, config);        
         boolean captureAll = false;
-        buildRouters(graphManager, coordinator.moduleParallelism(), receivedFromNet, 
-        		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, captureAll);
+        buildRouters(graphManager, receivedFromNet, releaseAfterParse, 
+        		     toModules, errorResponsePipes, routerConfig, coordinator, captureAll);
 		        
         //logger.info("build http ordering supervisors");
         buildOrderingSupers(graphManager, coordinator, coordinator.moduleParallelism(), 
@@ -491,11 +493,12 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static void buildRouters(GraphManager graphManager, final int parallelRoutersCount, Pipe[] planIncomingGroup,
-									Pipe[] acks, 
+	public static void buildRouters(GraphManager graphManager, 
+			                        Pipe[] planIncomingGroup,
+			                        Pipe[] acks,
 									Pipe<HTTPRequestSchema>[][] toModules, 
-									Pipe<ServerResponseSchema>[] errorResponsePipes,
-									final HTTP1xRouterStageConfig routerConfig, 
+									Pipe<ServerResponseSchema>[] errorResponsePipes, 
+									final HTTP1xRouterStageConfig routerConfig,
 									ServerCoordinator coordinator, 
 									boolean catchAll) {
 
@@ -505,15 +508,46 @@ public class NetGraphBuilder {
 		//create the routers
 		/////////////////////
 		//split up the unencrypted pipes across all the routers
-		Pipe[][] plainSplit = Pipe.splitPipes(parallelRoutersCount, planIncomingGroup);
+		Pipe[][] plainSplit = Pipe.splitPipes(toModules.length, planIncomingGroup);
 		int acksBase = acks.length-1;
-		int r = parallelRoutersCount;
-		while (--r>=0) {
+		int parallelTrack = toModules.length; 
+		while (--parallelTrack>=0) {
 			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, r, plainSplit[r], 
-					toModules[r], 
-					errorResponsePipes[r], 
-					acks[acksBase-r], routerConfig,
+			//TODO; pull in the JSON extractor and add stages from this router before modules.
+			
+			
+			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
+			
+			//////////////////////
+			//as needed we inject the JSON Extractor
+			//////////////////////
+			
+			int routeId = fromRouter.length;
+			while (--routeId>=0) {
+				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
+				if (null != extractor) {
+
+					Pipe<HTTPRequestSchema> newFromJSON = 
+							new Pipe<HTTPRequestSchema>( fromRouter[routeId].config() );
+												
+					new HTTPRequestJSONExtractionStage(
+							 	graphManager, 
+							 	extractor,
+							 	fromRouter[routeId],
+							 	newFromJSON
+							);
+					
+					fromRouter[routeId] = newFromJSON;
+									
+				}
+			}	
+			////////////////////////////////////
+			////////////////////////////////////
+			
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, parallelTrack, plainSplit[parallelTrack], 
+					fromRouter, 
+					errorResponsePipes[parallelTrack], 
+					acks[acksBase-parallelTrack], routerConfig,
 					coordinator,catchAll);        
 
 			

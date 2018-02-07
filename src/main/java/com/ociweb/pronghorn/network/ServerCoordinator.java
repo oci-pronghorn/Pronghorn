@@ -95,6 +95,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
             int maxConnectionsBits, 
             int maxConcurrentInputs, int maxConcurrentOutputs,
             int moduleParallelism, boolean requireClientAuth){
+		
 		this(tlsCertificates,bindHost,port,maxConnectionsBits, 
 				maxConcurrentInputs, maxConcurrentOutputs,
 				moduleParallelism,
@@ -102,7 +103,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 				"Server", "");
 	}
 	
-    public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
+    public ServerCoordinator(TLSCertificates tlsCertificates,
+    		                 String bindHost, int port,
 							 int maxConnectionsBits, 
 							 int maxConcurrentInputs,
 							 int maxConcurrentOutputs,

@@ -204,7 +204,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	public TrieParser headerTrieParser(int routeId) {
 		return routeId<requestHeaderParser.length ? requestHeaderParser[routeId] : httpSpec.headerParser();
 	}
-
+	
+	public JSONExtractorCompleted JSONExtractor(int routeId) {
+		return routeId<requestJSONExtractor.length ? requestJSONExtractor[routeId] : null;
+	}
+	
     private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser, JSONExtractorCompleted extractor) {
 
 		boolean trustText = false; 
