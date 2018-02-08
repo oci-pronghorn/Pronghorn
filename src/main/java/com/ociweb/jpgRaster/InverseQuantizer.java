@@ -63,7 +63,7 @@ public class InverseQuantizer extends PronghornStage {
 
 	@Override
 	public void run() {
-		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+		if (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			

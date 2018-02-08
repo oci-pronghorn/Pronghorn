@@ -16,17 +16,6 @@ import java.util.ArrayList;
 
 public class HuffmanDecoder extends PronghornStage {
 
-	private final Pipe<JPGSchema> input;
-	private final Pipe<JPGSchema> output;
-	
-	Header header;
-	
-	protected HuffmanDecoder(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
-		super(graphManager, input, output);
-		this.input = input;
-		this.output = output;
-	}
-	
 	private static class BitReader {
 		private int nextByte = 0;
 		private int nextBit = 0;
@@ -63,6 +52,38 @@ public class HuffmanDecoder extends PronghornStage {
 			}
 			return bits;
 		}
+		
+		public boolean hasBits() {
+			if (nextByte >= data.size()) {
+				return false;
+			}
+			return true;
+		}
+	}
+	
+	private final Pipe<JPGSchema> input;
+	private final Pipe<JPGSchema> output;
+	
+	Header header;
+	BitReader b = null;
+	ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes;
+	ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes;
+
+	short yDCTableID;
+	short yACTableID;
+	short cbDCTableID;
+	short cbACTableID;
+	short crDCTableID;
+	short crACTableID;
+
+	short previousYDC;
+	short previousCbDC;
+	short previousCrDC;
+	
+	protected HuffmanDecoder(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+		super(graphManager, input, output);
+		this.input = input;
+		this.output = output;
 	}
 	
 	private static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
@@ -82,13 +103,12 @@ public class HuffmanDecoder extends PronghornStage {
 		return codes;
 	}
 	
-	private static Boolean decodeMCUComponent(BitReader b,
-											  ArrayList<ArrayList<Integer>> DCTableCodes,
-											  ArrayList<ArrayList<Integer>> ACTableCodes,
-											  HuffmanTable DCTable,
-											  HuffmanTable ACTable,
-											  short[] component,
-											  short previousDC) {
+	private Boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
+									   ArrayList<ArrayList<Integer>> ACTableCodes,
+									   HuffmanTable DCTable,
+									   HuffmanTable ACTable,
+									   short[] component,
+									   short previousDC) {
 		
 		// get the DC value for this MCU
 		int currentCode = b.nextBit();
@@ -188,15 +208,8 @@ public class HuffmanDecoder extends PronghornStage {
 		return true;
 	}
 	
-	public static Boolean decodeHuffmanData(Header header, Pipe<JPGSchema> output) {
-		ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
-		ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
-		for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
-			DCTableCodes.add(generateCodes(header.huffmanDCTables.get(i)));
-		}
-		for (int i = 0; i < header.huffmanACTables.size(); ++i) {
-			ACTableCodes.add(generateCodes(header.huffmanACTables.get(i)));
-		}
+	public Boolean decodeHuffmanData() {
+		
 		
 		/*for (int k = 0; k < DCTableCodes.size(); ++k) {
 			for (int i = 0; i < DCTableCodes.get(k).size(); ++i) {
@@ -217,72 +230,53 @@ public class HuffmanDecoder extends PronghornStage {
 			}
 		}*/
 		
-		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
-		System.out.println("Number of MCUs: " + numMCUs);
-		BitReader b = new BitReader(header.imageData);
-		int numProcessed = 0;
-
-		short yDCTableID  = header.colorComponents.get(0).huffmanDCTableID;
-		short yACTableID  = header.colorComponents.get(0).huffmanACTableID;
-		short cbDCTableID = header.colorComponents.get(1).huffmanDCTableID;
-		short cbACTableID = header.colorComponents.get(1).huffmanACTableID;
-		short crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
-		short crACTableID = header.colorComponents.get(2).huffmanACTableID;
-
-		short previousYDC = 0;
-		short previousCbDC = 0;
-		short previousCrDC = 0;
-		while (numProcessed != numMCUs) { // && !b.done()) {
-			MCU mcu = new MCU();
-			
-			//System.out.println("Decoding Y Component...");
-			Boolean success = decodeMCUComponent(b, DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
-					  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
-			if (!success) {
-				return false;
+		MCU mcu = new MCU();
+		
+		//System.out.println("Decoding Y Component...");
+		Boolean success = decodeMCUComponent(DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
+				  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
+		if (!success) {
+			return false;
+		}
+		
+		//System.out.println("Decoding Cb Component...");
+		success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
+				  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+		if (!success) {
+			return false;
+		}
+		
+		//System.out.println("Decoding Cr Component...");
+		success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
+				  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+		if (!success) {
+			return false;
+		}
+		
+		previousYDC = mcu.y[0];
+		previousCbDC = mcu.cb[0];
+		previousCrDC = mcu.cr[0];
+		
+		// write mcu to pipe
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+			ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
+			ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
+			ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+			for (int i = 0; i < 64; ++i) {
+				yBuffer.putShort(mcu.y[i]);
+				cbBuffer.putShort(mcu.cb[i]);
+				crBuffer.putShort(mcu.cr[i]);
 			}
-			
-			//System.out.println("Decoding Cb Component...");
-			success = decodeMCUComponent(b, DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
-					  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
-			if (!success) {
-				return false;
-			}
-			
-			//System.out.println("Decoding Cr Component...");
-			success = decodeMCUComponent(b, DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
-					  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
-			if (!success) {
-				return false;
-			}
-			
-			previousYDC = mcu.y[0];
-			previousCbDC = mcu.cb[0];
-			previousCrDC = mcu.cr[0];
-			
-			numProcessed += 1;
-			
-			// write mcu to pipe
-			if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
-				for (int i = 0; i < 64; ++i) {
-					yBuffer.putShort(mcu.y[i]);
-					cbBuffer.putShort(mcu.cb[i]);
-					crBuffer.putShort(mcu.cr[i]);
-				}
-				yBuffer.position(0);
-				cbBuffer.position(0);
-				crBuffer.position(0);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
-				PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
-				PipeWriter.publishWrites(output);
-			}
-			else {
-				return false;
-			}
+			yBuffer.position(0);
+			cbBuffer.position(0);
+			crBuffer.position(0);
+			PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
+			PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
+			PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+			PipeWriter.publishWrites(output);
+		}
+		else {
+			return false;
 		}
 		
 		return true;
@@ -290,7 +284,13 @@ public class HuffmanDecoder extends PronghornStage {
 
 	@Override
 	public void run() {
-		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
+		if (b != null && b.hasBits()) {
+			if (!decodeHuffmanData()) {
+				System.err.println("Huffman requesting shutdown");
+				requestShutdown();
+			}
+		}
+		else if (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			
@@ -363,7 +363,29 @@ public class HuffmanDecoder extends PronghornStage {
 				for (int i = 0; i < size; ++i) {
 					header.imageData.add(buffer.getShort());
 				}
-				if (!decodeHuffmanData(header, output)) {
+				b = new BitReader(header.imageData);
+				
+				ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
+				ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
+				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
+					DCTableCodes.add(generateCodes(header.huffmanDCTables.get(i)));
+				}
+				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
+					ACTableCodes.add(generateCodes(header.huffmanACTables.get(i)));
+				}
+
+				yDCTableID  = header.colorComponents.get(0).huffmanDCTableID;
+				yACTableID  = header.colorComponents.get(0).huffmanACTableID;
+				cbDCTableID = header.colorComponents.get(1).huffmanDCTableID;
+				cbACTableID = header.colorComponents.get(1).huffmanACTableID;
+				crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
+				crACTableID = header.colorComponents.get(2).huffmanACTableID;
+
+				previousYDC = 0;
+				previousCbDC = 0;
+				previousCrDC = 0;
+				
+				if (!decodeHuffmanData()) {
 					System.err.println("Huffman requesting shutdown");
 					requestShutdown();
 				}
