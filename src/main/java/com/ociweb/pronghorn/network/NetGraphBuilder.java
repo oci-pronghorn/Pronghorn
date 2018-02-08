@@ -533,8 +533,8 @@ public class NetGraphBuilder {
 					new HTTPRequestJSONExtractionStage(
 							 	graphManager, 
 							 	extractor,
-							 	fromRouter[routeId],
-							 	newFromJSON
+							 	newFromJSON,
+							 	fromRouter[routeId]
 							);
 					
 					fromRouter[routeId] = newFromJSON;

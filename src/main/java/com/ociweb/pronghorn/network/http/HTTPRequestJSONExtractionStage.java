@@ -73,7 +73,18 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		
 		    		//moves the index data as is
 		        	inputStream.readFromEndInto(outputStream);
-		        			        	
+		        	DataOutputBlobWriter.closeLowLevelField(outputStream);
+		        	
+		        	//TODO: can we add field name indexes beyond the existing??
+		        	//   we need to walk the JSON given the extractor
+		        	//   we need the position of the last index, so we need the full block.
+		        	
+		        	//TODO: first step is add api reqireing use to call 
+		        	//      for each field in order
+		        	
+		        	
+		        	
+		        	
 					Pipe.addIntValue(Pipe.takeInt(input), output); //revision
 		        	Pipe.addIntValue(Pipe.takeInt(input), output); //context
 		        }	
