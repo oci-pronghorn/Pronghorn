@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -26,13 +27,101 @@ public class JSONFieldSchema implements JSONReader{
 	 //can read 0 or nextReadField
 	 private int nextReadField = 0;
 	 private long nulls=0;
-	 
-	 //TODO: add support for decimal if needed..
+	 private byte decimalLatch = 0;
 
+	 @Override
+	 public long getDecimalMantissa(byte[] field, ChannelReader reader) {
+		 long result = 0;
+		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
+			 
+			 //TODO: revist later
+			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 
+			 nulls = reader.readPackedLong();//only supports 64 fields.
+			 
+			 if (!(0!=(1&nulls))) {
+				 result = reader.readPackedLong();
+			 }
+			 nextReadField = 0;
+			 
+			 decimalLatch |= 1;
+			 
+			 if (3==decimalLatch) {
+				 decimalLatch = 0;
+				 nextReadField++;				 
+			 }
+			 
+		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeDecimal)) {
+			 if (!(0!=( (1<<nextReadField) & nulls))) {
+				 result = reader.readPackedLong();
+			 }
+			 
+			 decimalLatch |= 1;
+			 
+			 if (3==decimalLatch) {
+				 decimalLatch = 0;
+				 nextReadField++;				 
+			 }
+			 
+		 } else {
+			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+		 }
+		 
+		 return result;
+	 }
+
+	 @Override
+	 public byte getDecimalPosition(byte[] field, ChannelReader reader) {
+		 
+		 if (1!=decimalLatch) {
+			 throw new UnsupportedOperationException("must call for DecimalMantissa value first");
+		 }
+		 
+		 byte result = 0;
+		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
+			 			 
+			 //no need to read nulls since that was done by Mantissa read
+			 
+			 if (!(0!=(1&nulls))) {
+				 result = reader.readByte();
+			 }
+			 nextReadField = 0;
+			 
+			 decimalLatch |= 2;
+			 
+			 if (3==decimalLatch) {
+				 decimalLatch = 0;
+				 nextReadField++;				 
+			 }
+			 
+		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeDecimal)) {
+			 if (!(0!=( (1<<nextReadField) & nulls))) {
+				 result = reader.readByte();
+			 }
+			 
+			 decimalLatch |= 2;
+			 
+			 if (3==decimalLatch) {
+				 decimalLatch = 0;
+				 nextReadField++;				 
+			 }
+			 
+		 } else {
+			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+		 }
+		 
+		 return result;
+	 }
+	 
+	 
 	 @Override
 	 public long getLong(byte[] field, ChannelReader reader) {
 		 long result = 0;
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeInteger)) {
+			 			 
+			 //TODO: revist later
+			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if (!(0!=(1&nulls))) {
@@ -55,10 +144,17 @@ public class JSONFieldSchema implements JSONReader{
 	 public <A extends Appendable> A getText(byte[] field, ChannelReader reader, A target) {
 		 
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeString)) {
+			 			 
+			 //TODO: revist later
+			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if (!(0!=(1&nulls))) {
-				 reader.readUTFOfLength(reader.readPackedInt(), target);
+				 int len = reader.readPackedInt();
+				 if (len>0) {
+					 reader.readUTFOfLength(len, target);
+				 }
 			 }
 			 nextReadField = 1;
 		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeString)) {
@@ -74,7 +170,7 @@ public class JSONFieldSchema implements JSONReader{
 	 }
 	 
 	 @Override
-	 public boolean wasNull(ChannelReader reader) {
+	 public boolean wasAbsent(ChannelReader reader) {
 		 assert(nextReadField>0);
 		 return (0!=( (1<<(nextReadField-1)) & nulls));
 	 }

@@ -47,18 +47,7 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 				String filename = createTempFile.getName();
 				String command = "dot -Tsvg -o"+filename+".svg "+filename;
 				System.err.println(command);
-//	            //to produce the png we must call
-//	            //  dot -Tpng -O deviceGraph.dot        
-//				Process result = Runtime.getRuntime()
-//	            		.exec(command);
-//	            
-//	            // dot -Tsvg -oparser2030661959993832585.dot.svg parser2030661959993832585.dot
-//	            
-//	            if (0!=result.waitFor()) {
-//	                System.err.println("error");
-//	            }
-	           
-				
+
 				
 			} catch (Throwable t) {
 				t.printStackTrace();
@@ -76,6 +65,9 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		return new JSONStreamVisitorToChannel(schema);
 	}
 	
+	public JSONExtractorActive newPath(JSONType type) {
+		return newPath(type, false);
+	}
 	
 	public JSONExtractorActive newPath(JSONType type, boolean isAligned) {
 		
