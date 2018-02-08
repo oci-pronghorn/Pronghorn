@@ -11,6 +11,7 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 public class BMPDumper extends PronghornStage {
 
@@ -39,29 +40,36 @@ public class BMPDumper extends PronghornStage {
 		int paddingSize = (4 - (width * 3) % 4) % 4;
 		int size = 14 + 12 + pixels.length * pixels[0].length + height * paddingSize;
 		
-		DataOutputStream file = new DataOutputStream(new FileOutputStream(filename.toString()));
-		file.writeByte('B');
-		file.writeByte('M');
-		writeInt(file, size);
-		writeInt(file, 0);
-		writeInt(file, 0x1A);
-		writeInt(file, 12);
-		writeShort(file, width);
-		writeShort(file, height);
-		writeShort(file, 1);
-		writeShort(file, 24);
+		FileChannel file = new FileOutputStream(filename).getChannel();
+		
+		ByteBuffer buffer = ByteBuffer.allocate(size);
+		buffer.put((byte) 'B');
+		buffer.put((byte) 'M');
+		putInt(buffer, size);
+		putInt(buffer, 0);
+		putInt(buffer, 0x1A);
+		putInt(buffer, 12);
+		putShort(buffer, width);
+		putShort(buffer, height);
+		putShort(buffer, 1);
+		putShort(buffer, 24);
+		
 		for (int i = height - 1; i >= 0; --i) {
 			for (int j = 0; j < width * 3 - 2; j += 3) {
-				file.writeByte(pixels[i][j + 2]);
-				file.writeByte(pixels[i][j + 1]);
-				file.writeByte(pixels[i][j + 0]);
+				buffer.put((byte)(pixels[i][j + 2] & 0xFF));
+				buffer.put((byte)(pixels[i][j + 1] & 0xFF));
+				buffer.put((byte)(pixels[i][j + 0] & 0xFF));
 			}
 			for (int j = 0; j < paddingSize; j++) {
-				file.writeByte(0);
+				buffer.put((byte)0);
 			}
 		}
+		buffer.flip();
+		while(buffer.hasRemaining()) {
+			file.write(buffer);
+		}
 		file.close();
-		
+
 		if (filename.equals("test_jpgs/static.bmp")) {
 			long end = System.nanoTime();
 			
@@ -70,16 +78,16 @@ public class BMPDumper extends PronghornStage {
 		}
 	}
 	
-	private static void writeInt(DataOutputStream stream, int v) throws IOException {
-		stream.writeByte((v & 0x000000FF));
-		stream.writeByte((v & 0x0000FF00) >>  8);
-		stream.writeByte((v & 0x00FF0000) >> 16);
-		stream.writeByte((v & 0xFF000000) >> 24);
+	private static void putInt(ByteBuffer buffer, int v) throws IOException {
+		buffer.put((byte)(v & 0xFF));
+		buffer.put((byte)((v >> 8) & 0xFF));
+		buffer.put((byte)((v >> 16) & 0xFF));
+		buffer.put((byte)((v >> 24) & 0xFF));
 	}
 	
-	private static void writeShort(DataOutputStream stream, int v) throws IOException {
-		stream.writeByte((v & 0x00FF));
-		stream.writeByte((v & 0xFF00) >>  8);
+	private static void putShort(ByteBuffer buffer, int v) throws IOException {
+		buffer.put((byte)(v & 0xFF));
+		buffer.put((byte)((v >> 8) & 0xFF));
 	}
 
 	@Override
