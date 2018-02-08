@@ -769,8 +769,13 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 
     private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v, int depth) {
     	assert(depth<11) : "Error malformed data";
-    	//Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
-        return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7Fl);
+    	if (depth<11) {
+    		//Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
+    		return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7Fl);
+    	} else {
+    		logger.warn("malformed data");
+    		return 0;
+    	}
     }
 
     public static <S extends MessageSchema<S>> boolean wasPackedNull(DataInputBlobReader<S> that) {

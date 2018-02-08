@@ -1,6 +1,7 @@
 package com.ociweb.json;
 
 import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.parse.JSONReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
 public interface JSONExtractorCompleted {
@@ -8,4 +9,5 @@ public interface JSONExtractorCompleted {
 	JSONExtractorActive newPath(JSONType type, boolean isAligned);
 	TrieParser trieParser();
 	JSONStreamVisitorToChannel newJSONVisitor();
+	JSONReader reader();
 }

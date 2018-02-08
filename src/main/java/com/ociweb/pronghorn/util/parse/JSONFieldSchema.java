@@ -3,10 +3,12 @@ package com.ociweb.pronghorn.util.parse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.json.JSONType;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class JSONFieldSchema {
+public class JSONFieldSchema implements JSONReader{
 
 	 private static final Logger logger = LoggerFactory.getLogger(JSONFieldSchema.class);
 	 
@@ -20,6 +22,85 @@ public class JSONFieldSchema {
 	 private final int maxFields = 5;
 	 private final boolean completeFields = true;
 	 private JSONFieldMapping[] mappings;  //immutable once established
+	 
+	 //can read 0 or nextReadField
+	 private int nextReadField = 0;
+	 private long nulls=0;
+	 
+	 //TODO: add support for decimal if needed..
+
+	 @Override
+	 public long getLong(byte[] field, ChannelReader reader) {
+		 long result = 0;
+		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeInteger)) {
+			 nulls = reader.readPackedLong();//only supports 64 fields.
+			 
+			 if (!(0!=(1&nulls))) {
+				 result = reader.readPackedLong();
+			 }
+			 nextReadField = 1;
+		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeInteger)) {
+			 if (!(0!=( (1<<nextReadField) & nulls))) {
+				 result = reader.readPackedLong();
+			 }
+			 nextReadField++;
+		 } else {
+			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+		 }
+		 
+		 return result;
+	 }
+	 
+	 @Override
+	 public <A extends Appendable> A getText(byte[] field, ChannelReader reader, A target) {
+		 
+		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeString)) {
+			 nulls = reader.readPackedLong();//only supports 64 fields.
+			 
+			 if (!(0!=(1&nulls))) {
+				 reader.readUTFOfLength(reader.readPackedInt(), target);
+			 }
+			 nextReadField = 1;
+		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeString)) {
+			 if (!(0!=( (1<<nextReadField) & nulls))) {
+				 reader.readUTFOfLength(reader.readPackedInt(), target);
+			 }
+			 nextReadField++;
+		 } else {
+			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+		 }
+		 
+		 return target;
+	 }
+	 
+	 @Override
+	 public boolean wasNull(ChannelReader reader) {
+		 assert(nextReadField>0);
+		 return (0!=( (1<<(nextReadField-1)) & nulls));
+	 }
+	 
+	 @Override
+	 public boolean getBoolean(byte[] field, ChannelReader reader) {
+		 boolean result = false;
+		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeBoolean)) {
+			 nulls = reader.readPackedLong();//only supports 64 fields.
+			 
+			 if (!(0!=(1&nulls))) {
+				 result = reader.readByte()>0;
+			 }
+			 nextReadField = 1;
+		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeBoolean)) {
+			 if (!(0!=( (1<<nextReadField) & nulls))) {
+				 result = reader.readByte()>0;
+			 }
+			 nextReadField++;
+		 } else {
+			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+		 }
+		 
+		 return result;
+	 }
+	 
 	 
 	 public JSONFieldSchema() {
 		 

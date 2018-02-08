@@ -38,26 +38,26 @@ public class JSONParseTest {
 	private final JSONExtractorCompleted simpleExtractor = new JSONExtractor()
 			.newPath(JSONType.TypeString, false)//set flags for first, last, all, ordered...
 			.key("root").key("keyb")
-			.completePath()
+			.completePath("b")
 			.newPath(JSONType.TypeInteger, false)
 			.key("root").key("keya")
-			.completePath();
+			.completePath("a");
 
 	private final JSONExtractorCompleted simpleArrayExtractor = new JSONExtractor()
 			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 			.key("root").key("[]").key("keyb")
-			.completePath()
+			.completePath("b")
 			.newPath(JSONType.TypeInteger, true)
 			.key("root").key("[]").key("keya")
-			.completePath();
+			.completePath("a");
 	
 	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor(true)
 			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 			.key("root").key("[]").key("[]").key("keyb")
-			.completePath()
+			.completePath("b")
 			.newPath(JSONType.TypeInteger, true)
 			.key("root").key("[]").key("[]").key("keya")
-			.completePath();
+			.completePath("a");
 	
 	
 	@Test

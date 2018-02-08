@@ -7,6 +7,7 @@ import java.util.List;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
 import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
+import com.ociweb.pronghorn.util.parse.JSONReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
 public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActive {
@@ -25,7 +26,12 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		this.schema = new JSONFieldSchema();
 		this.writeDot = writeDot;
 	}
-
+	
+    @Override
+	public JSONReader reader() {
+		return schema;
+	}
+	
 	public TrieParser trieParser() {
 		if (writeDot) {
 				
@@ -109,8 +115,9 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		return this;
 	}
 	
-	public JSONExtractorCompleted completePath() { //can only call newPath next
+	public JSONExtractorCompleted completePath(String pathName) { //can only call newPath next
 		
+		activeMapping.setName(pathName);
 		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	
 		schema.addMappings(activeMapping);
 		return this;

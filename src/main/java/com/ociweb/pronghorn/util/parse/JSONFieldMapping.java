@@ -1,6 +1,8 @@
 package com.ociweb.pronghorn.util.parse;
 
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +15,7 @@ public class JSONFieldMapping {
 	private static final Logger logger = LoggerFactory.getLogger(JSONFieldMapping.class);
 	
 	private final JSONFieldSchema schema;
-	
+	private byte[] name;
 	public final JSONType type;
 	
 	public JSONAccumRule accumRule;	
@@ -52,6 +54,10 @@ public class JSONFieldMapping {
 		this.type = type;
 		this.isAligned = isAligned;
 		this.accumRule = accumRule; 
+	}
+	
+	public void setName(String name) {
+		this.name = name.getBytes();
 	}
 	
 	public void setPath(JSONFieldSchema schema, String... path) {
@@ -169,6 +175,10 @@ public class JSONFieldMapping {
 		targetList[rowIdx][0] = ++count;
 		targetList[rowIdx][count] = addValue;
 				
+	}
+
+	public boolean nameEquals(byte[] name) {
+		return Arrays.equals(name, this.name);
 	}
 	
 }
