@@ -245,10 +245,10 @@ public class TrieParserReader {
 		int idx;
 		int temp_pos=0;
 		idx = i + TrieParser.SIZE_OF_VALUE_NUMERIC;
+		int templateLimit = Integer.MAX_VALUE;
 
-		if (this.runLength<sourceLength && 
-			(temp_pos = parseNumeric(that.ESCAPE_BYTE, this, source, localSourcePos, sourceLength, sourceMask, (int)that.data[pos++]))<0){
-
+		if (this.runLength<sourceLength &&
+			(temp_pos = parseNumeric(that.ESCAPE_BYTE, this, source, localSourcePos, sourceLength, sourceMask, that.data[pos++]))<0){
 			return;
 		}
 		localSourcePos = temp_pos;
@@ -800,7 +800,7 @@ public class TrieParserReader {
 			long sourceLength, int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
 		if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
 			if (reader.runLength<sourceLength) {
-				if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
+				if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, trie.data[reader.pos++]))<0) {			            	
 					reader.normalExit=false;
 					reader.result = unfoundResult;
 
@@ -1167,8 +1167,16 @@ public class TrieParserReader {
 		}
 	}
 
-	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {
+	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, short numType) {
 
+		//////////////support for fixed length numbers up to 1024
+		final int fixedLength = (0x03FF&(numType>>>6));
+		assert(fixedLength == 0) : "Not yet implemented";
+		numType = (short)(numType & 0x03F);
+		final boolean templateLimited = (fixedLength>0 && fixedLength<=sourceLength);
+		sourceLength = templateLimited?fixedLength:sourceLength;
+		///////////////
+		
 		byte sign = 1;
 		long intValue = 0;
 		byte intLength = 0;
@@ -1245,7 +1253,7 @@ public class TrieParserReader {
 						break;//next char is not valid.
 					}
 				} else {
-					if (reader.alwaysCompletePayloads) {
+					if (reader.alwaysCompletePayloads || templateLimited) {
 						break;
 					} else {
 						return -1; //we are waiting for more digits in the feed. 
@@ -1284,7 +1292,7 @@ public class TrieParserReader {
 						}
 					}
 				} else {
-					if (reader.alwaysCompletePayloads) {
+					if (reader.alwaysCompletePayloads || templateLimited) {
 						//do not reset the length;
 					} else {
 						//we are waiting for more digits in the feed. 
