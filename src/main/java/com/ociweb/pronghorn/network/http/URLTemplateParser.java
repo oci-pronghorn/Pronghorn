@@ -124,7 +124,7 @@ public class URLTemplateParser {
 		while(TrieParserReader.parseHasContent(templateParserReader)) {
 			long token = TrieParserReader.parseNext(templateParserReader, templateParser);
 			assert(token<=255) : "type must fit into 8 bits";
-			assert(token>=0);
+			assert(token>=-1);
 			
 			//32 bit value  [8-flags, 8-type, 16-field index]
 			switch ((short)token) {
