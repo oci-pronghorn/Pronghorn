@@ -10,3 +10,7 @@ target/
 /.attach_pid2854
 /.attach_pid30099
 /.attach_pid789
+
+.DS_Store
+.idea
+*.iml
