@@ -319,7 +319,7 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 				}
 				
 				//skip over all the headers, no need to read them at this time
-				stream.setPositionBytesFromStart(stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
+				DataInputBlobReader.position(stream, stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
 
 				TrieParserReader jsonReader = JSONParser.newReader();
 				JSONParser.parse(stream, jsonReader, bearerVisitor);

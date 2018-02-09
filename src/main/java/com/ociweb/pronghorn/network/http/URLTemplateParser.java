@@ -21,10 +21,17 @@ public class URLTemplateParser {
     private final EncodingConverter converter;
     private final static Logger logger = LoggerFactory.getLogger(URLTemplateParser.class);
     
-    public URLTemplateParser() {
+    private final TrieParser routerMap;
+    private final boolean trustText;
+    
+    
+    
+    public URLTemplateParser(TrieParser routerMap, boolean trustText) {
     	
-    	converter = new EncodingConverter();
-
+    	this.converter = new EncodingConverter();
+    	this.routerMap = routerMap;
+    	this.trustText = trustText;
+    	
     }
 	
 	public static TrieParser buildRouteTemplateParser(TrieParser parser) {
@@ -60,39 +67,53 @@ public class URLTemplateParser {
 		return parser;
 	}
 
+	//state needed in addRoute due to no lambdas here
+	private FieldExtractionDefinitions activeRouteDef;
+	private long activeRouteValue;
+	
+	private final EncodingTransform et = new EncodingTransform() {
+
+		@Override
+		public void transform(TrieParserReader templateParserReader,
+				DataOutputBlobWriter<RawDataSchema> outputStream) {
+			
+			activeRouteDef.setIndexCount(
+					convertEncoding(activeRouteDef.getRuntimeParser(), 
+							        templateParserReader, 
+							        templateParser, 
+							        outputStream));
+		
+		}			
+	};
+	
+	private final EncodingStorage es = new EncodingStorage() {
+
+		@Override
+		public void store(Pipe<RawDataSchema> pipe) {
+			//set full byte field in pipe to map with the key routeValue
+			//this is the converted to tri parser format text value
+			routerMap.setValue(pipe, activeRouteValue);
+		}
+		
+	};
 	
 	/**
 	 * Parse template format and inject TrieParser key into the routerMap.
 	 * eg. converts from 
 	 * @param route
-	 * @param routerMap
 	 */
-	public FieldExtractionDefinitions addRoute(CharSequence route, final long routeValue, final TrieParser routerMap, boolean trustText) {
+	public FieldExtractionDefinitions addRoute(CharSequence route,
+			                                   long routeValue ) {
 
-		final FieldExtractionDefinitions routeDef = new FieldExtractionDefinitions(trustText);
-		//TODO: these are not GC free but must be 7 because Google makes it so.
-		final EncodingTransform et = new EncodingTransform() {
-
-			@Override
-			public void transform(TrieParserReader templateParserReader,
-					DataOutputBlobWriter<RawDataSchema> outputStream) {
-				
-				routeDef.setIndexCount(convertEncoding(routeDef.getRuntimeParser(), templateParserReader, templateParser, outputStream));
-			
-			}			
-		};
-		final EncodingStorage es = new EncodingStorage() {
-
-			@Override
-			public void store(Pipe<RawDataSchema> pipe) {
-				routerMap.setValue(pipe, routeValue);
-			}
-			
-		};
-		
+		////////////////////////////////////
+		//convert public supported route format eg ${} and #{} into the 
+		//internal trie parser format, field names are extracted and added to lookup parser
+		////////////////////////////////////		
+		activeRouteValue = routeValue;
+		activeRouteDef = new FieldExtractionDefinitions(trustText, routeValue);		
 		converter.convert(route, et, es);
-		
-		return routeDef;
+				
+		return activeRouteDef;
 	}
 
 	
@@ -102,8 +123,11 @@ public class URLTemplateParser {
 		int lastValue = 0;
 		while(TrieParserReader.parseHasContent(templateParserReader)) {
 			long token = TrieParserReader.parseNext(templateParserReader, templateParser);
-		
-			switch ((int)token) {
+			assert(token<=255) : "type must fit into 8 bits";
+			assert(token>=0);
+			
+			//32 bit value  [8-flags, 8-type, 16-field index]
+			switch ((short)token) {
 				case TrieParser.ESCAPE_CMD_RATIONAL:
 					
 					outputStream.append("%i%/");					

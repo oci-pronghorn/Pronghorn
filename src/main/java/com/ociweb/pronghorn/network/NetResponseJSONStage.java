@@ -110,7 +110,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						//logger.info("old reader value should be zero was "+reader.sourceLen);
 						
 						//skip over all the headers, no need to read them at this time
-						stream.setPositionBytesFromStart(stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
+						DataInputBlobReader.position(stream, stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
 						DataInputBlobReader.setupParser(stream, reader);	
 					
 						//logger.info("new reader now has "+reader.sourceLen+" vs "+stream.available());

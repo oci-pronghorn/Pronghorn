@@ -98,9 +98,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         	 	                   ,true,true);  
    
         this.allHeadersTable = httpSpec.headerTable(localReader);        
-        boolean trustText = false; 
+
 		String constantUnknownRoute = "${path}";//do not modify
-		this.allHeadersExtraction = routeParser().addRoute(constantUnknownRoute, UNMAPPED_ROUTE, urlMap, trustText);
+		this.allHeadersExtraction = routeParser().addRoute(constantUnknownRoute, UNMAPPED_ROUTE);
 		storeRequestExtractionParsers(allHeadersExtraction);
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
         
@@ -123,7 +123,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	private URLTemplateParser routeParser() {
 		//Many projects do not need this so do not build..
 		if (routeParser==null) {
-			routeParser = new URLTemplateParser();
+	        boolean trustText = false; 
+			routeParser = new URLTemplateParser(urlMap, trustText);
 		}
 		URLTemplateParser parser = routeParser;
 		return parser;
@@ -209,13 +210,27 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return routeId<requestJSONExtractor.length ? requestJSONExtractor[routeId] : null;
 	}
 	
-    private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser, JSONExtractorCompleted extractor) {
+	//new register composite route
+	//returns single pipe id, or we introduce a new value for this?
+	
+	
+    private int registerRoute(CharSequence route, IntHashTable headers, 
+    		                  TrieParser headerParser, JSONExtractorCompleted extractor) {
 
-		boolean trustText = false; 
 		URLTemplateParser parser = routeParser();
 		
-		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
+		//TODO: may need array of routes here
+		FieldExtractionDefinitions fieldExDef = parser.addRoute(route, routesCount);
+		
+		//TODO: iterate over a defaults object passed into all the registerRoute calls..
+		fieldExDef.addDefault("","");
+		fieldExDef.addDefault("","");
+		
+		
+		storeRequestExtractionParsers(fieldExDef); 
+		
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
+		
 		storeRequestedHeaders(headers);
 		storeRequestedHeaderParser(headerParser);
 		storeRequestedJSONMapping(extractor);
