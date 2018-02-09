@@ -70,7 +70,7 @@ public class BMPDumper extends PronghornStage {
 		}
 		file.close();
 
-		if (filename.equals("test_jpgs/static.bmp")) {
+		if (filename.equals("test_jpgs/turtle.bmp")) {
 			long end = System.nanoTime();
 			
 			double duration = (double)(end - time) / 1000000;
@@ -152,6 +152,7 @@ public class BMPDumper extends PronghornStage {
 					try {
 						System.out.println("Writing pixels to BMP file...");
 						Dump(pixels, filename + ".bmp", time);
+						System.out.println("Done.");
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);

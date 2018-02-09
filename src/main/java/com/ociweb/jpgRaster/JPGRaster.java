@@ -9,9 +9,7 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-//		String defaultFiles = "test_jpgs/car test_jpgs/cat test_jpgs/dice test_jpgs/earth test_jpgs/nathan test_jpgs/pyramids test_jpgs/robot test_jpgs/squirrel test_jpgs/static test_jpgs/turtle";
-//		String defaultFiles = "test_jpgs/car";
-		String defaultFiles = "test_jpgs/huff_simple0.jpg test_jpgs/robot.jpg test_jpgs/cat.jpg test_jpgs/car.jpg test_jpgs/squirrel.jpg test_jpgs/nathan.jpg test_jpgs/earth.jpg test_jpgs/dice.jpg test_jpgs/pyramids.jpg test_jpgs/static.jpg";
+		String defaultFiles = "test_jpgs/huff_simple0 test_jpgs/robot test_jpgs/cat test_jpgs/car test_jpgs/squirrel test_jpgs/nathan test_jpgs/earth test_jpgs/dice test_jpgs/pyramids test_jpgs/static test_jpgs/turtle";
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
 		String[] inputFiles = inputFilePaths.split(" ");
 		
@@ -74,18 +72,17 @@ public class JPGRaster {
 		//new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		*/
 		
-		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(12, 2500_000);
-		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(60000, 192);
-		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(60000, 192);
-		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(60000, 192);
-		Pipe<JPGSchema> pipe5 = JPGSchema.instance.newPipe(60000, 192);
+		// pipe1 should be the same size as the others, but it mysteriously fills up faster (shouldn't be the case)
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(100, 200);
+		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 200);
+		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 200);
+		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 200);
 		
 		JPGScanner scanner = new JPGScanner(gm, pipe1);
-		new HuffmanDecoder(gm, pipe1, pipe2);
-		new InverseQuantizer(gm, pipe2, pipe3);
-		new InverseDCT(gm, pipe3, pipe4);
-		new YCbCrToRGB(gm, pipe4, pipe5);
-		new BMPDumper(gm, pipe5, System.nanoTime());
+		new InverseQuantizer(gm, pipe1, pipe2);
+		new InverseDCT(gm, pipe2, pipe3);
+		new YCbCrToRGB(gm, pipe3, pipe4);
+		new BMPDumper(gm, pipe4, System.nanoTime());
 		
 //		new ConsoleJSONDumpStage<JPGSchema>(gm, pipe4);
 		
@@ -97,6 +94,5 @@ public class JPGRaster {
 			scanner.queueFile(file);
 		}
 	}
-	
 
 }
