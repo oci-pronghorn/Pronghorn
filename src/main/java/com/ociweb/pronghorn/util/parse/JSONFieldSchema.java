@@ -35,7 +35,8 @@ public class JSONFieldSchema implements JSONReader{
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
 			 
 			 //TODO: revist later
-			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 DataInputBlobReader r = ((DataInputBlobReader)reader);
+			 DataInputBlobReader.position(r, 0);
 			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
@@ -120,7 +121,8 @@ public class JSONFieldSchema implements JSONReader{
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeInteger)) {
 			 			 
 			 //TODO: revist later
-			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 DataInputBlobReader r = ((DataInputBlobReader)reader);
+			 DataInputBlobReader.position(r, 0);
 			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
@@ -146,7 +148,8 @@ public class JSONFieldSchema implements JSONReader{
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeString)) {
 			 			 
 			 //TODO: revist later
-			 ((DataInputBlobReader)reader).setPositionBytesFromStart(0);
+			 DataInputBlobReader r = ((DataInputBlobReader)reader);
+			 DataInputBlobReader.position(r, 0);
 			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 

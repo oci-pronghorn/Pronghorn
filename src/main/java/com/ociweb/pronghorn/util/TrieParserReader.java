@@ -28,9 +28,9 @@ public class TrieParserReader {
 	private static final Logger logger = LoggerFactory.getLogger(TrieParserReader.class);
 
 	private byte[] sourceBacking;
-	public int    sourcePos;
-	public int    sourceLen;
-	public int    sourceMask;
+	public int     sourcePos;
+	public int     sourceLen;
+	public int     sourceMask;
 
 
 	private int[]  capturedValues;

@@ -248,11 +248,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	reader.position = position;
     }
     
-    public void setPositionBytesFromStart(int byteIndexFromStart) {
-        assert(byteIndexFromStart<length) : "index of "+byteIndexFromStart+" is out of limit "+length;
+    public static void position(DataInputBlobReader<?> reader, int byteIndexFromStart) {
+    	assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
-    	position = bytesLowBound+byteIndexFromStart;
+    	reader.position = reader.bytesLowBound+byteIndexFromStart;
     }
+
+    @Deprecated
+    public void setPositionBytesFromStart(int byteIndexFromStart) {
+        position(this, byteIndexFromStart);
+    }
+
     
     
     
