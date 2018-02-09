@@ -141,6 +141,42 @@ public class TrieParserTest {
 //		assertEquals(3, TrieParserReader.blobQuery(reader, map, test1));//any value will map to 3 as wildcard.
 //	}
 	
+	@Test
+	public void testCharSequenceNumberQuery(){
+		
+		TrieParserReader reader = new TrieParserReader(3,true);
+		TrieParser map = new TrieParser(16);
+		CharSequence test = "hello";
+		CharSequence test1 = "1234";
+		CharSequence test2 = "A1234.123";
+		CharSequence test3 = "B1234.123D";
+		
+		
+		map.setUTF8Value("hello", 2);
+		map.setUTF8Value("%i", 3);
+		map.setUTF8Value("A%i.%i", 4); //odd usage here, special test
+		map.setUTF8Value("B%i%.", 5); //more common case
+		
+		assertEquals(2, reader.query(map, test));
+		assertEquals(3, reader.query(map, test1));
+		assertEquals(1234, reader.capturedLongField(reader, 0));		
+		assertEquals(4, reader.query(map, test2));
+		assertEquals(1234, reader.capturedLongField(reader, 0));
+		assertEquals(123, reader.capturedLongField(reader, 1));
+		assertEquals(5, reader.query(map, test3));
+		assertEquals(1234, reader.capturedLongField(reader, 0));
+		assertEquals(123, reader.capturedLongField(reader, 1));
+
+		assertEquals(1234, reader.capturedDecimalMField(reader, 0));
+		assertEquals(0, reader.capturedDecimalEField(reader, 0));
+		
+		assertEquals(123, reader.capturedDecimalMField(reader, 1));
+		assertEquals(-3, reader.capturedDecimalEField(reader, 1));
+		
+	}
+	
+	
+	
 	@Test//******
 	//captured val: whatever is in wild card.
 	public void testwriteCapturedValuesToAppendable() throws IOException{
