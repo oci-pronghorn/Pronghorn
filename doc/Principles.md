@@ -7,7 +7,7 @@
 ### Principles
 - Never block in run()
 
-- new() is only done in startup().   Please note that the String catenate operator, +, causes new()
+- new() is only done in startup().   Please note that the String concatenate operator, +, causes new()
 
 - no boxed primitives
 
