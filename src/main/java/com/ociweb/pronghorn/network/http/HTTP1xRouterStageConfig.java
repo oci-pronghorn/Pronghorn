@@ -269,6 +269,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
             Pipe<HTTPRequestSchema> pipe, 
             int p, 
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes) {
+			assert(null!=collectedHTTPRequstPipes);
 			boolean added = false;
 			int i = routeDefinitions.length;
 			if (i==0) {
@@ -277,7 +278,10 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			} else {
 				while (--i>=0) {
 					added  = true;
-					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);
+					if (null != routeDefinitions[i]) {
+						assert(null != collectedHTTPRequstPipes[p][routeDefinitions[i].pathId]);
+						collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);
+					}
 				}
 			}
 			return added;
@@ -291,11 +295,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		boolean added = false;
 		int i = routeDefinitions.length;
 		while (--i>=0) {
-			if (contains(groupsIds, routeDefinitions[i].groupId)) {	
-				added = true;
-				collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+			if (null!=routeDefinitions[i]) {
+				if (contains(groupsIds, routeDefinitions[i].groupId)) {	
+					added = true;
+					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+				}
 			}
 		}
+			
 		return added;
 	}
 	
@@ -307,9 +314,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			boolean added = false;
 			int i = routeDefinitions.length;
 			while (--i>=0) {
-				if (!contains(groupsIds, routeDefinitions[i].groupId)) {			
-					added = true;
-					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+				if (null!=routeDefinitions[i]) {
+					if (!contains(groupsIds, routeDefinitions[i].groupId)) {			
+						added = true;
+						collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+					}
 				}
 			}
 			return added;
