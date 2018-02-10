@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.util.ArrayList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +11,8 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -28,14 +32,13 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
     
     private IntHashTable[] requestHeaderMask = new IntHashTable[4];
-    private TrieParser[] requestHeaderParser = new TrieParser[4];
+
     private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
     
     private final int defaultLength = 4;
- //   private byte[][] requestExtractions = new byte[defaultLength][];
     private FieldExtractionDefinitions[] routeDefinitions = new FieldExtractionDefinitions[defaultLength];
     
-	private int routesCount = 0;
+	private int pathsCount = 0;
     
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
@@ -100,9 +103,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         this.allHeadersTable = httpSpec.headerTable(localReader);        
 
 		String constantUnknownRoute = "${path}";//do not modify
-		this.allHeadersExtraction = routeParser().addRoute(constantUnknownRoute, UNMAPPED_ROUTE);
-		storeRequestExtractionParsers(allHeadersExtraction);
-		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
+		this.allHeadersExtraction = routeParser().addPath(constantUnknownRoute, UNMAPPED_ROUTE, UNMAPPED_ROUTE);
+		storeRequestExtractionParsers(pathsCount ,allHeadersExtraction);
         
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
         headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
@@ -130,62 +132,41 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return parser;
 	}
 
-	private void storeRequestExtractionParsers(FieldExtractionDefinitions route) {
-		if (routesCount>=routeDefinitions.length) {
+	private void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
+		if (idx>=routeDefinitions.length) {
 			int i = routeDefinitions.length;
 			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
 			System.arraycopy(routeDefinitions, 0, newArray, 0, i);
 			routeDefinitions = newArray;
 		}
-		routeDefinitions[routesCount]=route;	
+		routeDefinitions[idx]=route;	
 	}
 
-	private void storeRequestedExtractions(byte[] lastSetValueExtractonPattern) {
-//		if (routesCount>=requestExtractions.length) {
-//			int i = requestExtractions.length;
-//			byte[][] newArray = new byte[i*2][]; //only grows on startup as needed
-//			System.arraycopy(requestExtractions, 0, newArray, 0, i);
-//			requestExtractions = newArray;
-//		}
-//		requestExtractions[routesCount]=lastSetValueExtractonPattern;		
-	}
-
-
-	private void storeRequestedHeaders(IntHashTable headers) {
+	private void storeRequestedHeaders(int idx, IntHashTable headers) {
 		
-		if (routesCount>=requestHeaderMask.length) {
+		if (idx>=requestHeaderMask.length) {
 			int i = requestHeaderMask.length;
 			IntHashTable[] newArray = new IntHashTable[i*2]; //only grows on startup as needed
 			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
 			requestHeaderMask = newArray;
 		}
-		requestHeaderMask[routesCount]=headers;
+		requestHeaderMask[idx]=headers;
 	}
 	
-	private void storeRequestedHeaderParser(TrieParser headers) {
-		
-		if (routesCount>=requestHeaderParser.length) {
-			int i = requestHeaderParser.length;
-			TrieParser[] newArray = new TrieParser[i*2]; //only grows on startup as needed
-			System.arraycopy(requestHeaderParser, 0, newArray, 0, i);
-			requestHeaderParser = newArray;
-		}
-		requestHeaderParser[routesCount] = headers;
-	}
 	
-	private void storeRequestedJSONMapping(JSONExtractorCompleted extractor) {
+	private void storeRequestedJSONMapping(int idx, JSONExtractorCompleted extractor) {
 		
-		if (routesCount>=requestJSONExtractor.length) {
+		if (idx>=requestJSONExtractor.length) {
 			int i = requestJSONExtractor.length;
 			JSONExtractorCompleted[] newArray = new JSONExtractorCompleted[i*2]; //only grows on startup as needed
 			System.arraycopy(requestJSONExtractor, 0, newArray, 0, i);
 			requestJSONExtractor = newArray;
 		}
-		requestJSONExtractor[routesCount] = extractor;
+		requestJSONExtractor[idx] = extractor;
 	}
 	
-	public int routesCount() {
-		return routesCount;
+	public int totalPathsCount() {
+		return pathsCount;
 	}	
 
 	public FieldExtractionDefinitions extractionParser(int routeId) {
@@ -202,65 +183,153 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 				           requestHeaderMask[routeId] : allHeadersTable;
 	}
 
-	public TrieParser headerTrieParser(int routeId) {
-		return routeId<requestHeaderParser.length ? requestHeaderParser[routeId] : httpSpec.headerParser();
-	}
-	
 	public JSONExtractorCompleted JSONExtractor(int routeId) {
 		return routeId<requestJSONExtractor.length ? requestJSONExtractor[routeId] : null;
 	}
-	
-	//new register composite route
-	//returns single pipe id, or we introduce a new value for this?
-	
-	
-    private int registerRoute(CharSequence route, IntHashTable headers, 
-    		                  TrieParser headerParser, JSONExtractorCompleted extractor) {
 
-		URLTemplateParser parser = routeParser();
-		
-		//TODO: may need array of routes here
-		FieldExtractionDefinitions fieldExDef = parser.addRoute(route, routesCount);
-		
-		//TODO: iterate over a defaults object passed into all the registerRoute calls..
-		fieldExDef.addDefault("","");
-		fieldExDef.addDefault("","");
-		
-		
-		storeRequestExtractionParsers(fieldExDef); 
-		
-		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
-		
-		storeRequestedHeaders(headers);
-		storeRequestedHeaderParser(headerParser);
-		storeRequestedJSONMapping(extractor);
-		
-		int pipeIdx = routesCount;
-		routesCount++;
-		return pipeIdx;
+    @Override
+	public HTTPSpecification httpSpec() {
+		return httpSpec;
 	}
 
     public int headerId(byte[] h) {
     	return httpSpec.headerId(h, localReader);
     }
     
-	public int registerRoute(CharSequence route, byte[] ... headers) {
-		return registerRoute(route, 
-				HeaderUtil.headerTable(localReader, httpSpec, headers), 
-				httpSpec.headerParser(), null);
+    
+	//new register composite route
+	//returns single pipe id, or we introduce a new value for this?
+	
+	
+    private int registerRoute2(CharSequence path,
+    		                  JSONExtractorCompleted extractor,
+    		                  byte[] ... headers) {
+
+		URLTemplateParser parser = routeParser();
+		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
+		
+		//TODO: may need array of routes here
+		 //this is not right
+		
+
+		FieldExtractionDefinitions fieldExDef = parser.addPath(path, pathsCount, pathsCount);//hold for defaults..
+		storeRequestExtractionParsers(pathsCount, fieldExDef); //this looked up by pathId
+		storeRequestedJSONMapping(pathsCount, extractor);
+		storeRequestedHeaders(pathsCount, headerTable);		
+		
+		//add pathId to groupId array.
+		
+		//when users supscripbes to groupID must register every matching FieldExtractionDefinitions, walk list?
+		
+		//for these two they will be the same for all and looked up by groupId
+
+		//need pathId to groupId to support the routeId given to the user.
+		//   that groupId is returned here
+		//   that gorupId is used onregister but doesnot match??
+		
+		//TODO: iterate over a defaults object passed into all the registerRoute calls..
+		//fieldExDef.addDefault("","");
+		//fieldExDef.addDefault("","");
+	
+		return pathsCount++;
 	}
 
-	public int registerRoute(CharSequence route, JSONExtractorCompleted extractor, byte[] ... headers) {
-		return registerRoute(route, 
-				HeaderUtil.headerTable(localReader, httpSpec, headers), 
-				httpSpec.headerParser(), extractor);
+    
+    @Deprecated
+	public int registerRoute(CharSequence route, byte[] ... headers) {
+		return registerRoute2(route, null, headers);
 	}
+
+    @Deprecated
+	public int registerRoute(CharSequence route, JSONExtractorCompleted extractor, byte[] ... headers) {
+		return registerRoute2(route, extractor, headers);
+	}
+
+
 
 	
-	@Override
-	public HTTPSpecification httpSpec() {
-		return httpSpec;
+	
+	public CompositeRoute registerCompositeRoute(byte[][] headers) {
+		
+		//only add paths or end with defaults or id;
+		//only add more defaults or id
+		
+		
+		// TODO Auto-generated method stub
+		return null;
 	}
+
+
+	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, byte[][] headers) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean appendPipeIdMappingForAllGroupIds(
+            Pipe<HTTPRequestSchema> pipe, 
+            int p, 
+            ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes) {
+			boolean added = false;
+			int i = routeDefinitions.length;
+			if (i==0) {
+				added  = true;
+				collectedHTTPRequstPipes[p][0].add(pipe); //ALL DEFAULT IN A SINGLE ROUTE
+			} else {
+				while (--i>=0) {
+					added  = true;
+					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);
+				}
+			}
+			return added;
+	}
+	
+	public boolean appendPipeIdMappingForIncludedGroupIds(
+			                      Pipe<HTTPRequestSchema> pipe, 
+			                      int p, 
+			                      ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
+			                      int ... groupsIds) {
+		boolean added = false;
+		int i = routeDefinitions.length;
+		while (--i>=0) {
+			if (contains(groupsIds, routeDefinitions[i].groupId)) {	
+				added = true;
+				collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+			}
+		}
+		return added;
+	}
+	
+	public boolean appendPipeIdMappingForExcludedGroupIds(
+            Pipe<HTTPRequestSchema> pipe, 
+            int p, 
+            ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
+            int ... groupsIds) {
+			boolean added = false;
+			int i = routeDefinitions.length;
+			while (--i>=0) {
+				if (!contains(groupsIds, routeDefinitions[i].groupId)) {			
+					added = true;
+					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+				}
+			}
+			return added;
+	}
+
+	private boolean contains(int[] groupsIds, int groupId) {
+		int i = groupsIds.length;
+		while (--i>=0) {
+			if (groupId == groupsIds[i]) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	
+	
+	
+	
+	
 
 	
 	

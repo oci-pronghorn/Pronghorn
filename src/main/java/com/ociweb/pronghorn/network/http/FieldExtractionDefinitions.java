@@ -6,11 +6,13 @@ public class FieldExtractionDefinitions {
 
 	private final TrieParser runtimeParser;
 	private int indexCount;
-	private long routeValue;
+	public final int groupId;
+	public final int pathId;
 	
-	public FieldExtractionDefinitions(boolean trustText, long routeValue) {
+	public FieldExtractionDefinitions(boolean trustText, int groupId, int pathId) {
 		this.runtimeParser = new TrieParser(64, 2, trustText, true);
-		this.routeValue = routeValue;
+		this.groupId = groupId;
+		this.pathId = pathId;
 	}
 	
 	public TrieParser getRuntimeParser() {

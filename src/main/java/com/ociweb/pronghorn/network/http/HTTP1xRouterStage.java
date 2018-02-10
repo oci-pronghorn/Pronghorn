@@ -204,7 +204,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         final int sizeOfVarField = 2;
  
-        int h = config.routesCount();
+        int h = config.totalPathsCount();
         
         while (--h>=0) { 
             byte[] offsets = new byte[config.httpSpec.headerCount+1];

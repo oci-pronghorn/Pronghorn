@@ -100,18 +100,18 @@ public class URLTemplateParser {
 	/**
 	 * Parse template format and inject TrieParser key into the routerMap.
 	 * eg. converts from 
-	 * @param route
+	 * @param path
 	 */
-	public FieldExtractionDefinitions addRoute(CharSequence route,
-			                                   long routeValue ) {
+	public FieldExtractionDefinitions addPath(CharSequence path,
+			                                  int groupId, int pathId) {
 
 		////////////////////////////////////
 		//convert public supported route format eg ${} and #{} into the 
 		//internal trie parser format, field names are extracted and added to lookup parser
 		////////////////////////////////////		
-		activeRouteValue = routeValue;
-		activeRouteDef = new FieldExtractionDefinitions(trustText, routeValue);		
-		converter.convert(route, et, es);
+		activeRouteValue = groupId;
+		activeRouteDef = new FieldExtractionDefinitions(trustText, groupId, pathId);		
+		converter.convert(path, et, es);
 				
 		return activeRouteDef;
 	}
