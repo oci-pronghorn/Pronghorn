@@ -13,24 +13,32 @@ public class StringTemplateBuilder<T> {
 		immutable = true;
 	}
 
-	public StringTemplateBuilder<T> add(StringTemplateScript<T> data) {
-		append(data);
-		return this;
-	}
-
 	public StringTemplateBuilder<T> add(String text) {
-		return add(text.getBytes());
+		addBytes(text.getBytes());
+		return this;
 	}
 
 	public StringTemplateBuilder<T> add(final byte[] byteData) {
-		append(
-				new StringTemplateScript<T>() {
-					@Override
-					public void fetch(StringTemplateWriter writer, T source) {
-						writer.write(byteData);
-					}
-				});
+		return add(byteData, 0, byteData.length);
+	}
+
+	public StringTemplateBuilder<T> add(final byte[] byteData, int pos, int len) {
+		if (byteData != null && len > 0) {
+			final byte[] localData = new byte[len];
+			System.arraycopy(byteData, pos, localData, 0, len);
+			addBytes(localData);
+		}
 		return this;
+	}
+
+	private void addBytes(final byte[] byteData) {
+		append(
+			new StringTemplateScript<T>() {
+				@Override
+				public void fetch(StringTemplateWriter writer, T source) {
+					writer.write(byteData);
+				}
+			});
 	}
 
 	public StringTemplateBuilder<T> add(final StringTemplateIterScript<T> data) {
@@ -54,21 +62,28 @@ public class StringTemplateBuilder<T> {
 				new StringTemplateScript<T>() {
 					@Override
 					public void fetch(StringTemplateWriter writer, T source) {
-						localData[branching.branch(source)].render(writer, source);
+						int i = branching.branch(source);
+						assert(i < localData.length) : "String template builder selected invalid branch.";
+						localData[i].render(writer, source);
 					}
 				});
 		return this;
 	}
 
+	public StringTemplateBuilder<T> add(StringTemplateScript<T> data) {
+		append(data);
+		return this;
+	}
+
 	public void render(StringTemplateWriter writer, T source) {
-		//assert(immutable) : "String template builder can only be rendered after lock.";
+		assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
 			script[i].fetch(writer, source);
 		}
 	}
 
 	private void append(StringTemplateScript<T> fetchData) {
-		//assert(!immutable) : "String template builder cannot be modified after lock.";
+		assert(!immutable) : "String template builder cannot be modified after lock.";
 		if (count==script.length) {
 			StringTemplateScript[] newScript = new StringTemplateScript[script.length*2];
 			System.arraycopy(script, 0, newScript, 0, script.length);
