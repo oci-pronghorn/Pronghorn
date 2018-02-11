@@ -47,6 +47,19 @@ public class StringTemplateBuilder<T> {
 		return this;
 	}
 
+	public StringTemplateBuilder<T> add(final StringTemplateBuilder<T>[] data, final StringTemplateBranching<T> branching) {
+		final StringTemplateBuilder<T>[] localData = new StringTemplateBuilder[data.length];
+		System.arraycopy(data, 0, localData, 0, data.length);
+		append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void fetch(StringTemplateWriter writer, T source) {
+						localData[branching.branch(source)].render(writer, source);
+					}
+				});
+		return this;
+	}
+
 	public void render(StringTemplateWriter writer, T source) {
 		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
