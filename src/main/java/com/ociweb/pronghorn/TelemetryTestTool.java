@@ -11,7 +11,7 @@ public class TelemetryTestTool {
 
 	////////////////////////////////////////////////////////////
 	//To run this from the command prompt:
-	// mvn -Dexec.classpathScope=test -Dexec.addResourcesToClasspath=true test-compile exec:java -Dexec.mainClass="com.ociweb.pronghorn.TelemetryTestTool"
+	// mvn exec:java -Dexec.addResourcesToClasspth=true -Dexec.mainClass="com.ociweb.pronghorn.TelemetryTestTool"
 	///////////////////////////////////////////////////////////
 	
 	public static void main(String[] args) {
