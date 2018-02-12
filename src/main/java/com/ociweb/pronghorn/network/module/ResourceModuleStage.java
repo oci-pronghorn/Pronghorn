@@ -118,7 +118,8 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 				return null;//can not look this up
 			}
 			
-			URL localURL = ResourceModuleStage.class.getClassLoader().getSystemClassLoader().getResource(prefix+fileName);
+			URL localURL = ResourceModuleStage.class.getClassLoader()
+					.getResource(prefix+fileName);
 			
 			if (null == localURL) {
 				definePayload();
