@@ -131,7 +131,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             //ensure reporting is done together
             synchronized(logger) {
             	System.out.println();
-	            System.out.println(coordinator.serviceName()+" is now ready on http"+(coordinator.isTLS?"s":"")+":/"+host+"/"+coordinator.defaultPath());
+	            System.out.println(coordinator.serviceName()+" is now ready on http"+(coordinator.isTLS?"s":"")+"://"+host+"/"+coordinator.defaultPath());
 	            System.out.println(coordinator.serviceName()+" max connections: "+coordinator.channelBitsSize);
 	            System.out.println(coordinator.serviceName()+" max concurrent inputs: "+coordinator.maxConcurrentInputs);
 	            System.out.println(coordinator.serviceName()+" concurrent tracks: "+coordinator.moduleParallelism());
