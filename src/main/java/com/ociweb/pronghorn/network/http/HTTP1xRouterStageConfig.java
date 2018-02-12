@@ -261,7 +261,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 
-	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, byte[][] headers) {
+	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, byte[] ... headers) {
 
 		URLTemplateParser parser = routeParser();
 		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
