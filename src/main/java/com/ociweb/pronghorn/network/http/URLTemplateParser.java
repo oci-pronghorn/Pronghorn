@@ -119,6 +119,13 @@ public class URLTemplateParser {
 	
 	private static int convertEncoding(TrieParser runtimeParser, TrieParserReader templateParserReader, TrieParser templateParser, DataOutputBlobWriter<RawDataSchema> outputStream) {
 		
+		//if we have nothing then use the root /
+		if (!TrieParserReader.parseHasContent(templateParserReader)) {
+			logger.info("the leading / was added on URL since route did not define it");
+			outputStream.writeByte('/');
+			return 0;
+		}
+		
 		int fieldIndex = 1; //fields must start with 1
 		int lastValue = 0;
 		while(TrieParserReader.parseHasContent(templateParserReader)) {
@@ -160,6 +167,11 @@ public class URLTemplateParser {
 					
 					int value = TrieParserReader.parseSkipOne(templateParserReader);
 					if (value>=0) {
+						if (('/'!=(char)value) && (0 == outputStream.position())) {
+							//the leading / was missing so we add it now
+							logger.info("the leading / was added on URL since route did not define it");
+							outputStream.writeByte('/');
+						}
 						outputStream.writeByte(value);
 						lastValue = value;
 					}
