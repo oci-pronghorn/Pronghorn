@@ -739,6 +739,8 @@ public class NetGraphBuilder {
 				maxConnectionBits, tracks, 
 				2, concurrentChannelsPerEncryptUnit, 
 				1, concurrentChannelsPerDecryptUnit);
+		
+		serverConfig.ensureServerCanRead(1<<16);
 				 		
 		//This must be large enough for both partials and new handshakes.
 		serverConfig.ensureServerCanWrite(1<<20);//1MB out
