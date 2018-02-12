@@ -7,7 +7,7 @@ import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class CompositeRouteImpl implements CompositePath {
+public class CompositeRouteImpl implements CompositeRoute {
 
 	//TODO: move this entire logic into HTTP1xRouterStageConfig to eliminate this object construction.
 	private final JSONExtractorCompleted extractor; 
@@ -42,7 +42,7 @@ public class CompositeRouteImpl implements CompositePath {
 	}
 
 	@Override
-	public CompositePath path(CharSequence path) {
+	public CompositeRoute path(CharSequence path) {
 		
 		int pathsId = pathCounter.getAndIncrement();
 		
@@ -56,7 +56,7 @@ public class CompositeRouteImpl implements CompositePath {
 	}
 	
 	@Override
-	public CompositeRoute defaultInteger(String key, long value) {
+	public CompositeRouteFinish defaultInteger(String key, long value) {
 		
 		int i = defs.size();
 		while (--i>=0) {
@@ -66,7 +66,7 @@ public class CompositeRouteImpl implements CompositePath {
 	}
 
 	@Override
-	public CompositeRoute defaultText(String key, String value) {
+	public CompositeRouteFinish defaultText(String key, String value) {
 		
 		int i = defs.size();
 		while (--i>=0) {
@@ -76,7 +76,7 @@ public class CompositeRouteImpl implements CompositePath {
 	}
 
 	@Override
-	public CompositeRoute defaultDecimal(String key, long m, byte e) {
+	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
 		
 		int i = defs.size();
 		while (--i>=0) {
@@ -86,7 +86,7 @@ public class CompositeRouteImpl implements CompositePath {
 	}
 
 	@Override
-	public CompositeRoute defaultRational(String key, long numerator, long denominator) {
+	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
 		
 		int i = defs.size();
 		while (--i>=0) {
