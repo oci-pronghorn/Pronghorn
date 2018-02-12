@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network.http;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +39,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     private final int defaultLength = 4;
     private FieldExtractionDefinitions[] routeDefinitions = new FieldExtractionDefinitions[defaultLength];
     
-	private int pathsCount = 0;
-    
+	private int routeCount = 0;
+	private AtomicInteger pathCount = new AtomicInteger();
+	    
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
-    public static final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
-   
+    
+    public final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
+    
     private URLTemplateParser routeParser;
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
@@ -103,9 +106,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         this.allHeadersTable = httpSpec.headerTable(localReader);        
 
 		String constantUnknownRoute = "${path}";//do not modify
-		this.allHeadersExtraction = routeParser().addPath(constantUnknownRoute, UNMAPPED_ROUTE, UNMAPPED_ROUTE);
-		storeRequestExtractionParsers(pathsCount ,allHeadersExtraction);
-        
+		int groupId = UNMAPPED_ROUTE;//routeCount can not be inc due to our using it to know if there are valid routes.
+		int pathId = UNMAPPED_ROUTE;
+
+		this.allHeadersExtraction = routeParser().addPath(constantUnknownRoute, groupId, pathId);
+   
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
         headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
        
@@ -132,7 +137,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return parser;
 	}
 
-	private void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
+	void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
 		if (idx>=routeDefinitions.length) {
 			int i = routeDefinitions.length;
 			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
@@ -142,7 +147,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		routeDefinitions[idx]=route;	
 	}
 
-	private void storeRequestedHeaders(int idx, IntHashTable headers) {
+	void storeRequestedHeaders(int idx, IntHashTable headers) {
 		
 		if (idx>=requestHeaderMask.length) {
 			int i = requestHeaderMask.length;
@@ -154,7 +159,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 	
 	
-	private void storeRequestedJSONMapping(int idx, JSONExtractorCompleted extractor) {
+	void storeRequestedJSONMapping(int idx, JSONExtractorCompleted extractor) {
 		
 		if (idx>=requestJSONExtractor.length) {
 			int i = requestJSONExtractor.length;
@@ -166,7 +171,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 	
 	public int totalPathsCount() {
-		return pathsCount;
+		return pathCount.get();
 	}	
 
 	public FieldExtractionDefinitions extractionParser(int routeId) {
@@ -201,84 +206,86 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	//returns single pipe id, or we introduce a new value for this?
 	
 	
-    private int registerRoute2(CharSequence path,
-    		                  JSONExtractorCompleted extractor,
-    		                  byte[] ... headers) {
+//    private int registerRoute2(CharSequence path,
+//    		                  JSONExtractorCompleted extractor,
+//    		                  byte[] ... headers) {
+//
+//		URLTemplateParser parser = routeParser();
+//		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
+//		
+//		//TODO: may need array of routes here
+//		 //this is not right
+//		
+//
+//		FieldExtractionDefinitions fieldExDef = parser.addPath(path, pathsCount, pathsCount);//hold for defaults..
+//		storeRequestExtractionParsers(pathsCount, fieldExDef); //this looked up by pathId
+//		storeRequestedJSONMapping(pathsCount, extractor);
+//		storeRequestedHeaders(pathsCount, headerTable);		
+//		
+//		//add pathId to groupId array.
+//		
+//		//when users supscripbes to groupID must register every matching FieldExtractionDefinitions, walk list?
+//		
+//		//for these two they will be the same for all and looked up by groupId
+//
+//		//need pathId to groupId to support the routeId given to the user.
+//		//   that groupId is returned here
+//		//   that gorupId is used onregister but doesnot match??
+//		
+//		//TODO: iterate over a defaults object passed into all the registerRoute calls..
+//		//fieldExDef.addDefault("","");
+//		//fieldExDef.addDefault("","");
+//	
+//		return pathsCount++;
+//	}
+//
+//    
 
-		URLTemplateParser parser = routeParser();
-		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
-		
-		//TODO: may need array of routes here
-		 //this is not right
-		
-
-		FieldExtractionDefinitions fieldExDef = parser.addPath(path, pathsCount, pathsCount);//hold for defaults..
-		storeRequestExtractionParsers(pathsCount, fieldExDef); //this looked up by pathId
-		storeRequestedJSONMapping(pathsCount, extractor);
-		storeRequestedHeaders(pathsCount, headerTable);		
-		
-		//add pathId to groupId array.
-		
-		//when users supscripbes to groupID must register every matching FieldExtractionDefinitions, walk list?
-		
-		//for these two they will be the same for all and looked up by groupId
-
-		//need pathId to groupId to support the routeId given to the user.
-		//   that groupId is returned here
-		//   that gorupId is used onregister but doesnot match??
-		
-		//TODO: iterate over a defaults object passed into all the registerRoute calls..
-		//fieldExDef.addDefault("","");
-		//fieldExDef.addDefault("","");
-	
-		return pathsCount++;
-	}
-
-    
     @Deprecated
 	public int registerRoute(CharSequence route, byte[] ... headers) {
-		return registerRoute2(route, null, headers);
+    	return registerCompositeRoute(headers).path(route).routeId();
 	}
 
     @Deprecated
 	public int registerRoute(CharSequence route, JSONExtractorCompleted extractor, byte[] ... headers) {
-		return registerRoute2(route, extractor, headers);
+    	return registerCompositeRoute(extractor,headers).path(route).routeId();
+	}
+
+	
+	public CompositePath registerCompositeRoute(byte[] ... headers) {
+
+		URLTemplateParser parser = routeParser();
+		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
+		
+		return new CompositeRouteImpl(this, null, parser, headerTable, routeCount++, pathCount);
 	}
 
 
+	public CompositePath registerCompositeRoute(JSONExtractorCompleted extractor, byte[][] headers) {
 
-	
-	
-	public CompositeRoute registerCompositeRoute(byte[][] headers) {
+		URLTemplateParser parser = routeParser();
+		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
 		
-		//only add paths or end with defaults or id;
-		//only add more defaults or id
-		
-		
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-
-	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, byte[][] headers) {
-		// TODO Auto-generated method stub
-		return null;
+		return new CompositeRouteImpl(this, extractor, parser, headerTable, routeCount++, pathCount);
 	}
 
 	public boolean appendPipeIdMappingForAllGroupIds(
             Pipe<HTTPRequestSchema> pipe, 
             int p, 
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes) {
+		
 			assert(null!=collectedHTTPRequstPipes);
 			boolean added = false;
-			int i = routeDefinitions.length;
+			int i = routeCount;
 			if (i==0) {
 				added  = true;
 				collectedHTTPRequstPipes[p][0].add(pipe); //ALL DEFAULT IN A SINGLE ROUTE
 			} else {
 				while (--i>=0) {
 					added  = true;
-					if (null != routeDefinitions[i]) {
+					if (null != routeDefinitions[i] 
+						&& UNMAPPED_ROUTE!=routeDefinitions[i].pathId
+					   ) {
 						assert(null != collectedHTTPRequstPipes[p][routeDefinitions[i].pathId]);
 						collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);
 					}

@@ -666,17 +666,16 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
-	final int routeId;
-    routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
+	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
 
-    if (!catchAll && HTTP1xRouterStageConfig.UNMAPPED_ROUTE == routeId) {
+    if (!catchAll && config.UNMAPPED_ROUTE == pathId) {
     	
 		//unsupported route path, send 404 error
 		sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
 		return SUCCESS;
     }
     
-    if (routeId<0) {
+    if (pathId<0) {
 
     	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
     		//logger.info(routeId+" need more data C  "+tempLen+"  "+config.urlMap.longestKnown()+" "+trieReader.sourceLen);
@@ -698,7 +697,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     
     //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     //      if catch all is enabled use it because all outputs will be null in that mode
-    Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
+    Pipe<HTTPRequestSchema> outputPipe = pathId<outputs.length ? outputs[pathId] : outputs[0];
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
     
     if (Pipe.hasRoomForWrite(outputPipe) ) {
@@ -708,7 +707,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
         
         //route and verb
-        Pipe.addIntValue((routeId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
+        Pipe.addIntValue((pathId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
         
 		DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
 		                                                                                                                          //write 2   7
@@ -776,11 +775,11 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         
         //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
         
-        int countOfAllPreviousFields = config.extractionParser(routeId).getIndexCount()+indexOffsetCount;
+        int countOfAllPreviousFields = config.extractionParser(pathId).getIndexCount()+indexOffsetCount;
 		int requestContext = parseHeaderFields(writer, errorReporter, 
 											 countOfAllPreviousFields, 
-											 config.headerCount(routeId),
-											 config.headerToPositionTable(routeId), 
+											 config.headerCount(pathId),
+											 config.headerToPositionTable(pathId), 
 											 writeIndex, 
 											 keepAliveOrNotContext(httpRevisionId),
 											 trieReader,
@@ -821,7 +820,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     } else {
     	//logger.info("No room, waiting for {} {}",channel, outputPipe);
         //no room try again later
-        return -routeId;
+        return -pathId;
     }
     
    inputCounts[idx]++; 
