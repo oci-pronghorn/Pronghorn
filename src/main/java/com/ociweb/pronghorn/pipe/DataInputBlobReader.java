@@ -12,6 +12,7 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
+import com.ociweb.pronghorn.util.math.DecimalResult;
 
 public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelReader {
 
@@ -616,8 +617,18 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     ///////
     public static TrieParser textToNumberTrieParser() {
     	if (textToNumberParser == null) {    		
-    		TrieParser p = new TrieParser(32,false);
-    		p.setUTF8Value("%i%.", 1);
+    		TrieParser p = new TrieParser(8,false); //supports streaming, so false
+    		p.setUTF8Value("%i%.", 1); 
+    		
+    		
+    		
+    		//p.setUTF8Value("%i%.%/%.", 1);
+    		//the above pattern can parse  234 and 234.34 and 23/45 and 23.4/56.7
+    		//it also supports the normal capture methods for ints and decimals with no change
+    		
+    		//TrieParserReader.capturedLongField(parserReader, 0)
+    		
+    		
     		textToNumberParser = p;
     	}
     	return textToNumberParser;
@@ -631,33 +642,58 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     public static long readUTFAsLong(DataInputBlobReader<?> reader) {
-    	TrieParserReader parserReader = reader.parserReader();
-    	long token = TrieParserReader.query(parserReader, textToNumberTrieParser(), 
-    			               reader.backing, reader.position,
-    			               reader.available(), reader.byteMask);
     	
-    	if (token>=0) {
-    		return TrieParserReader.capturedLongField(reader.reader, 0);
-    	} else {
-    		return -1;//none
-    	}    	
+    	return convertTextToLong(reader.parserReader(), reader.backing, reader.position, reader.byteMask, reader.available());
     }
+
+	public static long convertTextToLong(TrieParserReader parserReader,
+			                             byte[] backing, 
+			                             int position, 
+			                             int mask,
+			                             int available) {
+		
+		return (TrieParserReader.query(parserReader, 
+				                   textToNumberTrieParser(), 
+    			                   backing, position, 
+    			                   available, mask)>=0)
+				? TrieParserReader.capturedLongField(parserReader, 0) : -1;
+	}
     
     public static double readUTFAsDecimal(DataInputBlobReader<?> reader) {
-    	TrieParserReader parserReader = reader.parserReader();
-    	long token = TrieParserReader.query(parserReader, textToNumberTrieParser(), 
-    			               reader.backing, reader.position,
-    			               reader.available(), reader.byteMask);
-    	
-    	if (token>=0) {
-    		long m = TrieParserReader.capturedDecimalMField(reader.reader, 0);
-    		byte e = TrieParserReader.capturedDecimalEField(reader.reader, 0);
-    		return Decimal.asDouble(m, e);
-    		
-    	} else {
-    		return -1;//none
-    	}    	
+    	return convertTextToDouble(reader.parserReader(), reader.backing, reader.position, reader.available(), reader.byteMask);	
     }
+
+	public static double convertTextToDouble(TrieParserReader parserReader, 
+											 byte[] backing, int position,
+											 int available, int mask) {
+		
+		return (TrieParserReader.query(parserReader, textToNumberTrieParser(), 
+		    			               backing, position,
+		    			               available, mask)>=0) ?
+		    			            		   
+    		Decimal.asDouble(
+    				TrieParserReader.capturedDecimalMField(parserReader, 0), 
+    				TrieParserReader.capturedDecimalEField(parserReader, 0)) : -1;
+    				
+	}
+	
+	public static boolean convertTextToDecimal(TrieParserReader parserReader, 
+			 byte[] backing, int position,
+			 int available, int mask, DecimalResult result) {
+
+		if (TrieParserReader.query(parserReader, textToNumberTrieParser(), 
+		      backing, position,
+		      available, mask)>=0) {
+			
+			result.result(TrieParserReader.capturedDecimalMField(parserReader, 0), 
+				    	  TrieParserReader.capturedDecimalEField(parserReader, 0));
+			
+			return true;
+		} else {
+			return false;
+		}
+		
+	}
     
     ///////
     //Packed Chars
