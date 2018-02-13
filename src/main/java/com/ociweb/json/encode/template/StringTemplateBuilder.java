@@ -1,6 +1,9 @@
-package com.ociweb.json.encode;
+package com.ociweb.json.encode.template;
 
-public class StringTemplateBuilder<T> {
+import com.ociweb.json.encode.appendable.AppendableByteWriter;
+import com.ociweb.json.encode.appendable.ByteWriter;
+
+public class StringTemplateBuilder<T> implements ByteWriter {
 	private StringTemplateScript[] script;
 	private int count;
 	private boolean immutable = false;
@@ -16,6 +19,11 @@ public class StringTemplateBuilder<T> {
 	public StringTemplateBuilder<T> add(String text) {
 		addBytes(text.getBytes());
 		return this;
+	}
+
+	@Override
+	public void write(byte[] b, int pos, int len) {
+		add(b, pos, len);
 	}
 
 	public StringTemplateBuilder<T> add(final byte[] byteData) {
@@ -35,7 +43,7 @@ public class StringTemplateBuilder<T> {
 		append(
 			new StringTemplateScript<T>() {
 				@Override
-				public void fetch(StringTemplateWriter writer, T source) {
+				public void fetch(AppendableByteWriter writer, T source) {
 					writer.write(byteData);
 				}
 			});
@@ -45,10 +53,8 @@ public class StringTemplateBuilder<T> {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(StringTemplateWriter writer, T source) {
-						int i = 0;
-						while (data.fetch(writer, source, i)) {
-							i++;
+					public void fetch(AppendableByteWriter writer, T source) {
+						for(int i = 0; data.fetch(writer, source, i); i++) {
 						}
 					}
 				});
@@ -61,7 +67,7 @@ public class StringTemplateBuilder<T> {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(StringTemplateWriter writer, T source) {
+					public void fetch(AppendableByteWriter writer, T source) {
 						int i = branching.branch(source);
 						assert(i < localData.length) : "String template builder selected invalid branch.";
 						localData[i].render(writer, source);
@@ -75,7 +81,7 @@ public class StringTemplateBuilder<T> {
 		return this;
 	}
 
-	public void render(StringTemplateWriter writer, T source) {
+	public void render(AppendableByteWriter writer, T source) {
 		assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
 			script[i].fetch(writer, source);

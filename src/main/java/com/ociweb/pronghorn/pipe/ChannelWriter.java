@@ -4,14 +4,14 @@ import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.OutputStream;
 
-import com.ociweb.json.encode.StringTemplateWriter;
+import com.ociweb.json.encode.appendable.AppendableByteWriter;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.util.ByteConsumer;
 import com.ociweb.pronghorn.util.field.StructuredBlobWriter;
 
-public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, StructuredBlobWriter, StringTemplateWriter {
+public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, StructuredBlobWriter, AppendableByteWriter {
 
 	 abstract public void writeUTF(String s);
 	 
