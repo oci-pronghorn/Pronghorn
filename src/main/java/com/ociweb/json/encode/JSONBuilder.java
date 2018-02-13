@@ -278,6 +278,8 @@ class JSONBuilder<T> {
 
     // Decimal
 
+    // TODO: support rational, decimal, and double
+
     void addDecimal(ToDecimalFunction<T> func) {
         scripts.add((writer, source) -> func.applyAsDecimal(source, (m, e) ->
                 Appendables.appendDecimalValue(writer, m, e)));
@@ -323,6 +325,8 @@ class JSONBuilder<T> {
     }
 
     // String
+
+    // TODO: support Appendable writing directly writer
 
     void addString(ToStringFunction<T> func) {
         kw.Quote(scripts);
