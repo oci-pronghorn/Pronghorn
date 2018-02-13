@@ -100,6 +100,7 @@ public class TrieParserReader {
 		this.alwaysCompletePayloads = alwaysCompletePayloads;
 		
 		workingPipe.initBuffers();
+		
 	}
 
 
@@ -604,8 +605,8 @@ public class TrieParserReader {
 	
     public static long query(TrieParserReader reader, TrieParser trie, CharSequence cs) {
         
-    	if (cs.length()> reader.workingPipe.maxVarLen) {
-    		reader.workingPipe = RawDataSchema.instance.newPipe(2,cs.length());
+    	if ((cs.length()*6) > reader.workingPipe.maxVarLen) {
+    		reader.workingPipe = RawDataSchema.instance.newPipe(2,cs.length()*6);
     		reader.workingPipe.initBuffers();
     	}
     	

@@ -78,5 +78,28 @@ public class Decimal {
 		return e<0 ? (long)(1d/powdi[64 - e]) : 1;
 	}
 
+	public static void asRational(long tempNumM, byte tempNumE,
+			                      long tempDenM, byte tempDenE, 
+			                      RationalResult rational) {
+		
+		//how many bits can we add?		
+		int numZeros = Long.numberOfLeadingZeros(tempNumM);
+		int denZeros = Long.numberOfLeadingZeros(tempDenM);		
+		int minZeros = Math.min(numZeros, denZeros)-1;
+		
+		int tens = minZeros/10; //10 bits is 1024		
+		long multi = multLookup[tens];
+		int  places = placesLookup[tens];
+		
+		tempNumM*=multi;
+		tempDenM*=multi;
+		tempNumE-=places;
+		tempDenE-=places;
+		
+		rational.result(Decimal.asLong(tempNumM,tempNumE), 
+				        Decimal.asLong(tempDenM,tempDenE));
+		
+	}
+
 	
 }
