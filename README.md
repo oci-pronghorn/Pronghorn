@@ -13,17 +13,16 @@ Lastly, it exports this array of RGB pixels to a bitmap file with the same name 
 
 Currently, it supports and successfully decompresses the most standard JPG format, with wider support coming soon.
 
+J2R uses Pronghorn-Pipes for multi-threading and dataflow management to speed up decompression and to process many JPG files at once. The decoding process is split into the 5 major stages and each stage is a separate thread. Data is passed in small chunks from thread to thread, being transformed at every stage.
+
 ## How to use it?
 From the command line, you can specify an input JPG file with the `-f` option (you do not have to include the `.jpg` extension).
 You can also provide a space-separated list of many JPG files.
 Then it will produce a `.bmp` file with the same name after decompressing the JPG file.
 If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.
 BMP was chosen as the output file type due to its very small header (26 bytes) followed by the raw, uncompressed RGB values.
-Eventually, J2R will use Pronghorn-Pipes for multi-threading and dataflow management to speed up decompression and to process many JPG files at once.
-For now, it decompresses one JPG file at a time from start to finish before beginning the next input JPG file.
 
 ## Planned Features
- - Use Pronghorn-Pipes
  - Support more Start of Frame markers (i.e. Progressive)
  - Support files with one color component (grayscale)
  - Support horizontal and vertical sampling factors other than 1
