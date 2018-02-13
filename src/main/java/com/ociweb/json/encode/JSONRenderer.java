@@ -1,7 +1,7 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.encode.template.StringTemplateBuilder;
-import com.ociweb.json.encode.appendable.AppendableByteWriter;
+import com.ociweb.json.template.StringTemplateBuilder;
+import com.ociweb.json.appendable.AppendableByteWriter;
 
 public class JSONRenderer<T> extends JSONRoot<T, JSONRenderer<T>> {
 

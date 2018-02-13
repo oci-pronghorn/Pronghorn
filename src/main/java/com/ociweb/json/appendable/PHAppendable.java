@@ -1,4 +1,4 @@
-package com.ociweb.json.encode.appendable;
+package com.ociweb.json.appendable;
 
 public interface PHAppendable extends Appendable {
     Appendable append(CharSequence csq);

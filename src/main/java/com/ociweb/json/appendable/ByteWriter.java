@@ -1,4 +1,4 @@
-package com.ociweb.json.encode.appendable;
+package com.ociweb.json.appendable;
 
 @FunctionalInterface
 public interface ByteWriter {

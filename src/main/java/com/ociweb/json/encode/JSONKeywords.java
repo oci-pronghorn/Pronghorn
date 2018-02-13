@@ -2,7 +2,7 @@ package com.ociweb.json.encode;
 
 // TODO: Once we develop the pretty output the exact methods may change.
 
-import com.ociweb.json.encode.appendable.ByteWriter;
+import com.ociweb.json.appendable.ByteWriter;
 
 public class JSONKeywords {
     private static final byte[] True = "true".getBytes();

@@ -4,7 +4,7 @@ import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.OutputStream;
 
-import com.ociweb.json.encode.appendable.AppendableByteWriter;
+import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;

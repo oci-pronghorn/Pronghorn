@@ -2,7 +2,7 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.encode.template.StringTemplateBuilder;
+import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;

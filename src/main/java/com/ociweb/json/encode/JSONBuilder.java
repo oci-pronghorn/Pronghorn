@@ -2,8 +2,8 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.encode.template.StringTemplateBuilder;
-import com.ociweb.json.encode.appendable.AppendableByteWriter;
+import com.ociweb.json.template.StringTemplateBuilder;
+import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
 import java.util.function.ToIntFunction;
@@ -11,12 +11,11 @@ import java.util.function.ToLongFunction;
 
 class JSONBuilder<T> {
     private final StringTemplateBuilder<T> scripts;
-
     private final JSONKeywords kw;
     private final int depth;
     private final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
     private int objectElementIndex = 0;
-    private ToIntFunction<T> arrayLength;
+    // Make certain no mutable state is used during render!
 
     JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
         this.scripts = scripts;
@@ -32,10 +31,6 @@ class JSONBuilder<T> {
         return kw;
     }
 
-    void setArrayLength(ToIntFunction<T> arrayLength) {
-        this.arrayLength = arrayLength;
-    }
-
     void start() {
         kw.Start(scripts);
     }
@@ -46,7 +41,6 @@ class JSONBuilder<T> {
         scripts.lock();
         nullableBranches[0] = null;
         nullableBranches[1] = null;
-        arrayLength = null;
     }
 
     void render(AppendableByteWriter writer, T source) {
@@ -102,26 +96,31 @@ class JSONBuilder<T> {
         return notNullBranch;
     }
 
-    // Bool
+    StringTemplateBuilder<T> endArray() {
+        kw.CloseArray(scripts, depth);
+        return scripts;
+    }
+
+    // Null
 
     void addNull() {
-        if (this.arrayLength == null) {
-            kw.Null(scripts);
-        }
-        else {
-            scripts.add((writer, source) -> {
-                int c = arrayLength.applyAsInt(source);
-                if (c > 0) {
-                    for (int i = 0; i < c - 1; i++) {
-                        kw.Null(writer);
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    kw.Null(writer);
-                }
-            });
-            kw.CloseArray(scripts, depth);
-        }
+        kw.Null(scripts);
     }
+
+    void addNull(ToIntFunction<T> arrayLength) {
+        scripts.add((writer, source) -> {
+            int c = arrayLength.applyAsInt(source);
+            if (c > 0) {
+                for (int i = 0; i < c - 1; i++) {
+                    kw.Null(writer);
+                    kw.NextArrayElement(writer, depth);
+                }
+                kw.Null(writer);
+            }
+        });
+    }
+
+    // Bool
 
     void addBool(ToBoolFunction<T> func) {
         scripts.add((apendable, source) -> {
@@ -176,7 +175,7 @@ class JSONBuilder<T> {
         scripts.add((writer, source) -> Appendables.appendValue(writer, func.applyAsLong(source)));
     }
 
-    void addInteger(IterLongFunction<T> func) {
+    void addInteger(ToIntFunction<T> arrayLength, IterLongFunction<T> func) {
         scripts.add((writer, source, i) -> {
             int count = arrayLength.applyAsInt(source);
             func.applyAsLong(source, i, v -> {
@@ -187,9 +186,8 @@ class JSONBuilder<T> {
                     Appendables.appendValue(writer, v);
                 }
             });
-            return i < count-1;
+            return i < count - 1;
         });
-        kw.CloseArray(scripts, depth);
     }
 
     void addInteger(ToNullableLongFunction<T> func) {
@@ -203,7 +201,7 @@ class JSONBuilder<T> {
         }));
     }
 
-    void addInteger(IterNullableLongFunction<T> func) {
+    void addInteger(ToIntFunction<T> arrayLength, IterNullableLongFunction<T> func) {
         scripts.add((writer, source, i) -> {
             int count = arrayLength.applyAsInt(source);
             func.applyAsLong(source, i, (v, isNull) -> {
@@ -213,15 +211,13 @@ class JSONBuilder<T> {
                     }
                     if (isNull) {
                         kw.Null(writer);
-                    }
-                    else {
+                    } else {
                         Appendables.appendValue(writer, v);
                     }
                 }
             });
-            return i < count-1;
+            return i < count - 1;
         });
-        kw.CloseArray(scripts, depth);
     }
 
     void addInteger(ToLongFunction<T> func, JSONType encode) {
@@ -252,12 +248,12 @@ class JSONBuilder<T> {
         }
     }
 
-    void addInteger(IterLongFunction<T> func, JSONType encode) {
+    void addInteger(ToIntFunction<T> arrayLength, IterLongFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
             case TypeInteger:
-                addInteger(func);
+                addInteger(arrayLength, func);
                 break;
             case TypeDecimal:
                 break;
@@ -266,12 +262,12 @@ class JSONBuilder<T> {
         }
     }
 
-    void addInteger(IterNullableLongFunction<T> func, JSONType encode) {
+    void addInteger(ToIntFunction<T> arrayLength, IterNullableLongFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
             case TypeInteger:
-                addInteger(func);
+                addInteger(arrayLength, func);
                 break;
             case TypeDecimal:
                 break;

@@ -1,4 +1,4 @@
-package com.ociweb.json.encode.appendable;
+package com.ociweb.json.appendable;
 
 public interface AppendableByteWriter extends PHAppendable, ByteWriter {
 }
