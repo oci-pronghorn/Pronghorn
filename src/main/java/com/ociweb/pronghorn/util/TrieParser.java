@@ -81,6 +81,9 @@ public class TrieParser implements Serializable {
     // %bX       where X is the excluded stop short
     //////////////////////////////////////////////////////////////////////
     
+    //TODO: add support for %Ni where we capture a number of fixed length N
+    //      this will be for HHmmSS extraction into 3 fields...
+    
     //numeric type bits:
     //   leading sign (only in front)
     static final byte NUMERIC_FLAG_SIGN     =  1;

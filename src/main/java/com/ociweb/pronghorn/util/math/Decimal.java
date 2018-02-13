@@ -16,8 +16,28 @@ public class Decimal {
 			long temp =	dif>=longPow.length? 0 : bM*longPow[dif];
 			result.result(aM+temp, aE);
 		}
-		
     }
+    
+    private static final byte[] placesLookup = 
+    	{(byte)0,(byte)-3,  (byte)-6,     (byte)-9,        (byte)-12,              (byte)-15,                   (byte)-18};
+    private static final long[] multLookup   = 
+    	{      1,    1000, 1_000_000,1_000_000_000,1_000_000_000_000L, 1_000_000_000_000_000L, 1_000_000_000_000_000_000L};
+    
+
+	public static void fromRational(long numerator, long denominator, DecimalResult result) {
+		
+		long ones = numerator/denominator;
+		long rem  = numerator%denominator;
+		
+		//based on ones how much room do we have?
+		//10 bits is 1024
+		final int ks = Long.numberOfLeadingZeros(Math.abs(ones))/10;
+
+		long mul    = multLookup[ks];
+		long value = (ones*mul)+((rem*mul)/denominator);
+	
+		result.result(value, placesLookup[ks]);		
+	}
     
 	public static long[] longPow = new long[] {1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 
             1_000_000_000, 10_000_000_000L, 100_000_000_000L ,1000_000_000_000L,
@@ -49,5 +69,37 @@ public class Decimal {
     public static float asFloat(final long m, final byte e) {
     	return ((float)m)*powfi[64 - e];
     }
+
+	public static long asNumerator(long m, byte e) {
+		return e<0 ? m : asLong(m, e);
+	}
+
+	public static long asDenominator(byte e) {
+		return e<0 ? (long)(1d/powdi[64 - e]) : 1;
+	}
+
+	public static void asRational(long tempNumM, byte tempNumE,
+			                      long tempDenM, byte tempDenE, 
+			                      RationalResult rational) {
+		
+		//how many bits can we add?		
+		int numZeros = Long.numberOfLeadingZeros(tempNumM);
+		int denZeros = Long.numberOfLeadingZeros(tempDenM);		
+		int minZeros = Math.min(numZeros, denZeros)-1;
+		
+		int tens = minZeros/10; //10 bits is 1024		
+		long multi = multLookup[tens];
+		int  places = placesLookup[tens];
+		
+		tempNumM*=multi;
+		tempDenM*=multi;
+		tempNumE-=places;
+		tempDenE-=places;
+		
+		rational.result(Decimal.asLong(tempNumM,tempNumE), 
+				        Decimal.asLong(tempDenM,tempDenE));
+		
+	}
+
 	
 }

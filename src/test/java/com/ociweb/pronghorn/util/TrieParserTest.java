@@ -1130,7 +1130,253 @@ y.readUTFOfLength(y.available(), str);
 
 	}
 
+	@Test
+	public void testComplexNumericPattern() {
 
+		//NOTE: if stack is too short or complete is not set to true
+		TrieParserReader reader = new TrieParserReader(8,true);
+		
+		TrieParser map = new TrieParser(16);
+
+		map.setUTF8Value("%i%.%/%.", value2);
+		
+		byte[] text4 = "5".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text4,4), 0, text4.length, 15));
+		
+		long n1M4 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long n1E4 = TrieParserReader.capturedDecimalEField(reader, 0);
+		
+		long n2M4 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long n2E4 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		long d3M4 = TrieParserReader.capturedDecimalMField(reader, 2);
+		long d3E4 = TrieParserReader.capturedDecimalEField(reader, 2);
+		
+		long d4M4 = TrieParserReader.capturedDecimalMField(reader, 3);	
+		long d4E4 = TrieParserReader.capturedDecimalEField(reader, 3);
+	
+		assertEquals(5, n1M4);
+		assertEquals(0, n1E4);
+		
+		assertEquals(0,  n2M4);
+		assertEquals(-1, n2E4);
+		
+		assertEquals(1, d3M4);
+		assertEquals(0, d3E4);
+		
+		assertEquals(0,  d4M4);
+		assertEquals(-1, d4E4);
+		
+		
+		byte[] text3 = "1/3".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text3,4), 0, text3.length, 15));
+
+		long n1M3 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long n1E3 = TrieParserReader.capturedDecimalEField(reader, 0);
+		
+		long n2M3 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long n2E3 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		long d3M3 = TrieParserReader.capturedDecimalMField(reader, 2);
+		long d3E3 = TrieParserReader.capturedDecimalEField(reader, 2);
+		
+		long d4M3 = TrieParserReader.capturedDecimalMField(reader, 3);	
+		long d4E3 = TrieParserReader.capturedDecimalEField(reader, 3);
+	
+		assertEquals(1, n1M3);
+		assertEquals(0, n1E3);
+		
+		assertEquals(0,  n2M3);
+		assertEquals(-1, n2E3);
+		
+		assertEquals(3, d3M3);
+		assertEquals(0, d3E3);
+		
+		assertEquals(0,  d4M3);
+		assertEquals(-1, d4E3);
+		
+		
+		
+		byte[] text2 = "1.2".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+		
+		long n1M2 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long n1E2 = TrieParserReader.capturedDecimalEField(reader, 0);
+		
+		long n2M2 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long n2E2 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		long d3M2 = TrieParserReader.capturedDecimalMField(reader, 2);
+		long d3E2 = TrieParserReader.capturedDecimalEField(reader, 2);
+		
+		long d4M2 = TrieParserReader.capturedDecimalMField(reader, 3);	
+		long d4E2 = TrieParserReader.capturedDecimalEField(reader, 3);
+	
+		assertEquals(1, n1M2);
+		assertEquals(0, n1E2);
+		
+		assertEquals(2,  n2M2);
+		assertEquals(-1, n2E2);
+		
+		assertEquals(1, d3M2);
+		assertEquals(0, d3E2);
+		
+		assertEquals(0,  d4M2);
+		assertEquals(-1, d4E2);
+		
+		
+		
+		byte[] text1 = "1.2/3.4".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
+	
+		long n1M1 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long n1E1 = TrieParserReader.capturedDecimalEField(reader, 0);
+		
+		long n2M1 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long n2E1 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		long d3M1 = TrieParserReader.capturedDecimalMField(reader, 2);
+		long d3E1 = TrieParserReader.capturedDecimalEField(reader, 2);
+		
+		long d4M1 = TrieParserReader.capturedDecimalMField(reader, 3);	
+		long d4E1 = TrieParserReader.capturedDecimalEField(reader, 3);
+	
+		assertEquals(1, n1M1);
+		assertEquals(0, n1E1);
+		
+		assertEquals(2,  n2M1);
+		assertEquals(-1, n2E1);
+		
+		assertEquals(3, d3M1);
+		assertEquals(0, d3E1);
+		
+		assertEquals(4,  d4M1);
+		assertEquals(-1, d4E1);
+	
+		
+	}	
+
+	@Test
+	public void testRationalNumericPattern() {
+
+		//////////////////
+		//these two values are divided to produce the results
+		/////////////////
+		
+		TrieParserReader reader = new TrieParserReader(3,true);
+		TrieParser map = new TrieParser(16);
+
+		map.setUTF8Value("%i%/", value2);
+		
+		byte[] text4 = "5".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text4,4), 0, text4.length, 15));
+		
+		long nM4 = TrieParserReader.capturedLongField(reader, 0);
+		long dM4 = TrieParserReader.capturedLongField(reader, 1);
+		
+		assertEquals(5, nM4);
+		assertEquals(1, dM4);
+		
+		
+		byte[] text3 = "1/3".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text3,4), 0, text3.length, 15));
+
+		long nM3 = TrieParserReader.capturedLongField(reader, 0);
+		long dM3 = TrieParserReader.capturedLongField(reader, 1);
+		
+		assertEquals(1, nM3);
+		assertEquals(3, dM3);
+			
+		//////////////note that everything . and after is skipped since we are looking for a/b
+		byte[] text2 = "1.2".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+		
+		long nM2 = TrieParserReader.capturedLongField(reader, 0);
+		long dM2 = TrieParserReader.capturedLongField(reader, 1);
+		assertEquals(1, nM2);
+		assertEquals(1, dM2);
+		
+		//////////////note that everything . and after is skipped since we are looking for a/b
+		byte[] text1 = "1.2/3.4".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
+	
+		long nM1 = TrieParserReader.capturedLongField(reader, 0);
+		long dM1 = TrieParserReader.capturedLongField(reader, 1);
+		assertEquals(1, nM1);
+		assertEquals(1, dM1);
+	
+	}	
+
+	@Test
+	public void testDecimalNumericPattern() {
+
+		////////////////////
+		//These two values are added to produce the result
+		////////////////////
+		
+		TrieParserReader reader = new TrieParserReader(3,true);
+		TrieParser map = new TrieParser(16);
+
+		map.setUTF8Value("%i%.", value2);
+		
+		byte[] text4 = "5".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text4,4), 0, text4.length, 15));
+		
+		long nM4 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long nE4 = TrieParserReader.capturedDecimalEField(reader, 0);
+		long dM4 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long dE4 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		assertEquals( 5, nM4);
+		assertEquals( 0, nE4);
+		assertEquals( 0, dM4);
+		assertEquals(-1, dE4); //TODO: this is messed up??
+		
+		
+		byte[] text3 = "1/3".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text3,4), 0, text3.length, 15));
+		
+		long nM3 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long nE3 = TrieParserReader.capturedDecimalEField(reader, 0);
+		long dM3 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long dE3 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		assertEquals( 1, nM3);
+		assertEquals( 0, nE3);
+		assertEquals( 0, dM3); 
+		assertEquals(-1, dE3); //TODO: this is messed up??
+			
+		
+		byte[] text2 = "1.2".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+		
+		long nM2 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long nE2 = TrieParserReader.capturedDecimalEField(reader, 0);
+		long dM2 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long dE2 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		assertEquals( 1, nM2);
+		assertEquals( 0, nE2);
+		assertEquals( 2, dM2);
+		assertEquals(-1, dE2);
+		
+		
+		byte[] text1 = "1.2/3.4".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
+	
+		long nM1 = TrieParserReader.capturedDecimalMField(reader, 0);
+		long nE1 = TrieParserReader.capturedDecimalEField(reader, 0);
+		long dM1 = TrieParserReader.capturedDecimalMField(reader, 1);	
+		long dE1 = TrieParserReader.capturedDecimalEField(reader, 1);
+		
+		assertEquals(1, nM1);
+		assertEquals(0, nE1);
+		assertEquals(2, dM1);
+		assertEquals(-1, dE1);
+		
+		
+	}	
+	
 	@Test
 	public void testNonBranchInsert() {
 
