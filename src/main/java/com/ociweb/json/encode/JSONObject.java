@@ -122,7 +122,7 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
     }
 
     public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func) {
-        builder.addFieldPrefix(name).addnullableString(func);
+        builder.addFieldPrefix(name).addNullableString(func);
         return this;
     }
 

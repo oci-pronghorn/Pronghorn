@@ -62,6 +62,7 @@ class JSONBuilder<T> {
         else {
             kw.NextObjectElement(scripts, depth);
         }
+        objectElementIndex++;
         scripts.add(name);
         kw.ObjectValue(scripts, depth);
         return this;
@@ -333,7 +334,7 @@ class JSONBuilder<T> {
         kw.Quote(scripts);
     }
 
-    void addnullableString(ToStringFunction<T> func) {
+    void addNullableString(ToStringFunction<T> func) {
         scripts.add((writer, source) -> {
             CharSequence s = func.applyAsString(source);
             if (s == null) {
@@ -364,7 +365,7 @@ class JSONBuilder<T> {
     void addNullableString(ToStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
-                addnullableString(func);
+                addNullableString(func);
                 break;
             case TypeInteger:
                 break;
