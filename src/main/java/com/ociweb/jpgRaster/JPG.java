@@ -42,7 +42,7 @@ public class JPG {
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
-		short successvieApproximation;
+		short successiveApproximation;
 
 		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
 		ArrayList<Short> imageData = new ArrayList<Short>();
@@ -54,12 +54,6 @@ public class JPG {
 		short[] y = new short[64];
 		short[] cb = new short[64];
 		short[] cr = new short[64];
-	}
-
-	public static class RGB {
-		public short r;
-		public short g;
-		public short b;
 	}
 	
 	public static int[] zigZagMap = new int[]  {
