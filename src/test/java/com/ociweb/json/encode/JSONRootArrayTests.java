@@ -29,7 +29,7 @@ BUG!!!! index too early
     @Test
     public void testRootArrayRepeatedNulls() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o.length).constantNull();
+                .array((o, i, n)->i<o.length?o:null).constantNull();
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[null,null,null,null,null,null,null,null,null]", out.toString());
     }
@@ -37,7 +37,7 @@ BUG!!!! index too early
     @Test
     public void testRootArrayNull_Yes() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .nullableArray(o->o==null?-1:o.length).integer((o, i, v) -> v.visit(o[i]));
+                .nullableArray(Objects::isNull, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
         json.render(out, null);
         assertEquals("null", out.toString());
     }
@@ -45,7 +45,7 @@ BUG!!!! index too early
     @Test
     public void testRootArrayNull_No() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .nullableArray(o->o.length).integer((o, i, v) -> v.visit(o[i]));
+                .nullableArray(Objects::isNull, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
     }
@@ -53,7 +53,7 @@ BUG!!!! index too early
     @Test
     public void testRootArrayInt() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o.length).integer((o, i, v) -> v.visit(o[i]));
+                .array((o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
     }
@@ -61,7 +61,7 @@ BUG!!!! index too early
     @Test
     public void testRootArrayIntNull() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o.length).integerNull((o, i, v) -> v.visit(o[i], (i+2) % 2 == 0));
+                .array((o, i, n)->i<o.length?o:null).integerNull((o, i, n, v) -> v.visit(o[i], (i+2) % 2 == 0));
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[null,8,null,6,null,4,null,2,null]", out.toString());
     }

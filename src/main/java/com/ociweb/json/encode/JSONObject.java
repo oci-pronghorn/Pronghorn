@@ -34,15 +34,15 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
                 builder.getKeywords(), this, depth + 1);
     }
 
-    public JSONArray<T, JSONObject<T, P>> array(String name, ToIntFunction<T> length) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, LimitCounterFunction<T, N> length) {
         return new JSONArray<>(
                 builder.addFieldPrefix(name).beginArray(),
                 builder.getKeywords(), length, this, depth + 1);
     }
 
-    public JSONArray<T, JSONObject<T, P>> nullableArray(String name, ToIntFunction<T> length) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, LimitCounterFunction<T, N> length) {
         return new JSONArray<>(
-                builder.addFieldPrefix(name).beginArray(length),
+                builder.addFieldPrefix(name).beginArray(isNull),
                 builder.getKeywords(), length, this, depth + 1);
     }
 

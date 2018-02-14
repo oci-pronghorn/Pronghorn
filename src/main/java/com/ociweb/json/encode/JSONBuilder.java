@@ -4,6 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 import com.ociweb.json.appendable.AppendableByteWriter;
+import com.ociweb.json.template.StringTemplateIterScript;
 import com.ociweb.pronghorn.util.Appendables;
 
 import java.util.function.ToIntFunction;
@@ -88,11 +89,11 @@ class JSONBuilder<T> {
         return scripts;
     }
 
-    StringTemplateBuilder<T> beginArray(ToIntFunction<T> length) {
+    StringTemplateBuilder<T> beginArray(ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
         nullableBranches[1] = notNullBranch;
-        scripts.add(nullableBranches, o -> length.applyAsInt(o) < 0 ? 0 : 1);
+        scripts.add(nullableBranches, o -> isNull.applyAsBool(o) ? 0 : 1);
         return notNullBranch;
     }
 
@@ -107,12 +108,11 @@ class JSONBuilder<T> {
         kw.Null(scripts);
     }
 
-    void addNull(ToIntFunction<T> arrayLength) {
+    <I> void addNull(LimitCounterFunction<T, I> arrayLength) {
         scripts.add((writer, source) -> {
-            int c = arrayLength.applyAsInt(source);
-            if (c > 0) {
-                for (int i = 0; i < c - 1; i++) {
-                    kw.Null(writer);
+            I iter = null;
+            for (int i = 0; (iter = arrayLength.test(source, i, iter)) != null; i++) {
+                if (i > 0) {
                     kw.NextArrayElement(writer, depth);
                 }
                 kw.Null(writer);
@@ -175,18 +175,16 @@ class JSONBuilder<T> {
         scripts.add((writer, source) -> Appendables.appendValue(writer, func.applyAsLong(source)));
     }
 
-    void addInteger(ToIntFunction<T> arrayLength, IterLongFunction<T> func) {
-        scripts.add((writer, source, i) -> {
-            int count = arrayLength.applyAsInt(source);
-            func.applyAsLong(source, i, v -> {
-                if (i < count) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    Appendables.appendValue(writer, v);
+    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterLongFunction<T, N> func) {
+        scripts.add((StringTemplateIterScript<T, N>) (apendable, source, i, node) -> {
+            node = arrayLength.test(source, i, node);
+            if (node != null) {
+                if (i > 0) {
+                    kw.NextArrayElement(apendable, depth);
                 }
-            });
-            return i < count - 1;
+                func.applyAsLong(source, i, node, v -> Appendables.appendValue(apendable, v));
+            }
+            return node;
         });
     }
 
@@ -201,22 +199,22 @@ class JSONBuilder<T> {
         }));
     }
 
-    void addInteger(ToIntFunction<T> arrayLength, IterNullableLongFunction<T> func) {
-        scripts.add((writer, source, i) -> {
-            int count = arrayLength.applyAsInt(source);
-            func.applyAsLong(source, i, (v, isNull) -> {
-                if (i < count) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull) {
-                        kw.Null(writer);
-                    } else {
-                        Appendables.appendValue(writer, v);
-                    }
+    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func) {
+        scripts.add((StringTemplateIterScript<T, N>) (apendable, source, i, node) -> {
+            node = arrayLength.test(source, i, node);
+            if (node != null) {
+                if (i > 0) {
+                    kw.NextArrayElement(apendable, depth);
                 }
-            });
-            return i < count - 1;
+                func.applyAsLong(source, i, node, (v, isNull) -> {
+                    if (isNull) {
+                        kw.Null(apendable);
+                    } else {
+                        Appendables.appendValue(apendable, v);
+                    }
+                });
+            }
+            return node;
         });
     }
 
@@ -248,7 +246,7 @@ class JSONBuilder<T> {
         }
     }
 
-    void addInteger(ToIntFunction<T> arrayLength, IterLongFunction<T> func, JSONType encode) {
+    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterLongFunction<T, N> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -262,7 +260,7 @@ class JSONBuilder<T> {
         }
     }
 
-    void addInteger(ToIntFunction<T> arrayLength, IterNullableLongFunction<T> func, JSONType encode) {
+    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;

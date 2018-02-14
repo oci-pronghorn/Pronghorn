@@ -49,12 +49,13 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 			});
 	}
 
-	public StringTemplateBuilder<T> add(final StringTemplateIterScript<T> data) {
+	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> data) {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
 					public void fetch(AppendableByteWriter writer, T source) {
-						for(int i = 0; data.fetch(writer, source, i); i++) {
+						N node = null;
+						for(int i = 0; (node = data.fetch(writer, source, i, node)) != null; i++) {
 						}
 					}
 				});

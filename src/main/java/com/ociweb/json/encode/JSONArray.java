@@ -6,13 +6,13 @@ import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.function.ToIntFunction;
 
-public class JSONArray<T, P extends JSONComplete> implements JSONComplete {
+public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
     private final JSONBuilder<T> builder;
-    private ToIntFunction<T> arrayLength;
+    private LimitCounterFunction<T, N> arrayLength;
     private final P owner;
     private final int depth;
 
-    JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, ToIntFunction<T> arrayLength, P owner, int depth) {
+    JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, LimitCounterFunction<T, N> arrayLength, P owner, int depth) {
         this.arrayLength = arrayLength;
         this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
@@ -34,25 +34,25 @@ public class JSONArray<T, P extends JSONComplete> implements JSONComplete {
         return owner;
     }
 
-    public P integer(IterLongFunction<T> func) {
+    public P integer(IterLongFunction<T, N> func) {
         builder.addInteger(arrayLength, func);
         this.complete();
         return owner;
     }
 
-    public P integer(IterLongFunction<T> func, JSONType encode) {
+    public P integer(IterLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(arrayLength, func, encode);
         this.complete();
         return owner;
     }
 
-    public P integerNull(IterNullableLongFunction<T> func) {
+    public P integerNull(IterNullableLongFunction<T, N> func) {
         builder.addInteger(arrayLength, func);
         this.complete();
         return owner;
     }
 
-    public P integerNull(IterNullableLongFunction<T> func, JSONType encode) {
+    public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(arrayLength, func, encode);
         this.complete();
         return owner;

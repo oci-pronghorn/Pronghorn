@@ -43,15 +43,15 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
                 builder.getKeywords(), owner, depth + 1);
     }
 
-    public JSONArray<T, P> array(ToIntFunction<T> length) {
+    public <N> JSONArray<T, P, N> array(LimitCounterFunction<T, N> length) {
         return new JSONArray<>(
                 builder.beginArray(),
                 builder.getKeywords(), length, owner, depth + 1);
     }
 
-    public JSONArray<T, P> nullableArray(ToIntFunction<T> length) {
+    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, LimitCounterFunction<T, N> length) {
         return new JSONArray<>(
-                builder.beginArray(length),
+                builder.beginArray(isNull),
                 builder.getKeywords(), length, owner, depth + 1);
     }
 
