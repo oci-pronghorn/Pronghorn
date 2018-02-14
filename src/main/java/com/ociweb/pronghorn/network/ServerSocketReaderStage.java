@@ -449,7 +449,9 @@ public class ServerSocketReaderStage extends PronghornStage {
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
              	SSLConnection conn = coordinator.connectionForSessionId(channelId);
-             	conn.clearPoolReservation();
+             	if (null!=conn) {
+             		conn.clearPoolReservation();
+             	}
              //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
              }
              
