@@ -1131,6 +1131,30 @@ y.readUTFOfLength(y.available(), str);
 	}
 
 	@Test
+	public void testEmptyPatterns() {
+		TrieParserReader reader = new TrieParserReader(8,true);
+		
+		TrieParser map = new TrieParser(16);
+
+		map.setUTF8Value("%b:%b:%b:", value2);
+		map.setUTF8Value("%o,%o,%o,", value3);
+		
+    //TODO: add support for zero length b strings??
+	//	byte[] text2 = "g:h:i:".getBytes();
+	//	assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+
+		byte[] text3 = "3,,3,".getBytes();
+		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(text3,4), 0, text3.length, 15));
+		
+		assertEquals(3, TrieParserReader.capturedLongField(reader, 0));
+		assertEquals(0, TrieParserReader.capturedLongField(reader, 1));
+		assertEquals(3, TrieParserReader.capturedLongField(reader, 2));
+		
+		
+		
+	}
+	
+	@Test
 	public void testComplexNumericPattern() {
 
 		//NOTE: if stack is too short or complete is not set to true
