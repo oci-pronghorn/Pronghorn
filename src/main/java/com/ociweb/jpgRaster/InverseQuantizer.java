@@ -109,10 +109,10 @@ public class InverseQuantizer extends PronghornStage {
 			else if (msgIdx == JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5) {
 				// read quantization table from pipe
 				QuantizationTable table = new QuantizationTable();
+				table.tableID = (short) PipeReader.readInt(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
+				table.precision = (short) PipeReader.readInt(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
 
 				DataInputBlobReader<JPGSchema> r = PipeReader.inputStream(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
-				table.tableID = (short) r.readInt();
-				table.precision = (short) r.readInt();
 				for (int i = 0; i < 64; ++i) {
 					table.table[i] = r.readInt();
 				}
