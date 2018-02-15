@@ -4,8 +4,6 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-import java.util.function.ToLongFunction;
-
 public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
     private final JSONBuilder<T> builder;
     private final P owner;

@@ -4,8 +4,6 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-import java.util.function.ToLongFunction;
-
 // TODO: fix complete not laways getting called
 
 public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {

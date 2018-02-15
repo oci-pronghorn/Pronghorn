@@ -26,6 +26,11 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		add(b, pos, len);
 	}
 
+	@Override
+	public void write(byte[] b) {
+		write(b, 0, b.length);
+	}
+
 	public StringTemplateBuilder<T> add(final byte[] byteData) {
 		return add(byteData, 0, byteData.length);
 	}
@@ -44,7 +49,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 			new StringTemplateScript<T>() {
 				@Override
 				public void fetch(AppendableByteWriter writer, T source) {
-					writer.write(byteData);
+					writer.write(byteData, 0, byteData.length);
 				}
 			});
 	}
