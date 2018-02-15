@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util.parse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -58,7 +59,27 @@ public class JSONParseTest {
 			.newPath(JSONType.TypeInteger, true)
 			.key("root").key("[]").key("[]").key("keya")
 			.completePath("a");
-	
+
+	@Test
+	public void testRestResponse() {
+		RestResponse response = new RestResponse();
+		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
+		StringBuilderWriter out = new StringBuilderWriter();
+		response.writeToJSON(out);
+
+		String json = out.toString();
+		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
+
+		Pipe<RawDataSchema> targetData = parseJSON(json, RestResponse.jsonExtractor);
+		Pipe.takeMsgIdx(targetData);
+		ChannelReader dataStream = Pipe.openInputStream(targetData);
+		JSONReader reader = RestResponse.createReader();
+		response.reset();
+		response.readFromJSON(reader, dataStream);
+
+		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusCode(), response.getStatus());
+		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusMessage(), response.getMessage());
+	}
 	
 	@Test
 	public void loadFor2D() {
