@@ -7,13 +7,13 @@ public class JSONKeywordsPretty extends JSONKeywords {
     public static final int maxDepth = tabs.length;
 
     public static final byte[] NewLine =    "\n".getBytes();
-    public static final byte[] OpenObj =    "\n{".getBytes();
-    public static final byte[] CloseObj =   "}\n".getBytes();
+    public static final byte[] OpenObj =    "{\n".getBytes();
+    public static final byte[] CloseObj =   "\n}".getBytes();
     public static final byte[] OpenArray =  "[\n".getBytes();
     public static final byte[] CloseArray = "\n]".getBytes();
 
     private static final byte[] NextObjectElement = ",\n\"".getBytes();
-    private static final byte[] ObjectValue = "\" : ".getBytes();
+    private static final byte[] ObjectValue = "\": ".getBytes();
     private static final byte[] NextArrayElement = ",\n".getBytes();
 
     private void write(ByteWriter writer, byte[] bytes, int tabPlacement, int depth) {
@@ -25,13 +25,8 @@ public class JSONKeywordsPretty extends JSONKeywords {
             writer.write(tabs, 0, depth);
         }
         if (tabPlacement < bytes.length) {
-            writer.write(tabs, tabPlacement, bytes.length - tabPlacement);
+            writer.write(bytes, tabPlacement, bytes.length - tabPlacement);
         }
-    }
-
-    @Override
-    public void Start(ByteWriter writer, int depth) {
-        write(writer, NewLine, 0, depth);
     }
 
     @Override
@@ -41,22 +36,22 @@ public class JSONKeywordsPretty extends JSONKeywords {
 
     @Override
     public void OpenObj(ByteWriter writer, int depth) {
-        write(writer, OpenObj, 0, depth);
+        write(writer, OpenObj, 2, depth+ 1);
     }
 
     @Override
     public void CloseObj(ByteWriter writer, int depth) {
-        write(writer, CloseObj, 1, depth);
+        write(writer, CloseObj, 1, depth-1);
     }
 
     @Override
     public void OpenArray(ByteWriter writer, int depth) {
-        write(writer, OpenArray, 0, depth);
+        write(writer, OpenArray, 2, depth + 1);
     }
 
     @Override
     public void CloseArray(ByteWriter writer, int depth) {
-        write(writer, CloseArray, 1, depth);
+        write(writer, CloseArray, 1, depth-1);
     }
 
     @Override
@@ -71,6 +66,6 @@ public class JSONKeywordsPretty extends JSONKeywords {
 
     @Override
     public void NextArrayElement(ByteWriter writer, int depth) {
-        write(writer, NextArrayElement, 1, depth);
+        write(writer, NextArrayElement, 2, depth);
     }
 }

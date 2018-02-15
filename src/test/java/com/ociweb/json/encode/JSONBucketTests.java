@@ -35,7 +35,7 @@ public class JSONBucketTests {
     @Test
     public void testJson() {
 
-        final JSONRenderer<Bucket> json = new JSONRenderer<Bucket>()
+        final JSONRenderer<Bucket> json = new JSONRenderer<Bucket>(new JSONKeywordsPretty())
             .beginObject()
                 .bool("b", o -> o.b1)
                 .integer("i", o -> o.i1)
