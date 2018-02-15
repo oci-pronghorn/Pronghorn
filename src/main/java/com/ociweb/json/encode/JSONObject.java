@@ -4,7 +4,6 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
 public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
@@ -34,16 +33,16 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
                 builder.getKeywords(), this, depth + 1);
     }
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, LimitCounterFunction<T, N> length) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
                 builder.addFieldPrefix(name).beginArray(),
-                builder.getKeywords(), length, this, depth + 1);
+                builder.getKeywords(), iterator, this, depth + 1);
     }
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, LimitCounterFunction<T, N> length) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
                 builder.addFieldPrefix(name).beginArray(isNull),
-                builder.getKeywords(), length, this, depth + 1);
+                builder.getKeywords(), iterator, this, depth + 1);
     }
 
     public JSONObject<T, P> constantNull(String name) {

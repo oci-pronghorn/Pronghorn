@@ -1,7 +1,5 @@
 package com.ociweb.json.encode;
 
-// TODO: Once we develop the pretty output the exact methods may change.
-
 import com.ociweb.json.appendable.ByteWriter;
 
 public class JSONKeywords {

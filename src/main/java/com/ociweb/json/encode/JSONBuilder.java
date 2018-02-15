@@ -107,10 +107,10 @@ class JSONBuilder<T> {
         kw.Null(scripts);
     }
 
-    <I> void addNull(LimitCounterFunction<T, I> arrayLength) {
+    <I> void addNull(ArrayIteratorFunction<T, I> iterator) {
         scripts.add((writer, source) -> {
-            I iter = null;
-            for (int i = 0; (iter = arrayLength.test(source, i, iter)) != null; i++) {
+            I node = null;
+            for (int i = 0; (node = iterator.test(source, i, node)) != null; i++) {
                 if (i > 0) {
                     kw.NextArrayElement(writer, depth);
                 }
@@ -174,9 +174,9 @@ class JSONBuilder<T> {
         scripts.add((writer, source) -> Appendables.appendValue(writer, func.applyAsLong(source)));
     }
 
-    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterLongFunction<T, N> func) {
+    <N> void addInteger(ArrayIteratorFunction<T, N> iterator, IterLongFunction<T, N> func) {
         scripts.add((StringTemplateIterScript<T, N>) (apendable, source, i, node) -> {
-            node = arrayLength.test(source, i, node);
+            node = iterator.test(source, i, node);
             if (node != null) {
                 if (i > 0) {
                     kw.NextArrayElement(apendable, depth);
@@ -198,9 +198,9 @@ class JSONBuilder<T> {
         }));
     }
 
-    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func) {
+    <N> void addInteger(ArrayIteratorFunction<T, N> iterator, IterNullableLongFunction<T, N> func) {
         scripts.add((StringTemplateIterScript<T, N>) (apendable, source, i, node) -> {
-            node = arrayLength.test(source, i, node);
+            node = iterator.test(source, i, node);
             if (node != null) {
                 if (i > 0) {
                     kw.NextArrayElement(apendable, depth);
@@ -245,7 +245,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterLongFunction<T, N> func, JSONType encode) {
+    <N> void addInteger(ArrayIteratorFunction<T, N> arrayLength, IterLongFunction<T, N> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -259,7 +259,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addInteger(LimitCounterFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func, JSONType encode) {
+    <N> void addInteger(ArrayIteratorFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;

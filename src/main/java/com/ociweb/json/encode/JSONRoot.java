@@ -4,8 +4,9 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
+
+// TODO: fix complete not laways getting called
 
 public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
     final JSONBuilder<T> builder;
@@ -43,16 +44,16 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
                 builder.getKeywords(), owner, depth + 1);
     }
 
-    public <N> JSONArray<T, P, N> array(LimitCounterFunction<T, N> length) {
+    public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
                 builder.beginArray(),
-                builder.getKeywords(), length, owner, depth + 1);
+                builder.getKeywords(), iterator, owner, depth + 1);
     }
 
-    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, LimitCounterFunction<T, N> length) {
+    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
                 builder.beginArray(isNull),
-                builder.getKeywords(), length, owner, depth + 1);
+                builder.getKeywords(), iterator, owner, depth + 1);
     }
 
     public P empty() {

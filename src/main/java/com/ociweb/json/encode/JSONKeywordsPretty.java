@@ -3,18 +3,17 @@ package com.ociweb.json.encode;
 import com.ociweb.json.appendable.ByteWriter;
 
 public class JSONKeywordsPretty extends JSONKeywords {
-    public static final byte[] tabs =    "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t".getBytes();
-    public static final int maxDepth = tabs.length;
+    private static final byte[] tabs =    "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t".getBytes();
+    private static final int maxDepth = tabs.length;
 
-    public static final byte[] NewLine =    "\n".getBytes();
-    public static final byte[] OpenObj =    "{\n".getBytes();
-    public static final byte[] CloseObj =   "\n}".getBytes();
-    public static final byte[] OpenArray =  "[\n".getBytes();
-    public static final byte[] CloseArray = "\n]".getBytes();
-
-    private static final byte[] NextObjectElement = ",\n\"".getBytes();
+    private static final byte[] OpenObj =    "{\n".getBytes();
     private static final byte[] ObjectValue = "\": ".getBytes();
+    private static final byte[] NextObjectElement = ",\n\"".getBytes();
+    private static final byte[] CloseObj =   "\n}".getBytes();
+    private static final byte[] OpenArray =  "[\n".getBytes();
     private static final byte[] NextArrayElement = ",\n".getBytes();
+    private static final byte[] CloseArray = "\n]".getBytes();
+    private static final byte[] Complete =   "\n".getBytes();
 
     private void write(ByteWriter writer, byte[] bytes, int tabPlacement, int depth) {
         if (tabPlacement > 0) {
@@ -31,7 +30,7 @@ public class JSONKeywordsPretty extends JSONKeywords {
 
     @Override
     public void Complete(ByteWriter writer, int depth) {
-        write(writer, NewLine, 0, depth);
+        write(writer, Complete, 0, depth);
     }
 
     @Override
