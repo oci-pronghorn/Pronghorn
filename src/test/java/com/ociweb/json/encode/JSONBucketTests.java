@@ -32,34 +32,34 @@ public class JSONBucketTests {
         out = new StringBuilderWriter();
     }
 
-    @Test
-    public void testJson() {
-
-        final JSONRenderer<Bucket> json = new JSONRenderer<Bucket>(new JSONKeywordsPretty())
-            .beginObject()
-                .bool("b", o -> o.b1)
-                .integer("i", o -> o.i1)
-                .decimal("d", (o, v) -> v.visit((long)(o.d1 * PipeWriter.powd[64 + 2]), (byte)-2))
-                .string("s", o -> o.s1)
-                .array("a", (o,i,n) -> i < o.a1.length? o : null)
-                    .integer((o, i, n, visit) -> visit.visit(o.a1[i]))
-                .nullableArray("a2", o -> o.a2 == null,(o,i,n) -> i < o.a2.length? o : null)
-                    .constantNull()
-                .beginNullableObject("nm", o -> o.nm == null)
-                    .nullableBool("b", (o, v) -> v.visit(o.nm.b2, true))
-                    .nullableInteger("i", (o, v) -> v.visit(o.nm.i2, true))
-                    .nullableDecimal("d", (o, v) -> v.visit(0, (byte) 0, true))
-                    .nullableString("s", o -> o.nm.s2)
-                .endObject()
-                .beginObject("m")
-                    .nullableBool("b", (o, v) -> v.visit(o.m.b2, true))
-                    .nullableInteger("i", (o, v) -> v.visit(o.m.i2, true))
-                    .nullableDecimal("d", (o, v) -> v.visit((long)(o.m.d2 * PipeWriter.powd[64 + 2]), (byte) -2, true))
-                    .nullableString("s", o -> o.m.s2)
-                .endObject()
-            .endObject();
-
-        json.render(out, new Bucket());
-        System.out.println(out);
-    }
+//    @Test
+//    public void testJson() {
+//
+//        final JSONRenderer<Bucket> json = new JSONRenderer<Bucket>(new JSONKeywordsPretty())
+//            .beginObject()
+//                .bool("b", o -> o.b1)
+//                .integer("i", o -> o.i1)
+//                .decimal("d", (o, v) -> v.visit((long)(o.d1 * PipeWriter.powd[64 + 2]), (byte)-2))
+//                .string("s", o -> o.s1)
+//                .array("a", (o,i,n) -> i < o.a1.length? o : null)
+//                    .integer((o, i, n, visit) -> visit.visit(o.a1[i]))
+//                .nullableArray("a2", o -> o.a2 == null,(o,i,n) -> i < o.a2.length? o : null)
+//                    .constantNull()
+//                .beginNullableObject("nm", o -> o.nm == null)
+//                    .nullableBool("b", (o, v) -> v.visit(o.nm.b2, true))
+//                    .nullableInteger("i", (o, v) -> v.visit(o.nm.i2, true))
+//                    .nullableDecimal("d", (o, v) -> v.visit(0, (byte) 0, true))
+//                    .nullableString("s", o -> o.nm.s2)
+//                .endObject()
+//                .beginObject("m")
+//                    .nullableBool("b", (o, v) -> v.visit(o.m.b2, true))
+//                    .nullableInteger("i", (o, v) -> v.visit(o.m.i2, true))
+//                    .nullableDecimal("d", (o, v) -> v.visit((long)(o.m.d2 * PipeWriter.powd[64 + 2]), (byte) -2, true))
+//                    .nullableString("s", o -> o.m.s2)
+//                .endObject()
+//            .endObject();
+//
+//        json.render(out, new Bucket());
+//        System.out.println(out);
+//    }
 }
