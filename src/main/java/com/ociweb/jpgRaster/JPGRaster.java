@@ -60,10 +60,10 @@ public class JPGRaster {
 		*/
 		
 		// pipe1 should be the same size as the others, but it mysteriously fills up faster (shouldn't be the case)
-		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(100, 200);
-		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(10, 200);
-		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(10, 200);
-		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(10, 200);
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(500, 200);
 		
 		JPGScanner scanner = new JPGScanner(gm, pipe1);
 		new InverseQuantizer(gm, pipe1, pipe2);

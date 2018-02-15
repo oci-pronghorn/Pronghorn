@@ -93,7 +93,7 @@ public class BMPDumper extends PronghornStage {
 	@Override
 	public void run() {
 		
-		if (PipeReader.tryReadFragment(input)) {
+		while (PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
 			

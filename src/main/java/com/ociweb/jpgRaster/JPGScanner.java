@@ -460,37 +460,42 @@ public class JPGScanner extends PronghornStage {
 	@Override
 	public void run() {
 		if (numProcessed < numMCUs) {
-			if (PipeWriter.hasRoomForWrite(output)) {
-				MCU mcu = HuffmanDecoder.decodeHuffmanData();
-				if (mcu != null) {
-					// write mcu to pipe
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-						DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-						DataOutputBlobWriter.openField(mcuWriter);
-						for (int i = 0; i < 64; ++i) {
-							mcuWriter.writeShort(mcu.y[i]);
+			for (int j = 0; j < 500 && numProcessed < numMCUs; ++j) {
+				if (PipeWriter.hasRoomForWrite(output)) {
+					MCU mcu = HuffmanDecoder.decodeHuffmanData();
+					if (mcu != null) {
+						// write mcu to pipe
+						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+							DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+							DataOutputBlobWriter.openField(mcuWriter);
+							for (int i = 0; i < 64; ++i) {
+								mcuWriter.writeShort(mcu.y[i]);
+							}
+							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+							
+							DataOutputBlobWriter.openField(mcuWriter);
+							for (int i = 0; i < 64; ++i) {
+								mcuWriter.writeShort(mcu.cb[i]);
+							}
+							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+							
+							DataOutputBlobWriter.openField(mcuWriter);
+							for (int i = 0; i < 64; ++i) {
+								mcuWriter.writeShort(mcu.cr[i]);
+							}
+							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+							PipeWriter.publishWrites(output);
+							
+							numProcessed += 1;
 						}
-						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-						
-						DataOutputBlobWriter.openField(mcuWriter);
-						for (int i = 0; i < 64; ++i) {
-							mcuWriter.writeShort(mcu.cb[i]);
+						else {
+							System.err.println("Requesting shutdown");
+							requestShutdown();
 						}
-						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-						
-						DataOutputBlobWriter.openField(mcuWriter);
-						for (int i = 0; i < 64; ++i) {
-							mcuWriter.writeShort(mcu.cr[i]);
-						}
-						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-						PipeWriter.publishWrites(output);
-						
-						numProcessed += 1;
 					}
-					else {
-						System.err.println("Requesting shutdown");
-						requestShutdown();
-					}
+				}
+				else {
+					break;
 				}
 			}
 		}
