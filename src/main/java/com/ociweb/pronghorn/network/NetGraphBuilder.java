@@ -511,25 +511,30 @@ public class NetGraphBuilder {
 		Pipe[][] plainSplit = Pipe.splitPipes(toModules.length, planIncomingGroup);
 		int acksBase = acks.length-1;
 		int parallelTrack = toModules.length; 
-		while (--parallelTrack>=0) {
-			
-			//TODO; pull in the JSON extractor and add stages from this router before modules.
-			
-			
-			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
-			
+		while (--parallelTrack>=0) { 
+									
 			//////////////////////
 			//as needed we inject the JSON Extractor
 			//////////////////////
 			
+			Pipe<HTTPRequestSchema> prev = null;
+			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
 			int routeId = fromRouter.length;
 			while (--routeId>=0) {
+				
+				Pipe<HTTPRequestSchema> pipe = fromRouter[routeId];
+				if (pipe==prev){
+					//already done since we have multiple paths per route.
+					fromRouter[routeId] = fromRouter[routeId+1];
+					continue;
+				}
+				prev = fromRouter[routeId];
 				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
 				if (null != extractor) {
-
+					
 					Pipe<HTTPRequestSchema> newFromJSON = 
-							new Pipe<HTTPRequestSchema>( fromRouter[routeId].config() );
-												
+							new Pipe<HTTPRequestSchema>( pipe.config() );
+
 					new HTTPRequestJSONExtractionStage(
 							 	graphManager, 
 							 	extractor,
@@ -544,12 +549,14 @@ public class NetGraphBuilder {
 			////////////////////////////////////
 			////////////////////////////////////
 			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, parallelTrack, plainSplit[parallelTrack], 
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
+					graphManager, 
+					parallelTrack, 
+					plainSplit[parallelTrack], 
 					fromRouter, 
 					errorResponsePipes[parallelTrack], 
 					acks[acksBase-parallelTrack], routerConfig,
 					coordinator,catchAll);        
-
 			
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
 			coordinator.processNota(graphManager, router);

@@ -1499,12 +1499,14 @@ public class GraphManager {
 	
 	public static int getInputPipeCount(GraphManager m, int stageId) {
 		
-		int idx = m.stageIdToInputsBeginIdx[stageId];
 		int count = 0;
-		if (idx>=0) {
-			while (-1 != (m.multInputIds[idx++])) {	
-				count++;	
-			}	
+		if (stageId>=0) {
+			int idx = m.stageIdToInputsBeginIdx[stageId];
+			if (idx>=0) {
+				while (-1 != (m.multInputIds[idx++])) {	
+					count++;	
+				}	
+			}
 		}
 		return count;
 	}

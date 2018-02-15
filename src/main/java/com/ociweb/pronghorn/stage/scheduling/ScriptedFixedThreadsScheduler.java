@@ -742,7 +742,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 
 	private static void lazyCreateOfArray(int[] rootMemberCounter, PronghornStage[][] stageArrays, int root) {
-		if (rootMemberCounter[root]>0) {
+		if (root>=0 && rootMemberCounter[root]>0) {
 			//create array if not created since count is > 0
 			if (null == stageArrays[root]) {
 				//System.out.println("count of group "+rootMemberCounter[root]);
@@ -939,8 +939,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					     rootMemberCounter, log, false);
 		} else {
 			lazyCreateOfArray(rootMemberCounter, stageArrays, localRootId);
-			PronghornStage[] otherArray = stageArrays[localRootId];
-			if (null==otherArray[0]) {
+			if (localRootId>=0 && null==stageArrays[localRootId][0]) {
 				//only add for this one case
 				//at this point we have changed nodes since this is an entry point.
 				count = add(stageArrays, GraphManager.getStage(graphManager, consumerId),
