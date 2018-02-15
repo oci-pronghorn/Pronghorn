@@ -2,12 +2,12 @@ package com.ociweb.jpgRaster;
 
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -118,21 +118,19 @@ public class BMPDumper extends PronghornStage {
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
-				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
-				PipeReader.releaseReadLock(input);
-				yBuffer.position(0);
-				cbBuffer.position(0);
-				crBuffer.position(0);
+				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
-					mcu.y[i] = yBuffer.getShort();
-					mcu.cb[i] = cbBuffer.getShort();
-					mcu.cr[i] = crBuffer.getShort();
+					mcu.y[i] = mcuReader.readShort();
 				}
+				
+				for (int i = 0; i < 64; ++i) {
+					mcu.cb[i] = mcuReader.readShort();
+				}
+				
+				for (int i = 0; i < 64; ++i) {
+					mcu.cr[i] = mcuReader.readShort();
+				}
+				PipeReader.releaseReadLock(input);
 
 				int curPixelY = (count / mcuWidth) * 8;
 				int curPixelX = (count % mcuWidth) * 8;

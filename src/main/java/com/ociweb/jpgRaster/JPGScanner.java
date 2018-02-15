@@ -7,13 +7,13 @@ import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.io.FileNotFoundException;
 import java.io.EOFException;
 import java.util.ArrayList;
@@ -465,21 +465,26 @@ public class JPGScanner extends PronghornStage {
 				if (mcu != null) {
 					// write mcu to pipe
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-						ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
-						ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
-						ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
+						DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+						DataOutputBlobWriter.openField(mcuWriter);
 						for (int i = 0; i < 64; ++i) {
-							yBuffer.putShort(mcu.y[i]);
-							cbBuffer.putShort(mcu.cb[i]);
-							crBuffer.putShort(mcu.cr[i]);
+							mcuWriter.writeShort(mcu.y[i]);
 						}
-						yBuffer.position(0);
-						cbBuffer.position(0);
-						crBuffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
+						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+						
+						DataOutputBlobWriter.openField(mcuWriter);
+						for (int i = 0; i < 64; ++i) {
+							mcuWriter.writeShort(mcu.cb[i]);
+						}
+						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+						
+						DataOutputBlobWriter.openField(mcuWriter);
+						for (int i = 0; i < 64; ++i) {
+							mcuWriter.writeShort(mcu.cr[i]);
+						}
+						DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
 						PipeWriter.publishWrites(output);
+						
 						numProcessed += 1;
 					}
 					else {
@@ -533,78 +538,27 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				// write huffman tables to pipe
-				/*for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
-					System.out.println("Attempting to write huffman table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4)) {
-						System.out.println("Writing huffman table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanDCTables.get(i).tableID);
-						int tableSize = 0;
-						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16 * 2);
-						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
-							int size = header.huffmanDCTables.get(i).symbols.get(j).size();
-							tableSize += size;
-							lengthsBuffer.putShort((short)size);
-						}
-						lengthsBuffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
-						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
-						for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
-							for (int k = 0; k < header.huffmanDCTables.get(i).symbols.get(j).size(); ++k) {
-								buffer.putShort(header.huffmanDCTables.get(i).symbols.get(j).get(k));
-							}
-						}
-						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
-						PipeWriter.publishWrites(output);
-					}
-					else {
-						System.err.println("Requesting shutdown");
-						requestShutdown();
-					}
-				}
-				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
-					System.out.println("Attempting to write huffman table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4)) {
-						System.out.println("Writing huffman table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLEID_104, header.huffmanACTables.get(i).tableID + 2);
-						int tableSize = 0;
-						ByteBuffer lengthsBuffer = ByteBuffer.allocate(16 * 2);
-						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-							int size = header.huffmanACTables.get(i).symbols.get(j).size();
-							tableSize += size;
-							lengthsBuffer.putShort((short)size);
-						}
-						lengthsBuffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_LENGTHS_204, lengthsBuffer);
-						ByteBuffer buffer = ByteBuffer.allocate(tableSize * 2);
-						for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-							for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
-								buffer.putShort(header.huffmanACTables.get(i).symbols.get(j).get(k));
-							}
-						}
-						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_HUFFMANTABLEMESSAGE_4_FIELD_TABLE_304, buffer);
-						PipeWriter.publishWrites(output);
-					}
-					else {
-						System.err.println("Requesting shutdown");
-						requestShutdown();
-					}
-				}*/
 				// write quantization tables to pipe
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
 					System.out.println("Attempting to write quantization table to pipe...");
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
 						System.out.println("Scanner writing quantization table to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105, header.quantizationTables.get(i).tableID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205, header.quantizationTables.get(i).precision);
-						ByteBuffer buffer = ByteBuffer.allocate(64 * 4);
+
+						DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
+						DataOutputBlobWriter.openField(quantizationTableWriter);
+						quantizationTableWriter.writeInt(header.quantizationTables.get(i).tableID);
+						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
+						
+						DataOutputBlobWriter.openField(quantizationTableWriter);
+						quantizationTableWriter.writeInt(header.quantizationTables.get(i).precision);
+						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
+						
+						DataOutputBlobWriter.openField(quantizationTableWriter);
 						for (int j = 0; j < 64; ++j) {
-							buffer.putInt(header.quantizationTables.get(i).table[j]);
+							quantizationTableWriter.writeInt(header.quantizationTables.get(i).table[j]);
 						}
-						buffer.position(0);
-						PipeWriter.writeBytes(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305, buffer);
+						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
+						
 						PipeWriter.publishWrites(output);
 					}
 					else {
@@ -612,25 +566,6 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				/*System.out.println("Attempting to write compressed data to pipe...");
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3)) {
-					System.out.println("Writing compressed data to pipe...");
-					// write compressed image data to pipe
-					PipeWriter.writeInt(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_LENGTH_103, header.imageData.size());
-					ByteBuffer buffer = ByteBuffer.allocate(header.imageData.size() * 2);
-					for (int i = 0; i < header.imageData.size(); ++i) {
-						buffer.putShort(header.imageData.get(i));
-					}
-					buffer.position(0);
-					PipeWriter.writeBytes(output, JPGSchema.MSG_COMPRESSEDDATAMESSAGE_3_FIELD_DATA_203, buffer);
-					PipeWriter.publishWrites(output);
-				}
-				else {
-					System.err.println("Requesting shutdown");
-					requestShutdown();
-				}
-				PipeWriter.publishWrites(output);*/
-				
 				HuffmanDecoder.beginDecode(header);
 				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				numProcessed = 0;

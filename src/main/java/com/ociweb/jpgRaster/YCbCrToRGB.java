@@ -3,13 +3,13 @@ package com.ociweb.jpgRaster;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-
-import java.nio.ByteBuffer;
 
 public class YCbCrToRGB extends PronghornStage {
 
@@ -104,39 +104,42 @@ public class YCbCrToRGB extends PronghornStage {
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				MCU mcu = new MCU();
-				ByteBuffer yBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer cbBuffer = ByteBuffer.allocate(64 * 2);
-				ByteBuffer crBuffer = ByteBuffer.allocate(64 * 2);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer);
-				PipeReader.readBytes(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer);
-				PipeReader.releaseReadLock(input);
-				yBuffer.position(0);
-				cbBuffer.position(0);
-				crBuffer.position(0);
+				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
-					mcu.y[i] = yBuffer.getShort();
-					mcu.cb[i] = cbBuffer.getShort();
-					mcu.cr[i] = crBuffer.getShort();
+					mcu.y[i] = mcuReader.readShort();
 				}
+				
+				for (int i = 0; i < 64; ++i) {
+					mcu.cb[i] = mcuReader.readShort();
+				}
+				
+				for (int i = 0; i < 64; ++i) {
+					mcu.cr[i] = mcuReader.readShort();
+				}
+				PipeReader.releaseReadLock(input);
 				
 				convertYCbCrToRGB(mcu);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-					ByteBuffer yBuffer2 = ByteBuffer.allocate(64 * 2);
-					ByteBuffer cbBuffer2 = ByteBuffer.allocate(64 * 2);
-					ByteBuffer crBuffer2 = ByteBuffer.allocate(64 * 2);
+					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+					DataOutputBlobWriter.openField(mcuWriter);
 					for (int i = 0; i < 64; ++i) {
-						yBuffer2.putShort(mcu.y[i]);
-						cbBuffer2.putShort(mcu.cb[i]);
-						crBuffer2.putShort(mcu.cr[i]);
+						mcuWriter.writeShort(mcu.y[i]);
 					}
-					yBuffer2.position(0);
-					cbBuffer2.position(0);
-					crBuffer2.position(0);
-					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106, yBuffer2);
-					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206, cbBuffer2);
-					PipeWriter.writeBytes(output, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306, crBuffer2);
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+					
+					DataOutputBlobWriter.openField(mcuWriter);
+					for (int i = 0; i < 64; ++i) {
+						mcuWriter.writeShort(mcu.cb[i]);
+					}
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+					
+					DataOutputBlobWriter.openField(mcuWriter);
+					for (int i = 0; i < 64; ++i) {
+						mcuWriter.writeShort(mcu.cr[i]);
+					}
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+
 					PipeWriter.publishWrites(output);
 				}
 			}

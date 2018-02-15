@@ -190,24 +190,6 @@ public class HuffmanDecoder {
 	}
 	
 	public static MCU decodeHuffmanData() {
-		/*for (int k = 0; k < DCTableCodes.size(); ++k) {
-			for (int i = 0; i < DCTableCodes.get(k).size(); ++i) {
-				System.out.print((i + 1) + ": ");
-				for (int j = 0; j < DCTableCodes.get(k).get(i).size(); ++j) {
-					System.out.print(String.format(("%" + (i + 1) + "s"), Integer.toBinaryString(DCTableCodes.get(k).get(i).get(j))).replace(' ', '0') + " ");
-				}
-				System.out.println();
-			}
-		}
-		for (int k = 0; k < ACTableCodes.size(); ++k) {
-			for (int i = 0; i < ACTableCodes.get(k).size(); ++i) {
-				System.out.print((i + 1) + ": ");
-				for (int j = 0; j < ACTableCodes.get(k).get(i).size(); ++j) {
-					System.out.print(String.format(("%" + (i + 1) + "s"), Integer.toBinaryString(ACTableCodes.get(k).get(i).get(j))).replace(' ', '0') + " ");
-				}
-				System.out.println();
-			}
-		}*/
 		if (!b.hasBits()) return null;
 		
 		MCU mcu = new MCU();
