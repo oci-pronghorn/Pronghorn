@@ -1,7 +1,6 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.StringOut;
-import com.ociweb.json.encode.JSONRenderer;
+import com.ociweb.json.appendable.StringBuilderWriter;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,11 +25,11 @@ class Pale {
 }
 
 public class JSONBucketTests {
-    private StringOut out;
+    private StringBuilderWriter out;
 
     @Before
     public void init() {
-        out = new StringOut();
+        out = new StringBuilderWriter();
     }
 
     @Test

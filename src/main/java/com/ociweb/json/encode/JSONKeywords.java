@@ -20,7 +20,6 @@ public class JSONKeywords {
 
     private static final byte[] FirstObjectElement = "\"".getBytes();
     private static final byte[] NextObjectElement = ",\"".getBytes();
-    private static final byte[] LastObjectElement = "".getBytes();
     private static final byte[] ObjectValue = "\":".getBytes();
     private static final byte[] NextArrayElement = ",".getBytes();
 
@@ -40,11 +39,11 @@ public class JSONKeywords {
         writer.write(Quote);
     }
 
-    public void Start(ByteWriter writer) {
+    public void Start(ByteWriter writer, int depth) {
         writer.write(Start);
     }
 
-    public void Complete(ByteWriter writer) {
+    public void Complete(ByteWriter writer, int depth) {
         writer.write(Complete);
     }
 
@@ -78,10 +77,6 @@ public class JSONKeywords {
 
     public void NextArrayElement(ByteWriter writer, int depth) {
         writer.write(NextArrayElement);
-    }
-
-    public void LastObjectElement(ByteWriter writer, int depth) {
-        writer.write(LastObjectElement);
     }
 
 }

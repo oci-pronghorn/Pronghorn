@@ -8,7 +8,7 @@ import java.util.function.ToIntFunction;
 
 public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
     private final JSONBuilder<T> builder;
-    private LimitCounterFunction<T, N> arrayLength;
+    private final LimitCounterFunction<T, N> arrayLength;
     private final P owner;
     private final int depth;
 

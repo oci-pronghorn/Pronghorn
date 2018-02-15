@@ -7,7 +7,6 @@ import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.template.StringTemplateIterScript;
 import com.ociweb.pronghorn.util.Appendables;
 
-import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
 class JSONBuilder<T> {
@@ -33,11 +32,11 @@ class JSONBuilder<T> {
     }
 
     void start() {
-        kw.Start(scripts);
+        kw.Start(scripts, depth);
     }
 
     void complete() {
-        kw.Complete(scripts);
+        kw.Complete(scripts, depth);
         if (nullableBranches[1] != null) nullableBranches[1].lock();
         scripts.lock();
         nullableBranches[0] = null;

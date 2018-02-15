@@ -1,17 +1,17 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.StringOut;
+import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertEquals;
 
 public class JSONRootIntegerTests {
-    private StringOut out;
+    private StringBuilderWriter out;
 
     @Before
     public void init() {
-        out = new StringOut();
+        out = new StringBuilderWriter();
     }
 
     @Test

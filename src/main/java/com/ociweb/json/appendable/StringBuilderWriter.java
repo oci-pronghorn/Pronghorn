@@ -1,12 +1,17 @@
 package com.ociweb.json.appendable;
 
+
 import java.io.UnsupportedEncodingException;
 
-public class StringOut implements AppendableByteWriter {
+public class StringBuilderWriter implements AppendableByteWriter {
     private final StringBuilder builder = new StringBuilder();
 
     public String toString() {
         return builder.toString();
+    }
+
+    public void setLength(int length) {
+        builder.setLength(length);
     }
 
     @Override
