@@ -86,7 +86,7 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
-	private static Boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
+	private static boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
 											  ArrayList<ArrayList<Integer>> ACTableCodes,
 											  HuffmanTable DCTable,
 											  HuffmanTable ACTable,
@@ -189,37 +189,35 @@ public class HuffmanDecoder {
 		return true;
 	}
 	
-	public static MCU decodeHuffmanData() {
-		if (!b.hasBits()) return null;
-		
-		MCU mcu = new MCU();
+	public static boolean decodeHuffmanData(MCU mcu) {
+		if (!b.hasBits()) return false;
 		
 		//System.out.println("Decoding Y Component...");
-		Boolean success = decodeMCUComponent(DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
+		boolean success = decodeMCUComponent(DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
 				  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
 		if (!success) {
-			return null;
+			return false;
 		}
 		
 		//System.out.println("Decoding Cb Component...");
 		success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
 				  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
 		if (!success) {
-			return null;
+			return false;
 		}
 		
 		//System.out.println("Decoding Cr Component...");
 		success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
 				  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
 		if (!success) {
-			return null;
+			return false;
 		}
 		
 		previousYDC = mcu.y[0];
 		previousCbDC = mcu.cb[0];
 		previousCrDC = mcu.cr[0];
 		
-		return mcu;
+		return true;
 	}
 	
 	public static void beginDecode(Header h) {

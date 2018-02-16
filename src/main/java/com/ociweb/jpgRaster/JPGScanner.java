@@ -26,6 +26,8 @@ public class JPGScanner extends PronghornStage {
 	int numMCUs = 0;
 	int numProcessed = 0;
 	
+	MCU mcu = new MCU();
+	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
 		super(graphManager, NONE, output);
 		this.output = output;
@@ -314,7 +316,7 @@ public class JPGScanner extends PronghornStage {
 			HuffmanTable table = new HuffmanTable();
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
-			Boolean ACTable = (info & 0xF0) != 0;
+			boolean ACTable = (info & 0xF0) != 0;
 			
 			if (table.tableID > 1) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
@@ -382,7 +384,7 @@ public class JPGScanner extends PronghornStage {
 				return;
 			}
 			
-			Boolean found = false;
+			boolean found = false;
 			for (int j = 0; j < header.colorComponents.size(); ++j) {
 				if (componentID == header.colorComponents.get(j).componentID) {
 					header.colorComponents.get(j).huffmanACTableID = huffmanACTableID;
@@ -459,47 +461,42 @@ public class JPGScanner extends PronghornStage {
 
 	@Override
 	public void run() {
-		if (numProcessed < numMCUs) {
-			for (int j = 0; j < 500 && numProcessed < numMCUs; ++j) {
-				if (PipeWriter.hasRoomForWrite(output)) {
-					MCU mcu = HuffmanDecoder.decodeHuffmanData();
-					if (mcu != null) {
-						// write mcu to pipe
-						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-							DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-							DataOutputBlobWriter.openField(mcuWriter);
-							for (int i = 0; i < 64; ++i) {
-								mcuWriter.writeShort(mcu.y[i]);
-							}
-							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-							
-							DataOutputBlobWriter.openField(mcuWriter);
-							for (int i = 0; i < 64; ++i) {
-								mcuWriter.writeShort(mcu.cb[i]);
-							}
-							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-							
-							DataOutputBlobWriter.openField(mcuWriter);
-							for (int i = 0; i < 64; ++i) {
-								mcuWriter.writeShort(mcu.cr[i]);
-							}
-							DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-							PipeWriter.publishWrites(output);
-							
-							numProcessed += 1;
-						}
-						else {
-							System.err.println("Requesting shutdown");
-							requestShutdown();
-						}
+		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
+			if (HuffmanDecoder.decodeHuffmanData(mcu)) {
+				// write mcu to pipe
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+					DataOutputBlobWriter.openField(mcuWriter);
+					for (int i = 0; i < 64; ++i) {
+						mcuWriter.writeShort(mcu.y[i]);
 					}
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+					
+					DataOutputBlobWriter.openField(mcuWriter);
+					for (int i = 0; i < 64; ++i) {
+						mcuWriter.writeShort(mcu.cb[i]);
+					}
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+					
+					DataOutputBlobWriter.openField(mcuWriter);
+					for (int i = 0; i < 64; ++i) {
+						mcuWriter.writeShort(mcu.cr[i]);
+					}
+					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+					PipeWriter.publishWrites(output);
+					
+					numProcessed += 1;
 				}
 				else {
-					break;
+					System.err.println("Requesting shutdown");
+					requestShutdown();
 				}
 			}
+			else {
+				break; // should never happen
+			}
 		}
-		else if (!inputFiles.isEmpty() && PipeWriter.hasRoomForWrite(output)) {
+		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			try {

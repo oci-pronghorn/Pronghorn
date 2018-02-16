@@ -19,6 +19,7 @@ public class BMPDumper extends PronghornStage {
 	
 	Header header;
 	String filename;
+	MCU mcu = new MCU();
 	
 	short[][] pixels;
 	int count;
@@ -40,7 +41,8 @@ public class BMPDumper extends PronghornStage {
 		int paddingSize = (4 - (width * 3) % 4) % 4;
 		int size = 14 + 12 + pixels.length * pixels[0].length + height * paddingSize;
 		
-		FileChannel file = new FileOutputStream(filename).getChannel();
+		FileOutputStream fileStream = new FileOutputStream(filename);
+		FileChannel file = fileStream.getChannel();
 		
 		ByteBuffer buffer = ByteBuffer.allocate(size);
 		buffer.put((byte) 'B');
@@ -69,6 +71,7 @@ public class BMPDumper extends PronghornStage {
 			file.write(buffer);
 		}
 		file.close();
+		fileStream.close();
 
 		if (filename.equals("test_jpgs/turtle.bmp")) {
 			long end = System.nanoTime();
@@ -117,7 +120,6 @@ public class BMPDumper extends PronghornStage {
 				numMCUs = mcuHeight * mcuWidth;
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
-				MCU mcu = new MCU();
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
 					mcu.y[i] = mcuReader.readShort();

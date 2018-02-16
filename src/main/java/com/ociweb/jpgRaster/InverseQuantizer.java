@@ -18,6 +18,7 @@ public class InverseQuantizer extends PronghornStage {
 	private final Pipe<JPGSchema> output;
 	
 	Header header;
+	MCU mcu = new MCU();
 	
 	protected InverseQuantizer(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
@@ -121,8 +122,6 @@ public class InverseQuantizer extends PronghornStage {
 				header.quantizationTables.add(table);
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
-				MCU mcu = new MCU();
-
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
 					mcu.y[i] = mcuReader.readShort();

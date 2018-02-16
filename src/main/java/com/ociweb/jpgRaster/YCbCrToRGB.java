@@ -17,6 +17,8 @@ public class YCbCrToRGB extends PronghornStage {
 	private final Pipe<JPGSchema> output;
 	
 	Header header;
+	MCU mcu = new MCU();
+	static byte[] rgb = new byte[3];
 	
 	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
@@ -25,7 +27,6 @@ public class YCbCrToRGB extends PronghornStage {
 	}
 
 	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
-		byte[] rgb = new byte[3];
 		short r, g, b;
 		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
 		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
@@ -103,7 +104,6 @@ public class YCbCrToRGB extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
-				MCU mcu = new MCU();
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
 					mcu.y[i] = mcuReader.readShort();

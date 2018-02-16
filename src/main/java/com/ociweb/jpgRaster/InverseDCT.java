@@ -17,6 +17,8 @@ public class InverseDCT extends PronghornStage {
 	private final Pipe<JPGSchema> output;
 	
 	Header header;
+	MCU mcu = new MCU();
+	static short[] result = new short[64];
 	
 	protected InverseDCT(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
@@ -39,10 +41,7 @@ public class InverseDCT extends PronghornStage {
 		}
 	}
 	
-	private static short[] MCUInverseDCT(short[] mcu) {
-		
-		short[] result = new short[64];
-		
+	private static void MCUInverseDCT(short[] mcu) {
 		for (int y = 0; y < 8; ++y) {
 			for (int x = 0; x < 8; ++x) {
 				double sum = 0.0;
@@ -58,13 +57,15 @@ public class InverseDCT extends PronghornStage {
 			}
 		}
 		
-		return result;
+		for (int i = 0; i < 64; ++i) {
+			mcu[i] = result[i];
+		}
 	}
 	
 	public static void inverseDCT(MCU mcu) {
-		mcu.y =  MCUInverseDCT(mcu.y);
-		mcu.cb = MCUInverseDCT(mcu.cb);
-		mcu.cr = MCUInverseDCT(mcu.cr);
+		MCUInverseDCT(mcu.y);
+		MCUInverseDCT(mcu.cb);
+		MCUInverseDCT(mcu.cr);
 		return;
 	}
 
@@ -135,7 +136,6 @@ public class InverseDCT extends PronghornStage {
 				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
-				MCU mcu = new MCU();
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
 				for (int i = 0; i < 64; ++i) {
 					mcu.y[i] = mcuReader.readShort();

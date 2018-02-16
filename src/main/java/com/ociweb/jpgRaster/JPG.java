@@ -47,7 +47,7 @@ public class JPG {
 		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
 		ArrayList<Short> imageData = new ArrayList<Short>();
 		
-		Boolean valid = true;
+		boolean valid = true;
 	}
 	
 	public static class MCU {		
