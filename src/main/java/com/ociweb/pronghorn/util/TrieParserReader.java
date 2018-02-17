@@ -16,7 +16,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.math.Decimal;
 
 public class TrieParserReader {
@@ -32,7 +31,11 @@ public class TrieParserReader {
 	public int     sourceLen;
 	public int     sourceMask;
 
-
+	private static final int NUMERIC_TYPE_MASK            =  0x03F; //shift zero this is low
+	private static final int NUMERIC_LENGTH_MASK          = 0x01FF; //shift 6 (512)
+	private static final int NUMERIC_LENGTH_SHIFT         =      6; //				
+	private static final int NUMERIC_ABSENT_IS_ZERO_MASK  = 0x8000;      
+	
 	private int[]  capturedValues;
 	private int    capturedPos;
 	private byte[] capturedBlobArray;
@@ -1171,9 +1174,10 @@ public class TrieParserReader {
 	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, short numType) {
 
 		//////////////support for fixed length numbers up to 1024
-		final int fixedLength = (0x03FF&(numType>>>6));
+		final boolean absentIsZero = 0!=(NUMERIC_ABSENT_IS_ZERO_MASK&numType);
+		final int fixedLength = (NUMERIC_LENGTH_MASK&(numType>>>NUMERIC_LENGTH_SHIFT));
 		assert(fixedLength == 0) : "Not yet implemented";
-		numType = (short)(numType & 0x03F);
+		numType = (short)(numType & NUMERIC_TYPE_MASK);
 		final boolean templateLimited = (fixedLength>0 && fixedLength<=sourceLength);
 		sourceLength = templateLimited?fixedLength:sourceLength;
 		///////////////
@@ -1186,17 +1190,13 @@ public class TrieParserReader {
 
 		final short c1 = source[sourceMask & sourcePos];
 
+		//////////////////////////////////////////////////////////////
+		//This is for supporting %i as an actual value to match that pattern rather than a number
 		if (escapeByte == c1) {
 			sourcePos++;
-			byte numericType = source[sourceMask & sourcePos];
-			int typeMask = TrieParser.buildNumberBits(numericType);
+			final int typeMask = TrieParser.buildNumberBits(source[sourceMask & sourcePos]);
 			sourcePos++;
-
-			if ((typeMask&numType)==typeMask) {
-				return sourcePos;
-			} else {
-				return -1;
-			}
+			return ((typeMask&numType)==typeMask) ? sourcePos : -1;			
 		}
 
 
@@ -1231,8 +1231,6 @@ public class TrieParserReader {
 				sourcePos++;
 			}
 		}
-
-
 
 		boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+1]) || ('x'!=source[sourceMask & sourcePos+2]);
 		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
@@ -1302,15 +1300,13 @@ public class TrieParserReader {
 					}
 					break;
 				}
-
 			}  while (true);
-
 		}
 
-
-		if (intLength==0) {
+		if (intLength==0 && !absentIsZero) {
 			return -1;
 		}
+		
 		publish(reader, sign, intValue, intLength, base, dot);
 
 		return sourcePos-1;
@@ -1720,11 +1716,7 @@ public class TrieParserReader {
 		long value = (long) ((((long)reader.capturedValues[pos++])<<32) |
 				             (0xFFFFFFFFL&reader.capturedValues[pos++]));
 
-		int meta = reader.capturedValues[pos];
-		///  byte dbase = (byte)((meta>>16)&0xFF);
-		assert((meta&0xFFFF) != 0) : "No number was found, no digits were parsed.";
-
-		return value*sign; //TODO: needs unit test to cover positive and negative numbers.
+		return value*sign;
 	}
 
 	private static boolean isCapturedByteData(int type) {

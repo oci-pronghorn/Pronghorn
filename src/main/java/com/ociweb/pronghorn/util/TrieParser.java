@@ -61,15 +61,17 @@ public class TrieParser implements Serializable {
     public final byte NO_ESCAPE_SUPPORT=(byte)0xFF;
     
     
+    
     //EXTRACT VALUE
-    public static final byte ESCAPE_CMD_SIGNED_INT    = 'i'; //signedInt (may be hex if starts with 0x)
-    public static final byte ESCAPE_CMD_UNSIGNED_INT  = 'u'; //unsignedInt (may be hex if starts with 0x)
-    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x, assumed to be hex)
-    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x, assumed to be hex) 
-    public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
-    public static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
+    public static final byte ESCAPE_CMD_OPTIONAL_SIGNED_INT = 'o'; //optional signed int, if absent returns zero
+    public static final byte ESCAPE_CMD_SIGNED_INT          = 'i'; //signedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_UNSIGNED_INT        = 'u'; //unsignedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_SIGNED_HEX          = 'I'; //signedInt (may skip prefix 0x, assumed to be hex)
+    public static final byte ESCAPE_CMD_UNSIGNED_HEX        = 'U'; //unsignedInt (may skip prefix 0x, assumed to be hex) 
+    public static final byte ESCAPE_CMD_DECIMAL             = '.'; //if found capture u and places else captures zero and 1 place
+    public static final byte ESCAPE_CMD_RATIONAL            = '/'; //if found capture i else captures 1
     //EXTRACTED BYTES
-    public static final byte ESCAPE_CMD_BYTES         = 'b';
+    public static final byte ESCAPE_CMD_BYTES               = 'b';
       
     //////////////////////////////////////////////////////////////////////
     ///Every pattern is unaware of any context and can be mixed an any way.
@@ -86,13 +88,17 @@ public class TrieParser implements Serializable {
     
     //numeric type bits:
     //   leading sign (only in front)
-    static final byte NUMERIC_FLAG_SIGN     =  1;
+    static final short NUMERIC_FLAG_SIGN           =  1;
     //   hex values can start with 0x, hex is all lower case abcdef
-    static final byte NUMERIC_FLAG_HEX      =  2;
+    static final short NUMERIC_FLAG_HEX            =  2;
     //   starts with . if not return zero
-    static final byte NUMERIC_FLAG_DECIMAL  =  4;
+    static final short NUMERIC_FLAG_DECIMAL        =  4;
     //   starts with / if not return 1
-    static final byte NUMERIC_FLAG_RATIONAL =  8;
+    static final short NUMERIC_FLAG_RATIONAL       =  8;
+    //   when there is no number take that path and use zero as the value
+    static final short NUMERIC_FLAG_ABSENT_IS_ZERO =  (short)0x8000;
+    
+    
     
     
     private final boolean fixedSize;
@@ -793,12 +799,12 @@ public class TrieParser implements Serializable {
                         extractions[extractionCount++] = ESCAPE_CMD_BYTES;
                                                
                     	if (ESCAPE_BYTE!=source[sourceMask & sourcePos]     || 
-                    		'b'!=source[sourceMask & (sourcePos+1)] ||
+                    		ESCAPE_CMD_BYTES!=source[sourceMask & (sourcePos+1)] ||
                     		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   
                        		////
                     		//this insert puts the new data on the very end instead of inserting it
                     		//in order to ensure the explicit patterns are always found "to the right"
-                    		/////
+                    		////
                     		final int insertLengthBytesCapture = sourceLength-length;								
 							assert(insertLengthBytesCapture>=1);
 							
@@ -982,6 +988,7 @@ public class TrieParser implements Serializable {
 	private boolean isNumber(byte second) {
 		return ESCAPE_CMD_UNSIGNED_INT==second || ESCAPE_CMD_UNSIGNED_HEX==second ||
 			ESCAPE_CMD_DECIMAL==second      || ESCAPE_CMD_RATIONAL==second ||
+					ESCAPE_CMD_OPTIONAL_SIGNED_INT==second ||
 			ESCAPE_CMD_SIGNED_INT==second   || ESCAPE_CMD_SIGNED_HEX==second;
 	}
 
@@ -1012,6 +1019,7 @@ public class TrieParser implements Serializable {
 	    	    			   ESCAPE_CMD_RATIONAL == value ||
 	    	    			   ESCAPE_CMD_SIGNED_INT == value ||
 	    	    			   ESCAPE_CMD_SIGNED_HEX == value ||
+	    	    			   ESCAPE_CMD_OPTIONAL_SIGNED_INT == value ||
 	    	    			   ESCAPE_CMD_UNSIGNED_INT == value ||
 	    	    			   ESCAPE_CMD_UNSIGNED_HEX == value
 	    	    			) {
@@ -1077,9 +1085,11 @@ public class TrieParser implements Serializable {
 
     }
 
-    static byte buildNumberBits(byte sourceByte) { 
+    static short buildNumberBits(byte sourceByte) { 
         
         switch(sourceByte) {
+        	case ESCAPE_CMD_OPTIONAL_SIGNED_INT:
+        	    return (short)(TrieParser.NUMERIC_FLAG_SIGN | TrieParser.NUMERIC_FLAG_ABSENT_IS_ZERO);        
             case ESCAPE_CMD_SIGNED_INT:
                 return TrieParser.NUMERIC_FLAG_SIGN;
             case ESCAPE_CMD_UNSIGNED_INT:
