@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWriter {
@@ -886,6 +888,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
                 copyLen);
 
        commitBackData(that);//must call before close!!
+	}
+
+	public long startsWith(TrieParserReader reader, TrieParser tp) {
+		
+		return TrieParserReader.query(reader, tp, byteBuffer, startPosition,
+				               activePosition - startPosition, byteMask);
+
 	}
 
     
