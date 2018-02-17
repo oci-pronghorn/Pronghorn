@@ -32,9 +32,9 @@ public class JSONObject {
         body.setLength(0);
     }
 
-    public void setStatusMessage(StatusMessages oicStatusMessage) {
-        this.status = oicStatusMessage.getStatusCode();
-        this.message.append(oicStatusMessage.getStatusMessage());
+    public void setStatusMessage(StatusMessages statusMessage) {
+        this.status = statusMessage.getStatusCode();
+        this.message.append(statusMessage.getStatusMessage());
     }
 
     public int getStatus() { return status; }
