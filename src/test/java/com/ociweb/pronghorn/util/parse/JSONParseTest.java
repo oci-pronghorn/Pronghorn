@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.json.JSONExtractor;
@@ -61,24 +60,24 @@ public class JSONParseTest {
 			.completePath("a");
 
 	@Test
-	public void testRestResponse() {
-		RestResponse response = new RestResponse();
-		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
+	public void testEncodeTheDecode() {
+		JSONObject obj = new JSONObject();
+		obj.setStatusMessage(JSONObject.StatusMessages.SUCCESS);
 		StringBuilderWriter out = new StringBuilderWriter();
-		response.writeToJSON(out);
+		obj.writeToJSON(out);
 
 		String json = out.toString();
 		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
 
-		Pipe<RawDataSchema> targetData = parseJSON(json, RestResponse.jsonExtractor);
+		Pipe<RawDataSchema> targetData = parseJSON(json, JSONObject.jsonExtractor);
 		Pipe.takeMsgIdx(targetData);
 		ChannelReader dataStream = Pipe.openInputStream(targetData);
-		JSONReader reader = RestResponse.createReader();
-		response.reset();
-		response.readFromJSON(reader, dataStream);
+		JSONReader reader = JSONObject.createReader();
+		obj.reset();
+		obj.readFromJSON(reader, dataStream);
 
-		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusCode(), response.getStatus());
-		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusMessage(), response.getMessage());
+		assertEquals(JSONObject.StatusMessages.SUCCESS.getStatusCode(), obj.getStatus());
+		assertEquals(JSONObject.StatusMessages.SUCCESS.getStatusMessage(), obj.getMessage());
 	}
 	
 	@Test
