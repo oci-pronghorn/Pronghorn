@@ -1,6 +1,6 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ToStringFunction<T> {
     CharSequence applyAsString(T value);
 }

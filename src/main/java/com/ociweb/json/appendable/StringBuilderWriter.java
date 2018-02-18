@@ -25,11 +25,6 @@ public class StringBuilderWriter implements AppendableByteWriter {
     }
 
     @Override
-    public void write(byte[] b) {
-        write(b, 0, b.length);
-    }
-
-    @Override
     public Appendable append(CharSequence csq){
         builder.append(csq);
         return this;

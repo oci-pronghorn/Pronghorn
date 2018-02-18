@@ -1,6 +1,6 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ToBoolFunction<T> {
     boolean applyAsBool(T value);
 }

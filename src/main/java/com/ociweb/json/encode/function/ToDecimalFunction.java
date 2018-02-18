@@ -1,8 +1,8 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ToDecimalFunction<T> {
-    //@FunctionalInterface
+    @FunctionalInterface
     interface Visit {
         void visit(long m, byte e);
     }

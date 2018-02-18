@@ -1,6 +1,6 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ArrayIteratorFunction<T, N> {
     // Return null to stop.
     // What is returned is passed into next iteration.

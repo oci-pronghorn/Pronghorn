@@ -1,8 +1,8 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ToNullableIntFunction<T> {
-    //@FunctionalInterface
+    @FunctionalInterface
     interface Visit {
         void visit(int v, boolean isNull);
     }

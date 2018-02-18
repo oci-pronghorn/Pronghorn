@@ -1,6 +1,6 @@
 package com.ociweb.json.encode.function;
 
-//@FunctionalInterface
+@FunctionalInterface
 public interface ToLongFunction<T> {
     long applyAsLong(T value);
 }
