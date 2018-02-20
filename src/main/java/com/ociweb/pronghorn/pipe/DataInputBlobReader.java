@@ -262,6 +262,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	return position - bytesLowBound;
     }    
     
+	@Override
+	public void position(int position) {
+		position(this, position);
+	}
+    
     @Deprecated
     public void setPositionBytesFromStart(int byteIndexFromStart) {
         position(this, byteIndexFromStart);
@@ -869,6 +874,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader, int length) {
 		TrieParserReader.parseSetup(reader, input.backing, input.position, Math.min(bytesRemaining(input), length), input.byteMask); 
 	}
+
 
 
     

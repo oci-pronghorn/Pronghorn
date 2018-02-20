@@ -144,9 +144,10 @@ public class JSONFieldSchema implements JSONReader{
 	private void initPosition(ChannelReader reader) {
 		DataInputBlobReader r = ((DataInputBlobReader)reader);
 		 if(Integer.MIN_VALUE == initPos) {
-			 initPos = DataInputBlobReader.absolutePosition(r);
+			 reader.position();			 
+			 initPos = r.position();
 		 } else {
-			 DataInputBlobReader.absolutePosition(r, initPos);
+			 r.position(initPos);
 		 }
 		 
 		 assert(isValid(reader));
@@ -327,6 +328,11 @@ public class JSONFieldSchema implements JSONReader{
 		
 		reader.absolutePosition(initialPosition);
 		return out;
+	}
+
+	@Override
+	public void clear() {
+		initPos = Integer.MIN_VALUE;
 	}
 
 		
