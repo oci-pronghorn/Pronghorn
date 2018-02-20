@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.util.parse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Ignore;
 import org.junit.Test;
 
