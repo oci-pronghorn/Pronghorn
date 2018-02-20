@@ -6,14 +6,13 @@ import com.ociweb.json.JSONType;
 import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.encode.JSONRenderer;
 import com.ociweb.pronghorn.pipe.ChannelReader;
-import com.ociweb.pronghorn.pipe.ChannelWriter;
 
-public class JSONObject {
+public class JSONResponse {
     private int status = 0;
     private final StringBuilder message = new StringBuilder();
     private final StringBuilder body = new StringBuilder();
 
-    private static final JSONRenderer<JSONObject> jsonRenderer = new JSONRenderer<JSONObject>()
+    private static final JSONRenderer<JSONResponse> jsonRenderer = new JSONRenderer<JSONResponse>()
             .beginObject()
             .integer("status", o->o.status)
             .string("message", o->o.message)
