@@ -24,7 +24,21 @@ public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
     }
 
     // TODO: all other element types
-    // TODO create an Array hosted version of JSONArray and JSONObject to pass index int[]
+    // TODO: use IterMemberFunction
+
+    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<M, P>(
+                builder.beginObject(accessor),
+                builder.getKeywords(), owner, depth + 1) {
+
+            public P endObject() {
+                builder.endObject();
+                builder.endArray();
+                owner.complete();
+                return owner;
+            }
+        };
+    }
 
     public P constantNull() {
         builder.addNull(iterator);

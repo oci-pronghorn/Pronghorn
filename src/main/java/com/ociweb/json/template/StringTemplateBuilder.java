@@ -2,6 +2,7 @@ package com.ociweb.json.template;
 
 import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.appendable.ByteWriter;
+import com.ociweb.json.encode.function.ToMemberFunction;
 
 public class StringTemplateBuilder<T> implements ByteWriter {
 	private StringTemplateScript[] script;
@@ -67,6 +68,31 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
+	public <N, M> StringTemplateBuilder<T> add(final StringTemplateIterScript<M, N> data, final ToMemberFunction<T, M> accessor) {
+		append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void fetch(AppendableByteWriter writer, T source) {
+						N node = null;
+						M member = accessor.apply(source);
+						for(int i = 0; (node = data.fetch(writer, member, i, node)) != null; i++) {
+						}
+					}
+				});
+		return this;
+	}
+
+	public <M> StringTemplateBuilder<T> add(final StringTemplateBuilder<M> data, final ToMemberFunction<T, M> accessor) {
+		append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void fetch(AppendableByteWriter writer, T source) {
+						data.render(writer, accessor.apply(source));
+					}
+				});
+		return this;
+	}
+
 	public StringTemplateBuilder<T> add(final StringTemplateBuilder<T>[] data, final StringTemplateBranching<T> branching) {
 		final StringTemplateBuilder<T>[] localData = new StringTemplateBuilder[data.length];
 		System.arraycopy(data, 0, localData, 0, data.length);
@@ -88,14 +114,14 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 	}
 
 	public void render(AppendableByteWriter writer, T source) {
-		assert(immutable) : "String template builder can only be rendered after lock.";
+		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
 			script[i].fetch(writer, source);
 		}
 	}
 
 	private void append(StringTemplateScript<T> fetchData) {
-		assert(!immutable) : "String template builder cannot be modified after lock.";
+		//assert(!immutable) : "String template builder cannot be modified after lock.";
 		if (count==script.length) {
 			StringTemplateScript[] newScript = new StringTemplateScript[script.length*2];
 			System.arraycopy(script, 0, newScript, 0, script.length);

@@ -48,6 +48,11 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
         return this;
     }
 
+    public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addFieldPrefix(name).addRenderer(renderer, accessor);
+        return this;
+    }
+
     public JSONObject<T, P> bool(String name, ToBoolFunction<T> func) {
         builder.addFieldPrefix(name).addBool(func);
         return this;

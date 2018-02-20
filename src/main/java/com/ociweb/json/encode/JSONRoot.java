@@ -4,7 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-// TODO: fix complete not laways getting called
+// TODO: fix complete not aways getting called
 
 public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
     final JSONBuilder<T> builder;
