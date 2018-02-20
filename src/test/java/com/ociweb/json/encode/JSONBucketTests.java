@@ -5,6 +5,8 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertTrue;
+
 class Bucket {
     boolean b1;
     int i1;
@@ -58,6 +60,7 @@ public class JSONBucketTests {
                     .nullableString("s", o -> o.m.s2)
                 .endObject()
             .endObject();
+        assertTrue(json.isLocked());
 
         json.render(out, new Bucket());
         System.out.println(out);

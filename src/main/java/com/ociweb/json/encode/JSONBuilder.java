@@ -25,7 +25,6 @@ class JSONBuilder<T> {
         this.depth = depth;
         StringTemplateBuilder<T> objNullBranch = new StringTemplateBuilder<>();
         kw.Null(objNullBranch);
-        objNullBranch.lock();
         nullableBranches[0] = objNullBranch;
     }
 
@@ -39,10 +38,13 @@ class JSONBuilder<T> {
 
     void complete() {
         kw.Complete(scripts, depth);
-        if (nullableBranches[1] != null) nullableBranches[1].lock();
         scripts.lock();
         nullableBranches[0] = null;
         nullableBranches[1] = null;
+    }
+
+    public boolean isLocked() {
+        return scripts.isLocked();
     }
 
     void render(AppendableByteWriter writer, T source) {

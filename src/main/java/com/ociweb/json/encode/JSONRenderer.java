@@ -12,6 +12,10 @@ public class JSONRenderer<T> extends JSONRoot<T, JSONRenderer<T>> {
         super(new StringTemplateBuilder<T>(), keywords, 0);
     }
 
+    public boolean isLocked() {
+        return this.builder.isLocked();
+    }
+
     public void render(AppendableByteWriter writer, T source) {
         builder.render(writer, source);
     }

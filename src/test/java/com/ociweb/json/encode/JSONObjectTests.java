@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.util.Objects;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 class BasicObj {
     boolean b = true;
@@ -36,6 +37,7 @@ public class JSONObjectTests {
     public void testObjectEmpty() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginObject().endObject();
+        assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{}", out.toString());
     }
@@ -44,6 +46,7 @@ public class JSONObjectTests {
     public void testObjectNull_Yes() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginNullObject(Objects::isNull).integer("i", o->o.i).endObject();
+        assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
     }
@@ -52,6 +55,7 @@ public class JSONObjectTests {
     public void testObjectNull_No() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginNullObject(Objects::isNull).integer("i", o->o.i).endObject();
+        assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{\"i\":9}", out.toString());
     }
@@ -67,6 +71,7 @@ public class JSONObjectTests {
                     .beginObject("m")
                     .endObject()
                 .endObject();
+        assertTrue(json.isLocked());
         json.render(out, new BasicObj(new BasicObj()));
         assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
     }
@@ -82,6 +87,7 @@ public class JSONObjectTests {
                     .beginNullableObject("m", o->(o.m == null))
                     .endObject()
                 .endObject();
+        assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null}", out.toString());
     }
@@ -97,6 +103,7 @@ public class JSONObjectTests {
                     .beginNullableObject("m", o->(o.m == null))
                     .endObject()
                 .endObject();
+        assertTrue(json.isLocked());
         json.render(out, new BasicObj(new BasicObj()));
         assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
     }
