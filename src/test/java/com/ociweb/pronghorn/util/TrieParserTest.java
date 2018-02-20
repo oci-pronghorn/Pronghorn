@@ -2143,17 +2143,17 @@ y.readUTFOfLength(y.available(), str);
 
 		String actual = map.toString();
 
-		String expected = "BRANCH_VALUE1[0], -248[1], 0[2], 49[3], \n"+
+		String expected = "BRANCH_VALUE1[0], -254[1], 0[2], 49[3], \n"+
 				"RUN0[4], 3[5], 107'k'[6], 108'l'[7], 109'm'[8], \n"+
-				"BRANCH_VALUE1[9], -240[10], 0[11], 20[12], \n"+
+				"BRANCH_VALUE1[9], 2[10], 0[11], 20[12], \n"+
 				"RUN0[13], 2[14], 120'x'[15], 121'y'[16], \n"+
-				"BRANCH_VALUE1[17], -128[18], 0[19], 6[20], \n"+
+				"BRANCH_VALUE1[17], 2[18], 0[19], 6[20], \n"+
 				"RUN0[21], 2[22], -128[23], -127[24], \n"+
 				"END7[25], 47[26], \n"+
 				"RUN0[27], 2[28], 122'z'[29], 123'{'[30], \n"+
 				"END7[31], 23[32], \n"+
 				"RUN0[33], 2[34], 110'n'[35], 111'o'[36], \n"+
-				"BRANCH_VALUE1[37], -252[38], 0[39], 6[40], \n"+
+				"BRANCH_VALUE1[37], -254[38], 0[39], 6[40], \n"+
 				"RUN0[41], 2[42], 118'v'[43], 119'w'[44], \n"+
 				"END7[45], 35[46], \n"+
 				"RUN0[47], 2[48], 112'p'[49], 113'q'[50], \n"+
@@ -2198,21 +2198,21 @@ y.readUTFOfLength(y.available(), str);
 
 		String expected = "digraph {\n"+
 				"node0[label=\"BRANCH ON BIT\n"+
-				" bit:00001000\"]\n"+
+				" bit:00000010\"]\n"+
 				"node0->node4\n"+
 				"node0->node53\n"+
 				"node4[label=\"RUN of 3\n"+
 				"klm\"]\n"+
 				"node4->node9\n"+
 				"node9[label=\"BRANCH ON BIT\n"+
-				" bit:00010000\"]\n"+
+				" bit:00000010\"]\n"+
 				"node9->node13\n"+
 				"node9->node33\n"+
 				"node13[label=\"RUN of 2\n"+
 				"xy\"]\n"+
 				"node13->node17\n"+
 				"node17[label=\"BRANCH ON BIT\n"+
-				" bit:10000000\"]\n"+
+				" bit:00000010\"]\n"+
 				"node17->node21\n"+
 				"node17->node27\n"+
 				"node21[label=\"RUN of 2\n"+
@@ -2227,7 +2227,7 @@ y.readUTFOfLength(y.available(), str);
 				"no\"]\n"+
 				"node33->node37\n"+
 				"node37[label=\"BRANCH ON BIT\n"+
-				" bit:00000100\"]\n"+
+				" bit:00000010\"]\n"+
 				"node37->node41\n"+
 				"node37->node47\n"+
 				"node41[label=\"RUN of 2\n"+

@@ -1301,9 +1301,10 @@ public class TrieParser implements Serializable {
 	
 
     private short findSingleBitMask(short a, short b) {
+    	
+    	
         int mask = 1<<5; //default of sign bit, only used when nothing replaces it. (critical for case insensitivity)       
-        int i = 8; 
-        while (--i>=0) {            
+        for(int i=0; i<8; i++) {            
             if (5!=i) { //sign bit, we do not use it unless all the others are tested first                
                 int localMask = 1 << i;
                 if ((localMask&a) != (localMask&b)) {
@@ -1317,7 +1318,9 @@ public class TrieParser implements Serializable {
 //        	System.err.println("ERROR HHHHHHHHHHHHHHHH  jump mask "+Integer.toBinaryString(mask)+" "+(char)a+" vs "+(char)b+"   "+a+" vs "+b);
 //        	new Exception().printStackTrace();
 //        }
-        return (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
+        short result =  (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
+        assert((result&a) != (result&b));        
+        return result;
     }
 
     private int makeRoomForInsert(int danglingByteCount, int pos, int requiredRoom) {
@@ -1629,7 +1632,9 @@ public class TrieParser implements Serializable {
 	public void toDOTFile(File targetFile) {
 		
 		try {
-			
+			String filename = targetFile.getAbsolutePath();
+			System.out.println("dot -Tsvg -o"+filename+".svg "+filename);
+						
 			PrintStream printStream = new PrintStream(targetFile);
 			toDOT(printStream);
 			printStream.close();
