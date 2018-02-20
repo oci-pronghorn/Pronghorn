@@ -59,27 +59,28 @@ public class JSONParseTest {
 			.key("root").key("[]").key("[]").key("keya")
 			.completePath("a");
 
-	//we do not yet have client side JSON reading.
-	@Ignore
-	public void testRestResponse() {
-		RestResponse response = new RestResponse();
-		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
-		StringBuilderWriter out = new StringBuilderWriter();
-		response.writeToJSON(out);
+//	//we do not yet have client side JSON reading.
+//	@Ignore
+//	public void testRestResponse() {
+//		RestResponse response = new RestResponse();
+//		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
+//		StringBuilderWriter out = new StringBuilderWriter();
+//		response.writeToJSON(out);
+//
+//		String json = out.toString();
+//		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
+//
+//		Pipe<RawDataSchema> targetData = parseJSON(json, RestResponse.jsonExtractor);
+//		Pipe.takeMsgIdx(targetData);
+//		ChannelReader dataStream = Pipe.openInputStream(targetData);
+//		JSONReader reader = RestResponse.createReader();
+//		response.reset();
+//		response.readFromJSON(reader, dataStream);
+//
+//		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusCode(), response.getStatus());
+//		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusMessage(), response.getMessage());
+//	}
 
-		String json = out.toString();
-		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
-
-		Pipe<RawDataSchema> targetData = parseJSON(json, RestResponse.jsonExtractor);
-		Pipe.takeMsgIdx(targetData);
-		ChannelReader dataStream = Pipe.openInputStream(targetData);
-		JSONReader reader = RestResponse.createReader();
-		response.reset();
-		response.readFromJSON(reader, dataStream);
-
-		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusCode(), response.getStatus());
-		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusMessage(), response.getMessage());
-	}
 	
 	@Test
 	public void loadFor2D() {
