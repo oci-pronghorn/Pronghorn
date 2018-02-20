@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.util.parse;
 
+import java.io.PrintStream;
+
 import com.ociweb.pronghorn.pipe.ChannelReader;
 
 public interface JSONReader {
@@ -11,6 +13,7 @@ public interface JSONReader {
 	
 	long getDecimalMantissa(byte[] field, ChannelReader reader);
 	byte getDecimalPosition(byte[] field, ChannelReader reader);
+	<A extends Appendable> A dump(ChannelReader reader, A out);
 	
 	
 	

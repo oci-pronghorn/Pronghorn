@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.util.parse;
 
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -8,7 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONAccumRule;
 import com.ociweb.json.JSONType;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class JSONFieldMapping {
 	
@@ -179,6 +182,60 @@ public class JSONFieldMapping {
 
 	public boolean nameEquals(byte[] name) {
 		return Arrays.equals(name, this.name);
+	}
+
+	public <A extends Appendable> A dump(ChannelReader reader, A out) {
+		
+		switch (type) {
+			case TypeBoolean:
+				try {
+						Appendables.appendValue(out, "Boolean recorded as: ", reader.readByte());
+						out.append("\n");
+				} catch (IOException ex) {
+					throw new RuntimeException(ex);
+				}	
+				break;
+			case TypeDecimal:
+				try{
+						long m = reader.readPackedLong();
+						byte e = reader.readByte();
+						
+						out.append("Decimal recorded as: ");
+						Appendables.appendDecimalValue(out, m, e);
+						out.append("\n");
+				} catch (IOException ex) {
+					throw new RuntimeException(ex);
+				}	
+				break;
+			case TypeInteger:
+				try {
+					Appendables.appendValue(out, "Integer recorded as: ", reader.readPackedLong());
+					out.append("\n");
+				} catch (IOException ex) {
+					throw new RuntimeException(ex);
+				}	
+				break;
+			case TypeString:
+				try {
+					int length = reader.readPackedInt();
+					
+					Appendables.appendValue(out, "String len: ",length);
+					if (length>0) {
+						out.append(" with body of ");
+						reader.readUTFOfLength(length,out);
+					}
+					out.append("\n");
+				} catch (IOException ex) {
+					throw new RuntimeException(ex);
+				}						   
+				
+				break;
+			default:
+				throw new UnsupportedOperationException();
+		
+		}
+		
+		return out;
 	}
 	
 }
