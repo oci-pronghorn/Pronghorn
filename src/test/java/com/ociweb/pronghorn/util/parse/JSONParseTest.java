@@ -60,7 +60,8 @@ public class JSONParseTest {
 			.key("root").key("[]").key("[]").key("keya")
 			.completePath("a");
 
-	@Test
+	//we do not yet have client side JSON reading.
+	@Ignore
 	public void testRestResponse() {
 		RestResponse response = new RestResponse();
 		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
