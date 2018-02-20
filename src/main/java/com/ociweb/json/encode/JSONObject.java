@@ -4,7 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
+public class JSONObject<T, P extends JSONCompositeOwner> implements JSONCompositeOwner {
     private final JSONBuilder<T> builder;
     private final P owner;
     private final int depth;
@@ -16,7 +16,14 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
     }
 
     @Override
-    public void complete() {
+    public void childCompleted() {
+        // does not matter
+    }
+
+    public P endObject() {
+        builder.endObject();
+        owner.childCompleted();
+        return owner;
     }
 
     public JSONObject<T, JSONObject<T, P>> beginObject(String name) {
@@ -93,12 +100,12 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
         return this;
     }
 
-    public JSONObject<T, P> decimal(String name, ToDecimalFunction<T> func) {
+    public JSONObject<T, P> decimal(String name, ToDoubleFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(func);
         return this;
     }
 
-    public JSONObject<T, P> decimal(String name, ToDecimalFunction<T> func, JSONType encode) {
+    public JSONObject<T, P> decimal(String name, ToDoubleFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(func, encode);
         return this;
     }
@@ -131,11 +138,5 @@ public class JSONObject<T, P extends JSONComplete> implements JSONComplete  {
     public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addNullableString(func, encode);
         return this;
-    }
-
-    public P endObject() {
-        builder.endObject();
-        owner.complete();
-        return owner;
     }
 }

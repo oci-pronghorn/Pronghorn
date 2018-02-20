@@ -352,11 +352,11 @@ class JSONBuilder<T> {
 
     // TODO: support rational, decimal, and double
 
-    void addDecimal(final ToDecimalFunction<T> func) {
+    void addDecimal(final ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
+                func.applyAsDecimal(source, new ToDoubleFunction.Visit() {
                     @Override
                     public void visit(double value, int precision) {
                         Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
@@ -384,7 +384,7 @@ class JSONBuilder<T> {
         });
     }
 
-    void addDecimal(ToDecimalFunction<T> func, JSONType encode) {
+    void addDecimal(ToDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;

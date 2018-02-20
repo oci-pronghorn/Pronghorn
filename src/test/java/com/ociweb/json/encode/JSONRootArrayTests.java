@@ -16,16 +16,6 @@ public class JSONRootArrayTests {
         out = new StringBuilderWriter();
     }
 
-//BUG!!!! index too early
-//    @Test
-//    public void testRootArrayEmpty() {
-//        JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-//            .array().integer((o, i, v) -> v.visit(0, i < o.length-1));
-//        json.render(out, new int[0]);
-//        assertEquals("[]", out.toString());
-//    }
-
-
     @Test
     public void testRootArrayRepeatedNulls() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()

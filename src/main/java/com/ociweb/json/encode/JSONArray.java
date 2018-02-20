@@ -4,7 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
+public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompositeOwner {
     private final JSONBuilder<T> builder;
     private final ArrayIteratorFunction<T, N> iterator;
     private final P owner;
@@ -18,9 +18,10 @@ public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
     }
 
     @Override
-    public void complete() {
+    public void childCompleted() {
+        // Single child...
         builder.endArray();
-        owner.complete();
+        owner.childCompleted();
     }
 
     // TODO: all other element types
@@ -34,7 +35,7 @@ public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
             public P endObject() {
                 builder.endObject();
                 builder.endArray();
-                owner.complete();
+                owner.childCompleted();
                 return owner;
             }
         };
@@ -42,31 +43,31 @@ public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
 
     public P constantNull() {
         builder.addNull(iterator);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(IterLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(IterLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integerNull(IterNullableLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 }

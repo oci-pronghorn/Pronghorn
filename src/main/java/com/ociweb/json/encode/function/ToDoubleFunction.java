@@ -1,7 +1,7 @@
 package com.ociweb.json.encode.function;
 
 //@FunctionalInterface
-public interface ToDecimalFunction<T> {
+public interface ToDoubleFunction<T> {
     //@FunctionalInterface
     interface Visit {
         void visit(double value, int precision);

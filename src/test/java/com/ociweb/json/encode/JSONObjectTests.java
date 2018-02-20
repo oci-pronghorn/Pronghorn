@@ -86,20 +86,19 @@ public class JSONObjectTests {
         assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null}", out.toString());
     }
 
-//BUG: not completing
-//    @Test
-//    public void testObjectPrimitivesNull_No() {
-//        JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-//                .beginObject()
-//                    .nullableBool("b", (o, v) -> v.visit(o.b, false))
-//                    .nullableInteger("i", (o, v) -> v.visit(o.i, false))
-//                    .nullableDecimal("d", (o, v) -> v.visit((long)(o.d * 100), (byte)-2, false))
-//                    .nullableString("s", o->o.s)
-//                    .beginNullableObject("m", o->(o.m == null))
-//                    .endObject()
-//                .endObject();
-//        json.render(out, new BasicObj(new BasicObj()));
-//        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
-//    }
+    @Test
+    public void testObjectPrimitivesNull_No() {
+        JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
+                .beginObject()
+                    .nullableBool("b", (o, v) -> v.visit(o.b, false))
+                    .nullableInteger("i", (o, v) -> v.visit(o.i, false))
+                    .nullableDecimal("d", (o, v) -> v.visit(o.d, 2, false))
+                    .nullableString("s", o->o.s)
+                    .beginNullableObject("m", o->(o.m == null))
+                    .endObject()
+                .endObject();
+        json.render(out, new BasicObj(new BasicObj()));
+        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
+    }
 
 }
