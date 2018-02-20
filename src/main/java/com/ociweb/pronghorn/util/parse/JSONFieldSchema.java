@@ -28,15 +28,15 @@ public class JSONFieldSchema implements JSONReader{
 	 private int nextReadField = 0;
 	 private long nulls=0;
 	 private byte decimalLatch = 0;
-
+	 
+	 private int initPos = Integer.MIN_VALUE;
+	 
 	 @Override
 	 public long getDecimalMantissa(byte[] field, ChannelReader reader) {
 		 long result = 0;
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
 			 
-			 //TODO: revist later
-			 DataInputBlobReader r = ((DataInputBlobReader)reader);
-			 DataInputBlobReader.position(r, 0);
+			 initPosition(reader);
 			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
@@ -113,17 +113,15 @@ public class JSONFieldSchema implements JSONReader{
 		 
 		 return result;
 	 }
-	 
+
 	 
 	 @Override
 	 public long getLong(byte[] field, ChannelReader reader) {
 		 long result = 0;
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeInteger)) {
 			 			 
-			 //TODO: revist later
-			 DataInputBlobReader r = ((DataInputBlobReader)reader);
-			 DataInputBlobReader.position(r, 0);
-			 
+			 initPosition(reader);
+			 		 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if (!(0!=(1&nulls))) {
@@ -141,15 +139,46 @@ public class JSONFieldSchema implements JSONReader{
 		 
 		 return result;
 	 }
+
+	private void initPosition(ChannelReader reader) {
+		DataInputBlobReader r = ((DataInputBlobReader)reader);
+		 if(Integer.MIN_VALUE == initPos) {
+			 initPos = DataInputBlobReader.absolutePosition(r);
+		 } else {			 
+			 DataInputBlobReader.absolutePosition(r, initPos);
+		 }
+		 
+		 assert(isValid(reader));
+		 
+	}
 	 
-	 @Override
+	 private boolean isValid(ChannelReader reader) {
+		 try {
+			 long nullBits = reader.readPackedLong();
+		 
+		 } catch (Throwable t) {
+			 logger.info("Invalid data detected in ChannelReader");
+			 //unable to read so check if its text
+			 DataInputBlobReader reader2 = (DataInputBlobReader)reader;
+			 DataInputBlobReader.absolutePosition(reader2, initPos);
+			 
+			 try {
+				 String text = reader2.readUTFFully();
+				 logger.info("Instead of parsed binary data the ChannelReader was discoverd to hold this text:\n{}",text);
+			 } catch (Throwable tt) {				 
+			 }
+			 
+			 return false;
+		 }
+		 return true;
+	}
+
+	@Override
 	 public <A extends Appendable> A getText(byte[] field, ChannelReader reader, A target) {
 		 
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeString)) {
 			 			 
-			 //TODO: revist later
-			 DataInputBlobReader r = ((DataInputBlobReader)reader);
-			 DataInputBlobReader.position(r, 0);
+			 initPosition(reader);
 			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
@@ -182,6 +211,9 @@ public class JSONFieldSchema implements JSONReader{
 	 public boolean getBoolean(byte[] field, ChannelReader reader) {
 		 boolean result = false;
 		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeBoolean)) {
+			 
+			 initPosition(reader);
+			 
 			 nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if (!(0!=(1&nulls))) {
