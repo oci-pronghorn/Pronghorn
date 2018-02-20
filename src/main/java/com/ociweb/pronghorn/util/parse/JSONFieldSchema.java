@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -308,6 +309,24 @@ public class JSONFieldSchema implements JSONReader{
 
 	public void recordMaxPathLength(int length) {
 		maxPathLength = Math.max(maxPathLength, length);
+	}
+
+	@Override
+	public <A extends Appendable> A dump(ChannelReader reader, A out) {
+		final int initialPosition = reader.absolutePosition();
+		
+		long localNulls = reader.readPackedLong();
+		try {
+			out.append("Null map: ").append(Long.toBinaryString(localNulls)).append("\n");//. NOT CG free..
+		} catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+		for(int i = 0 ;i<mappings.length; i++) {
+			mappings[i].dump(reader, out);
+		}
+		
+		reader.absolutePosition(initialPosition);
+		return out;
 	}
 
 		

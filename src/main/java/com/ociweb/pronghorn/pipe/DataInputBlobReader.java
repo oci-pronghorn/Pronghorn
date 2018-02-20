@@ -233,10 +233,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         return length<0 ? null : this;
     }
    
+    @Override
     public int absolutePosition() {
     	return absolutePosition(this);
     }
     
+    @Override
     public void absolutePosition(int position) {
     	absolutePosition(this, position);
     }
