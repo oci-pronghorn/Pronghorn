@@ -144,7 +144,7 @@ public class JSONFieldSchema implements JSONReader{
 		DataInputBlobReader r = ((DataInputBlobReader)reader);
 		 if(Integer.MIN_VALUE == initPos) {
 			 initPos = DataInputBlobReader.absolutePosition(r);
-		 } else {			 
+		 } else {
 			 DataInputBlobReader.absolutePosition(r, initPos);
 		 }
 		 
@@ -153,23 +153,26 @@ public class JSONFieldSchema implements JSONReader{
 	}
 	 
 	 private boolean isValid(ChannelReader reader) {
+		 DataInputBlobReader reader2 = (DataInputBlobReader)reader;
+		 int initialPosition = reader.absolutePosition();
 		 try {
+			 
 			 long nullBits = reader.readPackedLong();
 		 
 		 } catch (Throwable t) {
 			 logger.info("Invalid data detected in ChannelReader");
 			 //unable to read so check if its text
-			 DataInputBlobReader reader2 = (DataInputBlobReader)reader;
-			 DataInputBlobReader.absolutePosition(reader2, initPos);
+			 DataInputBlobReader.absolutePosition(reader2, initialPosition);
 			 
 			 try {
 				 String text = reader2.readUTFFully();
 				 logger.info("Instead of parsed binary data the ChannelReader was discoverd to hold this text:\n{}",text);
 			 } catch (Throwable tt) {				 
 			 }
-			 
+			 DataInputBlobReader.absolutePosition(reader2, initialPosition);
 			 return false;
 		 }
+		 DataInputBlobReader.absolutePosition(reader2, initialPosition);
 		 return true;
 	}
 
