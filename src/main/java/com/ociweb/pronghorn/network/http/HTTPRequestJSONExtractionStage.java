@@ -60,8 +60,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);        	
 		        	int payloadOffset = inputStream.readFromEndLastInt(1);
-		        	assert(inputStream.absolutePosition()>=payloadOffset);
-		        	
+		        			        	
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(output);
 		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
 		    
@@ -98,8 +97,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);
 		        	int payloadOffset = inputStream.readFromEndLastInt(1);
-		        	assert(inputStream.absolutePosition()>=payloadOffset);
-		        	
+		        			        	
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(output);
 		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
 				    
