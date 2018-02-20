@@ -81,6 +81,5 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	
 	public abstract int absolutePosition();
 
-
-	
+	public abstract void absolutePosition(int i);
 }
