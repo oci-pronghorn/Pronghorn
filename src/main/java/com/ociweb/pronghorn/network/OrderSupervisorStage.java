@@ -238,25 +238,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				int expected = expectedSquenceNos[idx]; 
 				
 		        if (sequenceNo < expected) {
-		        	
-		        	assert(0==sequenceNo) : "Internal error request:"+sequenceNo+" expected:"+expected;
-		        		        			     			        	
-		            //this case happens upon disconnect / reconnect
-		        	//	        	
-		        	//sequenceNo 0 from request, with valid channelId x
-		        	//expected Z shows that we already got a call on channelId x
-		        	//if x got disconnected and re-used the expected will be up by one.
-		        	//
-		        	
-		        	//logger.info("WARNING: older response {} expected {}",
-		        	//		     sequenceNo, 
-		        	//		     expected);
-		        	
 		        	//moved up sequence number and continue
 		        	//rare case but we do not want to fail when it happens
+		        	//this is related to rapid requests from a client, like frequent 404s
 		        	expectedSquenceNos[idx] =  expected = sequenceNo;		        	
-	        	
-		        	
 		        } 
 		        
 		        if (expected==sequenceNo) {
