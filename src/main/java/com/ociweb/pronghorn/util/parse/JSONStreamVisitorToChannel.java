@@ -229,7 +229,8 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 	public void clear() {
 		int x = this.indexData.length;
 		while (--x >= 0) {
-			this.indexData[x][0] = 0; //TODO: not good enough??
+			Arrays.fill(this.indexData[x], 0);//is this required?
+			Arrays.fill(this.textLengths[x], 0);//is this required?
 		}	
 	}
 	
