@@ -255,6 +255,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	reader.position = reader.bytesLowBound+byteIndexFromStart;
     }
 
+    @Override
+    public int position() {
+    	return position - bytesLowBound;
+    }    
+    
     @Deprecated
     public void setPositionBytesFromStart(int byteIndexFromStart) {
         position(this, byteIndexFromStart);
