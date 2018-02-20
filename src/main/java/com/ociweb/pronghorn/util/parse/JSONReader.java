@@ -15,6 +15,7 @@ public interface JSONReader {
 	byte getDecimalPosition(byte[] field, ChannelReader reader);
 	<A extends Appendable> A dump(ChannelReader reader, A out);
 	
+	void clear();
 	
 	
 }
