@@ -356,11 +356,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					targetPipe = output[(int)cc.readDestinationRouteId()];					
 	
+					
+					
 					//append the new data
 					int meta = Pipe.takeRingByteMetaData(localInputPipe);
 					int len = Pipe.takeRingByteLen(localInputPipe);
 					int pos = Pipe.bytePosition(meta, localInputPipe, len);
 					int mask = Pipe.blobMask(localInputPipe);
+					
+					//TODO: can we do the JSON conversion here....???? Tippy?
 					
 					///////////////////////////////////
 					//logger.info("parse new data of {} for connection {}",len,cc.getId());
@@ -634,6 +638,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					case 2: //PAYLOAD READING WITH LENGTH
 							if (2==state) {
+								
+								//TODO: should we do the JSON Extraction here??
+								//      no we need to inject another stage between for that.
+								
 																
 								long lengthRemaining = payloadLengthData[i];
 																	

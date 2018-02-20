@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +35,16 @@ public class URLTemplateParser {
     	this.routerMap = routerMap;
     	this.trustText = trustText;
     	
+    }
+    
+    public void debugRouterMap(String name) {
+    	
+    	try {
+			routerMap.toDOTFile(File.createTempFile(name,".dot"));
+		} catch (IOException e) {
+			
+			
+		}
     }
 	
 	public static TrieParser buildRouteTemplateParser(TrieParser parser) {
@@ -69,14 +82,14 @@ public class URLTemplateParser {
 
 	//state needed in addRoute due to no lambdas here
 	private FieldExtractionDefinitions activeRouteDef;
-	private long activeRouteValue;
+	private long activePathId;
 	
 	private final EncodingTransform et = new EncodingTransform() {
 
 		@Override
 		public void transform(TrieParserReader templateParserReader,
 				DataOutputBlobWriter<RawDataSchema> outputStream) {
-			
+
 			activeRouteDef.setIndexCount(
 					convertEncoding(activeRouteDef.getRuntimeParser(), 
 							        templateParserReader, 
@@ -92,7 +105,7 @@ public class URLTemplateParser {
 		public void store(Pipe<RawDataSchema> pipe) {
 			//set full byte field in pipe to map with the key routeValue
 			//this is the converted to tri parser format text value
-			routerMap.setValue(pipe, activeRouteValue);
+			routerMap.setValue(pipe, activePathId);
 		}
 		
 	};
@@ -109,7 +122,7 @@ public class URLTemplateParser {
 		//convert public supported route format eg ${} and #{} into the 
 		//internal trie parser format, field names are extracted and added to lookup parser
 		////////////////////////////////////		
-		activeRouteValue = groupId;
+		activePathId = pathId;
 		activeRouteDef = new FieldExtractionDefinitions(trustText, groupId, pathId);		
 		converter.convert(path, et, es);
 				
@@ -180,7 +193,9 @@ public class URLTemplateParser {
 			}			
 		}
 		if (lastValue!=' ') {
-			outputStream.writeByte(' '); //ensure we always end with ' ' space
+			//ensure we always end with ' ' space because in the protocol we find a space
+			//after the path, this lets us match exactly what what requested.
+			outputStream.writeByte(' ');
 		}
 		
 		//inspect the converted value

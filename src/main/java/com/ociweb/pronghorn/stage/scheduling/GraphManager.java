@@ -569,7 +569,7 @@ public class GraphManager {
 			result = Arrays.copyOf(target, limit); //double the array
 			Arrays.fill(result, target.length, limit, -1);
 		}
-		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check:"+obj;
+		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check: "+obj;
 		
 		result[idx] = value;
 		return result;

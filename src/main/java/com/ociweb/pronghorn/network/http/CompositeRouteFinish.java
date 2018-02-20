@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.http;
 public interface CompositeRouteFinish {
 	
 	int routeId();
+	int routeId(boolean debug);
 	
 	CompositeRouteFinish defaultInteger(String key, long value);	
 	CompositeRouteFinish defaultText(String key, String value);

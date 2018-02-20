@@ -41,6 +41,10 @@ public class ClientConnection extends SSLConnection {
 	private long requestsSent;
 	private long responsesReceived;
 	
+	///////////////////////
+	//TODO: Store the JSON Extractor here so we can apply it when the results come in??
+	///////////////////////
+	
 	private final int sessionId;
 	private final String host;
 	private final int port;

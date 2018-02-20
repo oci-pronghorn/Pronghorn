@@ -667,7 +667,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
 	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
-
+    //the above URLS always end with a white space to ensure they match the spec.
     if (!catchAll && config.UNMAPPED_ROUTE == pathId) {
     	
 		//unsupported route path, send 404 error
