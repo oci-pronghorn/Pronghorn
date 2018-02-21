@@ -41,6 +41,12 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         };
     }
 
+    public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addRenderer(renderer, accessor);
+        this.childCompleted();
+        return owner;
+    }
+
     public P constantNull() {
         builder.addNull(iterator);
         this.childCompleted();
