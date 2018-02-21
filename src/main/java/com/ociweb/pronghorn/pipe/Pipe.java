@@ -703,6 +703,17 @@ public class Pipe<T extends MessageSchema<T>> {
 		//NOTE while replay is in effect the head can be moved by the other (writing) thread.
 	}
 
+	///////////
+	//support for adding indexes onto the end of the var len blob field
+	///////////
+	public static <S extends MessageSchema<S>> int blobIndexBasePosition(Pipe<S> rb) {
+		if (rb.maxVarLen<4) {
+			throw new UnsupportedOperationException("no var length for index");
+		}		
+		return rb.maxVarLen-4;
+	}
+	
+	
 	////
 	////
 	public static <S extends MessageSchema<S>> void batchAllReleases(Pipe<S> rb) {

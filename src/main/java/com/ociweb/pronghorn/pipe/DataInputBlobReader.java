@@ -82,36 +82,19 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     public int readFromEndLastInt(int negativeIntOffset) {
     	assert(negativeIntOffset>0) : "there is no data found at the end";
     	
-    	//NOTE: we ignore length of the data and always read from maxVarLen 
+    	int position = (bytesLowBound + Pipe.blobIndexBasePosition(pipe))-(4*negativeIntOffset);
+    	//logger.info("readFromEndLastInt pos {} ",position);
     	
-    	
-    	
-    	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
-
-//    	logger.info("backing len:{} low {} max {} off {} pos {}",backing.length,bytesLowBound,pipe.maxVarLen,(4*negativeIntOffset),position);
-    	
-//    	logger.info("reading int from position {} value {} from pipe {}",position,
-//    			(backing[byteMask & position]<<24) |
-//    			(backing[byteMask & (position+1)]<<16) |
-//    			(backing[byteMask & (position+2)]<<8) |
-//    			(backing[byteMask & (position+3)]),
-//    			getBackingPipe(this).id
-//    			);
-    	   	
-    	
-    	return ( ( (       backing[byteMask & position++]) << 24) |
+    	return ( ( ( backing[byteMask & position++]) << 24) |
 		 ( (0xFF & backing[byteMask & position++]) << 16) |
 		 ( (0xFF & backing[byteMask & position++]) << 8) |
 		   (0xFF & backing[byteMask & position++]) );
     }
-    
-    
+        
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
-		
-		//TODO: refactor, have the pipe keep 1 more index so we do not use maxvar but -1
-		//      this last value is the lenght of the data to be kept as indexes...
-		
-		final int copyLen = outputStream.remaining();		
+
+		final int copyLen = outputStream.remaining();	
+		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
 		DataOutputBlobWriter.copyBackData(outputStream, backing, end-copyLen, copyLen, byteMask);
 
@@ -252,7 +235,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     public static void position(DataInputBlobReader<?> reader, int byteIndexFromStart) {
-    	assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
+    	//assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
     	reader.position = reader.bytesLowBound+byteIndexFromStart;
     }

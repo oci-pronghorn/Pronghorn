@@ -23,6 +23,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     private int activePosition;
     private int lastPosition;
     private int backPosition;
+    
+    private int recTypeIndex = -1;
+    public static final int REC_TYPE_CHECK = (0xD03)<<20; //value 3331, 12 bits pushed up 
    	
 	private final RunningStdDev objectSizeData = new RunningStdDev();
 
@@ -83,9 +86,14 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writer.backingPipe.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
 		writer.startPosition = writer.activePosition = (writer.byteMask & workingBlobHeadPosition);
-        writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
-        writer.backPosition = writer.lastPosition;
+        //without any index we can write all the way up to maxVarLen;
+		writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
+        //with an index we are limited because room is saved for type data lookup.
+        writer.backPosition = writer.startPosition + Pipe.blobIndexBasePosition(writer.backingPipe);
+        //this is turned on when callers begin to add index data
         writer.keepIndexRoom = false;
+        //clear rec type
+        writer.recTypeIndex = -1;
         return writer;
 	}
     
@@ -112,11 +120,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     //used to write indexes to fields in order, requires that the fields are written in order
     //this also requires that we copy the full max data block but it may have empty space in the middle.
     public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
-    	    	
-    	int totalBytesWritten = dif(writer, writer.startPosition, writer.activePosition);
-    	int totalBytesIndexed = 4+dif(writer, writer.backPosition, writer.lastPosition);
     	
-    	if (totalBytesWritten+totalBytesIndexed < writer.getPipe().maxVarLen) {
+    	if (writer.position() < (writer.lastBackPositionOfIndex(writer)-4) ) {
+
      		writer.backPosition-=4;
      		
 //     		logger.info("writeIntBackData to index {} the value {} at position {} ",
@@ -149,21 +155,24 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     	}    	
     }
     
+    public static <T extends MessageSchema<T>> int lastBackPositionOfIndex(DataOutputBlobWriter<T> writer) {
+    	return writer.backPosition-writer.startPosition;
+    }
+
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	assert(pos>0) : "Can not write beyond the end.";
-    	assert(writer.lastPosition >= (4*pos)) : "last pos "+writer.lastPosition+" pos "+pos;
-    	
-    	//logger.info("writing int {} to position {} to pipe {} ",value, (writer.lastPosition-(4*pos)), writer.getPipe().id);
-    	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
+    	assert(Pipe.blobIndexBasePosition(writer.backingPipe) >= (4*pos));    	
+    	assert(Pipe.blobIndexBasePosition(writer.backingPipe) - (4*pos) > writer.position()) : "error index is writing over data";
+    	   	
+    	int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
+    	//logger.info("writing int {} to position {} to pipe {} ",value, base-(4*pos), writer.getPipe().id);
+		
+    	write32(writer.byteBuffer, writer.byteMask, base-(4*pos), value);       
     }
        
     public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {  	
     	writer.keepIndexRoom = true;
     }
-
-	public static <T extends MessageSchema<T>> int countOfBytesUsedByIndex(DataOutputBlobWriter<T> writer) {
-		return writer.lastPosition-writer.backPosition;
-	}
     
     public int closeHighLevelField(int targetFieldLoc) {
         return closeHighLevelField(this, targetFieldLoc);
@@ -206,12 +215,38 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     
+    //TODO: what if this id is passed in with the check sum already included?
+    private static <T extends MessageSchema<T>> void setRecordType(DataOutputBlobWriter<T> writer, int type) {
+        if (type>(1<<20)) {
+        	throw new UnsupportedOperationException("Can only support "+(1<<20)+" record types");
+        }
+        if (type<0) {
+        	throw new UnsupportedOperationException("Record id must be positive");
+        }
+    	writer.recTypeIndex = type;
+    }
+    
 	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
+		//NOTE: index data can only be used with the low level API at this time.
 		if (writer.keepIndexRoom) {
+			
+//			if (writer.recTypeIndex<0) {
+//				throw new UnsupportedOperationException("Before closing this field the record type must be set");
+//			}
+			
+			//we only support 2^20 record types, eg 1 million, the remaining 12 bits are reserved.
+			int recordTypeId = REC_TYPE_CHECK | writer.recTypeIndex; 
+			// 32-20 gives 12 bits or 4K
+			
+			write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-4, recordTypeId);		
+			
 			//write this field as length len but move head to the end of maxvarlen
 			writer.activePosition = writer.lastPosition;
 			Pipe.setBytesWorkingHead(writer.backingPipe, writer.activePosition & Pipe.BYTES_WRAP_MASK);			
+		    
+		    
+		
 		} else { 
 			//do not keep index just move forward by length size
 			Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
