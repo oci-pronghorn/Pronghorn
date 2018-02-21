@@ -952,17 +952,17 @@ public class Appendables {
 	public static void appendNearestTimeUnit(Appendable target, long nsValue) {
 		try {
 			if (nsValue<2_000) {
-				appendFixedDecimalDigits(target, nsValue, 1000).append("ns");
+				appendFixedDecimalDigits(target, nsValue, 1000).append(" ns");
 			} else if (nsValue<2_000_000){
-				appendFixedDecimalDigits(target, nsValue/1_000,1000).append("µs");
+				appendFixedDecimalDigits(target, nsValue/1_000,1000).append(" µs");
 			} else if (nsValue<2_000_000_000){
-				appendFixedDecimalDigits(target, nsValue/1_000_000,1000).append("ms");				
+				appendFixedDecimalDigits(target, nsValue/1_000_000,1000).append(" ms");				
 			} else if (nsValue<90_000_000_000L){
-				appendFixedDecimalDigits(target, nsValue/1_000_000_000L,100).append("sec");
+				appendFixedDecimalDigits(target, nsValue/1_000_000_000L,100).append(" sec");
 			} else if (nsValue<(120L*60_000_000_000L)){
-				appendFixedDecimalDigits(target, nsValue/60_000_000_000L,100).append("min");
+				appendFixedDecimalDigits(target, nsValue/60_000_000_000L,100).append(" min");
 			} else {
-				appendValue(target, nsValue/(60L*60_000_000_000L)).append("hr");
+				appendValue(target, nsValue/(60L*60_000_000_000L)).append(" hr");
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);
