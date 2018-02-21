@@ -39,6 +39,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     protected static final byte[] X_400                   = " 400 Bad Request\r\n".getBytes();
     protected static final byte[] Not_Found_404           = " 404 Not Found\r\n".getBytes();   
     protected static final byte[] X_500                   = " 500 OK\r\n".getBytes();
+    protected static final byte[] Service_Unavailable_503 = " 503 Service Unavailable\r\n".getBytes();
     
     protected static final byte[] SERVER = "Server: GreenLightning\r\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
     protected static final byte[] ETAG = "ETag: ".getBytes();
@@ -160,6 +161,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                     writer.write(X_400);
                 } else if (500==status) {
                     writer.write(X_500);
+                } else if (503==status) {
+                    writer.write(Service_Unavailable_503);
                 } else {
                     throw new UnsupportedOperationException("Unknwown status "+status);
                 }

@@ -53,7 +53,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 			@Override
 			public boolean sendError(int errorCode) {				
-				return HTTP1xRouterStage.this.sendError(activeChannel, idx, errorCode); 	
+				return HTTP1xRouterStage.this.sendError(activeChannel, idx-1, errorCode); 	
 			}
      	
      };
@@ -1129,7 +1129,8 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 			//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
 			//ALL OTHERS MUST RETURN INCOMPLETE
 			
-			if (writer.position()+DataOutputBlobWriter.countOfBytesUsedByIndex(writer) > writer.getPipe().maxVarLen) {
+			if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<writer.position()) {
+					
 				logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
 				requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 			} else if (postLength>0) {
@@ -1140,7 +1141,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 		   		//read data directly
 				final int writePosition = writer.position();  
 				
-				if (writePosition+postLength+DataOutputBlobWriter.countOfBytesUsedByIndex(writer) >writer.getPipe().maxVarLen) {
+				if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<(writePosition+postLength)) {
 					logger.warn("unable to take large post at this time");	
 					requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				}
@@ -1151,19 +1152,10 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 					requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				} else {	           			
 		   			if (writeIndex) {
-		   				//logger.info("write the position of the body");
+		   				//logger.info("write the position of the body to {} ",writePosition);
 		   				//NOTE: record position of the body in the new way, at beginning of the index
 		   				DataOutputBlobWriter.setIntBackData(writer, writePosition, 1);
 						
-//		   				//TODO: remove this someday.
-//		   				//NOTE: record position of the body in the old way, at the end of the index
-//						boolean ok = DataOutputBlobWriter.tryWriteIntBackData(writer, writePosition);
-//						assert(ok) : "the pipe is too small for the payload";
-//						if (!ok) {
-//							logger.warn("unable to take large post at this time");
-//							requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-//						
-//						}
 					}
 				}
 		   	}     
