@@ -263,7 +263,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 				totalBytes += readCount;						    		
 				//we read some data so send it		
 			
-				logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
+				//logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
 				
 				if (coordinator.isTLS) {
 					writeEncrypted(cc, target, readCount);

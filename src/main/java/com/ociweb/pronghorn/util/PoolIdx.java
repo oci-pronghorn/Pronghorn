@@ -120,7 +120,9 @@ public final class PoolIdx  {
     	
         int j = keys.length;
         int idx = -1;
-        //linear search for this key. TODO: if member array is bigger than 100 we should consider hashTable
+        
+        //linear search for this key. 
+        //TODO: if member array is bigger than 100 we should consider hashTable
         while (--j>=0) {
         	///////////
         	if (--rollingKey<0) { //ensure we continue from where we left off
@@ -131,6 +133,7 @@ public final class PoolIdx  {
         	
         	//found and returned member that matches key and was locked
             if (key == keys[temp] && 1 == locked[temp]) {
+            	
                 return temp;
             } else {
                 //this slot was not locked so remember it
@@ -141,6 +144,10 @@ public final class PoolIdx  {
             }
             
         }
+        //////////////////
+        rollingKey = idx; //this line allows for round robin behavior vs 
+                          //fill up the pipes if this line is not in place.
+        /////////////////
         return startNewLock(this, key, idx);
     }
 

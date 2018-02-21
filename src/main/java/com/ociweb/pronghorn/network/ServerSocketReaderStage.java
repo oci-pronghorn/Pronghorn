@@ -175,6 +175,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//logger.info("new request on connection {} ",channelId);
 		
 		SSLConnection cc = coordinator.connectionForSessionId(channelId);
+				
 		boolean processWork = true;
 		if (coordinator.isTLS) {
 				
@@ -202,7 +203,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			  // ServerCoordinator.acceptConnectionRespond = System.nanoTime();
 						
 				int responsePipeLineIdx = cc.getPoolReservation();
-				
+
 				final boolean newBeginning = (responsePipeLineIdx<0);
 						
 				if (newBeginning) {
@@ -227,12 +228,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					//logger.info("new beginning {}",responsePipeLineIdx);
 				
+//					logger.info("begin channel id {} pipe line idx {} out of {} ",
+//							channelId, 
+//							responsePipeLineIdx,
+//							output.length);
+					
 					
 				} else {
 					//logger.info("use existing return with {} is valid {} ",responsePipeLineIdx, cc.isValid);
 				}
 					
 				if (responsePipeLineIdx >= 0) {
+					
+			//		System.err.println(responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
 					
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, output[responsePipeLineIdx], newBeginning, cc, selection); 
 		            					
@@ -355,13 +363,14 @@ public class ServerSocketReaderStage extends PronghornStage {
     
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
-    public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
+    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
     	
         //keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
     	ByteBuffer[] b = null;
     	long temp = 0;
-        if (Pipe.hasRoomForWrite(targetPipe)) {          
+        if (Pipe.hasRoomForWrite(targetPipe)) { 
+        	//logger.info("write to "+targetPipe);
         	//logger.info("pump block for {} ",channelId);
             try {                
                 

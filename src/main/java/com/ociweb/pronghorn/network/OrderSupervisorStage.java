@@ -245,13 +245,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        } 
 		        
 		        if (expected==sequenceNo) {
-		        	logger.trace("found expected sequence {}",sequenceNo);
+		        	//logger.trace("found expected sequence {}",sequenceNo);
 		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
 		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 		        	} else {
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
 		        			//drop the data
-		        			logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
+		        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
 				        	continue;
 		        		}
@@ -287,7 +287,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		continue;
 		    	} else {	
-		    		assert(-1 == idx) : "unexpected value: "+idx;
+		    		assert(-1 == idx) : "unexpected value";
 		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
 		        	Pipe.releaseReadLock(sourcePipe);
 		        	

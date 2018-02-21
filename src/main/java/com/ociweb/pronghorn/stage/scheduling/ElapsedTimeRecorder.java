@@ -20,6 +20,8 @@ public class ElapsedTimeRecorder {
 	public <A extends Appendable> A report(A target) {
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .50f), " 50 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .80f), " 80 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .90f), " 90 percentile\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .95f), " 95 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .98f), " 98 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .99f), " 99 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .999f), " 99.9 percentile\n");
