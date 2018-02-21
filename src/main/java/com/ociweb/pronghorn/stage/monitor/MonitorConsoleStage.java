@@ -28,6 +28,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	private int[] percentileValues; 
 	private long[] trafficValues; 
 	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
+	
+	private final boolean writeToConsoleOnShutdown = false;	
 		
 	private Histogram[] hists;
 	private short[] pctFull;
@@ -180,10 +182,9 @@ public class MonitorConsoleStage extends PronghornStage {
 	public void shutdown() {
 		
 		//new Exception("SHUTDOWN MonitorConsoleStage ").printStackTrace();
+
 		
-		boolean writeToConsole = true;
-		
-		summarizeRuntime(writeToConsole, ValueType.Percentile96th);
+		summarizeRuntime(writeToConsoleOnShutdown, ValueType.Percentile96th);
 				
 		//Send in pipe depth data	
 		boolean writeImage = false;

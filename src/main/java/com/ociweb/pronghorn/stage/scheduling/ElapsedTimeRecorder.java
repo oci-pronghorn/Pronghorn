@@ -70,8 +70,9 @@ public class ElapsedTimeRecorder {
 	public void add(ElapsedTimeRecorder source) {
 		int i = buckets.length;
 		while (--i>=0) {
-			buckets[i] += source.buckets[i];
+			buckets[i] += source.buckets[i];			
 		}
+		totalCount += source.totalCount;
 		
 	}
 	
