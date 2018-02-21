@@ -24,3 +24,4 @@
 *.iml
 /UnitTest
 /.attach_pid*
+node_modules/
