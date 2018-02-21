@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.util.parse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Ignore;
+import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Test;
 
 import com.ociweb.json.JSONExtractor;
@@ -59,28 +59,26 @@ public class JSONParseTest {
 			.key("root").key("[]").key("[]").key("keya")
 			.completePath("a");
 
-//	//we do not yet have client side JSON reading.
-//	@Ignore
-//	public void testRestResponse() {
-//		RestResponse response = new RestResponse();
-//		response.setStatusMessage(RestResponse.OicStatusMessages.SVC_SUCCESS);
-//		StringBuilderWriter out = new StringBuilderWriter();
-//		response.writeToJSON(out);
-//
-//		String json = out.toString();
-//		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
-//
-//		Pipe<RawDataSchema> targetData = parseJSON(json, RestResponse.jsonExtractor);
-//		Pipe.takeMsgIdx(targetData);
-//		ChannelReader dataStream = Pipe.openInputStream(targetData);
-//		JSONReader reader = RestResponse.createReader();
-//		response.reset();
-//		response.readFromJSON(reader, dataStream);
-//
-//		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusCode(), response.getStatus());
-//		assertEquals(RestResponse.OicStatusMessages.SVC_SUCCESS.getStatusMessage(), response.getMessage());
-//	}
+	@Test
+	public void testEncodeThenDecode() {
+		JSONResponse obj = new JSONResponse();
+		obj.setStatusMessage(JSONResponse.StatusMessages.SUCCESS);
+		StringBuilderWriter out = new StringBuilderWriter();
+		obj.writeToJSON(out);
 
+		String json = out.toString();
+		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
+/*
+		Pipe<RawDataSchema> targetData = parseJSON(json, JSONResponse.jsonExtractor);
+		Pipe.takeMsgIdx(targetData);
+		ChannelReader dataStream = Pipe.openInputStream(targetData);
+		JSONReader reader = JSONResponse.createReader();
+		obj.reset();
+		obj.readFromJSON(reader, dataStream);
+
+		assertEquals(JSONResponse.StatusMessages.SUCCESS.getStatusCode(), obj.getStatus());
+		assertEquals(JSONResponse.StatusMessages.SUCCESS.getStatusMessage(), obj.getMessage());*/
+	}
 	
 	@Test
 	public void loadFor2D() {

@@ -4,7 +4,7 @@ package com.ociweb.json.encode.function;
 public interface ToNullableDecimalFunction<T> {
     //@FunctionalInterface
     interface Visit {
-        void visit(long m, byte e, boolean isNull);
+        void visit(double value, int precision, boolean isNull);
     }
     void applyAsDecimal(T o, Visit func);
 }

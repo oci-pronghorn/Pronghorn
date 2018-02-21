@@ -7,6 +7,7 @@ import com.ociweb.json.template.StringTemplateBuilder;
 import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.template.StringTemplateIterScript;
 import com.ociweb.json.template.StringTemplateScript;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
 class JSONBuilder<T> {
@@ -14,8 +15,9 @@ class JSONBuilder<T> {
     private final JSONKeywords kw;
     private final int depth;
     private final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+
+    // Do not store mutable state used by the scripts.
     private int objectElementIndex = 0;
-    // Make certain no mutable state is used during render!
 
     JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
         this.scripts = scripts;
@@ -23,7 +25,6 @@ class JSONBuilder<T> {
         this.depth = depth;
         StringTemplateBuilder<T> objNullBranch = new StringTemplateBuilder<>();
         kw.Null(objNullBranch);
-        objNullBranch.lock();
         nullableBranches[0] = objNullBranch;
     }
 
@@ -37,10 +38,13 @@ class JSONBuilder<T> {
 
     void complete() {
         kw.Complete(scripts, depth);
-        if (nullableBranches[1] != null) nullableBranches[1].lock();
         scripts.lock();
         nullableBranches[0] = null;
         nullableBranches[1] = null;
+    }
+
+    public boolean isLocked() {
+        return scripts.isLocked();
     }
 
     void render(AppendableByteWriter writer, T source) {
@@ -62,11 +66,35 @@ class JSONBuilder<T> {
         return this;
     }
 
+    // Renderer
+
+    <M> void addRenderer(final JSONRenderer<M> renderer, final ToMemberFunction<T, M> accessor) {
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void fetch(AppendableByteWriter appendable, T source) {
+                M member = accessor.apply(source);
+                if (member != null) {
+                    renderer.render(appendable, member);
+                }
+                else {
+                    kw.Null(appendable);
+                }
+            }
+        });
+    }
+
     // Object
 
     StringTemplateBuilder<T>  beginObject() {
         kw.OpenObj(scripts, depth);
         return scripts;
+    }
+
+    <M> StringTemplateBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
+        StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
+        kw.OpenObj(accessorBranch, depth);
+        scripts.add(accessorBranch, accessor);
+        return accessorBranch;
     }
 
     StringTemplateBuilder<T> beginObject(final ToBoolFunction<T> isNull) {
@@ -326,14 +354,14 @@ class JSONBuilder<T> {
 
     // TODO: support rational, decimal, and double
 
-    void addDecimal(final ToDecimalFunction<T> func) {
+    void addDecimal(final ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
+                func.applyAsDecimal(source, new ToDoubleFunction.Visit() {
                     @Override
-                    public void visit(long m, byte e) {
-                        Appendables.appendDecimalValue(writer, m, e);
+                    public void visit(double value, int precision) {
+                        Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
                     }
                 });
             }
@@ -346,11 +374,11 @@ class JSONBuilder<T> {
             public void fetch(final AppendableByteWriter writer, T source) {
                 func.applyAsDecimal(source, new ToNullableDecimalFunction.Visit() {
                     @Override
-                    public void visit(long m, byte e, boolean isNull) {
+                    public void visit(double value, int precision, boolean isNull) {
                         if (isNull) {
                             kw.Null(writer);
                         } else {
-                            Appendables.appendDecimalValue(writer, m, e);
+                            Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
                         }
                     }
                 });
@@ -358,7 +386,7 @@ class JSONBuilder<T> {
         });
     }
 
-    void addDecimal(ToDecimalFunction<T> func, JSONType encode) {
+    void addDecimal(ToDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;

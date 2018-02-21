@@ -4,7 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
+public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompositeOwner {
     private final JSONBuilder<T> builder;
     private final ArrayIteratorFunction<T, N> iterator;
     private final P owner;
@@ -18,41 +18,62 @@ public class JSONArray<T, P extends JSONComplete, N> implements JSONComplete {
     }
 
     @Override
-    public void complete() {
+    public void childCompleted() {
+        // Single child...
         builder.endArray();
-        owner.complete();
+        owner.childCompleted();
     }
 
     // TODO: all other element types
-    // TODO create an Array hosted version of JSONArray and JSONObject to pass index int[]
+    // TODO: use IterMemberFunction
+
+    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<M, P>(
+                builder.beginObject(accessor),
+                builder.getKeywords(), owner, depth + 1) {
+
+            public P endObject() {
+                builder.endObject();
+                builder.endArray();
+                owner.childCompleted();
+                return owner;
+            }
+        };
+    }
+
+    public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addRenderer(renderer, accessor);
+        this.childCompleted();
+        return owner;
+    }
 
     public P constantNull() {
         builder.addNull(iterator);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(IterLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(IterLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integerNull(IterNullableLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 }

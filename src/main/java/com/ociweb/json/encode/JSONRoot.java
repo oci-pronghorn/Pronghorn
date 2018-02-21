@@ -4,9 +4,9 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-// TODO: fix complete not laways getting called
+// TODO: fix complete not aways getting called
 
-public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
+public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     final JSONBuilder<T> builder;
     private final P owner;
     private final int depth;
@@ -26,7 +26,8 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
     }
 
     @Override
-    public void complete() {
+    public void childCompleted() {
+        // Single child...
         builder.complete();
     }
 
@@ -55,73 +56,73 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
     }
 
     public P empty() {
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P constantNull() {
         builder.addNull();
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P bool(ToBoolFunction<T> func) {
         builder.addBool(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P bool(ToBoolFunction<T> func, JSONType encode) {
         builder.addBool(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableBool(ToNullableBoolFunction<T> func) {
         builder.addBool(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableBool(ToNullableBoolFunction<T> func, JSONType encode) {
         builder.addBool(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(ToLongFunction<T> func) {
         builder.addInteger(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P integer(ToLongFunction<T> func, JSONType encode) {
         builder.addInteger(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableInteger(ToNullableLongFunction<T> func) {
         builder.addInteger(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableInteger(ToNullableLongFunction<T> func, JSONType encode) {
         builder.addInteger(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
-    public P decimal(ToDecimalFunction<T> func) {
+    public P decimal(ToDoubleFunction<T> func) {
         builder.addDecimal(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
-    public P decimal(ToDecimalFunction<T> func, JSONType encode) {
+    public P decimal(ToDoubleFunction<T> func, JSONType encode) {
         builder.addDecimal(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
@@ -132,31 +133,31 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONComplete {
 
     public P nullableDecimal(ToNullableDecimalFunction<T> func, JSONType encode) {
         builder.addDecimal(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P string(ToStringFunction<T> func) {
         builder.addString(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P string(ToStringFunction<T> func, JSONType encode) {
         builder.addString(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableString(ToStringFunction<T> func) {
         builder.addString(func);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 
     public P nullableString(ToStringFunction<T> func, JSONType encode) {
         builder.addString(func, encode);
-        this.complete();
+        this.childCompleted();
         return owner;
     }
 }

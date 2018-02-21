@@ -1,10 +1,10 @@
 package com.ociweb.json.encode.function;
 
 //@FunctionalInterface
-public interface ToDecimalFunction<T> {
+public interface ToDoubleFunction<T> {
     //@FunctionalInterface
     interface Visit {
-        void visit(long m, byte e);
+        void visit(double value, int precision);
     }
     void applyAsDecimal(T o, Visit func);
 }
