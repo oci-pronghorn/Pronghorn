@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -20,9 +23,9 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	private TrieParserReader reader;
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
+	
+	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
 		
-	
-	
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 
 											JSONExtractorCompleted extractor,
 											Pipe<HTTPRequestSchema> input,
@@ -52,17 +55,19 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		while (Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output) ) {
 			
 		    int msgIdx = Pipe.takeMsgIdx(input);
-		    Pipe.addMsgIdx(output, msgIdx);
+		   
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:
 		        {
-		        	Pipe.addLongValue(Pipe.takeLong(input), output); //channel
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //sequence
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //verb
+		        	long channelId = Pipe.takeLong(input);
+		        	int sequenceNum = Pipe.takeInt(input);
+		        	int verb = Pipe.takeInt(input);      	
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);        	
 		        	int payloadOffset = inputStream.readFromEndLastInt(1);
 		        			        	
+
+		        	
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(output);
 		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
 		    
@@ -70,36 +75,52 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	//outputStream is now positions as the target
 		        	reader.parseSetup(inputStream);
 		    		parser.parse(reader, extractor.trieParser(), visitor);
-		    		visitor.export(outputStream);		
 		    		
-		    		//moves the index data as is
-		        	inputStream.readFromEndInto(outputStream);
-		        	DataOutputBlobWriter.closeLowLevelField(outputStream);
-		        	
-		        	//TODO: can we add field name indexes beyond the existing??
-		        	//   we need to walk the JSON given the extractor
-		        	//   we need the position of the last index, so we need the full block.
-		        	
-		        	//TODO: first step is add api reqireing use to call 
-		        	//      for each field in order
-		        	
-		        	
-		        	
-		        	
-					Pipe.addIntValue(Pipe.takeInt(input), output); //revision
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //context
+		    		if (TrieParserReader.parseHasContent(reader)) {
+		    			logger.info("calls detected with {} bytes after JSON.",TrieParserReader.parseHasContentLength(reader));
+		    		}
+		    		
+		    		if (visitor.isReady() ) {
+		    			//parser wants more data or the data is not understood, eg broken
+		    			
+		    			//TODO: send 404
+		    			
+		    			
+		    		} else {
+			        	int size = Pipe.addMsgIdx(output, msgIdx);
+			        	Pipe.addLongValue(channelId, output); //channel
+			        	Pipe.addIntValue(sequenceNum, output); //sequence
+			        	Pipe.addIntValue(verb, output); //verb
+			        	
+		    			//parser is not "ready for data" and requires export to be called
+		    			visitor.export(outputStream);		
+		    			//moves the index data as is
+		    			inputStream.readFromEndInto(outputStream);
+		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
+		    			
+		    			Pipe.addIntValue(Pipe.takeInt(input), output); //revision
+		    			Pipe.addIntValue(Pipe.takeInt(input), output); //context
+		    													    
+					    Pipe.confirmLowLevelWrite(output,size);
+					    Pipe.publishWrites(output);
+		    		}
 		        }	
 				break;
 		        case HTTPRequestSchema.MSG_WEBSOCKETFRAME_100:
 		        {	
-		        	Pipe.addLongValue(Pipe.takeLong(input), output); //channel
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //sequence
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //FinOpp
-		        	Pipe.addIntValue(Pipe.takeInt(input), output); //Mask
+		        	long channelId = Pipe.takeLong(input);
+		        	int sequenceNum = Pipe.takeInt(input);
+		        	int finOpp = Pipe.takeInt(input);
+		        	int maskVal = Pipe.takeInt(input);
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);
 		        	int payloadOffset = inputStream.readFromEndLastInt(1);
 		        			        	
+		        	int size = Pipe.addMsgIdx(output, msgIdx);
+		        	Pipe.addLongValue(channelId, output); //channel
+		        	Pipe.addIntValue(sequenceNum, output); //sequence
+		        	Pipe.addIntValue(finOpp, output); //FinOpp
+		        	Pipe.addIntValue(maskVal, output); //Mask
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(output);
 		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
 				    
@@ -110,27 +131,30 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		//for each block? as it goes for post? TODO: do later...
 		    		parser.parse(reader, extractor.trieParser(), visitor);
 		        			    
+		    		if (visitor.isReady()) {
+		    			//needs more data.
+		    			
+		    		} else {	
+		    			
+		    		}
+		    		
 		    		//TODO: may need multiple of these for streaming..
 		    		visitor.export(outputStream);		
 		    		
 		    		//moves the index data as is
 		        	inputStream.readFromEndInto(outputStream); //TODO: only needed on first block
-		        	
+		        					    
+				    Pipe.confirmLowLevelWrite(output,size);
+				    Pipe.publishWrites(output);
 		        }
 		        break;
 		        case -1:
 		           requestShutdown();
 		        break;
 		    }
-		    int size = Pipe.sizeOf(HTTPRequestSchema.instance, msgIdx);
-		    
-		    Pipe.confirmLowLevelWrite(output,size);
-		    Pipe.publishWrites(output);
-		    
-		    Pipe.confirmLowLevelRead(input, size);
+		    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(HTTPRequestSchema.instance, msgIdx));
 		    Pipe.releaseReadLock(input);
-		    
-			
+		    			
 			
 		}
 		

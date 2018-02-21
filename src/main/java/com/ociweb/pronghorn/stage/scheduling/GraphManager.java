@@ -57,7 +57,7 @@ public class GraphManager {
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
 	
-	private static final double percentile = .999;
+	private static double percentile = .999; //used for elapsed time TODO: will use for CPU?
 	
 
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
@@ -65,6 +65,14 @@ public class GraphManager {
 	//must be set before graph starts and impacts the latency of the graph.dot calls
 	//this does NOT impact the data poll rate which is fixed at 160ms
 	public final static int TELEMTRY_SERVER_RATE = 160000000;//160ms 6.25fps
+	
+	
+	public static void setPercentile(double value) {
+		if (value>1) {
+			throw new UnsupportedOperationException("Must be value between 0 and 1");
+		}
+		percentile = value;
+	}
 	
     private class GraphManagerStageStateData {
     	
@@ -1648,18 +1656,7 @@ public class GraphManager {
 	                }
 	                
 	                if (recordElapsedTime) {
-	                	ElapsedTimeRecorder elapsed = m.stageElapsed[stage.stageId];
-	                	
-	                	///real time of elapsed?  need to add.
-	                	
-	                	long triggerLimitNS = 200_000; //200 µs
-	                		                	
-	                	long atPct = ElapsedTimeRecorder.elapsedAtPercentile(elapsed,(float)percentile);
-	                		                	
-                	    if (true || atPct > triggerLimitNS) {
-                	 		writeElapsed(target, atPct);
-	                		
-	                	}
+	                	writeElapsed(target, ElapsedTimeRecorder.elapsedAtPercentile(m.stageElapsed[stage.stageId],(float)percentile));
 	                }
 	                
 
