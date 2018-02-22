@@ -6,7 +6,7 @@ const ZOOM_DELTA = 20;
 //const ZOOM_DELTA = 200;
 //const ZOOM_FROM_CENTER = false;
 const ZOOM_FROM_CENTER = true;
-const ZOOM_MAX = 400;
+const ZOOM_MAX = 800;
 
 const speedMap = {
   'No refresh': 0,
@@ -82,6 +82,10 @@ function onMessage(message) {
   diagram.innerHTML = svgText;
   removeSvgSize(diagram);
 
+  // Display a scaled copy of the svg in the preview.
+  preview.innerHTML = svgText;
+  removeSvgSize(preview);
+
   // Make the preview have the same aspect ratio
   // as the svg that was loaded.
   svg = diagram.querySelector('svg');
@@ -91,17 +95,12 @@ function onMessage(message) {
   const newHeight = Math.ceil(previewRect.width / aspectRatio);
   setStyle(preview, 'height', px(newHeight));
 
-  // Make the viewport start at the same size as the preview.
-  setStyle(viewport, 'height', px(newHeight));
-  setStyle(viewport, 'width', px(previewRect.width - BW2));
-
-  // Display a scaled copy of the svg in the preview.
-  preview.innerHTML = svgText;
-  removeSvgSize(preview);
-
   if (firstTime) {
-    togglePreview();
     firstTime = false;
+
+    // Make the viewport start at the same size as the preview.
+    setStyle(viewport, 'height', px(newHeight));
+    setStyle(viewport, 'width', px(previewRect.width - BW2));
   }
 }
 
@@ -125,6 +124,8 @@ function onMouseDown(event) {
  * Resizes viewport to match window.
  */
 function onResize() {
+  if (!svgRect) return;
+
   const heightPercent = (window.innerHeight - navHeight) / svgRect.height;
   const widthPercent = window.innerWidth / svgRect.width;
 
@@ -155,6 +156,8 @@ function onResize() {
 }
 
 function onScroll() {
+  if (!svgRect) return;
+
   const diagramRect = diagram.getBoundingClientRect();
   const xPercent = -diagramRect.x / svgRect.width;
   const yPercent = (navHeight - diagramRect.y) / svgRect.height;
@@ -361,8 +364,8 @@ window.onload = () => {
   webworker.onmessage = onMessage;
   webworker.postMessage(DOT_URL);
 
-  setSpeed('No refresh');
-  //setSpeed('1 sec');
+  setSpeed('1 sec');
+  //setSpeed('No refresh');
 };
 
 window.onresize = onResize;

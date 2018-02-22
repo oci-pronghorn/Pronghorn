@@ -25,3 +25,4 @@
 /UnitTest
 /.attach_pid*
 node_modules/
+.DS_Store

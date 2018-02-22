@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>DOT Viewer</title>
+    <title>Telemetry</title>
     <meta charset="utf-8">
     <link rel="stylesheet" href="dot-viewer.css" />
     <script src="viz-lite.js"></script>
@@ -45,7 +45,11 @@
       <div id="exportItem">Export Flowmap</div>
       <div class="logoutItem">Log Out</div>
     </div>
-    <div id="diagram"></div>
+    <div id="diagram">
+      <div id="spinner-container">
+        <img id="spinner" src="images/spinner.gif" alt="spinner">
+      </div>
+    </div>
     <div id="preview"></div>
     <div id="viewport"></div>
   </body>
