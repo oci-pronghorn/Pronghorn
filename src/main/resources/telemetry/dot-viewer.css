@@ -110,6 +110,20 @@ nav > div {
   width: 94px;
 }
 
+#spinner {
+  display: inline-block;
+  height: 70px;
+  margin-top: 100px;
+  width: 70px;
+}
+
+#spinner-container {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  width: 100vw;
+}
+
 .title {
   color: white;
   font-size: 20px;
