@@ -649,7 +649,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		        	//the duration is too large vs period
 		        	// so either period is too small or duration is too large.
 		        	
-					GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now);        	
+					if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
+						if (lowLatencyEnforced) {
+							lowLatencyEnforced = false;
+							logger.warn("This platform is unable to run in low latency mode due to OS or hardware limitations. Parts of the graph have now been switched to high volume mode.");
+						}
+					}
+					
 				}
 		    } else {
 		    	break;

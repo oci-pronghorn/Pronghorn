@@ -85,7 +85,7 @@ public class GraphManager {
 		public final static byte STAGE_TERMINATED = 3;
 		
 	}
-	
+    
     //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns - this is the delay between calls regardless of how long call takes
 	                                                        //If dependable/regular clock is required run should not return and do it internally.
@@ -178,10 +178,18 @@ public class GraphManager {
 		}
 		
 	}
-    
   
-	//This object is shared with all clones
+	////////////////////////
+	
+	
+	
+	///////////////////////
+	
+  
+	//These objects should be shared with all clones
 	private final GraphManagerStageStateData stageStateData;
+	private final BStructSchema recordTypeData;
+	
 	
 	//add the nota to this list first so we have an Id associated with it
 	private Object[] notaIdToKey = new Object[INIT_STAGES];
@@ -211,10 +219,12 @@ public class GraphManager {
 		Arrays.fill(multNotaIds, -1);
 		
 		stageStateData = new GraphManagerStageStateData();
+		recordTypeData = new BStructSchema();
+		
 				
 	}
 	
-	private GraphManager(GraphManagerStageStateData parentStageStateData) {
+	private GraphManager(GraphManagerStageStateData parentStageStateData, BStructSchema parentRecordTypeData) {
 		Arrays.fill(ringIdToStages, -1);
 		Arrays.fill(stageIdToInputsBeginIdx, -1);
 		Arrays.fill(multInputIds, -1);
@@ -226,12 +236,13 @@ public class GraphManager {
 		
 		//enables single point of truth for the stages states, all clones  share this object
 		stageStateData = parentStageStateData;
+		recordTypeData = parentRecordTypeData;
 	}
 	
 	
 
 	public static GraphManager cloneAll(GraphManager m) {
-		GraphManager clone = new GraphManager(m.stageStateData);
+		GraphManager clone = new GraphManager(m.stageStateData, m.recordTypeData);
 		//register each stage
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
@@ -2326,18 +2337,22 @@ public class GraphManager {
     private static final int defaultDurationWhenZero = 1;
     private static AtomicInteger totalZeroDurations = new AtomicInteger();
      
-	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
+    //returns true when the run time was positive and > 0
+	public static boolean accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
 
-		//Does not track this data if it will no be used by telemetry
-		//this saves CPU cycles
-		if (isTelemetryEnabled(graphManager)) {
-			if (duration>0) {
+		if (duration>0) {
+			//Does not track this data if it will no be used by telemetry
+			//this saves CPU cycles
+			if (isTelemetryEnabled(graphManager)) {
 				accumPositiveTime(graphManager, stageId, duration, now);			
-			} else {				
+			}
+			return true;
+		} else {
+			if (isTelemetryEnabled(graphManager)) {
 				accumWhenZero(graphManager, stageId, duration);
 			}
+			return false;
 		}
-		
 	}
 
 	private static final long AVG_BITS = 12;
