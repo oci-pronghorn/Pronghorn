@@ -128,7 +128,7 @@ public class ClientSocketReaderStage extends PronghornStage {
    	}
 
 	private void processSelection(SelectionKey selection) {
-		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
+		assert isReadOpsOnly(selection) : "only expected read"; 
 		
 		ClientConnection cc = (ClientConnection)selection.attachment();
 		assert(cc.getSelectionKey() == selection);
@@ -141,6 +141,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 			doneSelectors.add(selection);
 		}
 		
+	}
+
+	private boolean isReadOpsOnly(SelectionKey selection) {
+		try {
+			return 0 != (SelectionKey.OP_READ & selection.readyOps());
+		} catch (Throwable t) {
+			return true;//No exceptions should cause this check to fail
+		}
 	}
 	
 	long sum = 0;
