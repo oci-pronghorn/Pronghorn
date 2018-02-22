@@ -158,6 +158,26 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     public static <T extends MessageSchema<T>> int lastBackPositionOfIndex(DataOutputBlobWriter<T> writer) {
     	return writer.backPosition-writer.startPosition;
     }
+    
+    public static <T extends MessageSchema<T>> boolean structTypeValidation(DataOutputBlobWriter<T> writer, int value) {
+    	int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
+    	
+        int old = ( ( (       writer.byteBuffer[writer.byteMask & base]) << 24) |
+                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+1)]) << 16) |
+                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+2)]) << 8) |
+                  (0xFF & writer.byteBuffer[writer.byteMask & (base+3)]) ); 
+        
+    	if (value!=old) {
+    		if (0==old) {
+    			write32(writer.byteBuffer, writer.byteMask, base, value);
+    		} else {
+    			throw new UnsupportedOperationException("Type mismatch found "+old+" expected "+value);
+    		}
+    		
+    	}
+    	return true;
+    }
+    
 
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	assert(pos>0) : "Can not write beyond the end.";
@@ -273,7 +293,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     @Override
-    public void setAbsolutePosition(int absolutePosition) {
+    public void absolutePosition(int absolutePosition) {
         activePosition = absolutePosition;
     }
 

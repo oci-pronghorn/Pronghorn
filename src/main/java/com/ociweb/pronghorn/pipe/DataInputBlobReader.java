@@ -80,16 +80,34 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     
     public int readFromEndLastInt(int negativeIntOffset) {
-    	assert(negativeIntOffset>0) : "there is no data found at the end";
+    	return readFromLastInt(this, negativeIntOffset);
+    }
+
+    public static boolean structTypeValidation(DataInputBlobReader<?> reader, int structId) {
+    	int position = (reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe));
     	
-    	int position = (bytesLowBound + Pipe.blobIndexBasePosition(pipe))-(4*negativeIntOffset);
+    	int old = ( ( ( reader.backing[reader.byteMask & position++]) << 24) |
+    			 ( (0xFF & reader.backing[reader.byteMask & position++]) << 16) |
+    			 ( (0xFF & reader.backing[reader.byteMask & position++]) << 8) |
+    			   (0xFF & reader.backing[reader.byteMask & position++]) );
+    	if (old!=structId) {
+    		throw new UnsupportedOperationException("Type mismatch");
+    	}
+    	
+    	return true;
+    }
+    
+	public static int readFromLastInt(DataInputBlobReader<?> reader, int negativeIntOffset) {
+		assert(negativeIntOffset>0) : "there is no data found at the end";
+    	
+    	int position = (reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*negativeIntOffset);
     	//logger.info("readFromEndLastInt pos {} ",position);
     	
-    	return ( ( ( backing[byteMask & position++]) << 24) |
-		 ( (0xFF & backing[byteMask & position++]) << 16) |
-		 ( (0xFF & backing[byteMask & position++]) << 8) |
-		   (0xFF & backing[byteMask & position++]) );
-    }
+    	return ( ( ( reader.backing[reader.byteMask & position++]) << 24) |
+		 ( (0xFF & reader.backing[reader.byteMask & position++]) << 16) |
+		 ( (0xFF & reader.backing[reader.byteMask & position++]) << 8) |
+		   (0xFF & reader.backing[reader.byteMask & position++]) );
+	}
         
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
 

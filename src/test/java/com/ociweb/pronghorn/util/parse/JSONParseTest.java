@@ -179,8 +179,7 @@ public class JSONParseTest {
 					
 			assertEquals(5, dataStream.readPackedInt());
 			assertEquals(1, dataStream.readPackedLong());
-			assertEquals(0, dataStream.readPackedLong());
-			assertTrue(dataStream.wasPackedNull());
+			assertEquals(0, dataStream.readPackedLong()); assertTrue(dataStream.wasPackedNull());
 			assertEquals(3, dataStream.readPackedLong());
 			assertEquals(4, dataStream.readPackedLong());
 			assertEquals(5, dataStream.readPackedLong());
