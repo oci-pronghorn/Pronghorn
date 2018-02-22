@@ -67,9 +67,12 @@ nav > div {
 }
 
 #preview {
+  background-color: white;
   border: solid #72C7D5 2px;
   border-radius: 4px;
   left: 10px;
+  max-height: calc(100vh - 120px);
+  max-width: calc(100vw - 20px);
   position: fixed;
   top: 108px;
   visibility: hidden;

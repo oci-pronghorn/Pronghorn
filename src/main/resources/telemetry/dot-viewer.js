@@ -82,6 +82,10 @@ function onMessage(message) {
   diagram.innerHTML = svgText;
   removeSvgSize(diagram);
 
+  // Display a scaled copy of the svg in the preview.
+  preview.innerHTML = svgText;
+  removeSvgSize(preview);
+
   // Make the preview have the same aspect ratio
   // as the svg that was loaded.
   svg = diagram.querySelector('svg');
@@ -90,10 +94,6 @@ function onMessage(message) {
   const previewRect = preview.getBoundingClientRect();
   const newHeight = Math.ceil(previewRect.width / aspectRatio);
   setStyle(preview, 'height', px(newHeight));
-
-  // Display a scaled copy of the svg in the preview.
-  preview.innerHTML = svgText;
-  removeSvgSize(preview);
 
   if (firstTime) {
     firstTime = false;
