@@ -98,8 +98,6 @@ function onMessage(message) {
   if (firstTime) {
     firstTime = false;
 
-    togglePreview(); // start with preview visible
-
     // Make the viewport start at the same size as the preview.
     setStyle(viewport, 'height', px(newHeight));
     setStyle(viewport, 'width', px(previewRect.width - BW2));
