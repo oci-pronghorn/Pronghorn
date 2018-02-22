@@ -651,10 +651,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 								if (lengthRemaining>0 && trieReader.sourceLen>0) {
 													
-									int usedByIndex = DataOutputBlobWriter.countOfBytesUsedByIndex(writer2);
 									//length is not written since this may accumulate and the full field provides the length
 									final int consumed = TrieParserReader.parseCopy(trieReader,
-											                          Math.min(lengthRemaining,targetPipe.maxVarLen-usedByIndex),
+											                          Math.min(lengthRemaining,
+											                        		   DataOutputBlobWriter.lastBackPositionOfIndex(writer2)),
 											                          writer2);
 									lengthRemaining -= consumed;
 									
@@ -832,7 +832,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 										
 										//ensure we do not override the indexes
-										if ((writer3.length() + chunkRemaining + DataOutputBlobWriter.countOfBytesUsedByIndex(writer3)) >= targetPipe.maxVarLen) {
+										if ((DataOutputBlobWriter.lastBackPositionOfIndex(writer3)-(writer3.length() + chunkRemaining))>0) {
+								
 											if (writeIndex) {
 												DataOutputBlobWriter.commitBackData(writer3);
 											}
