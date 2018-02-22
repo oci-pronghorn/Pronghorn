@@ -28,6 +28,7 @@ import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -1086,9 +1087,21 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				 
 	}
 
+	private BloomFilter filter;
+	
 	private void reportUnsupportedHeader(int len) {
 		StringBuilder headerName = new StringBuilder();					
 		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, headerName); //in TRIE if we have any exact matches that run short must no pick anything.
+		
+		if (null==filter) {
+			filter = new BloomFilter(10000, .00001); //32K
+		}
+		
+		if (filter.mayContain(headerName)) {
+			return;//do not report since we have already done so or we are overloaded with noise
+		} else {
+			filter.addValue(headerName);
+		}
 		
 		StringBuilder headerValue = new StringBuilder();					
 		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 1, headerValue); //in TRIE if we have any exact matches that run short must no pick anything.
