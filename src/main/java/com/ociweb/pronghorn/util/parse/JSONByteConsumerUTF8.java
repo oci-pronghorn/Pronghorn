@@ -52,9 +52,6 @@ public class JSONByteConsumerUTF8 implements ByteConsumer {
 		utf8Length = (utf8Length+len);
 		int[] idx = indexData[activeIndex]; 
 		int newPos = idx[0];//bytes count used first
-
-		StringBuilder builder = Appendables.appendUTF8(new StringBuilder(), backing, pos, len, mask);
-		//logger.info("to pos {} consumed data {} ", newPos, builder);
 		
 		byte[] data = targetByteArray(newPos, newPos+len);
 		Pipe.copyBytesFromToRing(backing, pos, mask, 

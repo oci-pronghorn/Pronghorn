@@ -65,12 +65,13 @@ public class LongHashTable {
 	
 	public static int getItem(LongHashTable ht, long key) {
 
-		int mask = ht.mask;
-		int hash = MurmurHash.hash64finalizer(key);
+		int mask = ht.mask;		
+		long[] localKeys = ht.keys;
 		
-		long keyAtIdx = ht.keys[hash&mask];
+		int hash = MurmurHash.hash64finalizer(key);
+		long keyAtIdx = localKeys[hash&mask];
 		while (keyAtIdx != key && keyAtIdx != 0) { 			
-			keyAtIdx = ht.keys[++hash&mask];
+			keyAtIdx = localKeys[++hash&mask];
 		}
 		
 		return ht.values[hash&mask];
@@ -79,12 +80,13 @@ public class LongHashTable {
 	public static boolean hasItem(LongHashTable ht, long key) {
 
 		int mask = ht.mask;
+		long[] localKeys = ht.keys;
 		
 		int hash = MurmurHash.hash64finalizer(key);
 		
-		long keyAtIdx = ht.keys[hash&mask];
+		long keyAtIdx = localKeys[hash&mask];
 		while (keyAtIdx != key && keyAtIdx != 0) { 			
-			keyAtIdx = ht.keys[++hash&mask];
+			keyAtIdx = localKeys[++hash&mask];
 		}
 				
 		return 0 != keyAtIdx;

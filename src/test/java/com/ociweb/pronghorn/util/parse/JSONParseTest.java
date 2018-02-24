@@ -3,6 +3,8 @@ package com.ociweb.pronghorn.util.parse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Ignore;
+
 import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Test;
 
@@ -51,7 +53,7 @@ public class JSONParseTest {
 			.key("root").key("[]").key("keya")
 			.completePath("a");
 	
-	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor(true)
+	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor(false)
 			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 			.key("root").key("[]").key("[]").key("keyb")
 			.completePath("b")
@@ -80,9 +82,10 @@ public class JSONParseTest {
 		assertEquals(JSONResponse.StatusMessages.SUCCESS.getStatusMessage(), obj.getMessage());*/
 	}
 	
-	@Test
+	@Ignore
+	@Test //can do 150K per second
 	public void loadFor2D() {
-		parseJSONLoad(simple2DArrayExample, simple2DArrayExtractor);
+		parseJSONLoad(1500_000, simple2DArrayExample, simple2DArrayExtractor);
 		assert(true);
 	}
 	
@@ -504,7 +507,9 @@ public class JSONParseTest {
 	}
 
 	
-	private void parseJSONLoad(String sourceData, JSONExtractorCompleted extractor) {
+	private void parseJSONLoad(int i,
+			                   String sourceData,
+			                   JSONExtractorCompleted extractor) {
 
 		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
@@ -522,7 +527,9 @@ public class JSONParseTest {
 		/////////////////
 		/////////////////
 		
-		int i = 100_000;
+		JSONStreamVisitorToChannel visitor = extractor.newJSONVisitor();
+		byte[] sourceBytes = sourceData.getBytes();
+		
 		while (--i>=0) {
 			
 			/////////////
@@ -531,7 +538,7 @@ public class JSONParseTest {
 			
 			assertTrue("content size "+Pipe.contentRemaining(testInputData),Pipe.contentRemaining(testInputData)==0);
 			int size = Pipe.addMsgIdx(testInputData, 0);
-			Pipe.addUTF8(sourceData, testInputData);
+			Pipe.addByteArray(sourceBytes, testInputData);
 			Pipe.confirmLowLevelWrite(testInputData, size);
 			Pipe.publishWrites(testInputData);				
 			////
@@ -544,7 +551,6 @@ public class JSONParseTest {
 			TrieParserReader.parseSetup(reader ,testInputData); 
 	
 			//parse data data		
-			JSONStreamVisitorToChannel visitor = extractor.newJSONVisitor();
 			parser.parse( reader,
 					      extractor.trieParser(), 
 					      visitor);

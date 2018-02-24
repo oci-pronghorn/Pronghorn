@@ -75,8 +75,6 @@ public class JSONStreamParser {
 		}
 		populateWithJSONTokens(trie);
 		
-		trie.enableCache(true);
-			
 		return trie;
 	}
 
@@ -127,8 +125,6 @@ public class JSONStreamParser {
 	    	TrieParser trie = new TrieParser(256,1,false,true);
 
 			populateWithJSONTokens(trie);
-			
-			trie.enableCache(true);
 			
 			return trie;
 	}

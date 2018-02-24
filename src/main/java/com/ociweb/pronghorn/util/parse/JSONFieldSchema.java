@@ -244,8 +244,7 @@ public class JSONFieldSchema implements JSONReader{
 		 
 		 parser = new TrieParser(256,2,false,true);
 		 JSONStreamParser.populateWithJSONTokens(parser);
-		 parser.enableCache(true);
-
+	
  		 parserReader = new TrieParserReader(maxFields, completeFields);
 		 
 	 }
@@ -283,13 +282,13 @@ public class JSONFieldSchema implements JSONReader{
 			 idx = ++totalCount;
 			 
 			 int hashVal = JSONStreamParser.toValue((int)idx);
-			 parser.enableCache(false);
+			
 			 parser.setUTF8Value(text, hashVal);
 			 
 			 //This pattern may cause an alt check of string capture
 			 //NOTE: this is only true for the keys
 			 parser.setUTF8Value("\"", text, "\"", hashVal);
-			 parser.enableCache(true);
+		
 			 //logger.info("added token {} with value {} to parser", value, hashVal);
 			 
 		 } else {

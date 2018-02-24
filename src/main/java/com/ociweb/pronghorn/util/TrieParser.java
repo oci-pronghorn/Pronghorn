@@ -109,11 +109,7 @@ public class TrieParser implements Serializable {
     private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(2,MAX_TEXT_LENGTH);
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
-    
-    private IntHashTable jumpCache = new IntHashTable(10);
-    
-    private boolean jumpCachedEnabled = false;
-    
+
     private final static int MAX_ALT_DEPTH = 128;
     private int altStackPos = 0;
     private int[] altStackA = new int[MAX_ALT_DEPTH];
@@ -128,19 +124,6 @@ public class TrieParser implements Serializable {
     public byte[] lastSetValueExtractonPattern() {
     	return Arrays.copyOfRange(extractions, 0, extractionCount);
     }    
-    
-    public void storeCachedJump(int key, int value) {
-    	IntHashTable.setItem(jumpCache, key, value);
-    }
-    
-    public int cachedJump(int key) {
-    	return jumpCachedEnabled ? IntHashTable.getItem(jumpCache, key) : 0;
-    }
-    
-    public void enableCache(boolean value) {
-    	jumpCachedEnabled = value;
-    	IntHashTable.clear(jumpCache);
-    }
     
     public int lastSetValueExtractionCount() {
     	return extractionCount;
@@ -336,12 +319,10 @@ public class TrieParser implements Serializable {
 
     
     public <A extends Appendable> A toDOT(A builder) {
-    	
+    
     	try{    	
     		//builder.append("# dot -Tsvg -otemp.svg temp.dot\n");
 	    	builder.append("digraph {\n");    	
-	    	
-	    	
 	    	
 	        int i = 0;
 	        while (i<limit) {
@@ -711,10 +692,7 @@ public class TrieParser implements Serializable {
     }
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
-
-    	if (jumpCachedEnabled) {
-    		throw new UnsupportedOperationException("Cache can not be on while mutating");    		
-    	}
+ 
     	extractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
@@ -931,7 +909,7 @@ public class TrieParser implements Serializable {
                             return;
                         }
                     default:
-                        System.out.println(this);
+                    	logger.info("unknown op {}",this);
                         throw new UnsupportedOperationException("unknown op "+type+" at "+(pos-1));
                 }
                
@@ -1444,7 +1422,7 @@ public class TrieParser implements Serializable {
                     i += SIZE_OF_END_1;
                     break;
                 default:
-                    System.out.println(this);
+                	logger.info("unknown op {}",this);
                     throw new UnsupportedOperationException("ERROR Unrecognized value "+data[i]+" at "+i);
             }            
         }

@@ -158,7 +158,9 @@ public class TrieParserTest {
 		map.setUTF8Value("B%i%.", 5); //more common case
 		
 		assertEquals(2, reader.query(map, test));
+		
 		assertEquals(3, reader.query(map, test1));
+		
 		assertEquals(1234, reader.capturedLongField(reader, 0));		
 		assertEquals(4, reader.query(map, test2));
 		assertEquals(1234, reader.capturedLongField(reader, 0));
@@ -303,7 +305,6 @@ y.openLowLevelAPIField();
 		reader.query(map, test); //query holds most recent thing (printing query call to console gives number matched).
 		
 		x = TrieParserReader.capturedFieldBytesAsUTF8Debug(reader,0, x);
-		//System.out.println(x.toString());
 		String y = x.toString().trim(); //y = abcd1234 with garbage vals
 		assertEquals(10,x.indexOf((String) test) );  //actual value starts after 10 garbage vals
 		assertTrue(x.length()>=test.length()+10 ); //only captures first 10 garbage values for some reason
@@ -418,8 +419,6 @@ assertEquals(val1,12);
 		
 			DataInputBlobReader y = Pipe.inputStream(pipe);
 	y.openLowLevelAPIField();
-	StringBuilder str = new StringBuilder();
-	//System.out.println(y.readLine());
 	//2nd value has length of captured field.
 	byte[] vals = new byte[2];
 	y.read(vals);
@@ -448,11 +447,9 @@ assertEquals(val1,12);
 //get output from system.err console and save as string
 		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
 		PrintStream PS = new PrintStream(bytestream);
-		PrintStream old = System.out;
 
 		System.setErr(PS);
 		reader.debug();
-		//System.out.println( bytestream.toString());
 
 		String result = bytestream.toString();
 		//regex to parse the int values from debugger to check that they are correct. could prob be simpler.
@@ -464,8 +461,7 @@ assertEquals(val1,12);
 		// n[i] = Integer.parseInt(m.group(i++));
 			result_string += m.group();
 		}
-		//System.out.println(result_string);
-		
+
 		assertEquals(result_string.charAt(0),'0'); //compare 'pos'
 		assertEquals(result_string.charAt(1),'0'); //mask
 		assertEquals(result_string.charAt(3),'7'); //
@@ -482,17 +478,13 @@ assertEquals(val1,12);
 		
 		map.setUTF8Value("12%b12", 33);
 	
-		
-		
 		CharSequence test = "12abcd12";
 		TrieParserReader.parseSetup(reader, "12abcd12".getBytes(),0,8,7);
+		StringBuilder target = new StringBuilder();
+		int result = TrieParserReader.debugAsUTF8(reader, target);
 		long val = reader.query(map, test);
-		StringBuilder str = new StringBuilder();
-
-		int result = reader.debugAsUTF8(reader, str);
 	
-		//System.out.println(result);
-		assertEquals(result,8);
+		assertEquals("12abcd12",target.toString());
 		
 	}
 	
@@ -503,9 +495,7 @@ assertEquals(val1,12);
 		TrieParser map = new TrieParser(16);
 		
 		map.setUTF8Value("12%b12", 33);
-	
-		
-		
+				
 		CharSequence test = "12abcd12";
 		TrieParserReader.parseSetup(reader, "12abcd12".getBytes(),0,8,7);
 		long val = reader.query(map, test);
@@ -513,13 +503,9 @@ assertEquals(val1,12);
 		pipe.initBuffers();
 		
 		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-		DataOutputBlobWriter x =Pipe.outputStream(pipe);
+		DataOutputBlobWriter x = Pipe.outputStream(pipe);
 		DataOutputBlobWriter.openField(x);
-		
-	
 		reader.parseGather(reader, x,(byte) 'd'); // so will give 5. 5 bytes until d is hit. if i put 'c' will return length of 4.
-	//System.out.println(reader.sourcePos);
-		
 		x.closeLowLevelField();
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
@@ -536,7 +522,7 @@ y.readUTFOfLength(y.available(), str);
 //dont understand what this parseGather() is supposed to do.
 reader.parseGather( reader, (byte) 'd');
 //just changes sourcePos? but this shouldne be 22 if my sixe of source array is only like 8
-//System.out.println(reader.sourcePos);
+
 assertEquals(str.length(),5);
 assertEquals(str.toString(),"12abc");
 assertEquals(22,reader.sourcePos);
@@ -669,7 +655,6 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 		CharSequence x = "12abcde";
 		reader.query(map,x); //will change position
 	
-		//System.out.println();
 		//to check that sourcePos is not already 0(for test below).
 		assertEquals(reader.sourcePos,14);
 		//will move  sourcePos by 1.
@@ -696,11 +681,10 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
        // byte[] source, int sourcePos, long sourceLength, int sourceMask, 
         //final long unfoundResult) {
 	long no_val = TrieParserReader.query(reader,map, "NoMatchonlong".getBytes(),0,"No Match on long test.".length(),15,-1);	
-		//System.out.println("NOVAL " + no_val);
+
 		CharSequence test = "12abcd12";
 		
 		long val = reader.query(map, test);
-		//System.out.println(val);
 		
 		//below is testing cs.length()> reader.workingPipe.maxVarLen in Query() mthod
 		StringBuilder maxlengthtest = new StringBuilder();
@@ -725,10 +709,7 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 		ChannelWriter x = reader.blobQueryPrep(reader);
 		x.append(test); 
 	long yy = reader.blobQuery(reader, map);
-	
-	//System.out.println(x.length());
 
-		//System.out.println(yy);
 		x.close();
 
 assertEquals(yy,33); //blobquery will return the mapping of the charsequence in the map
@@ -1038,11 +1019,8 @@ y.readUTFOfLength(y.available(), str);
 		map.setValue(wrapping(dataBytesExtractStart,4), 0, dataBytesExtractStart.length, 15, value2);  //{'%','b',127,100,101,102}; //def
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		//map.toDOT(System.out);
-
 		map.setValue(wrapping(dataBytesExtractStart2,4), 0, dataBytesExtractStart2.length, 15, value4);//{'%','b',127,102,101,102}; //fef
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
-		//map.toDOT(System.out);
 
 		map.setValue(wrapping(dataBytesExtractStart3,4), 0, dataBytesExtractStart3.length, 15, value1);//{'%','b',125,100,101,102};
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
@@ -1580,9 +1558,6 @@ y.readUTFOfLength(y.available(), str);
 		map.setUTF8Value("bb\n",    value3);     
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
-
-		//System.out.println(map.toString()); //TODO: WARN the bb and ab should have come first and wrapped the others? OR alt branch should not insert first.
-
 	}
 
 	@Test
@@ -2091,7 +2066,6 @@ y.readUTFOfLength(y.available(), str);
 
 
 		//////////////////////////////////////TESTING DUMP
-		//System.out.println(map);
 		//THESE TWO PROBLEMS ARE THE PRIMARY CAAUSE OF OUR SLOWDOWNS.
 		//An ALT_BRANCH happens at the front due to immmediage %d capture
 		//An ALT_BRANCH also happens due to both \n and \r\n endings 
@@ -2183,13 +2157,8 @@ y.readUTFOfLength(y.available(), str);
 		map.setValue(wrapping(data1,3), 0, 3, 7,  value2);    // 101,102,103
 		map.setValue(wrapping(data1,3), 0, 8, 7,  value1);    // 101,102,103,104,105,106,107,108    
 
-		//System.out.println(map.toDOT(new StringBuilder()));
-
 		map.setValue(wrapping(data2,3),  1, 7, 7, value1);    // 107,108,109,110,111,112,113
 		map.setValue(wrapping(data3,3),  1, 7, 7, value2);    // 107,108,109,120,121,122,123
-
-		//System.out.println(map.toDOT(new StringBuilder()));
-
 
 		map.setValue(wrapping(data2b,3), 1, 7, 7, value3);    // 107,108,109,110,111,118,119
 		map.setValue(wrapping(data3b,3), 1, 7, 7, value4);    // 107,108,109,120,121,(byte)128,(byte)129
@@ -2385,8 +2354,6 @@ y.readUTFOfLength(y.available(), str);
 		byte[] realWorldSource ="RT @CITmagazine: From #CITAList today is Katherine Bell, CWT Meetings & Events: https://t.co/UYkOLYKkBE  #eventprofs @CWT_UKI @CWT_ME https… ".getBytes();
 		//  byte[] realWorldSource = "Antisocial Social Worker tweeting Freudian scripts...... Favs:https://t.co/6OWZw8D6CV Recents: https://t.co/zC4BYUhsR0 #EnvyDaStrength ".getBytes();
 
-		//System.out.println("TRIE: \n"+trie);
-
 		TrieParserReader.parseSetup(reader, wrapping(realWorldSource,10), 0, realWorldSource.length, 1023);
 		while (TrieParserReader.parseHasContent(reader)) {
 			int token = (int) TrieParserReader.parseNext(reader, trie);
@@ -2434,7 +2401,7 @@ y.readUTFOfLength(y.available(), str);
 		parser.setUTF8Value("%\"b&", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%&
 		parser.setUTF8Value("%\"b", TrieParser.ESCAPE_CMD_RATIONAL);   //%i%/
 
-		//	parser.toDOT(System.out);
+		//	parser.toDOT();
 
 		findShortText(parser, reader, "$hello?", TrieParser.ESCAPE_CMD_BYTES);
 		findShortText(parser, reader, "$hello/", TrieParser.ESCAPE_CMD_BYTES);
@@ -2484,8 +2451,6 @@ y.readUTFOfLength(y.available(), str);
 
 		parser.setUTF8Value("$%b&", TrieParser.ESCAPE_CMD_BYTES);
 		assertFalse(parser.toString(),parser.toString().contains("ERROR"));
-
-		parser.toDOT(System.out);
 
 		//for every non match just consume the char and move to the next		
 
@@ -2600,7 +2565,7 @@ y.readUTFOfLength(y.available(), str);
 //VALUE1 = 10           //offset 2 len 3
 		reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-		//System.out.println("vistor.toString(): " + visitor.toString());
+		
 		assertEquals("", visitor.toString()); 
 	}
 
@@ -2618,10 +2583,6 @@ y.readUTFOfLength(y.available(), str);
 
 		map.setValue(data_cat_p_b, 0, data_cat_p_b.length, 7, value9);
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
-
-		//System.out.println(map.toString());
-		//System.out.println(map.toDOT(new StringBuilder()).toString());
-
 
 		reader.visit(map, visitor,data_catalog, 0, data_catalog.length, 7);
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
@@ -2948,14 +2909,14 @@ y.readUTFOfLength(y.available(), str);
 //this one fails, other does not. let me see
 		byte[] text1 = "Hello: 123\r".getBytes();
 		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
-		//System.out.println("visitor.toString() : " + visitor.toString());
+
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("23", visitor.toString());//23 for sequential case  . should map to 23.
 		visitor.clearResult();
-//System.out.println("**");
+
 		byte[] text2 = "Hello: 123\r\n".getBytes();
 		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
-		//System.out.println("visitor.toString() : " + visitor.toString());
+
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("35", visitor.toString());
 		visitor.clearResult();
@@ -2998,18 +2959,13 @@ y.readUTFOfLength(y.available(), str);
 		map.setUTF8Value("/%b", value3); 
 		//adding my own test to verify.
 		map.setUTF8Value("/thisisatest", 50);
-		
-		//map.toDOT(System.out);// goes into console, save into txt run in console. save as dot file convert to graphviz
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
-//
 	
 		byte[] text1 = "/unfollow?user=1234x".getBytes();
-
 	
 		reader.visit(map, visitor,wrapping(text1,5), 0, text1.length, 31);
 
-		//System.out.println("visitor.toString(): " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 
 		assertEquals("35 23", visitor.toString()); //23
@@ -3022,7 +2978,6 @@ y.readUTFOfLength(y.available(), str);
 		reader.visit(map, visitor,wrapping(text2,5), 0, text2.length, 31);
 	
 
-		//System.out.println("visitor.toString(): " + visitor.toString());
 		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
 		assertEquals("35", visitor.toString()); //35
 	

@@ -54,10 +54,8 @@ public class TrieParserReader {
 
 	private final static int MAX_ALT_DEPTH = 256; //full recursion on alternate paths from a single point.
 	private int altStackPos = 0;
-	private int[] altStackA = new int[MAX_ALT_DEPTH];
-	private int[] altStackB = new int[MAX_ALT_DEPTH];
-	private int[] altStackC = new int[MAX_ALT_DEPTH];
-	private int[] altStackD = new int[MAX_ALT_DEPTH];
+	private static final int fieldsOnStack = 4;
+	private int[] altStack = new int[MAX_ALT_DEPTH*fieldsOnStack];
 
 	private short[] workingMultiStops = new short[MAX_ALT_DEPTH];
 	private int[]   workingMultiContinue = new int[MAX_ALT_DEPTH];
@@ -144,7 +142,7 @@ public class TrieParserReader {
 		assert i<that.data.length: "the jumpindex: " + i + " exceeds the data length: "+that.data.length;
 		type = that.data[i]; //used globally by other methods
 		assert (type>-1) && (type<8) : "TYPE is not in range (0-7)";
-
+		
 		switch (type) {
 		case TrieParser.TYPE_RUN:
 
@@ -263,12 +261,12 @@ public class TrieParserReader {
 	
 	
 	
-	
-//***** find index positions for both these . make sure its the 
-	private void visitorAltBranch(TrieParser that, final int i, ByteSquenceVisitor visitor, byte[] source,
-			int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult, short[] data) {
+
+	private void visitorAltBranch(TrieParser that, final int i,
+			ByteSquenceVisitor visitor, byte[] source,
+			int localSourcePos, int sourceLength, int sourceMask, 
+			final long unfoundResult, short[] data) {
 		int localJump = i + TrieParser.SIZE_OF_ALT_BRANCH;
-		//int farJump   = i + ((((int)that.data[i+2])<<15) | (0x7FFF&that.data[i+3])); 
 		int jump = (((int)data[pos++])<<15) | (0x7FFF&data[pos++]); 
 
 		visit(that, localJump, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);// near byte
@@ -277,36 +275,26 @@ public class TrieParserReader {
 
 	private void visitorBranch(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos,
 			int sourceLength, int sourceMask, final long unfoundResult, short[] data) {
+
 		if (this.runLength<sourceLength) {          
 			//TrieMap data
-			int p = pos;
-			int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & localSourcePos], data[p++]);
-		
-			if (0==(0xFFFFFF&jumpMask)) {
-				pos = 2+p;
-			} else {
-				pos = computeJump(data, p);//only computed when we must
-			}
-			
+			final short[] data1 = data;
+			final int p = 1+pos;
+			pos = (0==(0xFFFFFF&TrieParser.computeJumpMask((short) source[sourceMask & localSourcePos], data[pos]))) ? 3+pos :  2+p+((((int)data1[p])<<15) | (0x7FFF&data1[1+p]));
 			visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);//only that jump
-		}
-		else{
+		} else{
 			return;
 		}
 	}
 
 	private void visitorRun(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos,
 			int sourceLength, int sourceMask, final long unfoundResult, short[] data) {
-		int idx;
-		final int sourceMask1 = sourceMask;
-		short[] localData = data;
+
 		byte caseMask = that.caseRuleMask;
-		int r1 = localData[pos]; 
-		
-		
+		int r1 = data[pos]; 
 		int t1 = pos +1;  
 		int t2 = localSourcePos; 
-		while ((--r1 >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask1 & t2++])) ) { //getting slash somewhere should not equal eachother. 
+		while ((--r1 >= 0) && ((caseMask&data[t1++]) == (caseMask&source[sourceMask & t2++])) ) { //getting slash somewhere should not equal eachother. 
 			//matching characters while decrementing run length.
 	
 		}
@@ -318,7 +306,7 @@ public class TrieParserReader {
 			return;	
 		} else {        
 
-			idx = pos + TrieParser.SIZE_OF_RUN-1;
+			//int idx = pos + TrieParser.SIZE_OF_RUN-1;
 			
 			//visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
 			//visit(that, pos, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
@@ -592,7 +580,7 @@ public class TrieParserReader {
 			return unfoundResult;
 		}
 
-		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, unfoundResult);        
+		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, sourceMask, unfoundResult);        
 		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult, false, 0);
 
 		if (reader.normalExit) {
@@ -666,19 +654,35 @@ public class TrieParserReader {
 			int sourceMask, final long unfoundResult,
 			boolean hasSafePoint, int t) {
 
-		//int c = 0;
 		while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
 
-			//c++;
-			if (TrieParser.TYPE_RUN == t) {                
-				parseRun(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
+			if (TrieParser.TYPE_BRANCH_VALUE == t) {   
+				processBinaryBranch(reader, trie, source, sourceLength, sourceMask, unfoundResult);				
 			} else {
-				hasSafePoint = lessCommonActions(reader, trie, source, sourceLength, sourceMask, unfoundResult,	hasSafePoint, t);
-				reader.type = trie.data[reader.pos++]; 
+				if (TrieParser.TYPE_RUN == t) {   
+					parseRun(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
+				} else {
+					if (TrieParser.TYPE_ALT_BRANCH == t) {
+						processAltBranch(reader, source, trie.data);
+					} else {
+						if (TrieParser.TYPE_VALUE_BYTES == t) {            	
+							parseBytesAction(reader, trie, source, sourceLength, sourceMask, unfoundResult);	
+						} else {
+							if (TrieParser.TYPE_VALUE_NUMERIC == t) {
+								parseNumericAction(reader, trie, source, sourceLength, sourceMask, unfoundResult);		
+							}  else {
+								if (TrieParser.TYPE_SAFE_END == t) {
+									hasSafePoint = processSafeEndAction(reader, trie, sourceLength);                                             
+								} else  {       
+									reportError(reader, trie);									
+								}
+							}
+						}
+					}
+					
+				}
 			}
-
 		}
-		//System.err.println("depth "+c); //TODO: print the tree.
 	}
 
 	private static void parseRun(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
@@ -709,7 +713,7 @@ public class TrieParserReader {
 		if (r >= 0) {
 			if (!hasSafePoint) {                       	
 				if (reader.altStackPos > 0) {                                
-					loadupNextChoiceFromStack(reader, trie.data);                           
+					reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
 				} else {
 					reader.normalExit=false;
 					reader.result = unfoundResult;                   
@@ -730,64 +734,62 @@ public class TrieParserReader {
 
 	
 	
-	private static boolean lessCommonActions(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
-			int sourceMask, final long unfoundResult, 
-			boolean hasSafePoint, int t) {
-		
-		if (t==TrieParser.TYPE_BRANCH_VALUE) {   
-			processBinaryBranch(reader, trie, source, sourceLength, sourceMask, unfoundResult);
-		} else if (t == TrieParser.TYPE_ALT_BRANCH) {
-			processAltBranch(reader, source, trie.data);
-		} else {
-			hasSafePoint = lessCommonActions2(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
-		}
-		return hasSafePoint;
-	}
-
-	private static void processBinaryBranch(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
+	private static void processBinaryBranch(TrieParserReader reader,
+			TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, final long unfoundResult) {
 		
-		if (reader.runLength<sourceLength) {              
+		if (reader.runLength<sourceLength) {
+			final short sourceShort = (short) source[sourceMask & reader.localSourcePos];
 			int p = reader.pos;
+			int t = 0;
+			short[] localData = trie.data;
+			do {
+				p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
+					? p+3 
+					: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
+					
+			} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
+			reader.type = t;
+			reader.pos = p;
+		} else {
+			reader.normalExit = false;
+			reader.result = unfoundResult;
+		}
+		
+	}
 
-			if (0==(TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos],
-					                                  trie.data[p++])&0xFFFFFF)) {
-				reader.pos = 2+p;
-			} else {	
-				farBinaryJump(reader, trie, p);				
+
+	private static void parseNumericAction(TrieParserReader reader, TrieParser trie, byte[] source,
+			final long sourceLength, int sourceMask, final long unfoundResult) {
+		if (reader.runLength<sourceLength) {
+			if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, trie.data[reader.pos++]))<0) {			            	
+				reader.normalExit=false;
+				reader.result = unfoundResult;
+
+			} else {
+				//finished parse of number so move next
+				reader.type = trie.data[reader.pos++];
 			}
 		} else {
 			reader.normalExit=false;
 			reader.result = unfoundResult;
+
 		}
 	}
 
-	private static void farBinaryJump(TrieParserReader reader, TrieParser trie, int p) {
-		int value = trie.cachedJump(p);
-		if (value!=0) {
-			reader.pos = value;
+	private static boolean processSafeEndAction(TrieParserReader reader, TrieParser trie, final long sourceLength) {
+		boolean hasSafePoint;
+		recordSafePointEnd(reader, reader.localSourcePos, reader.pos, trie);  
+		hasSafePoint = true;
+		reader.pos += trie.SIZE_OF_RESULT;
+		if (sourceLength == reader.runLength) {
+			reader.normalExit=false;
+			reader.result = useSafePointNow(reader);
 		} else {
-			reader.pos = computeJump(trie.data, p);//only computed when we must
-			trie.storeCachedJump(p, reader.pos);
+			//move next since we did not take the safe point
+			reader.type = trie.data[reader.pos++];
 		}
-	}
-
-	private static int computeJump(final short[] data, final int p) {
-		
-		//return 2+p+(0x7FFF&data[1+p])+(0==data[p]?0:(data[p]<<15));
-		
-		return 2+p+((((int)data[p])<<15) | (0x7FFF&data[1+p]));
-	}
-
-	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
-			final long sourceLength, int sourceMask, final long unfoundResult, final boolean hasSafePoint, int t) {
-
-		if (t == TrieParser.TYPE_VALUE_BYTES) {            	
-			parseBytesAction(reader, trie, source, sourceLength, sourceMask, unfoundResult);
-			return hasSafePoint;
-		} else {
-			return lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
-		}
+		return hasSafePoint;
 	}
 
 	private static void parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
@@ -797,37 +799,10 @@ public class TrieParserReader {
 			||  (!parseBytes(reader, trie, source, sourceLength, sourceMask))) {
 			reader.normalExit = false;
 			reader.result = unfoundResult;
+		} else {
+			//move next since we did not need to exit
+			reader.type = trie.data[reader.pos++];
 		}
-	}
-
-	private static boolean lessCommonActions3(TrieParserReader reader, TrieParser trie, byte[] source,
-			long sourceLength, int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
-		if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
-			if (reader.runLength<sourceLength) {
-				if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, trie.data[reader.pos++]))<0) {			            	
-					reader.normalExit=false;
-					reader.result = unfoundResult;
-
-				}    
-			} else {
-				reader.normalExit=false;
-				reader.result = unfoundResult;
-
-			}
-		}  else if (t == TrieParser.TYPE_SAFE_END) {                    
-
-			recordSafePointEnd(reader, reader.localSourcePos, reader.pos, trie);  
-			hasSafePoint = true;
-			reader.pos += trie.SIZE_OF_RESULT;
-			if (sourceLength == reader.runLength) {
-				reader.normalExit=false;
-				reader.result = useSafePointNow(reader);
-
-			}                                             
-		} else  {       
-			reportError(reader, trie);
-		}
-		return hasSafePoint;
 	}
 
 	private static void reportError(TrieParserReader reader, TrieParser trie) {
@@ -859,23 +834,21 @@ public class TrieParserReader {
 				short[] localData = trie.data;
 
 				int i = reader.altStackPos; 
-				int[] localAltStackD = reader.altStackD;
-				int[] localAltStackC = reader.altStackC;
-				int[] localAltStackB = reader.altStackB;
-				int[] localAltStackA = reader.altStackA;
+				int[] localAltStack = reader.altStack;
 
 
 				while (--i>=0) {
-					int cTemp = localAltStackC[i];
+					int base = i*fieldsOnStack;
+					int cTemp = localAltStack[base+2];
 					if (localData[cTemp] == TrieParser.TYPE_VALUE_BYTES) {
 
-						if (localCaputuredPos != localAltStackB[i]) {//part of the same path.
+						if (localCaputuredPos != localAltStack[base+1]) {//part of the same path.
 							break;
 						}
-						if (localSourcePos != localAltStackA[i]) {//part of the same path.
+						if (localSourcePos != localAltStack[base+0]) {//part of the same path.
 							break;
 						}
-						if (localRunLength != localAltStackD[i]){
+						if (localRunLength != localAltStack[base+3]){
 							break;
 						}
 
@@ -980,7 +953,8 @@ public class TrieParserReader {
 		}
 	}
 
-	private static void initForQuery(TrieParserReader reader, TrieParser trie, byte[] source, int sourcePos, long unfoundResult) {
+	private static void initForQuery(TrieParserReader reader, TrieParser trie, 
+			                         byte[] source, int sourcePos, int sourceMask, long unfoundResult) {
 		reader.capturedPos = 0;
 		reader.capturedBlobArray = source;
 		//working vars
@@ -990,7 +964,14 @@ public class TrieParserReader {
 		reader.result = unfoundResult;
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
-
+		
+		reader.sourceBacking = source;
+		
+		//if we have a data specific mask use it, if nothing was set take full pipe size.
+		if (0==reader.sourceMask) {
+			reader.sourceMask = sourceMask;
+		}
+		
 		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
 
 		reader.type = trie.data[reader.pos++];
@@ -1003,63 +984,77 @@ public class TrieParserReader {
 		//the extracted (byte or number) is ALWAYS local so push LOCAL position on stack and take the JUMP        	
 
 		int pos = reader.pos;
-		int offset = reader.localSourcePos;
-		int jump = (((int)localData[reader.pos++])<<15) | (0x7FFF&localData[reader.pos++]); 
-		int runLength = reader.runLength;
-		assert(jump>0) : "Jump must be postitive but found "+jump;
-
-		int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE; 
-		int bJump = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
-
-		int localType = localData[aLocal];
-
-		assert(TrieParser.TYPE_VALUE_BYTES == localType || 
-		TrieParser.TYPE_VALUE_NUMERIC  == localType ||
-		TrieParser.TYPE_ALT_BRANCH == localType || 
-		TrieParser.TYPE_BRANCH_VALUE == localType) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
-
-		//simply logic to only do one side since that is the only side which will match.
-		if (  TrieParser.TYPE_VALUE_NUMERIC  == localType ) {
+		
+		do {
+			assert(TrieParser.TYPE_VALUE_BYTES == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] || 
+			TrieParser.TYPE_VALUE_NUMERIC  == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] ||
+			TrieParser.TYPE_ALT_BRANCH == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] || 
+			TrieParser.TYPE_BRANCH_VALUE == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE]) : "unknown value of: "+(int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE];  // local can only be one of the capture types or a branch leaning to those exclusively.
 	
+			pos = processAltBranch2(reader, source, 
+					         localData, reader.localSourcePos, 
+					         reader.runLength, pos+ TrieParser.BRANCH_JUMP_SIZE,
+					         pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE, 
+					         (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE]);
+			
+		} while (TrieParser.TYPE_ALT_BRANCH == (reader.type=localData[pos++]));
+		
+		reader.pos = pos;
+	}
+
+	private static int processAltBranch2(TrieParserReader reader, byte[] source, short[] localData, int offset,
+			int runLength, int aLocal, int bJump, int localType) {
+		//simply logic to only do one side since that is the only side which will match.
+		int result;
+		if (  TrieParser.TYPE_VALUE_NUMERIC == localType ) {
+				
+			//////////////////////////////////////
+			//the local jump is to type of numeric
+			/////////////////////////////////////
 			
 			if ( TrieParser.TYPE_VALUE_NUMERIC  != localData[bJump]	) {
-				char c = (char)source[reader.sourceMask & reader.localSourcePos];
-				if (c>='0' && c<='9') { //not done if we see + or - symbols
-					reader.pos = aLocal;
-					return;
-				}
-			}
 				
+				//////////////////////////////////
+				//the far jump is for something that is NOT numeric
+				//////////////////////////////////
+				assert(reader.sourceMask!=0);
+				char c = (char)source[reader.sourceMask & reader.localSourcePos];
+			
+				if (c>='0' && c<='9') { //not done if we see + or - symbols
+			        //this is a number and we want a number local so take this path
+					result = aLocal;
+				} else {
+				
+					//if this MIGHT be a local number but its not yet clear so push 
+					if (c=='-' || c=='+') {
+						reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos,
+								                     aLocal, runLength, reader.altStackPos);
+					}
+					
+					//take the jump   		    
+					result = bJump;
+					
+				}
+			} else {
+								
+				//this is the normal expected case
+				//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+				reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos, aLocal, runLength, reader.altStackPos);
+			    //take the jump   		    
+				result = bJump;
+			}					
+		} else {		
+
+			assert(TrieParser.TYPE_ALT_BRANCH == localType || TrieParser.TYPE_VALUE_BYTES == localType  ): "Trie parser was built backwards, check add logic.";
+
 			//this is the normal expected case
 			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-			pushAlt(reader, aLocal, offset, runLength);
-
-			//take the jump   		    
-			reader.pos = bJump;
-							
-			return;
-		}		
-
-		if (TrieParser.TYPE_VALUE_BYTES == localType || 
-		    TrieParser.TYPE_ALT_BRANCH == localType) {  
-
-			//this is the normal expected case
-			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-			pushAlt(reader, aLocal, offset, runLength);
-
+			reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos, aLocal, runLength, reader.altStackPos);
 			//take the jump, this is the part we will run first.   		    
-			reader.pos = bJump;
+			result = bJump;
 
-		} else {
-
-			logger.warn("TrieParserRead has had to process Alt out of order because it was constructed in the wrong order");
-			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-			pushAlt(reader, bJump, offset, runLength);
-
-			//take the jump   		    
-			reader.pos = aLocal;
 		}
-
+		return result;
 	}
 
 	private static long useSafePointNow(TrieParserReader reader) {
@@ -1069,16 +1064,20 @@ public class TrieParserReader {
 		return reader.safeReturnValue;
 	}
 
-	private static void loadupNextChoiceFromStack(TrieParserReader reader, short[] localData) {
+	private static int loadupNextChoiceFromStack(TrieParserReader reader, short[] localData, int altStackPos) {
 		//try other path
 		//reset all the values to the other path and continue from the top
 
-		reader.localSourcePos     = reader.altStackA[--reader.altStackPos];
-		reader.capturedPos        = reader.altStackB[reader.altStackPos];
-		reader.pos         		  = reader.altStackC[reader.altStackPos];
-		reader.runLength 		  = reader.altStackD[reader.altStackPos];                                
+		int base = --altStackPos * fieldsOnStack;
+		
+		reader.localSourcePos     = reader.altStack[base+0];
+		reader.capturedPos        = reader.altStack[base+1];
+		int p        	  	      = reader.altStack[base+2];
+		reader.runLength 		  = reader.altStack[base+3];                                
 
-		reader.type = localData[reader.pos++];
+		reader.type = localData[p];
+		reader.pos = 1+p;
+		return altStackPos;
 	}
 
 	private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, short[] localData,
@@ -1100,12 +1099,13 @@ public class TrieParserReader {
 		return reader.safeReturnValue;
 	}
 
-	static void pushAlt(TrieParserReader reader, int pos, int offset, int runLength) {
-
-		reader.altStackA[reader.altStackPos] = offset;
-		reader.altStackB[reader.altStackPos] = reader.capturedPos;
-		reader.altStackC[reader.altStackPos] = pos;        
-		reader.altStackD[reader.altStackPos++] = runLength;
+	static int pushAlt(int[] altStack, int offset, int capPos, int pos, int runLength, int altStackPos) {
+		int base = fieldsOnStack*altStackPos++;
+		altStack[base++] = offset;
+		altStack[base++] = capPos;
+		altStack[base++] = pos;        
+		altStack[base] = runLength;		
+		return altStackPos;
 	}
 
 	private static void recordSafePointEnd(TrieParserReader reader, int localSourcePos, int pos, TrieParser trie) {

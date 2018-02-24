@@ -198,11 +198,11 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		
 		this.utf8byteConsumer = new JSONByteConsumerUTF8(encodedData, indexData);
 		LongHashTable lookupFieldTableLocal = new LongHashTable(
-					LongHashTable.computeBits(schema.mappingCount()*3)
+					LongHashTable.computeBits(schema.mappingCount()<<2)
 				);
 		
 		LongHashTable lookupDimUsageLocal = new LongHashTable(
-				LongHashTable.computeBits(totalDims*3)
+				LongHashTable.computeBits(totalDims<<2)
 			);
 		
 		int d = 0;
@@ -466,9 +466,11 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				////////////////
 				//grow if needed
 				if (max+1 >= matrixData.length) {
-					int[] temp = new int[max+2];
+					
+					int[] temp = new int[max*2];
 					System.arraycopy(matrixData, 0, temp, 0, matrixData.length);
 					this.indexData[fieldId] = matrixData = temp;
+					
 				}
 				////////////////
 				
@@ -631,22 +633,17 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (selectedRow>=0) {
 			
 			JSONFieldMapping mapping = schema.getMapping(selectedRow);
-							
-			switch(mapping.type) {
-				case TypeDecimal:
-					writeDecimal(m, e);
-					break;
-				case TypeInteger:
-					if (e==0) {
-						//ok as integer
-						writeInteger(m);
-						break;
-					}
-					//the else case is an error and so recorded.
-				default:
-					recordError(mapping.type, JSONType.TypeDecimal, Arrays.toString(mapping.path));					
-					break;
-			
+						
+			if (JSONType.TypeInteger == mapping.type) {
+				if (e==0) {
+					//ok as integer
+					writeInteger(m);
+				} else {
+					recordError(mapping.type, JSONType.TypeInteger, Arrays.toString(mapping.path));					
+				}
+				
+			} else if (JSONType.TypeDecimal == mapping.type) {
+				writeDecimal(m, e);
 			}
 		
 			selectedRow = -1;
