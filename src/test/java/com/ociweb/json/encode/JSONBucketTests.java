@@ -63,6 +63,6 @@ public class JSONBucketTests {
         assertTrue(json.isLocked());
 
         json.render(out, new Bucket());
-        System.out.println(out);
+      //  System.out.println(out);
     }
 }

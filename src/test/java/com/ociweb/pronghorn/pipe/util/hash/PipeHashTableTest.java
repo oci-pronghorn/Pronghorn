@@ -317,8 +317,8 @@ public class PipeHashTableTest {
         long roughtMapSize =  (4*(int)((1<<testBits)*0.75f))+(32*(1<<testBits))+testSize*(8+8+8+8);//key and value plus object headers
         //plus 4*c for length of arrays not sure.
 
-        System.out.println("hash "+hashTableDuration+"ms "+roughTableSize+"bytes");
-        System.out.println("map  "+mapDuration      +"ms "+roughtMapSize+"bytes");
+        //System.out.println("hash "+hashTableDuration+"ms "+roughTableSize+"bytes");
+        //System.out.println("map  "+mapDuration      +"ms "+roughtMapSize+"bytes");
         
         //roughly one third the space, numbers for client.
         //roughly 20% faster or 80% of the cpu

@@ -299,6 +299,7 @@ public class PipeWriter {
     }
     
 	public static void publishEOF(Pipe pipe) {	
+		pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 		StackStateWalker.writeEOF(pipe);
 		Pipe.publishWorkingHeadPosition(pipe, pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);		
@@ -309,6 +310,7 @@ public class PipeWriter {
 	}
 	
     public static int publishWrites(Pipe pipe) {
+    	pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
 

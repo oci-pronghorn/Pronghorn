@@ -69,6 +69,20 @@ public class Pipe<T extends MessageSchema<T>> {
 
     private static final AtomicInteger pipeCounter = new AtomicInteger(0);
     
+    //package protected to be called by low and high level API
+    PipePublishListener pubListener = PipePublishListener.NO_OP;
+    PipeReleaseListener relListener = PipeReleaseListener.NO_OP;
+    
+    
+    public static void setPubListener(Pipe p, PipePublishListener listener) {
+    	p.pubListener = listener;
+    }
+    
+    public static void setRelListener(Pipe p, PipeReleaseListener listener) {
+    	p.relListener = listener;
+    }
+    
+    
     /**
      * Holds the active head position information.
      */
@@ -3072,6 +3086,9 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
+     	  
+    	notifyRelListener(pipe);
+    	
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumedByFragment = takeInt(pipe);
 
@@ -3084,6 +3101,10 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(validateInsideData(pipe, pipe.blobReadBase));
         return bytesConsumedByFragment;        
     }
+
+	public static <S extends MessageSchema<S>> void notifyRelListener(Pipe<S> pipe) {
+		pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
+	}
     
     public static <S extends MessageSchema<S>> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe); 
@@ -3109,6 +3130,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     static <S extends MessageSchema<S>> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
+    	pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
@@ -3190,12 +3212,15 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
+    	pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
+    	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
 
 		publishWritesBatched(pipe);
 
+		
 		return consumed;
     }
 
@@ -3204,6 +3229,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
+    	notifyPubListener(pipe);
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//add a few extra bytes on the end of the blob so we can "hide" information between fragments.
     	assert(optionalHiddenTrailingBytes>=0) : "only zero or positive values supported";
@@ -3216,6 +3242,10 @@ public class Pipe<T extends MessageSchema<T>> {
 		publishWritesBatched(pipe);
 		return consumed;
     }
+
+	public static <S extends MessageSchema<S>> void notifyPubListener(Pipe<S> pipe) {
+		pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
+	}
     
     
     public static <S extends MessageSchema<S>> void publishWritesBatched(Pipe<S> pipe) {

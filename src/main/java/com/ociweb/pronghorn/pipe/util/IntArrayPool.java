@@ -27,29 +27,32 @@ public class IntArrayPool {
 	
 	public static int lockInstance(IntArrayPool that, int size) {
 		
-		if (that.lockedCount[size] == that.data[size].length) {
-			that.locked[size] = grow(that.locked[size]);
-			that.data[size] = grow(that.data[size]);
-		} 		
-		
-		//we know 1 is free so find it.
-		boolean[] temp = that.locked[size];
-		int i = temp.length;
-		//NOTE: if this becomes a long array we may want to start where we left off..
-		while (--i>0) {
-			if (!temp[i]) {
-				temp[i] = true;
-				that.lockedCount[size]++;
-				return i;					
+		if (that.lockedCount[size] < that.data[size].length) {
+			//we know 1 is free so find it.
+			boolean[] temp = that.locked[size];
+			int i = temp.length;
+			//NOTE: if this becomes a long array we may want to start where we left off..
+			while (--i>0) {
+				if (!temp[i]) {
+					temp[i] = true;
+					that.lockedCount[size]++;
+					return i;					
+				}
 			}
+			throw new RuntimeException("Internal error, count was off");			
+		} else {
+			//more rare case where we must grow
+			that.locked[size] = grow(that.locked[size]);
+			that.data[size] = grow(that.data[size], size);
+			return that.data[size].length-1;//last index is always the new empty one
 		}
-		throw new RuntimeException("Internal error, count was off");			
 		
 	}
 
-	private static int[][] grow(int[][] source) {
+	private static int[][] grow(int[][] source, int size) {
 		int[][] result = new int[source.length+1][];
 		System.arraycopy(source, 0, result, 0, source.length);
+		result[source.length] = new int[size];
 		return result;
 	}
 

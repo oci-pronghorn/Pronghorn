@@ -36,16 +36,16 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     /////////////////////////
     //package protected DimArray methods
     /////////////////////////    
-    static int reserveDimArray(DataInputBlobReader reader, int size, int maxSize) {   	
+    public static int reserveDimArray(DataInputBlobReader reader, int size, int maxSize) {   	
     	if (null == reader.dimVisitorFields) {
     		reader.dimVisitorFields = new IntArrayPool(maxSize);
     	}    	
     	return IntArrayPool.lockInstance(reader.dimVisitorFields, size);  	
     }
-    static int[] lookupDimArray(DataInputBlobReader reader, int size, int instance) {
+    public static int[] lookupDimArray(DataInputBlobReader reader, int size, int instance) {
       	return IntArrayPool.getArray(reader.dimVisitorFields, size, instance);  	
     }
-    static void releaseDimArray(DataInputBlobReader reader, int size, int instance) {
+    public static void releaseDimArray(DataInputBlobReader reader, int size, int instance) {
     	IntArrayPool.releaseLock(reader.dimVisitorFields, size, instance);
     }
     ////////////////////////////////
