@@ -5,9 +5,12 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
+import javax.swing.plaf.basic.BasicSeparatorUI;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.util.IntArrayPool;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -26,7 +29,29 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     private int bytesHighBound;
     protected int bytesLowBound;
     protected int position;
-
+    
+    private IntArrayPool dimVisitorFields;
+    
+    
+    /////////////////////////
+    //package protected DimArray methods
+    /////////////////////////    
+    static int reserveDimArray(DataInputBlobReader reader, int size, int maxSize) {   	
+    	if (null == reader.dimVisitorFields) {
+    		reader.dimVisitorFields = new IntArrayPool(maxSize);
+    	}    	
+    	return IntArrayPool.lockInstance(reader.dimVisitorFields, size);  	
+    }
+    static int[] lookupDimArray(DataInputBlobReader reader, int size, int instance) {
+      	return IntArrayPool.getArray(reader.dimVisitorFields, size, instance);  	
+    }
+    static void releaseDimArray(DataInputBlobReader reader, int size, int instance) {
+    	IntArrayPool.releaseLock(reader.dimVisitorFields, size, instance);
+    }
+    ////////////////////////////////
+    ////////////////////////////////
+    
+    
     private static TrieParser textToNumberParser;
     private TrieParserReader reader;
     
