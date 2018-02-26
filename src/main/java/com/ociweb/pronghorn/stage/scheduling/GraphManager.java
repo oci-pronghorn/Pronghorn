@@ -21,12 +21,15 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
+import com.ociweb.pronghorn.pipe.PipePublishListener;
+import com.ociweb.pronghorn.pipe.PipeReleaseListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
@@ -2236,7 +2239,6 @@ public class GraphManager {
     
     //TODO: do not enable until the index.html can use https for its call back...
     private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
-	private int fastestResponse = 200_000_000;
     
     public String enableTelemetry(String host, int port) {
     	telemetryHost = host;
@@ -2364,23 +2366,10 @@ public class GraphManager {
 		long last = stageLastTimeNsLocal[stageId];
 		
 		if (last>0 && last<now) {
-			long fullPeriod = now-last;
-			
-			if (duration>0 && duration<Integer.MAX_VALUE) {
-				//TODO: switch to fastest responses per stage, since they each have different behavior!!
-				graphManager.fastestResponse = Math.min(graphManager.fastestResponse, (int)duration);
-			}
-			//NOTE: anything this fast is just a check for data and does not count as work done.
-			//      if this check is not here we may show artificially high CPU usages.
-			//      NOTE: MessagePubSub takes 20* times in order to check for data. should investigate.
-			long localDuration =  (duration<(graphManager.fastestResponse*20))
-					              && (fullPeriod<2000) //below the accuracy threshold in NS.
-					              ?1
-					              :duration;
-			accumDuration(graphManager, stageId, localDuration, fullPeriod); 
+			accumDuration(graphManager, stageId, duration, now-last); 
 
 			//this total duration is also used as the baseline for the histogram of elapsed time
-			graphManager.stageRunNS[stageId] += localDuration;
+			graphManager.stageRunNS[stageId] += duration;
 		} 
 		
 		//we have the running pct since startup but we need a recent rolling value.
@@ -2459,7 +2448,7 @@ public class GraphManager {
 		graphManager.loopDetector.setTarget(graphManager, stageId);
 		
 		int c =	GraphManager.getOutputPipeCount(graphManager, stageId);
-		while (--c>=0) {				
+		for(int i = 1; i<=c; i++) {			
 			int outPipeId = GraphManager.getOutputPipe(graphManager, stageId, c).id;
 			visitDownstream(GraphManager.getRingConsumerId(graphManager, outPipeId), 
 							graphManager, 
@@ -2507,7 +2496,7 @@ public class GraphManager {
 			//visit children only if visitor returns true
 			if (visitor.visit(graphManager, stageId, depth)) {
 				int c =	GraphManager.getOutputPipeCount(graphManager, stageId);
-				while (--c>=0) {				
+				for(int i = 1; i<=c; i++) {		
 					int outPipeId = GraphManager.getOutputPipe(graphManager, stageId, c).id;
 					visitDownstream(GraphManager.getRingConsumerId(graphManager, outPipeId), graphManager, bitMap, depth+1, visitor);
 				}
@@ -2598,6 +2587,24 @@ public class GraphManager {
 			Appendables.appendValue(target, i==1?"":" ,", id);
 		}
 		
+	}
+
+	public static void addPublishListener(GraphManager graphManager, 
+			                              PronghornStage pronghornStage, 
+			                              PipePublishListener listener) {
+		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
+		for(int i=1; i<=c; i++) {
+			Pipe.setPubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
+		}
+	}
+
+	public static void addReleaseListener(GraphManager graphManager,
+			                              PronghornStage pronghornStage,
+			                              PipeReleaseListener listener) {
+		int c = getInputPipeCount(graphManager, pronghornStage.stageId);
+		for(int i=1; i<=c; i++) {
+			Pipe.setRelListener(getInputPipe(graphManager, pronghornStage.stageId), listener);
+		}
 	}
 	
 

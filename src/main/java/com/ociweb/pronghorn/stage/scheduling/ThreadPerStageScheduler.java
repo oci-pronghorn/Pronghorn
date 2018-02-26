@@ -24,6 +24,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
     private volatile Throwable firstException;//will remain null if nothing is wrong
 	public boolean playNice = true;
 	
+	private final boolean recordTime;
+	
 	private ReentrantLock unscheduledLock = new ReentrantLock();
 	private CyclicBarrier allStagesLatch;
 	
@@ -33,10 +35,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	
 	public ThreadPerStageScheduler(GraphManager graphManager) {
 		super(graphManager);		
+		recordTime = GraphManager.isTelemetryEnabled(graphManager);
 	}
 	
 	public void startup() {
-	    
+	    		
 	    unscheduledLock.lock();//stop any non-runnable stages from running until shutdown is started.
 				
 		int realStageCount = GraphManager.countStages(graphManager);
@@ -225,9 +228,22 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
                     Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);                    
+    		    	
+                    long start = 0;
+    		    	if (recordTime) {
+    		    		start = System.nanoTime();	
+    		    	}
+    		    	
                     setCallerId(stage.boxedStageId);
                     stage.startup();
                     clearCallerId();
+                    
+    				if (recordTime) {
+    					final long now = System.nanoTime();		        
+    		        	long duration = now-start;
+    		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
+    				}
+    				
                     GraphManager.setStateToStarted(graphManager, stage.stageId);
                     
                     try {
@@ -292,16 +308,31 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			@Override
 			public void run() {
 				try {
-					
+					DidWorkMonitor didWorkMonitor = null;
+			    	if (recordTime) {
+			    		didWorkMonitor = new DidWorkMonitor();
+			    	}
+			    	
 					//TODO: need to record state so we know the failure point
-					logger.trace("block on initRings:"+stage.getClass().getSimpleName());					
+					//logger.trace("block on initRings:"+stage.getClass().getSimpleName());					
 					GraphManager.initAllPipes(graphManager, stage.stageId);					
-					logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
+					//logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
-					setCallerId(stage.boxedStageId);
-					stage.startup();
-					clearCallerId();
+    		    	long start = 0;
+    		    	if (recordTime) {
+    		    		start = System.nanoTime();	
+    		    	}
+    		    	
+                    setCallerId(stage.boxedStageId);
+                    stage.startup();
+                    clearCallerId();
+                    
+    				if (recordTime) {
+    					final long now = System.nanoTime();		        
+    		        	long duration = now-start;
+    		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
+    				}
 					GraphManager.setStateToStarted(graphManager, stage.stageId);
 					
 				       try {
@@ -310,7 +341,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				        	Thread.currentThread().interrupt();
 				        } catch (BrokenBarrierException e) {
 				        }
-					runLoop(stage);	
+					runLoop(stage, didWorkMonitor);	
 			
 				} catch (Throwable t) {				    
 	                recordTheException(stage, t);
@@ -382,15 +413,30 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			@Override
 			public void run() {
 				try {	
-					
+					DidWorkMonitor didWorkMonitor = null;
+			    	if (recordTime) {
+			    		didWorkMonitor = new DidWorkMonitor();
+			    	}
+			    	
 					logger.trace("block on initRings:{}",stage.getClass().getSimpleName());
 					GraphManager.initAllPipes(graphManager, stage.stageId);
 					logger.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);				
-					setCallerId(stage.boxedStageId);
-					stage.startup();
-					clearCallerId();
+    		    	long start = 0;
+    		    	if (recordTime) {
+    		    		start = System.nanoTime();	
+    		    	}
+    		    	
+                    setCallerId(stage.boxedStageId);
+                    stage.startup();
+                    clearCallerId();
+                    
+    				if (recordTime) {
+    					final long now = System.nanoTime();		        
+    		        	long duration = now-start;
+    		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
+    				}
 					
 					GraphManager.setStateToStarted(graphManager, stage.stageId);					
 				       
@@ -401,7 +447,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				        } catch (BrokenBarrierException e) {
 				        }
 					
-					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);
+					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage, didWorkMonitor);
 					
 					//logger.info("called shutdown on stage {} ",stage);
 					setCallerId(stage.boxedStageId);
@@ -427,20 +473,31 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		};
 	}
 
-	private final void runLoopNotNice(final PronghornStage stage) {
+	private final void runLoopNotNice(final PronghornStage stage, DidWorkMonitor didWorkMonitor) {
 	    assert(!playNice);
 	    assert(!GraphManager.isRateLimited(graphManager,  stage.stageId));
 	    setCallerId(stage.boxedStageId);
         do {
-            stage.run();
+		    long start = 0;
+		    if (recordTime) {
+			   DidWorkMonitor.clear(didWorkMonitor);
+			   start = System.nanoTime();
+		    }
+		   
+			stage.run();
+			
+			if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
+				long now = System.nanoTime();
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+			}
         } while (continueRunning(this, stage));
         clearCallerId();
         GraphManager.accumRunTimeAll(graphManager, stage.stageId);
 	}
 	
-	private final void runLoop(final PronghornStage stage) {
+	private final void runLoop(final PronghornStage stage, DidWorkMonitor didWorkMonitor) {
 	    if (!playNice && !GraphManager.isRateLimited(graphManager,  stage.stageId) ) {
-	        runLoopNotNice(stage);
+	        runLoopNotNice(stage, didWorkMonitor);
 	    } else {
 	    	if (!GraphManager.isRateLimited(graphManager,  stage.stageId)) {
 	    		int i = 0;
@@ -451,23 +508,30 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				            //before doing yield must push any batched up writes & reads
 				            Thread.yield(); 
 				    }
+
+				    long start = 0;
+				    if (recordTime) {
+					   DidWorkMonitor.clear(didWorkMonitor);
+					   start = System.nanoTime();
+				    }
 				   
-				    long start = System.nanoTime();
 					stage.run();
 					
-					long now = System.nanoTime();
-					GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
+						long now = System.nanoTime();
+						GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					}
 					
 				} while (continueRunning(this, stage));
 				clearCallerId();
 	    		
 	    	} else {
-	    		runLoopRateLimited(stage);	
+	    		runLoopRateLimited(stage, didWorkMonitor);	
 	    	}
 	    }
 	}
 
-	private void runLoopRateLimited(final PronghornStage stage) {
+	private void runLoopRateLimited(final PronghornStage stage, DidWorkMonitor didWorkMonitor) {
 		int i = 0;
 		setCallerId(stage.boxedStageId);
 		do {
@@ -494,11 +558,18 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		            Thread.yield();
 		    }
 		    
-		    long start = System.nanoTime();
+		    long start = 0;
+		    if (recordTime) {
+			   DidWorkMonitor.clear(didWorkMonitor);
+			   start = System.nanoTime();
+		    }
+		   
 			stage.run();
-			long now = System.nanoTime();
-			GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
-			 
+			
+			if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
+				long now = System.nanoTime();
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+			}
 			
 		} while (continueRunning(this, stage));
 		clearCallerId();
@@ -510,7 +581,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				(!tpss.isShuttingDown || GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId) );
 	}
 
-	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {
+	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage, DidWorkMonitor didWorkMonitor) {
 		assert(nsSleep<=1_000_000);
 		int stageId = stage.stageId;
 		GraphManager localGM = graphManager;
@@ -552,11 +623,19 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					return;
 				}
 			}
-			long start = System.nanoTime();
+		    long start = 0;
+		    if (recordTime) {
+			   DidWorkMonitor.clear(didWorkMonitor);
+			   start = System.nanoTime();
+		    }
+		   
 			stage.run();
-			long now = System.nanoTime();
-			GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
-					
+			
+			if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
+				long now = System.nanoTime();
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+			}
+			
 			//because continueRunning can be expensive we will only check it once every 4 passes.
 		} while (((++iterCount & 0x3)!=0) || continueRunning(this, stage));
 		clearCallerId();

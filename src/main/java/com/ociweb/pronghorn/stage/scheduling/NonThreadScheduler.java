@@ -52,13 +52,19 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private PronghornStage lastRunStage = null;
     private final boolean inLargerScheduler;
 	private static final boolean debugNonReturningStages = false;
-	
+	private final boolean recordTime;
+	private DidWorkMonitor didWorkMonitor;
 
     public NonThreadScheduler(GraphManager graphManager) {
         super(graphManager);        
         this.stages = GraphManager.allStages(graphManager);
         this.graphManager = graphManager;
         this.inLargerScheduler = false;
+    	recordTime = GraphManager.isTelemetryEnabled(graphManager);
+    	
+    	if (recordTime) {
+    		didWorkMonitor = new DidWorkMonitor();
+    	}
     }
     
     public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name) {
@@ -67,6 +73,11 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         this.graphManager = graphManager;
         this.name = name;
         this.inLargerScheduler = false;
+    	recordTime = GraphManager.isTelemetryEnabled(graphManager);
+    	
+    	if (recordTime) {
+    		didWorkMonitor = new DidWorkMonitor();
+    	}
     }    
     
     public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name, boolean isInLargerScheduler) {
@@ -75,6 +86,11 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         this.graphManager = graphManager;
         this.name = name;
         this.inLargerScheduler = isInLargerScheduler;
+    	recordTime = GraphManager.isTelemetryEnabled(graphManager);
+    	
+    	if (recordTime) {
+    		didWorkMonitor = new DidWorkMonitor();
+    	}
     }  
     
     RunningStdDev stdDevRate = null;
@@ -296,12 +312,23 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		        		 try {
 		                	 logger.debug("begin startup of    {}",stage);
 		                	 
-		                	 Thread thread = Thread.currentThread();
-		                	 new ThreadLocal<Integer>();
+//		                	 Thread thread = Thread.currentThread();
+//		                	 new ThreadLocal<Integer>();
 		                	 
-		                	 setCallerId(stage.boxedStageId);
-		        			 stage.startup();
-		        			 clearCallerId();
+		        		    	long start = 0;
+		        		    	if (recordTime) {
+		        		    		start = System.nanoTime();	
+		        		    	}
+		        		    	
+		                        setCallerId(stage.boxedStageId);
+		                        stage.startup();
+		                        clearCallerId();
+		                        
+		        				if (recordTime) {
+		        					final long now = System.nanoTime();		        
+		        		        	long duration = now-start;
+		        		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
+		        				}
 		        			 
 		        			 logger.debug("finished startup of {}",stage);
 		        			 
@@ -468,17 +495,23 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			
 			if (rate>0) {
 				nearestNextRun = runStageWithRate(graphManager, nearestNextRun, s, rate, stage, that);
-			
 			} else {
 				if (0==rate) {
 					
 					nearestNextRun = 0;
-					long start = System.nanoTime();
+					
+			    	long start = 0;
+			    	if (that.recordTime) {
+			    		start = System.nanoTime();
+			    		DidWorkMonitor.clear(that.didWorkMonitor);	
+			    	}
 					
 					run(that.graphManager, stage, that);   
 					
-					long now = System.nanoTime();
-					GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					if (that.recordTime && DidWorkMonitor.didWork(that.didWorkMonitor)) {
+						long now = System.nanoTime();
+						GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					}
 					
 				}
 			}

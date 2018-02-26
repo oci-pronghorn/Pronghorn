@@ -23,7 +23,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private long[] rates;
     private long[] lastRun;
 
-
+    private DidWorkMonitor didWorkMonitor;
+    
     private long maxRate;
     public final PronghornStage[] stages;
     private static final Logger logger = LoggerFactory.getLogger(ScriptedNonThreadScheduler.class);
@@ -72,6 +73,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	stateArray = GraphManager.stageStateArray(graphManager);    	
     	recordTime = GraphManager.isTelemetryEnabled(graphManager);
     	
+    	if (recordTime) {
+    		didWorkMonitor = new DidWorkMonitor();
+    	}
+    	
     	if (null==stages) {
     		schedule = new ScriptedSchedule(0, new int[0], 0);
     		//skipScript = new int[0];
@@ -88,6 +93,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	//set thread name
         	if (scheduleId>=0) {
         		GraphManager.recordThreadGroup(stages[k], scheduleId, graphManager);
+        	}
+        	
+        	//add monitoring to each pipe
+        	if (recordTime) {        		
+        		GraphManager.addPublishListener(graphManager, stages[k], didWorkMonitor);
+        		GraphManager.addReleaseListener(graphManager, stages[k], didWorkMonitor);
         	}
         	
         	// Determine rates for each stage.
@@ -426,10 +437,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                        // Thread thread = Thread.currentThread();
                        // new ThreadLocal<Integer>();
 
+        		    	long start = 0;
+        		    	if (recordTime) {
+        		    		start = System.nanoTime();	
+        		    	}
+        		    	
                         setCallerId(stage.boxedStageId);
                         stage.startup();
                         clearCallerId();
-
+                        
+        				if (recordTime) {
+        					final long now = System.nanoTime();		        
+        		        	long duration = now-start;
+        		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
+        				}
+                        
                         logger.debug("finished startup of {}", stage);
 
                         //client work is complete so move stage of stage to started.
@@ -636,20 +658,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    // If it isn't a block-end (-1), run it!
 		    if (inProgressIdx >= 0) {
 
-		    	final long start = recordTime ? System.nanoTime() : 0;
+		    	long start = 0;
+		    	if (recordTime) {
+		    		start = System.nanoTime();
+		    		DidWorkMonitor.clear(didWorkMonitor);	
+		    	}
 		    	
 		    	if (!run(gm, localStage[inProgressIdx], this)) {
 					shutDownRequestedHere = true;
 				}
 		        
-				if (recordTime) {
+		    	
+				if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
 					final long now = System.nanoTime();		        
 		        	long duration = now-start;
-		        	
-		        	//the duration is too large vs period
-		        	// so either period is too small or duration is too large.
-		        	
-					if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
+		 			if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
 						if (lowLatencyEnforced) {
 							lowLatencyEnforced = false;
 							logger.warn("This platform is unable to run in low latency mode due to OS or hardware limitations. Parts of the graph have now been switched to high volume mode.");

@@ -46,7 +46,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
-		
+
 		if (targets.length == 1) {
 			new Exception("You may want to consider removing this stage. It only replicates to 1 destination.");
 		}
@@ -124,7 +124,6 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		
 		if (0==ss.totalPrimaryCopy) {
 
-			
 	        findStableCutPoint(ss);			
 	        //we have established the point that we can read up to, this value is changed by the writer on the other side
 										
@@ -153,7 +152,6 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		if (doneCopy(ss, ss.byteTailPos, ss.source.slabMask & (int)ss.cachedTail, (int)ss.totalPrimaryCopy, ss.totalBytesCopy)) {
 			recordCopyComplete(ss, ss.tempByteTail, ss.totalBytesCopy);			
 		}					
-		
 
 	}
 
@@ -177,6 +175,9 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 			//we have copied everything including the EOF marker to all the downstream consumers
 			ss.requestShutdown();
 		}
+
+		Pipe.notifyRelListener(ss.source);
+		
 	}
 
 
@@ -209,20 +210,24 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
 		
-		int j = 0;
 		int c = 0;
 		int[] working = ss.working;
 		int limit = ss.workingPos;
-		while (j<limit) {
+		for(int j=0; j<limit; j++) {
 			
-			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
-			 	working[c++] = working[j];		
+			final int w = working[j];
+			if (Pipe.hasRoomForWrite(ss.targets[w], totalPrimaryCopy)) {
+				Pipe<S> target = ss.targets[w];
+				
+				Pipe.confirmLowLevelWriteUnchecked(target, totalPrimaryCopy);	
+				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, target);				
+				Pipe.sumWrittenFragments(target, ss.totalFragmentsCopy);
+				
+				Pipe.notifyPubListener(target);					
+		
 			} else {
-			    Pipe.confirmLowLevelWriteUnchecked(ss.targets[working[j]], totalPrimaryCopy);	
-				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				
-				Pipe.sumWrittenFragments(ss.targets[working[j]], ss.totalFragmentsCopy);
+				working[c++] = w;
 			}
-			j++;
 		}
 		ss.workingPos = c;
 		return 0==c; //returns false when there are still targets to write
