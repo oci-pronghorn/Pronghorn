@@ -179,7 +179,21 @@ public class JPGScanner extends PronghornStage {
 		}
 		f.close();
 		
-		if (header.quantizationTables.size() != 2) {
+		for (int i = 0; i < header.colorComponents.size(); ++i) {
+			if (header.colorComponents.get(i).quantizationTableID >= header.quantizationTables.size()) {
+				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
+				header.valid = false;
+			}
+			if (header.colorComponents.get(i).huffmanDCTableID >= header.huffmanDCTables.size()) {
+				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
+				header.valid = false;
+			}
+			if (header.colorComponents.get(i).huffmanACTableID >= header.huffmanACTables.size()) {
+				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
+				header.valid = false;
+			}
+		}
+		/*if (header.quantizationTables.size() != 2) {
 			System.err.println("Error - " + header.quantizationTables.size() + " Quantization tables given (2 required)");
 			header.valid = false;
 		}
@@ -187,7 +201,7 @@ public class JPGScanner extends PronghornStage {
 			(header.huffmanDCTables.size() != 2 || header.huffmanACTables.size() != 2)) {
 			System.err.println("Error - " + (header.huffmanDCTables.size() + header.huffmanACTables.size()) + " Huffman tables given (2 or 4 required)");
 			header.valid = false;
-		}
+		}*/
 		if (header.colorComponents.size() != 3) {
 			System.err.println("Error - " + header.colorComponents.size() + " color components given (3 required)");
 			header.valid = false;
