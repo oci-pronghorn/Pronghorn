@@ -36,8 +36,10 @@ public class InverseQuantizer extends PronghornStage {
 	
 	public static void dequantize(MCU mcu, Header header) {
 		dequantizeMCU(mcu.y, header.quantizationTables.get(header.colorComponents.get(0).quantizationTableID));
-		dequantizeMCU(mcu.cb, header.quantizationTables.get(header.colorComponents.get(1).quantizationTableID));
-		dequantizeMCU(mcu.cr, header.quantizationTables.get(header.colorComponents.get(2).quantizationTableID));
+		if (header.colorComponents.size() > 1) {
+			dequantizeMCU(mcu.cb, header.quantizationTables.get(header.colorComponents.get(1).quantizationTableID));
+			dequantizeMCU(mcu.cr, header.quantizationTables.get(header.colorComponents.get(2).quantizationTableID));
+		}
 		return;
 	}
 

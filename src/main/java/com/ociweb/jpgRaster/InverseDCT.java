@@ -62,10 +62,12 @@ public class InverseDCT extends PronghornStage {
 		}
 	}
 	
-	public static void inverseDCT(MCU mcu) {
+	public static void inverseDCT(MCU mcu, Header header) {
 		MCUInverseDCT(mcu.y);
-		MCUInverseDCT(mcu.cb);
-		MCUInverseDCT(mcu.cr);
+		if (header.colorComponents.size() > 1) {
+			MCUInverseDCT(mcu.cb);
+			MCUInverseDCT(mcu.cr);
+		}
 		return;
 	}
 
@@ -150,7 +152,7 @@ public class InverseDCT extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 				
-				inverseDCT(mcu);
+				inverseDCT(mcu, header);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);

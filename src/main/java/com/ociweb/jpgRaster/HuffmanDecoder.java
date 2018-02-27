@@ -198,19 +198,21 @@ public class HuffmanDecoder {
 		if (!success) {
 			return false;
 		}
-		
-		//System.out.println("Decoding Cb Component...");
-		success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
-				  header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
-		if (!success) {
-			return false;
-		}
-		
-		//System.out.println("Decoding Cr Component...");
-		success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
-				  header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
-		if (!success) {
-			return false;
+
+		if (header.colorComponents.size() > 1) {
+			//System.out.println("Decoding Cb Component...");
+			success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
+					header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+			if (!success) {
+				return false;
+			}
+
+			//System.out.println("Decoding Cr Component...");
+			success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
+					header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+			if (!success) {
+				return false;
+			}
 		}
 		
 		previousYDC = mcu.y[0];

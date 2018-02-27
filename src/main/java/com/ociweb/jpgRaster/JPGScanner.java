@@ -202,8 +202,8 @@ public class JPGScanner extends PronghornStage {
 			System.err.println("Error - " + (header.huffmanDCTables.size() + header.huffmanACTables.size()) + " Huffman tables given (2 or 4 required)");
 			header.valid = false;
 		}*/
-		if (header.colorComponents.size() != 3) {
-			System.err.println("Error - " + header.colorComponents.size() + " color components given (3 required)");
+		if (header.colorComponents.size() != 1 && header.colorComponents.size() != 3) {
+			System.err.println("Error - " + header.colorComponents.size() + " color components given (1 or 3 required)");
 			header.valid = false;
 		}
 		

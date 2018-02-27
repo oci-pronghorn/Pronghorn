@@ -44,12 +44,22 @@ public class YCbCrToRGB extends PronghornStage {
 		return rgb;
 	}
 	
-	public static void convertYCbCrToRGB(MCU mcu) {
-		for (int i = 0; i < 64; ++i) {
-			byte[] rgb = convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
-			mcu.y[i] = rgb[0];
-			mcu.cb[i] = rgb[1];
-			mcu.cr[i] = rgb[2];
+	public static void convertYCbCrToRGB(MCU mcu, Header header) {
+		if (header.colorComponents.size() > 1) {
+			for (int i = 0; i < 64; ++i) {
+				byte[] rgb = convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
+				mcu.y[i] = rgb[0];
+				mcu.cb[i] = rgb[1];
+				mcu.cr[i] = rgb[2];
+			}
+		}
+		else {
+			for (int i = 0; i < 64; ++i) {
+				byte[] rgb = convertToRGB(mcu.y[i], (short) 0, (short) 0);
+				mcu.y[i] = rgb[0];
+				mcu.cb[i] = rgb[1];
+				mcu.cr[i] = rgb[2];
+			}
 		}
 		return;
 	}
@@ -118,7 +128,7 @@ public class YCbCrToRGB extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 				
-				convertYCbCrToRGB(mcu);
+				convertYCbCrToRGB(mcu, header);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
