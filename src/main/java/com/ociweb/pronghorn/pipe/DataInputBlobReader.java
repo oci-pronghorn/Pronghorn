@@ -29,6 +29,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     private int bytesHighBound;
     protected int bytesLowBound;
     protected int position;
+    protected boolean isStructured;
     
     private IntArrayPool dimVisitorFields;
     
@@ -81,6 +82,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	
     public int openHighLevelAPIField(int loc) {
         
+    	this.isStructured = PipeReader.isStructured(pipe, loc);    	
         this.length         = Math.max(0, PipeReader.readBytesLength(pipe, loc));
         this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
         this.backing        = PipeReader.readBytesBackingArray(pipe, loc); 
@@ -94,6 +96,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     public static int peekHighLevelAPIField(DataInputBlobReader<?> reader, int loc) {
         
+    	reader.isStructured   = 0!=(Pipe.STRUCTURED_POS_MASK&PipeReader.peekDataMeta(reader.pipe, loc));
     	reader.length         = PipeReader.peekDataLength(reader.pipe, loc);
     	reader.bytesLowBound  = reader.position = PipeReader.peekDataPosition(reader.pipe, loc);
     	reader.backing        = PipeReader.peekDataBackingArray(reader.pipe, loc); 
@@ -109,29 +112,43 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
 
     public static boolean structTypeValidation(DataInputBlobReader<?> reader, int structId) {
-    	int position = (reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe));
-    	
-    	int old = ( ( ( reader.backing[reader.byteMask & position++]) << 24) |
-    			 ( (0xFF & reader.backing[reader.byteMask & position++]) << 16) |
-    			 ( (0xFF & reader.backing[reader.byteMask & position++]) << 8) |
-    			   (0xFF & reader.backing[reader.byteMask & position++]) );
-    	if (old!=structId) {
+    	if (getStructType(reader)!=structId) {
     		throw new UnsupportedOperationException("Type mismatch");
     	}
     	
     	return true;
     }
     
+    public boolean isStructured() {
+    	return isStructured(this);
+    }
+       
+    
+    public static boolean isStructured(DataInputBlobReader<?> reader) {
+    	return reader.isStructured;
+    }
+    
+    //not as useful as you might think
+	public static int getStructType(DataInputBlobReader<?> reader) {
+		//must return -1 when structures are not used, in that case we may have 
+		//valid data beyond the body of this payload. so we can not fetch the value.
+		return (!reader.isStructured) 
+				? -1 
+			    : bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe)), reader.byteMask, reader.backing);
+		
+	}
+	
+	private static int bigEndianInt(int position, int mask, byte[] back) {
+		return ( ( back[mask & position++]) << 24) |
+				 ( (0xFF & back[mask & position++]) << 16) |
+				 ( (0xFF & back[mask & position++]) << 8) |
+				   (0xFF & back[mask & position]);
+	}
+    
 	public static int readFromLastInt(DataInputBlobReader<?> reader, int negativeIntOffset) {
 		assert(negativeIntOffset>0) : "there is no data found at the end";
-    	
-    	int position = (reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*negativeIntOffset);
-    	//logger.info("readFromEndLastInt pos {} ",position);
-    	
-    	return ( ( ( reader.backing[reader.byteMask & position++]) << 24) |
-		 ( (0xFF & reader.backing[reader.byteMask & position++]) << 16) |
-		 ( (0xFF & reader.backing[reader.byteMask & position++]) << 8) |
-		   (0xFF & reader.backing[reader.byteMask & position++]) );
+    	//logger.info("readFromEndLastInt pos {} ",position);    	
+    	return bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*negativeIntOffset), reader.byteMask, reader.backing);
 	}
         
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
@@ -146,6 +163,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     public int openLowLevelAPIField() {
         int meta = Pipe.takeRingByteMetaData(this.pipe);
+        
+        this.isStructured = (0!=(Pipe.STRUCTURED_POS_MASK&meta));
+                
 		this.length    = Math.max(0, Pipe.takeRingByteLen(this.pipe));
 		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
 		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
@@ -889,6 +909,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         return (v >= 0) ? readPackedInt((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7F);
     }
 
+    
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
 		
 		//System.out.println("input data to be parsed: ");

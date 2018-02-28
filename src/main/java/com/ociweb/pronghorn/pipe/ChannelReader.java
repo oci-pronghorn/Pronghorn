@@ -87,4 +87,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 
 	public abstract void position(int position);
 	
+	public abstract boolean isStructured();
+	
+	
 }

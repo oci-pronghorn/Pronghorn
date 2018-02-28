@@ -393,7 +393,19 @@ public class AppendablesTest {
 		 target.setLength(0);		 
 		 Appendables.appendDecimalValue(target, m, (byte)-6);
 		 assertEquals(".012345",target.toString());
-		 		
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, 456, (byte)-6);
+		 assertEquals(".000456",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, 1, (byte)-6);
+		 assertEquals(".000001",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, 1, (byte)-3);
+		 assertEquals(".001",target.toString());
+		 
 	}
 	
 	@Test

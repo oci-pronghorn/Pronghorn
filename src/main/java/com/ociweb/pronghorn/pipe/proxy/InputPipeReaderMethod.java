@@ -67,7 +67,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(pipe, fieldLoc)<0) {
+						if (PipeReader.readBytesLength(pipe,fieldLoc)<0) {
 							return null;
 						} else {
 							return PipeReader.readASCII(pipe, fieldLoc, (Appendable)args[0]);
@@ -85,7 +85,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(pipe, fieldLoc)<0) {
+						if (PipeReader.readBytesLength(pipe,fieldLoc)<0) {
 							return null;
 						} else {
 							return PipeReader.readUTF8(pipe, fieldLoc, (Appendable)args[0]);
@@ -130,7 +130,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(pipe, fieldLoc)>0) {
+						if (PipeReader.readBytesLength(pipe,fieldLoc)>0) {
 							switch (args.length) {
 									case 1:
 										return PipeReader.readBytes(pipe, fieldLoc, (ByteBuffer)args[0]);

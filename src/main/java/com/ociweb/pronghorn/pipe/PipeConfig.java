@@ -112,7 +112,8 @@ public class PipeConfig<T extends MessageSchema<T>> {
     }
     
     private void validate(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
-        if (blobBits>30) {
+        //Do not change this constant, it is assumed by Pipe roll over masks and flags
+    	if (blobBits>30) {
             throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
                     minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields+" schema: "+messageSchema+
                     " slabBits: "+slabBits+" maxFragSize: "+FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema)));

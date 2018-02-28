@@ -226,7 +226,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
   public static boolean eqUTF8(Pipe pipe, int loc, CharSequence seq) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
-        int len = PipeReader.readDataLength(pipe, loc);
+        int len = PipeReader.readBytesLength(pipe,loc);
         if (0==len && seq.length()==0) {
             return true;
         }
@@ -353,22 +353,24 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
-    @Deprecated
-    public static int readDataLength(Pipe pipe, int loc) {
-    	return readBytesLength(pipe,loc);
-    }
-    
     public static int readBytesMask(Pipe pipe, int loc) {
         assert(0!=loc) : "This field needed for swapping to different array per field, like the constants array";
     	return pipe.blobMask;
     }
     
     public static int readBytesPosition(Pipe pipe, int loc) {
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-
-        int tmp = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
+        int tmp = readBytesMeta(pipe, loc);
 		return tmp<0 ? POS_CONST_MASK & tmp : Pipe.restorePosition(pipe,tmp);// first int is always the length
     }
+    
+    public static boolean isStructured(Pipe pipe, int loc) {
+    	return 0!=(Pipe.STRUCTURED_POS_MASK & readBytesMeta(pipe, loc));
+    }
+
+	private static int readBytesMeta(Pipe pipe, int loc) {
+		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
+	}
 
     public static byte[] readBytesBackingArray(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -392,26 +394,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		return Pipe.readBytes(pipe, target, Pipe.slab(pipe)[pipe.slabMask & (int)(tmp)], Pipe.slab(pipe)[pipe.slabMask & (int)(tmp + 1)]);
     }
-
-    
-    @Deprecated
-	public static ByteBuffer wrappedUnstructuredLayoutBufferA(Pipe pipe, int loc) {
-	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-    	long pos = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.slab(pipe)[pipe.slabMask & (int)(pos)];
-        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(pos + 1)];
-        return Pipe.wrappedBlobReadingRingA(pipe, meta, len);
-	}
-
-    @Deprecated
-    public static ByteBuffer wrappedUnstructuredLayoutBufferB(Pipe pipe, int loc) {
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-
-    	long pos = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.slab(pipe)[pipe.slabMask & (int)(pos)];
-        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(pos + 1)];
-        return Pipe.wrappedBlobReadingRingB(pipe,meta,len);
-	}
     
     public static ByteBuffer[] wrappedUnstructuredLayoutBuffer(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -693,7 +675,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     public static int peekDataPosition(Pipe pipe, int loc) {
     	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-        return Pipe.restorePosition(pipe,Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))]);
+        int meta = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))];
+		return meta<0 ? POS_CONST_MASK & meta : Pipe.restorePosition(pipe, meta);
     }
     
     public static int peekDataMeta(Pipe pipe, int loc) {

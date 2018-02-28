@@ -296,12 +296,6 @@ public class Appendables {
     static final int digits_small = 6;   
     static final long tens_small = 1_000_000L;
     static final long tens_small_limit = tens_small*10;
-    
-    
-    static final int digits_micro = 2;   
-    static final long tens_micro = 100L;
-    static final long tens_micro_limit = tens_micro*10;
-    
 
     public static <A extends Appendable> A appendDecimalValue(A target, long m, byte e) {
     	
@@ -327,15 +321,12 @@ public class Appendables {
 	        int orAll = 0; //this is to remove the leading zeros
 	        
 	        long temp = Math.abs(value);
-	        if (temp<tens_micro_limit) {
-	        	decimalValueCollecting(target, digits_micro, tens_micro, g, nextValue, orAll);	        	
+		    if (temp<tens_small_limit) {		        	
+	        	decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);		        	
 	        } else {
-		        if (temp<tens_small_limit) {		        	
-		        	decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);		        	
-		        } else {
-		        	decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
-		        }
+	        	decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
 	        }
+	       
 	        
 	        int f = e;
 	        f = appendZeros(target, f);	    
@@ -366,6 +357,7 @@ public class Appendables {
 	
 	private static <A extends Appendable> void decimalValueCollecting(A target, int digits, long tens, int g,
 																		long nextValue, int orAll) throws IOException {
+		
 		while (tens>1) {
 			
 		    int digit = (int)(nextValue/tens);

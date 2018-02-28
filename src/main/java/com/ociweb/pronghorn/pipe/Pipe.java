@@ -343,9 +343,11 @@ public class Pipe<T extends MessageSchema<T>> {
 
     //This mask is used to filter the meta value used for variable-length fields.
     //after applying this mask to meta the result is always the relative offset within the byte buffer of where the variable-length data starts.
-    //NOTE: when the high bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
-    public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
-
+    //NOTE: when the 32nd bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
+    //NOTE: when the 31nd bit is set this blob is structured.
+    public static final int RELATIVE_POS_MASK = 0x3FFFFFFF; //removes flag bits which indicate this is a constant and/or structure
+    public static final int STRUCTURED_POS_MASK = 0x40000000;    
+    
     //This mask is here to support the fact that variable-length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
     //this will only happen once for every 2GB written.
