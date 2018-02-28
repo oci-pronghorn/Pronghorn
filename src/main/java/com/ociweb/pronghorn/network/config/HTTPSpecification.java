@@ -52,7 +52,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     	return writeHeader(target, getHeader(ordinal), data);
     }
 
-    public <A extends Appendable> A writeHeader(A target, H header, ChannelReader data) {
+    public <A extends Appendable> A writeHeader(A target, HTTPHeader header, ChannelReader data) {
 		try {
 			target.append(header.writingRoot());
 			header.writeValue(target, this, data);

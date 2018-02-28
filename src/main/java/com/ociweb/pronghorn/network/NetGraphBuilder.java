@@ -26,6 +26,7 @@ import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.DotModuleStage;
 import com.ociweb.pronghorn.network.module.ResourceModuleStage;
+import com.ociweb.pronghorn.network.module.SummaryModuleStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -828,17 +829,15 @@ public class NetGraphBuilder {
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
 		ModuleConfig config = new ModuleConfig(){
-
-			//TODO:rollup telemetry stage..
-			
-						
+	
 			private final String[] routes = new String[] {
 					 "/${path}"			
 					,"/graph.dot"
-					,"/dataView?pipeId=#{pipeId}"
-					,"/histogram/pipeFull?pipeId=#{pipeId}"
-					,"/histogram/stageElapsed?stageId=#{stageId}"
-					,"/WS1/example" //server side websocket example
+					,"/summary.json"
+//					,"/dataView?pipeId=#{pipeId}"
+//					,"/histogram/pipeFull?pipeId=#{pipeId}"
+//					,"/histogram/stageElapsed?stageId=#{stageId}"
+//					,"/WS1/example" //server side websocket example
 							
 			};
 			
@@ -881,49 +880,56 @@ public class NetGraphBuilder {
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
-						
-					
-							//One module for each file??
-							//TODO: add monitor to this stream
-							//this will be a permanent output stream...
-							//Pipe<?> results = PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
-							//some stage much stream out this pipe?
-							//must convert to JSON and stream.
-							//how large is the JSON blocks must ensure output is that large.
-							
-							//TODO: replace this code with the actual streaming data from pipe..
-							activeStage = new DummyRestStage(graphManager, 
-									                          inputPipes, 
-									                          staticFileOutputs = Pipe.buildPipes(instances, 
-																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+							activeStage = SummaryModuleStage.newInstance(graphManager, 
+									inputPipes, 
+									staticFileOutputs = Pipe.buildPipes(instances, 
+											           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
+									((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
-						case 3:
-						//TODO: replace this code with the actual pipe full histogram
-							activeStage = new DummyRestStage(graphManager, 
-			                          inputPipes, 
-			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
-							break;
-						case 4:
-						//TODO: replace this code with the actual stage elapsed histogram
-							activeStage = new DummyRestStage(graphManager, 
-			                          inputPipes, 
-			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
-							break;
-						case 5:
-						//TODO: replace this code with the actual pipe full histogram
-							
-							activeStage = new UpgradeToWebSocketStage(graphManager, 
-			                          inputPipes, 
-			                          staticFileOutputs = Pipe.buildPipes(instances, 
-									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
-							
-							break;
+//						case 3:
+//						
+//					
+//							//One module for each file??
+//							//TODO: add monitor to this stream
+//							//this will be a permanent output stream...
+//							//Pipe<?> results = PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
+//							//some stage much stream out this pipe?
+//							//must convert to JSON and stream.
+//							//how large is the JSON blocks must ensure output is that large.
+//							
+//							//TODO: replace this code with the actual streaming data from pipe..
+//							activeStage = new DummyRestStage(graphManager, 
+//									                          inputPipes, 
+//									                          staticFileOutputs = Pipe.buildPipes(instances, 
+//																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+//							break;
+//						case 4:
+//						//TODO: replace this code with the actual pipe full histogram
+//							activeStage = new DummyRestStage(graphManager, 
+//			                          inputPipes, 
+//			                          staticFileOutputs = Pipe.buildPipes(instances, 
+//									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+//							break;
+//						case 5:
+//						//TODO: replace this code with the actual stage elapsed histogram
+//							activeStage = new DummyRestStage(graphManager, 
+//			                          inputPipes, 
+//			                          staticFileOutputs = Pipe.buildPipes(instances, 
+//									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+//							break;
+//						case 6:
+//						//TODO: replace this code with the actual pipe full histogram
+//							
+//							activeStage = new UpgradeToWebSocketStage(graphManager, 
+//			                          inputPipes, 
+//			                          staticFileOutputs = Pipe.buildPipes(instances, 
+//									           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+//			                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+//							
+//							break;
 							default:
 														
 							throw new RuntimeException("unknown idx "+a);

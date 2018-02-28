@@ -316,14 +316,12 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	public void writeAsDot(GraphManager gm, AppendableBuilder payload) {
 		summarizeRuntime(false, ValueType.NearRealTime);
-
-	//	ServerCoordinator.newDotRequestStart = System.nanoTime();
 		GraphManager.writeAsDOT(gm, payload, true, percentileValues, trafficValues);
-
-		
-		
 	}
 
-	
+	public void writeAsSummary(GraphManager gm, AppendableBuilder payload) {
+		summarizeRuntime(false, ValueType.NearRealTime);
+		GraphManager.writeAsSummary(gm, payload, percentileValues);
+	}	
 
 }

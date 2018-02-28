@@ -1576,8 +1576,49 @@ public class GraphManager {
     	writeAsDOT(m,target,isVertical,null,null);
     }
     
+    
+    private static final byte[] SUMMARY_MAXPIPEFILL = "{\"maxPipeFill\":".getBytes();
+    private static final byte[] SUMMARY_MAXCPUPCT = ",\"maxCPUPct\":".getBytes();
+    private static final byte[] SUMMARY_CLOSE = "}".getBytes();
+
+    
+    public static void writeAsSummary(GraphManager m, AppendableBuilder target,
+            						 int[] pipePercentileFullValues) {
+
+    	int maxPctFull = 0;
+    	int j = pipePercentileFullValues.length;
+    	while (--j>=0) {
+    		maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[j]);    		
+    	}
+    	////////
+    	////////
+    	int maxCPUPct = 0;    	
+        int i = -1;
+        while (++i<m.stageIdToStage.length) {
+        	 PronghornStage stage = m.stageIdToStage[i];
+	            
+	         if (mustShowOnTelemetry(m, stage)) {       
+	            	
+	            	long runNs = m.stageRunNS[stage.stageId];
+	            	if (runNs>0) {
+	            		maxCPUPct = Math.max(maxCPUPct, m.stageCPUPct[stage.stageId]);//moving average of CPU
+	            	}
+	         }        	
+        }
+    	////////
+    	////////
+        
+		target.append(SUMMARY_MAXPIPEFILL);
+        Appendables.appendValue(target, maxPctFull);
+		target.append(SUMMARY_MAXCPUPCT);
+        Appendables.appendDecimalValue(target, maxCPUPct, (byte)-3);
+		target.append(SUMMARY_CLOSE);
+        
+    }
+    
+    
 	public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical,
-			                      int[] percentileValues, long[] traffic) {
+			                      int[] pipePercentileFullValues, long[] pipeTraffic) {
 					    	
 	        int stages = GraphManager.countStages(m);
 	        	        
@@ -1603,11 +1644,7 @@ public class GraphManager {
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
 	        	            
-	            if (null!=stage 
-	            		&& !(stage instanceof MonitorConsoleStage) 
-	            		&& !(stage instanceof PipeMonitorStage)
-	            		&& !stageForMonitorData(m,stage) 
-	            		) {       
+	            if (mustShowOnTelemetry(m, stage)) {       
           	
 
 	            	////////////////////
@@ -1774,14 +1811,14 @@ public class GraphManager {
 		                if (showLabels && pipe.config().showLabels()) {
 			                target.append(m.pipeDOTSchemaNames[pipe.id]);
 			                		                
-			                if (null!=percentileValues) {
-			                	target.append(pipeFullValues[percentileValues[pipe.id]]);
+			                if (null!=pipePercentileFullValues) {
+			                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
 			                } else {
 			                	target.append(WHITE_NEWLINE);		                	
 			                }
 			     
-			                if (null!=traffic) {
-			                	long traf = traffic[pipe.id];
+			                if (null!=pipeTraffic) {
+			                	long traf = pipeTraffic[pipe.id];
 			                	if (traf>9999) {
 			                		Appendables.appendValue(target.append("Vol:"), traf);
 			                	} else {
@@ -1801,10 +1838,10 @@ public class GraphManager {
 		                }
 		                target.append(AQUOTE);
 		                		                
-		                int lineWidth = computeLineWidth(traffic, pipe);
+		                int lineWidth = computeLineWidth(pipeTraffic, pipe);
 		                
-		                if (null!=percentileValues) {		                	
-		                	int pctFull = percentileValues[pipe.id];
+		                if (null!=pipePercentileFullValues) {		                	
+		                	int pctFull = pipePercentileFullValues[pipe.id];
 		                	if (pctFull>=60) {
 		                		target.append(",color=red");	    
 		                	} else if (pctFull>=40) {
@@ -1821,6 +1858,13 @@ public class GraphManager {
 	    
             target.append("}\n");
    
+	}
+
+	private static boolean mustShowOnTelemetry(GraphManager m, PronghornStage stage) {
+		return null!=stage 
+				&& !(stage instanceof MonitorConsoleStage) 
+				&& !(stage instanceof PipeMonitorStage)
+				&& !stageForMonitorData(m,stage);
 	}
 
 	private static void writeElapsed(AppendableBuilder target, long atPct) {
