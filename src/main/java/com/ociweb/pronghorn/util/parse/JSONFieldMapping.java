@@ -18,7 +18,7 @@ public class JSONFieldMapping {
 	private static final Logger logger = LoggerFactory.getLogger(JSONFieldMapping.class);
 	
 	private final JSONFieldSchema schema;
-	private byte[] name;
+	private String name;
 	public final JSONType type;
 	
 	public JSONAccumRule accumRule;	
@@ -60,7 +60,7 @@ public class JSONFieldMapping {
 	}
 	
 	public void setName(String name) {
-		this.name = name.getBytes();
+		this.name = name;
 	}
 	
 	public void setPath(JSONFieldSchema schema, String... path) {
@@ -180,9 +180,6 @@ public class JSONFieldMapping {
 				
 	}
 
-	public boolean nameEquals(byte[] name) {
-		return Arrays.equals(name, this.name);
-	}
 
 	public <A extends Appendable> A dump(ChannelReader reader, A out) {
 		
