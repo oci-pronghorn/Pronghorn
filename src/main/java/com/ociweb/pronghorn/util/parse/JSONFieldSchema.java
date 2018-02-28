@@ -35,7 +35,7 @@ public class JSONFieldSchema implements JSONReader {
 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 if (!(0!=(1&nulls))) {
+			 if (0==(1&nulls)) {
 				 result = reader.readPackedLong();
 			 }
 		 } else {
@@ -45,7 +45,7 @@ public class JSONFieldSchema implements JSONReader {
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 			 
-			 if (!(0!=( (1<<fieldId) & nulls))) {
+			 if ((0==( (1<<fieldId) & nulls))) {
 				 result = reader.readPackedLong();
 			 }
 		 }
@@ -62,7 +62,7 @@ public class JSONFieldSchema implements JSONReader {
 			 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 if (!(0!=(1&nulls))) {
+			 if ((0==(1&nulls))) {
 				 long m = reader.readPackedLong();
 				 result = reader.readByte();
 
@@ -75,7 +75,7 @@ public class JSONFieldSchema implements JSONReader {
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 			 
-			 if (!(0!=( (1<<fieldId) & nulls))) {
+			 if ((0==( (1<<fieldId) & nulls))) {
 				 long m = reader.readPackedLong();
 				 result = reader.readByte();
 			 }
@@ -95,7 +95,7 @@ public class JSONFieldSchema implements JSONReader {
 			 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 if (!(0!=(1&nulls))) {
+			 if ((0==(1&nulls))) {
 				 result = reader.readPackedLong();
 			 }
 
@@ -106,7 +106,7 @@ public class JSONFieldSchema implements JSONReader {
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 
-			 if (!(0!=( (1<<fieldId) & nulls))) {
+			 if ((0==( (1<<fieldId) & nulls))) {
 				 result = reader.readPackedLong();
 			 }			 
 		 }
@@ -119,7 +119,7 @@ public class JSONFieldSchema implements JSONReader {
 		 if (0==reader.position() && (mappings[0].type == JSONType.TypeString)) {
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 if (!(0!=(1&nulls))) {
+			 if ((0==(1&nulls))) {
 				 int len = reader.readPackedInt();
 				 if (len>0) {
 					 reader.readUTFOfLength(len, target);
@@ -132,7 +132,7 @@ public class JSONFieldSchema implements JSONReader {
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 
-			 if (!(0!=( (1<<fieldId) & nulls))) {
+			 if ((0==( (1<<fieldId) & nulls))) {
 				 reader.readUTFOfLength(reader.readPackedInt(), target);
 			 }
 			 
