@@ -320,7 +320,7 @@ public class JPGScanner extends PronghornStage {
 				return;
 			}
 			for (int j = 0; j < header.colorComponents.size(); ++j) {
-				if (header.colorComponents.get(i).componentID == component.componentID) {
+				if (header.colorComponents.get(j).componentID == component.componentID) {
 					System.err.println("Error - Duplicate color component ID");
 					header.valid = false;
 					return;
