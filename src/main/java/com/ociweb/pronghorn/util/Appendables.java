@@ -938,16 +938,17 @@ public class Appendables {
 		 return target;
 	}
 
-	public static void appendNearestTimeUnit(Appendable target, long nsValue, String postfix) {
+	public static <A extends Appendable> A appendNearestTimeUnit(A target, long nsValue, String postfix) {
 		appendNearestTimeUnit(target, nsValue);
 		try {
 			target.append(postfix);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		return target;
 	}
 
-	public static void appendNearestTimeUnit(Appendable target, long nsValue) {
+	public static <A extends Appendable> A appendNearestTimeUnit(A target, long nsValue) {
 		try {
 			if (nsValue<2_000) {
 				appendFixedDecimalDigits(target, nsValue, 1000).append(" ns");
@@ -965,6 +966,7 @@ public class Appendables {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		return target;
 	}
 	
 	//TODO: add nearestMemoryUnit  B, K, M, G, T, P
