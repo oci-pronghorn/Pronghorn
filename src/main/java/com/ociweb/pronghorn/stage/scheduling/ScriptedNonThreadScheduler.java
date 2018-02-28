@@ -257,10 +257,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         return stdDevRate;
     }
 
-    public void checkForException() {
+    public boolean checkForException() {
         if (firstException != null) {
-            throw new RuntimeException(firstException);
+        	if (firstException instanceof AssertionError) {
+        		throw (AssertionError)firstException;
+        	} else {
+        		throw new RuntimeException(firstException);
+        	}
         }
+        return true;
     }
 
     public String name() {
@@ -795,7 +800,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                 logger.info("ERROR: this stage was called but never returned {}", temp);
             }
         }
-
+        
     }
 
     public static boolean isShutdownRequested(ScriptedNonThreadScheduler nts) {

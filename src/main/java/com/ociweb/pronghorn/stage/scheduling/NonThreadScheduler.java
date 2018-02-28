@@ -108,10 +108,15 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     	return stdDevRate;
     }
     
-    public void checkForException() {
+    public boolean checkForException() {
     	if (firstException!=null) {
-    		throw new RuntimeException(firstException);
+    		if (firstException instanceof AssertionError) {
+    			throw (AssertionError)firstException;
+    		} else {
+    			throw new RuntimeException(firstException);
+    		}
     	}
+    	return true;
     }
     
     public String name() {

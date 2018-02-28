@@ -1090,17 +1090,24 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//TODO: fixed thread scheduler must also group by common frequencies
 				//      if we have a list with the same rate they can be on a simple loop
 				//      this saves the constant checking of which one is to run next...
-				
-				while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
-					
-						nts.run();
-										
-				}
+			
+					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
+						nts.run();										
+					}		
 			}	
 			
 		};
 	}
 
+	@Override
+	public boolean checkForException() {
+		int i = ntsArray.length;
+		while (--i>=0) {
+			ntsArray[i].checkForException();
+		}
+		return true;
+	}
+	
 	@Override
 	public void shutdown() {
 
