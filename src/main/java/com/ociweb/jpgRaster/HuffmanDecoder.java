@@ -237,10 +237,12 @@ public class HuffmanDecoder {
 
 		yDCTableID  = header.colorComponents.get(0).huffmanDCTableID;
 		yACTableID  = header.colorComponents.get(0).huffmanACTableID;
-		cbDCTableID = header.colorComponents.get(1).huffmanDCTableID;
-		cbACTableID = header.colorComponents.get(1).huffmanACTableID;
-		crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
-		crACTableID = header.colorComponents.get(2).huffmanACTableID;
+		if (header.colorComponents.size() > 1) {
+			cbDCTableID = header.colorComponents.get(1).huffmanDCTableID;
+			cbACTableID = header.colorComponents.get(1).huffmanACTableID;
+			crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
+			crACTableID = header.colorComponents.get(2).huffmanACTableID;
+		}
 
 		previousYDC = 0;
 		previousCbDC = 0;

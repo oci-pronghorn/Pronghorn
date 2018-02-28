@@ -185,23 +185,14 @@ public class JPGScanner extends PronghornStage {
 				header.valid = false;
 			}
 			if (header.colorComponents.get(i).huffmanDCTableID >= header.huffmanDCTables.size()) {
-				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
+				System.err.println("Error - Color component " + i + " using invalid DC table ID " + header.colorComponents.get(i).huffmanDCTableID);
 				header.valid = false;
 			}
 			if (header.colorComponents.get(i).huffmanACTableID >= header.huffmanACTables.size()) {
-				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
+				System.err.println("Error - Color component " + i + " using invalid AC table ID " + header.colorComponents.get(i).huffmanACTableID);
 				header.valid = false;
 			}
 		}
-		/*if (header.quantizationTables.size() != 2) {
-			System.err.println("Error - " + header.quantizationTables.size() + " Quantization tables given (2 required)");
-			header.valid = false;
-		}
-		if ((header.huffmanDCTables.size() != 1 || header.huffmanACTables.size() != 1) &&
-			(header.huffmanDCTables.size() != 2 || header.huffmanACTables.size() != 2)) {
-			System.err.println("Error - " + (header.huffmanDCTables.size() + header.huffmanACTables.size()) + " Huffman tables given (2 or 4 required)");
-			header.valid = false;
-		}*/
 		if (header.colorComponents.size() != 1 && header.colorComponents.size() != 3) {
 			System.err.println("Error - " + header.colorComponents.size() + " color components given (1 or 3 required)");
 			header.valid = false;
@@ -264,10 +255,14 @@ public class JPGScanner extends PronghornStage {
 			else {
 				table.precision = 2;
 			}
-			for (int i = 0; i < 64; ++i) {
-				table.table[i] = f.readUnsignedByte();
-				if (table.precision == 2) {
-					table.table[i] = table.table[i] << 8 + f.readUnsignedByte();
+			if (table.precision == 2) {
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = f.readUnsignedByte() << 8 + f.readUnsignedByte();
+				}
+			}
+			else {
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = f.readUnsignedByte();
 				}
 			}
 			header.quantizationTables.add(table);
@@ -306,6 +301,11 @@ public class JPGScanner extends PronghornStage {
 		}
 		
 		int numComponents = f.readUnsignedByte();
+		if (numComponents == 4) {
+			System.err.println("Error - CMYK color mode not supported");
+			header.valid = false;
+			return;
+		}
 		for (int i = 0; i < numComponents; ++i) {
 			ColorComponent component = new ColorComponent();
 			component.componentID = (short)f.readUnsignedByte();
@@ -313,6 +313,20 @@ public class JPGScanner extends PronghornStage {
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
 			component.quantizationTableID = (short)f.readUnsignedByte();
+			
+			if (component.componentID == 4 || component.componentID == 5) {
+				System.err.println("Error - YIQ color mode not supported");
+				header.valid = false;
+				return;
+			}
+			for (int j = 0; j < header.colorComponents.size(); ++j) {
+				if (header.colorComponents.get(i).componentID == component.componentID) {
+					System.err.println("Error - Duplicate color component ID");
+					header.valid = false;
+					return;
+				}
+			}
+			
 			header.colorComponents.add(component);
 		}
 		if (length - 8 - (numComponents * 3) != 0) {
