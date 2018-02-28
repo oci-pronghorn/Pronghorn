@@ -26,7 +26,6 @@ public class FieldExtractionDefinitions {
 	public int defaultsCount = 0;
 	private transient Pipe<RawDataSchema> workingPipe = null;
 
-	
 	public static final int DEFAULT_VALUE_FLAG       = 1<<30;
 	public static final int DEFAULT_VALUE_FLAG_MASK  = DEFAULT_VALUE_FLAG-1;
 		
@@ -39,6 +38,7 @@ public class FieldExtractionDefinitions {
 
 	}
 
+	
 	private static TrieParser textToNumberTrieParser() {
 		 TrieParser p = new TrieParser(8,true); //supports only complete values
 		 p.setUTF8Value("%i%.%/%.", 1); 
@@ -389,5 +389,6 @@ public class FieldExtractionDefinitions {
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
+
 
 }

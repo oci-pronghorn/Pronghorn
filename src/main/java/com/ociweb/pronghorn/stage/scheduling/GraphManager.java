@@ -191,7 +191,7 @@ public class GraphManager {
   
 	//These objects should be shared with all clones
 	private final GraphManagerStageStateData stageStateData;
-	private final BStructSchema recordTypeData;
+	public final BStructSchema recordTypeData;
 	
 	
 	//add the nota to this list first so we have an Id associated with it

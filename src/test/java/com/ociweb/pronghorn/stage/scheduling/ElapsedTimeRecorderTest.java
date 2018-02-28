@@ -33,6 +33,19 @@ public class ElapsedTimeRecorderTest {
 	}
 	
 	@Test
+	public void recordZero() {
+		
+		ElapsedTimeRecorder etr = new ElapsedTimeRecorder();
+	
+		etr.record(etr, 0);
+			
+		assertEquals(0, etr.elapsedAtPercentile(etr, .5f));
+				
+	}
+	
+	
+	
+	@Test
 	public void simpleFull() {
 		
 		ElapsedTimeRecorder etr = new ElapsedTimeRecorder();

@@ -30,8 +30,8 @@ public class ElapsedTimeRecorder {
 		return target;
 	}
 	
-	public static void record(ElapsedTimeRecorder that, long valueNS) {		
-		that.buckets[63 - Long.numberOfLeadingZeros(valueNS)]++;
+	public static void record(ElapsedTimeRecorder that, long valueNS) {
+		that.buckets[64 - Long.numberOfLeadingZeros(valueNS)]++;
 		that.totalCount++;
 	}
 	
@@ -43,7 +43,7 @@ public class ElapsedTimeRecorder {
 			int j = 0; //max;
 			while (i<64) {
 				
-				int b = that.buckets[i++];
+				int b = that.buckets[++i];
 				if (b>0) {
 					j = i;
 				}
