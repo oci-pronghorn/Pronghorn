@@ -358,6 +358,7 @@ public class Appendables {
 	private static <A extends Appendable> void decimalValueCollecting(A target, int digits, long tens, int g,
 																		long nextValue, int orAll) throws IOException {
 		
+		boolean isFirst = true;
 		while (tens>1) {
 			
 		    int digit = (int)(nextValue/tens);
@@ -365,10 +366,15 @@ public class Appendables {
 		    orAll |= digit;
 		    if (0!=orAll || digits<g) {
 		        target.append(dv[digit]);//(char)('0'+digit));
+		        isFirst = false;
 		    }
 		    
 		    if (digits == g) {
+		    	if (isFirst) {
+		    		target.append('0');//leading zero
+		    	}
 		    	target.append('.');
+		    	isFirst = false;
 		    }
 		    
 		    tens /= 10;
