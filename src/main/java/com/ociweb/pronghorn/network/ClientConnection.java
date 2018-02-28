@@ -30,7 +30,9 @@ public class ClientConnection extends SSLConnection {
 	private static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
 	private static final byte[] EMPTY = new byte[0];
 	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
-		
+	
+	public static boolean logDisconnects = true;
+	
 	private SelectionKey key; //only registered after handshake is complete.
 
 	private final byte[] connectionGUID;
@@ -87,18 +89,7 @@ public class ClientConnection extends SSLConnection {
 			}		
 		}
 	}
-	
-	private boolean hasNetworkConnectivity() {
-		return true;
 		
-//		//TODO: this detection is not yet perfected and throws NPE upon problems
-//		try {
-//			return testAddr.isReachable(10_000);
-//		} catch (IOException e) {
-//			return false;
-//		}
-	}
-	
 	public void setLastUsedTime(long time) {
 		lastUsedTime = time;
 	}
@@ -423,10 +414,15 @@ public class ClientConnection extends SSLConnection {
 
 	}
 
-
 	public boolean isValid() {
 
 		if (!getSocketChannel().isConnected()) {
+			if (logDisconnects) {
+				logger.info("{}:{} session {} is no longer connected. It was opened {} ago.",
+						host,port,sessionId,
+						Appendables.appendNearestTimeUnit(new StringBuilder(), System.nanoTime()-creationTimeNS).toString()
+					);
+			}
 			return false;
 		}
 		return isValid;
