@@ -126,6 +126,10 @@ public class ClientConnection extends SSLConnection {
 		this.host = host instanceof String ? (String)host : host.toString();
 		this.port = port;
 					
+		if (logDisconnects) {
+			logger.info("new client socket connection to {}:{} session {}",host,port,sessionId);
+		}
+				
 		SocketChannel localSocket = this.getSocketChannel();
 		initSocket(localSocket);
 
