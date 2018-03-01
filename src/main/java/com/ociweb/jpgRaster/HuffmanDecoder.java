@@ -91,39 +91,44 @@ public class HuffmanDecoder {
 											  HuffmanTable DCTable,
 											  HuffmanTable ACTable,
 											  short[] component,
-											  short previousDC) {
+											  short previousDC,
+											  Header header) {
+		int k = header.startOfSelection;
 		
 		// get the DC value for this MCU
-		int currentCode = b.nextBit();
-		boolean found = false;
-		for (int i = 0; i < 16; ++i) {
-			for (int j = 0; j < DCTableCodes.get(i).size(); ++j) {
-				if (currentCode == DCTableCodes.get(i).get(j)) {
-					int length = DCTable.symbols.get(i).get(j);
-					component[0] = (short)b.nextBits(length);
-					if (component[0] < (1 << (length - 1))) {
-						component[0] -= (1 << length) - 1;
+		if (k == 0) {
+			boolean found = false;
+			int currentCode = b.nextBit();
+			for (int i = 0; i < 16; ++i) {
+				for (int j = 0; j < DCTableCodes.get(i).size(); ++j) {
+					if (currentCode == DCTableCodes.get(i).get(j)) {
+						int length = DCTable.symbols.get(i).get(j);
+						component[0] = (short)b.nextBits(length);
+						if (component[0] < (1 << (length - 1))) {
+							component[0] -= (1 << length) - 1;
+						}
+						component[0] += previousDC;
+						//System.out.println("DC Value: " + component[0]);
+						found = true;
+						break;
 					}
-					component[0] += previousDC;
-					//System.out.println("DC Value: " + component[0]);
-					found = true;
+				}
+				if (found) {
 					break;
 				}
+				currentCode = (currentCode << 1) | b.nextBit();
 			}
-			if (found) {
-				break;
+			if (!found ) {
+				System.err.println("Error - Invalid DC Value");
+				return false;
 			}
-			currentCode = (currentCode << 1) | b.nextBit();
-		}
-		if (!found ) {
-			System.err.println("Error - Invalid DC Value");
-			return false;
+			k += 1;
 		}
 		
 		// get the AC values for this MCU
-		for (int k = 1; k < 64; ++k) {
-			found = false;
-			currentCode = b.nextBit();
+		for (; k <= header.endOfSelection; ++k) {
+			boolean found = false;
+			int currentCode = b.nextBit();
 			for (int i = 0; i < 16; ++i) {
 				for (int j = 0; j < ACTableCodes.get(i).size(); ++j) {
 					if (currentCode == ACTableCodes.get(i).get(j)) {
@@ -194,7 +199,7 @@ public class HuffmanDecoder {
 		
 		//System.out.println("Decoding Y Component...");
 		boolean success = decodeMCUComponent(DCTableCodes.get(yDCTableID), ACTableCodes.get(yACTableID),
-				  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC);
+				  header.huffmanDCTables.get(yDCTableID), header.huffmanACTables.get(yACTableID), mcu.y, previousYDC, header);
 		if (!success) {
 			return false;
 		}
@@ -202,14 +207,14 @@ public class HuffmanDecoder {
 		if (header.colorComponents.size() > 1) {
 			//System.out.println("Decoding Cb Component...");
 			success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
-					header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC);
+					header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC, header);
 			if (!success) {
 				return false;
 			}
 
 			//System.out.println("Decoding Cr Component...");
 			success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
-					header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC);
+					header.huffmanDCTables.get(crDCTableID), header.huffmanACTables.get(crACTableID), mcu.cr, previousCrDC, header);
 			if (!success) {
 				return false;
 			}

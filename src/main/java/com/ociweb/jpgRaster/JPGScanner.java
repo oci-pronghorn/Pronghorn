@@ -66,12 +66,12 @@ public class JPGScanner extends PronghornStage {
 				/*else if (current == JPGConstants.SOF1) {
 					header.frameType = "Extended Sequential";
 					ReadStartOfFrame(f, header);
-				}
+				}*/
 				else if (current == JPGConstants.SOF2) {
 					header.frameType = "Progressive";
 					ReadStartOfFrame(f, header);
 				}
-				else if (current == JPGConstants.SOF3) {
+				/*else if (current == JPGConstants.SOF3) {
 					header.frameType = "Lossless";
 					ReadStartOfFrame(f, header);
 				}*/
@@ -165,9 +165,17 @@ public class JPGScanner extends PronghornStage {
 					// advance by a byte, to drop 0x00
 					current = (short)f.readUnsignedByte();
 				}
-				// this doesn't seem to be true for SOF2
+				else if (last == 0xFF && current == JPGConstants.DHT) {
+					ReadHuffmanTable(f, header);
+					break;
+					//current = (short)f.readUnsignedByte();
+				}
+				else if (last == 0xFF && current == JPGConstants.SOS) {
+					ReadStartOfScan(f, header);
+					current = (short)f.readUnsignedByte();
+				}
 				else if (last == 0xFF) {
-					System.err.println("Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+					System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 					header.valid = false;
 					f.close();
 					return header;
@@ -395,11 +403,6 @@ public class JPGScanner extends PronghornStage {
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		int numComponents = f.readUnsignedByte();
-		if (numComponents != header.colorComponents.size()) {
-			System.err.println("Error - Frame/Scan Color Component mismatch");
-			header.valid = false;
-			return;
-		}
 		for (int i = 0; i < numComponents; ++i) {
 			short componentID = (short)f.readUnsignedByte();
 			short huffmanTableID = (short)f.readUnsignedByte();
@@ -431,10 +434,11 @@ public class JPGScanner extends PronghornStage {
 		header.endOfSelection = (short)f.readUnsignedByte();
 		header.successiveApproximation = (short)f.readUnsignedByte();
 		
-		if (header.startOfSelection != 0 ||
+		if (header.frameType.equals("Baseline") &&
+			(header.startOfSelection != 0 ||
 			header.endOfSelection != 63 ||
-			header.successiveApproximation != 0) {
-			System.err.println("Error - Non-standard selection and successive approximation not yet supported");
+			header.successiveApproximation != 0)) {
+			System.err.println("Error - Partial selection or approximation is incompatible with Baseline");
 			header.valid = false;
 			return;
 		}
@@ -606,10 +610,10 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	/*public static void main(String[] args) {
+	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/huff_simple0.jpg");
+			header = ReadJPG("test_jpgs/earth_progressive.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -685,5 +689,5 @@ public class JPGScanner extends PronghornStage {
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
-	}*/
+	}
 }
