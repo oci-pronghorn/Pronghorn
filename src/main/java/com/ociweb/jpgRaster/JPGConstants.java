@@ -12,9 +12,6 @@ public class JPGConstants {
 	public static final int SOF6 = 0xC6; // Differential progressive DCT
 	public static final int SOF7 = 0xC7; // Differential lossless (sequential)
 	
-	// Huffman Table specification
-	public static final int DHT = 0xC4; // Define Huffman Table(s)
-	
 	// Start of Frame markers, non-differential, arithmetic coding
 	public static final int JPG = 0xC8; // Reserved for JPEG extensions
 	public static final int SOF9 = 0xC9; // Extended sequential DCT
@@ -25,6 +22,9 @@ public class JPGConstants {
 	public static final int SOF13 = 0xCD; // Differential sequential DCT
 	public static final int SOF14 = 0xCE; // Differential progressive DCT
 	public static final int SOF15 = 0xCF; // Differential lossless (sequential)
+	
+	// Huffman Table specification
+	public static final int DHT = 0xC4; // Define Huffman Table(s)
 	
 	// Arithmetic coding conditioning specification
 	public static final int DAC = 0xCC; // Define Arithmetic Coding Conditioning(s)
@@ -72,6 +72,18 @@ public class JPGConstants {
 	
 	// Misc Markers
 	public static final int JPG0 = 0xF0;
+	public static final int JPG1 = 0xF1;
+	public static final int JPG2 = 0xF2;
+	public static final int JPG3 = 0xF3;
+	public static final int JPG4 = 0xF4;
+	public static final int JPG5 = 0xF5;
+	public static final int JPG6 = 0xF6;
+	public static final int JPG7 = 0xF7;
+	public static final int JPG8 = 0xF8;
+	public static final int JPG9 = 0xF9;
+	public static final int JPG10 = 0xFA;
+	public static final int JPG11 = 0xFB;
+	public static final int JPG12 = 0xFC;
 	public static final int JPG13 = 0xFD;
 	public static final int TEM = 0x01;
 }

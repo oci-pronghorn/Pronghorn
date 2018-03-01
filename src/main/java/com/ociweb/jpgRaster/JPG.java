@@ -42,7 +42,8 @@ public class JPG {
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
-		short successiveApproximation;
+		short successiveApproximationHigh;
+		short successiveApproximationLow;
 		
 		// DRI
 		int restartInterval = 0;

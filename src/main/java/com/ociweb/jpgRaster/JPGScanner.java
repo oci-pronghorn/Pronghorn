@@ -28,13 +28,14 @@ public class JPGScanner extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
+	ArrayList<MCU> mcus = null;
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
 		super(graphManager, NONE, output);
 		this.output = output;
 	}
 	
-	public static Header ReadJPG(String filename) throws IOException {
+	public static Header ReadJPG(String filename, ArrayList<MCU> mcus, MCU mcu) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
@@ -86,9 +87,6 @@ public class JPGScanner extends PronghornStage {
 				else if (current == JPGConstants.DRI) {
 					ReadRestartInterval(f, header);
 				}
-				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-					ReadRSTN(f, header);
-				}
 				else if (current >= JPGConstants.APP0 && current <= JPGConstants.APP15) {
 					ReadAPPN(f, header);
 				}
@@ -100,8 +98,8 @@ public class JPGScanner extends PronghornStage {
 					current = (short)f.readUnsignedByte();
 					continue;
 				}
-				else if (current == JPGConstants.JPG0 ||
-						 current == JPGConstants.JPG13 ||
+				else if ((current >= JPGConstants.JPG0 &&
+						 current <= JPGConstants.JPG13) ||
 						 current == JPGConstants.DNL ||
 						 current == JPGConstants.DHP ||
 						 current == JPGConstants.EXP) {
@@ -135,6 +133,12 @@ public class JPGScanner extends PronghornStage {
 					f.close();
 					return header;
 				}
+				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+					System.err.println("Error - RSTN detected before SOS");
+					header.valid = false;
+					f.close();
+					return header;
+				}
 				else {
 					System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
 					header.valid = false;
@@ -153,39 +157,88 @@ public class JPGScanner extends PronghornStage {
 			current = (short)f.readUnsignedByte();
 		}
 		if (header.valid) {
-			current = (short)f.readUnsignedByte();
-			while (true) {
-				last = current;
+			if (header.frameType.equals("Progressive")) {
+				//int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				//mcus = new ArrayList<MCU>(numMCUs);
 				current = (short)f.readUnsignedByte();
-				if      (last == 0xFF && current == JPGConstants.EOI) {
-					System.out.println("End of Image");
-					break;
-				}
-				else if (last == 0xFF && current == 0x00) {
-					header.imageData.add(last);
-					// advance by a byte, to drop 0x00
+				while (true) {
+					last = current;
 					current = (short)f.readUnsignedByte();
+					if (last == 0xFF) {
+						if      (current == JPGConstants.EOI) {
+							System.out.println("End of Image");
+							break;
+						}
+						else if (current == 0x00) {
+							header.imageData.add(last);
+							// advance by a byte, to drop 0x00
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current == JPGConstants.DHT) {
+							// decode scan so far
+							/*System.out.println("Decoding a scan of size " + header.imageData.size());
+							HuffmanDecoder.beginDecode(header);
+							int numProcessed = 0;
+							while (numProcessed < numMCUs) {
+								HuffmanDecoder.decodeHuffmanData(mcu);
+								mcus.add(mcu);
+								numProcessed += 1;
+							}
+							header.imageData.clear();*/
+							
+							ReadHuffmanTable(f, header);
+							current = (short)f.readUnsignedByte();
+							break; // XXX
+						}
+						else if (current == JPGConstants.SOS) {
+							ReadStartOfScan(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+							ReadRSTN(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current != 0xFF) {
+							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							header.valid = false;
+							f.close();
+							return header;
+						}
+					}
+					else {
+						header.imageData.add(last);
+					}
 				}
-				else if (last == 0xFF && current == JPGConstants.DHT) {
-					ReadHuffmanTable(f, header);
-					break;
-					//current = (short)f.readUnsignedByte();
-				}
-				else if (last == 0xFF && current == JPGConstants.SOS) {
-					ReadStartOfScan(f, header);
+			}
+			else {
+				current = (short)f.readUnsignedByte();
+				while (true) {
+					last = current;
 					current = (short)f.readUnsignedByte();
-				}
-				else if (last == 0xFF && current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-					current = (short)f.readUnsignedByte();
-				}
-				else if (last == 0xFF) {
-					System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else {
-					header.imageData.add(last);
+					if (last == 0xFF) {
+						if      (current == JPGConstants.EOI) {
+							System.out.println("End of Image");
+							break;
+						}
+						else if (current == 0x00) {
+							header.imageData.add(last);
+							// advance by a byte, to drop 0x00
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+							ReadRSTN(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current != 0xFF) {
+							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							header.valid = false;
+							f.close();
+							return header;
+						}
+					}
+					else {
+						header.imageData.add(last);
+					}
 				}
 			}
 		}
@@ -357,6 +410,12 @@ public class JPGScanner extends PronghornStage {
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
+			if (ACTable) {
+				System.out.println("AC Table " + table.tableID);
+			}
+			else {
+				System.out.println("DC Table " + table.tableID);
+			}
 			
 			if (table.tableID > 1) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
@@ -384,10 +443,28 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 			if (ACTable) {
-				header.huffmanACTables.add(table);
+				boolean found = false;
+				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
+					if (header.huffmanACTables.get(i).tableID == table.tableID) {
+						header.huffmanACTables.set(i, table);
+						found = true;
+					}
+				}
+				if (!found) {
+					header.huffmanACTables.add(table);
+				}
 			}
 			else {
-				header.huffmanDCTables.add(table);
+				boolean found = false;
+				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
+					if (header.huffmanDCTables.get(i).tableID == table.tableID) {
+						header.huffmanDCTables.set(i, table);
+						found = true;
+					}
+				}
+				if (!found) {
+					header.huffmanDCTables.add(table);
+				}
 			}
 			length -= allSymbols + 17;
 		}
@@ -412,6 +489,7 @@ public class JPGScanner extends PronghornStage {
 			short huffmanTableID = (short)f.readUnsignedByte();
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
+			System.out.println("Component " + componentID);
 			
 			if (huffmanACTableID > 1 || huffmanDCTableID > 1) {
 				System.err.println("Error - Invalid Huffman table ID in scan components");
@@ -436,12 +514,16 @@ public class JPGScanner extends PronghornStage {
 		}
 		header.startOfSelection = (short)f.readUnsignedByte();
 		header.endOfSelection = (short)f.readUnsignedByte();
-		header.successiveApproximation = (short)f.readUnsignedByte();
+		short successiveApproximation = (short)f.readUnsignedByte();
+		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
+		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
+		System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
 		
 		if (header.frameType.equals("Baseline") &&
 			(header.startOfSelection != 0 ||
 			header.endOfSelection != 63 ||
-			header.successiveApproximation != 0)) {
+			header.successiveApproximationHigh != 0 ||
+			header.successiveApproximationLow != 0)) {
 			System.err.println("Error - Partial selection or approximation is incompatible with Baseline");
 			header.valid = false;
 			return;
@@ -496,48 +578,49 @@ public class JPGScanner extends PronghornStage {
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			if (HuffmanDecoder.decodeHuffmanData(mcu)) {
-				// write mcu to pipe
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.y[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cb[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cr[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-					PipeWriter.publishWrites(output);
-					
-					numProcessed += 1;
-					if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
-						HuffmanDecoder.restart();
-					}
+			//if (header.frameType.equals("Progressive")) {
+			//	mcu = mcus.get(numProcessed);
+			//}
+			//else {
+				HuffmanDecoder.decodeHuffmanData(mcu);
+			//}
+			// write mcu to pipe
+			if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+				DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+				DataOutputBlobWriter.openField(mcuWriter);
+				for (int i = 0; i < 64; ++i) {
+					mcuWriter.writeShort(mcu.y[i]);
 				}
-				else {
-					System.err.println("Requesting shutdown");
-					requestShutdown();
+				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+				
+				DataOutputBlobWriter.openField(mcuWriter);
+				for (int i = 0; i < 64; ++i) {
+					mcuWriter.writeShort(mcu.cb[i]);
+				}
+				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+				
+				DataOutputBlobWriter.openField(mcuWriter);
+				for (int i = 0; i < 64; ++i) {
+					mcuWriter.writeShort(mcu.cr[i]);
+				}
+				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+				PipeWriter.publishWrites(output);
+				
+				numProcessed += 1;
+				if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
+					HuffmanDecoder.restart();
 				}
 			}
 			else {
-				break; // should never happen
+				System.err.println("Requesting shutdown");
+				requestShutdown();
 			}
 		}
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			try {
-				header = ReadJPG(file + ".jpg");
+				header = ReadJPG(file + ".jpg", mcus, mcu);
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
 					return;
@@ -552,7 +635,7 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximationLow);
 					PipeWriter.publishWrites(output);
 				}
 				else {
@@ -605,7 +688,9 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				HuffmanDecoder.beginDecode(header, mcu);
+				//if (header.frameType.equals("Baseline")) {
+					HuffmanDecoder.beginDecode(header);
+				//}
 				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				numProcessed = 0;
 			}
@@ -618,7 +703,9 @@ public class JPGScanner extends PronghornStage {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/earth_rst16.jpg");
+			ArrayList<MCU> mcus = null;
+			MCU mcu = new MCU();
+			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus, mcu);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -672,7 +759,8 @@ public class JPGScanner extends PronghornStage {
 				System.out.println("SOS============");
 				System.out.println("Start of Selection: " + header.startOfSelection);
 				System.out.println("End of Selection: " + header.endOfSelection);
-				System.out.println("Successive Approximation: " + header.successiveApproximation);
+				System.out.println("Successive Approximation High: " + header.successiveApproximationHigh);
+				System.out.println("Successive Approximation Low: " + header.successiveApproximationLow);
 				System.out.println("Restart Interval: " + header.restartInterval);
 				System.out.println("Color Components:");
 				for (int i = 0; i < header.colorComponents.size(); ++i) {
