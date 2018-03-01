@@ -661,7 +661,7 @@ public class NetGraphBuilder {
 			if (   (!(bytes[0]==10)) 
 				&& (!(bytes[0]==192 && bytes[1]==168)) 
 				&& (!(bytes[0]==172 && bytes[1]==16)) )  {
-				return addrList.get(i);
+				return address;
 			}
 		}
 		//if external is not found then pick the first one.
