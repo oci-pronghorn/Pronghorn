@@ -600,7 +600,7 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				HuffmanDecoder.beginDecode(header);
+				HuffmanDecoder.beginDecode(header, mcu);
 				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				numProcessed = 0;
 			}

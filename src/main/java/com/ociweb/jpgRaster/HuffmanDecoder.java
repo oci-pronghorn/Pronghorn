@@ -133,8 +133,6 @@ public class HuffmanDecoder {
 				for (int j = 0; j < ACTableCodes.get(i).size(); ++j) {
 					if (currentCode == ACTableCodes.get(i).get(j)) {
 						short decoderValue = ACTable.symbols.get(i).get(j);
-						//System.out.println("Code -> Value : " + currentCode + " -> " + decoderValue);
-						
 						if (decoderValue == 0) {
 							for (; k < 64; ++k) {
 								component[JPG.zigZagMap[k]] = 0;
@@ -144,16 +142,12 @@ public class HuffmanDecoder {
 							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
 							short coeffLength = (short)(decoderValue & 0x0F);
 							
-							//System.out.println("k: " + k);
-							//System.out.println("numZeroes: " + numZeroes);
-							//System.out.println("coeffLength: " + coefLength);
-							
 							for (int l = 0; l < numZeroes; ++l){
 								component[JPG.zigZagMap[k]] = 0;
 								++k;
 							}
 							if (coeffLength > 11){
-								System.out.println("Error - coeflength > 11");
+								System.out.println("Error - coeffLength > 11");
 							}
 							
 							if (coeffLength != 0) {
@@ -162,7 +156,6 @@ public class HuffmanDecoder {
 								if (component[JPG.zigZagMap[k]] < (1 << (coeffLength - 1))) {
 									component[JPG.zigZagMap[k]] -= (1 << coeffLength) - 1;
 								}
-								//System.out.println("AC Value: " + component[map[k]]);
 							}
 						}
 						found = true;
@@ -227,7 +220,7 @@ public class HuffmanDecoder {
 		return true;
 	}
 	
-	public static void beginDecode(Header h) {
+	public static void beginDecode(Header h, MCU mcu) {
 		header = h;
 		b = new BitReader(header.imageData);
 		
@@ -252,6 +245,12 @@ public class HuffmanDecoder {
 		previousYDC = 0;
 		previousCbDC = 0;
 		previousCrDC = 0;
+		
+		for (int i = 0; i < 64; ++i) {
+			mcu.y[i] = 0;
+			mcu.cb[i] = 0;
+			mcu.cr[i] = 0;
+		}
 	}
 
 	/*@Override
