@@ -26,6 +26,7 @@ public class JPGScanner extends PronghornStage {
 	int numMCUs = 0;
 	int numProcessed = 0;
 	
+	Header header;
 	MCU mcu = new MCU();
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
@@ -172,6 +173,9 @@ public class JPGScanner extends PronghornStage {
 				}
 				else if (last == 0xFF && current == JPGConstants.SOS) {
 					ReadStartOfScan(f, header);
+					current = (short)f.readUnsignedByte();
+				}
+				else if (last == 0xFF && current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
 					current = (short)f.readUnsignedByte();
 				}
 				else if (last == 0xFF) {
@@ -453,9 +457,7 @@ public class JPGScanner extends PronghornStage {
 		System.out.println("Reading Restart Interval");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		//int restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
-		f.readUnsignedByte();
-		f.readUnsignedByte();
+		header.restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
 			header.valid = false;
@@ -518,6 +520,9 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.publishWrites(output);
 					
 					numProcessed += 1;
+					if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
+						HuffmanDecoder.restart();
+					}
 				}
 				else {
 					System.err.println("Requesting shutdown");
@@ -532,7 +537,7 @@ public class JPGScanner extends PronghornStage {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			try {
-				Header header = ReadJPG(file + ".jpg");
+				header = ReadJPG(file + ".jpg");
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
 					return;
@@ -613,7 +618,7 @@ public class JPGScanner extends PronghornStage {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/earth_progressive.jpg");
+			header = ReadJPG("test_jpgs/earth_rst16.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
@@ -668,6 +673,7 @@ public class JPGScanner extends PronghornStage {
 				System.out.println("Start of Selection: " + header.startOfSelection);
 				System.out.println("End of Selection: " + header.endOfSelection);
 				System.out.println("Successive Approximation: " + header.successiveApproximation);
+				System.out.println("Restart Interval: " + header.restartInterval);
 				System.out.println("Color Components:");
 				for (int i = 0; i < header.colorComponents.size(); ++i) {
 					System.out.println("\tComponent ID: " + header.colorComponents.get(i).componentID);

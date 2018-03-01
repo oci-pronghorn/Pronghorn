@@ -51,6 +51,16 @@ public class HuffmanDecoder {
 			}
 			return true;
 		}
+		
+		public void align() {
+			if (nextByte >= data.size()) {
+				return;
+			}
+			if (nextBit != 0) {
+				nextBit = 0;
+				nextByte += 1;
+			}
+		}
 	}
 	
 	static Header header;
@@ -251,6 +261,13 @@ public class HuffmanDecoder {
 			mcu.cb[i] = 0;
 			mcu.cr[i] = 0;
 		}
+	}
+	
+	public static void restart() {
+		previousYDC = 0;
+		previousCbDC = 0;
+		previousCrDC = 0;
+		b.align();
 	}
 
 	/*@Override

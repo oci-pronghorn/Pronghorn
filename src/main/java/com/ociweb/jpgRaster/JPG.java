@@ -43,6 +43,9 @@ public class JPG {
 		short startOfSelection;
 		short endOfSelection;
 		short successiveApproximation;
+		
+		// DRI
+		int restartInterval = 0;
 
 		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
 		ArrayList<Short> imageData = new ArrayList<Short>();
