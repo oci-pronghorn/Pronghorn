@@ -647,9 +647,25 @@ public class NetGraphBuilder {
 		if (addrList.isEmpty()) {
 			bindHost = "127.0.0.1";
 		} else {
-			bindHost = addrList.get(0).toString().replace("/", "");
+			bindHost = selectExternalAddress(addrList).toString().replace("/", "");
 		}
 		return bindHost;
+	}
+
+	private static InetAddress selectExternalAddress(List<InetAddress> addrList) {
+		//skip all 10. and 192.168 and 172.16 so first looking for an external.
+		int i = addrList.size();
+		while (--i>=0) {
+			InetAddress address = addrList.get(i);
+			byte[] bytes = address.getAddress();
+			if (   (!(bytes[0]==10)) 
+				&& (!(bytes[0]==192 && bytes[1]==168)) 
+				&& (!(bytes[0]==172 && bytes[1]==16)) )  {
+				return addrList.get(i);
+			}
+		}
+		//if external is not found then pick the first one.
+		return addrList.get(0);
 	}
 
 	public static List<InetAddress> homeAddresses(boolean noIPV6) {
