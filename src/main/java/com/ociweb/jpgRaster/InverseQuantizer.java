@@ -30,7 +30,7 @@ public class InverseQuantizer extends PronghornStage {
 
 		for (int i = 0; i < MCU.length; ++i) {
 			// type casting is unsafe for 16-bit precision quantization tables
-			MCU[i] = (short)(MCU[i] * table.table[i]);
+			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] * table.table[i]);
 		}
 	}
 	
