@@ -43,6 +43,8 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.IPv4Tools;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class NetGraphBuilder {
 	
@@ -640,32 +642,18 @@ public class NetGraphBuilder {
 		return handshakeIncomingGroup;
 	}
 
-	public static String bindHost() {
-		String bindHost;
-		boolean noIPV6 = true;//TODO: we really do need to add ipv6 support.
-		List<InetAddress> addrList = NetGraphBuilder.homeAddresses(noIPV6);
-		if (addrList.isEmpty()) {
-			bindHost = "127.0.0.1";
-		} else {
-			bindHost = selectExternalAddress(addrList).toString().replace("/", "");
+	public static String bindHost(String bindHost) {
+		
+		
+		TrieParserReader reader = new TrieParserReader(4,true);
+		int token =  (int)reader.query(IPv4Tools.addressParser, bindHost);
+		
+		if (null==bindHost || token>=0) {
+			boolean noIPV6 = true;//TODO: we really do need to add ipv6 support.
+			List<InetAddress> addrList = NetGraphBuilder.homeAddresses(noIPV6);
+			bindHost = IPv4Tools.patternMatchHost(reader, token, addrList);
 		}
 		return bindHost;
-	}
-
-	private static InetAddress selectExternalAddress(List<InetAddress> addrList) {
-		//skip all 10. and 192.168 and 172.16 so first looking for an external.
-		int i = addrList.size();
-		while (--i>=0) {
-			InetAddress address = addrList.get(i);
-			byte[] bytes = address.getAddress();
-			if (   (!(bytes[0]==10)) 
-				&& (!(bytes[0]==192 && bytes[1]==168)) 
-				&& (!(bytes[0]==172 && bytes[1]==16)) )  {
-				return address;
-			}
-		}
-		//if external is not found then pick the first one.
-		return addrList.get(0);
 	}
 
 	public static List<InetAddress> homeAddresses(boolean noIPV6) {

@@ -2291,7 +2291,7 @@ public class GraphManager {
 	}
     
     public String enableTelemetry(int port) {
-    	telemetryHost = NetGraphBuilder.bindHost();
+    	telemetryHost = NetGraphBuilder.bindHost(telemetryHost);
     	telemetryPort = port;
     	return telemetryHost;
 	}
