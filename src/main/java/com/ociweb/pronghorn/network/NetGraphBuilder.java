@@ -648,7 +648,7 @@ public class NetGraphBuilder {
 		TrieParserReader reader = new TrieParserReader(4,true);
 		int token =  null==bindHost?-1:(int)reader.query(IPv4Tools.addressParser, bindHost);
 		
-		if (null==bindHost || token>=0) {
+		if ((null==bindHost || token>=0) && token<4) {
 			boolean noIPV6 = true;//TODO: we really do need to add ipv6 support.
 			List<InetAddress> addrList = NetGraphBuilder.homeAddresses(noIPV6);
 			bindHost = IPv4Tools.patternMatchHost(reader, token, addrList);
