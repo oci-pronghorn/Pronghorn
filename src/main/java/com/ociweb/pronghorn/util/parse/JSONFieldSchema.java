@@ -6,13 +6,14 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class JSONFieldSchema implements JSONReader {
 
 	 private static final Logger logger = LoggerFactory.getLogger(JSONFieldSchema.class);
+
+	 private static final int PAYLOAD_INDEX_LOCATION = 1; //TODO: remove...
 	 
 	 private final TrieParser parser;  //immutable once established
 
@@ -22,15 +23,31 @@ public class JSONFieldSchema implements JSONReader {
 	 private final int maxFields = 5;
 	 private final boolean completeFields = true;
 	 private JSONFieldMapping[] mappings;  //immutable once established
+
 	 private final TrieParserReader reader = new TrieParserReader(maxFields, completeFields); //only on startup
 	 
+	 //TODO: how do we find the position of the nulls when we have headers or params?
 	 
+	 public JSONFieldSchema(int nullPosition) {
+		 
+		 this.mappings = new JSONFieldMapping[0];
+		 
+		 this.parser = new TrieParser(256,2,false,true);
+		 JSONStreamParser.populateWithJSONTokens(parser);
+			 
+	 }
+
 	 @Override
 	 public long getDecimalMantissa(int fieldId, ChannelReader reader) {
 		
 		 long result = 0;
 		 
-		 if (0==reader.position()
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
+		 if (nullPosition==reader.position()
 		    && (mappings[fieldId].type == JSONType.TypeDecimal)) {
 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
@@ -41,7 +58,7 @@ public class JSONFieldSchema implements JSONReader {
 		 } else {
 			
 			 int pos = reader.position();
-			 reader.position(0);
+			 reader.position(nullPosition);
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 			 
@@ -56,8 +73,13 @@ public class JSONFieldSchema implements JSONReader {
 	 @Override
 	 public byte getDecimalPosition(int fieldId, ChannelReader reader) {
 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
 		 byte result = 0;
-		 if (0==reader.position()
+		 if (nullPosition==reader.position()
 			  && (mappings[fieldId].type == JSONType.TypeDecimal)) {
 			 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
@@ -71,7 +93,7 @@ public class JSONFieldSchema implements JSONReader {
 		 } else {
 			 
 			 int pos = reader.position();
-			 reader.position(0);
+			 reader.position(nullPosition);
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 			 
@@ -89,8 +111,13 @@ public class JSONFieldSchema implements JSONReader {
 	 @Override
 	 public long getLong(int fieldId, ChannelReader reader) {
 	
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
 		 long result = 0;
-		 if (0==reader.position()
+		 if (nullPosition==reader.position()
 		     && (mappings[0].type == JSONType.TypeInteger)) {
 			 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
@@ -102,7 +129,7 @@ public class JSONFieldSchema implements JSONReader {
 		 } else {
 			 
 			 int pos = reader.position();
-			 reader.position(0);
+			 reader.position(nullPosition);
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 
@@ -116,7 +143,12 @@ public class JSONFieldSchema implements JSONReader {
 	@Override
 	 public <A extends Appendable> A getText(int fieldId, ChannelReader reader, A target) {
 		
-		 if (0==reader.position() && (mappings[0].type == JSONType.TypeString)) {
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		
+		 if (nullPosition==reader.position() && (mappings[0].type == JSONType.TypeString)) {
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if ((0==(1&nulls))) {
@@ -128,7 +160,7 @@ public class JSONFieldSchema implements JSONReader {
 			 
 		 } else {
 			 int pos = reader.position();
-			 reader.position(0);
+			 reader.position(nullPosition);
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 
@@ -143,8 +175,14 @@ public class JSONFieldSchema implements JSONReader {
 	 
 	 @Override
 	 public boolean wasAbsent(int fieldId, ChannelReader reader) {
+		 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
 		 int pos = reader.position();
-		 reader.position(0);
+		 reader.position(nullPosition);
 		 long nulls = reader.readPackedLong();
 		 reader.position(pos);
 		 
@@ -154,8 +192,13 @@ public class JSONFieldSchema implements JSONReader {
 	 @Override
 	 public boolean getBoolean(int fieldId, ChannelReader reader) {
 		 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
 		 boolean result = false;
-		 if (0==reader.position() && (mappings[0].type == JSONType.TypeBoolean)) {
+		 if (nullPosition==reader.position() && (mappings[0].type == JSONType.TypeBoolean)) {
 			 
 			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
@@ -164,7 +207,7 @@ public class JSONFieldSchema implements JSONReader {
 			 }
 		 } else {
 			 int pos = reader.position();
-			 reader.position(0);
+			 reader.position(nullPosition);
 			 long nulls = reader.readPackedLong();
 			 reader.position(pos);
 			 
@@ -177,15 +220,7 @@ public class JSONFieldSchema implements JSONReader {
 	 }
 	 
 	 
-	 public JSONFieldSchema() {
-		 
-		 mappings = new JSONFieldMapping[0];
-		 
-		 parser = new TrieParser(256,2,false,true);
-		 JSONStreamParser.populateWithJSONTokens(parser);
-	
-		 
-	 }
+
 	 
 	 public int mappingCount() {
 		 return mappings.length;
