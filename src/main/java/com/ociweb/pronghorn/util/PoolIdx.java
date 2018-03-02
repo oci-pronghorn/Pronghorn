@@ -166,7 +166,7 @@ public final class PoolIdx  {
         	
         	boolean debug = false;
         	if (debug) {
-	        	//DO NOT REPORT UNLESS DEBUGGIN.
+	        	//DO NOT REPORT UNLESS DEBUGGING.
 	        	//unable to find a lock, report this.
 	        	if (Integer.numberOfLeadingZeros(that.failureCount) != Integer.numberOfLeadingZeros(++that.failureCount)) {
 	        		logger.info("Unable to find free value from the pool, consider modification of the graph/configuration.");
