@@ -18,18 +18,18 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	private boolean writeDot;
 	
 	public JSONExtractor() {
-		schema = new JSONFieldSchema();
+		schema = new JSONFieldSchema(0);//can we set the position here for the null block???=
 		writeDot = false;	
 	}
 	
 	public JSONExtractor(boolean writeDot) {
-		this.schema = new JSONFieldSchema();
+		this.schema = new JSONFieldSchema(0);
 		this.writeDot = writeDot;
 	}
 	
     @Override
 	public JSONReader reader() {
-		return schema;
+		return schema; //clone if baseoffset is different??
 	}
 	
 	public TrieParser trieParser() {
