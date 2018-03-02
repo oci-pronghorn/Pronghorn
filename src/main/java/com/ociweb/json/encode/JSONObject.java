@@ -15,11 +15,13 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         this.owner = owner;
     }
 
+    // TODO: may not be necessary after endObject() refactor
     @Override
     public void childCompleted() {
         // does not matter
     }
 
+    // TODO: make abstract and force impl on new
     public P endObject() {
         builder.endObject();
         owner.childCompleted();

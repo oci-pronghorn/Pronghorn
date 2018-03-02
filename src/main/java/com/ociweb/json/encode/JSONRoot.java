@@ -4,8 +4,6 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-// TODO: Convert all nullables to use a ToBoolFunction for null check
-
 public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     final JSONBuilder<T> builder;
     private final P owner;
@@ -46,6 +44,8 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     }
 
     // Array
+
+    // TODO: add convenience method that take an IntProvider for len
 
     public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(

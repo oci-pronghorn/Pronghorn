@@ -465,7 +465,6 @@ class JSONBuilder<T> {
     // Decimal
 
     // TODO: support rational, decimal
-    // TODO: move precision into declare, not visit
 
     public void addDecimal(int precision, ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {

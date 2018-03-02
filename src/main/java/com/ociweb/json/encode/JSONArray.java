@@ -64,6 +64,8 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
 
     // TODO: all other element types
 
+    // Bool
+
     // Integer
 
     public P integer(IterLongFunction<T, N> func) {
@@ -89,4 +91,8 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         this.childCompleted();
         return owner;
     }
+
+    // Decimal
+
+    // String
 }
