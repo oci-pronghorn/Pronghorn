@@ -80,20 +80,6 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
-	public <N, M> StringTemplateBuilder<T> add(final StringTemplateIterScript<M, N> data, final ToMemberFunction<T, M> accessor) {
-		append(
-				new StringTemplateScript<T>() {
-					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
-						N node = null;
-						M member = accessor.apply(source);
-						for(int i = 0; (node = data.fetch(writer, member, i, node)) != null; i++) {
-						}
-					}
-				});
-		return this;
-	}
-
 	public <M> StringTemplateBuilder<T> add(final StringTemplateBuilder<M> data, final ToMemberFunction<T, M> accessor) {
 		toLock(data);
 		append(

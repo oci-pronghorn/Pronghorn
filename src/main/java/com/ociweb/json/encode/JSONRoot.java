@@ -4,7 +4,7 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-// TODO: fix complete not aways getting called
+// TODO: Convert all nullables to use a ToBoolFunction for null check
 
 public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     final JSONBuilder<T> builder;
@@ -31,6 +31,8 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         builder.complete();
     }
 
+    // Object
+
     public JSONObject<T, P> beginObject() {
         return new JSONObject<>(
                 builder.beginObject(),
@@ -42,6 +44,8 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
                 builder.beginObject(isNull),
                 builder.getKeywords(), owner, depth + 1);
     }
+
+    // Array
 
     public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
@@ -55,6 +59,10 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
                 builder.getKeywords(), iterator, owner, depth + 1);
     }
 
+    // No need for Renderer methods
+
+    // Null
+
     public P empty() {
         this.childCompleted();
         return owner;
@@ -65,6 +73,8 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         this.childCompleted();
         return owner;
     }
+
+    // Bool
 
     public P bool(ToBoolFunction<T> func) {
         builder.addBool(func);
@@ -78,17 +88,33 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return owner;
     }
 
+    public P nullableBool(ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+        builder.addBool(isNull, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P nullableBool(ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+        builder.addBool(isNull, func, encode);
+        this.childCompleted();
+        return owner;
+    }
+
+    @Deprecated
     public P nullableBool(ToNullableBoolFunction<T> func) {
         builder.addBool(func);
         this.childCompleted();
         return owner;
     }
 
+    @Deprecated
     public P nullableBool(ToNullableBoolFunction<T> func, JSONType encode) {
         builder.addBool(func, encode);
         this.childCompleted();
         return owner;
     }
+
+    // Integer
 
     public P integer(ToLongFunction<T> func) {
         builder.addInteger(func);
@@ -102,17 +128,27 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return owner;
     }
 
+    public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+        builder.addInteger(isNull, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    @Deprecated
     public P nullableInteger(ToNullableLongFunction<T> func) {
         builder.addInteger(func);
         this.childCompleted();
         return owner;
     }
 
+    @Deprecated
     public P nullableInteger(ToNullableLongFunction<T> func, JSONType encode) {
         builder.addInteger(func, encode);
         this.childCompleted();
         return owner;
     }
+
+    // Decimal
 
     public P decimal(ToDoubleFunction<T> func) {
         builder.addDecimal(func);
@@ -126,16 +162,31 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return owner;
     }
 
+    public P nullableDecimal(ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        builder.addDecimal(isNull, func);
+        return owner;
+    }
+
+    public P nullableDecimal(ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addDecimal(isNull, func, encode);
+        this.childCompleted();
+        return owner;
+    }
+
+    @Deprecated
     public P nullableDecimal(ToNullableDecimalFunction<T> func) {
         builder.addDecimal(func);
         return owner;
     }
 
+    @Deprecated
     public P nullableDecimal(ToNullableDecimalFunction<T> func, JSONType encode) {
         builder.addDecimal(func, encode);
         this.childCompleted();
         return owner;
     }
+
+    // String
 
     public P string(ToStringFunction<T> func) {
         builder.addString(func);
@@ -150,13 +201,13 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     }
 
     public P nullableString(ToStringFunction<T> func) {
-        builder.addString(func);
+        builder.addNullableString(func);
         this.childCompleted();
         return owner;
     }
 
     public P nullableString(ToStringFunction<T> func, JSONType encode) {
-        builder.addString(func, encode);
+        builder.addNullableString(func, encode);
         this.childCompleted();
         return owner;
     }

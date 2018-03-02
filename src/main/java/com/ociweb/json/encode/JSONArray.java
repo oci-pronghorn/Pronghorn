@@ -24,16 +24,14 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         owner.childCompleted();
     }
 
-    // TODO: all other element types
-    // TODO: use IterMemberFunction
+    // Object
 
-    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
+    public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, N, M> accessor) {
         return new JSONObject<M, P>(
-                builder.beginObject(accessor),
+                builder.beginObject(iterator, accessor),
                 builder.getKeywords(), owner, depth + 1) {
 
             public P endObject() {
-                builder.endObject();
                 builder.endArray();
                 owner.childCompleted();
                 return owner;
@@ -41,17 +39,32 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         };
     }
 
+    // Renderer
+
+    public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, N, M> accessor) {
+        builder.addRenderer(iterator, renderer, accessor);
+        this.childCompleted();
+        return owner;
+    }
+
+    @Deprecated
     public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
         builder.addRenderer(renderer, accessor);
         this.childCompleted();
         return owner;
     }
 
+    // Null
+
     public P constantNull() {
         builder.addNull(iterator);
         this.childCompleted();
         return owner;
     }
+
+    // TODO: all other element types
+
+    // Integer
 
     public P integer(IterLongFunction<T, N> func) {
         builder.addInteger(iterator, func);

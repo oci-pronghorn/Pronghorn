@@ -26,6 +26,8 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return owner;
     }
 
+    // Object
+
     public JSONObject<T, JSONObject<T, P>> beginObject(String name) {
         return new JSONObject<>(
                 builder.addFieldPrefix(name).beginObject(),
@@ -37,6 +39,8 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.addFieldPrefix(name).beginObject(isNull),
                 builder.getKeywords(), this, depth + 1);
     }
+
+    // Array
 
     public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
@@ -50,15 +54,23 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.getKeywords(), iterator, this, depth + 1);
     }
 
-    public JSONObject<T, P> constantNull(String name) {
-        builder.addFieldPrefix(name).addNull();
-        return this;
-    }
+    // Renderer
 
     public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
         builder.addFieldPrefix(name).addRenderer(renderer, accessor);
         return this;
     }
+
+    // No need for empty()
+
+    // Null
+
+    public JSONObject<T, P> constantNull(String name) {
+        builder.addFieldPrefix(name).addNull();
+        return this;
+    }
+
+    // Boolean
 
     public JSONObject<T, P> bool(String name, ToBoolFunction<T> func) {
         builder.addFieldPrefix(name).addBool(func);
@@ -70,15 +82,29 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return this;
     }
 
+    public JSONObject<T, P> bool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+        builder.addFieldPrefix(name).addBool(isNull, func);
+        return this;
+    }
+
+    public JSONObject<T, P> bool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+        builder.addFieldPrefix(name).addBool(isNull, func, encode);
+        return this;
+    }
+
+    @Deprecated
     public JSONObject<T, P> nullableBool(String name, ToNullableBoolFunction<T> func) {
         builder.addFieldPrefix(name).addBool(func);
         return this;
     }
 
+    @Deprecated
     public JSONObject<T, P> nullableBool(String name, ToNullableBoolFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addBool(func, encode);
         return this;
     }
+
+    // Integer
 
     public JSONObject<T, P> integer(String name, ToLongFunction<T> func) {
         builder.addFieldPrefix(name).addInteger(func);
@@ -90,15 +116,29 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return this;
     }
 
+    public JSONObject<T, P> integer(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+        builder.addFieldPrefix(name).addInteger(isNull, func);
+        return this;
+    }
+
+    public JSONObject<T, P> integer(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+        builder.addFieldPrefix(name).addInteger(isNull, func, encode);
+        return this;
+    }
+
+    @Deprecated
     public JSONObject<T, P> nullableInteger(String name, ToNullableLongFunction<T> func) {
         builder.addFieldPrefix(name).addInteger(func);
         return this;
     }
 
+    @Deprecated
     public JSONObject<T, P> nullableInteger(String name, ToNullableLongFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addInteger(func, encode);
         return this;
     }
+
+    // Decimal
 
     public JSONObject<T, P> decimal(String name, ToDoubleFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(func);
@@ -110,15 +150,29 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return this;
     }
 
+    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        builder.addFieldPrefix(name).addDecimal(isNull, func);
+        return this;
+    }
+
+    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addFieldPrefix(name).addDecimal(isNull, func, encode);
+        return this;
+    }
+
+    @Deprecated
     public JSONObject<T, P> nullableDecimal(String name, ToNullableDecimalFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(func);
         return this;
     }
 
+    @Deprecated
     public JSONObject<T, P> nullableDecimal(String name, ToNullableDecimalFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(func, encode);
         return this;
     }
+
+    // String
 
     public JSONObject<T, P> string(String name, ToStringFunction<T> func) {
         builder.addFieldPrefix(name).addString(func);

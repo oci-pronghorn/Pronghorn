@@ -61,4 +61,21 @@ public class JSONRootArrayTests {
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[null,8,null,6,null,4,null,2,null]", out.toString());
     }
+
+    @Test
+    public void testRootArrayObject() {
+        JSONRenderer<BasicObj[]> json = new JSONRenderer<BasicObj[]>()
+                .array((o, i, n)->i<o.length?o:null)
+                    .beginObject((obj, i, node) -> obj[i])
+                        .bool("b", o->o.b)
+                        .integer("i", o->o.i)
+                        .decimal("d", (o, v) -> v.visit(o.d, 2))
+                        .string("s", o->o.s)
+                        .beginObject("m")
+                        .endObject()
+                    .endObject();
+        assertTrue(json.isLocked());
+        json.render(out, new BasicObj[] {new BasicObj(43), new BasicObj(44)});
+        assertEquals("[{\"b\":true,\"i\":43,\"d\":123.40,\"s\":\"fum\",\"m\":{}},{\"b\":true,\"i\":44,\"d\":123.40,\"s\":\"fum\",\"m\":{}}]", out.toString());
+    }
 }

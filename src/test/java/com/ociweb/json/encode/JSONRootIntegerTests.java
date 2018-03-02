@@ -4,6 +4,8 @@ import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Objects;
+
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -25,7 +27,7 @@ public class JSONRootIntegerTests {
     }
 
     @Test
-    public void testRootIntegerNul_lNull() {
+    public void testRootIntegerNull_lNullD() {
         JSONRenderer<Integer> json = new JSONRenderer<Integer>()
                 .nullableInteger((o, v) -> v.visit(o != null ? o : 0, o == null));
         assertTrue(json.isLocked());
@@ -34,9 +36,27 @@ public class JSONRootIntegerTests {
     }
 
     @Test
-    public void testRootIntegerNull_Value() {
+    public void testRootIntegerNull_Null() {
+        JSONRenderer<Integer> json = new JSONRenderer<Integer>()
+                .nullableInteger(Objects::isNull, o -> o);
+        assertTrue(json.isLocked());
+        json.render(out, null);
+        assertEquals("null", out.toString());
+    }
+
+    @Test
+    public void testRootIntegerNull_ValueD() {
         JSONRenderer<Integer> json = new JSONRenderer<Integer>()
                 .nullableInteger((o, v) -> v.visit(o != null ? o : 0, o == null));
+        assertTrue(json.isLocked());
+        json.render(out, 9);
+        assertEquals("9", out.toString());
+    }
+
+    @Test
+    public void testRootIntegerNull_Value() {
+        JSONRenderer<Integer> json = new JSONRenderer<Integer>()
+                .nullableInteger(Objects::isNull, o -> o);
         assertTrue(json.isLocked());
         json.render(out, 9);
         assertEquals("9", out.toString());

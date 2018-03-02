@@ -9,22 +9,6 @@ import java.util.Objects;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-class BasicObj {
-    boolean b = true;
-    int i = 9;
-    double d = 123.4;
-    String s = "fum";
-    BasicObj m;
-
-    BasicObj() {
-        this.m = null;
-    }
-
-    BasicObj(BasicObj m) {
-        this.m = m;
-    }
-}
-
 public class JSONObjectTests {
     private StringBuilderWriter out;
 
