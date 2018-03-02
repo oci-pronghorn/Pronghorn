@@ -678,7 +678,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					final long now = System.nanoTime();		        
 		        	long duration = now-start;
 		 			if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
-						if (lowLatencyEnforced) {
+						if (false && lowLatencyEnforced) { //TODO: we need a switch for windows users...
 							lowLatencyEnforced = false;
 							logger.warn("This platform is unable to run in low latency mode due to OS or hardware limitations. Parts of the graph have now been switched to high volume mode.");
 						}

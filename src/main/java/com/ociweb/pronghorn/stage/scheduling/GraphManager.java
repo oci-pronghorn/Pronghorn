@@ -2453,8 +2453,8 @@ public class GraphManager {
 				if (duration<0) {
 					logger.info("Bad duration {}",duration);
 				} else {
-					logger.info("Warning: the OS has measured stages taking zero ms {} times. "
-						+ "Most recent case is for {}.", x, stage);
+					logger.trace("Warning: the OS has measured stages taking zero ms {} times. "
+						       + "Most recent case is for {}. ", x, stage);
 				}
 			}
 			
