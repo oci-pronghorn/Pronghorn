@@ -150,24 +150,52 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
 
     // Decimal
 
-    public P decimal(ToDoubleFunction<T> func) {
+    public P decimal(int precision, ToDoubleFunction<T> func) {
+        builder.addDecimal(precision, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P decimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addDecimal(precision, func, encode);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P nullableDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        builder.addDecimal(precision, isNull, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P nullableDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addDecimal(precision, isNull, func, encode);
+        this.childCompleted();
+        return owner;
+    }
+
+    @Deprecated
+    public P decimal(ToDecimalFunction<T> func) {
         builder.addDecimal(func);
         this.childCompleted();
         return owner;
     }
 
-    public P decimal(ToDoubleFunction<T> func, JSONType encode) {
+    @Deprecated
+    public P decimal(ToDecimalFunction<T> func, JSONType encode) {
         builder.addDecimal(func, encode);
         this.childCompleted();
         return owner;
     }
 
-    public P nullableDecimal(ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    @Deprecated
+    public P nullableDecimal(ToBoolFunction<T> isNull, ToDecimalFunction<T> func) {
         builder.addDecimal(isNull, func);
         return owner;
     }
 
-    public P nullableDecimal(ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+    @Deprecated
+    public P nullableDecimal(ToBoolFunction<T> isNull, ToDecimalFunction<T> func, JSONType encode) {
         builder.addDecimal(isNull, func, encode);
         this.childCompleted();
         return owner;

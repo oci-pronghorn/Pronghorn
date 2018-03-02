@@ -464,14 +464,40 @@ class JSONBuilder<T> {
 
     // Decimal
 
-    // TODO: support rational, decimal, and double
+    // TODO: support rational, decimal
     // TODO: move precision into declare, not visit
 
-    void addDecimal(final ToDoubleFunction<T> func) {
+    public void addDecimal(int precision, ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDoubleFunction.Visit() {
+                double value = func.applyAsDouble(source);
+                Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
+            }
+        });
+    }
+
+    public void addDecimal(int precision, final ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void fetch(final AppendableByteWriter writer, T source) {
+                if (isNull.applyAsBool(source)) {
+                    kw.Null(writer);
+                }
+                else {
+                    double value = func.applyAsDouble(source);
+                    Appendables.appendDecimalValue(writer, (long) (value * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
+                }
+            }
+        });
+    }
+
+    @Deprecated
+    void addDecimal(final ToDecimalFunction<T> func) {
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void fetch(final AppendableByteWriter writer, T source) {
+                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
                     @Override
                     public void visit(double value, int precision) {
                         Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
@@ -481,11 +507,12 @@ class JSONBuilder<T> {
         });
     }
 
-    void addDecimal(final ToBoolFunction<T> isNull, final ToDoubleFunction<T> func) {
+    @Deprecated
+    void addDecimal(final ToBoolFunction<T> isNull, final ToDecimalFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDoubleFunction.Visit() {
+                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
                     @Override
                     public void visit(double value, int precision) {
                         if (isNull.applyAsBool(source)) {
@@ -518,7 +545,36 @@ class JSONBuilder<T> {
         });
     }
 
-    void addDecimal(ToDoubleFunction<T> func, JSONType encode) {
+    void addDecimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
+        switch (encode) {
+            case TypeString:
+                break;
+            case TypeInteger:
+                break;
+            case TypeDecimal:
+                addDecimal(precision, func);
+                break;
+            case TypeBoolean:
+                break;
+        }
+    }
+
+    void addDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        switch (encode) {
+            case TypeString:
+                break;
+            case TypeInteger:
+                break;
+            case TypeDecimal:
+                addDecimal(precision, isNull, func);
+                break;
+            case TypeBoolean:
+                break;
+        }
+    }
+
+    @Deprecated
+    void addDecimal(ToDecimalFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -532,7 +588,8 @@ class JSONBuilder<T> {
         }
     }
 
-    void addDecimal(final ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+    @Deprecated
+    void addDecimal(final ToBoolFunction<T> isNull, ToDecimalFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;

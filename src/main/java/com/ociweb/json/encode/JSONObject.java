@@ -140,22 +140,46 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
 
     // Decimal
 
-    public JSONObject<T, P> decimal(String name, ToDoubleFunction<T> func) {
+    public P decimal(String name, int precision, ToDoubleFunction<T> func) {
+        builder.addFieldPrefix(name).addDecimal(precision, func);
+        return owner;
+    }
+
+    public P decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addFieldPrefix(name).addDecimal(precision, func, encode);
+        return owner;
+    }
+
+    public P nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        builder.addFieldPrefix(name).addDecimal(precision, isNull, func);
+        return owner;
+    }
+
+    public P nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addFieldPrefix(name).addDecimal(precision, isNull, func, encode);
+        return owner;
+    }
+
+    @Deprecated
+    public JSONObject<T, P> decimal(String name, ToDecimalFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(func);
         return this;
     }
 
-    public JSONObject<T, P> decimal(String name, ToDoubleFunction<T> func, JSONType encode) {
+    @Deprecated
+    public JSONObject<T, P> decimal(String name, ToDecimalFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(func, encode);
         return this;
     }
 
-    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    @Deprecated
+    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDecimalFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+    @Deprecated
+    public JSONObject<T, P> nullableDecimal(String name, ToBoolFunction<T> isNull, ToDecimalFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(isNull, func, encode);
         return this;
     }
