@@ -638,6 +638,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 				
 					case 2: //PAYLOAD READING WITH LENGTH
+							//if we can not release then do not finish.
+							if (!Pipe.hasRoomForWrite(releasePipe)) {
+								break;
+							}
 							if (2==state) {
 								
 								//TODO: should we do the JSON Extraction here??
@@ -764,6 +768,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							}
 	
 					case 3: //PAYLOAD READING WITH CHUNKS	
+						
+							//if we can not release then do not finish.
+							if (!Pipe.hasRoomForWrite(releasePipe)) {
+								break;
+							}
 						
 					  	    long chunkRemaining = payloadLengthData[i];
 
