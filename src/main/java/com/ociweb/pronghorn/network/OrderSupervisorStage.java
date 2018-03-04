@@ -261,7 +261,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        	//logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
-		        	continue;
+		        	return false;//must check the other pipes this can not be processed yet.
 
 		        }
 		        

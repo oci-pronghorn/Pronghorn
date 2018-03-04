@@ -403,7 +403,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	}
 	private int countOfUnableToFullyWrite = 0;
 	
-    private int totalB;
+ //   private int totalB;
     
 //	private int startsWith(StringBuilder stringBuilder, String expected2) {
 //		

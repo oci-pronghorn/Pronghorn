@@ -510,6 +510,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 
         if (showRequests) {
         	logger.info("//////////////////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",channelId, originalBlobPosition, len, 
+        			
+        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
+        			
         			Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
         }
         
