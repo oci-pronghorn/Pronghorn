@@ -4,6 +4,8 @@ import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import static junit.framework.TestCase.assertEquals;
@@ -77,5 +79,41 @@ public class JSONRootArrayTests {
         assertTrue(json.isLocked());
         json.render(out, new BasicObj[] {new BasicObj(43), new BasicObj(44)});
         assertEquals("[{\"b\":true,\"i\":43,\"d\":123.40,\"s\":\"fum\",\"m\":{}},{\"b\":true,\"i\":44,\"d\":123.40,\"s\":\"fum\",\"m\":{}}]", out.toString());
+    }
+
+    @Test
+    public void testRootListArray() {
+        JSONRenderer<List<Integer>> json = new JSONRenderer<List<Integer>>()
+                .listArray(o->o).integer((o, i, n, v) -> v.visit(n));
+        assertTrue(json.isLocked());
+        json.render(out, Arrays.asList(9, 8, 7, 6, 5, 4, 3, 2, 1));
+        assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
+    }
+
+    @Test
+    public void testRootListArray_null() {
+        JSONRenderer<List<Integer>> json = new JSONRenderer<List<Integer>>()
+                .listArray(o->o).integer((o, i, n, v) -> v.visit(n));
+        assertTrue(json.isLocked());
+        json.render(out, null);
+        assertEquals("null", out.toString());
+    }
+
+    @Test
+    public void testRootArrayArray() {
+        JSONRenderer<Integer[]> json = new JSONRenderer<Integer[]>()
+                .array(o->o).integer((o, i, n, v) -> v.visit(n));
+        assertTrue(json.isLocked());
+        json.render(out, new Integer[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
+        assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
+    }
+
+    @Test
+    public void testRootArrayArray_null() {
+        JSONRenderer<Integer[]> json = new JSONRenderer<Integer[]>()
+                .array(o->o).integer((o, i, n, v) -> v.visit(n));
+        assertTrue(json.isLocked());
+        json.render(out, null);
+        assertEquals("null", out.toString());
     }
 }

@@ -4,6 +4,9 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
+import java.util.Collection;
+import java.util.List;
+
 public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     final JSONBuilder<T> builder;
     private final P owner;
@@ -32,6 +35,10 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     // Object
 
     public JSONObject<T, P> beginObject() {
+        return getTpjsonObject();
+    }
+
+    private JSONObject<T, P> getTpjsonObject() {
         return new JSONObject<>(
                 builder.beginObject(),
                 builder.getKeywords(), owner, depth + 1);
@@ -45,8 +52,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
 
     // Array
 
-    // TODO: add convenience method that take an IntProvider for len
-
     public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
         return new JSONArray<>(
                 builder.beginArray(),
@@ -57,6 +62,44 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return new JSONArray<>(
                 builder.beginArray(isNull),
                 builder.getKeywords(), iterator, owner, depth + 1);
+    }
+
+    public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
+        return new JSONArray<T, P, N>(
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.apply(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        List<N> m = accessor.apply(o);
+                        return i < m.size() ? m.get(i) : null;
+                    }
+                },
+                owner, depth + 1);
+    }
+
+    public <N> JSONArray<T, P, N> array(ToMemberFunction<T, N[]> accessor) {
+        return new JSONArray<T, P, N>(
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.apply(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        N[] m = accessor.apply(o);
+                        return i < m.length ? m[i] : null;
+                    }
+                },
+                owner, depth + 1);
     }
 
     // No need for Renderer methods

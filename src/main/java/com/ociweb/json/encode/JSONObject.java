@@ -56,6 +56,8 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.getKeywords(), iterator, this, depth + 1);
     }
 
+    // TODO: add array convenience methods
+
     // Renderer
 
     public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {

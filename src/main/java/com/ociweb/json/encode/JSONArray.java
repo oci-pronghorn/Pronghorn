@@ -80,12 +80,14 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         return owner;
     }
 
+    @Deprecated
     public P integerNull(IterNullableLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
         this.childCompleted();
         return owner;
     }
 
+    @Deprecated
     public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
         this.childCompleted();

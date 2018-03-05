@@ -366,6 +366,7 @@ class JSONBuilder<T> {
         });
     }
 
+    @Deprecated
     <N> void addInteger(final ArrayIteratorFunction<T, N> iterator, final IterNullableLongFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
@@ -448,6 +449,7 @@ class JSONBuilder<T> {
         }
     }
 
+    @Deprecated
     <N> void addInteger(ArrayIteratorFunction<T, N> arrayLength, IterNullableLongFunction<T, N> func, JSONType encode) {
         switch (encode) {
             case TypeString:
