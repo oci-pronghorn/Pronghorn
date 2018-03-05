@@ -10,6 +10,8 @@ import com.ociweb.json.template.StringTemplateScript;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
+// TODO: implement the type converters
+
 class JSONBuilder<T> {
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
@@ -43,7 +45,7 @@ class JSONBuilder<T> {
         nullableBranches[1] = null;
     }
 
-    public boolean isLocked() {
+    boolean isLocked() {
         return scripts.isLocked();
     }
 
@@ -212,11 +214,11 @@ class JSONBuilder<T> {
     void addBool(final ToBoolFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter apendable, T source) {
+            public void fetch(AppendableByteWriter appendable, T source) {
                 if (func.applyAsBool(source)) {
-                    kw.True(apendable);
+                    kw.True(appendable);
                 } else {
-                    kw.False(apendable);
+                    kw.False(appendable);
                 }
             }
         });
@@ -237,6 +239,31 @@ class JSONBuilder<T> {
                         kw.False(writer);
                     }
                 }
+            }
+        });
+    }
+
+    <N> void addBool(ArrayIteratorFunction<T, N> iterator, IterBoolFunction<T, N> func) {
+        scripts.add(new StringTemplateIterScript<T, N>() {
+            @Override
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
+                node = iterator.test(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(appendable, depth);
+                    }
+                    func.applyAsBool(source, i, node, new IterBoolFunction.Visit() {
+                        @Override
+                        public void visit(boolean b) {
+                            if (b) {
+                                kw.True(appendable);
+                            } else {
+                                kw.False(appendable);
+                            }
+                        }
+                    });
+                }
+                return node;
             }
         });
     }
@@ -286,6 +313,20 @@ class JSONBuilder<T> {
         }
     }
 
+    <N> void addBool(ArrayIteratorFunction<T, N> iterator, IterBoolFunction<T, N> func, JSONType encode) {
+        switch (encode) {
+            case TypeString:
+                break;
+            case TypeInteger:
+                break;
+            case TypeDecimal:
+                break;
+            case TypeBoolean:
+                addBool(iterator, func);
+                break;
+        }
+    }
+
     @Deprecated
     void addBool(ToNullableBoolFunction<T> func, JSONType encode) {
         switch (encode) {
@@ -315,16 +356,16 @@ class JSONBuilder<T> {
     <N> void addInteger(final ArrayIteratorFunction<T, N> iterator, final IterLongFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter apendable, T source, int i, N node) {
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
                 node = iterator.test(source, i, node);
                 if (node != null) {
                     if (i > 0) {
-                        kw.NextArrayElement(apendable, depth);
+                        kw.NextArrayElement(appendable, depth);
                     }
                     func.applyAsLong(source, i, node, new IterLongFunction.Visit() {
                         @Override
                         public void visit(long v) {
-                            Appendables.appendValue(apendable, v);
+                            Appendables.appendValue(appendable, v);
                         }
                     });
                 }
@@ -370,19 +411,19 @@ class JSONBuilder<T> {
     <N> void addInteger(final ArrayIteratorFunction<T, N> iterator, final IterNullableLongFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter apendable, T source, int i, N node) {
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
                 node = iterator.test(source, i, node);
                 if (node != null) {
                     if (i > 0) {
-                        kw.NextArrayElement(apendable, depth);
+                        kw.NextArrayElement(appendable, depth);
                     }
                     func.applyAsLong(source, i, node, new IterNullableLongFunction.Visit() {
                         @Override
                         public void visit(long v, boolean isNull) {
                             if (isNull) {
-                                kw.Null(apendable);
+                                kw.Null(appendable);
                             } else {
-                                Appendables.appendValue(apendable, v);
+                                Appendables.appendValue(appendable, v);
                             }
                         }
                     });
@@ -468,7 +509,7 @@ class JSONBuilder<T> {
 
     // TODO: support rational, decimal
 
-    public void addDecimal(int precision, ToDoubleFunction<T> func) {
+    void addDecimal(int precision, ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
@@ -478,7 +519,7 @@ class JSONBuilder<T> {
         });
     }
 
-    public void addDecimal(int precision, final ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    void addDecimal(int precision, final ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
@@ -489,6 +530,27 @@ class JSONBuilder<T> {
                     double value = func.applyAsDouble(source);
                     Appendables.appendDecimalValue(writer, (long) (value * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
                 }
+            }
+        });
+    }
+
+    <N> void addDecimal(ArrayIteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T, N> func) {
+        scripts.add(new StringTemplateIterScript<T, N>() {
+            @Override
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
+                node = iterator.test(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(appendable, depth);
+                    }
+                    func.applyAsDouble(source, i, node, new IterDoubleFunction.Visit() {
+                        @Override
+                        public void visit(double v) {
+                            Appendables.appendDecimalValue(appendable, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
+                        }
+                    });
+                }
+                return node;
             }
         });
     }
@@ -574,6 +636,20 @@ class JSONBuilder<T> {
         }
     }
 
+    <N> void addDecimal(ArrayIteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T, N> func, JSONType encode) {
+        switch (encode) {
+            case TypeString:
+                break;
+            case TypeInteger:
+                break;
+            case TypeDecimal:
+                addDecimal(iterator, precision, func);
+                break;
+            case TypeBoolean:
+                break;
+        }
+    }
+
     @Deprecated
     void addDecimal(ToDecimalFunction<T> func, JSONType encode) {
         switch (encode) {
@@ -650,6 +726,29 @@ class JSONBuilder<T> {
         });
     }
 
+    <N> void addString(ArrayIteratorFunction<T, N> iterator, IterStringFunction<T, N> func) {
+        scripts.add(new StringTemplateIterScript<T, N>() {
+            @Override
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
+                node = iterator.test(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(appendable, depth);
+                    }
+                    func.applyAsString(source, i, node, new IterStringFunction.Visit() {
+                        @Override
+                        public void visit(String v) {
+                            kw.Quote(appendable);
+                            appendable.append(v);
+                            kw.Quote(appendable);
+                        }
+                    });
+                }
+                return node;
+            }
+        });
+    }
+
     void addString(ToStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
@@ -668,6 +767,20 @@ class JSONBuilder<T> {
         switch (encode) {
             case TypeString:
                 addNullableString(func);
+                break;
+            case TypeInteger:
+                break;
+            case TypeDecimal:
+                break;
+            case TypeBoolean:
+                break;
+        }
+    }
+
+    <N> void addString(ArrayIteratorFunction<T, N> iterator, IterStringFunction<T, N> func, JSONType encode) {
+        switch (encode) {
+            case TypeString:
+                addString(iterator, func);
                 break;
             case TypeInteger:
                 break;

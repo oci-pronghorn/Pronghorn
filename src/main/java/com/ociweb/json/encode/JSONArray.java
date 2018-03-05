@@ -62,9 +62,21 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         return owner;
     }
 
-    // TODO: all other element types
+    // TODO: nullable array elements for primitives
 
     // Bool
+
+    public P bool(IterBoolFunction<T, N> func) {
+        builder.addBool(iterator, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P bool(IterBoolFunction<T, N> func, JSONType encode) {
+        builder.addBool(iterator, func, encode);
+        this.childCompleted();
+        return owner;
+    }
 
     // Integer
 
@@ -96,5 +108,29 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
 
     // Decimal
 
+    public P decimal(int precision, IterDoubleFunction<T, N> func) {
+        builder.addDecimal(iterator, precision, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P decimal(int precision, IterDoubleFunction<T, N> func, JSONType encode) {
+        builder.addDecimal(iterator, precision, func, encode);
+        this.childCompleted();
+        return owner;
+    }
+
     // String
+
+    public P string(IterStringFunction<T, N> func) {
+        builder.addString(iterator, func);
+        this.childCompleted();
+        return owner;
+    }
+
+    public P string(IterStringFunction<T, N> func, JSONType encode) {
+        builder.addString(iterator, func, encode);
+        this.childCompleted();
+        return owner;
+    }
 }

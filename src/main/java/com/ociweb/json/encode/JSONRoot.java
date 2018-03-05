@@ -35,10 +35,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     // Object
 
     public JSONObject<T, P> beginObject() {
-        return getTpjsonObject();
-    }
-
-    private JSONObject<T, P> getTpjsonObject() {
         return new JSONObject<>(
                 builder.beginObject(),
                 builder.getKeywords(), owner, depth + 1);
