@@ -1,6 +1,7 @@
 package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
+import com.ociweb.json.encode.function.IterMemberFunction;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -56,6 +57,17 @@ public class JSONRootArrayTests {
     }
 
     @Test
+    public void testRootArrayRenderer() {
+        JSONRenderer<Double> json1 = new JSONRenderer<Double>()
+                .decimal(3, o->o);
+        JSONRenderer<Integer[]> json = new JSONRenderer<Integer[]>()
+                .array(o->o).renderer(json1, (o, i, node) -> i != 3 ? o[i].doubleValue() + i : null);
+        assertTrue(json.isLocked());
+        json.render(out, new Integer[] {9, 9, 9, 9, 9, 9, 9, 9, 9});
+        assertEquals("[9.000,10.000,11.000,null,13.000,14.000,15.000,16.000,17.000]", out.toString());
+    }
+
+    @Test
     public void testRootArrayRepeatedNulls() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
                 .array((o, i, n)->i<o.length?o:null).constantNull();
@@ -89,14 +101,14 @@ public class JSONRootArrayTests {
                 .beginObject((obj, i, node) -> obj[i])
                 .bool("b", o->o.b)
                 .integer("i", o->o.i)
-                .decimal("d", (o, v) -> v.visit(o.d, 2))
+                .decimal("d", 2, o->o.d)
                 .string("s", o->o.s)
                 .beginObject("m")
                 .endObject()
                 .endObject();
         assertTrue(json.isLocked());
-        json.render(out, new BasicObj[] {new BasicObj(43), new BasicObj(44)});
-        assertEquals("[{\"b\":true,\"i\":43,\"d\":123.40,\"s\":\"fum\",\"m\":{}},{\"b\":true,\"i\":44,\"d\":123.40,\"s\":\"fum\",\"m\":{}}]", out.toString());
+        json.render(out, new BasicObj[] {new BasicObj(43), null, new BasicObj(44)});
+        assertEquals("[{\"b\":true,\"i\":43,\"d\":123.40,\"s\":\"fum\",\"m\":{}},null,{\"b\":true,\"i\":44,\"d\":123.40,\"s\":\"fum\",\"m\":{}}]", out.toString());
     }
 
     @Test

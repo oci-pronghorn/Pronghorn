@@ -88,12 +88,12 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return this;
     }
 
-    public JSONObject<T, P> bool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+    public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
         builder.addFieldPrefix(name).addBool(isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> bool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+    public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addBool(isNull, func, encode);
         return this;
     }
@@ -122,12 +122,12 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
         return this;
     }
 
-    public JSONObject<T, P> integer(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+    public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
         builder.addFieldPrefix(name).addInteger(isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> integer(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+    public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addInteger(isNull, func, encode);
         return this;
     }
@@ -146,24 +146,24 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
 
     // Decimal
 
-    public P decimal(String name, int precision, ToDoubleFunction<T> func) {
+    public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(precision, func);
-        return owner;
+        return this;
     }
 
-    public P decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
+    public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(precision, func, encode);
-        return owner;
+        return this;
     }
 
-    public P nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
         builder.addFieldPrefix(name).addDecimal(precision, isNull, func);
-        return owner;
+        return this;
     }
 
-    public P nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+    public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
         builder.addFieldPrefix(name).addDecimal(precision, isNull, func, encode);
-        return owner;
+        return this;
     }
 
     @Deprecated

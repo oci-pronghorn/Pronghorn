@@ -1,6 +1,7 @@
 package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
+import com.ociweb.json.encode.function.ToStringFunction;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,12 +46,33 @@ public class JSONObjectTests {
     }
 
     @Test
+    public void testObjectCompund() {
+        JSONRenderer<Integer> json1 = new JSONRenderer<Integer>()
+                .integer(o->o);
+        JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
+                .beginObject()
+                    .integer("y", o->o.i+6)
+                .endObject();
+        JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
+                .beginObject()
+                    .renderer("v", json1, o->o.i+5)
+                    .renderer("x", json2, o->o)
+                    .renderer("z", json2, o->null)
+                    .beginNullableObject("always", o->true)
+                    .endObject()
+                .endObject();
+        assertTrue(json3.isLocked());
+        json3.render(out, new BasicObj());
+        assertEquals("{\"v\":14,\"x\":{\"y\":15},\"z\":null,\"always\":null}", out.toString());
+    }
+
+    @Test
     public void testObjectPrimitives() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
-                    .decimal("d", (o, v) -> v.visit(o.d, 2))
+                    .decimal("d", 2, o->o.d)
                     .string("s", o->o.s)
                     .beginObject("m")
                     .endObject()
@@ -64,25 +86,26 @@ public class JSONObjectTests {
     public void testObjectPrimitivesNull_Yes() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginObject()
-                    .nullableBool("b", (o, v) -> v.visit(o.b, true))
-                    .nullableInteger("i", (o, v) -> v.visit(o.i, true))
-                    .nullableDecimal("d", (o, v) -> v.visit(o.d, 2, true))
+                    .nullableBool("b", o->true, o->o.b)
+                    .nullableInteger("i", o->true, o->o.i)
+                    .nullableDecimal("d", 2, o->true, o->o.d)
                     .nullableString("s", o->null)
                     .beginNullableObject("m", o->(o.m == null))
                     .endObject()
+                    .constantNull("always")
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
-        assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null}", out.toString());
+        assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null,\"always\":null}", out.toString());
     }
 
     @Test
     public void testObjectPrimitivesNull_No() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginObject()
-                    .nullableBool("b", (o, v) -> v.visit(o.b, false))
-                    .nullableInteger("i", (o, v) -> v.visit(o.i, false))
-                    .nullableDecimal("d", (o, v) -> v.visit(o.d, 2, false))
+                    .nullableBool("b", o->false, o->o.b)
+                    .nullableInteger("i", o->false, o->o.i)
+                    .nullableDecimal("d", 2, o->false, o->o.d)
                     .nullableString("s", o->o.s)
                     .beginNullableObject("m", o->(o.m == null))
                     .endObject()
@@ -91,5 +114,4 @@ public class JSONObjectTests {
         json.render(out, new BasicObj(new BasicObj()));
         assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
     }
-
 }

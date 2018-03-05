@@ -39,6 +39,10 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         };
     }
 
+    // Array
+
+    // TODO
+
     // Renderer
 
     public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, N, M> accessor) {

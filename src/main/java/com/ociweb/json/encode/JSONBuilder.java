@@ -114,13 +114,6 @@ class JSONBuilder<T> {
         return scripts;
     }
 
-    <M> StringTemplateBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
-        StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
-        kw.OpenObj(accessorBranch, depth);
-        scripts.add(accessorBranch, accessor);
-        return accessorBranch;
-    }
-
     StringTemplateBuilder<T> beginObject(final ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenObj(notNullBranch, depth);
@@ -148,10 +141,10 @@ class JSONBuilder<T> {
                     M member = accessor.apply(source, i, node);
                     if (member != null) {
                         accessorBranch.render(appendable, member);
+                        kw.CloseObj(appendable, depth);
                     } else {
                         kw.Null(appendable);
                     }
-                    kw.CloseObj(appendable, depth);
                 }
                 return node;
             }

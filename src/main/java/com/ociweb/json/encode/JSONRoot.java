@@ -12,13 +12,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     private final P owner;
     private final int depth;
 
-    JSONRoot(StringTemplateBuilder<T> scripts, P owner, JSONKeywords keywords, int depth) {
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.owner = owner;
-        this.depth = depth;
-        builder.start();
-    }
-
     JSONRoot(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
         this.owner = (P)this;
