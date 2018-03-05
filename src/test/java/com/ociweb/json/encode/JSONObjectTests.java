@@ -1,10 +1,13 @@
 package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
+import com.ociweb.json.encode.function.IterStringFunction;
+import com.ociweb.json.encode.function.ToMemberFunction;
 import com.ociweb.json.encode.function.ToStringFunction;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static junit.framework.TestCase.assertEquals;
@@ -52,6 +55,8 @@ public class JSONObjectTests {
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .integer("y", o->o.i+6)
+                    .basicArray("bob", o->{ return  new Integer[] {332}; }).string((o, i, node, visit) -> visit.visit(node.toString()))
+                    .listArray("bob", o->{ return  Arrays.asList(224, 213); }).string((o, i, node, visit) -> visit.visit(node.toString()))
                 .endObject();
         JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
                 .beginObject()
@@ -63,7 +68,7 @@ public class JSONObjectTests {
                 .endObject();
         assertTrue(json3.isLocked());
         json3.render(out, new BasicObj());
-        assertEquals("{\"v\":14,\"x\":{\"y\":15},\"z\":null,\"always\":null}", out.toString());
+        assertEquals("{\"v\":14,\"x\":{\"y\":15,\"bob\":[\"332\"],\"bob\":[\"224\",\"213\"]},\"z\":null,\"always\":null}", out.toString());
     }
 
     @Test

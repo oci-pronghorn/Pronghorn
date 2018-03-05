@@ -72,7 +72,7 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
                 owner, depth + 1);
     }
 
-    public <N> JSONArray<T, P, N> array(ToMemberFunction<T, N[]> accessor) {
+    public <N> JSONArray<T, P, N> basicArray(ToMemberFunction<T, N[]> accessor) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override

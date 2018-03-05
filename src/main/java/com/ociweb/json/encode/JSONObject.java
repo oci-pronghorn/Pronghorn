@@ -4,6 +4,8 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
+import java.util.List;
+
 public class JSONObject<T, P extends JSONCompositeOwner> implements JSONCompositeOwner {
     private final JSONBuilder<T> builder;
     private final P owner;
@@ -56,7 +58,43 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.getKeywords(), iterator, this, depth + 1);
     }
 
-    // TODO: add array convenience methods
+    public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, N> listArray(String name, ToMemberFunction<T, M> accessor) {
+        return new JSONArray<T, JSONObject<T, P>, N> (
+                builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.apply(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        List<N> m = accessor.apply(o);
+                        return i < m.size() ? m.get(i) : null;
+                    }
+                },
+                this, depth + 1);
+    }
+
+    public <N> JSONArray<T, JSONObject<T, P>, N> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
+        return new JSONArray<T, JSONObject<T, P>, N>(
+                builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.apply(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        N[] m = accessor.apply(o);
+                        return i < m.length ? m[i] : null;
+                    }
+                },
+                this, depth + 1);
+    }
 
     // Renderer
 
