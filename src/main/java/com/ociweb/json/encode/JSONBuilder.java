@@ -148,7 +148,6 @@ class JSONBuilder<T> {
                     M member = accessor.apply(source, i, node);
                     if (member != null) {
                         accessorBranch.render(appendable, member);
-                        kw.CloseObj(appendable, depth);
                     } else {
                         kw.Null(appendable);
                     }

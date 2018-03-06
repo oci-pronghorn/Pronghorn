@@ -6,29 +6,21 @@ import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
-public class JSONObject<T, P extends JSONCompositeOwner> implements JSONCompositeOwner {
+public abstract class JSONObject<T, P> {
     private final JSONBuilder<T> builder;
-    private final P owner;
     private final int depth;
 
-    JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, P owner, int depth) {
+    JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
         this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.owner = owner;
     }
 
-    // TODO: may not be necessary after endObject() refactor
-    @Override
-    public void childCompleted() {
-        // does not matter
-    }
-
-    // TODO: make abstract and force impl on new
     public P endObject() {
         builder.endObject();
-        owner.childCompleted();
-        return owner;
+        return objectEnded();
     }
+
+    abstract P objectEnded();
 
     // Object
 
@@ -37,23 +29,38 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
     }
 
     public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
-        return new JSONObject<>(
+        return new JSONObject<M, JSONObject<T, P>>(
                 builder.addFieldPrefix(name).beginObject(accessor),
-                builder.getKeywords(), this, depth + 1);
+                builder.getKeywords(),depth + 1) {
+            @Override
+            JSONObject<T, P> objectEnded() {
+                return JSONObject.this;
+            }
+        };
     }
 
     // Array
 
     public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, ArrayIteratorFunction<T, N> iterator) {
-        return new JSONArray<>(
+        return new JSONArray<T, JSONObject<T, P>, N>(
                 builder.addFieldPrefix(name).beginArray(),
-                builder.getKeywords(), iterator, this, depth + 1);
+                builder.getKeywords(), iterator, depth + 1) {
+            @Override
+            JSONObject<T, P> arrayEnded() {
+                return JSONObject.this;
+            }
+        };
     }
 
     public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
-        return new JSONArray<>(
+        return new JSONArray<T, JSONObject<T, P>, N>(
                 builder.addFieldPrefix(name).beginArray(isNull),
-                builder.getKeywords(), iterator, this, depth + 1);
+                builder.getKeywords(), iterator,depth + 1) {
+            @Override
+            JSONObject<T, P> arrayEnded() {
+                return JSONObject.this;
+            }
+        };
     }
 
     public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, N> listArray(String name, ToMemberFunction<T, M> accessor) {
@@ -72,7 +79,12 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                         return i < m.size() ? m.get(i) : null;
                     }
                 },
-                this, depth + 1);
+                depth + 1) {
+            @Override
+            JSONObject<T, P> arrayEnded() {
+                return JSONObject.this;
+            }
+        };
     }
 
     public <N> JSONArray<T, JSONObject<T, P>, N> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
@@ -91,7 +103,12 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                         return i < m.length ? m[i] : null;
                     }
                 },
-                this, depth + 1);
+                depth + 1) {
+            @Override
+            JSONObject<T, P> arrayEnded() {
+                return JSONObject.this;
+            }
+        };
     }
 
     // Renderer
