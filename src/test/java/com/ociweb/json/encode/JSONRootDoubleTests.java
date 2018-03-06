@@ -79,49 +79,4 @@ public class JSONRootDoubleTests {
         json.render(out, 0.321);
         assertEquals("0.32", out.toString());
     }
-
-    @Test
-    public void testRootDecimalD() {
-        JSONRenderer<Double> json = new JSONRenderer<Double>()
-                .decimal((o, v) -> v.visit(o, 2));
-        assertTrue(json.isLocked());
-        json.render(out, 9.0);
-        assertEquals("9.00", out.toString());
-    }
-
-    @Test
-    public void testRootDecimal_ZeroD() {
-        JSONRenderer<Double> json = new JSONRenderer<Double>()
-                .decimal((o, v) -> v.visit(o, 2));
-        assertTrue(json.isLocked());
-        json.render(out, 0.0);
-        assertEquals("0.00", out.toString());
-    }
-
-    @Test
-    public void testRootDecimal_NoPrecisionD() {
-        JSONRenderer<Double> json = new JSONRenderer<Double>()
-                .decimal((o, v) -> v.visit(o, 0));
-        assertTrue(json.isLocked());
-        json.render(out, 9.3);
-        assertEquals("9", out.toString());
-    }
-
-    @Test
-    public void testRootDecimal_NoPrecisionZeroD() {
-        JSONRenderer<Double> json = new JSONRenderer<Double>()
-                .decimal((o, v) -> v.visit(o, 0));
-        assertTrue(json.isLocked());
-        json.render(out, 0.0);
-        assertEquals("0", out.toString());
-    }
-
-    @Test
-    public void testRootDecimal_FractD() {
-        JSONRenderer<Double> json = new JSONRenderer<Double>()
-                .decimal((o, v) -> v.visit(o, 2));
-        assertTrue(json.isLocked());
-        json.render(out, 0.321);
-        assertEquals("0.32", out.toString());
-    }
 }

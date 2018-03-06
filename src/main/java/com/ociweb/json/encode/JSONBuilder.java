@@ -108,30 +108,6 @@ class JSONBuilder<T> {
 
     // Object
 
-    StringTemplateBuilder<T>  beginObject() {
-        kw.OpenObj(scripts, depth);
-        return scripts;
-    }
-
-    @Deprecated
-    StringTemplateBuilder<T> beginObject(final ToBoolFunction<T> isNull) {
-        StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        kw.OpenObj(notNullBranch, depth);
-
-        StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
-        nullableBranches[0] = objNullBranch;
-        nullableBranches[1] = notNullBranch;
-
-        scripts.add(nullableBranches, new StringTemplateBranching<T>() {
-            @Override
-            public int branch(T o) {
-                return isNull.applyAsBool(o) ? 0 : 1;
-            }
-        });
-        return notNullBranch;
-    }
-
-
     public <M> StringTemplateBuilder<M> beginObject(ToMemberFunction<T, M> accessor) {
         StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
@@ -296,23 +272,6 @@ class JSONBuilder<T> {
         });
     }
 
-    @Deprecated
-    void addBool(final ToNullableBoolFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsBool(source, new ToNullableBoolFunction.Visit() {
-                    @Override
-                    public void visit(boolean b, boolean isNull) {
-                        if (isNull) kw.Null(writer);
-                        else if (b) kw.True(writer);
-                        else kw.False(writer);
-                    }
-                });
-            }
-        });
-    }
-
     void addBool(ToBoolFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
@@ -351,21 +310,6 @@ class JSONBuilder<T> {
                 break;
             case TypeBoolean:
                 addBool(iterator, func);
-                break;
-        }
-    }
-
-    @Deprecated
-    void addBool(ToNullableBoolFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                addBool(func);
                 break;
         }
     }
@@ -417,25 +361,6 @@ class JSONBuilder<T> {
     }
 
     @Deprecated
-    void addInteger(final ToNullableLongFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsLong(source, new ToNullableLongFunction.Visit() {
-                    @Override
-                    public void visit(long v, boolean isNull) {
-                        if (isNull) {
-                            kw.Null(writer);
-                        } else {
-                            Appendables.appendValue(writer, v);
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    @Deprecated
     <N> void addInteger(final ArrayIteratorFunction<T, N> iterator, final IterNullableLongFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
@@ -481,21 +406,6 @@ class JSONBuilder<T> {
                 break;
             case TypeInteger:
                 addInteger(isNull, func);
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    @Deprecated
-    void addInteger(ToNullableLongFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                addInteger(func);
                 break;
             case TypeDecimal:
                 break;
@@ -583,59 +493,6 @@ class JSONBuilder<T> {
         });
     }
 
-    @Deprecated
-    void addDecimal(final ToDecimalFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
-                    @Override
-                    public void visit(double value, int precision) {
-                        Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
-                    }
-                });
-            }
-        });
-    }
-
-    @Deprecated
-    void addDecimal(final ToBoolFunction<T> isNull, final ToDecimalFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToDecimalFunction.Visit() {
-                    @Override
-                    public void visit(double value, int precision) {
-                        if (isNull.applyAsBool(source)) {
-                            kw.Null(writer);
-                        } else {
-                            Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    @Deprecated
-    void addDecimal(final ToNullableDecimalFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                func.applyAsDecimal(source, new ToNullableDecimalFunction.Visit() {
-                    @Override
-                    public void visit(double value, int precision, boolean isNull) {
-                        if (isNull) {
-                            kw.Null(writer);
-                        } else {
-                            Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
-                        }
-                    }
-                });
-            }
-        });
-    }
-
     void addDecimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
@@ -672,51 +529,6 @@ class JSONBuilder<T> {
                 break;
             case TypeDecimal:
                 addDecimal(iterator, precision, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    @Deprecated
-    void addDecimal(ToDecimalFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    @Deprecated
-    void addDecimal(final ToBoolFunction<T> isNull, ToDecimalFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(isNull, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    @Deprecated
-    void addDecimal(ToNullableDecimalFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(func);
                 break;
             case TypeBoolean:
                 break;

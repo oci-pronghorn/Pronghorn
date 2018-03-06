@@ -31,13 +31,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return beginObject(o->o);
     }
 
-    @Deprecated
-    public JSONObject<T, P> beginNullObject(ToBoolFunction<T> isNull) {
-        return new JSONObject<>(
-                builder.beginObject(isNull),
-                builder.getKeywords(), owner, depth + 1);
-    }
-
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(accessor),
@@ -137,20 +130,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
         return owner;
     }
 
-    @Deprecated
-    public P nullableBool(ToNullableBoolFunction<T> func) {
-        builder.addBool(func);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableBool(ToNullableBoolFunction<T> func, JSONType encode) {
-        builder.addBool(func, encode);
-        this.childCompleted();
-        return owner;
-    }
-
     // Integer
 
     public P integer(ToLongFunction<T> func) {
@@ -167,20 +146,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
 
     public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
         builder.addInteger(isNull, func);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableInteger(ToNullableLongFunction<T> func) {
-        builder.addInteger(func);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableInteger(ToNullableLongFunction<T> func, JSONType encode) {
-        builder.addInteger(func, encode);
         this.childCompleted();
         return owner;
     }
@@ -207,46 +172,6 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
 
     public P nullableDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
         builder.addDecimal(precision, isNull, func, encode);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P decimal(ToDecimalFunction<T> func) {
-        builder.addDecimal(func);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P decimal(ToDecimalFunction<T> func, JSONType encode) {
-        builder.addDecimal(func, encode);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableDecimal(ToBoolFunction<T> isNull, ToDecimalFunction<T> func) {
-        builder.addDecimal(isNull, func);
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableDecimal(ToBoolFunction<T> isNull, ToDecimalFunction<T> func, JSONType encode) {
-        builder.addDecimal(isNull, func, encode);
-        this.childCompleted();
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableDecimal(ToNullableDecimalFunction<T> func) {
-        builder.addDecimal(func);
-        return owner;
-    }
-
-    @Deprecated
-    public P nullableDecimal(ToNullableDecimalFunction<T> func, JSONType encode) {
-        builder.addDecimal(func, encode);
         this.childCompleted();
         return owner;
     }

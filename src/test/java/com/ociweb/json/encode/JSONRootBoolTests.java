@@ -78,31 +78,4 @@ public class JSONRootBoolTests {
         json.render(out, false);
         assertEquals("false", out.toString());
     }
-
-    @Test
-    public void testRootBoolNul_lNullD() {
-        JSONRenderer<Boolean> json = new JSONRenderer<Boolean>()
-                .nullableBool((o, v) -> v.visit(o != null ? o : false, o == null));
-        assertTrue(json.isLocked());
-        json.render(out, null);
-        assertEquals("null", out.toString());
-    }
-
-    @Test
-    public void testRootBoolNull_TrueD() {
-        JSONRenderer<Boolean> json = new JSONRenderer<Boolean>()
-                .nullableBool((o, v) -> v.visit(o != null ? o : false, o == null));
-        assertTrue(json.isLocked());
-        json.render(out, true);
-        assertEquals("true", out.toString());
-    }
-
-    @Test
-    public void testRootBoolNull_FalseD() {
-        JSONRenderer<Boolean> json = new JSONRenderer<Boolean>()
-                .nullableBool((o, v) -> v.visit(o != null ? o : false, o == null));
-        assertTrue(json.isLocked());
-        json.render(out, false);
-        assertEquals("false", out.toString());
-    }
 }

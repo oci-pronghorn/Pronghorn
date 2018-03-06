@@ -1,9 +1,6 @@
 package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
-import com.ociweb.json.encode.function.IterStringFunction;
-import com.ociweb.json.encode.function.ToMemberFunction;
-import com.ociweb.json.encode.function.ToStringFunction;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,8 +52,8 @@ public class JSONObjectTests {
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .integer("y", o->o.i+6)
-                    .basicArray("bob", o->{ return  new Integer[] {332}; }).string((o, i, node, visit) -> visit.visit(node.toString()))
-                    .listArray("bob", o->{ return  Arrays.asList(224, 213); }).string((o, i, node, visit) -> visit.visit(node.toString()))
+                    .basicArray("bob", o-> new Integer[] {332}).string((o, i, node, visit) -> visit.visit(node.toString()))
+                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i, node, visit) -> visit.visit(node.toString()))
                 .endObject();
         JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
                 .beginObject()

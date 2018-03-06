@@ -1,7 +1,6 @@
 package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,28 +40,28 @@ public class JSONBucketTests {
             .beginObject()
                 .bool("b", o -> o.b1)
                 .integer("i", o -> o.i1)
-                .decimal("d", (o, v) -> v.visit(o.d1, 2))
+                .decimal("d", 2, o->o.d1)
                 .string("s", o -> o.s1)
                 .array("a", (o,i,n) -> i < o.a1.length? o : null)
                     .integer((o, i, n, visit) -> visit.visit(o.a1[i]))
                 .nullableArray("a2", o -> o.a2 == null,(o,i,n) -> i < o.a2.length? o : null)
                     .constantNull()
-                .beginNullableObject("nm", o -> o.nm == null)
-                    .nullableBool("b", (o, v) -> v.visit(o.nm.b2, true))
-                    .nullableInteger("i", (o, v) -> v.visit(o.nm.i2, true))
-                    .nullableDecimal("d", (o, v) -> v.visit(0, 0, true))
-                    .nullableString("s", o -> o.nm.s2)
+                .beginObject("nm", o -> o.nm)
+                    .nullableBool("b", o->true, o->o.b2)
+                    .nullableInteger("i", o->true, o->o.i2)
+                    .nullableDecimal("d", 2, o->true, o->0)
+                    .nullableString("s", o -> o.s2)
                 .endObject()
-                .beginObject("m")
-                    .nullableBool("b", (o, v) -> v.visit(o.m.b2, true))
-                    .nullableInteger("i", (o, v) -> v.visit(o.m.i2, true))
-                    .nullableDecimal("d", (o, v) -> v.visit(o.m.d2, 2, true))
-                    .nullableString("s", o -> o.m.s2)
+                .beginObject("m", o->o.m)
+                    .nullableBool("b", o->true, o->o.b2)
+                    .nullableInteger("i", o->true, o->o.i2)
+                    .nullableDecimal("d", 2, o->true, o->o.d2)
+                    .nullableString("s", o -> o.s2)
                 .endObject()
             .endObject();
         assertTrue(json.isLocked());
 
         json.render(out, new Bucket());
-      //  System.out.println(out);
+        //System.out.println(out);
     }
 }

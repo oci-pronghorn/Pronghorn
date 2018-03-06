@@ -50,13 +50,6 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         return owner;
     }
 
-    @Deprecated
-    public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
-        builder.addRenderer(renderer, accessor);
-        this.childCompleted();
-        return owner;
-    }
-
     // Null
 
     public P constantNull() {

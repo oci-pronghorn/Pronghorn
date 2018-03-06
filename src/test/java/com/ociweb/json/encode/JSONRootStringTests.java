@@ -4,8 +4,6 @@ import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Objects;
-
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
