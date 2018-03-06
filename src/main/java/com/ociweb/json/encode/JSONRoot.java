@@ -4,7 +4,6 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-import java.util.Collection;
 import java.util.List;
 
 public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
@@ -56,14 +55,14 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
-                        return accessor.apply(o) == null;
+                        return accessor.get(o) == null;
                     }
                 }),
                 builder.getKeywords(),
                 new ArrayIteratorFunction<T, N>() {
                     @Override
                     public N test(T o, int i, N node) {
-                        List<N> m = accessor.apply(o);
+                        List<N> m = accessor.get(o);
                         return i < m.size() ? m.get(i) : null;
                     }
                 },
@@ -75,14 +74,14 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
-                        return accessor.apply(o) == null;
+                        return accessor.get(o) == null;
                     }
                 }),
                 builder.getKeywords(),
                 new ArrayIteratorFunction<T, N>() {
                     @Override
                     public N test(T o, int i, N node) {
-                        N[] m = accessor.apply(o);
+                        N[] m = accessor.get(o);
                         return i < m.length ? m[i] : null;
                     }
                 },

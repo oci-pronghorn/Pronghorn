@@ -86,7 +86,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 				new StringTemplateScript<T>() {
 					@Override
 					public void fetch(AppendableByteWriter writer, T source) {
-						data.render(writer, accessor.apply(source));
+						data.render(writer, accessor.get(source));
 					}
 				});
 		return this;

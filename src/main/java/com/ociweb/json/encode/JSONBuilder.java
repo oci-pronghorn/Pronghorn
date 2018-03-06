@@ -73,7 +73,7 @@ class JSONBuilder<T> {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter appendable, T source) {
-                M member = accessor.apply(source);
+                M member = accessor.get(source);
                 if (member != null) {
                     renderer.render(appendable, member);
                 }
@@ -116,7 +116,7 @@ class JSONBuilder<T> {
         notNullBranch.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter appendable, T source) {
-                accessorScript.render(appendable, accessor.apply(source));
+                accessorScript.render(appendable, accessor.get(source));
             }
         });
 
@@ -128,7 +128,7 @@ class JSONBuilder<T> {
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
-                return accessor.apply(o) == null ? 0 : 1;
+                return accessor.get(o) == null ? 0 : 1;
             }
         });
         return accessorScript;

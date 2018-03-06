@@ -61,14 +61,14 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
-                        return accessor.apply(o) == null;
+                        return accessor.get(o) == null;
                     }
                 }),
                 builder.getKeywords(),
                 new ArrayIteratorFunction<T, N>() {
                     @Override
                     public N test(T o, int i, N node) {
-                        List<N> m = accessor.apply(o);
+                        List<N> m = accessor.get(o);
                         return i < m.size() ? m.get(i) : null;
                     }
                 },
@@ -80,14 +80,14 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
                 builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
-                        return accessor.apply(o) == null;
+                        return accessor.get(o) == null;
                     }
                 }),
                 builder.getKeywords(),
                 new ArrayIteratorFunction<T, N>() {
                     @Override
                     public N test(T o, int i, N node) {
-                        N[] m = accessor.apply(o);
+                        N[] m = accessor.get(o);
                         return i < m.length ? m[i] : null;
                     }
                 },
