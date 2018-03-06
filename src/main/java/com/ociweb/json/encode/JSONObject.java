@@ -33,14 +33,19 @@ public class JSONObject<T, P extends JSONCompositeOwner> implements JSONComposit
     // Object
 
     public JSONObject<T, JSONObject<T, P>> beginObject(String name) {
-        return new JSONObject<>(
-                builder.addFieldPrefix(name).beginObject(),
-                builder.getKeywords(), this, depth + 1);
+        return beginObject(name, o->o);
     }
 
+    @Deprecated
     public JSONObject<T, JSONObject<T, P>> beginNullableObject(String name, ToBoolFunction<T> isNull) {
         return new JSONObject<>(
                 builder.addFieldPrefix(name).beginObject(isNull),
+                builder.getKeywords(), this, depth + 1);
+    }
+
+    public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
+        return new JSONObject<>(
+                builder.addFieldPrefix(name).beginObject(accessor),
                 builder.getKeywords(), this, depth + 1);
     }
 

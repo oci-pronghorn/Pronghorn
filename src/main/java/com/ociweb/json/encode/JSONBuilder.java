@@ -113,11 +113,12 @@ class JSONBuilder<T> {
         return scripts;
     }
 
+    @Deprecated
     StringTemplateBuilder<T> beginObject(final ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenObj(notNullBranch, depth);
 
-        StringTemplateBuilder[] nullableBranches = new StringTemplateBuilder[2];
+        StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
@@ -128,6 +129,33 @@ class JSONBuilder<T> {
             }
         });
         return notNullBranch;
+    }
+
+
+    public <M> StringTemplateBuilder<M> beginObject(ToMemberFunction<T, M> accessor) {
+        StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
+        kw.OpenObj(accessorScript, depth);
+
+        StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
+        notNullBranch.add(new StringTemplateScript<T>() {
+            @Override
+            public void fetch(AppendableByteWriter appendable, T source) {
+                accessorScript.render(appendable, accessor.apply(source));
+            }
+        });
+
+        StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        nullableBranches[0] = objNullBranch;
+        nullableBranches[1] = notNullBranch;
+
+        nullableBranches[1] = notNullBranch;
+        scripts.add(nullableBranches, new StringTemplateBranching<T>() {
+            @Override
+            public int branch(T o) {
+                return accessor.apply(o) == null ? 0 : 1;
+            }
+        });
+        return accessorScript;
     }
 
     <N, M> StringTemplateBuilder<M> beginObject(final ArrayIteratorFunction<T, N> iterator, final IterMemberFunction<T, N, M> accessor) {

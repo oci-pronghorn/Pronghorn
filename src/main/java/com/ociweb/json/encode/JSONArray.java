@@ -30,7 +30,6 @@ public class JSONArray<T, P extends JSONCompositeOwner, N> implements JSONCompos
         return new JSONObject<M, P>(
                 builder.beginObject(iterator, accessor),
                 builder.getKeywords(), owner, depth + 1) {
-
             public P endObject() {
                 builder.endArray();
                 owner.childCompleted();

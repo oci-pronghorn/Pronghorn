@@ -33,7 +33,7 @@ public class JSONObjectTests {
     @Test
     public void testObjectNull_Yes() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginNullObject(Objects::isNull).integer("i", o->o.i).endObject();
+                .beginObject().integer("i", o->o.i).endObject();
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -42,7 +42,7 @@ public class JSONObjectTests {
     @Test
     public void testObjectNull_No() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginNullObject(Objects::isNull).integer("i", o->o.i).endObject();
+                .beginObject().integer("i", o->o.i).endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{\"i\":9}", out.toString());
@@ -63,7 +63,7 @@ public class JSONObjectTests {
                     .renderer("v", json1, o->o.i+5)
                     .renderer("x", json2, o->o)
                     .renderer("z", json2, o->null)
-                    .beginNullableObject("always", o->true)
+                    .beginObject("always", o->null)
                     .endObject()
                 .endObject();
         assertTrue(json3.isLocked());
@@ -95,7 +95,7 @@ public class JSONObjectTests {
                     .nullableInteger("i", o->true, o->o.i)
                     .nullableDecimal("d", 2, o->true, o->o.d)
                     .nullableString("s", o->null)
-                    .beginNullableObject("m", o->(o.m == null))
+                    .beginObject("m", o->o.m)
                     .endObject()
                     .constantNull("always")
                 .endObject();
@@ -112,11 +112,12 @@ public class JSONObjectTests {
                     .nullableInteger("i", o->false, o->o.i)
                     .nullableDecimal("d", 2, o->false, o->o.d)
                     .nullableString("s", o->o.s)
-                    .beginNullableObject("m", o->(o.m == null))
+                    .beginObject("m", o->o.m)
+                        .beginObject("c", o->o.m).endObject()
                     .endObject()
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj(new BasicObj()));
-        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
+        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{\"c\":null}}", out.toString());
     }
 }

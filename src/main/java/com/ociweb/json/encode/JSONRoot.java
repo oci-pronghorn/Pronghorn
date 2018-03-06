@@ -28,14 +28,19 @@ public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
     // Object
 
     public JSONObject<T, P> beginObject() {
-        return new JSONObject<>(
-                builder.beginObject(),
-                builder.getKeywords(), owner, depth + 1);
+        return beginObject(o->o);
     }
 
+    @Deprecated
     public JSONObject<T, P> beginNullObject(ToBoolFunction<T> isNull) {
         return new JSONObject<>(
                 builder.beginObject(isNull),
+                builder.getKeywords(), owner, depth + 1);
+    }
+
+    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<M, P>(
+                builder.beginObject(accessor),
                 builder.getKeywords(), owner, depth + 1);
     }
 
