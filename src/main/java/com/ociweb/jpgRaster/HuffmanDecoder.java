@@ -113,18 +113,6 @@ public class HuffmanDecoder {
 				for (int j = 0; j < DCTableCodes.get(i).size(); ++j) {
 					if (currentCode == DCTableCodes.get(i).get(j)) {
 						int length = DCTable.symbols.get(i).get(j);
-//						short value = (short)b.nextBits(length);
-//						if (value < (1 << (length - 1))) {
-//							value -= (1 << length) - 1;
-//						}
-//						value += previousDC;
-//						
-//						if (horizontal == 2) {
-//							component[0] = value;
-//							component[1] = value;
-//						} else {
-//							component[0] = value;
-//						}
 						
 						component[0] = (short)b.nextBits(length);
 						if (component[0] < (1 << (length - 1))) {
@@ -146,11 +134,6 @@ public class HuffmanDecoder {
 				return false;
 			}
 			k += 1;
-//			if (horizontal == 2) {
-//				k += 2;
-//			} else {
-//				k += 1;
-//			}
 		}
 		
 		// get the AC values for this MCU
@@ -184,19 +167,6 @@ public class HuffmanDecoder {
 								if (component[JPG.zigZagMap[k]] < (1 << (coeffLength - 1))) {
 									component[JPG.zigZagMap[k]] -= (1 << coeffLength) - 1;
 								}
-//								short value = (short)b.nextBits(coeffLength);
-//								if (value < (1 << (coeffLength - 1))) {
-//									value -= (1 << coeffLength) - 1;
-//								}
-//								
-//								if (horizontal == 2) {
-//									component[JPG.zigZagMap[k]] = value;
-//									component[JPG.zigZagMap[k + 1]] = value;
-//									k += 2;
-//								} else {
-//									component[JPG.zigZagMap[k]] = value;
-//									k += 1;
-//								}
 							}
 						}
 						found = true;
@@ -229,15 +199,6 @@ public class HuffmanDecoder {
 
 		if (header.colorComponents.size() > 1) {
 			//System.out.println("Decoding Cb Component...");
-			
-//			int horizontal = 1;
-//			int vertical = 1;
-//			if(header.colorComponents.get(0).horizontalSamplingFactor == 2) {
-//				horizontal = 2;
-//			}
-//			if(header.colorComponents.get(0).verticalSamplingFactor == 2) {
-//				vertical = 2;
-//			}
 			
 			success = decodeMCUComponent(DCTableCodes.get(cbDCTableID), ACTableCodes.get(cbACTableID),
 					header.huffmanDCTables.get(cbDCTableID), header.huffmanACTables.get(cbACTableID), mcu.cb, previousCbDC, header);
