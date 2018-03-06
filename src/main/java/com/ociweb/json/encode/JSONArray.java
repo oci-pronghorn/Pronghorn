@@ -4,6 +4,8 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
+import java.util.List;
+
 public abstract class JSONArray<T, P, N> {
     private final JSONBuilder<T> builder;
     private final ArrayIteratorFunction<T, N> iterator;
@@ -13,6 +15,54 @@ public abstract class JSONArray<T, P, N> {
         this.iterator = iterator;
         this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
+    }
+
+    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(JSONBuilder<T> builder, int depth, ToMemberFunction<T, M> accessor, ToEnding<P> ending) {
+        return new JSONArray<T, P, N>(
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.get(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        List<N> m = accessor.get(o);
+                        return i < m.size() ? m.get(i) : null;
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return ending.end();
+            }
+        };
+    }
+
+    static <T, P, N> JSONArray<T, P, N> createBasicArray(JSONBuilder<T> builder, int depth, ToMemberFunction<T, N[]> accessor, ToEnding<P> ending) {
+        return new JSONArray<T, P, N>(
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.get(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new ArrayIteratorFunction<T, N>() {
+                    @Override
+                    public N test(T o, int i, N node) {
+                        N[] m = accessor.get(o);
+                        return i < m.length ? m[i] : null;
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return ending.end();
+            }
+        };
     }
 
     private P endArray() {

@@ -64,51 +64,21 @@ public abstract class JSONObject<T, P> {
     }
 
     public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, N> listArray(String name, ToMemberFunction<T, M> accessor) {
-        return new JSONArray<T, JSONObject<T, P>, N> (
-                builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
-                builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
-                    @Override
-                    public N test(T o, int i, N node) {
-                        List<N> m = accessor.get(o);
-                        return i < m.size() ? m.get(i) : null;
-                    }
-                },
-                depth + 1) {
+        return JSONArray.createListArray(builder.addFieldPrefix(name), depth + 1, accessor, new ToEnding<JSONObject<T, P>>() {
             @Override
-            JSONObject<T, P> arrayEnded() {
+            public JSONObject<T, P> end() {
                 return JSONObject.this;
             }
-        };
+        });
     }
 
     public <N> JSONArray<T, JSONObject<T, P>, N> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
-        return new JSONArray<T, JSONObject<T, P>, N>(
-                builder.addFieldPrefix(name).beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
-                builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
-                    @Override
-                    public N test(T o, int i, N node) {
-                        N[] m = accessor.get(o);
-                        return i < m.length ? m[i] : null;
-                    }
-                },
-                depth + 1) {
+        return JSONArray.createBasicArray(builder.addFieldPrefix(name), depth + 1, accessor, new ToEnding<JSONObject<T, P>>() {
             @Override
-            JSONObject<T, P> arrayEnded() {
+            public JSONObject<T, P> end() {
                 return JSONObject.this;
             }
-        };
+        });
     }
 
     // Renderer

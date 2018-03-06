@@ -64,54 +64,22 @@ public class JSONRoot<T, P extends JSONRoot> {
         };
     }
 
-    // TODO: refactor top remove duplicate code (in other classes as well)
-
     public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
-        return new JSONArray<T, P, N>(
-                builder.beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
-                builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
-                    @Override
-                    public N test(T o, int i, N node) {
-                        List<N> m = accessor.get(o);
-                        return i < m.size() ? m.get(i) : null;
-                    }
-                },
-                depth + 1) {
+        return JSONArray.createListArray(builder, depth + 1, accessor, new ToEnding<P>() {
             @Override
-            P arrayEnded() {
+            public P end() {
                 return childCompleted();
             }
-        };
+        });
     }
 
     public <N> JSONArray<T, P, N> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return new JSONArray<T, P, N>(
-                builder.beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
-                builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
-                    @Override
-                    public N test(T o, int i, N node) {
-                        N[] m = accessor.get(o);
-                        return i < m.length ? m[i] : null;
-                    }
-                },
-                depth + 1) {
+        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ToEnding<P>() {
             @Override
-            P arrayEnded() {
+            public P end() {
                 return childCompleted();
             }
-        };
+        });
     }
 
     // No need for Renderer methods
