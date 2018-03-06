@@ -16,18 +16,18 @@ class JSONBuilder<T> {
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
+    private final StringTemplateBuilder<T> objNullBranch;
 
-    // Do not store mutable state used during render. nullableBranches becomes null
+    // Do not store mutable state used during render.
+    // This is only used between begin and end object
     private int objectElementIndex = 0;
-    private final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
 
     JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
         this.scripts = scripts;
         this.kw = kw;
         this.depth = depth;
-        StringTemplateBuilder<T> objNullBranch = new StringTemplateBuilder<>();
+        objNullBranch = new StringTemplateBuilder<>();
         kw.Null(objNullBranch);
-        nullableBranches[0] = objNullBranch;
     }
 
     JSONKeywords getKeywords() {
@@ -41,8 +41,7 @@ class JSONBuilder<T> {
     void complete() {
         kw.Complete(scripts, depth);
         scripts.lock();
-        nullableBranches[0] = null;
-        nullableBranches[1] = null;
+        objectElementIndex = -1;
     }
 
     boolean isLocked() {
@@ -117,7 +116,11 @@ class JSONBuilder<T> {
     StringTemplateBuilder<T> beginObject(final ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenObj(notNullBranch, depth);
+
+        StringTemplateBuilder[] nullableBranches = new StringTemplateBuilder[2];
+        nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
+
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
@@ -166,7 +169,11 @@ class JSONBuilder<T> {
     StringTemplateBuilder<T> beginArray(final ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
+
+        StringTemplateBuilder[] nullableBranches = new StringTemplateBuilder[2];
+        nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
+
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
