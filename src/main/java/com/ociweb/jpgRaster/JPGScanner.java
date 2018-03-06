@@ -28,6 +28,7 @@ public class JPGScanner extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
+	MCU mcu2 = new MCU();
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
 		super(graphManager, NONE, output);
@@ -234,9 +235,8 @@ public class JPGScanner extends PronghornStage {
 		}
 		
 		for (int i = 0; i < header.colorComponents.size(); ++i) {
-			if (header.colorComponents.get(i).horizontalSamplingFactor != 1 ||
-				header.colorComponents.get(i).verticalSamplingFactor != 1) {
-				System.err.println("Error - Sampling Factors not yet supported");
+			if (header.colorComponents.get(i).verticalSamplingFactor != 1) {
+				System.err.println("Error - Vertical Sampling Factors not yet supported");
 				header.valid = false;
 				break;
 			}
@@ -492,41 +492,57 @@ public class JPGScanner extends PronghornStage {
 	public void queueFile(String inFile) {
 		inputFiles.add(inFile);
 	}
+	
+	public void sendMCU(MCU emcu) {
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.y[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cb[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cr[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+			
+			
+			PipeWriter.publishWrites(output);
+			
+			numProcessed += 1;
+			if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
+				HuffmanDecoder.restart();
+			}
+		}
+		else {
+			System.err.println("Requesting shutdown");
+			requestShutdown();
+		}
+	}
 
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			if (HuffmanDecoder.decodeHuffmanData(mcu)) {
+			int horizontal = 1;
+			if(header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+				horizontal = 2;
+			}
+			if (HuffmanDecoder.decodeHuffmanData(mcu, mcu2, horizontal)) {
 				// write mcu to pipe
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.y[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cb[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cr[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-					PipeWriter.publishWrites(output);
-					
-					numProcessed += 1;
-					if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
-						HuffmanDecoder.restart();
-					}
-				}
-				else {
-					System.err.println("Requesting shutdown");
-					requestShutdown();
+				
+				if (horizontal == 1) {
+					sendMCU(mcu);
+				} else if (horizontal == 2) {
+					sendMCU(mcu);
+					sendMCU(mcu2);
 				}
 			}
 			else {
