@@ -43,12 +43,24 @@ public class ServerPipesConfig {
 
     //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
     private PipeConfig<NetPayloadSchema> fromOrderWraperConfig;
-    
-    
+        
     public final PipeConfig<NetPayloadSchema> handshakeDataConfig;
 	
 	public int writeBufferMultiplier;
   
+	public ServerPipesConfig(boolean isTLS, 
+			 int maxConnectionBits,
+			 int tracks,
+			 int encryptUnitsPerTrack,
+			 int concurrentChannelsPerEncryptUnit,
+			 int decryptUnitsPerTrack,
+			 int concurrentChannelsPerDecryptUnit
+			 ) {
+		this(isTLS, maxConnectionBits, tracks,
+				encryptUnitsPerTrack, concurrentChannelsPerEncryptUnit,
+				decryptUnitsPerTrack, concurrentChannelsPerDecryptUnit,
+				4,512);
+	}
 	
 	public ServerPipesConfig(boolean isTLS, 
 							 int maxConnectionBits,
@@ -56,19 +68,20 @@ public class ServerPipesConfig {
 							 int encryptUnitsPerTrack,
 							 int concurrentChannelsPerEncryptUnit,
 							 int decryptUnitsPerTrack,
-							 int concurrentChannelsPerDecryptUnit) {
+							 int concurrentChannelsPerDecryptUnit, 
+							 int partialPartsIn,  //make larger for many fragments
+							 int maxRequestSize //make larger for large posts
+							 ) {
 		
-		//these may need to be exposed..
-	    fromRouterToModuleCount   = 64; //count of messages from router to module
-	    serverOutputMsg           = 32; //count of outgoing responses to writer
+		if (isTLS && (maxRequestSize< (1<<15))) {
+			maxRequestSize = (1<<15);//TLS requires this larger payload size
+		}
+
+		//these may need to be exposed.. they can impact performance
+	    fromRouterToModuleCount   = 4; //count of messages from router to module	    
+	    serverOutputMsg           = 16; //count of outgoing responses to writer
 	    //largest file to be cached in file server
    
-	    
-	    
-	    int serverInputMsg            = isTLS? 8 : 64;
-	    									//TODO: set based on the socket values on the server??
-	    int serverInputBlobs          = isTLS? 1<<15 : 1<<8; //TODO: bump up for large posts 
-
 		
 		moduleParallelism = tracks;
 		maxConnectionBitsOnServer = maxConnectionBits;
@@ -98,10 +111,10 @@ public class ServerPipesConfig {
 
 
 		//defaults which are updated by method calls
-		fromRouterToModuleBlob		  = 1<<9; //impacts post performance
+		fromRouterToModuleBlob		  = Math.max(maxRequestSize, 1<<9); //impacts post performance
 		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		
-		releaseMsg                    = 1024;
+		releaseMsg                    = 2048;
 				
 	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
 	    
@@ -110,8 +123,8 @@ public class ServerPipesConfig {
 
 	    //byte buffer must remain small because we will have a lot of these for all the partial messages
 	    incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
-	    		                                             serverInputMsg, 
-	    		                                             serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
+	    								partialPartsIn, 
+	    								maxRequestSize);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
 
 	    handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
 	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake

@@ -273,7 +273,7 @@ public class NetGraphBuilder {
 								   isLarge ? 20 : 12, 
 								   isLarge? 8 : (isLarge ? (isTLS?4:8) : 2),
 								   isLarge ? 2 : 1, isLarge ? 2 : 1,
-								   isLarge ? 2 : 1, isLarge ? 2 : 1),
+								   isLarge ? 2 : 1, isLarge ? 2 : 1, 8, 1<<8),
 				                   factory);
 		
 	}
@@ -724,7 +724,7 @@ public class NetGraphBuilder {
 		  (processors >= 4) ? 20 : 12, 
 		   processors > 0? processors : ((processors >= 4) ? (tlsCertificates != null?4:8) : 2),
 		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
-		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1);
+		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1, 8, 1<<8);
 		return serverConfig;
 	}
 	
@@ -750,7 +750,7 @@ public class NetGraphBuilder {
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, 
 				maxConnectionBits, tracks, 
 				2, concurrentChannelsPerEncryptUnit, 
-				1, concurrentChannelsPerDecryptUnit);
+				1, concurrentChannelsPerDecryptUnit, 8, 1<<8);
 		
 		serverConfig.ensureServerCanRead(1<<16);
 				 		

@@ -101,7 +101,7 @@ public abstract class StageScheduler {
 				  logger.info("Threads in use {}, one per stage.", countStages);
 		          return new ThreadPerStageScheduler(gm);
 		} else {
-				  logger.info("Threads in use {}, fixed limit with fixed script.", targetThreadCountLimit);
+				  logger.info("Targeted threads in use {}, fixed limit with fixed script. NOTE: More threads may be used use to graph complexity and telemetry usage.", targetThreadCountLimit);
 				  return new ScriptedFixedThreadsScheduler(gm, targetThreadCountLimit, threadLimitHard);
 		}
 	}
