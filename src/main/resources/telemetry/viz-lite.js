@@ -171,7 +171,7 @@ Viz.svgXmlToPngImageElement = function(svgXml, scale, callback) {
         }
       }
     
-      svgImage.src = "data:image/svg+xml;charset=UTF-8;base64," + b64EncodeUnicode(svgXml);
+      svgImage.src = "data:image/svg+xml;charset=utf-8;base64," + b64EncodeUnicode(svgXml);
     }
   } catch (e) {
     if (callback !== undefined) {
