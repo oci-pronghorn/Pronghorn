@@ -17,7 +17,7 @@ public abstract class JSONArray<T, P, N> {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
-    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(JSONBuilder<T> builder, int depth, ToMemberFunction<T, M> accessor, ToEnding<P> ending) {
+    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, M> accessor, final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
@@ -41,7 +41,7 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<T, P, N> createBasicArray(JSONBuilder<T> builder, int depth, ToMemberFunction<T, N[]> accessor, ToEnding<P> ending) {
+    static <T, P, N> JSONArray<T, P, N> createBasicArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, N[]> accessor, final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override

@@ -24,7 +24,12 @@ public class JSONRoot<T, P extends JSONRoot> {
     // Object
 
     public JSONObject<T, P> beginObject() {
-        return beginObject(o->o);
+        return beginObject(new ToMemberFunction<T, T>() {
+            @Override
+            public T get(T o) {
+                return o;
+            }
+        });
     }
 
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {

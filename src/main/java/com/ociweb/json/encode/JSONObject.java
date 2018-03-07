@@ -25,7 +25,12 @@ public abstract class JSONObject<T, P> {
     // Object
 
     public JSONObject<T, JSONObject<T, P>> beginObject(String name) {
-        return beginObject(name, o->o);
+        return beginObject(name, new ToMemberFunction<T, T>() {
+            @Override
+            public T get(T o) {
+                return o;
+            }
+        });
     }
 
     public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {

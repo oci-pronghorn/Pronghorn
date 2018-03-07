@@ -108,8 +108,8 @@ class JSONBuilder<T> {
 
     // Object
 
-    public <M> StringTemplateBuilder<M> beginObject(ToMemberFunction<T, M> accessor) {
-        StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
+    public <M> StringTemplateBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
+        final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
@@ -135,7 +135,7 @@ class JSONBuilder<T> {
     }
 
     <N, M> StringTemplateBuilder<M> beginObject(final IterMemberFunction<T, N, N> iterator, final IterMemberFunction<T, N, M> accessor) {
-        StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
+        final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
@@ -246,7 +246,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addBool(IterMemberFunction<T, N, N> iterator, IterBoolFunction<T, N> func) {
+    <N> void addBool(final IterMemberFunction<T, N, N> iterator, final IterBoolFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -345,7 +345,7 @@ class JSONBuilder<T> {
         });
     }
 
-    void addInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+    void addInteger(final ToBoolFunction<T> isNull, final ToLongFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
@@ -446,7 +446,7 @@ class JSONBuilder<T> {
 
     // TODO: support rational, decimal
 
-    void addDecimal(int precision, ToDoubleFunction<T> func) {
+    void addDecimal(final int precision, final ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
@@ -456,7 +456,7 @@ class JSONBuilder<T> {
         });
     }
 
-    void addDecimal(int precision, final ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    void addDecimal(final int precision, final ToBoolFunction<T> isNull, final ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
@@ -471,7 +471,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addDecimal(IterMemberFunction<T, N, N> iterator, int precision, IterDoubleFunction<T, N> func) {
+    <N> void addDecimal(final IterMemberFunction<T, N, N> iterator, final int precision, final IterDoubleFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -565,7 +565,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addString(IterMemberFunction<T, N, N> iterator, IterStringFunction<T, N> func) {
+    <N> void addString(final IterMemberFunction<T, N, N> iterator, final IterStringFunction<T, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
