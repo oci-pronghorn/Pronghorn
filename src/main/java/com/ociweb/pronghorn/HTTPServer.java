@@ -59,9 +59,8 @@ public class HTTPServer {
 		////////////////
 		//CREATE A SCHEDULER TO RUN THE SERVER
 		////////////////
-		final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-	//	final StageScheduler scheduler = new FixedThreadsScheduler(gm, Runtime.getRuntime().availableProcessors(), false);
-				
+		final StageScheduler scheduler = StageScheduler.defaultScheduler(gm);
+		
 		//////////////////
 		//UPON CTL-C SHUTDOWN OF SERVER DO A CLEAN SHUTDOWN
 		//////////////////

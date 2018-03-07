@@ -37,7 +37,6 @@ public class HTTPSRoundTripTest {
 
         
     @Test
-    @Ignore  //not working on bulild server, socket open issue??
 	public void allCertHTTPSTest() {
     
     	int maxPartialResponses=10;
@@ -88,7 +87,6 @@ public class HTTPSRoundTripTest {
     }
     
     @Test
-    @Ignore  //not working on bulild server, socket open issue??
 	public void certMatchHTTPSTest() {
     
     	final TLSCertificates tlsCertificates = new TLSCertificates() {
@@ -165,14 +163,8 @@ public class HTTPSRoundTripTest {
     	
 		runRoundTrip(gm, results);
     }
-
-    @Test
-    public void placeholderTest() {
-    	assertTrue(true);
-    }
     
     @Test 
-    @Ignore  //not working on bulild server, socket open issue??
 	public void certAuthMatchHTTPSTest() {
     
     	final TLSCertificates tlsCertificates = new TLSCertificates() {
@@ -259,7 +251,7 @@ public class HTTPSRoundTripTest {
     }
     
     
-	public void runRoundTrip(GraphManager gm, StringBuilder results) {
+	public static void runRoundTrip(GraphManager gm, StringBuilder results) {
 		ScriptedNonThreadScheduler scheduler = new ScriptedNonThreadScheduler(gm);
 		
 		scheduler.startup();
@@ -274,7 +266,7 @@ public class HTTPSRoundTripTest {
 	}
 
 
-	public ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,
+	public static ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,
 			final int messageSizeToOrderingSuper) {
 		//using the basic no-fills API
 		ModuleConfig config = new ModuleConfig() { 
@@ -318,7 +310,7 @@ public class HTTPSRoundTripTest {
 	}
 	
 	
-	private String buildStaticFileFolderPath(String testFile) {
+	private static String buildStaticFileFolderPath(String testFile) {
 		URL dir = ClassLoader.getSystemResource(testFile);
 		String root = "";	//file:/home/nate/Pronghorn/target/test-classes/OCILogo.png
 			

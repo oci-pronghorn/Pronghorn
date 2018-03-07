@@ -263,20 +263,20 @@ public class NetGraphBuilder {
         
 	}
 
-	public static GraphManager buildSimpleServerGraph(final GraphManager graphManager,
-			final ServerCoordinator coordinator, 
-			boolean isLarge, boolean isTLS,
-			ServerFactory factory) {
-		
-		return buildServerGraph(graphManager, coordinator,
-				                new ServerPipesConfig(isTLS, 
-								   isLarge ? 20 : 12, 
-								   isLarge? 8 : (isLarge ? (isTLS?4:8) : 2),
-								   isLarge ? 2 : 1, isLarge ? 2 : 1,
-								   isLarge ? 2 : 1, isLarge ? 2 : 1, 8, 1<<8),
-				                   factory);
-		
-	}
+//	public static GraphManager buildSimpleServerGraph(final GraphManager graphManager,
+//			final ServerCoordinator coordinator, 
+//			boolean isLarge, boolean isTLS,
+//			ServerFactory factory) {
+//		
+//		return buildServerGraph(graphManager, coordinator,
+//				                new ServerPipesConfig(isTLS, 
+//								   isLarge ? 20 : 12, 
+//								   isLarge? 8 : (isLarge ? (isTLS?4:8) : 2),
+//								   isLarge ? 2 : 1, isLarge ? 2 : 1,
+//								   isLarge ? 2 : 1, isLarge ? 2 : 1, 8, 1<<8),
+//				                   factory);
+//		
+//	}
 	
 	public static GraphManager buildServerGraph(final GraphManager graphManager,
 													final ServerCoordinator coordinator, 

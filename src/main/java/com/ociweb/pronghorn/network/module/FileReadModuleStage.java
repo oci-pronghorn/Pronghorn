@@ -616,12 +616,13 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         } else {
         	//if bytesLength is 0 then use the defaultPathFile
         	System.err.println("default: "+	defaultPathFile);
+        	       
         	        	
         	
         	//TODO: need to lookup the resource??
         	StringBuilder builder = new StringBuilder();
         	
-        	builder.append('/').append(folderRootString).append('/');
+        	builder.append(folderRootString).append('/');
         	Appendables.appendUTF8(builder, bytesBackingArray, bytesPosition, bytesLength, bytesMask);
         	
         	String name = builder.toString();

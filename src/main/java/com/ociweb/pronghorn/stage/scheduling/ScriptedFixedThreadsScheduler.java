@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -358,7 +359,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
-				
+		
 		if (targetThreadCount>=3) {
 			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic
@@ -390,10 +391,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 		//if producer sends to n consumers each with the same scheme 
 		//and each with a heavy compute stage then keep the split, never join.
-		if (isSplittingHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+		if (isSplittingComputeLoad(consumerId, producerId, graphManager, p)) {
 			return false;
 		}
-		if (isMergeOfHeavyComputeLoad(consumerId, producerId, graphManager, p)) {
+		if (isMergeOfComputeLoad(consumerId, producerId, graphManager, p)) {
 			return false;
 		}
 
@@ -415,13 +416,16 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 		if (consumerStage instanceof ServerNewConnectionStage ) {
 			return false;
-		}	
+		}
 		
 		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
 		if (totalInputsCount>1) {
 			//do not combine with super if it has multiple inputs
-			if ((consumerStage instanceof OrderSupervisorStage)) {
-				return false;
+			if (consumerStage instanceof OrderSupervisorStage) {				
+				int pipeId = GraphManager.getInputPipeId(graphManager, consumerId, 1);				
+				if (producerId != GraphManager.getRingProducerId(graphManager, pipeId)) {
+					return false;
+				}				
 			}
 		}
 		
@@ -456,7 +460,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return true;
 	}
 
-	private static boolean isSplittingHeavyComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean isSplittingComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
 		int countOfHeavyComputeConsumers = 0;
 		final int totalOutputsCount = GraphManager.getOutputPipeCount(graphManager, producerId);
 		if (totalOutputsCount<=1) {
@@ -467,20 +471,17 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			//all the other output coming from the producer
 			Pipe outputPipe = GraphManager.getOutputPipe(graphManager, producerId, 1+proOutCount);
 			
+			
 			//is this the same schema as the pipe in question.
 			if (Pipe.isForSameSchema(outputPipe, p)) {
 				
 				//determine if they are consumed by the same place or not
 				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
-				
-				if (GraphManager.hasNota(graphManager, conId, GraphManager.HEAVY_COMPUTE)) {
-					countOfHeavyComputeConsumers++;
-					
-				} else {
-					//TODO: we can go deeper down this chain as needed to discover heavy compute....
-					
-					
+				if ((totalOutputsCount-1)==proOutCount && conId == consumerId) {
+					return false; //allow this first one.
 				}
+				
+				countOfHeavyComputeConsumers++;
 				
 			}
 		}
@@ -490,7 +491,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	
 	
-	private static boolean isMergeOfHeavyComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean isMergeOfComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
 		int countOfHeavyComputeProducers = 0;
 		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
 		if (totalInputsCount<=1) {
@@ -507,14 +508,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//determine if they are consumed by the same place or not
 				int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
 				
-				if (GraphManager.hasNota(graphManager, prodId, GraphManager.HEAVY_COMPUTE)) {
-					countOfHeavyComputeProducers++;
-					
-				} else {
-					//TODO: we can go deeper up this chain as needed to discover heavy compute....
-					
-					
+				if (0==conInCount && prodId == producerId) {
+					return false;
 				}
+				
+				countOfHeavyComputeProducers++;
+
 			}
 		}
 		return countOfHeavyComputeProducers == totalInputsCount;
