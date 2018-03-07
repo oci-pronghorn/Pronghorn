@@ -1,18 +1,16 @@
 package com.ociweb.pronghorn.util.parse;
 
-import java.io.PrintStream;
-
 import com.ociweb.pronghorn.pipe.ChannelReader;
 
 public interface JSONReader {
 
-	long getLong(byte[] field, ChannelReader reader);
-	<A extends Appendable> A getText(byte[] field, ChannelReader reader, A target);
-	boolean getBoolean(byte[] field, ChannelReader reader);
-	boolean wasAbsent(ChannelReader reader);
+	long getLong(int fieldId, ChannelReader reader);
+	<A extends Appendable> A getText(int fieldId, ChannelReader reader, A target);
+	boolean getBoolean(int fieldId, ChannelReader reader);
+	boolean wasAbsent(int fieldId, ChannelReader reader);
 	
-	long getDecimalMantissa(byte[] field, ChannelReader reader);
-	byte getDecimalPosition(byte[] field, ChannelReader reader);
+	long getDecimalMantissa(int fieldId, ChannelReader reader);
+	byte getDecimalPosition(int fieldId, ChannelReader reader);
 	<A extends Appendable> A dump(ChannelReader reader, A out);
 	
 	void clear();

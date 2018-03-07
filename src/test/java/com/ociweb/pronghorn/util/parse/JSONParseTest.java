@@ -85,7 +85,7 @@ public class JSONParseTest {
 	@Ignore
 	@Test //can do 150K per second
 	public void loadFor2D() {
-		parseJSONLoad(1500_000, simple2DArrayExample, simple2DArrayExtractor);
+		parseJSONLoad(150_000, simple2DArrayExample, simple2DArrayExtractor);
 		assert(true);
 	}
 	

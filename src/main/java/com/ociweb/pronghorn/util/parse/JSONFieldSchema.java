@@ -6,15 +6,14 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class JSONFieldSchema implements JSONReader{
+public class JSONFieldSchema implements JSONReader {
 
 	 private static final Logger logger = LoggerFactory.getLogger(JSONFieldSchema.class);
-	 
-	 private final TrieParserReader parserReader; //only used for the lookup of Id values
+
+	 private static final int PAYLOAD_INDEX_LOCATION = 1; //TODO: remove...
 	 
 	 private final TrieParser parser;  //immutable once established
 
@@ -24,92 +23,85 @@ public class JSONFieldSchema implements JSONReader{
 	 private final int maxFields = 5;
 	 private final boolean completeFields = true;
 	 private JSONFieldMapping[] mappings;  //immutable once established
+
+	 private final TrieParserReader reader = new TrieParserReader(maxFields, completeFields); //only on startup
 	 
-	 //can read 0 or nextReadField
-	 private int nextReadField = 0;
-	 private long nulls=0;
-	 private byte decimalLatch = 0;
+	 //TODO: how do we find the position of the nulls when we have headers or params?
 	 
-	 private int initPos = Integer.MIN_VALUE;
-	 
+	 public JSONFieldSchema(int nullPosition) {
+		 
+		 this.mappings = new JSONFieldMapping[0];
+		 
+		 this.parser = new TrieParser(256,2,false,true);
+		 JSONStreamParser.populateWithJSONTokens(parser);
+			 
+	 }
+
 	 @Override
-	 public long getDecimalMantissa(byte[] field, ChannelReader reader) {
+	 public long getDecimalMantissa(int fieldId, ChannelReader reader) {
+		
 		 long result = 0;
-		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
+		 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
+		 if (nullPosition==reader.position()
+		    && (mappings[fieldId].type == JSONType.TypeDecimal)) {
 			 
-			 initPosition(reader);
+			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 nulls = reader.readPackedLong();//only supports 64 fields.
-			 
-			 if (!(0!=(1&nulls))) {
+			 if (0==(1&nulls)) {
 				 result = reader.readPackedLong();
 			 }
-			 nextReadField = 0;
-			 
-			 decimalLatch |= 1;
-			 
-			 if (3==decimalLatch) {
-				 decimalLatch = 0;
-				 nextReadField++;				 
-			 }
-			 
-		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeDecimal)) {
-			 if (!(0!=( (1<<nextReadField) & nulls))) {
-				 result = reader.readPackedLong();
-			 }
-			 
-			 decimalLatch |= 1;
-			 
-			 if (3==decimalLatch) {
-				 decimalLatch = 0;
-				 nextReadField++;				 
-			 }
-			 
 		 } else {
-			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+			
+			 int pos = reader.position();
+			 reader.position(nullPosition);
+			 long nulls = reader.readPackedLong();
+			 reader.position(pos);
+			 			 
+			 if ((0==( (1<<fieldId) & nulls))) {
+				 result = reader.readPackedLong();
+			 }
 		 }
 		 
 		 return result;
 	 }
 
 	 @Override
-	 public byte getDecimalPosition(byte[] field, ChannelReader reader) {
-		 
-		 if (1!=decimalLatch) {
-			 throw new UnsupportedOperationException("must call for DecimalMantissa value first");
+	 public byte getDecimalPosition(int fieldId, ChannelReader reader) {
+
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
 		 }
 		 
 		 byte result = 0;
-		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeDecimal)) {
+		 if (nullPosition==reader.position()
+			  && (mappings[fieldId].type == JSONType.TypeDecimal)) {
 			 			 
-			 //no need to read nulls since that was done by Mantissa read
+			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 if (!(0!=(1&nulls))) {
+			 if ((0==(1&nulls))) {
+				 long m = reader.readPackedLong();
 				 result = reader.readByte();
-			 }
-			 nextReadField = 0;
-			 
-			 decimalLatch |= 2;
-			 
-			 if (3==decimalLatch) {
-				 decimalLatch = 0;
-				 nextReadField++;				 
-			 }
-			 
-		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeDecimal)) {
-			 if (!(0!=( (1<<nextReadField) & nulls))) {
-				 result = reader.readByte();
-			 }
-			 
-			 decimalLatch |= 2;
-			 
-			 if (3==decimalLatch) {
-				 decimalLatch = 0;
-				 nextReadField++;				 
+
 			 }
 			 
 		 } else {
-			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+			 
+			 int pos = reader.position();
+			 reader.position(nullPosition);
+			 long nulls = reader.readPackedLong();
+			 reader.position(pos);
+			 			 
+			 if ((0==( (1<<fieldId) & nulls))) {
+				 long m = reader.readPackedLong();
+				 result = reader.readByte();
+			 }
+			 
 		 }
 		 
 		 return result;
@@ -117,137 +109,118 @@ public class JSONFieldSchema implements JSONReader{
 
 	 
 	 @Override
-	 public long getLong(byte[] field, ChannelReader reader) {
-		 long result = 0;
-		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeInteger)) {
-			 			 
-			 initPosition(reader);
-			 		 
-			 nulls = reader.readPackedLong();//only supports 64 fields.
-			 
-			 if (!(0!=(1&nulls))) {
-				 result = reader.readPackedLong();
-			 }
-			 nextReadField = 1;
-		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeInteger)) {
-			 if (!(0!=( (1<<nextReadField) & nulls))) {
-				 result = reader.readPackedLong();
-			 }
-			 nextReadField++;
-		 } else {
-			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+	 public long getLong(int fieldId, ChannelReader reader) {
+	
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
 		 }
 		 
+		 long result = 0;
+		 if (nullPosition==reader.position()
+		     && (mappings[0].type == JSONType.TypeInteger)) {
+			 			 
+			 long nulls = reader.readPackedLong();//only supports 64 fields.
+			 
+			 if ((0==(1&nulls))) {
+				 result = reader.readPackedLong();
+			 }
+
+		 } else {
+			 
+			 int pos = reader.position();
+			 reader.position(nullPosition);
+			 long nulls = reader.readPackedLong();
+			 reader.position(pos);
+			 
+			 if ((0==( (1<<fieldId) & nulls))) {
+				 result = reader.readPackedLong();
+			 }			 
+		 }
 		 return result;
 	 }
 
-	private void initPosition(ChannelReader reader) {
-		DataInputBlobReader r = ((DataInputBlobReader)reader);
-		 if(Integer.MIN_VALUE == initPos) {
-			 reader.position();			 
-			 initPos = r.position();
-		 } else {
-			 r.position(initPos);
-		 }
-		 
-		 assert(isValid(reader));
-		 
-	}
-	 
-	 private boolean isValid(ChannelReader reader) {
-		 DataInputBlobReader reader2 = (DataInputBlobReader)reader;
-		 int initialPosition = reader.absolutePosition();
-		 try {
-			 
-			 long nullBits = reader.readPackedLong();
-		 
-		 } catch (Throwable t) {
-			 logger.info("Invalid data detected in ChannelReader");
-			 //unable to read so check if its text
-			 DataInputBlobReader.absolutePosition(reader2, initialPosition);
-			 
-			 try {
-				 String text = reader2.readUTFFully();
-				 logger.info("Instead of parsed binary data the ChannelReader was discoverd to hold this text:\n{}",text);
-			 } catch (Throwable tt) {				 
-			 }
-			 DataInputBlobReader.absolutePosition(reader2, initialPosition);
-			 return false;
-		 }
-		 DataInputBlobReader.absolutePosition(reader2, initialPosition);
-		 return true;
-	}
-
 	@Override
-	 public <A extends Appendable> A getText(byte[] field, ChannelReader reader, A target) {
-		 
-		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeString)) {
-			 			 
-			 initPosition(reader);
+	 public <A extends Appendable> A getText(int fieldId, ChannelReader reader, A target) {
+		
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		
+		 if (nullPosition==reader.position() && (mappings[0].type == JSONType.TypeString)) {
+			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
-			 nulls = reader.readPackedLong();//only supports 64 fields.
-			 
-			 if (!(0!=(1&nulls))) {
+			 if ((0==(1&nulls))) {
 				 int len = reader.readPackedInt();
 				 if (len>0) {
 					 reader.readUTFOfLength(len, target);
 				 }
 			 }
-			 nextReadField = 1;
-		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeString)) {
-			 if (!(0!=( (1<<nextReadField) & nulls))) {
+			 
+		 } else {
+			 int pos = reader.position();
+			 reader.position(nullPosition);
+			 long nulls = reader.readPackedLong();
+			 reader.position(pos);
+			 
+			 if ((0==( (1<<fieldId) & nulls))) {
 				 reader.readUTFOfLength(reader.readPackedInt(), target);
 			 }
-			 nextReadField++;
-		 } else {
-			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
+			 
 		 }
-		 
+				 
 		 return target;
 	 }
 	 
 	 @Override
-	 public boolean wasAbsent(ChannelReader reader) {
-		 assert(nextReadField>0);
-		 return (0!=( (1<<(nextReadField-1)) & nulls));
+	 public boolean wasAbsent(int fieldId, ChannelReader reader) {
+		 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
+		 int pos = reader.position();
+		 reader.position(nullPosition);
+		 long nulls = reader.readPackedLong();
+		 reader.position(pos);
+		 
+		 return (0!=( (1<<fieldId) & nulls));
 	 }
 	 
 	 @Override
-	 public boolean getBoolean(byte[] field, ChannelReader reader) {
+	 public boolean getBoolean(int fieldId, ChannelReader reader) {
+		 
+		 int nullPosition = ((DataInputBlobReader<?>)reader).readFromEndLastInt(PAYLOAD_INDEX_LOCATION);
+		 if (nullPosition<0) {
+			 nullPosition = 0;
+		 }
+		 
 		 boolean result = false;
-		 if (mappings[0].nameEquals(field) && (mappings[0].type == JSONType.TypeBoolean)) {
+		 if (nullPosition==reader.position() && (mappings[0].type == JSONType.TypeBoolean)) {
 			 
-			 initPosition(reader);
-			 
-			 nulls = reader.readPackedLong();//only supports 64 fields.
+			 long nulls = reader.readPackedLong();//only supports 64 fields.
 			 
 			 if (!(0!=(1&nulls))) {
 				 result = reader.readByte()>0;
 			 }
-			 nextReadField = 1;
-		 } else if (mappings[nextReadField].nameEquals(field) && (mappings[nextReadField].type == JSONType.TypeBoolean)) {
-			 if (!(0!=( (1<<nextReadField) & nulls))) {
+		 } else {
+			 int pos = reader.position();
+			 reader.position(nullPosition);
+			 long nulls = reader.readPackedLong();
+			 reader.position(pos);
+			 
+			 if (!(0!=( (1<<fieldId) & nulls))) {
 				 result = reader.readByte()>0;
 			 }
-			 nextReadField++;
-		 } else {
-			 throw new UnsupportedOperationException("Fields must be called for in the same order and type as defined");
 		 }
-		 
+		
 		 return result;
 	 }
 	 
 	 
-	 public JSONFieldSchema() {
-		 
-		 mappings = new JSONFieldMapping[0];
-		 
-		 parser = new TrieParser(256,2,false,true);
-		 JSONStreamParser.populateWithJSONTokens(parser);
-	
- 		 parserReader = new TrieParserReader(maxFields, completeFields);
-		 
-	 }
+
 	 
 	 public int mappingCount() {
 		 return mappings.length;
@@ -274,7 +247,7 @@ public class JSONFieldSchema implements JSONReader{
 	 public int lookupId(String text) {
 		 //adds new one if it is not found.
 		 	
-		 long idx = TrieParserReader.query(parserReader, 
+		 long idx = TrieParserReader.query(reader, 
 				                           parser, 
 				                           text);
 		 
@@ -331,7 +304,6 @@ public class JSONFieldSchema implements JSONReader{
 
 	@Override
 	public void clear() {
-		initPos = Integer.MIN_VALUE;
 	}
 
 		
