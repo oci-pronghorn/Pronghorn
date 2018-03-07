@@ -1,11 +1,10 @@
 package com.ociweb.json.encode.function;
 
 //@FunctionalInterface
-public interface ToNullableDecimalFunction<T> {
+public interface ToDecimalFunction<T> {
     //@FunctionalInterface
     interface Visit {
-        void visit(double value, int precision, boolean isNull);
+        void visit(double value, int precision);
     }
     void applyAsDecimal(T o, Visit func);
 }
-

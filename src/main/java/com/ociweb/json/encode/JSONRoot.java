@@ -4,160 +4,180 @@ import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
-// TODO: fix complete not aways getting called
+import java.util.List;
 
-public class JSONRoot<T, P extends JSONRoot> implements JSONCompositeOwner {
+public class JSONRoot<T, P extends JSONRoot> {
     final JSONBuilder<T> builder;
-    private final P owner;
     private final int depth;
-
-    JSONRoot(StringTemplateBuilder<T> scripts, P owner, JSONKeywords keywords, int depth) {
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.owner = owner;
-        this.depth = depth;
-        builder.start();
-    }
 
     JSONRoot(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.owner = (P)this;
         this.depth = depth;
         builder.start();
     }
 
-    @Override
-    public void childCompleted() {
-        // Single child...
+    private P childCompleted() {
         builder.complete();
+        return (P)this;
     }
+
+    // Object
 
     public JSONObject<T, P> beginObject() {
-        return new JSONObject<>(
-                builder.beginObject(),
-                builder.getKeywords(), owner, depth + 1);
+        return beginObject(new ToMemberFunction<T, T>() {
+            @Override
+            public T get(T o) {
+                return o;
+            }
+        });
     }
 
-    public JSONObject<T, P> beginNullObject(ToBoolFunction<T> isNull) {
-        return new JSONObject<>(
-                builder.beginObject(isNull),
-                builder.getKeywords(), owner, depth + 1);
+    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<M, P>(
+                builder.beginObject(accessor),
+                builder.getKeywords()/*, owner*/, depth + 1) {
+            @Override
+            P objectEnded() {
+                return childCompleted();
+            }
+        };
     }
 
-    public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
-        return new JSONArray<>(
+    // Array
+
+    public <N> JSONArray<T, P, N> array(IterMemberFunction<T, N, N> iterator) {
+        return new JSONArray<T, P, N>(
                 builder.beginArray(),
-                builder.getKeywords(), iterator, owner, depth + 1);
+                builder.getKeywords(), iterator, depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
     }
 
-    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
-        return new JSONArray<>(
+    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, IterMemberFunction<T, N, N> iterator) {
+        return new JSONArray<T, P, N>(
                 builder.beginArray(isNull),
-                builder.getKeywords(), iterator, owner, depth + 1);
+                builder.getKeywords(), iterator, depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
     }
+
+    public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
+        return JSONArray.createListArray(builder, depth + 1, accessor, new ToEnding<P>() {
+            @Override
+            public P end() {
+                return childCompleted();
+            }
+        });
+    }
+
+    public <N> JSONArray<T, P, N> basicArray(ToMemberFunction<T, N[]> accessor) {
+        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ToEnding<P>() {
+            @Override
+            public P end() {
+                return childCompleted();
+            }
+        });
+    }
+
+    // No need for Renderer methods
+
+    // Null
 
     public P empty() {
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
     public P constantNull() {
         builder.addNull();
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
+
+    // Bool
 
     public P bool(ToBoolFunction<T> func) {
         builder.addBool(func);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
     public P bool(ToBoolFunction<T> func, JSONType encode) {
         builder.addBool(func, encode);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
-    public P nullableBool(ToNullableBoolFunction<T> func) {
-        builder.addBool(func);
-        this.childCompleted();
-        return owner;
+    public P nullableBool(ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+        builder.addBool(isNull, func);
+        return this.childCompleted();
     }
 
-    public P nullableBool(ToNullableBoolFunction<T> func, JSONType encode) {
-        builder.addBool(func, encode);
-        this.childCompleted();
-        return owner;
+    public P nullableBool(ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+        builder.addBool(isNull, func, encode);
+        return this.childCompleted();
     }
+
+    // Integer
 
     public P integer(ToLongFunction<T> func) {
         builder.addInteger(func);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
     public P integer(ToLongFunction<T> func, JSONType encode) {
         builder.addInteger(func, encode);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
-    public P nullableInteger(ToNullableLongFunction<T> func) {
-        builder.addInteger(func);
-        this.childCompleted();
-        return owner;
+    public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+        builder.addInteger(isNull, func);
+        return this.childCompleted();
     }
 
-    public P nullableInteger(ToNullableLongFunction<T> func, JSONType encode) {
-        builder.addInteger(func, encode);
-        this.childCompleted();
-        return owner;
+    // Decimal
+
+    public P decimal(int precision, ToDoubleFunction<T> func) {
+        builder.addDecimal(precision, func);
+        return this.childCompleted();
     }
 
-    public P decimal(ToDoubleFunction<T> func) {
-        builder.addDecimal(func);
-        this.childCompleted();
-        return owner;
+    public P decimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addDecimal(precision, func, encode);
+        return this.childCompleted();
     }
 
-    public P decimal(ToDoubleFunction<T> func, JSONType encode) {
-        builder.addDecimal(func, encode);
-        this.childCompleted();
-        return owner;
+    public P nullableDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        builder.addDecimal(precision, isNull, func);
+        return this.childCompleted();
     }
 
-    public P nullableDecimal(ToNullableDecimalFunction<T> func) {
-        builder.addDecimal(func);
-        return owner;
+    public P nullableDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        builder.addDecimal(precision, isNull, func, encode);
+        return this.childCompleted();
     }
 
-    public P nullableDecimal(ToNullableDecimalFunction<T> func, JSONType encode) {
-        builder.addDecimal(func, encode);
-        this.childCompleted();
-        return owner;
-    }
+    // String
 
     public P string(ToStringFunction<T> func) {
         builder.addString(func);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
     public P string(ToStringFunction<T> func, JSONType encode) {
         builder.addString(func, encode);
-        this.childCompleted();
-        return owner;
+        return this.childCompleted();
     }
 
     public P nullableString(ToStringFunction<T> func) {
-        builder.addString(func);
-        this.childCompleted();
-        return owner;
+        builder.addNullableString(func);
+        return this.childCompleted();
     }
 
     public P nullableString(ToStringFunction<T> func, JSONType encode) {
-        builder.addString(func, encode);
-        this.childCompleted();
-        return owner;
+        builder.addNullableString(func, encode);
+        return this.childCompleted();
     }
 }
