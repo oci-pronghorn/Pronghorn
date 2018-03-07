@@ -142,12 +142,12 @@ public class ServerNewConnectionStage extends PronghornStage{
         } catch (SocketException se) {
          
 	    	if (se.getMessage().contains("Permission denied")) {
-	    		logger.warn("\nUnable to open {} due to {}",endPoint,se.getMessage());
+	    		logger.warn("\nUnable to open {} due to {}",coordinator.port(),se.getMessage());
 	    		coordinator.shutdown();
 	    		return;
 	    	} else {
 	        	if (se.getMessage().contains("already in use")) {
-	                logger.warn("Already in use: {}",endPoint,se.getMessage());
+	                logger.warn("Already in use: {} {}",coordinator.host(), coordinator.port());
 	                coordinator.shutdown();
 	                return;
 	            }
