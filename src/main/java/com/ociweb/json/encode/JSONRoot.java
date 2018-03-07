@@ -40,7 +40,7 @@ public class JSONRoot<T, P extends JSONRoot> {
 
     // Array
 
-    public <N> JSONArray<T, P, N> array(ArrayIteratorFunction<T, N> iterator) {
+    public <N> JSONArray<T, P, N> array(IterMemberFunction<T, N, N> iterator) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(),
                 builder.getKeywords(), iterator, depth + 1) {
@@ -51,9 +51,7 @@ public class JSONRoot<T, P extends JSONRoot> {
         };
     }
 
-    // TODO: do we need isNull?
-
-    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
+    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, IterMemberFunction<T, N, N> iterator) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(isNull),
                 builder.getKeywords(), iterator, depth + 1) {

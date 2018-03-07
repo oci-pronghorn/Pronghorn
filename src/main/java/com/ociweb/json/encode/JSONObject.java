@@ -41,7 +41,7 @@ public abstract class JSONObject<T, P> {
 
     // Array
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, ArrayIteratorFunction<T, N> iterator) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, IterMemberFunction<T, N, N> iterator) {
         return new JSONArray<T, JSONObject<T, P>, N>(
                 builder.addFieldPrefix(name).beginArray(),
                 builder.getKeywords(), iterator, depth + 1) {
@@ -52,7 +52,7 @@ public abstract class JSONObject<T, P> {
         };
     }
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, ArrayIteratorFunction<T, N> iterator) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, IterMemberFunction<T, N, N> iterator) {
         return new JSONArray<T, JSONObject<T, P>, N>(
                 builder.addFieldPrefix(name).beginArray(isNull),
                 builder.getKeywords(), iterator,depth + 1) {

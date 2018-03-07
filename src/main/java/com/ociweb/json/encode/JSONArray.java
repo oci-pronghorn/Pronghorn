@@ -8,10 +8,10 @@ import java.util.List;
 
 public abstract class JSONArray<T, P, N> {
     private final JSONBuilder<T> builder;
-    private final ArrayIteratorFunction<T, N> iterator;
+    private final IterMemberFunction<T, N, N> iterator;
     private final int depth;
 
-    JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, ArrayIteratorFunction<T, N> iterator, int depth) {
+    JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, IterMemberFunction<T, N, N> iterator, int depth) {
         this.iterator = iterator;
         this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
@@ -26,9 +26,9 @@ public abstract class JSONArray<T, P, N> {
                     }
                 }),
                 builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
+                new IterMemberFunction<T, N, N>() {
                     @Override
-                    public N test(T o, int i, N node) {
+                    public N get(T o, int i, N node) {
                         List<N> m = accessor.get(o);
                         return i < m.size() ? m.get(i) : null;
                     }
@@ -50,9 +50,9 @@ public abstract class JSONArray<T, P, N> {
                     }
                 }),
                 builder.getKeywords(),
-                new ArrayIteratorFunction<T, N>() {
+                new IterMemberFunction<T, N, N>() {
                     @Override
-                    public N test(T o, int i, N node) {
+                    public N get(T o, int i, N node) {
                         N[] m = accessor.get(o);
                         return i < m.length ? m[i] : null;
                     }
@@ -88,6 +88,7 @@ public abstract class JSONArray<T, P, N> {
     // Array
 
     // TODO
+    // TODO: do we need isNull variant?
 
     // Renderer
 
