@@ -51,6 +51,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private final PoolIdx responsePipeLinePool;
 	private final int[] processorLookup;
 	private final int moduleParallelism;
+	private final int concurrentPerModules;
 	
 	public final int maxConcurrentInputs;
 	public final int maxConcurrentOutputs;
@@ -131,23 +132,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.maxConcurrentOutputs = maxConcurrentOutputs;
 
     	this.moduleParallelism = moduleParallelism;
+    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
+        this.concurrentPerModules = maxConcurrentInputs/moduleParallelism;
+    	//  0 0 0 0 1 1 1 1 
     	
-    	////////////////////////////
-    	//build lookup table to distribute connections to the same place
-    	///////////////////////////
-    	int[] distribute = new int[maxConcurrentInputs];
-    	int i = maxConcurrentInputs;
-    	int j = 0;
-    	while (--i>=0) {
-    		if (--j<0) {
-    			j = moduleParallelism-1;
-    		}
-    		distribute[i] = j;
-    	}    	
-    	this.processorLookup = distribute;
-        /////////////////////////
-    	
-    	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
+    	//logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
     }
     
@@ -262,12 +251,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 		public void setId(long ccId) {
 			assert(maxConcurrentInputs == processorLookup.length);
-				
-			this.idx = ((int)ccId)%maxConcurrentInputs;	
-			
+
+			//each connection should be in the next modules group of input pipes.
+			this.idx = ((int)ccId*concurrentPerModules)%maxConcurrentInputs;			
 			this.validValue = processorLookup[idx];
 			
-			logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
+			//logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
 			
 		}
 
