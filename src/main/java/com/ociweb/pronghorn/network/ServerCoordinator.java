@@ -132,6 +132,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
     	this.moduleParallelism = moduleParallelism;
     	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
+  
+    	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
+    	
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -245,9 +248,13 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 		public void setId(long ccId) {
 			assert(maxConcurrentInputs == processorLookup.length);
-			//multiplied by prime number to ensure value jumps arround
-			this.idx = ((int)ccId*191)%maxConcurrentInputs;
+				
+			//multiplied by prime number to ensure value jumps around
+			this.idx = ((int)ccId*191)%maxConcurrentInputs;	
 			this.validValue = processorLookup[idx];
+			
+			logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
+			
 		}
 
 		@Override
