@@ -147,7 +147,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.processorLookup = distribute;
         /////////////////////////
     	
-    	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
+    	//logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
     }
     
@@ -267,7 +267,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 			
 			this.validValue = processorLookup[idx];
 			
-			logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
+			//logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
 			
 		}
 
