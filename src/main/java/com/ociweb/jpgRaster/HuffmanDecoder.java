@@ -215,6 +215,7 @@ public class HuffmanDecoder {
 			if (!success) {
 				return false;
 			}
+			previousCbDC = mcu.cb[0];
 
 			//System.out.println("Decoding Cr Component...");
 			success = decodeMCUComponent(DCTableCodes.get(crDCTableID), ACTableCodes.get(crACTableID),
@@ -222,40 +223,10 @@ public class HuffmanDecoder {
 			if (!success) {
 				return false;
 			}
+			previousCrDC = mcu.cr[0];
 		}
-		
-		//if (horizontal == 2) {
-		//	expandMCU(mcu, mcu2);
-		//}
-		mcu2.cb = mcu.cb;
-		mcu2.cr = mcu.cr;
-		
-		previousCbDC = mcu.cb[0];
-		previousCrDC = mcu.cr[0];
-		
+
 		return true;
-	}
-	
-	public static void expandMCU(MCU mcu, MCU mcu2) {
-		short[] tempCB = mcu.cb;
-		short[] tempCR = mcu.cr;		
-		
-		for (int i = 0; i < 8; ++i) {
-			for (int j = 0; j < 4; ++j) {
-				mcu.cb [(j * 2    ) + i * 8] = tempCB[j + i * 8];
-				mcu.cb [(j * 2 + 1) + i * 8] = tempCB[j + i * 8];
-				
-				mcu.cr [(j * 2    ) + i * 8] = tempCR[j + i * 8];
-				mcu.cr [(j * 2 + 1) + i * 8] = tempCR[j + i * 8];
-				
-				
-				mcu2.cb[(j * 2    ) + i * 8] = tempCB[(j + 4) + i * 8];
-				mcu2.cb[(j * 2 + 1) + i * 8] = tempCB[(j + 4) + i * 8];
-				
-				mcu2.cr[(j * 2    ) + i * 8] = tempCR[(j + 4) + i * 8];
-				mcu2.cr[(j * 2 + 1) + i * 8] = tempCR[(j + 4) + i * 8];
-			}
-		}
 	}
 	
 	public static void beginDecode(Header h, MCU mcu) {
