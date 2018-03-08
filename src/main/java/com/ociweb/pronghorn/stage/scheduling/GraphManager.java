@@ -1626,7 +1626,8 @@ public class GraphManager {
 	        Map<Object, StringBuilder> ranks = m.cachedRanks; 
 	        
 	        
-	        target.append("digraph {\n"); 
+	        target.append("digraph G {\n"); 
+	     //   target.append("concentrate=true\n");
 	        if (stages<500) {
 	            //no need if the picture is very large
 		        if (isVertical) {

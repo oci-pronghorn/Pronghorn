@@ -348,7 +348,7 @@ public class NetGraphBuilder {
         int r = routerCount;
         while (--r>=0) {
         	errorResponsePipes[r] = new Pipe<ServerResponseSchema>(config);        	
-        	fromModule[r] = PronghornStage.join(fromModule[r],errorResponsePipes[r]);
+        	fromModule[r] = PronghornStage.join(errorResponsePipes[r], fromModule[r]);
         }
 		return errorResponsePipes;
 	}

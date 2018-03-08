@@ -15,13 +15,11 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
-import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
-import com.ociweb.pronghorn.util.ma.RunningStdDev;
 import com.ociweb.pronghorn.util.primitive.IntArrayHolder;
 
 public class ScriptedFixedThreadsScheduler extends StageScheduler {
@@ -359,7 +357,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
-		
+
 		if (targetThreadCount>=3) {
 			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic
@@ -394,15 +392,18 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		if (isSplittingComputeLoad(consumerId, producerId, graphManager, p)) {
 			return false;
 		}
-		if (isMergeOfComputeLoad(consumerId, producerId, graphManager, p)) {
-			return false;
-		}
+		
 
 		//TODO: for a matrix of two rows of behaviors only let prod take on n consumers
 		//      where n is the count of producers per consumers over the consumers...
 		
 		PronghornStage consumerStage = GraphManager.getStage(graphManager, consumerId);
 		PronghornStage producerStage = GraphManager.getStage(graphManager, producerId);
+
+		if (isMergeOfComputeLoad(consumerId, producerId, graphManager, p)) {
+			return false;
+		}
+
 
 		if (consumerStage instanceof MonitorConsoleStage ) {
 			return false;
@@ -418,16 +419,19 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}
 		
-		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
-		if (totalInputsCount>1) {
-			//do not combine with super if it has multiple inputs
-			if (consumerStage instanceof OrderSupervisorStage) {				
-				int pipeId = GraphManager.getInputPipeId(graphManager, consumerId, 1);				
-				if (producerId != GraphManager.getRingProducerId(graphManager, pipeId)) {
-					return false;
-				}				
-			}
-		}
+		
+		//this rule appears to always be wrong..
+//		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
+//		if (totalInputsCount>1) {
+//			//do not combine with super if it has multiple inputs
+//			if (consumerStage instanceof OrderSupervisorStage) {				
+//				int pipeId = GraphManager.getInputPipeId(graphManager, consumerId, 1);	
+//				//do combine if its the first pipe
+//				if (producerId != GraphManager.getRingProducerId(graphManager, pipeId)) {
+//					return false;
+//				}				
+//			}
+//		}
 		
 		//this server pipe is only used for 404 based on route failures
 		//since this is not a priority it should not be an optimized relationship
@@ -442,20 +446,21 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//if the size of a group is above average do not combine.
 		
 
+//No longer needed....
         //NOTE: this also helps with the parallel work above, any large merge or split will show up here.
 		//do not combine with stages which are 2 standard deviations above the mean input/output count
-		if (GraphManager.countStages(graphManager)>80) {//only apply if we have large enough sample.
-		    RunningStdDev pipesPerStage = GraphManager.stdDevPipesPerStage(graphManager);
-		    int thresholdToNeverCombine = (int) (RunningStdDev.mean(pipesPerStage)+ (2*RunningStdDev.stdDeviation(pipesPerStage)));
-		    if ((GraphManager.getInputPipeCount(graphManager,consumerId)
-		         +GraphManager.getOutputPipeCount(graphManager, consumerId)) > thresholdToNeverCombine) {
-		    	return false;
-		    }
-		    if ((GraphManager.getInputPipeCount(graphManager,producerId)
-			    +GraphManager.getOutputPipeCount(graphManager, producerId)) > thresholdToNeverCombine) {
-		    	return false;
-	        }    
-		}
+//		if (GraphManager.countStages(graphManager)>80) {//only apply if we have large enough sample.
+//		    RunningStdDev pipesPerStage = GraphManager.stdDevPipesPerStage(graphManager);
+//		    int thresholdToNeverCombine = (int) (RunningStdDev.mean(pipesPerStage)+ (2*RunningStdDev.stdDeviation(pipesPerStage)));
+//		    if ((GraphManager.getInputPipeCount(graphManager,consumerId)
+//		         +GraphManager.getOutputPipeCount(graphManager, consumerId)) > thresholdToNeverCombine) {
+//		    	return false;
+//		    }
+//		    if ((GraphManager.getInputPipeCount(graphManager,producerId)
+//			    +GraphManager.getOutputPipeCount(graphManager, producerId)) > thresholdToNeverCombine) {
+//		    	return false;
+//	        }    
+//		}
 		
 		return true;
 	}
@@ -477,7 +482,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 				//determine if they are consumed by the same place or not
 				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
-				if ((totalOutputsCount-1)==proOutCount && conId == consumerId) {
+				if ((totalOutputsCount-1)==proOutCount
+						&& conId == consumerId) {
 					return false; //allow this first one.
 				}
 				
@@ -507,8 +513,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 				//determine if they are consumed by the same place or not
 				int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
+				if ( (totalInputsCount-1) == conInCount
+						&& 
+						prodId == producerId
+						) {
 				
-				if (0==conInCount && prodId == producerId) {
+					//NOTE: this is very dependent on order of pipes...
 					return false;
 				}
 				
@@ -516,6 +526,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 			}
 		}
+
+		//if all the inputs are of the same type then this is join
 		return countOfHeavyComputeProducers == totalInputsCount;
 	}
 
