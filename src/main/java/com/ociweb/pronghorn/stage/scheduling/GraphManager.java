@@ -1936,9 +1936,10 @@ public class GraphManager {
 	}
 
 	private static byte[] buldStageDOTName(GraphManager m, PronghornStage stage) {
-		String stageDisplayName;
-				
-		stageDisplayName = extractName(m, stage).replace("Stage","").replace(" ", "\n");
+		//TODO: re vist to eliminate GC.
+		String stageDisplayName = (extractName(m, stage)+"#"+stage.stageId)
+				      .replace("Stage","")
+				      .replace(" ", "\n");
 
 		if (showThreadIdOnTelemetry) {
 			Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
