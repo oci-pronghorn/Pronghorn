@@ -59,6 +59,8 @@ public class GraphManager {
 	public static boolean monitorAll = false;
 	public static boolean showScheduledRateOnTelemetry = false;
 	public static boolean showThreadIdOnTelemetry = true;
+	public static boolean showMessageCountRangeOnTelemetry = false;
+			
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
@@ -1936,15 +1938,15 @@ public class GraphManager {
 	}
 
 	private static byte[] buldStageDOTName(GraphManager m, PronghornStage stage) {
-		//TODO: re vist to eliminate GC.
-		String stageDisplayName = (extractName(m, stage)+"#"+stage.stageId)
-				      .replace("Stage","")
-				      .replace(" ", "\n");
+		//TODO: re-vist to eliminate GC.
+		String stageDisplayName = stage.toString()//(extractName(m, stage)+"#"+stage.stageId)
+				      .replace("Stage","").trim()
+				      .replace(" ", "\n")+"\n";
 
 		if (showThreadIdOnTelemetry) {
 			Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
 			if (null!=group) {
-				stageDisplayName+=(" T:"+group.toString()+"\n");
+				stageDisplayName+=(" Thread:"+group.toString()+"\n");
 			}
 		}
 		
@@ -1968,7 +1970,7 @@ public class GraphManager {
 		///////////////////////////////
 		///////////////////////////////
 		
-		if (minMessagesOnPipe>=0) {
+		if (showMessageCountRangeOnTelemetry && minMessagesOnPipe>=0) {
 			
 			if (minMessagesOnPipe==maxMessagesOnPipe) {
 				pipeMemory += (" ["+minMessagesOnPipe+"msg]");
