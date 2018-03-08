@@ -224,9 +224,11 @@ public class HuffmanDecoder {
 			}
 		}
 		
-		if (horizontal == 2) {
-			expandMCU(mcu, mcu2);
-		}
+		//if (horizontal == 2) {
+		//	expandMCU(mcu, mcu2);
+		//}
+		mcu2.cb = mcu.cb;
+		mcu2.cr = mcu.cr;
 		
 		previousCbDC = mcu.cb[0];
 		previousCrDC = mcu.cr[0];
