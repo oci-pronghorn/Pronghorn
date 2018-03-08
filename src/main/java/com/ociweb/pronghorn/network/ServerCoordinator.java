@@ -131,8 +131,22 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.maxConcurrentOutputs = maxConcurrentOutputs;
 
     	this.moduleParallelism = moduleParallelism;
-    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
-  
+    	
+    	////////////////////////////
+    	//build lookup table to distribute connections to the same place
+    	///////////////////////////
+    	int[] distribute = new int[maxConcurrentInputs];
+    	int i = maxConcurrentInputs;
+    	int j = 0;
+    	while (--i>=0) {
+    		if (--j<0) {
+    			j = moduleParallelism-1;
+    		}
+    		distribute[i] = j;
+    	}    	
+    	this.processorLookup = distribute;
+        /////////////////////////
+    	
     	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
     }
@@ -249,8 +263,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		public void setId(long ccId) {
 			assert(maxConcurrentInputs == processorLookup.length);
 				
-			//multiplied by prime number to ensure value jumps around
-			this.idx = ((int)ccId*191)%maxConcurrentInputs;	
+			this.idx = ((int)ccId)%maxConcurrentInputs;	
+			
 			this.validValue = processorLookup[idx];
 			
 			logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
