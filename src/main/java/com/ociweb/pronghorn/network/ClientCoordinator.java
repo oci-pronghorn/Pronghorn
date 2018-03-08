@@ -145,7 +145,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		hostTrie = new TrieParser(trieSize, 4, false, false);
 		hostTrieReader = new TrieParserReader();
 		
-		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
+		responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
 	public SSLConnection connectionForSessionId(long hostId) {

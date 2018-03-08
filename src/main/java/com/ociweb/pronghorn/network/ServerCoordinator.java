@@ -125,7 +125,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
-    	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs); 
+    	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs, moduleParallelism); 
     	
     	this.maxConcurrentInputs = maxConcurrentInputs;
     	this.maxConcurrentOutputs = maxConcurrentOutputs;

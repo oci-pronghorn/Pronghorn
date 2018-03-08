@@ -217,6 +217,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
+							
+							//TODO: check timeout and if its over find the
+							//      slowest connection and kill it off..
+							
+							
 							logger.trace("too many concurrent requests, back off load or increase concurrent inputs");
 						}
 						

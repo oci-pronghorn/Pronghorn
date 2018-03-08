@@ -7,16 +7,25 @@ public final class PoolIdx  {
 
     private final long[] keys;
     private final byte[] locked;
+    private final int groups;
+    private final int step;
     private long locksTaken = 0;
     private long locksReleased = 0;
     private Runnable firstUsage;
     private Runnable noLocks;
-    private int rollingKey = 0;
     private final static Logger logger = LoggerFactory.getLogger(PoolIdx.class);
     
-    public PoolIdx(int length) {
+    public PoolIdx(int length, int groups) {
         this.keys = new long[length];
         this.locked = new byte[length];
+        this.groups = groups;
+        
+        if ((length%groups != 0) || (groups>length)) {
+        	throw new UnsupportedOperationException("length must be divisiable by groups value.");
+        }
+        
+        this.step = length/groups;
+        
     }
     
     public int length() {
@@ -84,28 +93,29 @@ public final class PoolIdx  {
         long[] localKeys = that.keys;
         byte[] localLocked = that.locked;
         
-		int j = localKeys.length;
         int idx = -1;
-        
-        //linear search for this key. TODO: if member array is bigger than 100 we should consider hashTable
-        while (--j>=0) {
-        	///////////
-        	if (--that.rollingKey<0) { //ensure we continue from where we left off
-        		that.rollingKey = that.keys.length-1;
-        	}
-        	int temp = that.rollingKey;
-            /////////
-            //found and returned member that matches key and was locked
-            if (key == localKeys[temp] && 1 == localLocked[temp]) {
-                return temp;
-            } else {
-                //this slot was not locked so remember it
-                //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == localLocked[temp]) {
-                    idx = temp;
-                }
-            }
+       
+        int g = that.groups;
+        while (--g>=0) {
+        	int j = that.step;        
+	        while (--j>=0) {
+	        	///////////
+	        	int temp = (g*that.step)+j;
+	            /////////
+	            //found and returned member that matches key and was locked
+	            if (key == localKeys[temp] && 1 == localLocked[temp]) {
+	                return temp;
+	            } else {
+	                //this slot was not locked so remember it
+	                //we may want to use this slot if key is not found.
+	                if (idx < 0 && 0 == localLocked[temp]) {
+	                    idx = temp;
+	                }
+	            }
+	        }
         }
+        
+        
         return startNewLock(that, key, idx);
     }
     
@@ -118,36 +128,30 @@ public final class PoolIdx  {
      */
     public int get(long key, PoolIdxPredicate isOk) {   
     	
-        int j = keys.length;
         int idx = -1;
         
-        //linear search for this key. 
-        //TODO: if member array is bigger than 100 we should consider hashTable
-        while (--j>=0) {
-        	///////////
-        	if (--rollingKey<0) { //ensure we continue from where we left off
-        		rollingKey = keys.length-1;
-        	}
-        	int temp = rollingKey;
-            /////////
-        	
-        	//found and returned member that matches key and was locked
-            if (key == keys[temp] && 1 == locked[temp]) {
-            	
-                return temp;
-            } else {
-                //this slot was not locked so remember it
-                //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == locked[temp] && isOk.isOk(temp)) {
-                    idx = temp;
-                }
-            }
-            
+        int g = groups;
+        while (--g>=0) {
+        	int j = step;        
+	        while (--j>=0) {
+	        	///////////
+	        	int temp = (g*step)+j;
+	            /////////
+	        	
+	        	//found and returned member that matches key and was locked
+	            if (key == keys[temp] && 1 == locked[temp]) {
+	            	
+	                return temp;
+	            } else {
+	                //this slot was not locked so remember it
+	                //we may want to use this slot if key is not found.
+	                if (idx < 0 && 0 == locked[temp] && isOk.isOk(temp)) {
+	                    idx = temp;
+	                }
+	            }
+	        }  
         }
-        //////////////////
-        rollingKey = idx; //this line allows for round robin behavior vs 
-                          //fill up the pipes if this line is not in place.
-        /////////////////
+
         return startNewLock(this, key, idx);
     }
 
