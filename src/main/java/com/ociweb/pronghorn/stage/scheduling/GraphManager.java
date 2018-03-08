@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -40,7 +41,7 @@ public class GraphManager {
 	private static final byte[] MIN = "min".getBytes();
 	private static final byte[] SEC = "sec".getBytes();
 	private static final byte[] MS = "ms".getBytes();
-	private static final byte[] MICROS = "µs".getBytes();
+	private static final byte[] MICROS = "µs".getBytes(Charset.forName("UTF-8"));
 	private static final byte[] NS = "ns".getBytes();
 	
 	private static final byte[] AQUOTE = "\"".getBytes();
@@ -56,6 +57,8 @@ public class GraphManager {
 	
 	//will show telemetry its self
 	public static boolean monitorAll = false;
+	public static boolean showScheduledRateOnTelemetry = false;
+	public static boolean showThreadIdOnTelemetry = true;
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
@@ -539,10 +542,12 @@ public class GraphManager {
 		        		buldStageDOTName(gm, stage);
 		        	}
 		        	
-		        	byte[] stageRate = gm.stageDOTRate[stage.stageId];
-	            	if (null==stageRate) {
-	            		stageRate = buildStageDOTRate(gm, stage);
-	            	}
+		        	if (showScheduledRateOnTelemetry) {
+			        	byte[] stageRate = gm.stageDOTRate[stage.stageId];
+		            	if (null==stageRate) {
+		            		stageRate = buildStageDOTRate(gm, stage);
+		            	}
+		        	}
 	            	
 	            	String stageId = gm.stageIds[stage.stageId];
 	            	if (null == stageId) {
@@ -1932,11 +1937,14 @@ public class GraphManager {
 
 	private static byte[] buldStageDOTName(GraphManager m, PronghornStage stage) {
 		String stageDisplayName;
-		Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
-		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
+				
+		stageDisplayName = extractName(m, stage).replace("Stage","").replace(" ", "\n");
 
-		if (null!=group) {
-			stageDisplayName+=(" T:"+group.toString()+"\n");
+		if (showThreadIdOnTelemetry) {
+			Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
+			if (null!=group) {
+				stageDisplayName+=(" T:"+group.toString()+"\n");
+			}
 		}
 		
 		return m.stageDOTNames[stage.stageId] = stageDisplayName.getBytes();
@@ -2212,7 +2220,7 @@ public class GraphManager {
             int stageId = getRingConsumerId(gm, ringId);
             if (stageId>=0) {
                 PronghornStage consumer = gm.stageIdToStage[stageId];
-                consumerName = getNota(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString()+"#"+stageId;
+                consumerName = extractName(gm, consumer)+"#"+stageId;
             }
 	    }
 	    String producerName = "UnknownProducer";
@@ -2220,7 +2228,7 @@ public class GraphManager {
             int stageId = getRingProducerId(gm, ringId);
             if (stageId>=0) {                
                 PronghornStage producer = gm.stageIdToStage[stageId];                
-                producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString()+"#"+stageId;  
+                producerName = extractName(gm, producer)+"#"+stageId;  
             }
 	    }
 	    StringBuilder builder = new StringBuilder();
@@ -2228,6 +2236,11 @@ public class GraphManager {
 	    Appendables.appendValue(builder, pipe.id);
 	    builder.append('-').append(consumerName);
 	    return builder.toString();
+	}
+
+	private static String extractName(GraphManager gm, PronghornStage stage) {
+		//TODO: need to get additional data stages want to add to the name??
+		return getNota(gm, stage, STAGE_NAME, stage.getClass().getSimpleName()).toString();
 	}
 
 	/**
