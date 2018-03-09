@@ -301,24 +301,6 @@ public class YCbCrToRGB extends PronghornStage {
 				}
 				else if (count == 1){
 					for (int i = 0; i < 64; ++i) {
-						mcu3.y[i] = mcuReader.readShort();
-					}
-					
-					for (int i = 0; i < 64; ++i) {
-						mcu3.cb[i] = mcuReader.readShort();
-					}
-					
-					for (int i = 0; i < 64; ++i) {
-						mcu3.cr[i] = mcuReader.readShort();
-					}
-					
-					count = 2;
-					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
-						count = 5;
-					}
-				}
-				else if (count == 5){
-					for (int i = 0; i < 64; ++i) {
 						mcu2.y[i] = mcuReader.readShort();
 					}
 					
@@ -328,6 +310,24 @@ public class YCbCrToRGB extends PronghornStage {
 					
 					for (int i = 0; i < 64; ++i) {
 						mcu2.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 2;
+					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						count = 5;
+					}
+				}
+				else if (count == 5){
+					for (int i = 0; i < 64; ++i) {
+						mcu3.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu3.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu3.cr[i] = mcuReader.readShort();
 					}
 					
 					count = 2;

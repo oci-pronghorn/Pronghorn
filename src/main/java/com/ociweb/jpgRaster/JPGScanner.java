@@ -564,8 +564,8 @@ public class JPGScanner extends PronghornStage {
 				}
 				else if (horizontal == 2 && vertical == 2) {
 					sendMCU(mcu1);
-					sendMCU(mcu2);
 					sendMCU(mcu3);
+					sendMCU(mcu2);
 					sendMCU(mcu4);
 				}
 			}
