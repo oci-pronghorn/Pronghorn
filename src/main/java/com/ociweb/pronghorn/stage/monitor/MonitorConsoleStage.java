@@ -123,9 +123,9 @@ public class MonitorConsoleStage extends PronghornStage {
 		position = pos;
 	}
 
-	private static final int MA_BITS = 7;
-	private static final int MA_TOTAL = 1<<MA_BITS; //128;
-	private static final int MA_MULTI = MA_TOTAL-1; //127;
+	private static final int  MA_BITS = 7;
+	private static final int  MA_TOTAL = 1<<MA_BITS; //128;
+	private static final long MA_MULTI = MA_TOTAL-1; //127;
 	
 	
 	//TODO: for large 8K telemetry must update this:
@@ -169,7 +169,7 @@ public class MonitorConsoleStage extends PronghornStage {
 			}
 			
 			int pctFull = (int)((10000*(head-tail))/ringSize);
-			pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>MA_BITS));
+			pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>>MA_BITS));
 			
 			//////////////////////////
 			//////////compute the messages per second
@@ -182,7 +182,7 @@ public class MonitorConsoleStage extends PronghornStage {
 					long msgPerSecond = (1000_000L*messages)/period;
 					//note this may be incorrect if telemetry falls behind.
 							
-					messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>MA_BITS);
+					messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>>MA_BITS);
 				}
 				//System.err.println(messagesPerSecond[pos]);
 				
