@@ -176,13 +176,14 @@ public class MonitorConsoleStage extends PronghornStage {
 			/////////////////////////
 			if (lastTime[pos]!=0) {
 				long period = time-lastTime[pos];
-				long messages = fragments-lastFragments[pos];
-				//NOTE: extra 3 zeros of accuracy.
-				long msgPerSecond = (1000_000L*messages)/period;
-				//note this may be incorrect if telemetry falls behind.
+				if (period>0) {
+					long messages = fragments-lastFragments[pos];
+					//NOTE: extra 3 zeros of accuracy.
+					long msgPerSecond = (1000_000L*messages)/period;
+					//note this may be incorrect if telemetry falls behind.
 							
-				messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>MA_BITS);
-				
+					messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>MA_BITS);
+				}
 				//System.err.println(messagesPerSecond[pos]);
 				
 			}
