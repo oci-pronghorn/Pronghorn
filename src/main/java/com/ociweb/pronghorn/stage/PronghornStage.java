@@ -275,8 +275,16 @@ public abstract class PronghornStage {
 
 	}
 
+	private String nameCache = null;
+	
 	public String toString() {
-        return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
+		if (null == nameCache) {
+			nameCache = Appendables.appendValue(new StringBuilder().append(        		
+					GraphManager.getNota(graphManager, stageId, GraphManager.STAGE_NAME, getClass().getSimpleName())        		
+					), "#", stageId).toString();			
+		}
+		return nameCache;
+		
 	}
 	
 	public void shutdown() {

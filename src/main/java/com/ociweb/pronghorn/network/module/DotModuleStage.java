@@ -24,7 +24,8 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								V extends Enum<V> & HTTPVerb,
 								H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
-	Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
+	private final String graphName;
 	
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
     	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);	
@@ -44,6 +45,7 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 			HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
 		super(graphManager, inputs, outputs, httpSpec);
 		this.monitor = monitor;
+		this.graphName = "AGraph";
 		
 		if (inputs.length>1) {
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
@@ -59,7 +61,7 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	
 		
 		//logger.info("begin building requested graph");
-		monitor.writeAsDot(gm, payload);
+		monitor.writeAsDot(gm, graphName, payload);
 		
 		//logger.info("finished requested dot");
 		return null; //never cache this so we return null.

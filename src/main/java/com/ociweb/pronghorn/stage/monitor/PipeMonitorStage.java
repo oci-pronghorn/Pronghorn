@@ -54,9 +54,9 @@ public class PipeMonitorStage extends PronghornStage {
 		
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (Pipe.hasRoomForWrite(output)) {
-			
+									
 			final int size = Pipe.addMsgIdx(output, MSG_RINGSTATSAMPLE_100);
-			
+	
 			Pipe.addLongValue(System.currentTimeMillis(), output);
 			Pipe.addLongValue(Pipe.headPosition(localObserved), output);
 			Pipe.addLongValue(Pipe.tailPosition(localObserved), output);

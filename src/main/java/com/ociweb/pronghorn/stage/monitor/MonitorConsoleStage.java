@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.stage.monitor;
 
 import java.util.Arrays;
 
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +11,6 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
-import com.ociweb.pronghorn.util.Appendables;
 
 
 public class MonitorConsoleStage extends PronghornStage {
@@ -24,21 +22,28 @@ public class MonitorConsoleStage extends PronghornStage {
 	private long[] observedPipeBytesAllocated;
 	private String[] observedPipeName;
 	
-	private GraphManager graphManager;
-	private int[] percentileValues; 
-	private long[] trafficValues; 
-	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
+	private long[] lastFragments;
+	private long[] lastTime;
 	
-	private final boolean writeToConsoleOnShutdown = false;	
-		
-	private Histogram[] hists;
-	private short[] pctFull;
+	private GraphManager graphManager;
+	
+	//extract as an object
+	private int[] percentileFullValues;	
+	private long[] trafficValues; 
+	private int[] messagesPerSecondValues;
+	
+	
+	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
+			
+	private short[] pctFull; //running exponential average of pipe percent full
+	private int[]   messagesPerSecond; //running exponential average of messages per second
+	
+	
+	
     private int position;
     private final int batchSize;
 	private int reportSlowSpeed = 10;
-    
-	private boolean recorderOn=true;
-	
+
 	private MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
@@ -60,26 +65,17 @@ public class MonitorConsoleStage extends PronghornStage {
 			}
 		}
 	}
-	
-	public void setRecorderOn(boolean isOn) {
-		this.recorderOn = isOn;
-	}
-	public boolean isRecorderOn() {
-		return this.recorderOn;
-	}
 
 	@Override
 	public void startup() {
 		super.startup();
-		percentileValues = new int[Pipe.totalPipes()+1];
+		percentileFullValues = new int[Pipe.totalPipes()+1];
 		trafficValues = new long[Pipe.totalPipes()+1];
+		messagesPerSecondValues = new int[Pipe.totalPipes()+1];
 		
 		int i = inputs.length;
 		pctFull = new short[i];
-		hists = new Histogram[i];
-		while (--i>=0) {
-			hists[i] = new Histogram(10000,2); 
-		}
+		messagesPerSecond = new int[i];
 				
 		position = inputs.length;
 		
@@ -87,6 +83,10 @@ public class MonitorConsoleStage extends PronghornStage {
 		Arrays.fill(observedPipeId, -1);
 		observedPipeBytesAllocated = new long[inputs.length];
 		observedPipeName = new String[inputs.length];
+		
+		lastFragments = new long[inputs.length];
+		lastTime      = new long[inputs.length];
+		
 		
 		int j = inputs.length;
 		while (--j>=0) {
@@ -112,42 +112,48 @@ public class MonitorConsoleStage extends PronghornStage {
 
 		int j = batchSize; //max to check before returning thread.
 		int pos = position;
-		Histogram[] localHists = recorderOn ? hists : null;
-		
+
 		while (--j>=0) {
 			if (--pos<0) {
 				pos = inputs.length-1;
 			}			
 			//can pass in null for local hists when not gatering history
-			consumeSamples(pos, inputs, localHists, pctFull);
+			consumeSamples(pos, inputs, pctFull, messagesPerSecond);
 		}
 		position = pos;
 	}
 
+	private static final int MA_BITS = 7;
+	private static final int MA_TOTAL = 1<<MA_BITS; //128;
+	private static final int MA_MULTI = MA_TOTAL-1; //127;
+	
+	
 	//TODO: for large 8K telemetry must update this:
 	//       1. add custom histogram this loop must run very fast
 	//       2. add muliple MonitorConsoleStages, 1 per group of a few thousand??
 	
-	private void consumeSamples(int pos, Pipe[] localInputs, Histogram[] localHists, short[] pctFullAvg) {
+	private void consumeSamples(int pos, Pipe[] localInputs,
+			                    short[] pctFullAvg,
+			                    int[] messagesPerSecond) {
+		
 		Pipe<?> pipe = localInputs[pos];
-		long consumed = -1;
+		long fragments = -1;
 		long head = -1;
 		long tail = -1;
 		int ringSize = -1;
 		int msgSkipped = -1;
+		long time = 0;
 		
 		while (Pipe.hasContentToRead(pipe)) {
 			msgSkipped++;
 			int msgIdx = Pipe.takeMsgIdx(pipe);
 			assert(PipeMonitorSchema.MSG_RINGSTATSAMPLE_100 == msgIdx);
-			long time = Pipe.takeLong(pipe);
+			time = Pipe.takeLong(pipe);
 			head = Pipe.takeLong(pipe);
 			tail = Pipe.takeLong(pipe); 				
 			int lastMsgIdx = Pipe.takeInt(pipe);
 			ringSize = Pipe.takeInt(pipe);
-		   
-			consumed = Pipe.takeLong(pipe);
-			
+			fragments = Pipe.takeLong(pipe);
 			Pipe.confirmLowLevelRead(pipe, SIZE_OF);
 			Pipe.releaseReadLock(pipe);
 		}
@@ -155,27 +161,44 @@ public class MonitorConsoleStage extends PronghornStage {
 		/////////////////////
 		//to minimize monitoring work we only use the last value after reading all the data
 		/////////////////////		
-		if (consumed>=0) {
-			
-			recordPctFull(pos, localHists, pctFullAvg, consumed, head, tail, ringSize, msgSkipped); 
-		}
-	}
-
-	private void recordPctFull(int pos, Histogram[] localHists, short[] pctFullAvg, long consumed, long head, long tail,
-			int ringSize, int msgSkipped) {
-		if (msgSkipped>10 && --reportSlowSpeed>0) {			
-			logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
-			//this should not happen unless the system is overloaded and scheduler needs to be updated.			
-		}
+		if (fragments>=0) {
 		
-		int pctFull = (int)((10000*(head-tail))/ringSize);
-		if (null!=localHists && head>=0 && tail>=0) {
-			//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
-			localHists[pos].recordValue(pctFull>=0 ? (pctFull<=10000 ? pctFull : 9999) : 0);
+			if (msgSkipped>10 && --reportSlowSpeed>0) {			
+				logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
+				//this should not happen unless the system is overloaded and scheduler needs to be updated.			
+			}
+			
+			int pctFull = (int)((10000*(head-tail))/ringSize);
+			pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>MA_BITS));
+			
+			//////////////////////////
+			//////////compute the messages per second
+			/////////////////////////
+			if (lastTime[pos]!=0) {
+				long period = time-lastTime[pos];
+				long messages = fragments-lastFragments[pos];
+				//NOTE: extra 3 zeros of accuracy.
+				long msgPerSecond = (1000_000L*messages)/period;
+				//note this may be incorrect if telemetry falls behind.
+							
+				messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>MA_BITS);
+				
+				//System.err.println(messagesPerSecond[pos]);
+				
+			}
+			lastTime[pos] = time;
+			lastFragments[pos] = fragments;
+			//////////////////////////////////
+						
+			/////////////////////////////////////
+			///////////////// record the data for external use
+			/////////////////////////////////////
+			int pipeId = observedPipeId[pos];
+			trafficValues[pipeId] = fragments; 
+			messagesPerSecondValues[pipeId] = messagesPerSecond[pos];
+			percentileFullValues[pipeId] = pctFullAvg[pos]/100;
+			
 		}
-		pctFullAvg[pos] = (short)Math.min(9999, (((99*pctFullAvg[pos])+pctFull)/100));
-					
-		trafficValues[this.observedPipeId[pos]] = consumed;
 	}
 
 	@Override
@@ -183,109 +206,12 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		//new Exception("SHUTDOWN MonitorConsoleStage ").printStackTrace();
 
-		
-		summarizeRuntime(writeToConsoleOnShutdown, ValueType.Percentile96th);
-				
+					
 		//Send in pipe depth data	
 		boolean writeImage = false;
 		if (writeImage) {
-			GraphManager.exportGraphDotFile(graphManager, "MonitorResults", true, percentileValues, trafficValues);
+			GraphManager.exportGraphDotFile(graphManager, "MonitorResults", true, percentileFullValues, trafficValues, messagesPerSecondValues);
 		}
-	}
-
-	protected void summarizeRuntime(boolean writeToConsole, 
-			                        ValueType pipePctFullType) {
-		Histogram[] localHists = hists;
-		int[] localPercentileValues = percentileValues;
-		
-		int i = localHists.length;
-		while (--i>=0) {
-			if (null==localHists[i]) {
-				continue;
-			}
-			long pctile = 0;
-			
-			
-			//TOOD: change to pass in percentile instead of enum...
-			switch (pipePctFullType) {
-				case Maxium:
-					pctile = localHists[i].getMaxValue()/10000;
-					break;
-				case NearRealTime:
-					pctile = pctFull[i]/100;
-					break;
-				case Percentile96th:
-					pctile = localHists[i].getValueAtPercentile(96)/10000; //do not change: this is the 80-20 rule applied twice
-					break;
-			}
-			
-			long avg = accumAvg(writeToConsole, localHists, i);
-			boolean inBounds = true;//value>80 || value < 1;
-            long sampleCount = localHists[i].getTotalCount();
-                        
-            String ringName = "Unknown";
-            long published = 0;
-            long allocated = 0;
-            if (observedPipeId[i]>=0) {
-            	
-            	allocated = observedPipeBytesAllocated[i];
-            	ringName = observedPipeName[i];
-            	            	
-	            if (inBounds && (sampleCount>=1)) {
-	            	localPercentileValues[observedPipeId[i]] = (int)pctile;
-	            }
-            }
-            if (writeToConsole) {
-            	writeToConsole(i, pctile, avg, sampleCount, ringName, published, allocated);
-            }
-		}
-	}
-
-	private long accumAvg(boolean writeToConsole, Histogram[] localHists, int i) {
-		long avg = -1;
-		if (writeToConsole) {
-			try {
-				avg = (long)localHists[i].getMean();
-			} catch (Throwable e) {
-				logger.trace("unable to read mean",e);
-			}
-		}
-		return avg;
-	}
-
-	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published, long allocated) {
-		while (ringName.length()<60) {
-			ringName=ringName+" ";
-		}            
-		
-		Appendables.appendValue(System.out, "    ", i, " ");
-		System.out.append(ringName);
-		Appendables.appendValue(System.out, " Queue Fill ", pctile, "%");
-		if (avg>=0) {
-			Appendables.appendValue(System.out, " Average:", avg, "%"); 
-		}
-		Appendables.appendValue(System.out, "    samples:", sampleCount);
-		Appendables.appendValue(System.out, "  totalPublished:",published);
-		
-		if (allocated>(1<<30)) {
-			int gb = (int)(allocated>>30);
-			Appendables.appendValue(System.out, "  allocated:",gb,"GB");
-		} else {
-			if (allocated>(1<<20)) {
-				int mb = (int)(allocated>>20);
-				Appendables.appendValue(System.out, "  allocated:",mb,"MB");				
-			} else {
-				if (allocated>(1<<10)) {
-					int kb = (int)(allocated>>10);
-					Appendables.appendValue(System.out, "  allocated:",kb,"KB");
-				} else {
-					Appendables.appendValue(System.out, "  allocated:",allocated,"B");
-				}
-			}
-		}
-		System.out.println();
-		
-		
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE); 
@@ -314,14 +240,13 @@ public class MonitorConsoleStage extends PronghornStage {
 		return stage;
 	}
 
-	public void writeAsDot(GraphManager gm, AppendableBuilder payload) {
-		summarizeRuntime(false, ValueType.NearRealTime);
-		GraphManager.writeAsDOT(gm, payload, true, percentileValues, trafficValues);
+	public void writeAsDot(GraphManager gm, String name, AppendableBuilder payload) {
+		
+		GraphManager.writeAsDOT(gm, name, payload, true, percentileFullValues, trafficValues, messagesPerSecondValues);
 	}
 
 	public void writeAsSummary(GraphManager gm, AppendableBuilder payload) {
-		summarizeRuntime(false, ValueType.NearRealTime);
-		GraphManager.writeAsSummary(gm, payload, percentileValues);
+		GraphManager.writeAsSummary(gm, payload, percentileFullValues);
 	}	
 
 }
