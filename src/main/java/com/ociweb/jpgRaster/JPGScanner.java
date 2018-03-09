@@ -23,12 +23,16 @@ public class JPGScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	
+	int mcuWidth = 0;
+	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
 	
 	Header header;
-	MCU mcu = new MCU();
+	MCU mcu1 = new MCU();
 	MCU mcu2 = new MCU();
+	MCU mcu3 = new MCU();
+	MCU mcu4 = new MCU();
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
 		super(graphManager, NONE, output);
@@ -234,12 +238,23 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		
-		for (int i = 0; i < header.colorComponents.size(); ++i) {
-			if (header.colorComponents.get(i).verticalSamplingFactor != 1) {
-				System.err.println("Error - Vertical Sampling Factors not yet supported");
-				header.valid = false;
-				break;
-			}
+		if (header.colorComponents.size() > 0 &&
+			(header.colorComponents.get(0).horizontalSamplingFactor > 2 ||
+			 header.colorComponents.get(0).verticalSamplingFactor > 2)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
+		}
+		if (header.colorComponents.size() > 1 &&
+			(header.colorComponents.get(1).horizontalSamplingFactor != 1 ||
+			 header.colorComponents.get(1).verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
+		}
+		if (header.colorComponents.size() > 2 &&
+			(header.colorComponents.get(1).horizontalSamplingFactor != 1 ||
+			 header.colorComponents.get(1).verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
 		}
 		
 		return header;
@@ -531,18 +546,27 @@ public class JPGScanner extends PronghornStage {
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			int horizontal = 1;
-			if(header.colorComponents.get(0).horizontalSamplingFactor == 2) {
-				horizontal = 2;
-			}
-			if (HuffmanDecoder.decodeHuffmanData(mcu, mcu2, horizontal)) {
+			int horizontal = header.colorComponents.get(0).horizontalSamplingFactor;
+			int vertical = header.colorComponents.get(0).verticalSamplingFactor;
+			if (HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
 				// write mcu to pipe
 				
-				if (horizontal == 1) {
-					sendMCU(mcu);
-				} else if (horizontal == 2) {
-					sendMCU(mcu);
+				if (horizontal == 1 && vertical == 1) {
+					sendMCU(mcu1);
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					sendMCU(mcu1);
 					sendMCU(mcu2);
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					sendMCU(mcu1);
+					sendMCU(mcu3);
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					sendMCU(mcu1);
+					sendMCU(mcu2);
+					sendMCU(mcu3);
+					sendMCU(mcu4);
 				}
 			}
 			else {
@@ -621,8 +645,14 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				HuffmanDecoder.beginDecode(header, mcu);
-				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				HuffmanDecoder.beginDecode(header, mcu1);
+				mcuWidth = (header.width + 7) / 8;
+				mcuHeight = (header.height + 7) / 8;
+				if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+					((header.width - 1) / 8 + 1) % 2 == 1) {
+					mcuWidth += 1;
+				}
+				numMCUs = mcuWidth * mcuHeight;
 				numProcessed = 0;
 			}
 			catch (IOException e) {
@@ -634,7 +664,7 @@ public class JPGScanner extends PronghornStage {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/simple_2to1H.jpg");
+			header = ReadJPG("test_jpgs/robot_2to1.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
