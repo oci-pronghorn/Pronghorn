@@ -172,7 +172,7 @@ public class GraphManager {
 		StringBuilder builder = new StringBuilder();
 		while (--j>=0) {
 			builder.setLength(0);
-			Appendables.appendValue(builder," Wrk",j/1000,".");
+			Appendables.appendValue(builder," Wrk:",j/1000,".");
 			Appendables.appendFixedDecimalDigits(builder,j%1000,100).append("%");
 			cpuValues[j]= builder.toString().getBytes();
 			//System.err.println(j+" is now "+builder.toString());
@@ -1689,7 +1689,7 @@ public class GraphManager {
 	                if (runNs!=0){
 	                	if (runNs<0) {
 	                		
-	                		target.append(" Wrk100%");
+	                		target.append(" Wrk:100%");
 	                	} else {
 	                		long shutdownTime = m.stageShutdownTimeNs[stage.stageId];
 	                		if (shutdownTime<=0) {
@@ -1708,14 +1708,14 @@ public class GraphManager {
 	                		if (pct>=0) {
 	                			target.append(cpuValues[pct]);	                			
 	                		} else {
-	                			target.append(" Wrk N/A%");
+	                			target.append(" Wrk:N/A%");
 	                			
 	                			//logger.info("A bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
 	                					
 	                		}
 	                	}
 	                } else {
-	                	target.append(" Wrk N/A%");
+	                	target.append(" Wrk:N/A%");
 	                	
             			//logger.trace("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
             	            			
