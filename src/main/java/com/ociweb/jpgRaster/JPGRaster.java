@@ -12,7 +12,7 @@ public class JPGRaster {
 //		String defaultFiles = "test_jpgs/huff_simple0 test_jpgs/robot test_jpgs/cat test_jpgs/car test_jpgs/squirrel test_jpgs/nathan test_jpgs/earth test_jpgs/dice test_jpgs/pyramids test_jpgs/static test_jpgs/turtle";
 		
 		
-		String defaultFiles = "test_jpgs/robot_2to1V";
+		String defaultFiles = "test_jpgs/earth_2to1";
 //		String defaultFiles = "test_jpgs/robot";
 		
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
@@ -49,9 +49,9 @@ public class JPGRaster {
 		GraphManager gm = new GraphManager();
 		
 		populateGraph(gm, inputFiles);
-				
+		
 		gm.enableTelemetry(8089);
-				
+		
 		StageScheduler.defaultScheduler(gm).startup();
 	}
 
@@ -64,8 +64,8 @@ public class JPGRaster {
 		new FileBlobWriteStage(gm, pipe1B, false, ".\targetFile.dat"); // write byte data to disk
 		*/
 		
-		// pipe1 should be the same size as the others, but it mysteriously fills up faster (shouldn't be the case)
-		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
+		// such a large pipe helps with 2:1:1 images. a better fix is needed
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(50000, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(500, 200);

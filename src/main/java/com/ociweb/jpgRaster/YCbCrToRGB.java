@@ -120,48 +120,48 @@ public class YCbCrToRGB extends PronghornStage {
 		
 		for (int i = 3; i >= 0; --i) {
 			for (int j = 3; j >= 0; --j) {
-				mcu1.cb[(j * 2    ) + (i    ) * 8] = tempCB[(j    ) + (i    ) * 8];
-				mcu1.cb[(j * 2 + 1) + (i    ) * 8] = tempCB[(j    ) + (i    ) * 8];
-				mcu1.cb[(j * 2    ) + (i + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
-				mcu1.cb[(j * 2 + 1) + (i + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
 				
-				mcu1.cr[(j * 2    ) + (i    ) * 8] = tempCR[(j    ) + (i    ) * 8];
-				mcu1.cr[(j * 2 + 1) + (i    ) * 8] = tempCR[(j    ) + (i    ) * 8];
-				mcu1.cr[(j * 2    ) + (i + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
-				mcu1.cr[(j * 2 + 1) + (i + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
-				
-				
-				mcu2.cb[(j * 2    ) + (i    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
-				mcu2.cb[(j * 2 + 1) + (i    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
-				mcu2.cb[(j * 2    ) + (i + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
-				mcu2.cb[(j * 2 + 1) + (i + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
-				
-				mcu2.cr[(j * 2    ) + (i    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
-				mcu2.cr[(j * 2 + 1) + (i    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
-				mcu2.cr[(j * 2    ) + (i + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
-				mcu2.cr[(j * 2 + 1) + (i + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu1.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
 				
 				
-				mcu3.cb[(j * 2    ) + (i    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
-				mcu3.cb[(j * 2 + 1) + (i    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
-				mcu3.cb[(j * 2    ) + (i + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
-				mcu3.cb[(j * 2 + 1) + (i + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
 				
-				mcu3.cr[(j * 2    ) + (i    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
-				mcu3.cr[(j * 2 + 1) + (i    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
-				mcu3.cr[(j * 2    ) + (i + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
-				mcu3.cr[(j * 2 + 1) + (i + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
 				
 				
-				mcu4.cb[(j * 2    ) + (i    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
-				mcu4.cb[(j * 2 + 1) + (i    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
-				mcu4.cb[(j * 2    ) + (i + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
-				mcu4.cb[(j * 2 + 1) + (i + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu3.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
 				
-				mcu4.cr[(j * 2    ) + (i    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
-				mcu4.cr[(j * 2 + 1) + (i    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
-				mcu4.cr[(j * 2    ) + (i + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
-				mcu4.cr[(j * 2 + 1) + (i + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu3.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				
+				
+				mcu4.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				
+				mcu4.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
 			}
 		}
 	}
@@ -301,24 +301,6 @@ public class YCbCrToRGB extends PronghornStage {
 				}
 				else if (count == 1){
 					for (int i = 0; i < 64; ++i) {
-						mcu2.y[i] = mcuReader.readShort();
-					}
-					
-					for (int i = 0; i < 64; ++i) {
-						mcu2.cb[i] = mcuReader.readShort();
-					}
-					
-					for (int i = 0; i < 64; ++i) {
-						mcu2.cr[i] = mcuReader.readShort();
-					}
-					
-					count = 2;
-					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
-						count = 5;
-					}
-				}
-				else if (count == 5){
-					for (int i = 0; i < 64; ++i) {
 						mcu3.y[i] = mcuReader.readShort();
 					}
 					
@@ -328,6 +310,24 @@ public class YCbCrToRGB extends PronghornStage {
 					
 					for (int i = 0; i < 64; ++i) {
 						mcu3.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 2;
+					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						count = 5;
+					}
+				}
+				else if (count == 5){
+					for (int i = 0; i < 64; ++i) {
+						mcu2.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu2.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu2.cr[i] = mcuReader.readShort();
 					}
 					
 					count = 2;
