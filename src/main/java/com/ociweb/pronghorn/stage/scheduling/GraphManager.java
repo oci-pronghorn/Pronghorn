@@ -1816,11 +1816,12 @@ public class GraphManager {
 		                //NOTE: special logic to turn off labels
 		                boolean showLabels = true;
 		                
-		                if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)) {
-		                	if (GraphManager.getOutputPipeCount(m, producer)>2) {
-		                		showLabels = false; //do not show labels for large load balancers
-		                	}
-		                }
+		                //NOTE: still thinking about this feature
+		                //if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)) {
+		                //	if (GraphManager.getOutputPipeCount(m, producer)>2) {
+		                //		showLabels = false; //do not show labels for large load balancers
+		                //	}
+		                //}
 		                ////////////////////////////////////////
 		                
 		                if (showLabels && pipe.config().showLabels()) {
