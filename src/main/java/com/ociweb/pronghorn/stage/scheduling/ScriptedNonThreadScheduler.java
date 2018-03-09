@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,13 +11,14 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 import com.ociweb.pronghorn.util.math.PMath;
 import com.ociweb.pronghorn.util.math.ScriptedSchedule;
 
 public class ScriptedNonThreadScheduler extends StageScheduler implements Runnable {
 
-    public static boolean debugStageOrder = false; //turn on to investigate performance issues.
+    public static Appendable debugStageOrder = null; //turn on to investigate performance issues.
 	
     private static final int NS_OPERATOR_FLOOR = 10;
 	private AtomicBoolean shutdownRequested;
@@ -152,21 +154,26 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
              
 
-        if (debugStageOrder) {		
-	        System.err.println();
-	        System.err.println("----------full stages -------------Clock:"+schedule.commonClock);
-	        for(int i = 0; i<stages.length; i++) {
+        if (null != debugStageOrder) {	
+        	try {
+	        	debugStageOrder.append("----------full stages -------------Clock:");
+	        	Appendables.appendValue(debugStageOrder, schedule.commonClock).append("\n");
 	        	
-	        	StringBuilder target = new StringBuilder();
-	    		target.append(i+" full stages "+stages[i].getClass().getSimpleName()+":"+stages[i].stageId);
-	    		target.append("  inputs:");
-	    		GraphManager.appendInputs(graphManager, target, stages[i]);
-	    		target.append(" outputs:");
-	    		GraphManager.appendOutputs(graphManager, target, stages[i]);
-	    		        		
-	    		System.err.println("   "+target);
-	        	
-	        }
+		        for(int i = 0; i<stages.length; i++) {
+		        	
+		        	debugStageOrder.append("   ");
+		        	debugStageOrder.append(i+" full stages "+stages[i].getClass().getSimpleName()+":"+stages[i].stageId);
+		        	debugStageOrder.append("  inputs:");
+		    		GraphManager.appendInputs(graphManager, debugStageOrder, stages[i]);
+		    		debugStageOrder.append(" outputs:");
+		    		GraphManager.appendOutputs(graphManager, debugStageOrder, stages[i]);
+		    		debugStageOrder.append("\n");
+		        	
+		        }
+		        
+        	} catch (IOException e) {
+        		throw new RuntimeException(e);
+        	}
         }
         
         
