@@ -50,7 +50,7 @@ public class JPGRaster {
 		
 		populateGraph(gm, inputFiles);
 		
-		gm.enableTelemetry(8289);
+		gm.enableTelemetry(8089);
 		
 		StageScheduler.defaultScheduler(gm).startup();
 	}

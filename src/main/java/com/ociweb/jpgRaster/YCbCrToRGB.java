@@ -173,6 +173,13 @@ public class YCbCrToRGB extends PronghornStage {
 			numProcessed += 1;
 			return;
 		}
+		if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+			header.height % 8 == 0 && (header.height / 8) % 2 == 1 &&
+			numProcessed >= mcuWidth * (mcuHeight - 2) + 1 &&
+			numProcessed % 2 == 1) {
+			numProcessed += 1;
+			return;
+		}
 		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);
@@ -276,6 +283,10 @@ public class YCbCrToRGB extends PronghornStage {
 				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
 					((header.width - 1) / 8 + 1) % 2 == 1) {
 					mcuWidth += 1;
+				}
+				if (component.componentID == 1 && component.verticalSamplingFactor == 2 &&
+					((header.height - 1) / 8 + 1) % 2 == 1) {
+					mcuHeight += 1;
 				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {

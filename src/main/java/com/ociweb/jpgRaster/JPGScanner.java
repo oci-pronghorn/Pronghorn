@@ -652,6 +652,10 @@ public class JPGScanner extends PronghornStage {
 					((header.width - 1) / 8 + 1) % 2 == 1) {
 					mcuWidth += 1;
 				}
+				if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+					((header.height - 1) / 8 + 1) % 2 == 1) {
+					mcuHeight += 1;
+				}
 				numMCUs = mcuWidth * mcuHeight;
 				numProcessed = 0;
 			}
@@ -664,7 +668,7 @@ public class JPGScanner extends PronghornStage {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/robot_2to1.jpg");
+			header = ReadJPG("test_jpgs/simple3_2to1V.jpg");
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {

@@ -171,7 +171,8 @@ public class BMPDumper extends PronghornStage {
 				
 				count += 1;
 				
-				if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+				if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+					mcuHeight > 1) {
 					if (pos % (mcuWidth * 2) == mcuWidth * 2 - 1) {
 						pos += 1;
 					}
