@@ -16,8 +16,18 @@ public class YCbCrToRGB extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	
+	int mcuWidth = 0;
+	int mcuHeight = 0;
+	int numProcessed = 0;
+	
 	Header header;
-	MCU mcu = new MCU();
+	MCU mcu1 = new MCU();
+	MCU mcu2 = new MCU();
+	MCU mcu3 = new MCU();
+	MCU mcu4 = new MCU();
+	static short[] tempCB = new short[64];
+	static short[] tempCR = new short[64];
+	int count = 0;
 	static byte[] rgb = new byte[3];
 	
 	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
@@ -52,6 +62,152 @@ public class YCbCrToRGB extends PronghornStage {
 			mcu.cr[i] = rgb[2];
 		}
 		return;
+	}
+	
+	public static void expandColumns(MCU mcu, MCU mcu2) {
+		for (int i = 0; i < 64; ++i) {
+			tempCB[i] = mcu.cb[i];
+			tempCR[i] = mcu.cr[i];
+		}
+		
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 3; j >= 0; --j) {
+				mcu.cb [(j * 2    ) + i * 8] = tempCB[j + i * 8];
+				mcu.cb [(j * 2 + 1) + i * 8] = tempCB[j + i * 8];
+				
+				mcu.cr [(j * 2    ) + i * 8] = tempCR[j + i * 8];
+				mcu.cr [(j * 2 + 1) + i * 8] = tempCR[j + i * 8];
+				
+				
+				mcu2.cb[(j * 2    ) + i * 8] = tempCB[(j + 4) + i * 8];
+				mcu2.cb[(j * 2 + 1) + i * 8] = tempCB[(j + 4) + i * 8];
+				
+				mcu2.cr[(j * 2    ) + i * 8] = tempCR[(j + 4) + i * 8];
+				mcu2.cr[(j * 2 + 1) + i * 8] = tempCR[(j + 4) + i * 8];
+			}
+		}
+	}
+	
+	public static void expandRows(MCU mcu, MCU mcu2) {
+		for (int i = 0; i < 64; ++i) {
+			tempCB[i] = mcu.cb[i];
+			tempCR[i] = mcu.cr[i];
+		}
+		
+		for (int i = 3; i >= 0; --i) {
+			for (int j = 0; j < 8; ++j) {
+				mcu.cb [j + (i * 2    ) * 8] = tempCB[j + i * 8];
+				mcu.cb [j + (i * 2 + 1) * 8] = tempCB[j + i * 8];
+
+				mcu.cr [j + (i * 2    ) * 8] = tempCR[j + i * 8];
+				mcu.cr [j + (i * 2 + 1) * 8] = tempCR[j + i * 8];
+				
+
+				mcu2.cb[j + (i * 2    ) * 8] = tempCB[j + (i + 4) * 8];
+				mcu2.cb[j + (i * 2 + 1) * 8] = tempCB[j + (i + 4) * 8];
+
+				mcu2.cr[j + (i * 2    ) * 8] = tempCR[j + (i + 4) * 8];
+				mcu2.cr[j + (i * 2 + 1) * 8] = tempCR[j + (i + 4) * 8];
+			}
+		}
+	}
+	
+	public static void expandColumnsAndRows(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
+		for (int i = 0; i < 64; ++i) {
+			tempCB[i] = mcu1.cb[i];
+			tempCR[i] = mcu1.cr[i];
+		}
+		
+		for (int i = 3; i >= 0; --i) {
+			for (int j = 3; j >= 0; --j) {
+				mcu1.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
+				mcu1.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i    ) * 8];
+				
+				mcu1.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
+				mcu1.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i    ) * 8];
+				
+				
+				mcu2.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				mcu2.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j    ) + (i + 4) * 8];
+				
+				mcu2.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				mcu2.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j    ) + (i + 4) * 8];
+				
+				
+				mcu3.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				mcu3.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i    ) * 8];
+				
+				mcu3.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				mcu3.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i    ) * 8];
+				
+				
+				mcu4.cb[(j * 2    ) + (i * 2    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2 + 1) + (i * 2    ) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2    ) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				mcu4.cb[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCB[(j + 4) + (i + 4) * 8];
+				
+				mcu4.cr[(j * 2    ) + (i * 2    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2 + 1) + (i * 2    ) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2    ) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+				mcu4.cr[(j * 2 + 1) + (i * 2 + 1) * 8] = tempCR[(j + 4) + (i + 4) * 8];
+			}
+		}
+	}
+	
+	public void sendMCU(MCU emcu) {
+		if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+			header.width % 8 == 0 && (header.width / 8) % 2 == 1 &&
+			numProcessed % mcuWidth == mcuWidth - 1) {
+			numProcessed += 1;
+			return;
+		}
+		if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+			header.height % 8 == 0 && (header.height / 8) % 2 == 1 &&
+			numProcessed >= mcuWidth * (mcuHeight - 2) + 1 &&
+			numProcessed % 2 == 1) {
+			numProcessed += 1;
+			return;
+		}
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.y[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cb[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cr[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+			
+			PipeWriter.publishWrites(output);
+
+			numProcessed += 1;
+		}
+		else {
+			System.err.println("Requesting shutdown");
+			requestShutdown();
+		}
 	}
 
 	@Override
@@ -90,6 +246,10 @@ public class YCbCrToRGB extends PronghornStage {
 					System.err.println("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
+				
+				mcuWidth = (header.width + 7) / 8;
+				mcuHeight = (header.height + 7) / 8;
+				numProcessed = 0;
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
 				// read color component data from pipe
@@ -102,45 +262,140 @@ public class YCbCrToRGB extends PronghornStage {
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
 				header.colorComponents.add(component);
 				PipeReader.releaseReadLock(input);
+				
+				// write color component data to pipe
+				System.out.println("Attempting to write color component to pipe...");
+				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
+					System.out.println("Inverse DCT writing color component to pipe...");
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
+					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
+					PipeWriter.publishWrites(output);
+				}
+				else {
+					System.err.println("Inverse DCT requesting shutdown");
+					requestShutdown();
+				}
+				
+				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
+					((header.width - 1) / 8 + 1) % 2 == 1) {
+					mcuWidth += 1;
+				}
+				if (component.componentID == 1 && component.verticalSamplingFactor == 2 &&
+					((header.height - 1) / 8 + 1) % 2 == 1) {
+					mcuHeight += 1;
+				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-				for (int i = 0; i < 64; ++i) {
-					mcu.y[i] = mcuReader.readShort();
+				if (count == 0) {
+					for (int i = 0; i < 64; ++i) {
+						mcu1.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu1.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu1.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 1;
+					if (header.colorComponents.get(0).horizontalSamplingFactor == 1 &&
+						header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						count = 5;
+					}
 				}
-				
-				for (int i = 0; i < 64; ++i) {
-					mcu.cb[i] = mcuReader.readShort();
+				else if (count == 1){
+					for (int i = 0; i < 64; ++i) {
+						mcu2.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu2.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu2.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 2;
+					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						count = 5;
+					}
 				}
-				
-				for (int i = 0; i < 64; ++i) {
-					mcu.cr[i] = mcuReader.readShort();
+				else if (count == 5){
+					for (int i = 0; i < 64; ++i) {
+						mcu3.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu3.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu3.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 2;
+					if (header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+						count = 3;
+					}
+				}
+				else if (count == 3){
+					for (int i = 0; i < 64; ++i) {
+						mcu4.y[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu4.cb[i] = mcuReader.readShort();
+					}
+					
+					for (int i = 0; i < 64; ++i) {
+						mcu4.cr[i] = mcuReader.readShort();
+					}
+					
+					count = 4;
 				}
 				PipeReader.releaseReadLock(input);
-				
-				convertYCbCrToRGB(mcu);
 
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.y[i]);
+				if (count == header.colorComponents.get(0).horizontalSamplingFactor * header.colorComponents.get(0).verticalSamplingFactor) {
+					if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+						header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						expandColumnsAndRows(mcu1, mcu2, mcu3, mcu4);
+						convertYCbCrToRGB(mcu1);
+						convertYCbCrToRGB(mcu2);
+						convertYCbCrToRGB(mcu3);
+						convertYCbCrToRGB(mcu4);
+						sendMCU(mcu1);
+						sendMCU(mcu2);
+						sendMCU(mcu3);
+						sendMCU(mcu4);
 					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+					else if (header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+						expandColumns(mcu1, mcu2);
+						convertYCbCrToRGB(mcu1);
+						convertYCbCrToRGB(mcu2);
+						sendMCU(mcu1);
+						sendMCU(mcu2);
+					}
+					else if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+						expandRows(mcu1, mcu3);
+						convertYCbCrToRGB(mcu1);
+						convertYCbCrToRGB(mcu3);
+						sendMCU(mcu1);
+						sendMCU(mcu3);
+					}
+					else {
+						convertYCbCrToRGB(mcu1);
+						sendMCU(mcu1);
+					}
 					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cb[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cr[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-
-					PipeWriter.publishWrites(output);
+					count = 0;
 				}
 			}
 			else {

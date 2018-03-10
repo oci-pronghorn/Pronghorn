@@ -1,5 +1,6 @@
 package com.ociweb.jpgRaster;
 
+import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -26,6 +27,7 @@ public class BMPDumper extends PronghornStage {
 	int mcuHeight;
 	int mcuWidth;
 	int numMCUs;
+	int pos;
 	
 	long time;
 	
@@ -92,6 +94,20 @@ public class BMPDumper extends PronghornStage {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 	}
+	
+	public void copyPixels(int mcuNum) {
+		int curPixelY = (mcuNum / mcuWidth) * 8;
+		int curPixelX = (mcuNum % mcuWidth) * 8;
+		for (int i = curPixelY; i < curPixelY + 8; ++i) {
+			for (int j = curPixelX; j < curPixelX + 8; ++j) {
+				if (i < header.height && j < header.width) {
+					pixels[i][j * 3 + 0] = mcu.y[(i % 8) * 8 + (j % 8)];
+					pixels[i][j * 3 + 1] = mcu.cb[(i % 8) * 8 + (j % 8)];
+					pixels[i][j * 3 + 2] = mcu.cr[(i % 8) * 8 + (j % 8)];
+				}
+			}
+		}
+	}
 
 	@Override
 	public void run() {
@@ -118,6 +134,23 @@ public class BMPDumper extends PronghornStage {
 				mcuHeight = (header.height + 7) / 8;
 				mcuWidth = (header.width + 7) / 8;
 				numMCUs = mcuHeight * mcuWidth;
+				pos = 0;
+			}
+			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
+				// read color component data from pipe
+				ColorComponent component = new ColorComponent();
+				component.componentID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102);
+				component.horizontalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202);
+				component.verticalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302);
+				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
+				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
+				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
+				header.colorComponents.add(component);
+				PipeReader.releaseReadLock(input);
+				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
+					((header.width - 1) / 8 + 1) % 2 == 1) {
+					mcuWidth += 1;
+				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
@@ -134,19 +167,25 @@ public class BMPDumper extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 
-				int curPixelY = (count / mcuWidth) * 8;
-				int curPixelX = (count % mcuWidth) * 8;
-				for (int i = curPixelY; i < curPixelY + 8; ++i) {
-					for (int j = curPixelX; j < curPixelX + 8; ++j) {
-						if (i < header.height && j < header.width) {
-							pixels[i][j * 3 + 0] = mcu.y[(i % 8) * 8 + (j % 8)];
-							pixels[i][j * 3 + 1] = mcu.cb[(i % 8) * 8 + (j % 8)];
-							pixels[i][j * 3 + 2] = mcu.cr[(i % 8) * 8 + (j % 8)];
-						}
-					}
-				}
+				copyPixels(pos);
 				
 				count += 1;
+				
+				if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+					mcuHeight > 1) {
+					if (pos % (mcuWidth * 2) == mcuWidth * 2 - 1) {
+						pos += 1;
+					}
+					else if (pos < count) {
+						pos += mcuWidth;
+					}
+					else {
+						pos -= mcuWidth - 1;
+					}
+				}
+				else {
+					pos = count;
+				}
 				
 				if (count >= numMCUs) {
 					try {

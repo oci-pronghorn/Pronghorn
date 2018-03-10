@@ -23,11 +23,17 @@ public class JPGScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	
+	int mcuWidth = 0;
+	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
 	
 	Header header;
 	MCU mcu = new MCU();
+	MCU mcu1 = new MCU();
+	MCU mcu2 = new MCU();
+	MCU mcu3 = new MCU();
+	MCU mcu4 = new MCU();
 	ArrayList<MCU> mcus = null;
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
@@ -286,13 +292,23 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		
-		for (int i = 0; i < header.colorComponents.size(); ++i) {
-			if (header.colorComponents.get(i).horizontalSamplingFactor != 1 ||
-				header.colorComponents.get(i).verticalSamplingFactor != 1) {
-				System.err.println("Error - Sampling Factors not yet supported");
-				header.valid = false;
-				break;
-			}
+		if (header.colorComponents.size() > 0 &&
+			(header.colorComponents.get(0).horizontalSamplingFactor > 2 ||
+			 header.colorComponents.get(0).verticalSamplingFactor > 2)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
+		}
+		if (header.colorComponents.size() > 1 &&
+			(header.colorComponents.get(1).horizontalSamplingFactor != 1 ||
+			 header.colorComponents.get(1).verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
+		}
+		if (header.colorComponents.size() > 2 &&
+			(header.colorComponents.get(1).horizontalSamplingFactor != 1 ||
+			 header.colorComponents.get(1).verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
 		}
 		
 		return header;
@@ -574,46 +590,70 @@ public class JPGScanner extends PronghornStage {
 	public void queueFile(String inFile) {
 		inputFiles.add(inFile);
 	}
+	
+	public void sendMCU(MCU emcu) {
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.y[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cb[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cr[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+			
+			
+			PipeWriter.publishWrites(output);
+			
+			numProcessed += 1;
+			if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
+				HuffmanDecoder.restart();
+			}
+		}
+		else {
+			System.err.println("Requesting shutdown");
+			requestShutdown();
+		}
+	}
 
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
+			int horizontal = header.colorComponents.get(0).horizontalSamplingFactor;
+			int vertical = header.colorComponents.get(0).verticalSamplingFactor;
 			//if (header.frameType.equals("Progressive")) {
 			//	mcu = mcus.get(numProcessed);
 			//}
 			//else {
-				HuffmanDecoder.decodeHuffmanData(mcu);
+				HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
 			//}
-			// write mcu to pipe
-			if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-				DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-				DataOutputBlobWriter.openField(mcuWriter);
-				for (int i = 0; i < 64; ++i) {
-					mcuWriter.writeShort(mcu.y[i]);
-				}
-				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-				
-				DataOutputBlobWriter.openField(mcuWriter);
-				for (int i = 0; i < 64; ++i) {
-					mcuWriter.writeShort(mcu.cb[i]);
-				}
-				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-				
-				DataOutputBlobWriter.openField(mcuWriter);
-				for (int i = 0; i < 64; ++i) {
-					mcuWriter.writeShort(mcu.cr[i]);
-				}
-				DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-				PipeWriter.publishWrites(output);
-				
-				numProcessed += 1;
-				if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
-					HuffmanDecoder.restart();
-				}
+			// write mcu to pipe				
+			if (horizontal == 1 && vertical == 1) {
+				sendMCU(mcu1);
 			}
-			else {
-				System.err.println("Requesting shutdown");
-				requestShutdown();
+			else if (horizontal == 2 && vertical == 1) {
+				sendMCU(mcu1);
+				sendMCU(mcu2);
+			}
+			else if (horizontal == 1 && vertical == 2) {
+				sendMCU(mcu1);
+				sendMCU(mcu3);
+			}
+			else if (horizontal == 2 && vertical == 2) {
+				sendMCU(mcu1);
+				sendMCU(mcu3);
+				sendMCU(mcu2);
+				sendMCU(mcu4);
 			}
 		}
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
@@ -689,9 +729,19 @@ public class JPGScanner extends PronghornStage {
 					}
 				}
 				//if (header.frameType.equals("Baseline")) {
-					HuffmanDecoder.beginDecode(header);
+				HuffmanDecoder.beginDecode(header);
 				//}
-				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				mcuWidth = (header.width + 7) / 8;
+				mcuHeight = (header.height + 7) / 8;
+				if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+					((header.width - 1) / 8 + 1) % 2 == 1) {
+					mcuWidth += 1;
+				}
+				if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+					((header.height - 1) / 8 + 1) % 2 == 1) {
+					mcuHeight += 1;
+				}
+				numMCUs = mcuWidth * mcuHeight;
 				numProcessed = 0;
 			}
 			catch (IOException e) {

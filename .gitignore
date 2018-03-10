@@ -25,3 +25,5 @@ RemoteSystemsTempFiles/\.project
 
 # BMP files
 *.bmp
+
+bin/*
