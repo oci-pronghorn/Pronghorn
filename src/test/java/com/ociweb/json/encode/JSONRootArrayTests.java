@@ -6,7 +6,6 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -78,7 +77,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayNull_Yes() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .nullableArray(Objects::isNull, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
+                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -87,7 +86,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayNull_No() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .nullableArray(Objects::isNull, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
+                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());

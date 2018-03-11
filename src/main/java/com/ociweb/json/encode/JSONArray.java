@@ -17,7 +17,38 @@ public abstract class JSONArray<T, P, N> {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
-    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, M> accessor, final ToEnding<P> ending) {
+    static <T, P, N, M> JSONArray<T, P, N> createArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, M> accessor,
+            final IterMemberFunction<M, N, N> iterator,
+            final ToEnding<P> ending) {
+        return new JSONArray<T, P, N>(
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.get(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                new IterMemberFunction<T, N, N>() {
+                    @Override
+                    public N get(T o, int i, N node) {
+                        M m = accessor.get(o);
+                        return iterator.get(m, i, node);
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return ending.end();
+            }
+        };
+    }
+
+    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, M> accessor,
+            final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
@@ -41,7 +72,10 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<T, P, N> createBasicArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, N[]> accessor, final ToEnding<P> ending) {
+    static <T, P, N> JSONArray<T, P, N> createBasicArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, N[]> accessor,
+            final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
@@ -88,7 +122,6 @@ public abstract class JSONArray<T, P, N> {
     // Array
 
     // TODO
-    // TODO: do we need isNull variant?
 
     // Renderer
 

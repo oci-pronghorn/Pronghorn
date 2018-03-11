@@ -47,25 +47,21 @@ public abstract class JSONObject<T, P> {
     // Array
 
     public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, IterMemberFunction<T, N, N> iterator) {
-        return new JSONArray<T, JSONObject<T, P>, N>(
-                builder.addFieldPrefix(name).beginArray(),
-                builder.getKeywords(), iterator, depth + 1) {
+        return array(name, new ToMemberFunction<T, T>() {
             @Override
-            JSONObject<T, P> arrayEnded() {
-                return JSONObject.this;
+            public T get(T o) {
+                return o;
             }
-        };
+        }, iterator);
     }
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> nullableArray(String name, ToBoolFunction<T> isNull, IterMemberFunction<T, N, N> iterator) {
-        return new JSONArray<T, JSONObject<T, P>, N>(
-                builder.addFieldPrefix(name).beginArray(isNull),
-                builder.getKeywords(), iterator,depth + 1) {
+    public <N, M> JSONArray<T, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IterMemberFunction<M, N, N> iterator) {
+        return JSONArray.createArray(builder.addFieldPrefix(name), depth + 1, accessor, iterator,  new ToEnding<JSONObject<T, P>>() {
             @Override
-            JSONObject<T, P> arrayEnded() {
+            public JSONObject<T, P> end() {
                 return JSONObject.this;
             }
-        };
+        });
     }
 
     public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, N> listArray(String name, ToMemberFunction<T, M> accessor) {

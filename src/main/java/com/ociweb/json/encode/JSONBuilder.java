@@ -164,16 +164,11 @@ class JSONBuilder<T> {
 
     // Array
 
-    StringTemplateBuilder<T> beginArray() {
-        kw.OpenArray(scripts, depth);
-        return scripts;
-    }
-
     StringTemplateBuilder<T> beginArray(final ToBoolFunction<T> isNull) {
         StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
-        StringTemplateBuilder[] nullableBranches = new StringTemplateBuilder[2];
+        StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
