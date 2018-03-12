@@ -125,8 +125,6 @@ public class Pipe<T extends MessageSchema<T>> {
          * Switch the working tail back to the published tail position.
          * Only used by the replay feature, not for general use.
          */
-        // TODO: ?
-        // Enforce the contract of replay-only.
 		long rollBackWorking() {
 			return workingTailPos.value = tailPos.get();
 		}
@@ -3089,7 +3087,6 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
      	  
-    	notifyRelListener(pipe);
     	
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumedByFragment = takeInt(pipe);
@@ -3097,10 +3094,14 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
         assert(Pipe.contentRemaining(pipe)>=0); 
-        batchedReleasePublish(pipe, 
+        long tail = pipe.slabRingTail.workingTailPos.value;
+		batchedReleasePublish(pipe, 
         		              pipe.blobRingTail.byteWorkingTailPos.value = pipe.blobReadBase, 
-        		              pipe.slabRingTail.workingTailPos.value);
+        		              tail);
         assert(validateInsideData(pipe, pipe.blobReadBase));
+        
+        pipe.relListener.released(tail);
+        
         return bytesConsumedByFragment;        
     }
 

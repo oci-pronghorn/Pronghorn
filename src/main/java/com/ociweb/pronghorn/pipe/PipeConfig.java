@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.pipe;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * @param <T>  
  */
@@ -12,6 +15,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	final T schema; 
 	int debugFlags = 0;
 	boolean showLabels = true;
+	private static final Logger logger = LoggerFactory.getLogger(PipeConfig.class);
 		
    /**
      * This is NOT the constructor you are looking for.
@@ -100,15 +104,21 @@ public class PipeConfig<T extends MessageSchema<T>> {
         int primaryMinSize = minimumFragmentsOnRing*biggestFragment;  
         this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1)); 
 
-        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
-        int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-      
-        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
-      
-        this.byteConst = byteConst;
-        this.schema = messageSchema;
+        try {
+	        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
+	        int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
+	      
+	        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
+	      
+	        this.byteConst = byteConst;
+	        this.schema = messageSchema;
+	        
+	        validate(messageSchema, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
+        } catch (UnsupportedOperationException t) {
+        	logger.info("unable to define pipe with size {},{} for type {} ",minimumFragmentsOnRing,maximumLenghOfVariableLengthFields,messageSchema);
+        	throw(t);
+        }
         
-        validate(messageSchema, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
     }
     
     private void validate(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
