@@ -145,7 +145,8 @@ public class BMPDumper extends PronghornStage {
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
-				header.colorComponents.add(component);
+				header.colorComponents[component.componentID - 1] = component;
+				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
 				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
 					((header.width - 1) / 8 + 1) % 2 == 1) {
@@ -171,7 +172,7 @@ public class BMPDumper extends PronghornStage {
 				
 				count += 1;
 				
-				if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+				if (header.colorComponents[0].verticalSamplingFactor == 2 &&
 					mcuHeight > 1) {
 					if (pos % (mcuWidth * 2) == mcuWidth * 2 - 1) {
 						pos += 1;

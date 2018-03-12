@@ -29,16 +29,16 @@ public class InverseQuantizer extends PronghornStage {
 	private static void dequantizeMCU(short[] MCU, QuantizationTable table) {
 
 		for (int i = 0; i < MCU.length; ++i) {
-			// type casting is unsafe for 16-bit precision quantization tables
+			// type casting might be unsafe for 16-bit precision quantization tables
 			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] * table.table[i]);
 		}
 	}
 	
 	public static void dequantize(MCU mcu, Header header) {
-		dequantizeMCU(mcu.y, header.quantizationTables.get(header.colorComponents.get(0).quantizationTableID));
-		if (header.colorComponents.size() > 1) {
-			dequantizeMCU(mcu.cb, header.quantizationTables.get(header.colorComponents.get(1).quantizationTableID));
-			dequantizeMCU(mcu.cr, header.quantizationTables.get(header.colorComponents.get(2).quantizationTableID));
+		dequantizeMCU(mcu.y, header.quantizationTables[header.colorComponents[0].quantizationTableID]);
+		if (header.numComponents > 1) {
+			dequantizeMCU(mcu.cb, header.quantizationTables[header.colorComponents[1].quantizationTableID]);
+			dequantizeMCU(mcu.cr, header.quantizationTables[header.colorComponents[2].quantizationTableID]);
 		}
 		return;
 	}
@@ -89,7 +89,8 @@ public class InverseQuantizer extends PronghornStage {
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
-				header.colorComponents.add(component);
+				header.colorComponents[component.componentID - 1] = component;
+				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
 				
 				// write color component data to pipe
@@ -112,16 +113,24 @@ public class InverseQuantizer extends PronghornStage {
 			else if (msgIdx == JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5) {
 				// read quantization table from pipe
 				QuantizationTable table = new QuantizationTable();
-				table.tableID = (short) PipeReader.readInt(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
-				table.precision = (short) PipeReader.readInt(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
+				table.tableID = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
+				table.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
 
-				DataInputBlobReader<JPGSchema> r = PipeReader.inputStream(input,  JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
+				DataInputBlobReader<JPGSchema> r = PipeReader.inputStream(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
 				for (int i = 0; i < 64; ++i) {
 					table.table[i] = r.readInt();
 				}
 				
 				PipeReader.releaseReadLock(input);
-				header.quantizationTables.add(table);
+				
+				// tableID always reads as 0 for some reason
+				// this is a workaround
+				int i = 0;
+				while (header.quantizationTables[i] != null) {
+					i += 1;
+				}
+				header.quantizationTables[i] = table;
+				//header.quantizationTables[table.tableID] = table;
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);

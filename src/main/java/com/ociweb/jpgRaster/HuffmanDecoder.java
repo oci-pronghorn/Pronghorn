@@ -300,8 +300,8 @@ public class HuffmanDecoder {
 	public static boolean decodeHuffmanData(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
 		if (!b.hasBits()) return false;
 		
-		int horizontal = header.colorComponents.get(0).horizontalSamplingFactor;
-		int vertical = header.colorComponents.get(0).verticalSamplingFactor;
+		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
+		int vertical = header.colorComponents[0].verticalSamplingFactor;
 		
 		ArrayList<ArrayList<Integer>> dcTableCodes;
 		ArrayList<ArrayList<Integer>> acTableCodes;
@@ -309,7 +309,7 @@ public class HuffmanDecoder {
 		HuffmanTable acTable;
 		boolean success;
 		
-		if (header.colorComponents.get(0).used) {
+		if (header.colorComponents[0].used) {
 			//System.out.println("Decoding Y Component...");
 			dcTableCodes = null;
 			if (yDCTableID < DCTableCodes.size()) {
@@ -319,14 +319,8 @@ public class HuffmanDecoder {
 			if (yACTableID < ACTableCodes.size()) {
 				acTableCodes = ACTableCodes.get(yACTableID);
 			}
-			dcTable = null;
-			if (yDCTableID < header.huffmanDCTables.size()) {
-				dcTable = header.huffmanDCTables.get(yDCTableID);
-			}
-			acTable = null;
-			if (yACTableID < header.huffmanACTables.size()) {
-				acTable = header.huffmanACTables.get(yACTableID);
-			}
+			dcTable = header.huffmanDCTables[yDCTableID];
+			acTable = header.huffmanACTables[yACTableID];
 			success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu1.y, previousYDC, header);
 			if (!success) {
 				return false;
@@ -356,8 +350,8 @@ public class HuffmanDecoder {
 			}
 		}
 
-		if (header.colorComponents.size() > 1) {
-			if (header.colorComponents.get(1).used) {
+		if (header.numComponents > 1) {
+			if (header.colorComponents[1].used) {
 				//System.out.println("Decoding Cb Component...");
 				dcTableCodes = null;
 				if (cbDCTableID < DCTableCodes.size()) {
@@ -367,14 +361,8 @@ public class HuffmanDecoder {
 				if (cbACTableID < ACTableCodes.size()) {
 					acTableCodes = ACTableCodes.get(cbACTableID);
 				}
-				dcTable = null;
-				if (cbDCTableID < header.huffmanDCTables.size()) {
-					dcTable = header.huffmanDCTables.get(cbDCTableID);
-				}
-				acTable = null;
-				if (cbACTableID < header.huffmanACTables.size()) {
-					acTable = header.huffmanACTables.get(cbACTableID);
-				}
+				dcTable = header.huffmanDCTables[cbDCTableID];
+				acTable = header.huffmanACTables[cbACTableID];
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu1.cb, previousCbDC, header);
 				if (!success) {
 					return false;
@@ -382,7 +370,7 @@ public class HuffmanDecoder {
 				previousCbDC = mcu1.cb[0];
 			}
 
-			if (header.colorComponents.get(2).used) {
+			if (header.colorComponents[2].used) {
 				//System.out.println("Decoding Cr Component...");
 				dcTableCodes = null;
 				if (crDCTableID < DCTableCodes.size()) {
@@ -392,14 +380,8 @@ public class HuffmanDecoder {
 				if (crACTableID < ACTableCodes.size()) {
 					acTableCodes = ACTableCodes.get(crACTableID);
 				}
-				dcTable = null;
-				if (crDCTableID < header.huffmanDCTables.size()) {
-					dcTable = header.huffmanDCTables.get(crDCTableID);
-				}
-				acTable = null;
-				if (crACTableID < header.huffmanACTables.size()) {
-					acTable = header.huffmanACTables.get(crACTableID);
-				}
+				dcTable = header.huffmanDCTables[crDCTableID];
+				acTable = header.huffmanACTables[crACTableID];
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu1.cr, previousCrDC, header);
 				if (!success) {
 					return false;
@@ -417,20 +399,30 @@ public class HuffmanDecoder {
 		
 		DCTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
 		ACTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);
-		for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
-			DCTableCodes.add(generateCodes(header.huffmanDCTables.get(i)));
+		for (int i = 0; i < header.huffmanDCTables.length; ++i) {
+			if (header.huffmanDCTables[i] != null) {
+				DCTableCodes.add(generateCodes(header.huffmanDCTables[i]));
+			}
+			else {
+				DCTableCodes.add(null);
+			}
 		}
-		for (int i = 0; i < header.huffmanACTables.size(); ++i) {
-			ACTableCodes.add(generateCodes(header.huffmanACTables.get(i)));
+		for (int i = 0; i < header.huffmanACTables.length; ++i) {
+			if (header.huffmanACTables[i] != null) {
+				ACTableCodes.add(generateCodes(header.huffmanACTables[i]));
+			}
+			else {
+				ACTableCodes.add(null);
+			}
 		}
 
-		yDCTableID  = header.colorComponents.get(0).huffmanDCTableID;
-		yACTableID  = header.colorComponents.get(0).huffmanACTableID;
-		if (header.colorComponents.size() > 1) {
-			cbDCTableID = header.colorComponents.get(1).huffmanDCTableID;
-			cbACTableID = header.colorComponents.get(1).huffmanACTableID;
-			crDCTableID = header.colorComponents.get(2).huffmanDCTableID;
-			crACTableID = header.colorComponents.get(2).huffmanACTableID;
+		yDCTableID  = header.colorComponents[0].huffmanDCTableID;
+		yACTableID  = header.colorComponents[0].huffmanACTableID;
+		if (header.numComponents > 1) {
+			cbDCTableID = header.colorComponents[1].huffmanDCTableID;
+			cbACTableID = header.colorComponents[1].huffmanACTableID;
+			crDCTableID = header.colorComponents[2].huffmanDCTableID;
+			crACTableID = header.colorComponents[2].huffmanACTableID;
 		}
 
 		previousYDC = 0;

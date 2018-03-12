@@ -64,7 +64,7 @@ public class InverseDCT extends PronghornStage {
 	
 	public static void inverseDCT(MCU mcu, Header header) {
 		MCUInverseDCT(mcu.y);
-		if (header.colorComponents.size() > 1) {
+		if (header.numComponents > 1) {
 			MCUInverseDCT(mcu.cb);
 			MCUInverseDCT(mcu.cr);
 		}
@@ -117,7 +117,8 @@ public class InverseDCT extends PronghornStage {
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
-				header.colorComponents.add(component);
+				header.colorComponents[component.componentID - 1] = component;
+				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
 
 				// write color component data to pipe

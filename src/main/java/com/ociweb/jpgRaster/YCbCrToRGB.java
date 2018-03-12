@@ -167,13 +167,13 @@ public class YCbCrToRGB extends PronghornStage {
 	}
 	
 	public void sendMCU(MCU emcu) {
-		if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+		if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
 			header.width % 8 == 0 && (header.width / 8) % 2 == 1 &&
 			numProcessed % mcuWidth == mcuWidth - 1) {
 			numProcessed += 1;
 			return;
 		}
-		if (header.colorComponents.get(0).verticalSamplingFactor == 2 &&
+		if (header.colorComponents[0].verticalSamplingFactor == 2 &&
 			header.height % 8 == 0 && (header.height / 8) % 2 == 1 &&
 			numProcessed >= mcuWidth * (mcuHeight - 2) + 1 &&
 			numProcessed % 2 == 1) {
@@ -260,7 +260,8 @@ public class YCbCrToRGB extends PronghornStage {
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
 				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
 				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
-				header.colorComponents.add(component);
+				header.colorComponents[component.componentID - 1] = component;
+				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
 				
 				// write color component data to pipe
@@ -305,8 +306,8 @@ public class YCbCrToRGB extends PronghornStage {
 					}
 					
 					count = 1;
-					if (header.colorComponents.get(0).horizontalSamplingFactor == 1 &&
-						header.colorComponents.get(0).verticalSamplingFactor == 2) {
+					if (header.colorComponents[0].horizontalSamplingFactor == 1 &&
+						header.colorComponents[0].verticalSamplingFactor == 2) {
 						count = 5;
 					}
 				}
@@ -324,7 +325,7 @@ public class YCbCrToRGB extends PronghornStage {
 					}
 					
 					count = 2;
-					if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+					if (header.colorComponents[0].verticalSamplingFactor == 2) {
 						count = 5;
 					}
 				}
@@ -342,7 +343,7 @@ public class YCbCrToRGB extends PronghornStage {
 					}
 					
 					count = 2;
-					if (header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+					if (header.colorComponents[0].horizontalSamplingFactor == 2) {
 						count = 3;
 					}
 				}
@@ -363,9 +364,9 @@ public class YCbCrToRGB extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 
-				if (count == header.colorComponents.get(0).horizontalSamplingFactor * header.colorComponents.get(0).verticalSamplingFactor) {
-					if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
-						header.colorComponents.get(0).verticalSamplingFactor == 2) {
+				if (count == header.colorComponents[0].horizontalSamplingFactor * header.colorComponents[0].verticalSamplingFactor) {
+					if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+						header.colorComponents[0].verticalSamplingFactor == 2) {
 						expandColumnsAndRows(mcu1, mcu2, mcu3, mcu4);
 						convertYCbCrToRGB(mcu1);
 						convertYCbCrToRGB(mcu2);
@@ -376,14 +377,14 @@ public class YCbCrToRGB extends PronghornStage {
 						sendMCU(mcu3);
 						sendMCU(mcu4);
 					}
-					else if (header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+					else if (header.colorComponents[0].horizontalSamplingFactor == 2) {
 						expandColumns(mcu1, mcu2);
 						convertYCbCrToRGB(mcu1);
 						convertYCbCrToRGB(mcu2);
 						sendMCU(mcu1);
 						sendMCU(mcu2);
 					}
-					else if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+					else if (header.colorComponents[0].verticalSamplingFactor == 2) {
 						expandRows(mcu1, mcu3);
 						convertYCbCrToRGB(mcu1);
 						convertYCbCrToRGB(mcu3);

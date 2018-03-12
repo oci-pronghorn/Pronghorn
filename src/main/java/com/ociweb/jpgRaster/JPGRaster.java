@@ -9,10 +9,10 @@ import com.ociweb.pronghorn.util.MainArgs;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-//		String defaultFiles = "test_jpgs/huff_simple0 test_jpgs/robot test_jpgs/cat test_jpgs/car test_jpgs/squirrel test_jpgs/nathan test_jpgs/earth test_jpgs/dice test_jpgs/pyramids test_jpgs/static test_jpgs/turtle";
+		String defaultFiles = "test_jpgs/huff_simple0 test_jpgs/robot test_jpgs/cat test_jpgs/car test_jpgs/squirrel test_jpgs/nathan test_jpgs/earth test_jpgs/dice test_jpgs/pyramids test_jpgs/static test_jpgs/turtle";
 		
 		
-		String defaultFiles = "test_jpgs/earth_progressive";
+//		String defaultFiles = "test_jpgs/earth_progressive";
 //		String defaultFiles = "test_jpgs/robot";
 		
 		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
