@@ -264,7 +264,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				        	continue;
 		        		}
 		        	}
-		        	lastFailure = -1;
+		        	failureIterations = -1;
 		        	
 		        } else {
 		        	
@@ -295,6 +295,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	int idx = Pipe.takeMsgIdx(sourcePipe);
 		    	
 		    	if (-1 != idx) {
+		    		
+		    		if (channelId!=-2) {
+		    			logger.warn("skipping channel data, id was {}",channelId);
+		    		}
+		    		
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		Pipe.skipNextFragment(sourcePipe, idx);
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
@@ -326,8 +331,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
-		long now = System.currentTimeMillis();
-		if (failureIterations>1000 && lastFailure!=-1) {
+		
+		if (failureIterations>1000) {
 
 				logger.info("Hang detected");
 				logger.info("looking for {} but got {} for connection {} on idx {}",
@@ -342,12 +347,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				System.exit(-1);
 			        
 		} else {
-			if (-1==lastFailure) {
-				failureIterations = 0;
-				lastFailure = now;
-			} else {
-				failureIterations++;
-			}
+			failureIterations++;
 		}
 		return true;
 	}
@@ -364,7 +364,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	int[]  recordPipeIdx;
     
     long movedUpCount = 0;
-    long lastFailure = -1;
     int  failureIterations = 0;
      
     
