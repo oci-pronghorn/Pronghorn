@@ -23,6 +23,7 @@ public class JPG {
 		short quantizationTableID;
 		short huffmanACTableID;
 		short huffmanDCTableID;
+		boolean used;
 	}
 	
 	public static class Header {

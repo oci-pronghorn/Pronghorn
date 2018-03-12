@@ -29,7 +29,6 @@ public class JPGScanner extends PronghornStage {
 	int numProcessed = 0;
 	
 	Header header;
-	MCU mcu = new MCU();
 	MCU mcu1 = new MCU();
 	MCU mcu2 = new MCU();
 	MCU mcu3 = new MCU();
@@ -41,7 +40,7 @@ public class JPGScanner extends PronghornStage {
 		this.output = output;
 	}
 	
-	public static Header ReadJPG(String filename, ArrayList<MCU> mcus, MCU mcu) throws IOException {
+	public static Header ReadJPG(String filename, ArrayList<MCU> mcus, MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
@@ -70,7 +69,7 @@ public class JPGScanner extends PronghornStage {
 					header.frameType = "Baseline";
 					ReadStartOfFrame(f, header);
 				}
-				// only Baseline is supported for now
+				// only Baseline and Progressive are supported for now
 				/*else if (current == JPGConstants.SOF1) {
 					header.frameType = "Extended Sequential";
 					ReadStartOfFrame(f, header);
@@ -164,8 +163,8 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (header.valid) {
 			if (header.frameType.equals("Progressive")) {
-				//int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
-				//mcus = new ArrayList<MCU>(numMCUs);
+				int numScans = 0;
+				int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 				current = (short)f.readUnsignedByte();
 				while (true) {
 					last = current;
@@ -182,19 +181,47 @@ public class JPGScanner extends PronghornStage {
 						}
 						else if (current == JPGConstants.DHT) {
 							// decode scan so far
-							/*System.out.println("Decoding a scan of size " + header.imageData.size());
+							System.out.println("Decoding a scan of size " + header.imageData.size());
 							HuffmanDecoder.beginDecode(header);
 							int numProcessed = 0;
 							while (numProcessed < numMCUs) {
-								HuffmanDecoder.decodeHuffmanData(mcu);
-								mcus.add(mcu);
+								if (mcus.size() < numMCUs) {
+									mcu1 = new MCU();
+									mcu2 = new MCU();
+									mcu3 = new MCU();
+									mcu4 = new MCU();
+								}
+								else {
+									mcu1 = mcus.get(numProcessed);
+									mcu2 = mcus.get(numProcessed + 1);
+									mcu3 = mcus.get(numProcessed + 2);
+									mcu4 = mcus.get(numProcessed + 3);
+								}
+								if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
+									System.err.println("Error during scan " + numScans);
+									return header;
+								}
+								mcus.add(mcu1);
 								numProcessed += 1;
+								if (header.colorComponents.get(0).horizontalSamplingFactor == 2) {
+									mcus.add(mcu2);
+									numProcessed += 1;
+								}
+								if (header.colorComponents.get(0).verticalSamplingFactor == 2) {
+									mcus.add(mcu3);
+									numProcessed += 1;
+								}
+								if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
+									header.colorComponents.get(0).verticalSamplingFactor == 2) {
+									mcus.add(mcu4);
+									numProcessed += 1;
+								}
 							}
-							header.imageData.clear();*/
+							header.imageData.clear();
 							
 							ReadHuffmanTable(f, header);
 							current = (short)f.readUnsignedByte();
-							break; // XXX
+							numScans += 1;
 						}
 						else if (current == JPGConstants.SOS) {
 							ReadStartOfScan(f, header);
@@ -216,7 +243,7 @@ public class JPGScanner extends PronghornStage {
 					}
 				}
 			}
-			else {
+			else { // if (header.frameType.equals("Baseline")) {
 				current = (short)f.readUnsignedByte();
 				while (true) {
 					last = current;
@@ -499,6 +526,11 @@ public class JPGScanner extends PronghornStage {
 		System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
+		
+		for (int i = 0; i < header.colorComponents.size(); ++i) {
+			header.colorComponents.get(i).used = false;
+		}
+		
 		int numComponents = f.readUnsignedByte();
 		for (int i = 0; i < numComponents; ++i) {
 			short componentID = (short)f.readUnsignedByte();
@@ -518,6 +550,7 @@ public class JPGScanner extends PronghornStage {
 				if (componentID == header.colorComponents.get(j).componentID) {
 					header.colorComponents.get(j).huffmanACTableID = huffmanACTableID;
 					header.colorComponents.get(j).huffmanDCTableID = huffmanDCTableID;
+					header.colorComponents.get(j).used = true;
 					found = true;
 					break;
 				}
@@ -631,12 +664,28 @@ public class JPGScanner extends PronghornStage {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			int horizontal = header.colorComponents.get(0).horizontalSamplingFactor;
 			int vertical = header.colorComponents.get(0).verticalSamplingFactor;
-			//if (header.frameType.equals("Progressive")) {
-			//	mcu = mcus.get(numProcessed);
-			//}
-			//else {
+			if (header.frameType.equals("Progressive")) {
+				if (horizontal == 1 && vertical == 1) {
+					mcu1 = mcus.get(numProcessed);
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+					mcu3 = mcus.get(numProcessed + 2);
+					mcu4 = mcus.get(numProcessed + 3);
+				}
+			}
+			else {
 				HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
-			//}
+			}
 			// write mcu to pipe				
 			if (horizontal == 1 && vertical == 1) {
 				sendMCU(mcu1);
@@ -660,7 +709,8 @@ public class JPGScanner extends PronghornStage {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			try {
-				header = ReadJPG(file + ".jpg", mcus, mcu);
+				mcus = new ArrayList<MCU>();
+				header = ReadJPG(file + ".jpg", mcus, mcu1, mcu2, mcu3, mcu4);
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
 					return;
@@ -728,9 +778,9 @@ public class JPGScanner extends PronghornStage {
 						requestShutdown();
 					}
 				}
-				//if (header.frameType.equals("Baseline")) {
-				HuffmanDecoder.beginDecode(header);
-				//}
+				if (header.frameType.equals("Baseline")) {
+					HuffmanDecoder.beginDecode(header);
+				}
 				mcuWidth = (header.width + 7) / 8;
 				mcuHeight = (header.height + 7) / 8;
 				if (header.colorComponents.get(0).horizontalSamplingFactor == 2 &&
@@ -753,9 +803,12 @@ public class JPGScanner extends PronghornStage {
 	public static void main(String[] args) {
 		Header header = null;
 		try {
-			ArrayList<MCU> mcus = null;
-			MCU mcu = new MCU();
-			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus, mcu);
+			ArrayList<MCU> mcus = new ArrayList<MCU>();
+			MCU mcu1 = new MCU();
+			MCU mcu2 = new MCU();
+			MCU mcu3 = new MCU();
+			MCU mcu4 = new MCU();
+			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus, mcu1, mcu2, mcu3, mcu4);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.size(); ++i) {
