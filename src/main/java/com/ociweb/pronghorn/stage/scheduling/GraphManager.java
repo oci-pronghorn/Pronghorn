@@ -1828,7 +1828,7 @@ public class GraphManager {
 		                	) {
 		                	//if this producer writes to many pipes
 		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
-							if (outputPipeCount>=8) {
+							if (outputPipeCount>=4) {
 								//destinations must share
 								int con1 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 1).id);	
 								int con2 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 2).id);						
