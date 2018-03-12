@@ -11,6 +11,11 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/*
+ * Updated Inverse DCT Algorithm is based on the Guetzli JPEG encoder's
+ * DCT implementation. This code can be found here:
+ * 	https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc
+ */
 public class InverseDCT extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
@@ -18,15 +23,35 @@ public class InverseDCT extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
-	static short[] result = new short[64];
+	static double[] result = new double[64];
+	long time;
 	
 	protected InverseDCT(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
+		this.time = 0;
 	}
 	
 	private static double[] idctMap = new double[64];
+	private static double[] kDCTMatrix = {
+			  0.3535533906,  0.3535533906,  0.3535533906,  0.3535533906,
+			  0.3535533906,  0.3535533906,  0.3535533906,  0.3535533906,
+			  0.4903926402,  0.4157348062,  0.2777851165,  0.0975451610,
+			 -0.0975451610, -0.2777851165, -0.4157348062, -0.4903926402,
+			  0.4619397663,  0.1913417162, -0.1913417162, -0.4619397663,
+			 -0.4619397663, -0.1913417162,  0.1913417162,  0.4619397663,
+			  0.4157348062, -0.0975451610, -0.4903926402, -0.2777851165,
+			  0.2777851165,  0.4903926402,  0.0975451610, -0.4157348062,
+			  0.3535533906, -0.3535533906, -0.3535533906,  0.3535533906,
+			  0.3535533906, -0.3535533906, -0.3535533906,  0.3535533906,
+			  0.2777851165, -0.4903926402,  0.0975451610,  0.4157348062,
+			 -0.4157348062, -0.0975451610,  0.4903926402, -0.2777851165,
+			  0.1913417162, -0.4619397663,  0.4619397663, -0.1913417162,
+			 -0.1913417162,  0.4619397663, -0.4619397663,  0.1913417162,
+			  0.0975451610, -0.2777851165,  0.4157348062, -0.4903926402,
+			  0.4903926402, -0.4157348062,  0.2777851165, -0.0975451610,
+			};
 	
 	// prepare idctMap
 	static {
@@ -41,32 +66,44 @@ public class InverseDCT extends PronghornStage {
 		}
 	}
 	
-	private static void MCUInverseDCT(short[] mcu) {
+	private static void TransformColumn(short[] in, double[] out, int offset) {
+		double temp;
 		for (int y = 0; y < 8; ++y) {
-			for (int x = 0; x < 8; ++x) {
-				double sum = 0.0;
-				for (int i = 0; i < 8; ++i) {
-					for (int j = 0; j < 8; ++j) {
-						sum += mcu[i * 8 + j] *
-							   idctMap[j * 8 + x] *
-							   idctMap[i * 8 + y];
-					}
-				}
-				sum /= 4.0;
-				result[y * 8 + x] = (short)sum;
+			temp = 0;
+			for (int v = 0; v < 8; ++v) {
+				temp += in[v * 8 + offset] * kDCTMatrix[8 * v + y];
 			}
+			out[y * 8 + offset] = temp;
 		}
-		
-		for (int i = 0; i < 64; ++i) {
-			mcu[i] = result[i];
+	}
+	
+	private static void TransformRow(double[] in, short[] out, int offset) {
+		double temp;
+		for (int x = 0; x < 8; ++x) {
+			temp = 0;
+			for (int u = 0; u < 8; ++u) {
+				temp += in[u + offset * 8] * kDCTMatrix[8 * u + x];
+			}
+			out[x + offset * 8] = (short) temp;
+		}
+	}
+	
+	private static void TransformBlock(short[] mcu) {
+		double[] temp;
+		temp = new double[64];
+		for (int i = 0; i < 8; ++i) {
+			TransformColumn(mcu, temp, i);
+		}
+		for (int j = 0; j < 8; ++j) {
+			TransformRow(temp, mcu, j);
 		}
 	}
 	
 	public static void inverseDCT(MCU mcu, Header header) {
-		MCUInverseDCT(mcu.y);
+		TransformBlock(mcu.y);
 		if (header.colorComponents.size() > 1) {
-			MCUInverseDCT(mcu.cb);
-			MCUInverseDCT(mcu.cr);
+			TransformBlock(mcu.cb);
+			TransformBlock(mcu.cr);
 		}
 		return;
 	}
