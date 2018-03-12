@@ -23,28 +23,35 @@ public class JPG {
 		short quantizationTableID;
 		short huffmanACTableID;
 		short huffmanDCTableID;
+		boolean used;
 	}
 	
 	public static class Header {
 		// DQT
-		ArrayList<QuantizationTable> quantizationTables = new ArrayList<QuantizationTable>(4);
+		QuantizationTable[] quantizationTables = new QuantizationTable[4];
 		
 		// DHT
-		ArrayList<HuffmanTable> huffmanDCTables = new ArrayList<HuffmanTable>(2);
-		ArrayList<HuffmanTable> huffmanACTables = new ArrayList<HuffmanTable>(2);
+		HuffmanTable[] huffmanDCTables = new HuffmanTable[4];
+		HuffmanTable[] huffmanACTables = new HuffmanTable[4];
 		
 		// SOF
 		String frameType;
 		short precision;
 		int height;
 		int width;
+		short numComponents;
+		boolean zeroBased = false;
 		
 		// SOS
 		short startOfSelection;
 		short endOfSelection;
-		short successiveApproximation;
+		short successiveApproximationHigh;
+		short successiveApproximationLow;
+		
+		// DRI
+		int restartInterval = 0;
 
-		ArrayList<ColorComponent> colorComponents = new ArrayList<ColorComponent>(3);
+		ColorComponent[] colorComponents = new ColorComponent[3];
 		ArrayList<Short> imageData = new ArrayList<Short>();
 		
 		boolean valid = true;

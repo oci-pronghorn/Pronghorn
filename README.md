@@ -11,7 +11,7 @@ It then performs Inverse Discrete Cosine Transformation on these coefficients to
 Then it converts these three color components from the YCbCr color space to the RGB color space.
 Lastly, it exports this array of RGB pixels to a bitmap file with the same name as the input file.
 
-Currently, it supports and successfully decompresses the most standard JPG format, with wider support coming soon.
+Currently, it supports and successfully decompresses several of the most standard JPG formats, with wider support coming soon.
 
 J2R uses Pronghorn-Pipes for multi-threading and dataflow management to speed up decompression and to process many JPG files at once. The decoding process is split into the 5 major stages and each stage is a separate thread. Data is passed in small chunks from thread to thread, being transformed at every stage.
 
@@ -24,8 +24,6 @@ BMP was chosen as the output file type due to its very small header (26 bytes) f
 
 ## Planned Features
  - Support more Start of Frame markers (i.e. Progressive)
- - Support files with one color component (grayscale)
  - Support horizontal and vertical sampling factors other than 1
- - Support 16-bit precision quantization tables
  - Support non-standard start/end of selection and successive
    approximation

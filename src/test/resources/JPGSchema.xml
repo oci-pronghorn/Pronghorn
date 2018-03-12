@@ -5,11 +5,6 @@
 		<int32 name="height" id="101"/>
 		<int32 name="width" id="201"/>
 		<string name="filename" id="301"/>
-		<string name="frameType" id="401"/>
-		<int32 name="precision" id="501"/>
-		<int32 name="startOfSelection" id="601"/>
-		<int32 name="endOfSelection" id="701"/>
-		<int32 name="successiveApproximation" id="801"/>
 	</template>
 	
 	<template name="ColorComponentMessage" id="2">
@@ -17,20 +12,18 @@
 		<int32 name="horizontalSamplingFactor" id="202"/>
 		<int32 name="verticalSamplingFactor" id="302"/>
 		<int32 name="quantizationTableID" id="402"/>
-		<int32 name="huffmanACTableID" id="502"/>
-		<int32 name="huffmanDCTableID" id="602"/>
 	</template>
 
-	<template name="QuantizationTableMessage" id="5">
-		<int32 name="tableId" id="105"/>
-		<int32 name="precision" id="205"/>
-		<byteVector name="table" id="305"/>
+	<template name="QuantizationTableMessage" id="3">
+		<int32 name="tableId" id="103"/>
+		<int32 name="precision" id="203"/>
+		<byteVector name="table" id="303"/>
 	</template>
 
-	<template name="MCUMessage" id="6">
-		<byteVector name="y" id="106"/>
-		<byteVector name="cb" id="206"/>
-		<byteVector name="cr" id="306"/>
+	<template name="MCUMessage" id="4">
+		<byteVector name="y" id="104"/>
+		<byteVector name="cb" id="204"/>
+		<byteVector name="cr" id="304"/>
 	</template>
 
 </templates>

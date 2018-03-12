@@ -23,17 +23,25 @@ public class JPGScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	
+	int mcuWidth = 0;
+	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
+	int aboutToSend = 0;
 	
-	MCU mcu = new MCU();
+	Header header;
+	MCU mcu1 = new MCU();
+	MCU mcu2 = new MCU();
+	MCU mcu3 = new MCU();
+	MCU mcu4 = new MCU();
+	ArrayList<MCU> mcus = null;
 	
 	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
 		super(graphManager, NONE, output);
 		this.output = output;
 	}
 	
-	public static Header ReadJPG(String filename) throws IOException {
+	public static Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
@@ -62,16 +70,16 @@ public class JPGScanner extends PronghornStage {
 					header.frameType = "Baseline";
 					ReadStartOfFrame(f, header);
 				}
-				// only Baseline is supported for now
+				// only Baseline and Progressive are supported for now
 				/*else if (current == JPGConstants.SOF1) {
 					header.frameType = "Extended Sequential";
 					ReadStartOfFrame(f, header);
-				}
+				}*/
 				else if (current == JPGConstants.SOF2) {
 					header.frameType = "Progressive";
 					ReadStartOfFrame(f, header);
 				}
-				else if (current == JPGConstants.SOF3) {
+				/*else if (current == JPGConstants.SOF3) {
 					header.frameType = "Lossless";
 					ReadStartOfFrame(f, header);
 				}*/
@@ -85,9 +93,6 @@ public class JPGScanner extends PronghornStage {
 				else if (current == JPGConstants.DRI) {
 					ReadRestartInterval(f, header);
 				}
-				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-					ReadRSTN(f, header);
-				}
 				else if (current >= JPGConstants.APP0 && current <= JPGConstants.APP15) {
 					ReadAPPN(f, header);
 				}
@@ -99,8 +104,8 @@ public class JPGScanner extends PronghornStage {
 					current = (short)f.readUnsignedByte();
 					continue;
 				}
-				else if (current == JPGConstants.JPG0 ||
-						 current == JPGConstants.JPG13 ||
+				else if ((current >= JPGConstants.JPG0 &&
+						 current <= JPGConstants.JPG13) ||
 						 current == JPGConstants.DNL ||
 						 current == JPGConstants.DHP ||
 						 current == JPGConstants.EXP) {
@@ -134,6 +139,12 @@ public class JPGScanner extends PronghornStage {
 					f.close();
 					return header;
 				}
+				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+					System.err.println("Error - RSTN detected before SOS");
+					header.valid = false;
+					f.close();
+					return header;
+				}
 				else {
 					System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
 					header.valid = false;
@@ -152,94 +163,197 @@ public class JPGScanner extends PronghornStage {
 			current = (short)f.readUnsignedByte();
 		}
 		if (header.valid) {
-			current = (short)f.readUnsignedByte();
-			while (true) {
-				last = current;
+			if (header.frameType.equals("Progressive")) {
+				int numScans = 0;
 				current = (short)f.readUnsignedByte();
-				if      (last == 0xFF && current == JPGConstants.EOI) {
-					System.out.println("End of Image");
-					break;
-				}
-				else if (last == 0xFF && current == 0x00) {
-					header.imageData.add(last);
-					// advance by a byte, to drop 0x00
+				while (true) {
+					last = current;
 					current = (short)f.readUnsignedByte();
+					if (last == 0xFF) {
+						if      (current == JPGConstants.EOI) {
+							System.out.println("End of Image");
+							break;
+						}
+						else if (current == 0x00) {
+							header.imageData.add(last);
+							// advance by a byte, to drop 0x00
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current == JPGConstants.DHT) {
+							if (header.imageData.size() > 0) {
+								if (!decodeScan(header, mcus, numScans)) {
+									return header;
+								}
+								numScans += 1;
+							}
+							
+							ReadHuffmanTable(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current == JPGConstants.SOS) {
+							if (header.imageData.size() > 0) {
+								if (!decodeScan(header, mcus, numScans)) {
+									return header;
+								}
+								numScans += 1;
+							}
+							
+							ReadStartOfScan(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+							ReadRSTN(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current != 0xFF) {
+							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							header.valid = false;
+							f.close();
+							return header;
+						}
+					}
+					else {
+						header.imageData.add(last);
+					}
 				}
-				// this doesn't seem to be true for SOF2
-				else if (last == 0xFF) {
-					System.err.println("Invalid marker during compressed data scan: " + String.format("0x%2x", current));
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else {
-					header.imageData.add(last);
+			}
+			else { // if (header.frameType.equals("Baseline")) {
+				current = (short)f.readUnsignedByte();
+				while (true) {
+					last = current;
+					current = (short)f.readUnsignedByte();
+					if (last == 0xFF) {
+						if      (current == JPGConstants.EOI) {
+							System.out.println("End of Image");
+							break;
+						}
+						else if (current == 0x00) {
+							header.imageData.add(last);
+							// advance by a byte, to drop 0x00
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
+							ReadRSTN(f, header);
+							current = (short)f.readUnsignedByte();
+						}
+						else if (current != 0xFF) {
+							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							header.valid = false;
+							f.close();
+							return header;
+						}
+					}
+					else {
+						header.imageData.add(last);
+					}
 				}
 			}
 		}
 		f.close();
 		
-		for (int i = 0; i < header.colorComponents.size(); ++i) {
-			if (header.colorComponents.get(i).quantizationTableID >= header.quantizationTables.size()) {
-				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
-				header.valid = false;
-			}
-			if (header.colorComponents.get(i).huffmanDCTableID >= header.huffmanDCTables.size()) {
-				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
-				header.valid = false;
-			}
-			if (header.colorComponents.get(i).huffmanACTableID >= header.huffmanACTables.size()) {
-				System.err.println("Error - Color component " + i + " using invalid quantization table ID " + header.colorComponents.get(i).quantizationTableID);
-				header.valid = false;
-			}
-		}
-		/*if (header.quantizationTables.size() != 2) {
-			System.err.println("Error - " + header.quantizationTables.size() + " Quantization tables given (2 required)");
+		if (header.numComponents != 1 && header.numComponents != 3) {
+			System.err.println("Error - " + header.numComponents + " color components given (1 or 3 required)");
 			header.valid = false;
-		}
-		if ((header.huffmanDCTables.size() != 1 || header.huffmanACTables.size() != 1) &&
-			(header.huffmanDCTables.size() != 2 || header.huffmanACTables.size() != 2)) {
-			System.err.println("Error - " + (header.huffmanDCTables.size() + header.huffmanACTables.size()) + " Huffman tables given (2 or 4 required)");
-			header.valid = false;
-		}*/
-		if (header.colorComponents.size() != 1 && header.colorComponents.size() != 3) {
-			System.err.println("Error - " + header.colorComponents.size() + " color components given (1 or 3 required)");
-			header.valid = false;
+			return header;
 		}
 		
-		if (header.huffmanDCTables.size() == 2) {
-			if (header.huffmanDCTables.get(0).tableID == header.huffmanDCTables.get(1).tableID) {
-				System.err.println("Error - Huffman DC tables given same ID");
-				header.valid = false;
-			}
-			else if (header.huffmanDCTables.get(0).tableID > header.huffmanDCTables.get(1).tableID) {
-				HuffmanTable temp = header.huffmanDCTables.get(0);
-				header.huffmanDCTables.remove(0);
-				header.huffmanDCTables.add(temp);
-			}
+		if (header.numComponents > 0 &&
+			(header.colorComponents[0].horizontalSamplingFactor > 2 ||
+			 header.colorComponents[0].verticalSamplingFactor > 2)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
 		}
-		if (header.huffmanACTables.size() == 2) {
-			if (header.huffmanACTables.get(0).tableID == header.huffmanACTables.get(1).tableID) {
-				System.err.println("Error - Huffman AC tables given same ID");
-				header.valid = false;
-			}
-			else if (header.huffmanACTables.get(0).tableID > header.huffmanACTables.get(1).tableID) {
-				HuffmanTable temp = header.huffmanACTables.get(0);
-				header.huffmanACTables.remove(0);
-				header.huffmanACTables.add(temp);
-			}
+		if (header.numComponents > 1 &&
+			(header.colorComponents[1].horizontalSamplingFactor != 1 ||
+			 header.colorComponents[1].verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
 		}
-		
-		for (int i = 0; i < header.colorComponents.size(); ++i) {
-			if (header.colorComponents.get(i).horizontalSamplingFactor != 1 ||
-				header.colorComponents.get(i).verticalSamplingFactor != 1) {
-				System.err.println("Error - Sampling Factors not yet supported");
-				header.valid = false;
-				break;
-			}
+		if (header.numComponents > 2 &&
+			(header.colorComponents[2].horizontalSamplingFactor != 1 ||
+			 header.colorComponents[2].verticalSamplingFactor != 1)) {
+			System.err.println("Error - Unsupported Sampling Factor");
+			header.valid = false;
 		}
 		
 		return header;
+	}
+	
+	// decode a whole scan, progressive images only
+	private static boolean decodeScan(Header header, ArrayList<MCU> mcus, int numScans) {
+		// decode scan so far
+		System.out.println("Decoding a scan of size " + header.imageData.size());
+		HuffmanDecoder.beginDecode(header);
+
+		MCU mcu1 = null;
+		MCU mcu2 = null;
+		MCU mcu3 = null;
+		MCU mcu4 = null;
+		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
+		int vertical = header.colorComponents[0].verticalSamplingFactor;
+		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+		int numProcessed = 0;
+		while (numProcessed < numMCUs) {
+			if (mcus.size() < numMCUs) {
+				if (horizontal == 1 && vertical == 1) {
+					mcu1 = new MCU();
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					mcu1 = new MCU();
+					mcu2 = new MCU();
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					mcu1 = new MCU();
+					mcu2 = new MCU();
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					mcu1 = new MCU();
+					mcu2 = new MCU();
+					mcu3 = new MCU();
+					mcu4 = new MCU();
+				}
+			}
+			else {
+				if (horizontal == 1 && vertical == 1) {
+					mcu1 = mcus.get(numProcessed);
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					mcu1 = mcus.get(numProcessed);
+					mcu2 = mcus.get(numProcessed + 1);
+					mcu3 = mcus.get(numProcessed + 2);
+					mcu4 = mcus.get(numProcessed + 3);
+				}
+			}
+			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
+				System.err.println("Error during scan " + numScans);
+				return false;
+			}
+			mcus.add(mcu1);
+			numProcessed += 1;
+			if (header.colorComponents[0].horizontalSamplingFactor == 2) {
+				mcus.add(mcu2);
+				numProcessed += 1;
+			}
+			if (header.colorComponents[0].verticalSamplingFactor == 2) {
+				mcus.add(mcu3);
+				numProcessed += 1;
+			}
+			if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+				header.colorComponents[0].verticalSamplingFactor == 2) {
+				mcus.add(mcu4);
+				numProcessed += 1;
+			}
+		}
+		header.imageData.clear();
+		return true;
 	}
 	
 	private static void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
@@ -252,7 +366,7 @@ public class JPGScanner extends PronghornStage {
 			QuantizationTable table = new QuantizationTable();
 			table.tableID = (short)(info & 0x0F);
 			
-			if (table.tableID > 1) {
+			if (table.tableID > 3) {
 				System.err.println("Error - Invalid Quantization table ID: " + table.tableID);
 				header.valid = false;
 				return;
@@ -264,13 +378,17 @@ public class JPGScanner extends PronghornStage {
 			else {
 				table.precision = 2;
 			}
-			for (int i = 0; i < 64; ++i) {
-				table.table[i] = f.readUnsignedByte();
-				if (table.precision == 2) {
-					table.table[i] = table.table[i] << 8 + f.readUnsignedByte();
+			if (table.precision == 2) {
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = f.readUnsignedByte() << 8 + f.readUnsignedByte();
 				}
 			}
-			header.quantizationTables.add(table);
+			else {
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = f.readUnsignedByte();
+				}
+			}
+			header.quantizationTables[table.tableID] = table;
 			length -= 64 * table.precision + 1;
 		}
 		if (length != 0) {
@@ -280,7 +398,7 @@ public class JPGScanner extends PronghornStage {
 	}
 	
 	private static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
-		if (header.colorComponents.size() != 0) {
+		if (header.numComponents != 0) {
 			System.err.println("Error - Multiple SOFs detected");
 			header.valid = false;
 			return;
@@ -305,17 +423,46 @@ public class JPGScanner extends PronghornStage {
 			return;
 		}
 		
-		int numComponents = f.readUnsignedByte();
-		for (int i = 0; i < numComponents; ++i) {
+		header.numComponents = (short)f.readUnsignedByte();
+		if (header.numComponents == 4) {
+			System.err.println("Error - CMYK color mode not supported");
+			header.valid = false;
+			return;
+		}
+		for (int i = 0; i < header.numComponents; ++i) {
 			ColorComponent component = new ColorComponent();
 			component.componentID = (short)f.readUnsignedByte();
 			short samplingFactor = (short)f.readUnsignedByte();
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
 			component.quantizationTableID = (short)f.readUnsignedByte();
-			header.colorComponents.add(component);
+			
+			if (component.componentID == 0) {
+				header.zeroBased = true;
+			}
+			if (header.zeroBased) {
+				component.componentID += 1;
+			}
+			
+			if (component.componentID == 4 || component.componentID == 5) {
+				System.err.println("Error - YIQ color mode not supported");
+				header.valid = false;
+				return;
+			}
+			if (header.colorComponents[component.componentID - 1] != null) {
+				System.err.println("Error - Duplicate color component ID");
+				header.valid = false;
+				return;
+			}
+			if (component.quantizationTableID > 3) {
+				System.err.println("Error - Invalid Quantization table ID in frame components");
+				header.valid = false;
+				return;
+			}
+			
+			header.colorComponents[component.componentID - 1] = component;
 		}
-		if (length - 8 - (numComponents * 3) != 0) {
+		if (length - 8 - (header.numComponents * 3) != 0) {
 			System.err.println("Error - SOF Invalid");
 			header.valid = false;
 		}
@@ -331,8 +478,14 @@ public class JPGScanner extends PronghornStage {
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
+			/*if (ACTable) {
+				System.out.println("AC Table " + table.tableID);
+			}
+			else {
+				System.out.println("DC Table " + table.tableID);
+			}*/
 			
-			if (table.tableID > 1) {
+			if (table.tableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
 				header.valid = false;
 				return;
@@ -358,10 +511,10 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 			if (ACTable) {
-				header.huffmanACTables.add(table);
+				header.huffmanACTables[table.tableID] = table;
 			}
 			else {
-				header.huffmanDCTables.add(table);
+				header.huffmanDCTables[table.tableID] = table;
 			}
 			length -= allSymbols + 17;
 		}
@@ -372,7 +525,7 @@ public class JPGScanner extends PronghornStage {
 	}
 	
 	private static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
-		if (header.colorComponents.size() == 0) {
+		if (header.numComponents == 0) {
 			System.err.println("Error - SOS detected before SOF");
 			header.valid = false;
 			return;
@@ -380,47 +533,51 @@ public class JPGScanner extends PronghornStage {
 		System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		int numComponents = f.readUnsignedByte();
-		if (numComponents != header.colorComponents.size()) {
-			System.err.println("Error - Frame/Scan Color Component mismatch");
-			header.valid = false;
-			return;
+		
+		for (int i = 0; i < header.numComponents; ++i) {
+			header.colorComponents[i].used = false;
 		}
+		
+		int numComponents = f.readUnsignedByte();
 		for (int i = 0; i < numComponents; ++i) {
 			short componentID = (short)f.readUnsignedByte();
 			short huffmanTableID = (short)f.readUnsignedByte();
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
+			//System.out.println("Component " + componentID);
 			
-			if (huffmanACTableID > 1 || huffmanDCTableID > 1) {
+			if (header.zeroBased) {
+				componentID += 1;
+			}
+			
+			if (huffmanACTableID > 3 || huffmanDCTableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID in scan components");
 				header.valid = false;
 				return;
 			}
-			
-			boolean found = false;
-			for (int j = 0; j < header.colorComponents.size(); ++j) {
-				if (componentID == header.colorComponents.get(j).componentID) {
-					header.colorComponents.get(j).huffmanACTableID = huffmanACTableID;
-					header.colorComponents.get(j).huffmanDCTableID = huffmanDCTableID;
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
+
+			if (componentID > header.numComponents) {
 				System.err.println("Error - Invalid Color Component ID: " + componentID);
 				header.valid = false;
 				return;
 			}
+			header.colorComponents[componentID - 1].huffmanACTableID = huffmanACTableID;
+			header.colorComponents[componentID - 1].huffmanDCTableID = huffmanDCTableID;
+			header.colorComponents[componentID - 1].used = true;
 		}
 		header.startOfSelection = (short)f.readUnsignedByte();
 		header.endOfSelection = (short)f.readUnsignedByte();
-		header.successiveApproximation = (short)f.readUnsignedByte();
+		short successiveApproximation = (short)f.readUnsignedByte();
+		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
+		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
+		//System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
 		
-		if (header.startOfSelection != 0 ||
+		if (header.frameType.equals("Baseline") &&
+			(header.startOfSelection != 0 ||
 			header.endOfSelection != 63 ||
-			header.successiveApproximation != 0) {
-			System.err.println("Error - Non-standard selection and successive approximation not yet supported");
+			header.successiveApproximationHigh != 0 ||
+			header.successiveApproximationLow != 0)) {
+			System.err.println("Error - Partial selection or approximation is incompatible with Baseline");
 			header.valid = false;
 			return;
 		}
@@ -435,9 +592,7 @@ public class JPGScanner extends PronghornStage {
 		System.out.println("Reading Restart Interval");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
-		//int restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
-		f.readUnsignedByte();
-		f.readUnsignedByte();
+		header.restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
 			header.valid = false;
@@ -472,49 +627,140 @@ public class JPGScanner extends PronghornStage {
 	public void queueFile(String inFile) {
 		inputFiles.add(inFile);
 	}
+	
+	public void sendMCU(MCU emcu) {
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
+			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.y[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cb[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CB_204);
+			
+			DataOutputBlobWriter.openField(mcuWriter);
+			for (int i = 0; i < 64; ++i) {
+				mcuWriter.writeShort(emcu.cr[i]);
+			}
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CR_304);
+			
+			
+			PipeWriter.publishWrites(output);
+			
+			numProcessed += 1;
+			if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
+				HuffmanDecoder.restart();
+			}
+		}
+		else {
+			System.err.println("Requesting shutdown1");
+			requestShutdown();
+		}
+	}
 
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			if (HuffmanDecoder.decodeHuffmanData(mcu)) {
-				// write mcu to pipe
-				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
-					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.y[i]);
+			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
+			int vertical = header.colorComponents[0].verticalSamplingFactor;
+			if (aboutToSend != 0) {
+				if (aboutToSend == 2) {
+					sendMCU(mcu2);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 4;
 					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cb[i]);
+					else {
+						aboutToSend = 0;
 					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
-					
-					DataOutputBlobWriter.openField(mcuWriter);
-					for (int i = 0; i < 64; ++i) {
-						mcuWriter.writeShort(mcu.cr[i]);
-					}
-					DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
-					PipeWriter.publishWrites(output);
-					
-					numProcessed += 1;
 				}
-				else {
-					System.err.println("Requesting shutdown");
-					requestShutdown();
+				else if (aboutToSend == 3) {
+					sendMCU(mcu3);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 2;
+					}
+					else {
+						aboutToSend = 0;
+					}
+				}
+				else { // if (aboutToSend == 4) {
+					sendMCU(mcu4);
+					aboutToSend = 0;
 				}
 			}
 			else {
-				break; // should never happen
+				if (header.frameType.equals("Progressive")) {
+					if (horizontal == 1 && vertical == 1) {
+						mcu1 = mcus.get(numProcessed);
+					}
+					else if (horizontal == 2 && vertical == 1) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+					}
+					else if (horizontal == 1 && vertical == 2) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+					}
+					else if (horizontal == 2 && vertical == 2) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+						mcu3 = mcus.get(numProcessed + 2);
+						mcu4 = mcus.get(numProcessed + 3);
+					}
+				}
+				else {
+					HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
+				}
+				// write mcu to pipe
+				if (horizontal == 1 && vertical == 1) {
+					sendMCU(mcu1);
+					aboutToSend = 0;
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					sendMCU(mcu1);
+					aboutToSend = 2;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu2);
+						aboutToSend = 0;
+					}
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					sendMCU(mcu1);
+					aboutToSend = 3;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu3);
+						aboutToSend = 0;
+					}
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					sendMCU(mcu1);
+					aboutToSend = 3;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu3);
+						aboutToSend = 2;
+						if (PipeWriter.hasRoomForWrite(output)) {
+							sendMCU(mcu2);
+							aboutToSend = 4;
+							if (PipeWriter.hasRoomForWrite(output)) {
+								sendMCU(mcu4);
+								aboutToSend = 0;
+							}
+						}
+					}
+				}
 			}
 		}
-		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
+		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
+			System.out.println("Opening " + file + " ...");
 			try {
-				Header header = ReadJPG(file + ".jpg");
+				mcus = new ArrayList<MCU>();
+				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
 					return;
@@ -525,90 +771,101 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
-					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximation);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Scanner requesting shutdown2");
 					requestShutdown();
 				}
 				// write color component data to pipe
-				for (int i = 0; i < header.colorComponents.size(); ++i) {
-					System.out.println("Attempting to write color component to pipe...");
+				for (int i = 0; i < header.numComponents; ++i) {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 						System.out.println("Scanner writing color component to pipe...");
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents.get(i).componentID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents.get(i).horizontalSamplingFactor);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents.get(i).verticalSamplingFactor);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, header.colorComponents.get(i).quantizationTableID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, header.colorComponents.get(i).huffmanACTableID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, header.colorComponents.get(i).huffmanDCTableID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
+						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, header.colorComponents[i].quantizationTableID);
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Requesting shutdown");
+						System.err.println("Scanner requesting shutdown3");
 						requestShutdown();
 					}
 				}
 				// write quantization tables to pipe
-				for (int i = 0; i < header.quantizationTables.size(); ++i) {
-					System.out.println("Attempting to write quantization table to pipe...");
-					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
-						System.out.println("Scanner writing quantization table to pipe...");
-
-						DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
-						DataOutputBlobWriter.openField(quantizationTableWriter);
-						quantizationTableWriter.writeInt(header.quantizationTables.get(i).tableID);
-						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
-						
-						DataOutputBlobWriter.openField(quantizationTableWriter);
-						quantizationTableWriter.writeInt(header.quantizationTables.get(i).precision);
-						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
-						
-						DataOutputBlobWriter.openField(quantizationTableWriter);
-						for (int j = 0; j < 64; ++j) {
-							quantizationTableWriter.writeInt(header.quantizationTables.get(i).table[j]);
+				for (int i = 0; i < header.quantizationTables.length; ++i) {
+					if (header.quantizationTables[i] != null) {
+						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
+							System.out.println("Scanner writing quantization table to pipe...");
+	
+							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
+							DataOutputBlobWriter.openField(quantizationTableWriter);
+							quantizationTableWriter.writeInt(header.quantizationTables[i].tableID);
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLEID_103);
+							
+							DataOutputBlobWriter.openField(quantizationTableWriter);
+							quantizationTableWriter.writeInt(header.quantizationTables[i].precision);
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_PRECISION_203);
+							
+							DataOutputBlobWriter.openField(quantizationTableWriter);
+							for (int j = 0; j < 64; ++j) {
+								quantizationTableWriter.writeInt(header.quantizationTables[i].table[j]);
+							}
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLE_303);
+							
+							PipeWriter.publishWrites(output);
 						}
-						DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
-						
-						PipeWriter.publishWrites(output);
-					}
-					else {
-						System.err.println("Requesting shutdown");
-						requestShutdown();
+						else {
+							System.err.println("Scanner requesting shutdown4");
+							requestShutdown();
+						}
 					}
 				}
-				HuffmanDecoder.beginDecode(header);
-				numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
+				if (header.frameType.equals("Baseline")) {
+					HuffmanDecoder.beginDecode(header);
+				}
+				mcuWidth = (header.width + 7) / 8;
+				mcuHeight = (header.height + 7) / 8;
+				if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+					((header.width - 1) / 8 + 1) % 2 == 1) {
+					mcuWidth += 1;
+				}
+				if (header.colorComponents[0].verticalSamplingFactor == 2 &&
+					((header.height - 1) / 8 + 1) % 2 == 1) {
+					mcuHeight += 1;
+				}
+				numMCUs = mcuWidth * mcuHeight;
 				numProcessed = 0;
 			}
 			catch (IOException e) {
-				System.err.println("Error - Unknown error reading " + file);
+				System.err.println("Error - Unknown error reading file " + file);
+			}
+			if (inputFiles.isEmpty()) {
+				System.out.println("All input files read.");
 			}
 		}
 	}
 	
-	/*public static void main(String[] args) {
+	public static void main(String[] args) {
 		Header header = null;
 		try {
-			header = ReadJPG("test_jpgs/huff_simple0.jpg");
+			ArrayList<MCU> mcus = new ArrayList<MCU>();
+			header = ReadJPG("tests/frog.jpg", mcus);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
-				for (int i = 0; i < header.quantizationTables.size(); ++i) {
-					System.out.println("Table ID: " + header.quantizationTables.get(i).tableID);
-					System.out.println("Precision: " + header.quantizationTables.get(i).precision);
-					System.out.print("Table Data:");
-					for (int j = 0; j < header.quantizationTables.get(i).table.length; ++j) {
-						if (j % 8 == 0) {
-							System.out.println();
+				for (int i = 0; i < header.quantizationTables.length; ++i) {
+					if (header.quantizationTables[i] != null) {
+						System.out.println("Table ID: " + header.quantizationTables[i].tableID);
+						System.out.println("Precision: " + header.quantizationTables[i].precision);
+						System.out.print("Table Data:");
+						for (int j = 0; j < header.quantizationTables[i].table.length; ++j) {
+							if (j % 8 == 0) {
+								System.out.println();
+							}
+							System.out.print(String.format("%02d ", header.quantizationTables[i].table[j]));
 						}
-						System.out.print(String.format("%02d ", header.quantizationTables.get(i).table[j]));
+						System.out.println();
 					}
-					System.out.println();
 				}
 				System.out.println("SOF============");
 				System.out.println("Frame Type: " + header.frameType);
@@ -617,47 +874,53 @@ public class JPGScanner extends PronghornStage {
 				System.out.println("Width: " + header.width);
 				System.out.println("DHT============");
 				System.out.println("DC Tables:");
-				for (int i = 0; i < header.huffmanDCTables.size(); ++i) {
-					System.out.println("Table ID: " + header.huffmanDCTables.get(i).tableID);
-					System.out.println("Symbols:");
-					for (int j = 0; j < header.huffmanDCTables.get(i).symbols.size(); ++j) {
-						System.out.print((j + 1) + ": ");
-						for (int k = 0; k < header.huffmanDCTables.get(i).symbols.get(j).size(); ++k) {
-							System.out.print(header.huffmanDCTables.get(i).symbols.get(j).get(k));
-							if (k < header.huffmanDCTables.get(i).symbols.get(j).size() - 1) {
-								System.out.print(", ");
+				for (int i = 0; i < header.huffmanDCTables.length; ++i) {
+					if (header.huffmanDCTables[i] != null) {
+						System.out.println("Table ID: " + header.huffmanDCTables[i].tableID);
+						System.out.println("Symbols:");
+						for (int j = 0; j < header.huffmanDCTables[i].symbols.size(); ++j) {
+							System.out.print((j + 1) + ": ");
+							for (int k = 0; k < header.huffmanDCTables[i].symbols.get(j).size(); ++k) {
+								System.out.print(header.huffmanDCTables[i].symbols.get(j).get(k));
+								if (k < header.huffmanDCTables[i].symbols.get(j).size() - 1) {
+									System.out.print(", ");
+								}
 							}
+							System.out.println();
 						}
-						System.out.println();
 					}
 				}
 				System.out.println("AC Tables:");
-				for (int i = 0; i < header.huffmanACTables.size(); ++i) {
-					System.out.println("Table ID: " + header.huffmanACTables.get(i).tableID);
-					System.out.println("Symbols:");
-					for (int j = 0; j < header.huffmanACTables.get(i).symbols.size(); ++j) {
-						System.out.print((j + 1) + ": ");
-						for (int k = 0; k < header.huffmanACTables.get(i).symbols.get(j).size(); ++k) {
-							System.out.print(header.huffmanACTables.get(i).symbols.get(j).get(k));
-							if (k < header.huffmanACTables.get(i).symbols.get(j).size() - 1) {
-								System.out.print(", ");
+				for (int i = 0; i < header.huffmanACTables.length; ++i) {
+					if (header.huffmanACTables[i] != null) {
+						System.out.println("Table ID: " + header.huffmanACTables[i].tableID);
+						System.out.println("Symbols:");
+						for (int j = 0; j < header.huffmanACTables[i].symbols.size(); ++j) {
+							System.out.print((j + 1) + ": ");
+							for (int k = 0; k < header.huffmanACTables[i].symbols.get(j).size(); ++k) {
+								System.out.print(header.huffmanACTables[i].symbols.get(j).get(k));
+								if (k < header.huffmanACTables[i].symbols.get(j).size() - 1) {
+									System.out.print(", ");
+								}
 							}
+							System.out.println();
 						}
-						System.out.println();
 					}
 				}
 				System.out.println("SOS============");
 				System.out.println("Start of Selection: " + header.startOfSelection);
 				System.out.println("End of Selection: " + header.endOfSelection);
-				System.out.println("Successive Approximation: " + header.successiveApproximation);
+				System.out.println("Successive Approximation High: " + header.successiveApproximationHigh);
+				System.out.println("Successive Approximation Low: " + header.successiveApproximationLow);
+				System.out.println("Restart Interval: " + header.restartInterval);
 				System.out.println("Color Components:");
-				for (int i = 0; i < header.colorComponents.size(); ++i) {
-					System.out.println("\tComponent ID: " + header.colorComponents.get(i).componentID);
-					System.out.println("\tHorizontal Sampling Factor: " + header.colorComponents.get(i).horizontalSamplingFactor);
-					System.out.println("\tVertical Sampling Factor: " + header.colorComponents.get(i).verticalSamplingFactor);
-					System.out.println("\tQuantization Table ID: " + header.colorComponents.get(i).quantizationTableID);
-					System.out.println("\tHuffman AC Table ID: " + header.colorComponents.get(i).huffmanACTableID);
-					System.out.println("\tHuffman DC Table ID: " + header.colorComponents.get(i).huffmanDCTableID);
+				for (int i = 0; i < header.numComponents; ++i) {
+					System.out.println("\tComponent ID: " + header.colorComponents[i].componentID);
+					System.out.println("\tHorizontal Sampling Factor: " + header.colorComponents[i].horizontalSamplingFactor);
+					System.out.println("\tVertical Sampling Factor: " + header.colorComponents[i].verticalSamplingFactor);
+					System.out.println("\tQuantization Table ID: " + header.colorComponents[i].quantizationTableID);
+					System.out.println("\tHuffman AC Table ID: " + header.colorComponents[i].huffmanACTableID);
+					System.out.println("\tHuffman DC Table ID: " + header.colorComponents[i].huffmanDCTableID);
 				}
 				System.out.println("Length of Image Data: " + header.imageData.size());
 			}
@@ -671,5 +934,5 @@ public class JPGScanner extends PronghornStage {
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
-	}*/
+	}
 }
