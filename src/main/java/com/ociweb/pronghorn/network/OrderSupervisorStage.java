@@ -238,12 +238,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				//	ServerCoordinator.orderSuperStart = System.nanoTime();
 					
 		        }
-		        
-		        long movedUpCount = 0;
-		        long lastFailure = -1;
-		        
-		        
-		        
+	
 				int expected = expectedSquenceNos[idx]; 
 				
 		        if (sequenceNo < expected) {
@@ -260,6 +255,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 		        	} else {
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
+
+				        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+				        	
 		        			//drop the data
 		        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
@@ -270,27 +268,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	
 		        } else {
 		        	
-		        	long now = System.currentTimeMillis();
-		        	if (-1 != lastFailure) {
-		        		//TODO: turn this into an assert
-		        		if (now-lastFailure>20_000) { //20 sec
-		        			logger.info("Hang detected");
-		        			logger.info("looking for {} but got {} for connection {} on idx {}",
-		        					     sequenceNo, expected, channelId, pipeIdx);
-		        			
-		        			if (null!=recordChannelId) {
-		        				//we have the most recent history so do display it.
-		        				displayRecentRequests();
-		        			}
-		        			
-		        			
-		        			System.exit(-1);
-		        		}	        		
-		        	}
-		        	lastFailure = now;
-		        	
-		        	
-		        	
+		        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
 		        	
 		            //larger value and not ready yet
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
@@ -347,6 +325,33 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return didWork;
 	}
 
+	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
+		long now = System.currentTimeMillis();
+		if (failureIterations>1000 && lastFailure!=-1) {
+
+				logger.info("Hang detected");
+				logger.info("looking for {} but got {} for connection {} on idx {}",
+						     sequenceNo, expected, channelId, pipeIdx);
+				logger.info("jumped ahead a total of {} ",movedUpCount);
+				if (null!=recordChannelId) {
+					//we have the most recent history so do display it.
+					displayRecentRequests();
+				}
+				
+				
+				System.exit(-1);
+			        
+		} else {
+			if (-1==lastFailure) {
+				failureIterations = 0;
+				lastFailure = now;
+			} else {
+				failureIterations++;
+			}
+		}
+		return true;
+	}
+
     ////////////////////////////////////
 	///used when assert is on to record the last few data points for review
 	////////////////////////////////////
@@ -357,7 +362,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	long[] recordChannelId;
 	int[]  recordSequenceNo;
 	int[]  recordPipeIdx;
-	
+    
+    long movedUpCount = 0;
+    long lastFailure = -1;
+    int  failureIterations = 0;
+     
+    
 	private boolean recordInputs(long channelId, int sequenceNo, int pipeIdx) {
 		if (null==recordChannelId) {
 			recordChannelId = new long[RECORD_SIZE];
