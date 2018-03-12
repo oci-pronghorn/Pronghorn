@@ -253,6 +253,7 @@ public class JPGScanner extends PronghornStage {
 		if (header.numComponents != 1 && header.numComponents != 3) {
 			System.err.println("Error - " + header.numComponents + " color components given (1 or 3 required)");
 			header.valid = false;
+			return header;
 		}
 		
 		if (header.numComponents > 0 &&
@@ -387,7 +388,6 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 			header.quantizationTables[table.tableID] = table;
-			System.out.println("table " + table.tableID);
 			length -= 64 * table.precision + 1;
 		}
 		if (length != 0) {
@@ -470,12 +470,12 @@ public class JPGScanner extends PronghornStage {
 			short info = (short)f.readUnsignedByte();
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
-			if (ACTable) {
+			/*if (ACTable) {
 				System.out.println("AC Table " + table.tableID);
 			}
 			else {
 				System.out.println("DC Table " + table.tableID);
-			}
+			}*/
 			
 			if (table.tableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
@@ -524,7 +524,7 @@ public class JPGScanner extends PronghornStage {
 		}
 		System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
-		System.out.println("Length: " + (length + 2));
+		//System.out.println("Length: " + (length + 2));
 		
 		for (int i = 0; i < header.numComponents; ++i) {
 			header.colorComponents[i].used = false;
@@ -536,7 +536,7 @@ public class JPGScanner extends PronghornStage {
 			short huffmanTableID = (short)f.readUnsignedByte();
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
-			System.out.println("Component " + componentID);
+			//System.out.println("Component " + componentID);
 			
 			if (huffmanACTableID > 3 || huffmanDCTableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID in scan components");
@@ -558,7 +558,7 @@ public class JPGScanner extends PronghornStage {
 		short successiveApproximation = (short)f.readUnsignedByte();
 		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
 		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
-		System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
+		//System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
 		
 		if (header.frameType.equals("Baseline") &&
 			(header.startOfSelection != 0 ||
@@ -700,9 +700,10 @@ public class JPGScanner extends PronghornStage {
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
+			System.out.println("Opening " + file + " ...");
 			try {
 				mcus = new ArrayList<MCU>();
-				header = ReadJPG(file + ".jpg", mcus);
+				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file " + file + " invalid");
 					return;
@@ -721,12 +722,11 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Requesting shutdown");
+					System.err.println("Scanner requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
 				for (int i = 0; i < header.numComponents; ++i) {
-					System.out.println("Attempting to write color component to pipe...");
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 						System.out.println("Scanner writing color component to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
@@ -738,14 +738,13 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Requesting shutdown");
+						System.err.println("Scanner requesting shutdown");
 						requestShutdown();
 					}
 				}
 				// write quantization tables to pipe
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
 					if (header.quantizationTables[i] != null) {
-						System.out.println("Attempting to write quantization table to pipe...");
 						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
 							System.out.println("Scanner writing quantization table to pipe...");
 	
@@ -767,7 +766,7 @@ public class JPGScanner extends PronghornStage {
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("Requesting shutdown");
+							System.err.println("Scanner requesting shutdown");
 							requestShutdown();
 						}
 					}
@@ -789,7 +788,7 @@ public class JPGScanner extends PronghornStage {
 				numProcessed = 0;
 			}
 			catch (IOException e) {
-				System.err.println("Error - Unknown error reading " + file);
+				System.err.println("Error - Unknown error reading file " + file);
 			}
 		}
 	}

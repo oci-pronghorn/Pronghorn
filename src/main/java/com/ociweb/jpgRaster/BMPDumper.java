@@ -190,8 +190,15 @@ public class BMPDumper extends PronghornStage {
 				
 				if (count >= numMCUs) {
 					try {
-						System.out.println("Writing pixels to BMP file...");
-						Dump(pixels, filename + ".bmp", time);
+						int extension = filename.lastIndexOf('.');
+						if (extension == -1) {
+							filename += ".bmp";
+						}
+						else {
+							filename = filename.substring(0, extension) + ".bmp";
+						}
+						System.out.println("Writing to " + filename + " ...");
+						Dump(pixels, filename, time);
 						System.out.println("Done.");
 					}
 					catch (IOException e) {

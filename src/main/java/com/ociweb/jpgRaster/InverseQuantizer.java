@@ -94,7 +94,6 @@ public class InverseQuantizer extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 				
 				// write color component data to pipe
-				System.out.println("Attempting to write color component to pipe...");
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 					System.out.println("Inverse Quantizer writing color component to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
