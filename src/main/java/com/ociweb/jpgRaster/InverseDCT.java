@@ -23,42 +23,22 @@ public class InverseDCT extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
-	static double[] result = new double[64];
-	long time;
+	static double[] temp = new double[64];
 	
 	protected InverseDCT(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
-		this.time = 0;
 	}
 	
 	private static double[] idctMap = new double[64];
-	private static double[] kDCTMatrix = {
-			  0.3535533906,  0.3535533906,  0.3535533906,  0.3535533906,
-			  0.3535533906,  0.3535533906,  0.3535533906,  0.3535533906,
-			  0.4903926402,  0.4157348062,  0.2777851165,  0.0975451610,
-			 -0.0975451610, -0.2777851165, -0.4157348062, -0.4903926402,
-			  0.4619397663,  0.1913417162, -0.1913417162, -0.4619397663,
-			 -0.4619397663, -0.1913417162,  0.1913417162,  0.4619397663,
-			  0.4157348062, -0.0975451610, -0.4903926402, -0.2777851165,
-			  0.2777851165,  0.4903926402,  0.0975451610, -0.4157348062,
-			  0.3535533906, -0.3535533906, -0.3535533906,  0.3535533906,
-			  0.3535533906, -0.3535533906, -0.3535533906,  0.3535533906,
-			  0.2777851165, -0.4903926402,  0.0975451610,  0.4157348062,
-			 -0.4157348062, -0.0975451610,  0.4903926402, -0.2777851165,
-			  0.1913417162, -0.4619397663,  0.4619397663, -0.1913417162,
-			 -0.1913417162,  0.4619397663, -0.4619397663,  0.1913417162,
-			  0.0975451610, -0.2777851165,  0.4157348062, -0.4903926402,
-			  0.4903926402, -0.4157348062,  0.2777851165, -0.0975451610,
-			};
 	
 	// prepare idctMap
 	static {
 		for (int u = 0; u < 8; ++u) {
-			double c = 1.0f;
+			double c = 1.0 / 2.0;
 			if (u == 0) {
-				c = 1 / Math.sqrt(2.0);
+				c = 1 / Math.sqrt(2.0) / 2.0;
 			}
 			for (int x = 0; x < 8; ++x) {
 				idctMap[u * 8 + x] = c * Math.cos((2.0 * x + 1.0) * u * Math.PI / 16.0);
@@ -71,7 +51,7 @@ public class InverseDCT extends PronghornStage {
 		for (int y = 0; y < 8; ++y) {
 			temp = 0;
 			for (int v = 0; v < 8; ++v) {
-				temp += in[v * 8 + offset] * kDCTMatrix[8 * v + y];
+				temp += in[v * 8 + offset] * idctMap[8 * v + y];
 			}
 			out[y * 8 + offset] = temp;
 		}
@@ -82,15 +62,13 @@ public class InverseDCT extends PronghornStage {
 		for (int x = 0; x < 8; ++x) {
 			temp = 0;
 			for (int u = 0; u < 8; ++u) {
-				temp += in[u + offset * 8] * kDCTMatrix[8 * u + x];
+				temp += in[u + offset * 8] * idctMap[8 * u + x];
 			}
 			out[x + offset * 8] = (short) temp;
 		}
 	}
 	
 	private static void TransformBlock(short[] mcu) {
-		double[] temp;
-		temp = new double[64];
 		for (int i = 0; i < 8; ++i) {
 			TransformColumn(mcu, temp, i);
 		}

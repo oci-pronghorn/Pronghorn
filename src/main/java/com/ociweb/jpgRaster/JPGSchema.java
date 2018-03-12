@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class JPGSchema extends MessageSchema<JPGSchema> {
-	protected JPGSchema(FieldReferenceOffsetManager from) { 
+	protected JPGSchema(FieldReferenceOffsetManager from) {
 	    super(from);
 	}
 
@@ -25,7 +25,7 @@ public class JPGSchema extends MessageSchema<JPGSchema> {
 	    new long[]{2, 2, 0},
 	    new int[]{2, 2, 0});
 
-	protected JPGSchema() { 
+	protected JPGSchema() {
 	    super(FROM);
 	}
 

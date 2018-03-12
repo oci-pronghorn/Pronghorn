@@ -850,7 +850,7 @@ public class JPGScanner extends PronghornStage {
 		Header header = null;
 		try {
 			ArrayList<MCU> mcus = new ArrayList<MCU>();
-			header = ReadJPG("tests/frog.jpg", mcus);
+			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.length; ++i) {

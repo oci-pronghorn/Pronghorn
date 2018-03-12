@@ -57,7 +57,7 @@ public class JPG {
 		boolean valid = true;
 	}
 	
-	public static class MCU {		
+	public static class MCU {
 		short[] y = new short[64];
 		short[] cb = new short[64];
 		short[] cr = new short[64];
