@@ -437,6 +437,13 @@ public class JPGScanner extends PronghornStage {
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
 			component.quantizationTableID = (short)f.readUnsignedByte();
 			
+			if (component.componentID == 0) {
+				header.zeroBased = true;
+			}
+			if (header.zeroBased) {
+				component.componentID += 1;
+			}
+			
 			if (component.componentID == 4 || component.componentID == 5) {
 				System.err.println("Error - YIQ color mode not supported");
 				header.valid = false;
@@ -539,6 +546,10 @@ public class JPGScanner extends PronghornStage {
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
 			//System.out.println("Component " + componentID);
 			
+			if (header.zeroBased) {
+				componentID += 1;
+			}
+			
 			if (huffmanACTableID > 3 || huffmanDCTableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID in scan components");
 				header.valid = false;
@@ -618,25 +629,25 @@ public class JPGScanner extends PronghornStage {
 	}
 	
 	public void sendMCU(MCU emcu) {
-		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.y[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
 			
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.cb[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CB_204);
 			
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.cr[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CR_304);
 			
 			
 			PipeWriter.publishWrites(output);
@@ -647,7 +658,7 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		else {
-			System.err.println("Requesting shutdown");
+			System.err.println("Requesting shutdown1");
 			requestShutdown();
 		}
 	}
@@ -743,7 +754,7 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 		}
-		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
+		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			System.out.println("Opening " + file + " ...");
@@ -760,15 +771,10 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
-					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximationLow);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Scanner requesting shutdown");
+					System.err.println("Scanner requesting shutdown2");
 					requestShutdown();
 				}
 				// write color component data to pipe
@@ -779,40 +785,38 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, header.colorComponents[i].quantizationTableID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, header.colorComponents[i].huffmanACTableID);
-						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, header.colorComponents[i].huffmanDCTableID);
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Scanner requesting shutdown");
+						System.err.println("Scanner requesting shutdown3");
 						requestShutdown();
 					}
 				}
 				// write quantization tables to pipe
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
 					if (header.quantizationTables[i] != null) {
-						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5)) {
+						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
 							System.out.println("Scanner writing quantization table to pipe...");
 	
 							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
 							DataOutputBlobWriter.openField(quantizationTableWriter);
 							quantizationTableWriter.writeInt(header.quantizationTables[i].tableID);
-							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLEID_105);
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLEID_103);
 							
 							DataOutputBlobWriter.openField(quantizationTableWriter);
 							quantizationTableWriter.writeInt(header.quantizationTables[i].precision);
-							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_PRECISION_205);
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_PRECISION_203);
 							
 							DataOutputBlobWriter.openField(quantizationTableWriter);
 							for (int j = 0; j < 64; ++j) {
 								quantizationTableWriter.writeInt(header.quantizationTables[i].table[j]);
 							}
-							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_5_FIELD_TABLE_305);
+							DataOutputBlobWriter.closeHighLevelField(quantizationTableWriter, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLE_303);
 							
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("Scanner requesting shutdown");
+							System.err.println("Scanner requesting shutdown4");
 							requestShutdown();
 						}
 					}

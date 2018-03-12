@@ -40,6 +40,7 @@ public class JPG {
 		int height;
 		int width;
 		short numComponents;
+		boolean zeroBased = false;
 		
 		// SOS
 		short startOfSelection;

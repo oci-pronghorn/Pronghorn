@@ -19,6 +19,7 @@ public class YCbCrToRGB extends PronghornStage {
 	int mcuWidth = 0;
 	int mcuHeight = 0;
 	int numProcessed = 0;
+	int aboutToSend = 0;
 	
 	Header header;
 	MCU mcu1 = new MCU();
@@ -180,38 +181,67 @@ public class YCbCrToRGB extends PronghornStage {
 			numProcessed += 1;
 			return;
 		}
-		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_6)) {
+		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.y[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
 			
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.cb[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CB_206);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CB_204);
 			
 			DataOutputBlobWriter.openField(mcuWriter);
 			for (int i = 0; i < 64; ++i) {
 				mcuWriter.writeShort(emcu.cr[i]);
 			}
-			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_6_FIELD_CR_306);
+			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CR_304);
 			
 			PipeWriter.publishWrites(output);
 
 			numProcessed += 1;
 		}
 		else {
-			System.err.println("Requesting shutdown");
+			System.err.println("YCbCrToRGB requesting shutdown");
 			requestShutdown();
 		}
 	}
 
 	@Override
 	public void run() {
+		if (PipeWriter.hasRoomForWrite(output) && aboutToSend != 0) {
+			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
+			int vertical = header.colorComponents[0].verticalSamplingFactor;
+			if (aboutToSend != 0) {
+				if (aboutToSend == 2) {
+					sendMCU(mcu2);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 3;
+					}
+					else {
+						aboutToSend = 0;
+					}
+				}
+				else if (aboutToSend == 3) {
+					sendMCU(mcu3);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 4;
+					}
+					else {
+						aboutToSend = 0;
+					}
+				}
+				else { // if (aboutToSend == 4) {
+					sendMCU(mcu4);
+					aboutToSend = 0;
+				}
+			}
+		}
+		
 		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -222,11 +252,6 @@ public class YCbCrToRGB extends PronghornStage {
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				String filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
-				header.frameType = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, new StringBuilder()).toString();
-				header.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501);
-				header.startOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601);
-				header.endOfSelection = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701);
-				header.successiveApproximationLow = (short) PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801);
 				PipeReader.releaseReadLock(input);
 
 				// write header to pipe
@@ -235,11 +260,6 @@ public class YCbCrToRGB extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, filename);
-					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FRAMETYPE_401, header.frameType);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_PRECISION_501, header.precision);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_STARTOFSELECTION_601, header.startOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_ENDOFSELECTION_701, header.endOfSelection);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_SUCCESSIVEAPPROXIMATION_801, header.successiveApproximationLow);
 					PipeWriter.publishWrites(output);
 				}
 				else {
@@ -258,8 +278,6 @@ public class YCbCrToRGB extends PronghornStage {
 				component.horizontalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202);
 				component.verticalSamplingFactor = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302);
 				component.quantizationTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402);
-				component.huffmanACTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502);
-				component.huffmanDCTableID = (short) PipeReader.readInt(input, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602);
 				header.colorComponents[component.componentID - 1] = component;
 				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
@@ -271,8 +289,6 @@ public class YCbCrToRGB extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_QUANTIZATIONTABLEID_402, component.quantizationTableID);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANACTABLEID_502, component.huffmanACTableID);
-					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HUFFMANDCTABLEID_602, component.huffmanDCTableID);
 					PipeWriter.publishWrites(output);
 				}
 				else {
@@ -289,8 +305,8 @@ public class YCbCrToRGB extends PronghornStage {
 					mcuHeight += 1;
 				}
 			}
-			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_6) {
-				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_6_FIELD_Y_106);
+			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
+				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
 				if (count == 0) {
 					for (int i = 0; i < 64; ++i) {
 						mcu1.y[i] = mcuReader.readShort();
@@ -372,27 +388,46 @@ public class YCbCrToRGB extends PronghornStage {
 						convertYCbCrToRGB(mcu3);
 						convertYCbCrToRGB(mcu4);
 						sendMCU(mcu1);
-						sendMCU(mcu2);
-						sendMCU(mcu3);
-						sendMCU(mcu4);
+						aboutToSend = 2;
+						if (PipeWriter.hasRoomForWrite(output)) {
+							sendMCU(mcu2);
+							aboutToSend = 3;
+							if (PipeWriter.hasRoomForWrite(output)) {
+								sendMCU(mcu3);
+								aboutToSend = 4;
+								if (PipeWriter.hasRoomForWrite(output)) {
+									sendMCU(mcu4);
+									aboutToSend = 0;
+								}
+							}
+						}
 					}
 					else if (header.colorComponents[0].horizontalSamplingFactor == 2) {
 						expandColumns(mcu1, mcu2);
 						convertYCbCrToRGB(mcu1);
 						convertYCbCrToRGB(mcu2);
 						sendMCU(mcu1);
-						sendMCU(mcu2);
+						aboutToSend = 2;
+						if (PipeWriter.hasRoomForWrite(output)) {
+							sendMCU(mcu2);
+							aboutToSend = 0;
+						}
 					}
 					else if (header.colorComponents[0].verticalSamplingFactor == 2) {
 						expandRows(mcu1, mcu3);
 						convertYCbCrToRGB(mcu1);
 						convertYCbCrToRGB(mcu3);
 						sendMCU(mcu1);
-						sendMCU(mcu3);
+						aboutToSend = 3;
+						if (PipeWriter.hasRoomForWrite(output)) {
+							sendMCU(mcu3);
+							aboutToSend = 0;
+						}
 					}
 					else {
 						convertYCbCrToRGB(mcu1);
 						sendMCU(mcu1);
+						aboutToSend = 0;
 					}
 					
 					count = 0;
