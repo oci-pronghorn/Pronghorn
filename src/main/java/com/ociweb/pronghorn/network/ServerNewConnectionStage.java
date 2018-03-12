@@ -1,21 +1,27 @@
 package com.ociweb.pronghorn.network;
 
-import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.ServiceObjectHolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.SSLEngine;
 import java.io.IOException;
-import java.net.*;
+import java.net.BindException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.StandardSocketOptions;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+
+import javax.net.ssl.SSLEngine;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 /**
  * General base class for server construction.
@@ -211,7 +217,12 @@ public class ServerNewConnectionStage extends PronghornStage{
         try {//selector may be null if shutdown was called on startup.
            if (null!=selector && selector.selectNow() > selectionKeysAllowedToWait) {
                 //we know that there is an interesting (non zero positive) number of keys waiting.
-                                
+        
+        	    //we have no pipes to monitor so this must be done explicity
+        	    if (null != this.didWorkMonitor) {
+        	    	this.didWorkMonitor.published(Integer.MAX_VALUE);
+        	    }
+        	    
                 Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
                 while (keyIterator.hasNext()) {
                 

@@ -42,6 +42,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.IPv4Tools;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -235,13 +236,13 @@ public class NetGraphBuilder {
 		
 	}
 
-	private static void buildParser(GraphManager gm, ClientCoordinator ccm, 
-			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
-		
-		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], ccm, HTTPSpecification.defaultSpec());
-		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
-		ccm.processNota(gm, parser);
-	}
+//	private static void buildParser(GraphManager gm, ClientCoordinator ccm, 
+//			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
+//		
+//		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], ccm, HTTPSpecification.defaultSpec());
+//		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+//		ccm.processNota(gm, parser);
+//	}
 
 
 	public static GraphManager buildHTTPServerGraph(final GraphManager graphManager, final ModuleConfig modules, final ServerCoordinator coordinator,
@@ -730,6 +731,7 @@ public class NetGraphBuilder {
 	
 	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
 			                                GraphManager gm, int baseRate) {
+
 		///////////////
 		//telemetry latency can be as large as 160ms so we run this sever very slow
 		//this ensures that the application runs normally without starvation 
@@ -833,6 +835,7 @@ public class NetGraphBuilder {
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
 		ModuleConfig config = new ModuleConfig(){
+			MonitorConsoleStage monitor;
 	
 			private final String[] routes = new String[] {
 					 "/${path}"			
@@ -877,14 +880,20 @@ public class NetGraphBuilder {
 						break;
 
 						case 1:
-						activeStage = DotModuleStage.newInstance(graphManager, 
+					    if (null==monitor) {	
+							monitor = MonitorConsoleStage.attach(graphManager);	
+					    }
+						activeStage = DotModuleStage.newInstance(graphManager, monitor,
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
 										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
-							activeStage = SummaryModuleStage.newInstance(graphManager, 
+						    if (null==monitor) {	
+								monitor = MonitorConsoleStage.attach(graphManager);	
+						    }
+							activeStage = SummaryModuleStage.newInstance(graphManager, monitor,
 									inputPipes, 
 									staticFileOutputs = Pipe.buildPipes(instances, 
 											           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 

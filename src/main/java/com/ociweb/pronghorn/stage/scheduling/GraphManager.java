@@ -59,7 +59,7 @@ public class GraphManager {
 	//will show telemetry its self
 	public static boolean monitorAll = false;
 	public static boolean showScheduledRateOnTelemetry = false;
-	public static boolean showThreadIdOnTelemetry = false;
+	public static boolean showThreadIdOnTelemetry = true;
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
 	
@@ -216,9 +216,13 @@ public class GraphManager {
 	private Object lock = new Object();	
 	
 	private boolean enableMutation = true;
-	
+	final String name;
 	
 	public GraphManager() {
+		this(null);
+	}
+	
+	public GraphManager(String name) {
 		Arrays.fill(ringIdToStages, -1);
 		Arrays.fill(stageIdToInputsBeginIdx, -1);
 		Arrays.fill(multInputIds, -1);
@@ -228,13 +232,12 @@ public class GraphManager {
 		Arrays.fill(stageIdToNotasBeginIdx, -1);
 		Arrays.fill(multNotaIds, -1);
 		
-		stageStateData = new GraphManagerStageStateData();
-		recordTypeData = new BStructSchema();
-		
-				
+		this.stageStateData = new GraphManagerStageStateData();
+		this.recordTypeData = new BStructSchema();
+		this.name = name;		
 	}
 	
-	private GraphManager(GraphManagerStageStateData parentStageStateData, BStructSchema parentRecordTypeData) {
+	private GraphManager(GraphManagerStageStateData parentStageStateData, BStructSchema parentRecordTypeData, String name) {
 		Arrays.fill(ringIdToStages, -1);
 		Arrays.fill(stageIdToInputsBeginIdx, -1);
 		Arrays.fill(multInputIds, -1);
@@ -245,14 +248,15 @@ public class GraphManager {
 		Arrays.fill(multNotaIds, -1);
 		
 		//enables single point of truth for the stages states, all clones  share this object
-		stageStateData = parentStageStateData;
-		recordTypeData = parentRecordTypeData;
+		this.stageStateData = parentStageStateData;
+		this.recordTypeData = parentRecordTypeData;
+		this.name = name;
 	}
 	
 	
 
 	public static GraphManager cloneAll(GraphManager m) {
-		GraphManager clone = new GraphManager(m.stageStateData, m.recordTypeData);
+		GraphManager clone = new GraphManager(m.stageStateData, m.recordTypeData, m.name);
 		//register each stage
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
@@ -1582,7 +1586,8 @@ public class GraphManager {
     }
     
     public static void writeAsDOT(GraphManager m, AppendableBuilder target, boolean isVertical) {
-    	writeAsDOT(m,"ThisIsAGraph",target,isVertical,null,null,null);
+    	
+    	writeAsDOT(m,/*optional dynamic rollover text */null,target,isVertical,null,null,null);
     }
     
     
@@ -1639,6 +1644,10 @@ public class GraphManager {
 	        target.append("digraph ");
 	        if (null!=graphName) {
 	        	target.append(graphName);
+	        } else {
+	        	if (null!=m.name) {
+	        		target.append(m.name);
+	        	}
 	        }
 	        target.append(" {\n"); 
 	     //   target.append("concentrate=true\n");
@@ -1809,22 +1818,43 @@ public class GraphManager {
 			                
 			                pipeIdBytes = m.pipeDOTNames[pipe.id] = pipeId.getBytes();
 	                	}
-		                target.append(pipeIdBytes);
-		                
-		                target.append(LABEL_OPEN);
+
 		                
 		                //NOTE: special logic to turn off labels
 		                boolean showLabels = true;
 		                
 		                //NOTE: still thinking about this feature
-		                //if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)) {
-		                //	if (GraphManager.getOutputPipeCount(m, producer)>2) {
-		                //		showLabels = false; //do not show labels for large load balancers
-		                //	}
-		                //}
+		                if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)
+		                	) {
+		                	//if this producer writes to many pipes
+		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+							if (outputPipeCount>=8) {
+								//destinations must share
+								int con1 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 1).id);	
+								int con2 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 2).id);						
+								if (con1==con2) {
+									showLabels=false;
+								}		                		
+		                	}
+		                }
+		                
+		                //disables the pipe back label
+//		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
+//			                	) {
+//			                	if (GraphManager.getOutputPipeCount(m, consumer)>=16) {
+//			                		showLabels = false; //do not show labels for large load balancers
+//			                	}
+//			            }
 		                ////////////////////////////////////////
 		                
 		                if (showLabels && pipe.config().showLabels()) {
+		                	
+		                	
+		                	
+			                target.append(pipeIdBytes);
+			                
+			                target.append(LABEL_OPEN);
+			                
 			                target.append(m.pipeDOTSchemaNames[pipe.id]);
 			                		                
 			                if (null!=pipePercentileFullValues) {
@@ -1837,13 +1867,7 @@ public class GraphManager {
 			                target.append(WHITE_NEWLINE);
 			               			                
 			                if (null!=pipeTraffic) {
-			                	long traf = pipeTraffic[pipe.id];
-			                	if (traf>9999) {
-			                		Appendables.appendValue(target.append("Vol:"), traf);
-			                	} else {
-			                		Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
-			                	}
-			                	target.append(' ');			                	
+			                	appendVolume(target, pipeTraffic[pipe.id]);			                	
 			                } 
 			                	                    
 		                    
@@ -1853,30 +1877,97 @@ public class GraphManager {
 		                    	m.pipeDOTConst[pipe.id] = pipeMemory;
 		                    }
 		                    target.append(pipeMemory);
-			                			                
-		                }
-		                target.append(AQUOTE);
-		                		                
-		                int lineWidth = computeLineWidth(pipeTraffic, pipe);
-		                
-		                if (null!=pipePercentileFullValues) {		                	
-		                	int pctFull = pipePercentileFullValues[pipe.id];
-		                	if (pctFull>=60) {
-		                		target.append(",color=red");	    
-		                	} else if (pctFull>=40) {
-		                		target.append(",color=orange");	    
-		                	} else {
+		                    target.append(AQUOTE);	
+    		                
+						    int lineWidth = computeLineWidth(pipeTraffic, pipe);
+						    
+						    if (null!=pipePercentileFullValues) {		                	
+						    	int pctFull = pipePercentileFullValues[pipe.id];
+						    	if (pctFull>=60) {
+						    		target.append(",color=red");	    
+						    	} else if (pctFull>=40) {
+						    		target.append(",color=orange");	    
+						    	} else {
+						    	}
+						    }
+						    Appendables.appendValue(target.append(",penwidth="),lineWidth);
+						    
+						    target.append(CLOSEBRACKET_NEWLINE);
+		                    
+		                } else {
+		                	
+		                	
+		                	if (pipe.id == GraphManager.getInputPipe(m, consumer, 1).id) {
+		                		//show consolidated single line
+		                		
+		                				
+                				target.append(pipeIdBytes);
+		                		
+                				final int pipeSize = GraphManager.getInputPipeCount(m, consumer);
+                				long sumPctFull = 0;
+                				long sumTraffic = 0;
+                				for(int c=1; c<=pipeSize; c++) {
+                					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
+                					if (null!=pipePercentileFullValues) {
+                						sumPctFull += (long)pipePercentileFullValues[p.id];
+                					}
+                					//TODO: also sum up the msg per sec etc..
+                					if (null!=pipeTraffic) {
+                						sumTraffic += (long)pipeTraffic[p.id];
+                					}
+                				}
+                				                				                				
+		                		target.append(LABEL_OPEN);
+		                		
+		                		Appendables.appendValue(target, pipeSize);
+		                		target.append("*\n");
+		                		
+		                        if (null!=pipeTraffic) {
+				                	appendVolume(target, sumTraffic);			                	
+				                } 
+		                		
+		                		target.append(AQUOTE);
+		                		
+		                		int lineWidth = 10;
+		                		
+		                		if (null!=pipePercentileFullValues) {		                	
+		                			int pctFull = (int)(sumPctFull/pipeSize);
+		                			if (pctFull>=60) {
+		                				target.append(",color=red");	    
+		                			} else if (pctFull>=40) {
+		                				target.append(",color=orange");	    
+		                			} else {
+							    		target.append(",color=gray30");
+		                			}
+		                		}
+		                		
+		                		Appendables.appendValue(target.append(",penwidth="),lineWidth);
+		                		
+		                		target.append(CLOSEBRACKET_NEWLINE);
+		                				
 		                	}
+		                	
+		                	
+		                	
+    		                
 		                }
-		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
-		                target.append(CLOSEBRACKET_NEWLINE);
+
 	                }	          
 	            }
 	        }	        
 	    
             target.append("}\n");
    
+	}
+
+	private static void appendVolume(AppendableBuilder target, long traf) {
+		if (traf>9999) {
+			Appendables.appendValue(target.append("Vol:"), traf);
+		} else {
+			Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
+		}
+		target.append(' ');
 	}
 
 	private static void fixedSpaceValue(AppendableBuilder target, int value, byte[] msgPerSeclabel) {
@@ -2170,6 +2261,11 @@ public class GraphManager {
 
 	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
+		//////////////////////////
+		//TODO: we need a limit, like 2000 or so, if we need to monitor more than this many
+		//      we must use multiple PipeMonitorStage instances instead of one
+		//////////////////////////
+		
 		int j = gm.pipeIdToPipe.length;
 		int count = 0;
 		while (--j>=0) {
@@ -2184,6 +2280,7 @@ public class GraphManager {
 		}
 		
 		Pipe[] monBuffers = new Pipe[count];
+		Pipe[] observedBuffers = new Pipe[count];
 		int monBufIdx = 0;
 		j = gm.pipeIdToPipe.length;
 		while (--j>=0) {
@@ -2194,15 +2291,19 @@ public class GraphManager {
 					((!ringHoldsMonitorData(gm, ringBuffer)))				
 				) {
 
+				observedBuffers[monBufIdx] = ringBuffer;
 				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
-				PipeMonitorStage stage = new PipeMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
-				GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 				
 				monBufIdx++;
 				
 			}
 		}
+		
+		PipeMonitorStage stage = new PipeMonitorStage(gm, observedBuffers, monBuffers);
+		
+		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
+				
 		return monBuffers;	
 	}
 

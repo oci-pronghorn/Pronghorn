@@ -3,8 +3,8 @@ package com.ociweb.pronghorn.network;
 import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+import javax.net.ssl.SSLException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,7 +125,10 @@ public class SSLConnection {
 	private int poolReservation=-1;
 	
 	public void setPoolReservation(int value) {
+		assert(-1==poolReservation);
 		poolReservation = value;
+		assert(value>=0);
+
 	}
 	
 	public int getPoolReservation() {

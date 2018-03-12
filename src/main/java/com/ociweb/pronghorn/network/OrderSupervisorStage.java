@@ -108,7 +108,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	@Override
-    public void startup() {                
+    public void startup() {      
+		
+		//Due to N Order Supervisors in place this array is far too large.
 		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
         expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
         
@@ -317,9 +319,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 							   final Pipe<NetPayloadSchema> output, int myPipeIdx,
 							   int sequenceNo, long channelId) {
 		 
-
-    	//System.err.println("ttttttttttttt copy data block ");
-    	
 		assert(Pipe.bytesReadBase(input)>=0);
 		 
 		////////////////////////////////////////////////////

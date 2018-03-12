@@ -47,9 +47,11 @@ public class ClientConnection extends SSLConnection {
 	//TODO: Store the JSON Extractor here so we can apply it when the results come in??
 	///////////////////////
 	
-	private final int sessionId;
-	private final String host;
-	private final int port;
+	public final int sessionId;
+	public final String host;
+	public final int port;
+	public final int hostId;
+		  
 	
 	private long lastUsedTime;
 	
@@ -98,7 +100,7 @@ public class ClientConnection extends SSLConnection {
 		return lastUsedTime;
 	}
 	
-	public ClientConnection(SSLEngine engine, CharSequence host, int port, int sessionId, int pipeIdx,
+	public ClientConnection(SSLEngine engine, CharSequence host, int hostId, int port, int sessionId, int pipeIdx,
 			                 long conId, boolean isTLS, int inFlightBits, int recBufSize) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
@@ -125,7 +127,8 @@ public class ClientConnection extends SSLConnection {
 		this.sessionId = sessionId;
 		this.host = host instanceof String ? (String)host : host.toString();
 		this.port = port;
-					
+		this.hostId = hostId;
+		
 		if (logDisconnects) {
 			logger.info("new client socket connection to {}:{} session {}",host,port,sessionId);
 		}
@@ -211,25 +214,9 @@ public class ClientConnection extends SSLConnection {
 		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
 
 	}
-
-	public String getHost() {
-		return host;
-	}
-	public int getPort() {
-		return port;
-	}
 	
 	public String toString() {
 		return host+":"+port;
-	}
-	
-	@Deprecated
-	public int getUserId() {
-		return getSessionId();
-	}
-	
-	public int getSessionId() {
-		return sessionId;
 	}
 	
 	public void incRequestsSent() {
@@ -267,6 +254,9 @@ public class ClientConnection extends SSLConnection {
 		return pipeIdx;
 	}
 
+	//new GUID value 16 port 48/2  24 bits for sessions/domains  16 million.
+	//16ports 
+	
 	public static int buildGUID(byte[] target, CharSequence host, int port, int userId) {
 		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
         //      RABIN hash may be just the right thing.
@@ -515,6 +505,5 @@ public class ClientConnection extends SSLConnection {
 	public int spaceReq(int maxVarLen) {
 		return payloadSize*(1 + (recBufferSize / (maxVarLen+2)));
 	}
-
 	
 }

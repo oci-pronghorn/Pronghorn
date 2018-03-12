@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
@@ -386,25 +387,53 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		if (Pipe.schemaName(p).contains("Ack") || Pipe.schemaName(p).contains("Release") ) {
 			return false;//never use an Ack connection as the primary data flow.
 		}
-				
-		//if producer sends to n consumers each with the same scheme 
-		//and each with a heavy compute stage then keep the split, never join.
-		if (isSplittingComputeLoad(consumerId, producerId, graphManager, p)) {
-			return false;
-		}
-		
-
-		//TODO: for a matrix of two rows of behaviors only let prod take on n consumers
-		//      where n is the count of producers per consumers over the consumers...
 		
 		PronghornStage consumerStage = GraphManager.getStage(graphManager, consumerId);
 		PronghornStage producerStage = GraphManager.getStage(graphManager, producerId);
 
-		if (isMergeOfComputeLoad(consumerId, producerId, graphManager, p)) {
+		//TODO: for single thread we may need to short circut the log and return true.
+		
+		/////////////////
+		//TODO: add a new scheduler which has 2 scripts
+		//      one for high volume and another for low latency
+		//      that scheduler can swap on the fly while data is in flight.
+		////////////////
+		boolean useMoreThreads = false;
+		
+	
+		if (isMergeOfComputeLoad(consumerId, producerId, graphManager, p, useMoreThreads)) {
 			return false;
 		}
 
+		//eliminate server call input backups
+//		if ((producerStage instanceof ServerSocketReaderStage)
+//			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)
+//				) {
+//			return false;
+//		}
 
+		//eliminate network call input response backups
+		if ((producerStage instanceof ClientSocketReaderStage) 
+			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)			
+				) {
+			return false;
+		}
+
+		//stops connecting via HTTPClientRequestTraffic
+		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE) 
+			&& (GraphManager.getInputPipeCount(graphManager, consumerStage)>2)			
+				) {
+			return false;
+		}		
+		
+		//stops connecting via HTTP1xResponseParser
+		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
+				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
+					) {
+				return false;
+		}		
+			
+		
 		if (consumerStage instanceof MonitorConsoleStage ) {
 			return false;
 		}
@@ -412,24 +441,45 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}		
 		
+		if (consumerStage instanceof PipeMonitorStage ) {
+			return false;
+		}
+		if (producerStage instanceof PipeMonitorStage ) {
+			return false;
+		}
+		
 		if (producerStage instanceof ServerNewConnectionStage ) {
 			return false;
 		}
 		if (consumerStage instanceof ServerNewConnectionStage ) {
 			return false;
 		}
+
 		
+
 		
-		//this rule appears to always be wrong..
-//		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
-//		if (totalInputsCount>1) {
-//			//do not combine with super if it has multiple inputs
-//			if (consumerStage instanceof OrderSupervisorStage) {				
-//				int pipeId = GraphManager.getInputPipeId(graphManager, consumerId, 1);	
-//				//do combine if its the first pipe
-//				if (producerId != GraphManager.getRingProducerId(graphManager, pipeId)) {
-//					return false;
-//				}				
+		//if producer sends to n consumers each with the same scheme 
+		//and each with a heavy compute stage then keep the split, never join.
+		if (isSplittingComputeLoad(consumerId, producerId, graphManager, p, useMoreThreads)) {
+			return false;
+		}
+		
+
+		//TODO: for a matrix of two rows of behaviors only let prod take on n consumers
+		//      where n is the count of producers per consumers over the consumers...
+		
+//		//this rule appears to always be wrong..
+//		if (useMoreThreads) {
+//			int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
+//			if (totalInputsCount>1) {
+//				//do not combine with super if it has multiple inputs
+//				if (consumerStage instanceof OrderSupervisorStage) {				
+//					int pipeId = GraphManager.getInputPipeId(graphManager, consumerId, 1);	
+//					//do combine if its the first pipe
+//					if (producerId != GraphManager.getRingProducerId(graphManager, pipeId)) {
+//						return false;
+//					}				
+//				}
 //			}
 //		}
 		
@@ -465,7 +515,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return true;
 	}
 
-	private static boolean isSplittingComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean isSplittingComputeLoad(int consumerId, 
+			                                    int producerId, 
+			                                    GraphManager graphManager, 
+			                                    Pipe p, boolean useMoreThreads) {
 		int countOfHeavyComputeConsumers = 0;
 		final int totalOutputsCount = GraphManager.getOutputPipeCount(graphManager, producerId);
 		if (totalOutputsCount<=1) {
@@ -479,12 +532,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			
 			//is this the same schema as the pipe in question.
 			if (Pipe.isForSameSchema(outputPipe, p)) {
-				
-				//determine if they are consumed by the same place or not
-				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
-				if ((totalOutputsCount-1)==proOutCount
-						&& conId == consumerId) {
-					return false; //allow this first one.
+				if (!useMoreThreads) {
+					//determine if they are consumed by the same place or not
+					int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
+					if ((totalOutputsCount-1)==proOutCount
+							&& conId == consumerId) {
+						return false; //allow this first one.
+					}
 				}
 				
 				countOfHeavyComputeConsumers++;
@@ -497,7 +551,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	
 	
-	private static boolean isMergeOfComputeLoad(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+	private static boolean isMergeOfComputeLoad(int consumerId, 
+			              int producerId, GraphManager graphManager, 
+			              Pipe p, boolean useMoreThreads) {
 		int countOfHeavyComputeProducers = 0;
 		int totalInputsCount = GraphManager.getInputPipeCount(graphManager, consumerId);
 		if (totalInputsCount<=1) {
@@ -511,15 +567,17 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			//is this the same schema as the pipe in question.
 			if (Pipe.isForSameSchema(inputPipe, p)) {
 				
-				//determine if they are consumed by the same place or not
-				int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
-				if ( (totalInputsCount-1) == conInCount
-						&& 
-						prodId == producerId
-						) {
-				
-					//NOTE: this is very dependent on order of pipes...
-					return false;
+				if (!useMoreThreads) {
+					//determine if they are consumed by the same place or not
+					int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
+					if ( (totalInputsCount-1) == conInCount
+							&& 
+							prodId == producerId
+							) {
+					
+						//NOTE: this is very dependent on order of pipes...
+						return false;
+					}
 				}
 				
 				countOfHeavyComputeProducers++;

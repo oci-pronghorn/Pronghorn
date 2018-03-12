@@ -98,9 +98,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	}
         	
         	//add monitoring to each pipe
-        	if (recordTime) {        		
+        	if (recordTime) {  
+        		PronghornStage.addWorkMonitor(stages[k], didWorkMonitor);
         		GraphManager.addPublishListener(graphManager, stages[k], didWorkMonitor);
         		GraphManager.addReleaseListener(graphManager, stages[k], didWorkMonitor);
+        		
         	}
         	
         	// Determine rates for each stage.
@@ -148,7 +150,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	} else {
         		newBlock = false;
         	}
-        	     	
+        	    	
         	
         }
         
@@ -157,7 +159,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         if (null != debugStageOrder) {	
         	try {
 	        	debugStageOrder.append("----------full stages -------------Clock:");
-	        	Appendables.appendValue(debugStageOrder, schedule.commonClock).append("\n");
+	        	Appendables.appendValue(debugStageOrder, schedule.commonClock);
+	        	if (null!=graphManager.name) {
+	        		debugStageOrder.append(" ").append(graphManager.name);
+	        	}
+	        	
+	        	debugStageOrder.append("\n");
 	        	
 		        for(int i = 0; i<stages.length; i++) {
 		        	

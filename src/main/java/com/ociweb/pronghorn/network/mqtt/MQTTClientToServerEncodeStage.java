@@ -313,7 +313,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker,
-				                         ccm.lookup(host, hostPort, uniqueConnectionId)); 
+				                         ccm.lookup(ccm.lookupHostId(host), hostPort, uniqueConnectionId)); 
 
 		if (null!=activeConnection) {		
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 

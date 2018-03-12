@@ -252,7 +252,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
  			
-     		connectionId = ccm.lookup(mCharSequence.setToField(requestPipe, hostMeta, hostLen), port, userId);
+     		connectionId = ccm.lookup(ccm.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen)), port, userId);
 			//System.err.println("first lookup connection "+connectionId);
  		}
 		

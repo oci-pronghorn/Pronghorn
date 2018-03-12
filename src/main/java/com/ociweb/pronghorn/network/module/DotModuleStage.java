@@ -27,8 +27,9 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	private static final Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
 	private final String graphName;
 	
-    public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
-    	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);	
+    public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, MonitorConsoleStage monitor,
+    		                  Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
+
     	return new DotModuleStage(graphManager, inputs, outputs, httpSpec, monitor);
     }
     

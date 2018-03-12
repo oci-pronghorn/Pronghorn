@@ -10,6 +10,7 @@ import java.net.URL;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerPipesConfig;
@@ -75,6 +76,8 @@ public class HTTPSRoundTripTest {
 		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
 								clientRequestCount, clientRequestSize, tlsCertificates);
     	
+		ClientCoordinator.registerDomain("127.0.0.1");
+		
 		String pathRoot = buildStaticFileFolderPath(testFile);
 		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
 	

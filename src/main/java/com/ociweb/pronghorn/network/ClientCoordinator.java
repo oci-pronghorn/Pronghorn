@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.StandardSocketOptions;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.net.ssl.SSLEngine;
 
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
@@ -27,8 +27,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	private final ServiceObjectHolder<ClientConnection> connections;
 	
-	private final ReentrantReadWriteLock hostTrieLock = new ReentrantReadWriteLock();
-	private final TrieParser hostTrie;
+	//private final TrieParser hostTrie;
 	private static final int inFlightBits = 10;//TODO: make configurable, 1024 is the limit for calls in flight.
 	public static boolean showHistogramResults = false;
 	
@@ -41,35 +40,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static boolean TEST_RECORDS = false;
 	
-
+	//do not modify without sync on domainRegistry which is final
+	public static int totalKnownDomains = 0;
+	public static final TrieParser domainRegistry = new TrieParser(64, 2, false, false, true);
+	public static LongLongHashTable[] conTables = new LongLongHashTable[4];
+	///////////////////////////////////////////////
+	
 	public final int receiveBufferSize;
-
-	
-    public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
-									  	     "Host: 127.0.0.1\r\n"+
-										     "Connection: keep-alive\r\n"+
-										     "\r\n";
-    
-	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
-											"Content-Type: application/json\r\n"+
-											"Content-Length: 30\r\n"+
-											"Connection: open\r\n"+
-											"\r\n"+
-											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
-	
-//	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
-//											"Server: nginx/1.10.0 (Ubuntu)\r\n"+
-//											"Date: Mon, 16 Jan 2017 19:20:04 GMT\r\n"+
-//											"Content-Type: application/json\r\n"+
-//											"Content-Length: 30\r\n"+
-//											"Last-Modified: Mon, 16 Jan 2017 16:50:59 GMT\r\n"+
-//											"Connection: keep-alive\r\n"+
-//											"ETag: \"587cf9f3-1e\"\r\n"+
-//											"Accept-Ranges: bytes\r\n"+	
-//											"\r\n"+
-//											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
-	
-	
 
 
     private PronghornStageProcessor optionalStageProcessor;
@@ -142,7 +119,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-		hostTrie = new TrieParser(trieSize, 4, false, false);
 		hostTrieReader = new TrieParserReader();
 		
 		responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
@@ -196,55 +172,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     		optionalStageProcessor.process(gm, stage);
     	}
     }
-	/**
-	 * 
-	 * This method is not thread safe. 
-	 * 
-	 * @return -1 if the host port and userId are not found
-	 */
-	public long lookup(CharSequence host, int port, int sessionId) {	
-		return lookup(host, port, sessionId, guidWorkspace, hostTrieReader);
-	}
-	
-	private long lookup(CharSequence host,
-			           int port, int sessionId, byte[] workspace, TrieParserReader reader) {
-		
-		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(workspace, host, port, sessionId);	
-		
-		hostTrieLock.readLock().lock();
-		try {
-			long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
-			assert(0!=result) : "connection ids must be postive or negative if not found";
-			return result;
-		} finally {
-			hostTrieLock.readLock().unlock();
-		}
-	}
-	
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask,
-			           int port, int sessionId) {
-		return lookup(hostBack, hostPos, hostLen, hostMask, port, sessionId, guidWorkspace, hostTrieReader);
-	}
 
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, 
-			           int port, int sessionId, byte[] workspace, TrieParserReader reader) {
-		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(workspace, 
-				hostBack, hostPos, hostLen, hostMask, port, sessionId);	
-		
-		hostTrieLock.readLock().lock();
-		try {
-			long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
-			assert(0!=result) : "connection ids must be postive or negative if not found";
-			return result;
-		} finally {
-			hostTrieLock.readLock().unlock();
-		}
-	}
 	
 	public long lookupInsertPosition() {
-		return connections.lookupInsertPosition();
+			return connections.lookupInsertPosition();
 	}
 	
 	public static int responsePipeLineIdx(ClientCoordinator that, long ccId) {
@@ -327,11 +258,71 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			//only do reOpen if the previous one is finished connecting and its now invalid.
 			oldConnection = ClientCoordinator.openConnection(this, host, port,
 					sessionId, outputs,
-	                lookup(host, port, sessionId));
+	                lookup(lookupHostId(host), port, sessionId));
 		}
 		
 		return oldConnection;
 		
+	}
+
+
+	//we keep a single trie parser of all known domains, this is only
+	//grown and mutated here. It must be synchronized since any thread can
+	//create new instances of this object for connecting to a domain at any time.
+	//this is almost always restricted to startup
+	public synchronized static int registerDomain(String host) {
+
+		int hostId = (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry, host);
+		if (-1==hostId) {
+			hostId = totalKnownDomains++;
+			domainRegistry.setUTF8Value(host, hostId);
+			
+			if (hostId==conTables.length) {
+				LongLongHashTable[] bigger = new LongLongHashTable[conTables.length*2];
+				System.arraycopy(conTables, 0, bigger, 0, conTables.length);
+				conTables = bigger;				
+			}
+			conTables[hostId] = new LongLongHashTable(5); //This will grow as needed
+						
+		}
+
+		return hostId;
+	}
+		
+	public static long lookup(int hostId, int port, int sessionId) {
+		int key = computePortSessionKey(port, sessionId);
+		long result =  LongLongHashTable.getItem(conTables[hostId], key);
+		
+		if (0!=result) {
+			return result;
+		} else {
+			if (LongLongHashTable.hasItem(conTables[hostId],key)) {
+				return result;
+			} else {
+				return -1;
+			}			
+		}	
+	}
+	
+	private static int computePortSessionKey(int port, int sessionId) {
+		//the low 8 bits are part of session and port for both cases to minimize collisions.
+		return (0xF&sessionId) | ((0xFFFF&port)<<4) | ((sessionId>>4)<<20);
+	}
+	
+	
+	public static int lookupHostId(CharSequence host) {
+		int result = (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry, host);
+		if (result>=0) {
+			return result;
+		} else {
+			throw new UnsupportedOperationException("Before using domain at runtime you must call ClientCoordinator.registerDomain(\"127.0.0.1\");");
+		}
+	}
+
+	public static int lookupHostId(byte[] hostBytes, int pos, int length, int mask) {
+		return (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry,
+					hostBytes, pos, length, mask);
+
 	}
 
 
@@ -354,7 +345,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public static ClientConnection openConnection(ClientCoordinator ccm, CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
+	public static ClientConnection openConnection(ClientCoordinator ccm, 
+			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
 								
 		        ClientConnection cc = null;
@@ -379,24 +371,27 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						SSLEngine engine =  ccm.isTLS ?
 								        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
 								        :null;
-						cc = new ClientConnection(engine, host, port, sessionId, pipeIdx, 
+								        
+						cc = new ClientConnection(engine, host, lookupHostId(host), port, sessionId, pipeIdx, 
 								                  connectionId, ccm.isTLS, inFlightBits, 
 								                  ccm.receiveBufferSize);
-						ccm.connections.setValue(connectionId, cc);	
-						
-						ccm.hostTrieLock.writeLock().lock();						
-						try {
-							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);
-						} finally {
-							ccm.hostTrieLock.writeLock().unlock();
-						}
 						
 					} catch (IOException ex) {
 						logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}
-									                	
+					
+					ccm.connections.setValue(connectionId, cc);	
+				
+					long key = computePortSessionKey(cc.port, cc.sessionId);
+					LongLongHashTable table = conTables[cc.hostId];					
+					
+					if (LongLongHashTable.isFull(table)) {
+						conTables[cc.hostId] = table = LongLongHashTable.doubleClone(table);
+					}
+					LongLongHashTable.setItem(table, key, connectionId);
+							                	
 				}
 				
 				if (cc.isDisconnecting()) {

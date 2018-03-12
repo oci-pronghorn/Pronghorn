@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.scheduling.DidWorkMonitor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
@@ -276,6 +277,7 @@ public abstract class PronghornStage {
 	}
 
 	private String nameCache = null;
+	protected DidWorkMonitor didWorkMonitor;
 	
 	public String toString() {
 		if (null == nameCache) {
@@ -314,6 +316,10 @@ public abstract class PronghornStage {
 	
     public static boolean supportsBatchedPublish(PronghornStage stage) {
 		return stage.supportsBatchedPublish;
+	}
+
+	public static void addWorkMonitor(PronghornStage pronghornStage, DidWorkMonitor didWorkMonitor) {
+		pronghornStage.didWorkMonitor = didWorkMonitor;
 	}
 	
 }

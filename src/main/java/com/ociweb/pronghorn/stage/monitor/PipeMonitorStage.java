@@ -12,11 +12,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class PipeMonitorStage extends PronghornStage {
 
-	private final Pipe<?> observedPipe;
-	private final Pipe<PipeMonitorSchema> notifyRingBuffer;
+	private final Pipe<?>[] observedPipe;
+	private final Pipe<PipeMonitorSchema>[] notifyRingBuffer;
 	private final GraphManager gm;
-	private final String pipeName;
-	private final int slabSize;
 	private static final Logger logger = LoggerFactory.getLogger(PipeMonitorStage.class);
 	private long dropped = 0;
 	/**
@@ -26,32 +24,39 @@ public class PipeMonitorStage extends PronghornStage {
 	 * @param observedRingBuffer
 	 * @param notifyRingBuffer
 	 */
-	public PipeMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe<PipeMonitorSchema> notifyRingBuffer) {
+	public PipeMonitorStage(GraphManager gm, 
+						    Pipe<?>[] observedRingBuffer, 
+						    Pipe<PipeMonitorSchema>[] notifyRingBuffer) {
+		
 		//the observed ring buffer is NOT an input
 		super(gm, NONE, notifyRingBuffer); 
+		
+		assert(observedRingBuffer.length == notifyRingBuffer.length);
 		this.observedPipe = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
+		
 		this.gm = gm;
-		FieldReferenceOffsetManager from = Pipe.from(notifyRingBuffer); 
-		if (!from.fieldNameScript[0].equals("RingStatSample")) {
-			throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
-		}
 		GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, this);
-		this.pipeName = GraphManager.getPipeName(gm, observedPipe).intern();
-		this.slabSize = observedPipe.sizeOfSlabRing;
 		
 	}
 	
 	@Override
 	public void startup() {
-		Pipe.setPublishBatchSize(notifyRingBuffer, 0);//can not be done earlier 	    
+		int i = notifyRingBuffer.length;
+		while (--i>=0) {
+			Pipe.setPublishBatchSize(notifyRingBuffer[i], 0);//can not be done earlier 	  
+		}
 	}
 	
 	@Override
 	public void run() {
-		Pipe<PipeMonitorSchema> output = notifyRingBuffer;
-		Pipe<?> localObserved = observedPipe;
-		
+		int i = notifyRingBuffer.length;
+		while (--i>=0) {
+			monitorSinglePipe(notifyRingBuffer[i], observedPipe[i]);
+		}
+	}
+
+	private void monitorSinglePipe(Pipe<PipeMonitorSchema> output, Pipe<?> localObserved) {
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (Pipe.hasRoomForWrite(output)) {
 									
@@ -61,7 +66,7 @@ public class PipeMonitorStage extends PronghornStage {
 			Pipe.addLongValue(Pipe.headPosition(localObserved), output);
 			Pipe.addLongValue(Pipe.tailPosition(localObserved), output);
 			Pipe.addIntValue(localObserved.lastMsgIdx, output);
-			Pipe.addIntValue(slabSize, output);
+			Pipe.addIntValue(localObserved.sizeOfSlabRing, output);
 			Pipe.addLongValue(Pipe.totalWrittenFragments(localObserved), output);
 			
 			Pipe.confirmLowLevelWrite(output, size);
@@ -79,18 +84,14 @@ public class PipeMonitorStage extends PronghornStage {
 		}
 	}
 
-	public String getObservedPipeName() {
-		//NOTE: is this really the right graph, may need to get the graph from the producer or consumer of the observedRingBuffer!!
-		return pipeName;
-	}
-	
-
-	public long getObservedPipeBytesAllocated() {
-		return observedPipe.config().totalBytesAllocated();
-	}
-	
-	public int getObservedPipeId() {
-		return observedPipe.id;
+	public Pipe<?> getObservedPipeForOutputId(int id) {
+		int i = notifyRingBuffer.length;
+		while (--i>=0) {
+			if (id == notifyRingBuffer[i].id) {
+				return observedPipe[i];
+			}
+		}
+		throw new UnsupportedOperationException();
 	}
 
 }

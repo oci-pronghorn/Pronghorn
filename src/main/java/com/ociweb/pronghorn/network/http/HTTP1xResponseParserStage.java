@@ -117,6 +117,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		this.END_OF_HEADER_ID       = httpSpec.headerCount+3;//for the empty header found at the bottom of the header
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
+		GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
+		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
 		
 	}
 
@@ -323,8 +325,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							Pipe.presumeRoomForWrite(targetPipe);
 							int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
-							Pipe.addUTF8(cc.getHost(), targetPipe);
-							Pipe.addIntValue(cc.getPort(), targetPipe);
+							Pipe.addUTF8(cc.host, targetPipe);
+							Pipe.addIntValue(cc.port, targetPipe);
 							Pipe.confirmLowLevelWrite(targetPipe, size);
 							Pipe.publishWrites(targetPipe);
 							

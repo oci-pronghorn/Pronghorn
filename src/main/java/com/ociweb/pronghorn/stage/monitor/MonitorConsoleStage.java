@@ -19,8 +19,6 @@ public class MonitorConsoleStage extends PronghornStage {
 	private final Pipe[] inputs;
 
 	private int[] observedPipeId;
-	private long[] observedPipeBytesAllocated;
-	private String[] observedPipeName;
 	
 	private long[] lastFragments;
 	private long[] lastTime;
@@ -81,23 +79,22 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		observedPipeId = new int[inputs.length];
 		Arrays.fill(observedPipeId, -1);
-		observedPipeBytesAllocated = new long[inputs.length];
-		observedPipeName = new String[inputs.length];
 		
 		lastFragments = new long[inputs.length];
 		lastTime      = new long[inputs.length];
 		
 		
+		////////////////////////////
+		//What pipe is this input monitoring??
+		///////////////////////////
+		
 		int j = inputs.length;
 		while (--j>=0) {
-			int stageId = GraphManager.getRingProducerStageId(graphManager, inputs[j].id);	
-            PronghornStage producer = GraphManager.getStage(graphManager, stageId);
-            if (producer instanceof PipeMonitorStage) {
+			int monitorDataPipe = inputs[j].id;
+			PronghornStage producer = GraphManager.getStage(graphManager, GraphManager.getRingProducerStageId(graphManager, monitorDataPipe));
+            if (producer instanceof PipeMonitorStage) {            	            	
             	PipeMonitorStage p = (PipeMonitorStage)producer;
-            	
-            	observedPipeId[j] = p.getObservedPipeId();
-            	observedPipeBytesAllocated[j] = p.getObservedPipeBytesAllocated();
-            	observedPipeName[j] = p.getObservedPipeName();
+            	observedPipeId[j] = p.getObservedPipeForOutputId(monitorDataPipe).id;
             	
             }
             
@@ -233,7 +230,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param ringBufferMonitorConfig
 	 */
 	public static MonitorConsoleStage attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
-		
+
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate>>5, stage);

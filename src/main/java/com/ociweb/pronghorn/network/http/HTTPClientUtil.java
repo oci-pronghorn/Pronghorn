@@ -47,14 +47,14 @@ public class HTTPClientUtil {
 			int routeId = Pipe.takeInt(requestPipe); //	ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
 			
 			int userId = Pipe.takeInt(requestPipe);			
-			assert(clientConnection.getSessionId() == userId);
+			assert(clientConnection.sessionId == userId);
 			
         	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
         	assert(routeId>=0);
         	clientConnection.recordDestinationRouteId(routeId);
 			
 			int port   = Pipe.takeInt(requestPipe);
-			assert(clientConnection.getPort() == port);
+			assert(clientConnection.port == port);
 			
 			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
 			int hostLen  = Pipe.takeRingByteLen(requestPipe);
@@ -122,14 +122,14 @@ public class HTTPClientUtil {
 			
 			int routeId = Pipe.takeInt(requestPipe);
 			int userId = Pipe.takeInt(requestPipe);
-			assert(clientConnection.getSessionId() == userId);
+			assert(clientConnection.sessionId == userId);
 			
         	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
         	assert(routeId>=0);
         	clientConnection.recordDestinationRouteId(routeId);
 			
 			int port   = Pipe.takeInt(requestPipe);
-			assert(clientConnection.getPort() == port);
+			assert(clientConnection.port == port);
 			
 			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
 			int hostLen  = Pipe.takeRingByteLen(requestPipe);
