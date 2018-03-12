@@ -404,24 +404,4 @@ public class YCbCrToRGB extends PronghornStage {
 			}
 		}
 	}
-	
-	/*public static void main(String[] args) {
-		ArrayList<MCU> testArray =  new ArrayList<MCU>(1);
-		MCU mcu = new MCU();
-		mcu.y[0]  = -63;
-		mcu.cb[0] =  -1;
-		mcu.cr[0] =   6;
-		mcu.y[1]  = -74;
-		mcu.cb[1] = -12;
-		mcu.cr[1] =  11;
-		mcu.y[2]  = 106;
-		mcu.cb[2] =   6;
-		mcu.cr[2] = -16;
-		testArray.add(mcu);
-		byte[][] converted = convertYCbCrToRGB(testArray, 1, 3);
-		for (int i = 0; i < converted.length ; ++i) {
-			for (int j = 0; j < converted[0].length; j += 3)
-			System.out.println(converted[i][j + 0] + ", " + converted[i][j + 1] + ", " + converted[i][j + 2]);
-		}
-	}*/
 }

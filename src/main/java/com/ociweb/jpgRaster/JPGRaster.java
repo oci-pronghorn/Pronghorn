@@ -50,7 +50,6 @@ public class JPGRaster {
 
 	private static void populateGraph(GraphManager gm, ArrayList<String> inputFiles) {
 		
-		// such a large pipe helps with 2:1:1 images. a better fix is needed
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);

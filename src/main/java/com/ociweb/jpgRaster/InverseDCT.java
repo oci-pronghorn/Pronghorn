@@ -187,24 +187,4 @@ public class InverseDCT extends PronghornStage {
 			}
 		}
 	}
-	
-	/*public static void main(String[] args) {
-		short[] mcu = new short[] {
-				-252, -36,  -5, -6, 15, -4, 6, 0,
-				  55,  84, -14,  7,  0,  0, 0, 0,
-				  20,   0, -18, -9,  0,  0, 0, 0,
-				 -24,  32,   0,  0,  0,  0, 0, 0,
-				 22,  -22,   0,  0,  0,  0, 0, 0,
-				  0,    0,   0,  0,  0,  0, 0, 0,
-				  0,    0,   0,  0,  0,  0, 0, 0,
-				  0,    0,   0,  0,  0,  0, 0, 0
-		};
-		short[] result = MCUInverseDCT(mcu);
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
-				System.out.print(String.format("%04d ", result[i * 8 + j]));
-			}
-			System.out.println();
-		}
-	}*/
 }
