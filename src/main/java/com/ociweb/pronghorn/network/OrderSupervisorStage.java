@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -219,6 +220,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
 		    
+		        assert(recordInputs(channelId, sequenceNo, pipeIdx));
+		        
 		        //read the next non-blocked pipe, sequenceNo is never reset to zero
 		        //every number is used even if there is an exception upon write.
 		      
@@ -236,6 +239,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					
 		        }
 		        
+		        long movedUpCount = 0;
+		        long lastFailure = -1;
+		        
+		        
 		        
 				int expected = expectedSquenceNos[idx]; 
 				
@@ -243,7 +250,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	//moved up sequence number and continue
 		        	//rare case but we do not want to fail when it happens
 		        	//this is related to rapid requests from a client, like frequent 404s
-		        	expectedSquenceNos[idx] =  expected = sequenceNo;		        	
+		        	expectedSquenceNos[idx] =  expected = sequenceNo;		
+		        	movedUpCount++;
 		        } 
 		        
 		        if (expected==sequenceNo) {
@@ -258,7 +266,32 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				        	continue;
 		        		}
 		        	}
+		        	lastFailure = -1;
+		        	
 		        } else {
+		        	
+		        	long now = System.currentTimeMillis();
+		        	if (-1 != lastFailure) {
+		        		//TODO: turn this into an assert
+		        		if (now-lastFailure>20_000) { //20 sec
+		        			logger.info("Hang detected");
+		        			logger.info("looking for {} but got {} for connection {} on idx {}",
+		        					     sequenceNo, expected, channelId, pipeIdx);
+		        			
+		        			if (null!=recordChannelId) {
+		        				//we have the most recent history so do display it.
+		        				displayRecentRequests();
+		        			}
+		        			
+		        			
+		        			System.exit(-1);
+		        		}	        		
+		        	}
+		        	lastFailure = now;
+		        	
+		        	
+		        	
+		        	
 		            //larger value and not ready yet
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
@@ -314,6 +347,52 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return didWork;
 	}
 
+    ////////////////////////////////////
+	///used when assert is on to record the last few data points for review
+	////////////////////////////////////
+	int RECORD_BITS = 7;
+	int RECORD_SIZE = 1<<RECORD_BITS;
+	int RECORD_MASK = RECORD_SIZE-1;
+	long recordPosition = 0;
+	long[] recordChannelId;
+	int[]  recordSequenceNo;
+	int[]  recordPipeIdx;
+	
+	private boolean recordInputs(long channelId, int sequenceNo, int pipeIdx) {
+		if (null==recordChannelId) {
+			recordChannelId = new long[RECORD_SIZE];
+			recordSequenceNo = new int[RECORD_SIZE];
+			recordPipeIdx = new int[RECORD_SIZE];
+		}
+		
+		recordChannelId[(int)recordPosition&RECORD_MASK] = channelId;
+		recordSequenceNo[(int)recordPosition&RECORD_MASK] = sequenceNo;
+		recordPipeIdx[(int)recordPosition&RECORD_MASK] = pipeIdx;
+		recordPosition++;
+		return true;
+	}
+	
+	private void displayRecentRequests() {
+		long start = recordPosition-1;
+		long limit = Math.max(0, recordPosition-RECORD_MASK);
+		
+		Appendable target = System.out;
+		while (start>=limit) {
+		
+			try {
+				Appendables.appendValue(target.append("#"),start).append(' ');
+				Appendables.appendValue(target.append("Chnl:"),recordChannelId[(int)start&RECORD_MASK]).append(' ');
+				Appendables.appendValue(target.append("Seq:"),recordSequenceNo[(int)start&RECORD_MASK]).append(' ');
+				Appendables.appendValue(target.append("Piped:"),recordPipeIdx[(int)start&RECORD_MASK]).append(' ');
+				target.append('\n');				
+				
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			start--;
+		}
+		
+	}
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
 							   final Pipe<NetPayloadSchema> output, int myPipeIdx,
