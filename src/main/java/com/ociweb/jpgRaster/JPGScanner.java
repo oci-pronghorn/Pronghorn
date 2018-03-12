@@ -27,6 +27,7 @@ public class JPGScanner extends PronghornStage {
 	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
+	int aboutToSend = 0;
 	
 	Header header;
 	MCU mcu1 = new MCU();
@@ -656,45 +657,90 @@ public class JPGScanner extends PronghornStage {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 			int vertical = header.colorComponents[0].verticalSamplingFactor;
-			if (header.frameType.equals("Progressive")) {
-				if (horizontal == 1 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
+			if (aboutToSend != 0) {
+				if (aboutToSend == 2) {
+					sendMCU(mcu2);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 4;
+					}
+					else {
+						aboutToSend = 0;
+					}
 				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
+				else if (aboutToSend == 3) {
+					sendMCU(mcu3);
+					if (horizontal == 2 && vertical == 2) {
+						aboutToSend = 2;
+					}
+					else {
+						aboutToSend = 0;
+					}
 				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-					mcu3 = mcus.get(numProcessed + 2);
-					mcu4 = mcus.get(numProcessed + 3);
+				else { // if (aboutToSend == 4) {
+					sendMCU(mcu4);
+					aboutToSend = 0;
 				}
 			}
 			else {
-				HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
-			}
-			// write mcu to pipe				
-			if (horizontal == 1 && vertical == 1) {
-				sendMCU(mcu1);
-			}
-			else if (horizontal == 2 && vertical == 1) {
-				sendMCU(mcu1);
-				sendMCU(mcu2);
-			}
-			else if (horizontal == 1 && vertical == 2) {
-				sendMCU(mcu1);
-				sendMCU(mcu3);
-			}
-			else if (horizontal == 2 && vertical == 2) {
-				sendMCU(mcu1);
-				sendMCU(mcu3);
-				sendMCU(mcu2);
-				sendMCU(mcu4);
+				if (header.frameType.equals("Progressive")) {
+					if (horizontal == 1 && vertical == 1) {
+						mcu1 = mcus.get(numProcessed);
+					}
+					else if (horizontal == 2 && vertical == 1) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+					}
+					else if (horizontal == 1 && vertical == 2) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+					}
+					else if (horizontal == 2 && vertical == 2) {
+						mcu1 = mcus.get(numProcessed);
+						mcu2 = mcus.get(numProcessed + 1);
+						mcu3 = mcus.get(numProcessed + 2);
+						mcu4 = mcus.get(numProcessed + 3);
+					}
+				}
+				else {
+					HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
+				}
+				// write mcu to pipe
+				if (horizontal == 1 && vertical == 1) {
+					sendMCU(mcu1);
+					aboutToSend = 0;
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					sendMCU(mcu1);
+					aboutToSend = 2;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu2);
+						aboutToSend = 0;
+					}
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					sendMCU(mcu1);
+					aboutToSend = 3;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu3);
+						aboutToSend = 0;
+					}
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					sendMCU(mcu1);
+					aboutToSend = 3;
+					if (PipeWriter.hasRoomForWrite(output)) {
+						sendMCU(mcu3);
+						aboutToSend = 2;
+						if (PipeWriter.hasRoomForWrite(output)) {
+							sendMCU(mcu2);
+							aboutToSend = 4;
+							if (PipeWriter.hasRoomForWrite(output)) {
+								sendMCU(mcu4);
+								aboutToSend = 0;
+							}
+						}
+					}
+				}
 			}
 		}
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
@@ -789,6 +835,9 @@ public class JPGScanner extends PronghornStage {
 			}
 			catch (IOException e) {
 				System.err.println("Error - Unknown error reading file " + file);
+			}
+			if (inputFiles.isEmpty()) {
+				System.out.println("All input files read.");
 			}
 		}
 	}
