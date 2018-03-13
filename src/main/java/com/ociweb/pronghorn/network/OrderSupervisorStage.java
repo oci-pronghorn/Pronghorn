@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 
 //consumes the sequence number in order and hold a pool entry for this connection
@@ -33,8 +34,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private int[]            expectedSquenceNos;
     private short[]          expectedSquenceNosPipeIdx;
     private long[]           expectedSquenceNosChannelId;
+    
+    private final int channelBitsSize;
+    private final int channelBitsMask;
+    private final boolean isTLS;
+    
 
-    private final ServerCoordinator coordinator;
     
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
  
@@ -55,6 +60,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
     private int shutdownCount;
     private boolean shutdownInProgress;
+	private ServiceObjectHolder<ServerConnection> socketHolder;
 
     public static OrderSupervisorStage newInstance(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
     	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator);
@@ -76,6 +82,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     
     public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator) {
         super(graphManager, inputPipes, outgoingPipes);      
+        
+        this.channelBitsMask = coordinator.channelBitsMask;
+        this.channelBitsSize = coordinator.channelBitsSize;
+        this.isTLS = coordinator.isTLS;
+        this.socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
+        
+        
+        
         this.dataToSend = inputPipes;
         assert(outgoingPipes.length>0);
         
@@ -85,7 +99,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         }
         
         this.outgoingPipes = outgoingPipes;
-        this.coordinator = coordinator;
 
         this.poolMod = outgoingPipes.length;
         this.shutdownCount = dataToSend.length;
@@ -112,7 +125,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public void startup() {      
 		
 		//Due to N Order Supervisors in place this array is far too large.
-		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
+		int totalChannels = channelBitsSize; //WARNING: this can be large eg 4 million
         expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
         
         expectedSquenceNosPipeIdx = new short[totalChannels];
@@ -220,12 +233,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
 		    
-		        assert(recordInputs(channelId, sequenceNo, pipeIdx));
 		        
 		        //read the next non-blocked pipe, sequenceNo is never reset to zero
 		        //every number is used even if there is an exception upon write.
 		      
-		        int idx = (int)(channelId & coordinator.channelBitsMask);
+		        int idx = (int)(channelId & channelBitsMask);
 		        
 		        /////////////////////
 		        //clear when we discover a new connection
@@ -277,9 +289,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	return false;//must check the other pipes this can not be processed yet.
 
 		        }
+
+		        assert(recordInputs(channelId, sequenceNo, pipeIdx));
 		        
-		        if (coordinator.isTLS) {
-					SSLConnection con = coordinator.connectionForSessionId(channelId);			
+		        if (isTLS) {
+					SSLConnection con = socketHolder.get(channelId);			
 					if (!SSLUtil.handshakeProcessing(outPipe, con)) {
 						//TODO: we must wait until later...
 					}
@@ -331,20 +345,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
-		
+				
 		if (failureIterations>1000) {
 
-				logger.info("Hang detected");
+	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
+	        
+				logger.warn("Hang detected, Critical internal error must shutdown.");
 				logger.info("looking for {} but got {} for connection {} on idx {}",
-						     sequenceNo, expected, channelId, pipeIdx);
+							expected, sequenceNo, channelId, pipeIdx);
 				logger.info("jumped ahead a total of {} ",movedUpCount);
 				if (null!=recordChannelId) {
 					//we have the most recent history so do display it.
 					displayRecentRequests();
 				}
-				
-				
-				System.exit(-1);
+				requestShutdown();
 			        
 		} else {
 			failureIterations++;
@@ -355,7 +369,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     ////////////////////////////////////
 	///used when assert is on to record the last few data points for review
 	////////////////////////////////////
-	int RECORD_BITS = 7;
+	int RECORD_BITS = 4;
 	int RECORD_SIZE = 1<<RECORD_BITS;
 	int RECORD_MASK = RECORD_SIZE-1;
 	long recordPosition = 0;
@@ -385,7 +399,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		long start = recordPosition-1;
 		long limit = Math.max(0, recordPosition-RECORD_MASK);
 		
-		Appendable target = System.out;
+		Appendable target = System.err;
 		while (start>=limit) {
 		
 			try {
@@ -495,6 +509,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 //this is still part of the current response so combine them together
 					
 			 		y++;
+			 		
 			 
 					 int msgId = Pipe.takeMsgIdx(input); //msgIdx
 					 long conId = Pipe.takeLong(input); //connectionId;
@@ -512,6 +527,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 //logger.trace("added more length of {} ",len2);
 					 
 					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward
+					 
+					 //logger.info("read position {}",bytePosition2);
 					 
 					 DataOutputBlobWriter.write(outputStream, blob, bytePosition2, len2, blobMask);
 					 						 
@@ -540,7 +557,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void writeToNextStage(Pipe<NetPayloadSchema> output, 
 			final long channelId, int len, int requestContext,
-			int blobMask, byte[] blob, int bytePosition, long time) {
+			int blobMask, final byte[] blob, final int bytePosition, long time) {
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
@@ -587,7 +604,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 		    
 			//we have finished all the chunks for this request so the sequence number will now go up by one	
-		 	int idx = (int)(channelId & coordinator.channelBitsMask);
+		 	int idx = (int)(channelId & channelBitsMask);
 		 	//logger.info("detected end and incremented sequence number {}",expectedSquenceNos[idx]);
 			expectedSquenceNos[idx]++;
 		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
