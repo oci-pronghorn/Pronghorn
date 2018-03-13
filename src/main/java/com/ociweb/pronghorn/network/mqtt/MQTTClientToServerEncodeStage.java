@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.network.mqtt;
 
+import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
+
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
@@ -931,20 +933,25 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						Pipe.addLongValue(arrivalTime, server);
 						Pipe.addLongValue(0, server);
 												
-						int clientIdMeta = Pipe.takeRingByteMetaData(input);						
+						int clientIdMeta2 = Pipe.takeRingByteMetaData(input);						
 						int clientIdLen = Pipe.takeRingByteLen(input);
+						int clientIdPos = bytePosition(clientIdMeta2, input, clientIdLen);  
 	
-						int willTopicMeta = Pipe.takeRingByteMetaData(input);						
+						int willTopicMeta2 = Pipe.takeRingByteMetaData(input);						
 						int willTopicLen = Pipe.takeRingByteLen(input);
+						int willTopicPos = bytePosition(willTopicMeta2, input, willTopicLen); 
 						
-						int willMessageMeta = Pipe.takeRingByteMetaData(input);						
+						int willMessageMeta2 = Pipe.takeRingByteMetaData(input);						
 						int willMessageLen = Pipe.takeRingByteLen(input);
+						int willMessagePos = bytePosition(willMessageMeta2, input, willMessageLen);
 						
-						int userMeta = Pipe.takeRingByteMetaData(input);						
+						int userMeta2 = Pipe.takeRingByteMetaData(input);						
 						int userLen = Pipe.takeRingByteLen(input);
+						int userPos = bytePosition(userMeta2, input, userLen);
 						
-						int passMeta = Pipe.takeRingByteMetaData(input);						
+						int passMeta2 = Pipe.takeRingByteMetaData(input);						
 						int passLen = Pipe.takeRingByteLen(input);
+						int passPos = bytePosition(passMeta2, input, passLen);
 	
 						keepAliveMS = keepAliveSec*1000;
 	
@@ -973,26 +980,26 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						output.writeShort(keepAliveSec); //seconds < 16 bits
 												
 						//payload
-			        	output.writeShort(clientIdLen); 
-				        Pipe.readBytes(input, output, clientIdMeta, clientIdLen);
-												
+			        	output.writeShort(clientIdLen);
+			        	output.write(input.blobRing, clientIdPos, clientIdLen, input.blobMask);
+			        													
 						if (0!=(MQTTEncoder.CONNECT_FLAG_WILL_FLAG_2&conFlags)) {
 														
 							output.writeShort(willTopicLen);
-							Pipe.readBytes(input, output, willTopicMeta, willTopicLen);
+							output.write(input.blobRing, willTopicPos, willTopicLen, input.blobMask);
 							output.writeShort(willMessageLen);
-							Pipe.readBytes(input, output, willMessageMeta, willMessageLen);
-							
+							output.write(input.blobRing, willMessagePos, willMessageLen, input.blobMask);
+
 						}
 						
 						if (0!=(MQTTEncoder.CONNECT_FLAG_USERNAME_7&conFlags)) {						
 							output.writeShort(userLen);
-							Pipe.readBytes(input, output, userMeta, userLen);
+							output.write(input.blobRing, userPos, userLen, input.blobMask);							
 						}
 						
 						if (0!=(MQTTEncoder.CONNECT_FLAG_PASSWORD_6&conFlags)) {								
 							output.writeShort(passLen);
-							Pipe.readBytes(input, output, passMeta, passLen);
+							output.write(input.blobRing, passPos, passLen, input.blobMask);
 						}
 						output.closeLowLevelField();
 									
