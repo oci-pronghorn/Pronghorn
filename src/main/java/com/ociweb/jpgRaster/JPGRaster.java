@@ -2,12 +2,10 @@ package com.ociweb.jpgRaster;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
-import com.ociweb.pronghorn.util.MainArgs;
 
 public class JPGRaster {
 
@@ -16,7 +14,7 @@ public class JPGRaster {
 		
 		
 		String defaultFiles = "";
-		String inputFilePaths = MainArgs.getOptArg("--file", "-f", args, defaultFiles);
+		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 		
 		ArrayList<String> inputFiles = new ArrayList<String>();
 		for (String file : inputFilePaths.split(" ")) {
@@ -26,7 +24,7 @@ public class JPGRaster {
 		}
 		
 		String defaultDirectory = "";
-		String inputDirectory = MainArgs.getOptArg("--directory", "-d", args, defaultDirectory);
+		String inputDirectory = getOptArg("--directory", "-d", args, defaultDirectory);
 		if (!inputDirectory.equals("") && !inputDirectory.endsWith("/")) {
 			inputDirectory += "/";
 		}
@@ -39,7 +37,6 @@ public class JPGRaster {
 			    }
 			}
 		}
-		//Collections.shuffle(inputFiles);
 		
 		if (inputFiles.size() == 0) {
 			System.out.println("Usage: j2r [ -f file | -d directory ]");
@@ -74,5 +71,49 @@ public class JPGRaster {
 			scanner.queueFile(file);
 		}
 	}
+	
+	public static String getOptArg(String longName, String shortName, String[] args, String defaultValue) {
+        
+        String prev = null;
+        for (String token : args) {
+            if (longName.equals(prev) || shortName.equals(prev)) {
+                if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
+                    return defaultValue;
+                }
+                return token.trim();
+            }
+            prev = token;
+        }
+        return defaultValue;
+    }
+	
+	public static String getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
+        
+		String tokens = "";
+        for (int i = 0; i < args.length; ++i) {
+        	String token = args[i];
+            if (longName.equals(token) || shortName.equals(token)) {
+            	for (int j = i + 1; j < args.length; ++j) {
+            		token = args[j];
+	            	if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
+	                    return tokens;
+	                }
+	            	tokens += " " + token.trim();
+            	}
+                return tokens;
+            }
+        }
+        return defaultValue;
+    }
+    
+
+    public static boolean hasArg(String longName, String shortName, String[] args) {
+        for(String token : args) {
+            if(longName.equals(token) || shortName.equals(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
 }
