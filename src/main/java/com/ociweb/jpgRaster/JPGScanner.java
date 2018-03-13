@@ -757,12 +757,12 @@ public class JPGScanner extends PronghornStage {
 		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
-			System.out.println("Opening " + file + " ...");
+			System.out.println("Opening '" + file + "'...");
 			try {
 				mcus = new ArrayList<MCU>();
 				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
-					System.err.println("Error - JPG file " + file + " invalid");
+					System.err.println("Error - JPG file '" + file + "' invalid");
 					return;
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
@@ -838,7 +838,7 @@ public class JPGScanner extends PronghornStage {
 				numProcessed = 0;
 			}
 			catch (IOException e) {
-				System.err.println("Error - Unknown error reading file " + file);
+				System.err.println("Error - Unknown error reading file '" + file + "'");
 			}
 			if (inputFiles.isEmpty()) {
 				System.out.println("All input files read.");

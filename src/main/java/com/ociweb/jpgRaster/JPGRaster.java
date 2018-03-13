@@ -16,7 +16,7 @@ public class JPGRaster {
 		
 		
 		String defaultFiles = "";
-		String inputFilePaths = MainArgs.getOptArg("fileName", "-f", args, defaultFiles);
+		String inputFilePaths = MainArgs.getOptArg("--file", "-f", args, defaultFiles);
 		
 		ArrayList<String> inputFiles = new ArrayList<String>();
 		for (String file : inputFilePaths.split(" ")) {
@@ -25,8 +25,11 @@ public class JPGRaster {
 			}
 		}
 		
-		String defaultDirectory = "test_jpgs/";
-		String inputDirectory = MainArgs.getOptArg("directory", "-d", args, defaultDirectory);
+		String defaultDirectory = "";
+		String inputDirectory = MainArgs.getOptArg("--directory", "-d", args, defaultDirectory);
+		if (!inputDirectory.equals("") && !inputDirectory.endsWith("/")) {
+			inputDirectory += "/";
+		}
 		
 		File[] files = new File(inputDirectory).listFiles();
 		if (files != null) {
@@ -38,11 +41,16 @@ public class JPGRaster {
 		}
 		//Collections.shuffle(inputFiles);
 		
+		if (inputFiles.size() == 0) {
+			System.out.println("Usage: j2r [ -f file | -d directory ]");
+			return;
+		}
+		
 		GraphManager gm = new GraphManager();
 		
 		populateGraph(gm, inputFiles);
 		
-		gm.enableTelemetry(8089);
+		//gm.enableTelemetry(8089);
 		
 		StageScheduler.defaultScheduler(gm).startup();
 	}

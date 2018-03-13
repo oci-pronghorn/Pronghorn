@@ -180,7 +180,7 @@ public class BMPDumper extends PronghornStage {
 						else {
 							filename = filename.substring(0, extension) + ".bmp";
 						}
-						System.out.println("Writing to " + filename + " ...");
+						System.out.println("Writing to '" + filename + "'...");
 						Dump(pixels, filename);
 						System.out.println("Done.");
 					}
