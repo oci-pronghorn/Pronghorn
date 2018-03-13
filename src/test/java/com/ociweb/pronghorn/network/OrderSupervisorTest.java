@@ -54,6 +54,8 @@ public class OrderSupervisorTest {
 		
 		GraphManager gm = new GraphManager();
 		
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000_000);
+		
 		Pipe<ServerResponseSchema>[] inputPipes = Pipe.buildPipes(outputCount, resConfig);
 		Pipe<NetPayloadSchema>[] outgoingPipes = Pipe.buildPipes(outputCount, netConfig);
 				

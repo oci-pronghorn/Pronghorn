@@ -360,7 +360,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					int pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length));
 					if (connectionId<0 || pipeIdx<0) {
 						
-						logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+						logger.warn("Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
 						//do not open instead we should attempt to close this one to provide room.
 						return null;
 					}

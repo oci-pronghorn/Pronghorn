@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
+import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
@@ -406,11 +407,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 
 		//eliminate server call input backups
-//		if ((producerStage instanceof ServerSocketReaderStage)
-//			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)
-//				) {
-//			return false;
-//		}
+		if ((producerStage instanceof ServerSocketReaderStage)
+			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)
+				) {
+			return false;
+		}
 
 		//eliminate network call input response backups
 		if ((producerStage instanceof ClientSocketReaderStage) 
@@ -419,19 +420,24 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}
 
-		//stops connecting via HTTPClientRequestTraffic
-		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE) 
-			&& (GraphManager.getInputPipeCount(graphManager, consumerStage)>2)			
-				) {
-			return false;
-		}		
-		
-		//stops connecting via HTTP1xResponseParser
-		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
-				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
-					) {
-				return false;
-		}		
+//		//stops connecting via HTTPClientRequestTraffic
+//		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE) 
+//			&& (GraphManager.getInputPipeCount(graphManager, consumerStage)>2)			
+//				) {
+//			return false;
+//		}		
+//		
+//		//stops connecting via HTTP1xResponseParser
+//		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
+//				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
+//					) {
+//						
+//			//TODO: and must be going to different places
+//					
+//				return false;
+//				
+//				
+//		}		
 			
 		
 		if (consumerStage instanceof MonitorConsoleStage ) {
