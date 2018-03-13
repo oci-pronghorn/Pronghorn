@@ -20,7 +20,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
-	private ServiceObjectHolder<ServerConnection> socketHolder;
+	private final ServiceObjectHolder<ServerConnection> socketHolder;
     private Selector                              selectors;
     private MemberHolder                          subscriptions;
     private int[]                                 upgradePipeLookup;
@@ -137,6 +137,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	//  0 0 0 0 1 1 1 1 
     	// 	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
+        this.socketHolder = new ServiceObjectHolder<ServerConnection>(channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -227,8 +228,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
         that.upgradePipeLookup = new int[that.channelBitsSize];
         Arrays.fill(that.upgradePipeLookup, -1);//if not upgraded it remains -1
         
-        return that.socketHolder = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
-        
+        return that.socketHolder;
+        		
     }
     
     public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that) {
