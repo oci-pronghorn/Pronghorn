@@ -14,14 +14,13 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.FileNotFoundException;
-import java.io.EOFException;
 import java.util.ArrayList;
 
 public class JPGScanner extends PronghornStage {
 
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
+	boolean verbose;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -36,13 +35,15 @@ public class JPGScanner extends PronghornStage {
 	MCU mcu4 = new MCU();
 	ArrayList<MCU> mcus = null;
 	
-	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output) {
+	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, NONE, output);
 		this.output = output;
+		this.verbose = verbose;
 	}
 	
-	public static Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
+	public Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
+		header.filename = filename;
 		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
 		// JPG file must begin with 0xFFD8
@@ -53,7 +54,8 @@ public class JPGScanner extends PronghornStage {
 			f.close();
 			return header;
 		}
-		System.out.println("Start of Image");
+		if (verbose) 
+			System.out.println("Start of Image");
 		last = (short)f.readUnsignedByte();
 		current = (short)f.readUnsignedByte();
 		
@@ -171,7 +173,8 @@ public class JPGScanner extends PronghornStage {
 					current = (short)f.readUnsignedByte();
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
-							System.out.println("End of Image");
+							if (verbose) 
+								System.out.println("End of Image");
 							break;
 						}
 						else if (current == 0x00) {
@@ -224,7 +227,8 @@ public class JPGScanner extends PronghornStage {
 					current = (short)f.readUnsignedByte();
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
-							System.out.println("End of Image");
+							if (verbose) 
+								System.out.println("End of Image");
 							break;
 						}
 						else if (current == 0x00) {
@@ -280,9 +284,10 @@ public class JPGScanner extends PronghornStage {
 	}
 	
 	// decode a whole scan, progressive images only
-	private static boolean decodeScan(Header header, ArrayList<MCU> mcus, int numScans) {
+	private boolean decodeScan(Header header, ArrayList<MCU> mcus, int numScans) {
 		// decode scan so far
-		System.out.println("Decoding a scan of size " + header.imageData.size());
+		if (verbose) 
+			System.out.println("Decoding a scan of size " + header.imageData.size());
 		HuffmanDecoder.beginDecode(header);
 
 		MCU mcu1 = null;
@@ -356,8 +361,9 @@ public class JPGScanner extends PronghornStage {
 		return true;
 	}
 	
-	private static void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading Quantization Tables");
+	private void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading Quantization Tables");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
@@ -397,13 +403,14 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
+	private void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
 		if (header.numComponents != 0) {
 			System.err.println("Error - Multiple SOFs detected");
 			header.valid = false;
 			return;
 		}
-		System.out.println("Reading Start of Frame");
+		if (verbose) 
+			System.out.println("Reading Start of Frame");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		header.precision = (short)f.readUnsignedByte();
@@ -468,8 +475,9 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading Huffman Tables");
+	private void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading Huffman Tables");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
@@ -524,13 +532,14 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
+	private void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
 		if (header.numComponents == 0) {
 			System.err.println("Error - SOS detected before SOF");
 			header.valid = false;
 			return;
 		}
-		System.out.println("Reading Start of Scan");
+		if (verbose) 
+			System.out.println("Reading Start of Scan");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		
@@ -577,7 +586,7 @@ public class JPGScanner extends PronghornStage {
 			header.endOfSelection != 63 ||
 			header.successiveApproximationHigh != 0 ||
 			header.successiveApproximationLow != 0)) {
-			System.err.println("Error - Partial selection or approximation is incompatible with Baseline");
+			System.err.println("Error - Spectral selection or approximation is incompatible with Baseline");
 			header.valid = false;
 			return;
 		}
@@ -588,8 +597,9 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading Restart Interval");
+	private void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading Restart Interval");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		header.restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
@@ -599,13 +609,15 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadRSTN(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading RSTN");
+	private void ReadRSTN(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading RSTN");
 		// RSTN has no length
 	}
 	
-	private static void ReadAPPN(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading APPN");
+	private void ReadAPPN(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading APPN");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		// all of APPN markers can be ignored
@@ -614,8 +626,9 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private static void ReadComment(DataInputStream f, Header header) throws IOException {
-		System.out.println("Reading Comment");
+	private void ReadComment(DataInputStream f, Header header) throws IOException {
+		if (verbose) 
+			System.out.println("Reading Comment");
 		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
 		//System.out.println("Length: " + (length + 2));
 		// all comment markers can be ignored
@@ -658,7 +671,7 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		else {
-			System.err.println("Requesting shutdown1");
+			System.err.println("Requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -757,7 +770,7 @@ public class JPGScanner extends PronghornStage {
 		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !inputFiles.isEmpty()) {
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
-			System.out.println("Opening '" + file + "'...");
+			System.out.println(file);
 			try {
 				mcus = new ArrayList<MCU>();
 				header = ReadJPG(file, mcus);
@@ -767,20 +780,22 @@ public class JPGScanner extends PronghornStage {
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
-					System.out.println("Scanner writing header to pipe...");
+					if (verbose) 
+						System.out.println("Scanner writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Scanner requesting shutdown2");
+					System.err.println("Scanner requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
 				for (int i = 0; i < header.numComponents; ++i) {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-						System.out.println("Scanner writing color component to pipe...");
+						if (verbose) 
+							System.out.println("Scanner writing color component to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
@@ -788,7 +803,7 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Scanner requesting shutdown3");
+						System.err.println("Scanner requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -796,7 +811,8 @@ public class JPGScanner extends PronghornStage {
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
 					if (header.quantizationTables[i] != null) {
 						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
-							System.out.println("Scanner writing quantization table to pipe...");
+							if (verbose) 
+								System.out.println("Scanner writing quantization table to pipe...");
 	
 							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
 							DataOutputBlobWriter.openField(quantizationTableWriter);
@@ -816,7 +832,7 @@ public class JPGScanner extends PronghornStage {
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("Scanner requesting shutdown4");
+							System.err.println("Scanner requesting shutdown");
 							requestShutdown();
 						}
 					}
@@ -841,12 +857,13 @@ public class JPGScanner extends PronghornStage {
 				System.err.println("Error - Unknown error reading file '" + file + "'");
 			}
 			if (inputFiles.isEmpty()) {
-				System.out.println("All input files read.");
+				if (verbose) 
+					System.out.println("All input files read.");
 			}
 		}
 	}
 	
-	public static void main(String[] args) {
+	/*public static void main(String[] args) {
 		Header header = null;
 		try {
 			ArrayList<MCU> mcus = new ArrayList<MCU>();
@@ -934,5 +951,5 @@ public class JPGScanner extends PronghornStage {
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
-	}
+	}*/
 }

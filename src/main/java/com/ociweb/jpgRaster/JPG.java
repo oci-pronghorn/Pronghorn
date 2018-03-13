@@ -27,6 +27,8 @@ public class JPG {
 	}
 	
 	public static class Header {
+		String filename;
+		
 		// DQT
 		QuantizationTable[] quantizationTables = new QuantizationTable[4];
 		

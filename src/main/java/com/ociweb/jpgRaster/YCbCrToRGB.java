@@ -15,6 +15,7 @@ public class YCbCrToRGB extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
+	boolean verbose;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -31,10 +32,11 @@ public class YCbCrToRGB extends PronghornStage {
 	int count = 0;
 	static byte[] rgb = new byte[3];
 	
-	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output) {
+	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
+		this.verbose = verbose;
 	}
 
 	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
@@ -251,15 +253,16 @@ public class YCbCrToRGB extends PronghornStage {
 				header = new Header();
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
-				String filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
 				PipeReader.releaseReadLock(input);
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
-					System.out.println("YCbCrToRGB writing header to pipe...");
+					if (verbose) 
+						System.out.println("YCbCrToRGB writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
-					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, filename);
+					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
 					PipeWriter.publishWrites(output);
 				}
 				else {
@@ -284,7 +287,8 @@ public class YCbCrToRGB extends PronghornStage {
 				
 				// write color component data to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-					System.out.println("Inverse DCT writing color component to pipe...");
+					if (verbose) 
+						System.out.println("Inverse DCT writing color component to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);

@@ -189,6 +189,7 @@ public class HuffmanDecoder {
 									else {
 										coeff = small;
 									}
+									
 								}
 								else {
 									if (numZeroes != 15) {
@@ -271,9 +272,6 @@ public class HuffmanDecoder {
 			}
 			if (!found ) {
 				System.err.println("Error - Invalid AC Value: " + currentCode);
-				if (!b.hasBits()) {
-					System.err.println("all out");
-				}
 				return false;
 			}
 		}
