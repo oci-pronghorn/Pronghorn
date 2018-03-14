@@ -40,7 +40,7 @@ public class JPGRaster {
 		}
 		
 		if (inputFiles.size() == 0) {
-			System.out.println("Usage: j2r [ -f file1 [ file2 ... ] | -d directory ] [ -v ]");
+			System.out.println("Usage: j2r [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
 			return;
 		}
 		
@@ -48,7 +48,18 @@ public class JPGRaster {
 		
 		populateGraph(gm, inputFiles, verbose);
 		
-		//gm.enableTelemetry(8089);
+		String defaultPort = "";
+		String portString = getOptArg("--port", "-p", args, defaultPort);
+		if (portString != "") {
+			int port = 0;
+			try {
+				port = Integer.parseInt(portString);
+			}
+			catch (Exception e) {}
+			if (port != 0) {
+				gm.enableTelemetry(Integer.parseInt(portString));
+			}
+		}
 		
 		StageScheduler.defaultScheduler(gm).startup();
 	}
