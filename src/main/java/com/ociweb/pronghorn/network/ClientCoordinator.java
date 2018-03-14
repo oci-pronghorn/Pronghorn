@@ -270,7 +270,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	//grown and mutated here. It must be synchronized since any thread can
 	//create new instances of this object for connecting to a domain at any time.
 	//this is almost always restricted to startup
-	public synchronized static int registerDomain(String host) {
+	public synchronized static int registerDomain(CharSequence host) {
 
 		int hostId = (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry, host);
 		if (-1==hostId) {
