@@ -47,9 +47,10 @@ public class GraphManager {
 	private static final byte[] AQUOTE = "\"".getBytes();
 	private static final byte[] ELAP = " Elap:".getBytes();
 	private static final byte[] CLOSEBRACKET_NEWLINE = "]\n".getBytes();
-	private static final byte[] WHITE_NEWLINE = " \n".getBytes();
 	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
-	private static final byte[] LABEL_MSG_SEC = "Msg/s ".getBytes();
+	private static final byte[] LABEL_MSG_SEC = "Mps".getBytes();
+	private static final byte[] WHITE_SPACE_NL = " \n".getBytes();
+	
 	
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
@@ -1913,7 +1914,7 @@ public class GraphManager {
 			                if (null!=msgPerSec) {
 			                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
 			                }
-			                target.append(WHITE_NEWLINE);
+			                target.append(WHITE_SPACE_NL);
 			               			                
 			                if (null!=pipeTraffic) {
 			                	appendVolume(target, pipeTraffic[pipe.id]);			                	
@@ -1982,13 +1983,13 @@ public class GraphManager {
 		                		target.append(LABEL_OPEN);
 		                		
 		                		Appendables.appendValue(target, count);
-		                		target.append("*\n");
+		                		target.append(" Pipes\n");
 		                		
 		                        if (null!=pipeTraffic) {
 				                	appendVolume(target, sumTraffic);			                	
 				                } 
 				                if (null!=msgPerSec) {
-				                	target.append(WHITE_NEWLINE);
+				                	target.append(WHITE_SPACE_NL);
 				                	fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
 				                }
 		                		
@@ -2033,7 +2034,7 @@ public class GraphManager {
 		} else {
 			Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
 		}
-		target.append(' ');
+		target.append(WHITE_SPACE_NL);
 	}
 
 	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {

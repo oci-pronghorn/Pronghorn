@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ClientSocketReaderStage;
+import com.ociweb.pronghorn.network.ClientSocketWriterStage;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
@@ -49,39 +50,25 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					final ScriptedNonThreadScheduler localNTS = ntsArray[i];
 					if ((idx=localNTS.indexOfStage(stage))>=0) {
 						assert(idx<localNTS.stages.length);
-						if (localNTS.reverseOrder) {
-								//found it and we have work to do
-								//if already at end there is nothing else to do
-								if (localNTS.stages.length>1 && idx<localNTS.stages.length-1) {
-									logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
-									
-								    //adding one more thread to executer service
-									ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
-									ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
-									System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
-									newArray[ntsArray.length-1] = splitOn;
-									ntsArray = newArray;
-									executorService.execute(buildRunnable(splitOn));
-								} else {
-									//logger.trace("stage was already scheduled for the optimum time "+stage);
-								}
+
+						//found it and we have work to do
+						//if already at beginning there is nothing else to do
+						if (localNTS.stages.length>1 
+							&& (idx>0) //not beginning or end
+							&& (idx<localNTS.stages.length-1)) {
+							logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
+							
+						    //adding one more thread to executer service
+							ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
+							ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
+							System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
+							newArray[newArray.length-1] = splitOn;
+							ntsArray = newArray;
+							executorService.execute(buildRunnable(splitOn));
 						} else {
-								//found it and we have work to do
-								//if already at beginning there is nothing else to do
-								if (localNTS.stages.length>1 && idx>0) {
-									logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
-									
-								    //adding one more thread to executer service
-									ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
-									ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
-									System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
-									newArray[newArray.length-1] = splitOn;
-									ntsArray = newArray;
-									executorService.execute(buildRunnable(splitOn));
-								} else {
-									//logger.trace("stage was already scheduled for the optimum time "+stage);
-								}
+							//logger.trace("stage was already scheduled for the optimum time "+stage);
 						}
+						
 						return;
 					}
 				}
@@ -549,6 +536,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				) {
 			return false;
 		}
+		
+		if ((producerStage instanceof ClientSocketWriterStage) 
+				&& (GraphManager.getInputPipeCount(graphManager, producerId)>4)			
+					) {
+				return false;
+			}
 
 	// GraphManager.LOAD_MERGE split is very questionable, it should be removed..	
 		
@@ -975,7 +968,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		threadCount=count;
 		logger.info("actual thread count {}", threadCount);
 		
-		logger.info("thread checking for long runs is {}",idxThreadCheckingForLongRuns);
+		//logger.trace("thread checking for long runs is {}",idxThreadCheckingForLongRuns);
 		/////////////
 	    //for each array of stages create a scheduler
 	    /////////////
