@@ -255,7 +255,8 @@ public class HTTPSRoundTripTest {
     
     
 	public static void runRoundTrip(GraphManager gm, StringBuilder results) {
-		ScriptedNonThreadScheduler scheduler = new ScriptedNonThreadScheduler(gm);
+		ScriptedNonThreadScheduler scheduler 
+		= new ScriptedNonThreadScheduler(gm,null,false);
 		
 		scheduler.startup();
 		int i = 3000;

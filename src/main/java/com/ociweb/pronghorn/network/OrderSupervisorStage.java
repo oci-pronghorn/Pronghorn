@@ -116,8 +116,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         								Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_UPGRADE_307) +            
         								Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
         
-        GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
-        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+        //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
+        //      its feeding pipe as frequently as possible, critical for low latency.
+        
+        
     }
 
 
@@ -165,7 +168,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		}
 		
     	boolean haveWork;
-    	int maxIterations = 100;
+    	int maxIterations = 1000;
     	do {
 	    	haveWork = false;
 	        int c = dataToSend.length;
@@ -190,23 +193,25 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	        		        
 	        	
 	            haveWork |= processPipe(dataToSend[c], c);
-	            
-            	
-	            
+  
 	        }  
     	} while (--maxIterations>0 && haveWork);
+    			//|| (quietPeriodCounter<quietPeriod));
+    	
     }
 
 
 	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
-		boolean didWork = false;
-		while (Pipe.hasContentToRead(sourcePipe)) {
-	
-			assert(Pipe.bytesReadBase(sourcePipe)>=0);
-						
-			didWork = true;
+		
 
+		boolean didWork = false;
+		while (Pipe.contentRemaining(sourcePipe)>0) {
+	
+			
+			
+			assert(Pipe.bytesReadBase(sourcePipe)>=0);
+			
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
 		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);
 		    Pipe<NetPayloadSchema> outPipe = null;
@@ -231,6 +236,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    		break;
 		    	}		    	
 		    	
+		    	//only after we know that we are doing something.
+				didWork = true;
+
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
 		    
 		        
@@ -285,8 +293,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		            //larger value and not ready yet
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		        	
+		        	
 		        	//logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
-		        	return false;//must check the other pipes this can not be processed yet.
+		        	return didWork;//must check the other pipes this can not be processed yet.
 
 		        }
 
@@ -302,7 +312,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        
 		    } else {
-			    
+		    	didWork = true;
 		    	////////////////
 		    	//these consume data but do not write out to pipes
 		    	////////////////
@@ -340,7 +350,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 						
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}
-
 		return didWork;
 	}
 

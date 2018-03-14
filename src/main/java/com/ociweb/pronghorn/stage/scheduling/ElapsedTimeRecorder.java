@@ -17,6 +17,10 @@ public class ElapsedTimeRecorder {
 		return report(new StringBuilder()).toString();
 	}
 	
+	public static long totalCount(ElapsedTimeRecorder that) {
+		return that.totalCount;
+	}
+	
 	public <A extends Appendable> A report(A target) {
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .50f), " 50 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .80f), " 80 percentile\n");

@@ -149,7 +149,54 @@ public class GraphManager {
 	private int[]  stageWrkPct = new int[INIT_STAGES];
 	private long[] stageLastTimeNs = new long[INIT_STAGES];
 	
+	//keeps histogram of Elapsed time for every stage by stageId
+	//By reviewing this periodically blocking and/or long running stages can be detected
+	//The "bad players" are reported back to the asking scheduler so re-scheduling can be done.
 	private ElapsedTimeRecorder[] stageElapsed = new ElapsedTimeRecorder[0];
+	
+	public static void visitLongRunningStages(GraphManager gm, StageVisitor visitor) {
+		//bad players are detected by looking at 
+		//the std dev of elapsed time for a given percentile.
+		//since we want common behavior and no anomalies we use 80%
+		float percentile = .80f;
+		int significantSampleCount = 100;//only after this many runs do we flag.
+		double stdDevLimit = 2d;// 2 std deviations
+		
+		
+		RunningStdDev stdDev = new RunningStdDev();
+		
+		int i = gm.stageElapsed.length;
+		while (--i>=0) {			
+			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
+					RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile));
+				}
+			}
+		}
+		
+		if (RunningStdDev.sampleCount(stdDev)<3) {
+			return; //do nothing
+		}
+		
+		double dev = RunningStdDev.stdDeviation(stdDev);
+		double mean = RunningStdDev.mean(stdDev);		
+		double limit = mean+(stdDevLimit*dev);
+
+		i = gm.stageElapsed.length;
+		while (--i>=0) {	
+			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
+					if (ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile)>limit) {
+						visitor.visit(getStage(gm,i));
+					}
+				}
+			}
+		}
+	}
+	
+	public static long elapsedAtPercentile(GraphManager gm, int stageId, float pct) {
+		return ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[stageId], pct);
+	}
 	
 	private Map<Object, StringBuilder> cachedRanks;
     
@@ -1152,12 +1199,14 @@ public class GraphManager {
 	public static Object getNota(GraphManager m, int stageId, Object key, Object defaultValue) {
 	    if (stageId>=0) {
     		int idx = m.stageIdToNotasBeginIdx[stageId];
-    		int notaId;
-    		while(-1 != (notaId = m.multNotaIds[idx])) {
-    			if (m.notaIdToKey[notaId].equals(key)) {
-    				return m.notaIdToValue[notaId];
-    			}
-    			idx++;
+    		if (idx>=0) {
+	    		int notaId;
+	    		while(-1 != (notaId = m.multNotaIds[idx])) {
+	    			if (m.notaIdToKey[notaId].equals(key)) {
+	    				return m.notaIdToValue[notaId];
+	    			}
+	    			idx++;
+	    		}
     		}
 	    }
 		return defaultValue;
@@ -1903,35 +1952,52 @@ public class GraphManager {
 		                				
                 				target.append(pipeIdBytes);
 		                		
-                				final int pipeSize = GraphManager.getInputPipeCount(m, consumer);
+                				final int width = GraphManager.getOutputPipeCount(m, producer);
                 				long sumPctFull = 0;
                 				long sumTraffic = 0;
-                				for(int c=1; c<=pipeSize; c++) {
-                					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
-                					if (null!=pipePercentileFullValues) {
-                						sumPctFull += (long)pipePercentileFullValues[p.id];
+                				long sumMsgPerSec = 0;
+                				int count = 0;
+                				for(int c=1; c<=width; c++) {
+                					
+                					Pipe<?> p = GraphManager.getOutputPipe(m, producer, c);
+                					
+                					//only pick up those pointing to this same consumer.
+                					if (GraphManager.getRingConsumerId(m, p.id) == consumer) {
+                					
+	                					count++;
+	                					if (null!=pipePercentileFullValues) {
+	                						sumPctFull += (long)pipePercentileFullValues[p.id];
+	                					}
+	                					//TODO: also sum up the msg per sec etc..
+	                					if (null!=pipeTraffic) {
+	                						sumTraffic += (long)pipeTraffic[p.id];
+	                					}
+	                					if (null!=msgPerSec) {
+	                						sumMsgPerSec += (long)msgPerSec[p.id];
+	                					}
                 					}
-                					//TODO: also sum up the msg per sec etc..
-                					if (null!=pipeTraffic) {
-                						sumTraffic += (long)pipeTraffic[p.id];
-                					}
+                							
                 				}
                 				                				                				
 		                		target.append(LABEL_OPEN);
 		                		
-		                		Appendables.appendValue(target, pipeSize);
+		                		Appendables.appendValue(target, count);
 		                		target.append("*\n");
 		                		
 		                        if (null!=pipeTraffic) {
 				                	appendVolume(target, sumTraffic);			                	
 				                } 
+				                if (null!=msgPerSec) {
+				                	target.append(WHITE_NEWLINE);
+				                	fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
+				                }
 		                		
 		                		target.append(AQUOTE);
 		                		
 		                		int lineWidth = 10;
 		                		
 		                		if (null!=pipePercentileFullValues) {		                	
-		                			int pctFull = (int)(sumPctFull/pipeSize);
+		                			int pctFull = (int)(sumPctFull/width);
 		                			if (pctFull>=60) {
 		                				target.append(",color=red");	    
 		                			} else if (pctFull>=40) {
@@ -1970,7 +2036,7 @@ public class GraphManager {
 		target.append(' ');
 	}
 
-	private static void fixedSpaceValue(AppendableBuilder target, int value, byte[] msgPerSeclabel) {
+	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {
 		if (value<10_000) {
 			//use x.xxx places (5)
 			Appendables.appendDecimalValue(target, value, (byte)-3).append(msgPerSeclabel);			          
@@ -2784,7 +2850,7 @@ public class GraphManager {
 		
 	}
 
-	public static void addPublishListener(GraphManager graphManager, 
+	public static void setPublishListener(GraphManager graphManager, 
 			                              PronghornStage pronghornStage, 
 			                              PipePublishListener listener) {
 		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
@@ -2793,7 +2859,7 @@ public class GraphManager {
 		}
 	}
 
-	public static void addReleaseListener(GraphManager graphManager,
+	public static void setReleaseListener(GraphManager graphManager,
 			                              PronghornStage pronghornStage,
 			                              PipeReleaseListener listener) {
 		int c = getInputPipeCount(graphManager, pronghornStage.stageId);

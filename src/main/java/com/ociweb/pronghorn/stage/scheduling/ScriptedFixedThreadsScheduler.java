@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
-import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
@@ -33,6 +32,137 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	static final Logger logger = LoggerFactory.getLogger(ScriptedFixedThreadsScheduler.class);
 	private ScriptedNonThreadScheduler[] ntsArray;
 
+	private StageVisitor longRunVisitor = new StageVisitor() {
+		
+		byte[] seen = new byte[GraphManager.countStages(graphManager)+1];
+				
+		@Override
+		public void visit(PronghornStage stage) {
+
+			if (seen[stage.stageId]==0) {
+				seen[stage.stageId]=1;	//will only report this once per run.
+
+				//linear search, will only happen once.
+				int i = ntsArray.length;
+				while (--i>=0) {
+					int idx = -1;
+					final ScriptedNonThreadScheduler localNTS = ntsArray[i];
+					if ((idx=localNTS.indexOfStage(stage))>=0) {
+						assert(idx<localNTS.stages.length);
+						if (localNTS.reverseOrder) {
+								//found it and we have work to do
+								//if already at end there is nothing else to do
+								if (localNTS.stages.length>1 && idx<localNTS.stages.length-1) {
+									logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
+									
+								    //adding one more thread to executer service
+									ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
+									ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
+									System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
+									newArray[ntsArray.length-1] = splitOn;
+									ntsArray = newArray;
+									executorService.execute(buildRunnable(splitOn));
+								} else {
+									//logger.trace("stage was already scheduled for the optimum time "+stage);
+								}
+						} else {
+								//found it and we have work to do
+								//if already at beginning there is nothing else to do
+								if (localNTS.stages.length>1 && idx>0) {
+									logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
+									
+								    //adding one more thread to executer service
+									ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
+									ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
+									System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
+									newArray[newArray.length-1] = splitOn;
+									ntsArray = newArray;
+									executorService.execute(buildRunnable(splitOn));
+								} else {
+									//logger.trace("stage was already scheduled for the optimum time "+stage);
+								}
+						}
+						return;
+					}
+				}
+				throw new UnsupportedOperationException("Internal error, expected to find stage "+stage+" in one of the schedulers.");
+			}
+		}
+	};
+	
+	//////////////////////////////////
+	//methods for increasing and decreasing the thread count
+	//these will be callable from the GreenRuntime and from Telemetry server?
+	//////////////////////////////////
+	
+	//why to reduce threads?
+	// * If we need to lower the latency at the expense of volume
+	// * If the threads are far larger than cores causing time slicing	
+	
+	//why to increase threads?
+	// * If we need greater volume at the expense of latency
+	// * If threads are fewer in count than the number of cores paid for
+	
+	//TODO: must prevent rapid changes or changes "out of bounds"
+	//TODO: must have method to return the count of threads
+	//     show this as a scale low to high with two buttons for
+	//     lower latency and increase volume
+	
+	
+	
+	public void reduceThreads() {
+		long min1 = Integer.MAX_VALUE;
+		int min1Idx = -1;
+		long min2 = Integer.MAX_VALUE;
+		int min2Idx = -1;
+				
+		int i = ntsArray.length;
+		while(--i>=0) {
+			long elap = ntsArray[i].nominalElapsedTime(graphManager);
+			if (elap<min1) {				
+				if (min1 < min2) {
+					min2 = min1;
+					min2Idx = min1Idx;
+				}
+				min1 = elap;
+				min1Idx = i;						
+			}
+		}
+		
+		//TODO: buld new ntsArray from the sum of both arrays
+		//TODO: lock both old arrays, remove them, insert new item
+		//TODO: remove old arrays from executor and add new item
+		
+		
+	}
+	public void increaseThreads() {
+		long max = -1;
+		int maxIdx = -1;
+		
+		int i = ntsArray.length;
+		while(--i>=0) {
+			long elap = ntsArray[i].nominalElapsedTime(graphManager);
+			if (elap>max) {
+				max = elap;
+				maxIdx = i;
+			}
+		}
+
+		int idx = ntsArray[maxIdx].recommendedSplitPoint(graphManager);
+		
+		ntsArray[maxIdx].splitOn(idx);
+		
+		
+		
+		//TODO: find the slowest, find its slowest
+		//      split on that point.
+		
+		
+	}
+	//////////////////////////////
+	//////////////////////////////
+	
+	
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager) {
 		//this is often very optimal since we have enough granularity to swap work but we do not
 		//have so many threads that it overwhelms the operating system context switching
@@ -406,12 +536,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}
 
-		//eliminate server call input backups
-		if ((producerStage instanceof ServerSocketReaderStage)
-			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)
-				) {
-			return false;
-		}
+//		//eliminate server call input backups
+//		if ((producerStage instanceof ServerSocketReaderStage)
+//			&& (GraphManager.getOutputPipeCount(graphManager, producerId)>4)
+//				) {
+//			return false;
+//		}
 
 		//eliminate network call input response backups
 		if ((producerStage instanceof ClientSocketReaderStage) 
@@ -420,24 +550,20 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;
 		}
 
-//		//stops connecting via HTTPClientRequestTraffic
-//		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.LOAD_MERGE) 
-//			&& (GraphManager.getInputPipeCount(graphManager, consumerStage)>2)			
-//				) {
-//			return false;
-//		}		
-//		
-//		//stops connecting via HTTP1xResponseParser
-//		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
-//				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
-//					) {
-//						
-//			//TODO: and must be going to different places
-//					
-//				return false;
-//				
-//				
-//		}		
+	// GraphManager.LOAD_MERGE split is very questionable, it should be removed..	
+		
+		
+		//stops connecting via HTTP1xResponseParser
+		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
+				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
+					) {
+						
+			//TODO: and must be going to different places
+					
+				return false;
+				
+				
+		}		
 			
 		
 		if (consumerStage instanceof MonitorConsoleStage ) {
@@ -830,16 +956,26 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	private void createSchedulers(GraphManager graphManager, PronghornStage[][] stageArrays) {
 	
+		int idxThreadCheckingForLongRuns = 0;
 		int j = stageArrays.length; //TODO: refactor into a recursive single pass count.
 		int count = 0;
 		while (--j>=0) {
 			if (null!=stageArrays[j]) {
+				assert(stageArrays[j].length>0);
+				//if we find a monitor use it for long run checks instead of primary				
+				if (GraphManager.hasNota(graphManager, stageArrays[j][0].stageId, GraphManager.MONITOR)) {
+					idxThreadCheckingForLongRuns=j;
+				}
 				count++;
+				
 			}
+			
+			
 		}
 		threadCount=count;
 		logger.info("actual thread count {}", threadCount);
 		
+		logger.info("thread checking for long runs is {}",idxThreadCheckingForLongRuns);
 		/////////////
 	    //for each array of stages create a scheduler
 	    /////////////
@@ -853,16 +989,16 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		if (logger.isDebugEnabled()) {
 	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
 	    		}
-	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
-				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
-	    
+
 				//TODO: NOTE: this is optimized for low load conditions, eg the next pipe has room.
 				//      This boolean can be set to true IF we know the pipe will be full all the time
 				//      By setting this to true the scheduler is optimized for heavy loads
 				//      Each individual part of the graph can have its own custom setting... 
 				boolean reverseOrder = false;
-	    		
-	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler(ntsIdx, graphManager, reverseOrder, stageArrays[k], name, true);
+	    		StageVisitor checkForLongRuns = (idxThreadCheckingForLongRuns!=k) ? null : longRunVisitor;
+	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler( 
+	    				             graphManager, reverseOrder, 
+	    				             checkForLongRuns, stageArrays[k]);
 	    	}
 	    }
 	}
@@ -1113,19 +1249,18 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}	
 		
         ThreadFactory threadFactory = new ThreadFactory() {
-        	int count = ntsArray.length;
 			@Override
 			public Thread newThread(Runnable r) {
-				if (--count>=0) {
-					return new Thread(r, ntsArray[count].name());
+				if (r instanceof NamedRunnable) {
+					return new Thread(r, ((ScriptedNonThreadScheduler)r).name());
 				} else {
-					logger.info("Warning: fixed thread scheduler did not expect more threads to be created than {}", threadCount);
-					return new Thread(r,"Unknown");
+					return new Thread(r,"Unknown");					
 				}
 			}        	
         };
-		this.executorService = Executors.newFixedThreadPool(threadCount, threadFactory);
-		
+        
+        this.executorService = Executors.newCachedThreadPool(threadFactory);
+    
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
@@ -1149,7 +1284,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		assert(null!=allStagesLatch);
 		assert(null!=nts);
 	
-		return new Runnable() {
+		return new NamedRunnable() {
 
 			@Override
 			public void run() {
@@ -1169,11 +1304,36 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
 						nts.run();										
 					}		
+			}
+
+			@Override
+			public String name() {
+				return nts.name();
 			}	
 			
 		};
 	}
 
+	private Runnable buildRunnable(final ScriptedNonThreadScheduler nts) {
+		assert(null!=nts);
+	
+		return new NamedRunnable() {
+
+			@Override
+			public void run() {
+					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
+						nts.run();										
+					}		
+			}
+
+			@Override
+			public String name() {
+				return nts.name();
+			}	
+			
+		};
+	}
+	
 	@Override
 	public boolean checkForException() {
 		int i = ntsArray.length;
