@@ -1251,9 +1251,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				while (--f>=0) {
 					if (fields[f].getType().isAssignableFrom(NamedRunnable.class)) {
 						fields[f].setAccessible(true);
+						
 						try {
-							logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
-							return new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
+							if (fields[f].get(r)==null || null==((NamedRunnable)fields[f].get(r)).name()) {
+								return new Thread(r,"Unknown");	
+							} else {
+								//logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
+								return new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
+							}
 						} catch (IllegalArgumentException e) {
 							logger.info("error pulling NamedRunnable",e);
 							return new Thread(r,"Unknown");
@@ -1266,7 +1271,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					}
 					
 				}
-				logger.info("new thread created for {}",r.getClass().getName());
+				//logger.info("new thread created for {}",r.getClass().getName());
 				return new Thread(r,"Unknown");					
 
 			}        	
