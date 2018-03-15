@@ -1872,27 +1872,34 @@ public class GraphManager {
 		                
 		                //NOTE: special logic to turn off labels
 		                boolean showLabels = true;
-		                boolean fanOutGrouping = true;
+		                boolean fanOutGrouping = false;
+		                boolean fanInGrouping = false;
 		                
 	                	//if this producer writes to many pipes
 	                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
 						if (outputPipeCount >= 4) {
 							//destinations must share same destination and be of same type;	
-							if (isSameDestination(m, producer, 1, 2) &&
-							    isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)) {
+							if (isSameDestination(m, producer, 1, 2) 
+								&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
+							    ) {
 							  showLabels = false;
-							  fanOutGrouping = true;
+							  fanOutGrouping = true;						
 							}
 	                	}
-	                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
-						if (inputPipeCount >= 4) {
-							//destinations must share same destination and be of same type;	
-							if (isSameSource(m, consumer, 1, 2) &&
-							    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
-							  showLabels = false;
-							  fanOutGrouping = false;
-							}
-	                	}
+						
+						//already grouped so do not do it again.
+						if (showLabels) {
+		                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+							if (inputPipeCount >= 4) {
+								//destinations must share same destination and be of same type;	
+								if (isSameSource(m, consumer, 1, 2) &&
+								    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
+								  showLabels = false;
+								  fanInGrouping = true;
+								}
+		                	}
+						}
+						
 		                
 		                //disables the pipe back label
 //		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
@@ -1950,11 +1957,16 @@ public class GraphManager {
 						    
 						    target.append(CLOSEBRACKET_NEWLINE);
 		                    
-		                } else {
+		                } 
+
+		                if (!showLabels) {
 		                	
-		                	if (fanOutGrouping && pipe.id == GraphManager.getInputPipe(m, consumer, 1).id) {
-		                		//show consolidated single line
-		                				                				
+		                	//System.out.println("a consumer "+consumer);
+		                	if (fanOutGrouping
+		                	    //if this active pipe is the first pipe of any consumer
+		                		&& pipe.id == GraphManager.getInputPipe(m, consumer, 1).id
+		                		) {
+		                
                 				target.append(pipeIdBytes);
 		                		
                 				final int width = GraphManager.getOutputPipeCount(m, producer);
@@ -1992,7 +2004,8 @@ public class GraphManager {
 		                				
 		                	}
 		                	
-		                	if ((!fanOutGrouping) && pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
+		                	if (fanInGrouping 
+		                			&& pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
 		                		//show consolidated single line
 		                				                				
                 				target.append(pipeIdBytes);
@@ -2086,7 +2099,9 @@ public class GraphManager {
 		Pipe<?> outputPipe2 = GraphManager.getOutputPipe(m, producer, b);			
 		int con1 = GraphManager.getRingConsumerId(m, outputPipe1.id);	
 		int con2 = GraphManager.getRingConsumerId(m, outputPipe2.id);		
-		return (con1==con2 && Pipe.isForSameSchema(outputPipe1, outputPipe2));
+		return (con1==con2 
+				&& Pipe.isForSameSchema(outputPipe1, outputPipe2)
+				);
 
 	}
 	
