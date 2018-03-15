@@ -166,7 +166,7 @@ public class GraphManager {
 		
 		RunningStdDev stdDev = new RunningStdDev();
 		
-		boolean debug = true;
+		boolean debug = false;
 		
 		if (debug) {
 			logger.info("scanning for longest running stages");
