@@ -174,17 +174,19 @@ public class GraphManager {
 		
 		
 		int i = gm.stageElapsed.length;
-		while (--i>=0) {			
-			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
-				long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
-				if (debug) {
-					logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
-							Appendables.appendNearestTimeUnit(new StringBuilder(), elapsedAtPercentile).toString()
-							);
-				}
-				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
-					RunningStdDev.sample(stdDev, elapsedAtPercentile);
-					
+		while (--i>=0) {	
+			if (null!=getStage(gm,i)) {
+				if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+					long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
+					if (debug) {
+						logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
+								Appendables.appendNearestTimeUnit(new StringBuilder(), elapsedAtPercentile).toString()
+								);
+					}
+					if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
+						RunningStdDev.sample(stdDev, elapsedAtPercentile);
+						
+					}
 				}
 			}
 		}
@@ -1896,8 +1898,15 @@ public class GraphManager {
 							if (isSameDestination(m, producer, 1, 2) 
 								&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
 							    ) {
-							  showLabels = false;
-							  fanOutGrouping = true;						
+								
+								//Must they must not ALL go to the same place, this may be a fan in.
+								boolean allTheSame = allTheSame(m, producer, outputPipeCount);
+								
+								if (!allTheSame) {
+									showLabels = false;
+							    	fanOutGrouping = true;
+								}
+							  
 							}
 	                	}
 						
@@ -1908,6 +1917,9 @@ public class GraphManager {
 								//destinations must share same destination and be of same type;	
 								if (isSameSource(m, consumer, 1, 2) &&
 								    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
+								  
+								  //if they all go to the same place that is ok for this case	
+									
 								  showLabels = false;
 								  fanInGrouping = true;
 								}
@@ -2017,7 +2029,7 @@ public class GraphManager {
 										sumMsgPerSec, count);
 		                				
 		                	}
-		                	
+
 		                	if (fanInGrouping 
 		                			&& pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
 		                		//show consolidated single line
@@ -2033,7 +2045,7 @@ public class GraphManager {
                 					
                 					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
                 					
-                					//only pick up those pointing to this same consumer.
+                					//only pick up those pointing to this same producer.
                 					if (GraphManager.getRingProducerId(m, p.id) == producer) {
                 					
 	                					count++;
@@ -2069,6 +2081,27 @@ public class GraphManager {
 	    
             target.append("}\n");
    
+	}
+
+	private static boolean allTheSame(GraphManager m, int producer, int outputPipeCount) {
+		boolean allTheSame = true;
+		int lastConsumer = -1;
+		
+		for(int w=1; w<=outputPipeCount; w++) {
+			int consumerId = GraphManager.getRingConsumerId(m, 								
+						GraphManager.getOutputPipe(m, producer, w).id
+					);
+			
+			if (-1 == lastConsumer) {
+				lastConsumer = consumerId;
+			} else {
+				if (consumerId != lastConsumer) {
+					allTheSame = false;
+					break;
+				}
+			}
+		}
+		return allTheSame;
 	}
 
 	private static void writeAggregatedPipeLabel(AppendableBuilder target, int[] pipePercentileFullValues,
@@ -2123,9 +2156,9 @@ public class GraphManager {
 		
 		Pipe<?> inputPipe1 = GraphManager.getInputPipe(m, consumer, a);
 		Pipe<?> inputPipe2 = GraphManager.getInputPipe(m, consumer, b);			
-		int con1 = GraphManager.getRingProducerId(m, inputPipe1.id);	
-		int con2 = GraphManager.getRingProducerId(m, inputPipe2.id);		
-		return (con1==con2 && Pipe.isForSameSchema(inputPipe1, inputPipe2));
+		int prod1 = GraphManager.getRingProducerId(m, inputPipe1.id);	
+		int prod2 = GraphManager.getRingProducerId(m, inputPipe2.id);		
+		return (prod1==prod2 && Pipe.isForSameSchema(inputPipe1, inputPipe2));
 
 	}
 
