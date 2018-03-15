@@ -71,7 +71,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private boolean recordTime;    
     
     private long nextLongRunningCheck;
-    private final long longRunningCheckFreqNS = 2_000_000_000;//2 sec
+    private final long longRunningCheckFreqNS = 20_000_000_000L;//20 sec
     private final StageVisitor checksForLongRuns;
     
     

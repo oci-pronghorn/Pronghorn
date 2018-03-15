@@ -166,11 +166,25 @@ public class GraphManager {
 		
 		RunningStdDev stdDev = new RunningStdDev();
 		
+		boolean debug = true;
+		
+		if (debug) {
+			logger.info("scanning for longest running stages");
+		}
+		
+		
 		int i = gm.stageElapsed.length;
 		while (--i>=0) {			
 			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
 				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
-					RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile));
+					long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
+					RunningStdDev.sample(stdDev, elapsedAtPercentile);
+					if (debug) {
+						logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
+								Appendables.appendNearestTimeUnit(new StringBuilder(), elapsedAtPercentile).toString()
+								);
+					}
+					
 				}
 			}
 		}
