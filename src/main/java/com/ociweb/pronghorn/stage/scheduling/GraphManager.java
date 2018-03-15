@@ -1872,21 +1872,27 @@ public class GraphManager {
 		                
 		                //NOTE: special logic to turn off labels
 		                boolean showLabels = true;
+		                boolean fanOutGrouping = true;
 		                
-		                //NOTE: still thinking about this feature
-		                if (GraphManager.hasNota(m, producer, GraphManager.LOAD_BALANCER)
-		                	) {
-		                	//if this producer writes to many pipes
-		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
-							if (outputPipeCount>=4) {
-								//destinations must share
-								int con1 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 1).id);	
-								int con2 = GraphManager.getRingConsumerId(m, GraphManager.getOutputPipe(m, producer, 2).id);						
-								if (con1==con2) {
-									showLabels=false;
-								}		                		
-		                	}
-		                }
+	                	//if this producer writes to many pipes
+	                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+						if (outputPipeCount >= 4) {
+							//destinations must share same destination and be of same type;	
+							if (isSameDestination(m, producer, 1, 2) &&
+							    isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)) {
+							  showLabels = false;
+							  fanOutGrouping = true;
+							}
+	                	}
+	                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+						if (inputPipeCount >= 4) {
+							//destinations must share same destination and be of same type;	
+							if (isSameSource(m, consumer, 1, 2) &&
+							    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
+							  showLabels = false;
+							  fanOutGrouping = false;
+							}
+	                	}
 		                
 		                //disables the pipe back label
 //		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
@@ -1946,11 +1952,9 @@ public class GraphManager {
 		                    
 		                } else {
 		                	
-		                	
-		                	if (pipe.id == GraphManager.getInputPipe(m, consumer, 1).id) {
+		                	if (fanOutGrouping && pipe.id == GraphManager.getInputPipe(m, consumer, 1).id) {
 		                		//show consolidated single line
-		                		
-		                				
+		                				                				
                 				target.append(pipeIdBytes);
 		                		
                 				final int width = GraphManager.getOutputPipeCount(m, producer);
@@ -1969,7 +1973,7 @@ public class GraphManager {
 	                					if (null!=pipePercentileFullValues) {
 	                						sumPctFull += (long)pipePercentileFullValues[p.id];
 	                					}
-	                					//TODO: also sum up the msg per sec etc..
+	                					
 	                					if (null!=pipeTraffic) {
 	                						sumTraffic += (long)pipeTraffic[p.id];
 	                					}
@@ -1979,42 +1983,54 @@ public class GraphManager {
                 					}
                 							
                 				}
+                				
                 				                				                				
-		                		target.append(LABEL_OPEN);
-		                		
-		                		Appendables.appendValue(target, count);
-		                		target.append(" Pipes\n");
-		                		
-		                        if (null!=pipeTraffic) {
-				                	appendVolume(target, sumTraffic);			                	
-				                } 
-				                if (null!=msgPerSec) {
-				                	target.append(WHITE_SPACE_NL);
-				                	fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
-				                }
-		                		
-		                		target.append(AQUOTE);
-		                		
-		                		int lineWidth = 10;
-		                		
-		                		if (null!=pipePercentileFullValues) {		                	
-		                			int pctFull = (int)(sumPctFull/width);
-		                			if (pctFull>=60) {
-		                				target.append(",color=red");	    
-		                			} else if (pctFull>=40) {
-		                				target.append(",color=orange");	    
-		                			} else {
-							    		target.append(",color=gray30");
-		                			}
-		                		}
-		                		
-		                		Appendables.appendValue(target.append(",penwidth="),lineWidth);
-		                		
-		                		target.append(CLOSEBRACKET_NEWLINE);
+		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
+		                				pipeTraffic, msgPerSec,
+										width, sumPctFull, sumTraffic, 
+										sumMsgPerSec, count);
 		                				
 		                	}
 		                	
-		                	
+		                	if ((!fanOutGrouping) && pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
+		                		//show consolidated single line
+		                				                				
+                				target.append(pipeIdBytes);
+		                		
+                				final int width = GraphManager.getInputPipeCount(m, consumer);
+                				long sumPctFull = 0;
+                				long sumTraffic = 0;
+                				long sumMsgPerSec = 0;
+                				int count = 0;
+                				for(int c=1; c<=width; c++) {
+                					
+                					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
+                					
+                					//only pick up those pointing to this same consumer.
+                					if (GraphManager.getRingProducerId(m, p.id) == producer) {
+                					
+	                					count++;
+	                					if (null!=pipePercentileFullValues) {
+	                						sumPctFull += (long)pipePercentileFullValues[p.id];
+	                					}
+	                					
+	                					if (null!=pipeTraffic) {
+	                						sumTraffic += (long)pipeTraffic[p.id];
+	                					}
+	                					if (null!=msgPerSec) {
+	                						sumMsgPerSec += (long)msgPerSec[p.id];
+	                					}
+                					}
+                							
+                				}
+                				
+                				                				                				
+		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
+		                				pipeTraffic, msgPerSec,
+										width, sumPctFull, sumTraffic, 
+										sumMsgPerSec, count);
+		                				
+		                	}
 		                	
     		                
 		                }
@@ -2028,13 +2044,68 @@ public class GraphManager {
    
 	}
 
+	private static void writeAggregatedPipeLabel(AppendableBuilder target, int[] pipePercentileFullValues,
+			long[] pipeTraffic, int[] msgPerSec, final int width, long sumPctFull, long sumTraffic, long sumMsgPerSec,
+			int count) {
+		target.append(LABEL_OPEN);
+		
+		Appendables.appendValue(target, count);
+		target.append(" Pipes\n");
+		
+		if (null!=pipeTraffic) {
+			appendVolume(target, sumTraffic);			                	
+		} 
+		if (null!=msgPerSec) {
+			target.append(WHITE_SPACE_NL);
+			fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
+		}
+		
+		target.append(AQUOTE);
+		
+		int lineWidth = 10;
+		
+		if (null!=pipePercentileFullValues) {		                	
+			int pctFull = (int)(sumPctFull/width);
+			if (pctFull>=60) {
+				target.append(",color=red");	    
+			} else if (pctFull>=40) {
+				target.append(",color=orange");	    
+			} else {
+				target.append(",color=gray30");
+			}
+		}
+		
+		Appendables.appendValue(target.append(",penwidth="),lineWidth);
+		
+		target.append(CLOSEBRACKET_NEWLINE);
+	}
+
+	private static boolean isSameDestination(GraphManager m, int producer, int a, int b) {
+		
+		Pipe<?> outputPipe1 = GraphManager.getOutputPipe(m, producer, a);
+		Pipe<?> outputPipe2 = GraphManager.getOutputPipe(m, producer, b);			
+		int con1 = GraphManager.getRingConsumerId(m, outputPipe1.id);	
+		int con2 = GraphManager.getRingConsumerId(m, outputPipe2.id);		
+		return (con1==con2 && Pipe.isForSameSchema(outputPipe1, outputPipe2));
+
+	}
+	
+	private static boolean isSameSource(GraphManager m, int consumer, int a, int b) {
+		
+		Pipe<?> inputPipe1 = GraphManager.getInputPipe(m, consumer, a);
+		Pipe<?> inputPipe2 = GraphManager.getInputPipe(m, consumer, b);			
+		int con1 = GraphManager.getRingProducerId(m, inputPipe1.id);	
+		int con2 = GraphManager.getRingProducerId(m, inputPipe2.id);		
+		return (con1==con2 && Pipe.isForSameSchema(inputPipe1, inputPipe2));
+
+	}
+
 	private static void appendVolume(AppendableBuilder target, long traf) {
 		if (traf>9999) {
 			Appendables.appendValue(target.append("Vol:"), traf);
 		} else {
 			Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
 		}
-		target.append(WHITE_SPACE_NL);
 	}
 
 	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {

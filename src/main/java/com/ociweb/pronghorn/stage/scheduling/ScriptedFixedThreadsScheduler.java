@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.BrokenBarrierException;
@@ -1244,11 +1245,30 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
         ThreadFactory threadFactory = new ThreadFactory() {
 			@Override
 			public Thread newThread(Runnable r) {
-				if (r instanceof NamedRunnable) {
-					return new Thread(r, ((ScriptedNonThreadScheduler)r).name());
-				} else {
-					return new Thread(r,"Unknown");					
+				
+				Field[] fields = r.getClass().getDeclaredFields();
+				int f = fields.length;
+				while (--f>=0) {
+					if (fields[f].getType().isAssignableFrom(NamedRunnable.class)) {
+						fields[f].setAccessible(true);
+						try {
+							logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
+							return new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
+						} catch (IllegalArgumentException e) {
+							logger.info("error pulling NamedRunnable",e);
+							return new Thread(r,"Unknown");
+						} catch (IllegalAccessException e) {
+							logger.info("error pulling NamedRunnable",e);
+							return new Thread(r,"Unknown");		
+						} finally {
+							fields[f].setAccessible(false);
+						}
+					}
+					
 				}
+				logger.info("new thread created for {}",r.getClass().getName());
+				return new Thread(r,"Unknown");					
+
 			}        	
         };
         
