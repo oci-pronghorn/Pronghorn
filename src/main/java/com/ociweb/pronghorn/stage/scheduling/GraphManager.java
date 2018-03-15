@@ -176,14 +176,14 @@ public class GraphManager {
 		int i = gm.stageElapsed.length;
 		while (--i>=0) {			
 			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+				long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
+				if (debug) {
+					logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
+							Appendables.appendNearestTimeUnit(new StringBuilder(), elapsedAtPercentile).toString()
+							);
+				}
 				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
-					long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
 					RunningStdDev.sample(stdDev, elapsedAtPercentile);
-					if (debug) {
-						logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
-								Appendables.appendNearestTimeUnit(new StringBuilder(), elapsedAtPercentile).toString()
-								);
-					}
 					
 				}
 			}
