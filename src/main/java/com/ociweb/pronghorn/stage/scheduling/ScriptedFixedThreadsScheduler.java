@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.ClientSocketWriterStage;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
+import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
@@ -546,18 +547,20 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	// GraphManager.LOAD_MERGE split is very questionable, it should be removed..	
 		
-		
-		//stops connecting via HTTP1xResponseParser
-		if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
-				&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
-					) {
+		//Caution if server socket reader spins to fast it can block all windows networking.
+		if (!(producerStage instanceof ServerSocketReaderStage)) {
+			//stops connecting via HTTP1xResponseParser and ServerSocketReader
+			if (GraphManager.hasNota(graphManager, producerId, GraphManager.LOAD_BALANCER) 
+					&& (GraphManager.getOutputPipeCount(graphManager, producerId)>2)			
+						) {
+							
+				//TODO: and must be going to different places
 						
-			//TODO: and must be going to different places
+					return false;
 					
-				return false;
-				
-				
-		}		
+					
+			}		
+		}
 			
 		
 		if (consumerStage instanceof MonitorConsoleStage ) {

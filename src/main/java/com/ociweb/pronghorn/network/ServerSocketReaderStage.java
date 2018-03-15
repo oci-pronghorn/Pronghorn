@@ -1,13 +1,17 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -103,12 +107,15 @@ public class ServerSocketReaderStage extends PronghornStage {
         logger.trace("server reader has shut down");
     }
     
+    boolean hasRoomForMore = true;
     private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
 			@Override
 			public void accept(SelectionKey selection) {
-				processSelection(selection); 
+				hasRoomForMore &= processSelection(selection); 
 			}
     };    
+        
+    
     
     @Override
     public void run() {
@@ -136,15 +143,54 @@ public class ServerSocketReaderStage extends PronghornStage {
         while (--maxIterations>=0 & hasNewDataToRead()) { //single & to ensure we check has new data to read.
         	
         	//logger.info("found new data to read on "+groupIdx);
-            
+           
            Set<SelectionKey> selectedKeys = selector.selectedKeys();
             
            assert(selectedKeys.size()>0);	            
 
            doneSelectors.clear();
 	
+           //New idea..
+//           Field[] fields = selectedKeys.getClass().getDeclaredFields();
+//           int f = fields.length;
+//           while (--f>=0) {
+//        	   fields[f].setAccessible(true);
+//        	   Field[] fields2;
+//			try {
+//				Object objectF = fields[f].get(selectedKeys);
+//				if (objectF.getClass().isAssignableFrom(HashSet.class)) {
+//					fields2 = objectF.getClass().getDeclaredFields();
+//					int f2 = fields2.length;
+//					while (--f2>=0) {
+//						 fields2[f2].setAccessible(true);
+//						if (fields2[f2].getType().isAssignableFrom(HashMap.class)) {
+//							Object map = fields2[f2].get(objectF);
+//							
+//							//System.err.println(map);
+//							//map.values();
+//							//map.forEach((a,b)->{selectionKeyAction.accept(b);} );
+//							
+//							
+//						}					
+//					}
+//				}
+//				
+//			} catch (SecurityException e) {
+//				throw new RuntimeException(e);
+//			} catch (IllegalArgumentException e) {
+//				throw new RuntimeException(e);
+//			} catch (IllegalAccessException e) {
+//				throw new RuntimeException(e);
+//			}
+//        	   
+//           }
+//           
+           
+           hasRoomForMore = true;
            selectedKeys.forEach(selectionKeyAction);
-                 
+           if (!hasRoomForMore) {
+        	   maxIterations = -1;//try again later.
+           }
 		   removeDoneKeys(selectedKeys);
 		        	 
         }	        
@@ -161,7 +207,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 	}
 
-	private void processSelection(SelectionKey selection) {
+	private boolean processSelection(SelectionKey selection) {
 		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
 		SocketChannel socketChannel = (SocketChannel)selection.channel();
          
@@ -197,6 +243,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 		}
 			
+		boolean hasOutputRoom = true;
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (processWork && (null!=cc)) {
 			
@@ -253,7 +300,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            	//logger.info("remove this selection");
 		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
 		            	removeSelection(selection);
-		            } else {		            	
+		            } else {	
+		            	hasOutputRoom = false;
 		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
 		            //logger.trace("pushed data out");
@@ -263,8 +311,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            }
 		            //logger.trace("finished pipe release");
 				}
-		        
 		}
+		return hasOutputRoom;
 	}
 
 	private void removeSelection(SelectionKey selection) {
