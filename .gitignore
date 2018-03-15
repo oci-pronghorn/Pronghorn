@@ -7,6 +7,7 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+tests/*
 
 # Avoid ignoring Maven wrapper jar file (.jar files are usually ignored)
 !/.mvn/wrapper/maven-wrapper.jar
@@ -27,3 +28,7 @@ RemoteSystemsTempFiles/\.project
 *.bmp
 
 bin/*
+
+j2r\.jar
+
+tests\.zip

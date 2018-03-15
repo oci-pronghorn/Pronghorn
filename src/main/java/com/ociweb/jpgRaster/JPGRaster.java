@@ -1,7 +1,10 @@
 package com.ociweb.jpgRaster;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.util.HashSet;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -9,18 +12,23 @@ import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 
 public class JPGRaster {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 //		String defaultFiles = "test_jpgs/huff_simple0.jpg test_jpgs/robot.jpg test_jpgs/cat.jpg test_jpgs/car.jpg test_jpgs/squirrel.jpg test_jpgs/nathan.jpg test_jpgs/earth.jpg test_jpgs/dice.jpg test_jpgs/pyramids.jpg test_jpgs/static.jpg test_jpgs/turtle.jpg";
 		
 		boolean verbose = hasArg("--verbose", "-v", args);
 		
 		String defaultFiles = "";
 		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
-		
-		ArrayList<String> inputFiles = new ArrayList<String>();
+
+		HashSet<String> inputFiles = new HashSet<String>();
 		for (String file : inputFilePaths.split(" ")) {
-			if (!file.equals("")) {
-				inputFiles.add(file);
+			String glob = "glob:**/" + file;
+			FileMatcher filematcher = new FileMatcher(glob);
+			Files.walkFileTree(Paths.get(System.getProperty("user.dir")), filematcher);
+			for (String inputFile : filematcher.files) {
+				if (!inputFile.equals("")) {
+					inputFiles.add(inputFile);
+				}
 			}
 		}
 		
@@ -45,7 +53,7 @@ public class JPGRaster {
 		}
 		
 		GraphManager gm = new GraphManager();
-		
+
 		populateGraph(gm, inputFiles, verbose);
 		
 		String defaultPort = "";
@@ -65,7 +73,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose) {
+	private static void populateGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -78,8 +86,7 @@ public class JPGRaster {
 		new YCbCrToRGB(gm, pipe3, pipe4, verbose);
 		new BMPDumper(gm, pipe4, verbose);
 		
-		for (int i = 0; i < inputFiles.size(); ++i) {
-			String file = inputFiles.get(i);
+		for (String file : inputFiles) {
 			scanner.queueFile(file);
 		}
 	}
