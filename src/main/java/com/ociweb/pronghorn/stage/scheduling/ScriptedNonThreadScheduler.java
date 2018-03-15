@@ -208,7 +208,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	}
         }
         
-        nextLongRunningCheck = System.nanoTime()+longRunningCheckFreqNS;
+        nextLongRunningCheck = System.nanoTime()+(longRunningCheckFreqNS/6);//first check is quicker.
         
     }
 
