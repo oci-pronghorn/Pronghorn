@@ -106,7 +106,7 @@ public class ServerPipesConfig {
 		
 		// do not need multiple writers until we have giant load
 		serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
-		writeBufferMultiplier     = (moduleParallelism >= 4) ? 16 : 4; //write buffer on server
+		writeBufferMultiplier     = (moduleParallelism >= 2) ? 32 : 4; //write buffer on server
 
 
 
