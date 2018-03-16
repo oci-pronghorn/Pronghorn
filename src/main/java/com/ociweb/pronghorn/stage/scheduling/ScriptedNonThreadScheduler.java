@@ -212,6 +212,17 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
     }
 
+    
+    public void detectHangingThread(long now, long timeoutNS) {
+    	if (null != didWorkMonitor) {
+    		if (didWorkMonitor.isOverTimeout(now, timeoutNS)) {
+    			didWorkMonitor.interrupt();
+    		}
+    	}	
+    }
+    
+    
+    //TODO: rename this, its not so much about low latency as it is near real time clock?
     //NOTE: this can be toggled at runtime as needed.
     public void setLowLatencyEnforced(boolean value) {
     	lowLatencyEnforced = value;
@@ -711,7 +722,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    	long start = 0;
 		    	if (recordTime) {
 		    		start = System.nanoTime();
-		    		DidWorkMonitor.clear(didWorkMonitor);	
+		    		DidWorkMonitor.begin(didWorkMonitor,start);	
 		    	}
 		    	
 		    	if (!run(gm, localStage[inProgressIdx], this)) {
@@ -725,7 +736,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		 			if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
 						if (!shownLowLatencyWarning) {
 							shownLowLatencyWarning = true;
-							logger.warn("This platform is unable to run in low latency mode due to OS or hardware limitations.");
+							logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
 						}
 					}
 				}

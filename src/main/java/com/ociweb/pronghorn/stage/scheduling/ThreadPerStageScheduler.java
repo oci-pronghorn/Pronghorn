@@ -480,8 +480,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
         do {
 		    long start = 0;
 		    if (recordTime) {
-			   DidWorkMonitor.clear(didWorkMonitor);
-			   start = System.nanoTime();
+ 	    	   start = System.nanoTime();
+			   DidWorkMonitor.begin(didWorkMonitor, start);
 		    }
 		   
 			stage.run();
@@ -511,8 +511,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 				    long start = 0;
 				    if (recordTime) {
-					   DidWorkMonitor.clear(didWorkMonitor);
-					   start = System.nanoTime();
+				       start = System.nanoTime();
+					   DidWorkMonitor.begin(didWorkMonitor, start);
 				    }
 				   
 					stage.run();
@@ -560,8 +560,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		    
 		    long start = 0;
 		    if (recordTime) {
-			   DidWorkMonitor.clear(didWorkMonitor);
 			   start = System.nanoTime();
+			   DidWorkMonitor.begin(didWorkMonitor,start);
 		    }
 		   
 			stage.run();
@@ -625,8 +625,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			}
 		    long start = 0;
 		    if (recordTime) {
-			   DidWorkMonitor.clear(didWorkMonitor);
 			   start = System.nanoTime();
+			   DidWorkMonitor.begin(didWorkMonitor,start);
 		    }
 		   
 			stage.run();

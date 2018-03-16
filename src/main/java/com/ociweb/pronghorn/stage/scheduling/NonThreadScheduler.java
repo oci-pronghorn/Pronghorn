@@ -508,7 +508,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			    	long start = 0;
 			    	if (that.recordTime) {
 			    		start = System.nanoTime();
-			    		DidWorkMonitor.clear(that.didWorkMonitor);	
+			    		DidWorkMonitor.begin(that.didWorkMonitor,start);	
 			    	}
 					
 					run(that.graphManager, stage, that);   
