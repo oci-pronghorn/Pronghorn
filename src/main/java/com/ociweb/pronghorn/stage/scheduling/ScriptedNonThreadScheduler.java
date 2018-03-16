@@ -705,7 +705,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	boolean shownLowLatencyWarning = false;
 	
 	private int runBlock(int scheduleIdx, int[] script, 
-			             PronghornStage[] localStage,
+			             PronghornStage[] stages,
 			             GraphManager gm, final boolean recordTime) {
 			
 		boolean shutDownRequestedHere = false;
@@ -713,11 +713,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		// Once we're done waiting for a block, we need to execute it!
 		top:
 		do {
-		    // Identify the index of the block we're starting with.
-			inProgressIdx = script[scheduleIdx++];
-		    
-		    // If it isn't a block-end (-1), run it!
-		    if (inProgressIdx >= 0) {
+		    // If it isn't out of bounds or a block-end (-1), run it!
+		    if ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
 
 		    	long start = 0;
 		    	if (recordTime) {
@@ -725,15 +722,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    		DidWorkMonitor.begin(didWorkMonitor,start);	
 		    	}
 		    	
-		    	if (!run(gm, localStage[inProgressIdx], this)) {
+		    	if (!run(gm, stages[inProgressIdx], this)) {
 					shutDownRequestedHere = true;
 				}
-		        
-		    	
+		        		    	
 				if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
 					final long now = System.nanoTime();		        
 		        	long duration = now-start;
-		 			if (!GraphManager.accumRunTimeNS(gm, localStage[inProgressIdx].stageId, duration, now)){
+		 			if (!GraphManager.accumRunTimeNS(gm, stages[inProgressIdx].stageId, duration, now)){
 						if (!shownLowLatencyWarning) {
 							shownLowLatencyWarning = true;
 							logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
