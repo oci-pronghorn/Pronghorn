@@ -50,7 +50,7 @@ public class GraphManager {
 	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
 	private static final byte[] LABEL_MSG_SEC = "Mps".getBytes();
 	private static final byte[] WHITE_SPACE_NL = " \n".getBytes();
-	
+	private static final byte[] WHITE_SPACE = " ".getBytes();
 	
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
@@ -70,6 +70,7 @@ public class GraphManager {
 	//used for elapsed time TODO: will use for Wrk and running window?
 	private static double percentile = .98;
 	
+	private MemoryLeakDetector mld = null;
 
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
@@ -2168,6 +2169,7 @@ public class GraphManager {
 		} else {
 			Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
 		}
+		target.append(WHITE_SPACE);
 	}
 
 	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {
