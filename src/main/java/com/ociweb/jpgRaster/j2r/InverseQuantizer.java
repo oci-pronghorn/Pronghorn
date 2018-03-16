@@ -1,22 +1,20 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
 import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG;
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
 import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-/*
- * Updated Inverse DCT Algorithm is based on the Guetzli JPEG encoder's
- * DCT implementation. This code can be found here:
- * 	https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc
- */
-public class InverseDCT extends PronghornStage {
+public class InverseQuantizer extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
@@ -24,66 +22,27 @@ public class InverseDCT extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
-	static double[] temp = new double[64];
 	
-	protected InverseDCT(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
+	public InverseQuantizer(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
 	}
 	
-	private static double[] idctMap = new double[64];
-	
-	// prepare idctMap
-	static {
-		for (int u = 0; u < 8; ++u) {
-			double c = 1.0 / 2.0;
-			if (u == 0) {
-				c = 1 / Math.sqrt(2.0) / 2.0;
-			}
-			for (int x = 0; x < 8; ++x) {
-				idctMap[u * 8 + x] = c * Math.cos((2.0 * x + 1.0) * u * Math.PI / 16.0);
-			}
+	private static void dequantizeMCU(short[] MCU, QuantizationTable table) {
+
+		for (int i = 0; i < MCU.length; ++i) {
+			// type casting might be unsafe for 16-bit precision quantization tables
+			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] * table.table[i]);
 		}
 	}
 	
-	private static void TransformColumn(short[] in, double[] out, int offset) {
-		double temp;
-		for (int y = 0; y < 8; ++y) {
-			temp = 0;
-			for (int v = 0; v < 8; ++v) {
-				temp += in[v * 8 + offset] * idctMap[8 * v + y];
-			}
-			out[y * 8 + offset] = temp;
-		}
-	}
-	
-	private static void TransformRow(double[] in, short[] out, int offset) {
-		double temp;
-		for (int x = 0; x < 8; ++x) {
-			temp = 0;
-			for (int u = 0; u < 8; ++u) {
-				temp += in[u + offset * 8] * idctMap[8 * u + x];
-			}
-			out[x + offset * 8] = (short) temp;
-		}
-	}
-	
-	private static void TransformBlock(short[] mcu) {
-		for (int i = 0; i < 8; ++i) {
-			TransformColumn(mcu, temp, i);
-		}
-		for (int j = 0; j < 8; ++j) {
-			TransformRow(temp, mcu, j);
-		}
-	}
-	
-	public static void inverseDCT(MCU mcu, Header header) {
-		TransformBlock(mcu.y);
+	public static void dequantize(MCU mcu, Header header) {
+		dequantizeMCU(mcu.y, header.quantizationTables[header.colorComponents[0].quantizationTableID]);
 		if (header.numComponents > 1) {
-			TransformBlock(mcu.cb);
-			TransformBlock(mcu.cr);
+			dequantizeMCU(mcu.cb, header.quantizationTables[header.colorComponents[1].quantizationTableID]);
+			dequantizeMCU(mcu.cr, header.quantizationTables[header.colorComponents[2].quantizationTableID]);
 		}
 		return;
 	}
@@ -105,14 +64,14 @@ public class InverseDCT extends PronghornStage {
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					if (verbose) 
-						System.out.println("Inverse DCT writing header to pipe...");
+						System.out.println("Inverse Quantizer writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -126,11 +85,11 @@ public class InverseDCT extends PronghornStage {
 				header.colorComponents[component.componentID - 1] = component;
 				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
-
+				
 				// write color component data to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 					if (verbose) 
-						System.out.println("Inverse DCT writing color component to pipe...");
+						System.out.println("Inverse Quantizer writing color component to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
@@ -138,9 +97,31 @@ public class InverseDCT extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
+			}
+			else if (msgIdx == JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3) {
+				// read quantization table from pipe
+				QuantizationTable table = new QuantizationTable();
+				table.tableID = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLEID_103);
+				table.precision = (short) PipeReader.readInt(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_PRECISION_203);
+
+				DataInputBlobReader<JPGSchema> r = PipeReader.inputStream(input, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3_FIELD_TABLE_303);
+				for (int i = 0; i < 64; ++i) {
+					table.table[i] = r.readInt();
+				}
+				
+				PipeReader.releaseReadLock(input);
+				
+				// tableID always reads as 0 for some reason
+				// this is a workaround
+				int i = 0;
+				while (header.quantizationTables[i] != null) {
+					i += 1;
+				}
+				header.quantizationTables[i] = table;
+				//header.quantizationTables[table.tableID] = table;
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
@@ -157,7 +138,7 @@ public class InverseDCT extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 				
-				inverseDCT(mcu, header);
+				dequantize(mcu, header);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
@@ -182,12 +163,12 @@ public class InverseDCT extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					System.err.println("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Inverse DCT requesting shutdown");
+				System.err.println("Inverse Quantizer requesting shutdown");
 				requestShutdown();
 			}
 		}

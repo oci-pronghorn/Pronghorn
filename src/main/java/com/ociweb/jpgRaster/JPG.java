@@ -4,65 +4,65 @@ import java.util.ArrayList;
 
 public class JPG {
 	public static class QuantizationTable {
-		short tableID;
-		short precision;
+		public short tableID;
+		public short precision;
 		// using ints instead of shorts because
 		//  precision might be 16 instead of 8
-		int[] table = new int[64];
+		public int[] table = new int[64];
 	}
 	
 	public static class HuffmanTable {
-		short tableID;
-		ArrayList<ArrayList<Short>> symbols = new ArrayList<ArrayList<Short>>(16);
+		public short tableID;
+		public ArrayList<ArrayList<Short>> symbols = new ArrayList<ArrayList<Short>>(16);
 	}
 	
 	public static class ColorComponent {
-		short componentID;
-		short horizontalSamplingFactor;
-		short verticalSamplingFactor;
-		short quantizationTableID;
-		short huffmanACTableID;
-		short huffmanDCTableID;
-		boolean used;
+		public short componentID;
+		public short horizontalSamplingFactor;
+		public short verticalSamplingFactor;
+		public short quantizationTableID;
+		public short huffmanACTableID;
+		public short huffmanDCTableID;
+		public boolean used;
 	}
 	
 	public static class Header {
-		String filename;
+		public String filename;
 		
 		// DQT
-		QuantizationTable[] quantizationTables = new QuantizationTable[4];
+		public QuantizationTable[] quantizationTables = new QuantizationTable[4];
 		
 		// DHT
-		HuffmanTable[] huffmanDCTables = new HuffmanTable[4];
-		HuffmanTable[] huffmanACTables = new HuffmanTable[4];
+		public HuffmanTable[] huffmanDCTables = new HuffmanTable[4];
+		public HuffmanTable[] huffmanACTables = new HuffmanTable[4];
 		
 		// SOF
-		String frameType;
-		short precision;
-		int height;
-		int width;
-		short numComponents;
-		boolean zeroBased = false;
+		public String frameType;
+		public short precision;
+		public int height;
+		public int width;
+		public short numComponents;
+		public boolean zeroBased = false;
 		
 		// SOS
-		short startOfSelection;
-		short endOfSelection;
-		short successiveApproximationHigh;
-		short successiveApproximationLow;
+		public short startOfSelection;
+		public short endOfSelection;
+		public short successiveApproximationHigh;
+		public short successiveApproximationLow;
 		
 		// DRI
-		int restartInterval = 0;
+		public int restartInterval = 0;
 
-		ColorComponent[] colorComponents = new ColorComponent[3];
-		ArrayList<Short> imageData = new ArrayList<Short>();
+		public ColorComponent[] colorComponents = new ColorComponent[3];
+		public ArrayList<Short> imageData = new ArrayList<Short>();
 		
-		boolean valid = true;
+		public boolean valid = true;
 	}
 	
 	public static class MCU {
-		short[] y = new short[64];
-		short[] cb = new short[64];
-		short[] cr = new short[64];
+		public short[] y = new short[64];
+		public short[] cb = new short[64];
+		public short[] cr = new short[64];
 	}
 	
 	public static int[] zigZagMap = new int[]  {

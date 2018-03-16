@@ -3,6 +3,11 @@ package com.ociweb.jpgRaster;
 import java.io.File;
 import java.util.ArrayList;
 
+import com.ociweb.jpgRaster.j2r.BMPDumper;
+import com.ociweb.jpgRaster.j2r.InverseDCT;
+import com.ociweb.jpgRaster.j2r.InverseQuantizer;
+import com.ociweb.jpgRaster.j2r.JPGScanner;
+import com.ociweb.jpgRaster.j2r.YCbCrToRGB;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;

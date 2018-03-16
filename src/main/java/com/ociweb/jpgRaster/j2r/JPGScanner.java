@@ -1,6 +1,8 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
 import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPGConstants;
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
@@ -35,7 +37,7 @@ public class JPGScanner extends PronghornStage {
 	MCU mcu4 = new MCU();
 	ArrayList<MCU> mcus = null;
 	
-	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
+	public JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
@@ -671,7 +673,7 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		else {
-			System.err.println("Requesting shutdown");
+			System.err.println("JPG Scanner requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -781,21 +783,21 @@ public class JPGScanner extends PronghornStage {
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
 					if (verbose) 
-						System.out.println("Scanner writing header to pipe...");
+						System.out.println("JPG Scanner writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Scanner requesting shutdown");
+					System.err.println("JPG Scanner requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
 				for (int i = 0; i < header.numComponents; ++i) {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 						if (verbose) 
-							System.out.println("Scanner writing color component to pipe...");
+							System.out.println("JPG Scanner writing color component to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
@@ -803,7 +805,7 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Scanner requesting shutdown");
+						System.err.println("JPG Scanner requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -812,7 +814,7 @@ public class JPGScanner extends PronghornStage {
 					if (header.quantizationTables[i] != null) {
 						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
 							if (verbose) 
-								System.out.println("Scanner writing quantization table to pipe...");
+								System.out.println("JPG Scanner writing quantization table to pipe...");
 	
 							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
 							DataOutputBlobWriter.openField(quantizationTableWriter);
@@ -832,7 +834,7 @@ public class JPGScanner extends PronghornStage {
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("Scanner requesting shutdown");
+							System.err.println("JPG Scanner requesting shutdown");
 							requestShutdown();
 						}
 					}

@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -32,7 +33,7 @@ public class YCbCrToRGB extends PronghornStage {
 	int count = 0;
 	static byte[] rgb = new byte[3];
 	
-	protected YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
+	public YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
@@ -288,7 +289,7 @@ public class YCbCrToRGB extends PronghornStage {
 				// write color component data to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 					if (verbose) 
-						System.out.println("Inverse DCT writing color component to pipe...");
+						System.out.println("YCbCrToRGB writing color component to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);
@@ -296,7 +297,7 @@ public class YCbCrToRGB extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					System.err.println("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
 				

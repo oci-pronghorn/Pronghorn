@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.MCU;
