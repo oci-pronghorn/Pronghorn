@@ -185,7 +185,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		            	}	
 	    			} else {	    				
 	    				//no content to read on the pipe
-	    				//all the old data has been writen so the writeChannel is null	    		
+	    				//all the old data has been written so the writeChannel is null	    		
 	    			}
 	    			
 	    		} else {
@@ -199,8 +199,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				|| !Pipe.hasContentToRead(localInput) //myPipeHasNoData so fire now
 	    				) {
 	    				writeToChannelMsg[x] = -1;
-		    			didWork = true;
-		    			writeToChannel(x); 
+		    			didWork = writeDataToChannel(x); 
 		   		    			
 	    			} else {
 	    				
@@ -530,29 +529,21 @@ public class ServerSocketWriterStage extends PronghornStage {
 		return count;
 	}
 
-    private void writeToChannel(int idx) {
+    private boolean writeDataToChannel(int idx) {
 
-    		
+    		boolean done = true;
     		if (!debugWithSlowWrites) {
 		        try {
 		        	
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
-		        	
-		        	//short blocks of bytes written may be slowdown!!
-		        //	System.err.println("wrote bytes:" + bytesWritten);
-		        	
-		        	//TODO: urgent hold some writes until we have more, but do write immidiate if we have seen a different connection id.
-		        	
 		        	if (bytesWritten>0) {
 		        		totalBytesWritten+=bytesWritten;
 		        	}
 		        	if (!workingBuffers[idx].hasRemaining()) {
 		        		markDoneAndRelease(idx);
-		        		
-		    //    		int x = ServerCoordinator.inServerCount.decrementAndGet();
-		     //   		System.err.println("in server count "+x+"  "+(System.nanoTime()-ServerCoordinator.start));
-		        	
-		        	} 
+		        	} else {
+		        		done = false;
+		        	}
 		        
 		        } catch (IOException e) {
 		        	//logger.trace("unable to write to channel",e);
@@ -591,7 +582,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			            //unable to write to this socket, treat as closed
 			            markDoneAndRelease(idx);
 			            
-			            return;
+			            return false;
 					}
 				}
 
@@ -601,11 +592,12 @@ public class ServerSocketWriterStage extends PronghornStage {
 							
 	        	if (!workingBuffers[idx].hasRemaining()) {
 	        		markDoneAndRelease(idx);
-
+	        	} else {
+	        		done = false;
 	        	}
     			
     		}
-
+    		return done;
     }
 
     private void closeChannel(SocketChannel channel) {
