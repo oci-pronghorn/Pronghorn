@@ -160,7 +160,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		/////////////////////		
 		if (fragments>=0) {
 		
-			if (msgSkipped>5 && --reportSlowSpeed>0) {			
+			if (msgSkipped>100 && --reportSlowSpeed>0) {			
 				logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
 				//this should not happen unless the system is overloaded and scheduler needs to be updated.			
 			}

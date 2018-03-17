@@ -168,7 +168,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		}
 		
     	boolean haveWork;
-    	int maxIterations = 1000;
+    	int maxIterations = 10_000;
     	do {
 	    	haveWork = false;
 	        int c = dataToSend.length;

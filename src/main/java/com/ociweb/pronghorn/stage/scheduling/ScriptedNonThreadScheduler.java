@@ -681,19 +681,32 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
-		if (noWorkCounter<1000) {
-			while (totalRequiredSleep>100_000) {
+		if (noWorkCounter<1000) {//do it since we have had recent work
+			
+			long now2 = System.nanoTime()/1_000_000l;
+			
+			if (0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
+				while (totalRequiredSleep>100_000) {
+					long now = System.nanoTime();
+					if (totalRequiredSleep>500_000) {
+						LockSupport.parkNanos(totalRequiredSleep);
+					} else {
+						Thread.yield();
+					}
+					long duration = System.nanoTime()-now;
+					if (duration<=0) {
+						break;
+					}
+					totalRequiredSleep-=duration;
+				}
+			} else {
+				//let the task manager know we are not doing work.
 				long now = System.nanoTime();
-				if (totalRequiredSleep>500_000) {
-					LockSupport.parkNanos(totalRequiredSleep);
-				} else {			
-					Thread.yield();
-				}
+				LockSupport.parkNanos(totalRequiredSleep);
 				long duration = System.nanoTime()-now;
-				if (duration<=0) {
-					break;
+				if (duration>0) {
+					totalRequiredSleep -= duration;
 				}
-				totalRequiredSleep-=duration;
 			}
 		}
 	}
@@ -708,8 +721,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			}
 		}
 		if (hasData) {
-			noWorkCounter = 0;
-		} else {
+			noWorkCounter = 0;	
+		} else {			
 			noWorkCounter++;
 		}
 	}
