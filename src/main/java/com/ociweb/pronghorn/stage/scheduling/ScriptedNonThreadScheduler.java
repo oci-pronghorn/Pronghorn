@@ -22,7 +22,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     public static Appendable debugStageOrder = null; //turn on to investigate performance issues.
 	
-    private static final int NS_OPERATOR_FLOOR = 10;
+    private static final int NS_OPERATOR_FLOOR = 1000; //1 micro seconds
 	private AtomicBoolean shutdownRequested = new AtomicBoolean(false);;
     private long[] rates;
     private long[] lastRun;
@@ -209,6 +209,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         }
         
         nextLongRunningCheck = System.nanoTime()+(longRunningCheckFreqNS/6);//first check is quicker.
+        
+        //System.err.println("commonClock:"+schedule.commonClock);
         
     }
 
@@ -605,6 +607,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					scheduleIdx += enabled[scheduleIdx];
 				} else {			
 					
+					////////////////////
+					//before we compute the wait time 
+					//call yield to let the OS get in a time slice swap
+					Thread.yield();
+					//////////////////
+					
 		            // We need to wait between scheduler blocks, or else
 		            // we'll just burn through the entire schedule nearly instantaneously.
 		            //
@@ -612,20 +620,17 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					long now = System.nanoTime();
 		        	final long wait = blockStartTime - now; 
 		            if (wait > 0) {
-		            	if (wait > 1_000_000_000) {//1sec
-		            		blockStartTime = System.nanoTime() + schedule.commonClock;
-		            		logger.info("warning there may be an issue with the local clock");
-		            		break;
-		            	}
-		            	
 		            	try {
-		            		platformThresholdForSleep = waitForBatch(wait, platformThresholdForSleep, blockStartTime);
+		            		 waitForBatch(wait, blockStartTime);		            		
 		            	} catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
-							break;
+							return;
 						}
 		            }
+
+		            //NOTE: this moves the blockStartTime forward by the common clock unit.
 					scheduleIdx = runBlock(scheduleIdx, script, localStages, gm, recordTime);
+				
 				}
 	        }
 			
@@ -645,63 +650,77 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	
 	}
 
-
-	private int waitForBatch(long wait, int platformThresholdForSleep, long blockStartTime) throws InterruptedException {
-		//some platforms will not sleep long enough so the spin yield is below 
-		//logger.info("sleep: {} common clock {}",wait,schedule.commonClock);
-		/////////////////////////////
-		//due to JVM limitations sleep should not be called for "short" delays
-		//this is because it will take a lot longer to return and may round
-		//up the time to the nearest MS
-		/////////////////////////////
-		if (wait > platformThresholdForSleep) {
-			Thread.sleep(wait/1_000_000,(int)(wait%1_000_000));
-			
-			//we did the sleep but we waited far too long 
-			long now = System.nanoTime();
-			if ((now-blockStartTime) > (wait<<3)) {
-				platformThresholdForSleep = storeNewThreshold(wait);
-			} else {
-				//did not wait long enough
-				if ((blockStartTime-now)>0) {
-					platformThresholdForSleep = storeNewThreshold(wait);
-				}
-			}
-		} else {			
-			//TODO: if we have a "short term" issue we want to check again so set a timer here
-			//      and reset platformThresholdForSleep back down to zero if we are peging CPU
-		}
-				
+	/////////////////
+	//members for automatic switching of timer from fast to slow 
+	//based on the presence of work load
+	long totalRequiredSleep = 0;
+	int noWorkCounter = 0;
+	/////////////////
+	
+	private void waitForBatch(long wait, long blockStartTime) throws InterruptedException {
 		
-		long dif;	
-		if (lowLatencyEnforced) {			
-			while ((dif = (blockStartTime-System.nanoTime())) > NS_OPERATOR_FLOOR) {
-				if (dif>4_000) {
-					LockSupport.parkNanos(dif);
-				} else {
+		totalRequiredSleep+=wait;
+		long a = (totalRequiredSleep/1_000_000L);
+		
+		if (a>0) {
+			long now = System.nanoTime();
+			Thread.yield();
+			Thread.sleep(a);
+			long duration = System.nanoTime()-now;
+			totalRequiredSleep -= (duration>0?duration:(a*1_000_000));
+		} 
+		
+		automaticLoadSwitchingDelay();
+
+	}
+
+	private void automaticLoadSwitchingDelay() {
+		accumulateWorkHistory();
+		
+		//if we have over 1000 cycles of non work found then
+		//drop CPU usage to greater latency mode since we have no work
+		//once work appears stay engaged until we again find 1000 
+		//cycles of nothing to process, for 40mircros with is 40 ms switch.
+		if (noWorkCounter<1000) {
+			while (totalRequiredSleep>100_000) {
+				long now = System.nanoTime();
+				if (totalRequiredSleep>500_000) {
+					LockSupport.parkNanos(totalRequiredSleep);
+				} else {			
 					Thread.yield();
 				}
-			}
-		} else {
-			sumWait += (blockStartTime-System.nanoTime());
-			while (sumWait>1000000) {
-				Thread.yield();
-				Thread.sleep(1);//ensure we are not running too fast
-				sumWait-=1000000;
+				long duration = System.nanoTime()-now;
+				if (duration<=0) {
+					break;
+				}
+				totalRequiredSleep-=duration;
 			}
 		}
-		
-		return platformThresholdForSleep;
+	}
+
+	private void accumulateWorkHistory() {
+		boolean hasData=false;
+		int p = inputPipes.length;
+		while (--p>=0) {			
+			if (Pipe.contentRemaining(inputPipes[p])>0) {
+				hasData=true;
+				break;
+			}
+		}
+		if (hasData) {
+			noWorkCounter = 0;
+		} else {
+			noWorkCounter++;
+		}
 	}
 
 	private int storeNewThreshold(long wait) {
 		int platformThresholdForSleep;
-		platformThresholdForSleep = (int)Math.min( wait*2, 20_000_000);//20 MS max value
+		platformThresholdForSleep = (int)Math.min( wait*2, 2_000_000);//2 MS max value
 		//logger.trace("new sleep threshold {}", platformThresholdForSleep);
 		return platformThresholdForSleep;
 	}
 
-	long sumWait = 0;
 	boolean shownLowLatencyWarning = false;
 	
 	private int runBlock(int scheduleIdx, int[] script, 
@@ -741,14 +760,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    }
 		} while (true);
 
-		// Update the block start time.
-		blockStartTime += schedule.commonClock;
+		long now = System.nanoTime();
+		
+		//only add if we have already consumed the last cycle
+		if (blockStartTime-schedule.commonClock<now) {
+			// Update the block start time.
+			blockStartTime += schedule.commonClock;
+		}
 		
 		//if we have long running cycles which are longer than then common clock
 		//bump up the time so it does not keep falling further behind.  this allows
 		//the script to stop on the first "fast" cycle instead of taking multiple
 		//runs at the script to catch up when this will not help the performance.
-		long now = System.nanoTime();
 		if (blockStartTime <= now) {
 			blockStartTime = now;
 		}

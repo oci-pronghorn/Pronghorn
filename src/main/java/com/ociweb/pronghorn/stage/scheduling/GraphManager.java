@@ -1957,7 +1957,8 @@ public class GraphManager {
 			                target.append(WHITE_SPACE_NL);
 			               			                
 			                if (null!=pipeTraffic) {
-			                	appendVolume(target, pipeTraffic[pipe.id]);			                	
+			                	appendVolume(target, pipeTraffic[pipe.id]);
+			            		target.append(WHITE_SPACE);
 			                } 
 			                	                    
 		                    
@@ -2114,10 +2115,10 @@ public class GraphManager {
 		target.append(" Pipes\n");
 		
 		if (null!=pipeTraffic) {
-			appendVolume(target, sumTraffic);			                	
+			appendVolume(target, sumTraffic);
+			target.append(WHITE_SPACE_NL);
 		} 
 		if (null!=msgPerSec) {
-			target.append(WHITE_SPACE_NL);
 			fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
 		}
 		
@@ -2169,7 +2170,6 @@ public class GraphManager {
 		} else {
 			Appendables.appendFixedDecimalDigits(target.append("Vol:"), traf, 1000);
 		}
-		target.append(WHITE_SPACE);
 	}
 
 	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {

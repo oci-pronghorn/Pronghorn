@@ -88,7 +88,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			while (--i>=0) {
 								
 				if (connections[i]!=null) {
-					tryWrite(i);
+					didWork |= tryWrite(i);
 					//may clear connections and if so look for more work immediately
 				} 
 
@@ -98,7 +98,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 					
 					int msgIdx = -1;
 					//if here helps balance out the traffic so no single users gets backed up.
-					if (connections[i]==null && Pipe.hasContentToRead(pipe)) try {			
+					if (connections[i]==null && Pipe.hasContentToRead(pipe)) {			
 	
 						msgIdx = Pipe.takeMsgIdx(pipe);
 						
@@ -170,7 +170,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 								buffers[i].flip();	
 								connections[i] = cc;
 		
-								tryWrite(i);
+								didWork |= tryWrite(i);
 
 							} else {
 								//clean shutdown of this connections resources
@@ -267,7 +267,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										buffers[i].flip();	
 										connections[i] = cc;
 										
-										tryWrite(i);
+										didWork |= tryWrite(i);
 									} else {
 									
 										//can not send this connection was lost, consume and drop the data to get it off the pipe
@@ -317,10 +317,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 						}
 								
 						
-					} finally {
-						didWork = true;
-						
-					}	
+					} 
 					assert(pipe.bytesReadBase(pipe)>=0);
 				}
 				
@@ -331,19 +328,14 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	
 	
-	private void tryWrite(int i) {
+	private boolean tryWrite(int i) {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
-		int value = -10;
+		
 		try {
 			
 			if (!debugWithSlowWrites) {
 				assert(buffers[i].isDirect());
-	
-			//	this.ccm.sentTime = System.nanoTime();
-				
-				//System.err.println("write data block of "+buffers[i].remaining());
-				value = connections[i].getSocketChannel().write(buffers[i]);
-				//total+=value;
+				connections[i].getSocketChannel().write(buffers[i]);
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
@@ -376,29 +368,28 @@ public class ClientSocketWriterStage extends PronghornStage {
 		} catch (IOException e) {
 			
 			// if e.message is  "Broken pipe" then the connection was already lost, nothing to do here but close.
-			logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
-			
-			
+			//logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
+						
 			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
 			connections[i].close();
 			connections[i]=null;
 			buffers[i].clear();
-			return;
+			return true;
 		}
 		if (!buffers[i].hasRemaining()) {
 			
 			//logger.info("write clear {}",i);
 			buffers[i].clear();
 			connections[i]=null;
+			return true;
 		}  else {
 			
-			if (Integer.numberOfLeadingZeros(countOfUnableToFullyWrite) != 
-				Integer.numberOfLeadingZeros(countOfUnableToFullyWrite++)) {
-							
-				logger.info("Network overload issues on connection {} we still have {} bytes wating to write ",
-						i,buffers[i].remaining());
-				
-			}
+//			if (Integer.numberOfLeadingZeros(countOfUnableToFullyWrite) != 
+//				Integer.numberOfLeadingZeros(countOfUnableToFullyWrite++)) {							
+//				logger.info("Network overload issues on connection {} we still have {} bytes wating to write ",
+//						i,buffers[i].remaining());				
+//			}
+			return false;
 		}
 	}
 	private int countOfUnableToFullyWrite = 0;
