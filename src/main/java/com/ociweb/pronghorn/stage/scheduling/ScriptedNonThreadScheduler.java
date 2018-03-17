@@ -45,9 +45,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
 
-    //when false this uses low granularity timer, this will optimize volume not latency
-	public boolean lowLatencyEnforced = true;
-
     private int[] producersIdx;
 
     private Pipe[] producerInputPipes;
@@ -222,14 +219,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		}
     	}	
     }
-    
-    
-    //TODO: rename this, its not so much about low latency as it is near real time clock?
-    //NOTE: this can be toggled at runtime as needed.
-    public void setLowLatencyEnforced(boolean value) {
-    	lowLatencyEnforced = value;
-    }
-    
+
     public ScriptedNonThreadScheduler(GraphManager graphManager,
     								  StageVisitor checksForLongRuns,
     		                          boolean reverseOrder) {
@@ -674,17 +664,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	}
 
-	public static boolean allowYield = true;
-	public static boolean allowSpin = true;
-	
 	private void automaticLoadSwitchingDelay() {
 		accumulateWorkHistory();
-		
-		if (!allowSpin) {
-			return;
-		}
-		
-		
+			
 		//if we have over 1000 cycles of non work found then
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
@@ -693,7 +675,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			
 			long now2 = System.nanoTime()/1_000_000l;
 			
-			if (allowYield && 0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
+			if (0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
 				while (totalRequiredSleep>100_000) {
 					long now = System.nanoTime();
 					if (totalRequiredSleep>500_000) {

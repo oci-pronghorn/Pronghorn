@@ -1427,17 +1427,4 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		return true;
 	}
 
-	public void setEnsureLowLatency(boolean value) {
-		
-		int i = ntsArray.length;
-		while (--i>=0) {
-			ntsArray[i].lowLatencyEnforced = value;
-		}
-		
-	}
-
-
-	
-
-
 }
