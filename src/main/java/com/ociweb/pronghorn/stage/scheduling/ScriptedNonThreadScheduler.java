@@ -674,8 +674,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	}
 
+	public static boolean allowYield = true;
+	public static boolean allowSpin = true;
+	
 	private void automaticLoadSwitchingDelay() {
 		accumulateWorkHistory();
+		
+		if (!allowSpin) {
+			return;
+		}
+		
 		
 		//if we have over 1000 cycles of non work found then
 		//drop CPU usage to greater latency mode since we have no work
@@ -685,7 +693,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			
 			long now2 = System.nanoTime()/1_000_000l;
 			
-			if (0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
+			if (allowYield && 0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
 				while (totalRequiredSleep>100_000) {
 					long now = System.nanoTime();
 					if (totalRequiredSleep>500_000) {

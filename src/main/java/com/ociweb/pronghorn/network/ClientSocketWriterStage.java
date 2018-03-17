@@ -114,63 +114,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 							if (null!=cc) {
 						        
-								int payloadSize = len;
-								totalBytes += payloadSize;
-								
-								ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
-								
-								assert(connections[i]==null);
-								//copy done here to avoid GC and memory allocation done by socketChannel
-								buffers[i].clear();
-								buffers[i].put(writeHolder[0]);
-								buffers[i].put(writeHolder[1]);
-								
-								assert(writeHolder[0].remaining()==0);
-								assert(writeHolder[1].remaining()==0);
-																
-								Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-								Pipe.releaseReadLock(pipe);
-								
-//								System.err.println(enableWriteBatching+" && "+
-//								                 Pipe.hasContentToRead(pipe)+" && "+
-//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
-								
-								cc.recordSentTime(System.nanoTime());
-								
-						        while (enableWriteBatching && 
-						        		Pipe.hasContentToRead(pipe) && 
-							            Pipe.peekInt(pipe) == msgIdx && 
-							            buffers[i].remaining() > pipe.maxVarLen && 
-							            Pipe.peekLong(pipe, 1) == channelId ) {
-							        			        	
-							        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
-							        	
-							        	int m = Pipe.takeMsgIdx(pipe);
-							        	assert(m==msgIdx): "internal error";
-							        	long c = Pipe.takeLong(pipe);
-							        	long aTime = Pipe.takeLong(pipe);
-							        	
-							        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-
-							            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-							            int len2 = Pipe.takeRingByteLen(pipe);
-							            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
-							            
-							            buffers[i].put(writeBuffs2[0]);
-							            buffers[i].put(writeBuffs2[1]);
-							        									            
-								        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-								        Pipe.releaseReadLock(pipe);
-								        
-								        cc.recordSentTime(System.nanoTime());
-							        }	
-								
-								buffers[i].flip();	
-								connections[i] = cc;
-		
-								didWork |= tryWrite(i);
+								didWork = wraupUpEncryptedToSingleWrite(didWork, i, pipe, msgIdx, channelId, meta, len,
+										cc);
 
 							} else {
 								//clean shutdown of this connections resources
@@ -191,7 +136,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len  = Pipe.takeRingByteLen(pipe);
 	
-							boolean showWrittenData = false;
+							final boolean showWrittenData = false;
 							if (showWrittenData) {
 								int pos = Pipe.bytePosition(meta, pipe, len);	
 								System.out.println("pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId);
@@ -203,71 +148,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 		 						
 									if (null!=cc) {
 										
-										totalBytes += len;
-										ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
-
-										assert(connections[i]==null);
-										//copy done here to avoid GC and memory allocation done by socketChannel
-										buffers[i].clear();
-										buffers[i].put(writeHolder[0]);
-										buffers[i].put(writeHolder[1]);
-
-										assert(writeHolder[0].remaining()==0);
-										assert(writeHolder[1].remaining()==0);
-																		
-										final int fragSize = Pipe.sizeOf(pipe, msgIdx);
-										
-										Pipe.confirmLowLevelRead(pipe, fragSize);
-										Pipe.releaseReadLock(pipe);
-										
-										cc.recordSentTime(System.nanoTime());
-										
-//										System.err.println(enableWriteBatching+" && "+
-//								                 Pipe.hasContentToRead(pipe)+" && "+
-//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-//					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
-										 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-										            Pipe.peekInt(pipe)==msgIdx && 
-										            		buffers[i].remaining()>pipe.maxVarLen && 
-										            Pipe.peekLong(pipe, 1)==channelId ) {
-										        			        	
-										        	logger.trace("opportunity found to batch writes going to {} ",channelId);
-										        	
-										        	int m = Pipe.takeMsgIdx(pipe);
-										        	assert(m==msgIdx): "internal error";
-										        	long c = Pipe.takeLong(pipe);
-										        	
-										        	long aTime = Pipe.takeLong(pipe);
-										        	
-										        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-										        	workingTailPosition=Pipe.takeLong(pipe);
-										        											            
-										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-										            int len2 = Pipe.takeRingByteLen(pipe);
-										            
-										            if (showWrittenData) {
-										            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							
-														Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos2, len2, Pipe.blobMask(pipe));
-										            }
-										            
-										            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
-										            
-										            buffers[i].put(writeBuffs2[0]);
-										            buffers[i].put(writeBuffs2[1]);
-										        		
-											        Pipe.confirmLowLevelRead(pipe, fragSize);
-											        Pipe.releaseReadLock(pipe);
-											        
-											        cc.recordSentTime(System.nanoTime());
-											      
-								        }											
-										
-									
-										buffers[i].flip();	
-										connections[i] = cc;
-										
-										didWork |= tryWrite(i);
+										didWork = rollUpPlainsToSingleWrite(didWork, i, 
+												pipe, msgIdx, channelId, cc, meta,
+												len, showWrittenData);
 									} else {
 									
 										//can not send this connection was lost, consume and drop the data to get it off the pipe
@@ -324,6 +207,139 @@ public class ClientSocketWriterStage extends PronghornStage {
 			}
 		} while (didWork);
 		
+	}
+
+	private boolean wraupUpEncryptedToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx,
+			final long channelId, int meta, int len, ClientConnection cc) {
+		int payloadSize = len;
+		totalBytes += payloadSize;
+		
+		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
+		
+		assert(connections[i]==null);
+		//copy done here to avoid GC and memory allocation done by socketChannel
+		buffers[i].clear();
+		buffers[i].put(writeHolder[0]);
+		buffers[i].put(writeHolder[1]);
+		
+		assert(writeHolder[0].remaining()==0);
+		assert(writeHolder[1].remaining()==0);
+										
+		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+		Pipe.releaseReadLock(pipe);
+		
+//								System.err.println(enableWriteBatching+" && "+
+//								                 Pipe.hasContentToRead(pipe)+" && "+
+//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
+		
+		cc.recordSentTime(System.nanoTime());
+		
+		while (enableWriteBatching && 
+				Pipe.hasContentToRead(pipe) && 
+		        Pipe.peekInt(pipe) == msgIdx && 
+		        buffers[i].remaining() > pipe.maxVarLen && 
+		        Pipe.peekLong(pipe, 1) == channelId ) {
+		    			        	
+		    	//logger.trace("opportunity found to batch writes going to {} ",channelId);
+		    	
+		    	int m = Pipe.takeMsgIdx(pipe);
+		    	assert(m==msgIdx): "internal error";
+		    	long c = Pipe.takeLong(pipe);
+		    	long aTime = Pipe.takeLong(pipe);
+		    	
+		    	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
+
+		        int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
+		        int len2 = Pipe.takeRingByteLen(pipe);
+		        ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
+		        
+		        buffers[i].put(writeBuffs2[0]);
+		        buffers[i].put(writeBuffs2[1]);
+		    									            
+		        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+		        Pipe.releaseReadLock(pipe);
+		        
+		        cc.recordSentTime(System.nanoTime());
+		    }	
+		
+		buffers[i].flip();	
+		connections[i] = cc;
+
+		didWork |= tryWrite(i);
+		return didWork;
+	}
+
+	private boolean rollUpPlainsToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx, long channelId,
+			ClientConnection cc, int meta, int len, boolean showWrittenData) {
+		long workingTailPosition;
+		totalBytes += len;
+		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
+
+		assert(connections[i]==null);
+		//copy done here to avoid GC and memory allocation done by socketChannel
+		buffers[i].clear();
+		buffers[i].put(writeHolder[0]);
+		buffers[i].put(writeHolder[1]);
+
+		assert(writeHolder[0].remaining()==0);
+		assert(writeHolder[1].remaining()==0);
+										
+		final int fragSize = Pipe.sizeOf(pipe, msgIdx);
+		
+		Pipe.confirmLowLevelRead(pipe, fragSize);
+		Pipe.releaseReadLock(pipe);
+		
+		cc.recordSentTime(System.nanoTime());
+		
+//										System.err.println(enableWriteBatching+" && "+
+//								                 Pipe.hasContentToRead(pipe)+" && "+
+//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+//					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
+		 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
+		            Pipe.peekInt(pipe)==msgIdx && 
+		            		buffers[i].remaining()>pipe.maxVarLen && 
+		            Pipe.peekLong(pipe, 1)==channelId ) {
+		        			        	
+		        	logger.trace("opportunity found to batch writes going to {} ",channelId);
+		        	
+		        	int m = Pipe.takeMsgIdx(pipe);
+		        	assert(m==msgIdx): "internal error";
+		        	long c = Pipe.takeLong(pipe);
+		        	
+		        	long aTime = Pipe.takeLong(pipe);
+		        	
+		        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
+		        	workingTailPosition=Pipe.takeLong(pipe);
+		        											            
+		            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
+		            int len2 = Pipe.takeRingByteLen(pipe);
+		            
+		            if (showWrittenData) {
+		            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							
+						Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos2, len2, Pipe.blobMask(pipe));
+		            }
+		            
+		            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
+		            
+		            buffers[i].put(writeBuffs2[0]);
+		            buffers[i].put(writeBuffs2[1]);
+		        		
+			        Pipe.confirmLowLevelRead(pipe, fragSize);
+			        Pipe.releaseReadLock(pipe);
+			        
+			        cc.recordSentTime(System.nanoTime());
+			      
+		}											
+		
+
+		buffers[i].flip();	
+		connections[i] = cc;
+		
+		didWork |= tryWrite(i);
+		return didWork;
 	}
 
 	
