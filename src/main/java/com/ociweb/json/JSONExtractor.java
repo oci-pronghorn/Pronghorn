@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
 import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
@@ -19,12 +20,17 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	
 	public JSONExtractor() {
 		schema = new JSONFieldSchema(0);//can we set the position here for the null block???=
-		writeDot = false;	
+		writeDot = false;
 	}
 	
 	public JSONExtractor(boolean writeDot) {
 		this.schema = new JSONFieldSchema(0);
 		this.writeDot = writeDot;
+	}
+	
+	public int toStruct(BStructSchema struct) {
+		return schema.toStruct(struct);
+
 	}
 	
     @Override
@@ -114,5 +120,6 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		schema.addMappings(activeMapping);
 		return this;
 	}
+
 	
 }

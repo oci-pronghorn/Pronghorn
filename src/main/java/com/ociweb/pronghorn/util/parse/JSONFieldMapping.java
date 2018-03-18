@@ -59,6 +59,10 @@ public class JSONFieldMapping {
 		this.accumRule = accumRule; 
 	}
 	
+	public String getName() {
+		return name;
+	}
+	
 	public void setName(String name) {
 		this.name = name;
 	}
