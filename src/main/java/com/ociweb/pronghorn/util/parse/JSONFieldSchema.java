@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -304,6 +306,38 @@ public class JSONFieldSchema implements JSONReader {
 
 	@Override
 	public void clear() {
+	}
+
+	public int toStruct(BStructSchema struct) {
+		
+		int length = mappings.length;
+				
+		String[] fieldNames = new String[length];
+		BStructTypes[] fieldTypes = new BStructTypes[length];
+		int[] fieldDims = new int[length];
+		
+		int i = length;
+		while (--i>=0) {
+			JSONFieldMapping mapping = mappings[i];			
+			fieldNames[i] = mapping.getName();//TODO: make final and remove getter?
+			switch(mapping.type) {
+				case TypeString:
+					fieldTypes[i] = BStructTypes.Text;
+				break;
+				case TypeInteger:
+					fieldTypes[i] = BStructTypes.Long;
+				break;
+				case TypeDecimal:
+					fieldTypes[i] = BStructTypes.Decimal;
+				break;
+				case TypeBoolean:
+					fieldTypes[i] = BStructTypes.Boolean;
+				break;					
+			}
+			fieldDims[i] = mapping.dimensions();
+		}
+		return struct.addStruct(fieldNames, fieldTypes, fieldDims);
+		
 	}
 
 		

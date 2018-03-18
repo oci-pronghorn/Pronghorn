@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.struct;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -12,18 +13,37 @@ public class BStructSchema {
 	//selected headers, route params, plus json payloads makes up a fixed record structure
 	private int structCount = 0;
 	
-	private TrieParser[]     fields = new TrieParser[4]; //grow as needed for fields
-	private int[]            fieldCount = new int[4]; //count of fields (size of index)
-	private String[][]       fieldNames = new String[4][];
-	private BStructTypes[][] fieldTypes = new BStructTypes[4][];
-	private int[][]          fieldDims  = new int[4][];
+	private TrieParser[]     fields      = new TrieParser[4]; //grow as needed for fields
+	private String[][]       fieldNames  = new String[4][];
+	private BStructTypes[][] fieldTypes  = new BStructTypes[4][];
+	private int[][]          fieldDims   = new int[4][];
+	private Object[][]       fieldLocals = new Object[4][];
+
+	
+	//TODO: future feature
+	//private Class<Enum<?>>[][] fieldOptionalEnum = new Class[4][]; //TODO: add method to set this on a field.
+
+	
+	private int              maxDims    = 0;
+	
+	private static final int STRUCT_BITS   = 20;
+	private static final int STRUCT_MAX    = 1<<STRUCT_BITS;
+	private static final int STRUCT_MASK   = STRUCT_MAX-1;
+	private static final int STURCT_OFFSET = 32;
+	private static final int IS_STRUCT_BIT = 1<<31;
+	
+	private static final int FIELD_BITS    = 20;
+	private static final int FIELD_MAX     = 1<<FIELD_BITS;
+	private static final int FIELD_MASK    = FIELD_MAX-1;
 		
+	
 	
 	public BStructSchema merge(BStructSchema source) {
 		
 		BStructSchema result = new BStructSchema();
 		
 		for(int i=0; i<structCount; i++) {			
+			maxDims(fieldDims[i]);
 			result.addStruct(fieldNames[i], fieldTypes[i], fieldDims[i]);			
 		}
 		for(int i=0; i<source.structCount; i++) {			
@@ -109,93 +129,248 @@ public class BStructSchema {
 	}
 	
 
+//TODO: future feature, enum fields 
+//	@SuppressWarnings("unchecked")
+//	public <E extends Enum<E>> Enum<E> enumField(long id, int ordinal) {
+//		
+//		return (Enum<E>) fieldOptionalEnum
+//				                          [STRUCT_MASK&(int)(id>>>STURCT_OFFSET)]
+//				                          [FIELD_MASK&(int)id]
+//				                        		  .getEnumConstants()[ordinal];
+//	
+//		
+//		
+//	}
 	
-	public void addStruct(String[] fieldNames, 
-			              BStructTypes[] fieldTypes, //all fields are precede by array count byte
-			              int[] fieldDims //Dimensionality, should be 0 for simple objects.
-						 ) {
+	
+	/**
+	 * Add new Structure to the schema
+	 * @param fieldNames - name for each field
+	 * @param fieldTypes - type for each field
+	 * @param fieldDims - dominations for this field, should be 0 for most cases of simple data
+	 * @return the array of field identifiers in the same order as defined
+	 */
+	public int addStruct(String[] fieldNames, 
+			                BStructTypes[] fieldTypes, //all fields are precede by array count byte
+			                int[] fieldDims //Dimensionality, should be 0 for simple objects.
+						   ) {
 		
 		assert(fieldNames.length == fieldTypes.length);
 		assert(fieldNames.length == fieldDims.length);
-		
+		maxDims(fieldDims);
 		int idx = structCount++;
 		grow(structCount);
 		
-		//TODO: types need to match Phast and all others??
-		
 		int n = fieldNames.length;
 		TrieParser fieldParser = new TrieParser(n*20,2,true,false);
-		while (--n>=0) {
+		while (--n>=0) {			
+			assert(isNotAlreadyDefined(fieldParser, fieldNames[n]));			
 			fieldParser.setUTF8Value(fieldNames[n], n);
 		}
 		this.fields[idx] = fieldParser;
 		
-		this.fieldCount[idx] = fieldNames.length;
 		this.fieldNames[idx] = fieldNames;
 		this.fieldTypes[idx] = fieldTypes;
 		this.fieldDims[idx] = fieldDims;
+				
+		return idx|IS_STRUCT_BIT;
+	}
+		
+	
+	private static boolean isNotAlreadyDefined(TrieParser fieldParser, String value) {
+		//we are trusting escape analysis to not create GC here.
+		return -1 == fieldIdLookup(fieldParser, value);
+	}
+
+	private static long fieldIdLookup(TrieParser fieldParser, String value) {
+		return new TrieParserReader(true).query(fieldParser, value);
+	}
+
+	public void growStruct(int structId,
+						   String fieldName,
+						   BStructTypes fieldType,
+						   int fieldDim) {
+		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
+		int idx = STRUCT_MASK & structId;
+		
+		//add text lookup
+		assert(isNotAlreadyDefined(this.fields[idx], fieldName));
+		this.fields[idx].setUTF8Value(fieldName, this.fieldNames.length);
+		
+		//grow all the arrays with new value
+		this.fieldNames[idx] = grow(this.fieldNames[idx], fieldName);
+		this.fieldTypes[idx] = grow(this.fieldTypes[idx], fieldType);
+		this.fieldDims[idx] = grow(this.fieldDims[idx], fieldDim);
+		
 	}
 	
+	public void modifyStruct(int structId,
+						   String fieldName,
+						   BStructTypes fieldType,
+						   int fieldDim) {
+		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
+		int idx = STRUCT_MASK & structId;
+		int fieldIdx = (int)fieldIdLookup(this.fields[idx], fieldName);
+		if (-1 == fieldIdx) {
+			growStruct(structId, fieldName, fieldType, fieldDim);
+		} else {
+			//////////
+			//modify an existing field, we have new data to apply
+			//////////
+			//use the newest defined type
+			this.fieldTypes[idx][fieldIdx] = fieldType;		
+			//keep largest dim value
+			this.fieldDims[idx][fieldIdx] = Math.max(this.fieldDims[idx][fieldIdx], fieldDim);
+		}
+	}
+			 
 	
-	public BStructTypes fieldType(int record, int fieldId) {
-		return fieldTypes[record][fieldId];
+	
+
+	private int[] grow(int[] source, int newValue) {
+		int[] results = new int[source.length+1];
+		System.arraycopy(source, 0, results, 0, source.length);
+		results[source.length] = newValue;
+		return results;
+	}
+
+	private BStructTypes[] grow(BStructTypes[] source, BStructTypes newValue) {
+		BStructTypes[] results = new BStructTypes[source.length+1];
+		System.arraycopy(source, 0, results, 0, source.length);
+		results[source.length] = newValue;
+		return results;
+	}
+
+	private String[] grow(String[] source, String newValue) {
+		String[] results = new String[source.length+1];
+		System.arraycopy(source, 0, results, 0, source.length);
+		results[source.length] = newValue;
+		return results;
+	}
+
+	public long[] newFieldIds(int structId) {
+		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
+		int idx = STRUCT_MASK & structId;
+				
+		int c = fieldNames.length;
+		assert(c<=FIELD_MASK) : "too many fields";
+		
+		long[] fieldIds = new long[c];
+		long base = ((long)idx)<<STURCT_OFFSET;
+		while (--c>=0) {
+			fieldIds[c] =  base | (long)c;
+		}
+		return fieldIds;
 	}
 	
-	public String fieldName(int record, int fieldId) {
-		return fieldNames[record][fieldId];
+	public void setAssociatedObject(long id, Object localObject) {
+		this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id] = localObject;
 	}
 	
-	public int fieldCount(int record) {
-		return fieldCount[record];
+	public <T extends Object> T getAssociatedObject(long id) {
+		return (T) this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+	}
+	
+	private void maxDims(int[] fieldDims) {
+		int x = fieldDims.length;
+		while (--x>=0) {
+			if (fieldDims[x]>maxDims) {
+				maxDims = fieldDims[x];
+			}	
+		}
+		
+		
+	}
+
+	public int dims(long id) {
+		return fieldDims[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+	}
+	
+	public BStructTypes fieldType(long id) {
+		return fieldTypes[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+	}
+	
+	public String fieldName(long id) {
+		return fieldNames[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
 	}
 	    	
-	public long fieldLookup(TrieParserReader reader, CharSequence sequence, int record) {
-		return TrieParserReader.query(reader, fields[record], sequence);
+	public long fieldLookup(TrieParserReader reader, CharSequence sequence, int struct) {
+		return TrieParserReader.query(reader, fields[struct], sequence);
 	}
 	
-	public long fieldLookup(TrieParserReader reader, byte[] source, int pos, int len, int mask, int record) {
-		return TrieParserReader.query(reader, fields[record], source, pos, len, mask);
+	public long fieldLookup(TrieParserReader reader, byte[] source, int pos, int len, int mask, int struct) {
+		return TrieParserReader.query(reader, fields[struct], source, pos, len, mask);
 	}
 	
 	private void grow(int records) {
 		if (records>fields.length) {
 			int newSize = records*2;
 			
-			fields = grow(newSize, fields);
-			fieldCount = grow(newSize, fieldCount);
-			fieldNames = grow(newSize, fieldNames);
-			fieldTypes = grow(newSize, fieldTypes);
-			
+			fields      = grow(newSize, fields);
+			fieldNames  = grow(newSize, fieldNames);
+			fieldTypes  = grow(newSize, fieldTypes);
+			fieldDims   = grow(newSize, fieldDims);
+			fieldLocals = grow(newSize, fieldLocals);
+						
 		}
 	}
 
 
-	private BStructTypes[][] grow(int newSize, BStructTypes[][] source) {
+	private static BStructTypes[][] grow(int newSize, BStructTypes[][] source) {
 		BStructTypes[][] result = new BStructTypes[newSize][];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
 
 
-	private String[][] grow(int newSize, String[][] source) {
+	private static String[][] grow(int newSize, String[][] source) {
 		String[][] result = new String[newSize][];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
 
-
-	private int[] grow(int newSize, int[] source) {
-		int[] result = new int[newSize];
-		System.arraycopy(source, 0, result, 0, source.length);
-		return result;
-	}
-
-
-	private TrieParser[] grow(int newSize, TrieParser[] source) {
+	private static TrieParser[] grow(int newSize, TrieParser[] source) {
 		TrieParser[] result = new TrieParser[newSize];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
+
+	private static Object[][] grow(int newSize, Object[][] source) {
+		Object[][] result = new Object[newSize][];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
 	
+	private static int[][] grow(int newSize, int[][] source) {
+		int[][] result = new int[newSize][];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
+	
+	private static long[][] grow(int newSize, long[][] source) {
+		long[][] result = new long[newSize][];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
+	
+	public int maxDim() {
+		return maxDims;
+	}
+
+	public <T> void visit(DataInputBlobReader<?> reader, 
+			              Class<T> attachedInstanceOf, 
+			              BStructFieldVisitor<T> visitor) {
+				
+		int structId = DataInputBlobReader.getStructType(reader);
+		if (structId>0) {
+			Object[] locals = this.fieldLocals[structId];
+			for(int i = 0; i<locals.length; i++) {
+				if (attachedInstanceOf.isInstance(locals[i])) {
+					DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, i));								
+					visitor.read((T) locals[i], reader);
+				}
+			}
+		}
+	}
 	
 }
