@@ -119,13 +119,19 @@ public class ClientSocketReaderStage extends PronghornStage {
            
            doneSelectors.clear();
 	
+           hasRoomForMore = true;
            selectedKeys.forEach(selectionKeyAction);
                  
 		   removeDoneKeys(selectedKeys);
 		      
+		   if (!hasRoomForMore) {
+			   return;
+		   }
+		   
         }
    	}
 
+	boolean hasRoomForMore = true;
 	private void processSelection(SelectionKey selection) {
 		assert isReadOpsOnly(selection) : "only expected read"; 
 		
@@ -138,6 +144,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (didWork) {
 			pendingSelections--;
 			doneSelectors.add(selection);
+		} else {
+			hasRoomForMore = false;//if any one is blocked go work elsewhere.
 		}
 		
 	}

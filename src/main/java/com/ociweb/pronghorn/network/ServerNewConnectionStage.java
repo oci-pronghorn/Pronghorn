@@ -74,7 +74,8 @@ public class ServerNewConnectionStage extends PronghornStage{
         
         this.newClientConnections = null;
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+  
     }
     
     @Override
@@ -254,7 +255,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           
                           //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
                           channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
-                          channel.socket().setPerformancePreferences(0, 2, 1);
+                          channel.socket().setPerformancePreferences(1, 0, 2);
                  
                           SSLEngine sslEngine = null;
                           if (coordinator.isTLS) {

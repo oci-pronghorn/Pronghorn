@@ -17,17 +17,15 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class URLTemplateParser {
 
+	private final static Logger logger = LoggerFactory.getLogger(URLTemplateParser.class);
 	private final static byte CUSTOM_ESCAPE = (byte)'"'; //the " char is never allowed to appear in a URL so we can use it here.
 	
 	private final TrieParser templateParser = buildRouteTemplateParser(new TrieParser(256,1,false,true,false,CUSTOM_ESCAPE));
-	
     private final EncodingConverter converter;
-    private final static Logger logger = LoggerFactory.getLogger(URLTemplateParser.class);
     
     private final TrieParser routerMap;
     private final boolean trustText;
-    
-    
+        
     
     public URLTemplateParser(TrieParser routerMap, boolean trustText) {
     	

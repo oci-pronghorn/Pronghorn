@@ -348,29 +348,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             }            
         }
 
-        return parseIfOpen(idx, selectedInput);
+        return ((activeChannel = inputChannels[idx]) >= 0) ?
+	        	(parseAvail(idx, selectedInput, activeChannel) ? 1 : 0) : 0;
     }
-
-
-	private int parseIfOpen(final int idx, Pipe<NetPayloadSchema> selectedInput) {
-		long channel   = inputChannels[idx];
-        activeChannel = channel;
-
-        if (channel >= 0) {
-        	boolean result = false;
-
-        	assert(inputLengths[idx]>0) : "length is "+inputLengths[idx];
-        	assert(inputBlobPos[idx]+inputLengths[idx] == inputBlobPosLimit[idx]) : "length mismatch";    	
-        	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-        	
-        	result = parseAvail(idx, selectedInput, channel);
-        	
-        	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-
-        	return result ? 1 : 0;
-        }
-        return 0;
-	}
 
 
 	private boolean parseAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel) {
@@ -508,7 +488,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				                    Pipe.blobMask(selectedInput));	
 
 		do {
-			assert(inputLengths[idx]>0) : "length is "+inputLengths[idx];
+			assert(inputLengths[idx]>=0) : "length is "+inputLengths[idx];
 
 			int totalAvail = inputLengths[idx];
 			final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
@@ -566,10 +546,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							sendRelease(channel, idx);
 		    														
 					}
-
-		    	//when we have no more data to consume we must exit this loop and get more.
-				//logger.info("l is zero so return zero "+selectedInput);
-				return false;//must cause a wait to accumulate more
 		    }
 		    return totalConsumed>0;
          } else if (NEED_MORE_DATA == result) {

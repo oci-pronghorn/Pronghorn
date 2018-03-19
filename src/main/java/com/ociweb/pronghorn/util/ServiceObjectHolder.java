@@ -230,7 +230,8 @@ public class ServiceObjectHolder<T> {
             }
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
-        } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
+        } while (null != data.serviceObjectValues[modIdx] 
+        		&& validator.isValid(data.serviceObjectValues[modIdx]));
     
         
         sequenceCounter = localSequenceCount;//where we left off

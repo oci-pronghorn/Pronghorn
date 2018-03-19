@@ -99,7 +99,15 @@ public class HTTPClientRequestStage extends PronghornStage {
 				hasWork = false;
 				int i = input.length;
 				while (--i>=0) {
-					hasWork |= processMessagesForPipe(i, now);
+					Pipe<ClientHTTPRequestSchema> requestPipe = input[i];						  
+					if (Pipe.hasContentToRead(requestPipe)) {
+						if (buildClientRequest(now, requestPipe)) {
+							hasWork = true;
+						} else {
+							//try again later
+							return; //blocked connection, handshake wait or output pipe full
+						}
+					}
 				}
 				
 				//check if some connections have not been used and can be closed.
@@ -139,55 +147,41 @@ public class HTTPClientRequestStage extends PronghornStage {
 		}
 	}
 	
-	protected boolean processMessagesForPipe(int activePipe, long now) {
-		
-		
-		    Pipe<ClientHTTPRequestSchema> requestPipe = input[activePipe];
-		    	  
-		    boolean didWork = false;
-
-		    		    
-	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
+	private boolean buildClientRequest(long now, Pipe<ClientHTTPRequestSchema> requestPipe) {
+		boolean didWork = false;
+		//This check is required when TLS is in use.
+		if (isConnectionReadyForUse(requestPipe) ){
+			didWork = true;	        
+			
+		       	//Need peek to know if this will block.
+		    		        	
+		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 		    
+		   // logger.info("send for active pipe {} with msg {}",requestPipe.id,msgIdx);
 		    
-	        if (Pipe.hasContentToRead(requestPipe)) {
-
-	        	//This check is required when TLS is in use.
-	        	if (isConnectionReadyForUse(requestPipe) ){
-		        	didWork = true;	        
-		        	
-		               	//Need peek to know if this will block.
-		 	        		        	
-		            final int msgIdx = Pipe.takeMsgIdx(requestPipe);
-		            
-		            //logger.info("send for active pipe {} with msg {}",activePipe,msgIdx);
-		            
-		            if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
-		            	activeConnection.setLastUsedTime(now);
-						HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
-		            } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
-		            	HTTPClientUtil.processGetLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
-		            } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
-		            	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
-		            } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
-		            	HTTPClientUtil.cleanCloseConnection(activeConnection, output[activeConnection.requestPipeLineIdx()]);
-		            } else  if (-1 == msgIdx) {
-		            	//logger.info("Received shutdown message");								
-						processShutdownLogic(requestPipe);
-						return false;
-		            } else {
-		            	throw new UnsupportedOperationException("Unexpected Message Idx");
-		            }		
-					
-					Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
-					Pipe.releaseReadLock(requestPipe);	
-	
-	      
-		        }	
-	        	
-	        }
-	        
-	        
+		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
+		    	activeConnection.setLastUsedTime(now);
+				HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+		    } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
+		    	//logger.info("Warning slower call for HTTP GET detected, clean up lazy init.");
+		    	HTTPClientUtil.processGetLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
+		    } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
+		    	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
+		    } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
+		    	HTTPClientUtil.cleanCloseConnection(activeConnection, output[activeConnection.requestPipeLineIdx()]);
+		    } else  if (-1 == msgIdx) {
+		    	//logger.info("Received shutdown message");								
+				processShutdownLogic(requestPipe);
+				return false;
+		    } else {
+		    	throw new UnsupportedOperationException("Unexpected Message Idx");
+		    }		
+			
+			Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
+			Pipe.releaseReadLock(requestPipe);	
+     
+		} 
+		
 		return didWork;
 	}
 
@@ -239,7 +233,6 @@ public class HTTPClientRequestStage extends PronghornStage {
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200)) {
  			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
  			assert(-1 != connectionId);
- 		//	System.err.println("loaded connection "+connectionId);
  		} else {
  			
  			int routeId = Pipe.peekInt(requestPipe, 1);
@@ -253,7 +246,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostMask = Pipe.blobMask(requestPipe);
  			
      		connectionId = ccm.lookup(ccm.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen)), port, userId);
-			//System.err.println("first lookup connection "+connectionId);
+			System.err.println("first lookup connection "+connectionId);
  		}
 		
  		if (null!=activeConnection && activeConnection.getId()==connectionId) {

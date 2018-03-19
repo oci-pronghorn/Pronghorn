@@ -61,6 +61,7 @@ public class HTTPSRoundTripTest {
 		int fieldSession = 0;
 		CharSequence fieldPath = "/"+testFile;
 		CharSequence fieldHeaders = null;
+		ClientCoordinator.registerDomain("127.0.0.1");
 		
 		httpRequestsPipe[0].initBuffers();
 		
@@ -76,7 +77,6 @@ public class HTTPSRoundTripTest {
 		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
 								clientRequestCount, clientRequestSize, tlsCertificates);
     	
-		ClientCoordinator.registerDomain("127.0.0.1");
 		
 		String pathRoot = buildStaticFileFolderPath(testFile);
 		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
@@ -167,7 +167,7 @@ public class HTTPSRoundTripTest {
 		runRoundTrip(gm, results);
     }
     
-    @Test 
+    @Test
 	public void certAuthMatchHTTPSTest() {
     
     	final TLSCertificates tlsCertificates = new TLSCertificates() {

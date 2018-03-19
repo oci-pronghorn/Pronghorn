@@ -1248,7 +1248,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
         ThreadFactory threadFactory = new ThreadFactory() {
 			@Override
 			public Thread newThread(Runnable r) {
-				
+				Thread result = null;
 				Field[] fields = r.getClass().getDeclaredFields();
 				int f = fields.length;
 				while (--f>=0) {
@@ -1257,26 +1257,29 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						
 						try {
 							if (fields[f].get(r)==null || null==((NamedRunnable)fields[f].get(r)).name()) {
-								return new Thread(r,"Unknown");	
+								result = new Thread(r,"Unknown");	
 							} else {
 								//logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
-								return new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
+								result = new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
 							}
 						} catch (IllegalArgumentException e) {
 							logger.info("error pulling NamedRunnable",e);
-							return new Thread(r,"Unknown");
+							result = new Thread(r,"Unknown");
 						} catch (IllegalAccessException e) {
 							logger.info("error pulling NamedRunnable",e);
-							return new Thread(r,"Unknown");		
+							result = new Thread(r,"Unknown");		
 						} finally {
 							fields[f].setAccessible(false);
 						}
 					}
 					
-				}
+				} 
+				
+				if (null==result) {
+					result = new Thread(r,"Unknown");				
+				}				
 				//logger.info("new thread created for {}",r.getClass().getName());
-				return new Thread(r,"Unknown");					
-
+				return result;
 			}        	
         };
         

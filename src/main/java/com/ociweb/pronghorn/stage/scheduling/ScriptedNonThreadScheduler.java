@@ -597,11 +597,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					scheduleIdx += enabled[scheduleIdx];
 				} else {			
 					
-					////////////////////
-					//before we compute the wait time 
-					//call yield to let the OS get in a time slice swap
-					Thread.yield();
-					//////////////////
+					//  -XX:+UseG1GC
+					//  -XX:+UseConcMarkSweepGC 
 					
 		            // We need to wait between scheduler blocks, or else
 		            // we'll just burn through the entire schedule nearly instantaneously.
@@ -651,11 +648,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		
 		totalRequiredSleep+=wait;
 		long a = (totalRequiredSleep/1_000_000L);
+		long b = (totalRequiredSleep%1_000_000L);
 		
 		if (a>0) {
+			a=1;//do not stop longer than this.
 			long now = System.nanoTime();
 			Thread.yield();
-			Thread.sleep(a);
+			Thread.sleep(a,(int)b);
 			long duration = System.nanoTime()-now;
 			totalRequiredSleep -= (duration>0?duration:(a*1_000_000));
 		} 
@@ -738,10 +737,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    // If it isn't out of bounds or a block-end (-1), run it!
 		    if ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
 
-		    	long start = 0;
+		    	//Just before we start the timer and run the stage we want to 
+		    	//allow the OS to schedule anything else it has pressing
+		    	Thread.yield();
+		    	
+		    	long start = 0;	
+		    	long SLAStart = 0;
 		    	if (recordTime) {
+		    		SLAStart = System.currentTimeMillis();
 		    		start = System.nanoTime();
-		    		DidWorkMonitor.begin(didWorkMonitor,start);	
+		    		DidWorkMonitor.begin(didWorkMonitor,start);
 		    	}
 		    	
 		    	if (!run(gm, stages[inProgressIdx], this)) {
@@ -751,6 +756,26 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				if (recordTime && DidWorkMonitor.didWork(didWorkMonitor)) {
 					final long now = System.nanoTime();		        
 		        	long duration = now-start;
+		        	
+		        	Number sla = (Number) GraphManager.getNota(graphManager, 
+		        			stages[inProgressIdx].stageId,
+		        			GraphManager.SLA_LATENCY, null);
+
+		        	if (null!=sla && duration>sla.longValue()) {
+		        		
+		        		Appendables.appendEpochTime(
+		        		Appendables.appendEpochTime(
+		        		Appendables.appendNearestTimeUnit(System.err.append("SLA Violation: "), duration)
+		        			.append(" ")
+		        			.append(stages[inProgressIdx].toString())
+		        			.append(" ")
+		        			,SLAStart).append('-')
+		        			,System.currentTimeMillis())
+		        			.append("\n");
+		        		
+		        	}
+		        	
+		        	
 		 			if (!GraphManager.accumRunTimeNS(gm, stages[inProgressIdx].stageId, duration, now)){
 						if (!shownLowLatencyWarning) {
 							shownLowLatencyWarning = true;

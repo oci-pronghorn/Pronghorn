@@ -105,6 +105,7 @@ public class GraphManager {
 	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME      = "STAGE_NAME";
 	
+	public final static String SLA_LATENCY     = "SLA_LATENCY";	
 	public final static String LOAD_BALANCER   = "LOAD_BALANCER"; //this stage evenly splits traffic across outputs
 	public final static String LOAD_MERGE      = "LOAD_MERGE"; //this stage consumes equal priority traffic from inputs.
 	public final static String HEAVY_COMPUTE   = "HEAVY_COMPUTE"; //this stage does a lot of compute, we will avoid putting these on the same thread.
@@ -1189,7 +1190,7 @@ public class GraphManager {
 			return -1;
 		}
 		int notaId;
-		while(-1 != (notaId = m.multNotaIds[idx])) {
+		while(idx<m.multNotaIds.length && (-1 != (notaId = m.multNotaIds[idx]))) {
 			if (m.notaIdToKey[notaId].equals(key)) {
 				return notaId;
 			}
@@ -1856,7 +1857,9 @@ public class GraphManager {
 	            if (null!=pipe) {
 	                
 	                int producer = getRingProducerId(m, j);
+	                assert(producer>=0) : "no producer found";
 	                int consumer = getRingConsumerId(m, j);
+	                assert(consumer>=0) : "no consumer found";
 	                
 	                //skip all pipes that are gathering monitor data
 	                if (consumer<0  ||
@@ -1951,15 +1954,16 @@ public class GraphManager {
 			                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
 			                }
 			              
-			                if (null!=msgPerSec) {
-			                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
-			                }
-			                target.append(WHITE_SPACE_NL);
-			               			                
 			                if (null!=pipeTraffic) {
 			                	appendVolume(target, pipeTraffic[pipe.id]);
-			            		target.append(WHITE_SPACE);
 			                } 
+			                target.append(WHITE_SPACE_NL);
+			               			                
+			                if (null!=msgPerSec) {
+			                	target.append(WHITE_SPACE);
+			                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
+			                	target.append(WHITE_SPACE);
+			                }
 			                	                    
 		                    
 		                    String pipeMemory = m.pipeDOTConst[pipe.id];

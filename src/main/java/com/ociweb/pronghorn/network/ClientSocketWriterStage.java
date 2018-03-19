@@ -1,10 +1,8 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.UnsupportedAddressTypeException;
-import java.util.Arrays;
+import java.nio.MappedByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +19,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	private final ClientCoordinator ccm;
 	private final Pipe<NetPayloadSchema>[] input;
-	private ByteBuffer[] buffers;
+	private MappedByteBuffer[] buffers;
 	private ClientConnection[] connections;
 	
 	private int shutCountDown;
@@ -62,9 +60,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		int i = input.length;
 		connections = new ClientConnection[i];
-		buffers = new ByteBuffer[i];
+		buffers = new MappedByteBuffer[i];
 		while (--i>=0) {
-			buffers[i] = ByteBuffer.allocateDirect(input[i].maxVarLen*bufMultiplier); //TODO: allocate 1 large block then split into buffers?
+			buffers[i] = (MappedByteBuffer)ByteBuffer.allocateDirect(input[i].maxVarLen*bufMultiplier); //TODO: allocate 1 large block then split into buffers?
 		}
 		start = System.currentTimeMillis();		
 	}

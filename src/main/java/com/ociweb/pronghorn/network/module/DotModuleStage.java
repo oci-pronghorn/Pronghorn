@@ -52,6 +52,8 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		}
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+        GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000L, this);
+
 	}
 	
 	@Override

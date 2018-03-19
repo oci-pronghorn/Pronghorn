@@ -344,11 +344,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return result;
 	}
 	
+	private int clientConnectionsErrorCounter = 0;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
-								
+		
 		        ClientConnection cc = null;
 
 				if (-1 == connectionId || 
@@ -357,10 +358,22 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 										
 					connectionId = ccm.lookupInsertPosition();
 					
-					int pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length));
-					if (connectionId<0 || pipeIdx<0) {
+					int pipeIdx = -1;
+					if (connectionId<0 || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
 						
-						logger.warn("Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+						if (Integer.numberOfLeadingZeros(ccm.clientConnectionsErrorCounter)
+							!=	Integer.numberOfLeadingZeros(++ccm.clientConnectionsErrorCounter)
+								) {
+							
+							if (connectionId<0) {
+								logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());								
+							} else {
+								logger.warn("No Free Data Pipes Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+							}							
+							
+						}
+						
+						
 						//do not open instead we should attempt to close this one to provide room.
 						return null;
 					}

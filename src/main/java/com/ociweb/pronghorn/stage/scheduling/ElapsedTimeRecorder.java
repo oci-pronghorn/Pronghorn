@@ -47,7 +47,7 @@ public class ElapsedTimeRecorder {
 			int j = 0; //max;
 			while (i<63) {
 				
-				int b = that.buckets[++i];
+				int b = that.buckets[i++];
 				if (b>0) {
 					j = i;
 				}

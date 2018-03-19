@@ -1,18 +1,17 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Selector;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -45,7 +44,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
     
     
-    private ByteBuffer workingBuffers[];
+    private MappedByteBuffer workingBuffers[];
     private SocketChannel writeToChannel[];
     private long          writeToChannelId[];
     private int           writeToChannelMsg[];
@@ -145,7 +144,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	writeToChannelMsg = new int[c];
     	writeToChannelBatchCountDown = new int[c];
     	
-    	workingBuffers = new ByteBuffer[c];
+    	workingBuffers = new MappedByteBuffer[c];
     	activeTails = new long[c];
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
@@ -153,7 +152,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	//System.err.println("allocating "+capacity+" for "+c);
     	
     	while (--c>=0) {    	
-			workingBuffers[c] = ByteBuffer.allocateDirect(capacity);    		
+			workingBuffers[c] = (MappedByteBuffer)ByteBuffer.allocateDirect(capacity);    		
     	}
     	Arrays.fill(activeTails, -1);
     	

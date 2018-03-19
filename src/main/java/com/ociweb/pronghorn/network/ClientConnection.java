@@ -31,7 +31,7 @@ public class ClientConnection extends SSLConnection {
 	private static final byte[] EMPTY = new byte[0];
 	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
 	
-	public static boolean logDisconnects = true;
+	public static boolean logDisconnects = false;
 	
 	private SelectionKey key; //only registered after handshake is complete.
 
@@ -370,7 +370,7 @@ public class ClientConnection extends SSLConnection {
 					if (Pipe.hasRoomForWrite(pipe)) {
 					
 						//Warning the follow on calls should be low level...
-						logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
+						//logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe, new Exception());
 						
 						////////////////////////////////////
 						//NOTE: must repeat this until the handshake is finished.
