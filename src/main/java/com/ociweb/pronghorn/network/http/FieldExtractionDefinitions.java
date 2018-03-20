@@ -143,9 +143,9 @@ public class FieldExtractionDefinitions {
 		return result;
 	}
 	
-	public void defaultText(TrieParserReader reader, String key, String value) {
+	public void defaultText(TrieParserReader reader, byte[] key, String value) {
 		//if key is not found continue
-		if (-1 == reader.query(runtimeParser, key)) {
+		if (-1 == TrieParserReader.query(reader, runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
@@ -194,13 +194,13 @@ public class FieldExtractionDefinitions {
 			
 								
 			//add to map key bytes and the index with mask.
-			runtimeParser.setUTF8Value(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
+			runtimeParser.setValue(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
 		}
 	}
 
-	public void defaultInteger(TrieParserReader reader, String key, long value) {
+	public void defaultInteger(TrieParserReader reader, byte[] key, long value) {
 		//if key is not found continue
-		if (-1 == reader.query(runtimeParser, key)) {
+		if (-1 == TrieParserReader.query(reader, runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
@@ -220,13 +220,13 @@ public class FieldExtractionDefinitions {
 			defaultDouble[defaultValueIndex] = value;
 			
 			//add to map key bytes and the index with mask.
-			runtimeParser.setUTF8Value(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
+			runtimeParser.setValue(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
 		}
 	}
 	
-	public void defaultDecimal(TrieParserReader reader, String key, long m, byte e) {
+	public void defaultDecimal(TrieParserReader reader, byte[] key, long m, byte e) {
 		//if key is not found continue
-		if (-1 == reader.query(runtimeParser, key)) {
+		if (-1 == TrieParserReader.query(reader, runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
@@ -246,7 +246,7 @@ public class FieldExtractionDefinitions {
 			defaultDouble[defaultValueIndex] = Decimal.asDouble(m, e);
 									
 			//add to map key bytes and the index with mask.
-			runtimeParser.setUTF8Value(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
+			runtimeParser.setValue(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
 		}
 	}
 
@@ -261,9 +261,9 @@ public class FieldExtractionDefinitions {
 		
 	};
 	
-	public void defaultRational(TrieParserReader reader, String key, long numerator, long denominator) {
+	public void defaultRational(TrieParserReader reader, byte[] key, long numerator, long denominator) {
 		//if key is not found continue
-		if (-1 == reader.query(runtimeParser, key)) {
+		if (-1 == TrieParserReader.query(reader, runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
@@ -282,7 +282,7 @@ public class FieldExtractionDefinitions {
 			defaultDouble[defaultValueIndex] = (double)numerator/(double)denominator;
 		
 			//add to map key bytes and the index with mask.
-			runtimeParser.setUTF8Value(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
+			runtimeParser.setValue(key, DEFAULT_VALUE_FLAG|defaultValueIndex);
 		}
 	}
 	

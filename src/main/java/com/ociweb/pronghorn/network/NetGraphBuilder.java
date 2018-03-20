@@ -575,7 +575,8 @@ public class NetGraphBuilder {
 			PipeConfig<HTTPRequestSchema> routerToModuleConfig, Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
 		
-		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec); 
+		
+		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec, graphManager.recordTypeData); 
 		//create the modules
 
 		for(int r=0; r<routerCount; r++) {

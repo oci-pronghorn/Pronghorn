@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.http;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -14,7 +15,10 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.TrieParserVisitor;
 
 public class CompositeRouteImpl implements CompositeRoute {
 
@@ -32,6 +36,33 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final int structId;
     private final BStructSchema schema;	
 	
+    
+    private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
+		@Override
+		public void visit(byte[] pattern, int length, long value) {
+			
+			BStructTypes type = null;
+			switch((int)(value>>16)) {
+				case TrieParser.ESCAPE_CMD_SIGNED_INT:
+					type = BStructTypes.Long;
+					break;			
+				case TrieParser.ESCAPE_CMD_RATIONAL:
+					type = BStructTypes.Rational;
+					break;
+				case TrieParser.ESCAPE_CMD_DECIMAL:
+					type = BStructTypes.Decimal;
+					break;
+				case TrieParser.ESCAPE_CMD_BYTES:
+					type = BStructTypes.Blob;
+					break;
+				default:
+					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
+			}
+			
+			schema.modifyStruct(structId, pattern, 0, length, type, 0);
+		}
+    };
+    
 	public CompositeRouteImpl(BStructSchema schema,
 			                  HTTP1xRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
@@ -54,7 +85,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		if (null==extractor) {
 			//create structure with a single payload field
 			
-			String[] fieldNames = new String[]{"payload"};
+			byte[][] fieldNames = new byte[][]{"payload".getBytes()};
 			BStructTypes[] fieldTypes = new BStructTypes[]{BStructTypes.Text};//TODO: should be array of bytes..
 			int[] fieldDims = new int[]{0};
 			this.structId = schema.addStruct(fieldNames, fieldTypes, fieldDims);
@@ -70,7 +101,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 				HTTPHeader header = headers[h];
 				
 				schema.growStruct(this.structId,
-						header.toString(), 
+						header.rootBytes(), 
 						BStructTypes.Text, //TODO: need custom type per header; 
 						0); //TODO: need a way to define dimensions on headers
 				
@@ -112,21 +143,12 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		//logger.trace("pathId: {} assinged for path: {}",pathsId, path);
 		FieldExtractionDefinitions fieldExDef = parser.addPath(path, groupId, pathsId);//hold for defaults..
+		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
+		
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId
 		config.storeRequestedJSONMapping(pathsId, extractor);
 		config.storeRequestedHeaders(pathsId, headerTable);		
 		defs.add(fieldExDef);
-		
-		
-		//reader.visit(that, visitor, source, localSourcePos, sourceLength, sourceMask);
-		//we need a new visitor of the tree
-		//must capture full string plus values put in here.
-		//this trie does not have any wild cards
-		//System.out.println("xxxxxxxxxxxxxxxxxxxxx\n "+fieldExDef.getRuntimeParser().toString());
-		
-		//TODO: get the params??
-		
-		//schema.modifyStruct(structId, key, BStructTypes.Long, 0);
 		
 		
 		
@@ -135,48 +157,48 @@ public class CompositeRouteImpl implements CompositeRoute {
 	
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
-		
-		schema.modifyStruct(structId, key, BStructTypes.Long, 0);
+		byte[] keyBytes = key.getBytes();
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Long, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultInteger(reader, key, value);			
+			defs.get(i).defaultInteger(reader, keyBytes, value);			
 		}
 		return this;
 	}
 
 	@Override
 	public CompositeRouteFinish defaultText(String key, String value) {
-		
-		schema.modifyStruct(structId, key, BStructTypes.Text, 0);
+		byte[] keyBytes = key.getBytes();
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Text, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultText(reader, key, value);			
+			defs.get(i).defaultText(reader, keyBytes, value);			
 		}
 		return this;
 	}
 
 	@Override
 	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
-		
-		schema.modifyStruct(structId, key, BStructTypes.Decimal, 0);
+		byte[] keyBytes = key.getBytes();
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Decimal, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultDecimal(reader, key, m, e);			
+			defs.get(i).defaultDecimal(reader, keyBytes, m, e);			
 		}
 		return this;
 	}
-
+	
 	@Override
 	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
-		
-		schema.modifyStruct(structId, key, BStructTypes.Rational, 0);
+		byte[] keyBytes = key.getBytes();
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Rational, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultRational(reader, key, numerator, denominator);			
+			defs.get(i).defaultRational(reader, keyBytes, numerator, denominator);			
 		}
 		return this;
 	}

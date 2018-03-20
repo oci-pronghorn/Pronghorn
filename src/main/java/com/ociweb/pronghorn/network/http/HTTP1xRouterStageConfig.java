@@ -49,7 +49,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
     
     private URLTemplateParser routeParser;
-    private BStructSchema schmea = new BStructSchema();//TODO: inject from elsewhere.
+    private final BStructSchema userStructs;
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
 
@@ -57,9 +57,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	private FieldExtractionDefinitions allHeadersExtraction;
 	
 
-	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
+	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, BStructSchema userStructs) {
 		this.httpSpec = httpSpec;
-
+		this.userStructs = userStructs;
         this.revisionMap = new TrieParser(256,true); //avoid deep check        
         //Load the supported HTTP revisions
         R[] revs = (R[])httpSpec.supportedHTTPRevisions.getEnumConstants();
@@ -209,7 +209,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		URLTemplateParser parser = routeParser();
 		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
 		
-		return new CompositeRouteImpl(schmea, this, null, parser, headerTable, headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(userStructs, this, null, parser, headerTable, headers, routeCount++, pathCount);
 	}
 
 
@@ -218,7 +218,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		URLTemplateParser parser = routeParser();
 		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
 		
-		return new CompositeRouteImpl(schmea, this, extractor, parser, headerTable, headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(userStructs, this, extractor, parser, headerTable, headers, routeCount++, pathCount);
 	}
 
 	public boolean appendPipeIdMappingForAllGroupIds(
