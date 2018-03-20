@@ -84,6 +84,7 @@ public class TrieParser implements Serializable {
     //////////////////////////////////////////////////////////////////////
     
     //TODO: add support for %Ni where we capture a number of fixed length N
+    //      the numbers supported are upper-case 012345789ABCDEFGHIJKLMNOPQRSTUVWXYZ
     //      this will be for HHmmSS extraction into 3 fields...
     
     //numeric type bits:
@@ -294,11 +295,7 @@ public class TrieParser implements Serializable {
     private int toStringAltBranch(StringBuilder builder, int i) {
         builder.append("ALT_BRANCH");
         builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
-                
-        //assert(data[i]>=0);
         builder.append(data[i]).append("[").append(i++).append("], ");
-           
-        //assert(data[i]>=0);
         builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
         return i;
     }
@@ -306,19 +303,137 @@ public class TrieParser implements Serializable {
     private int toStringBranchValue(StringBuilder builder, int i) {
         builder.append("BRANCH_VALUE");
         builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
-        
         builder.append(data[i]).append("[").append(i++).append("], "); //MASK FOR CHAR
-                
-        // assert(data[i]>=0);
         builder.append(data[i]).append("[").append(i++).append("], ");
-           
-        //  assert(data[i]>=0);
         builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
         return i;
     }
 
-    
-    public <A extends Appendable> A toDOT(A builder) {
+    public void visitPatterns(TrieParserVisitor pv) {
+    	byte[] buffer = new byte[data.length];//can not be longer than this.
+    	visitPatterns(pv, 0, buffer, 0);
+    }
+        
+    private void visitPatterns(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+        switch (data[i]) {
+	        case TYPE_SAFE_END:
+	        	visitSafeEnd(pv,i,buffer,bufferPosition);
+	            break;
+	        case TYPE_ALT_BRANCH:
+	        	visitAltBranch(pv,i,buffer,bufferPosition);
+	            break;                    
+	        case TYPE_BRANCH_VALUE:
+	        	visitNomBranch(pv,i,buffer,bufferPosition);
+	            break;
+	        case TYPE_VALUE_NUMERIC:
+	        	visitNumeric(pv,i,buffer,bufferPosition);
+	            break;
+	        case TYPE_VALUE_BYTES:
+	        	visitBytes(pv,i,buffer,bufferPosition);
+	            break;
+	        case TYPE_RUN:
+	        	visitRun(pv,i,buffer,bufferPosition);  
+	            break;
+	        case TYPE_END:
+	        	visitEnd(pv,i,buffer,bufferPosition);
+	            break;
+	        default:
+	           throw new RuntimeException("unsupported operation "+data[i]);
+	    } 
+		
+	}
+
+	private void visitSafeEnd(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		assert(TYPE_SAFE_END == data[i]);
+        i++;//skip over the ID;
+        
+        int s = SIZE_OF_RESULT;
+        long result = 0;
+        while (--s >= 0) {
+        	result = (result<<8) | ((long)data[i++]);
+        } 
+        pv.visit(buffer, bufferPosition, result);
+        visitPatterns(pv,i,buffer,bufferPosition);
+        
+	}
+
+	private void visitAltBranch(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		assert(TYPE_ALT_BRANCH == data[i]);
+        i++;//skip over the ID;
+        i++;
+        i++;
+        int destination = i + ((((int)data[i-2])<<15) | (0x7FFF&data[i-1]));
+      
+        visitPatterns(pv,i,buffer,bufferPosition);
+        visitPatterns(pv,destination,buffer,bufferPosition);
+                
+	}
+
+	private void visitNomBranch(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		assert(TYPE_BRANCH_VALUE == data[i]);
+        i++;//skip over the ID;
+        
+        short mask = data[i++];
+        i++;
+        i++;
+        int destination = i + ((((int)data[i-2])<<15) | (0x7FFF&data[i-1]));
+        
+        visitPatterns(pv,i,buffer,bufferPosition);
+        visitPatterns(pv,destination,buffer,bufferPosition);
+        
+	}
+
+	private void visitNumeric(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		assert(TYPE_VALUE_NUMERIC == data[i]);
+        i++;//skip over the ID;
+
+        buffer[bufferPosition++] = TYPE_VALUE_NUMERIC;
+        buffer[bufferPosition++] = (byte)data[i++]; //type
+                
+        visitPatterns(pv,i,buffer,bufferPosition);
+	}
+
+	private void visitBytes(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		assert(TYPE_VALUE_BYTES == data[i]);
+        i++;//skip over the ID;
+
+        buffer[bufferPosition++] = TYPE_VALUE_BYTES;
+        buffer[bufferPosition++] = (byte)data[i++]; //stopper
+                
+        visitPatterns(pv,i,buffer,bufferPosition);
+        
+	}
+
+	private void visitRun(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		
+		assert(TYPE_RUN == data[i]);
+        i++;//skip over the ID;        
+        int runLen = data[i++];
+        
+        for(int j=0;j<runLen;j++) {
+        	buffer[j+bufferPosition] = (byte)data[j+i];
+        }
+        
+        bufferPosition+=runLen;
+        i+=runLen;
+        
+        visitPatterns(pv,i,buffer,bufferPosition);
+                
+	}
+
+	private void visitEnd(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		 
+			assert(TYPE_END == data[i]);
+	        i++;//skip over the ID;
+	        int s = SIZE_OF_RESULT;
+	        long result = 0;
+	        while (--s >= 0) {
+	        	result = (result<<8) | ((long)data[i++]);
+	        } 
+	        pv.visit(buffer, bufferPosition, result);
+	}
+
+	public <A extends Appendable> A toDOT(A builder) {
     
     	try{    	
     		//builder.append("# dot -Tsvg -otemp.svg temp.dot\n");

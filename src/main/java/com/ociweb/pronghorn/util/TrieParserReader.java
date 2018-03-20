@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,10 +123,6 @@ public class TrieParserReader {
 	 */
 
 	public void visit(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
-		
-			//System.out.print(new String(source)); // take this out eventually.
-			//System.out.println();
-		
 		visit(that, 0, visitor, source, localSourcePos, sourceLength, sourceMask, -1);
 	}
 
@@ -1083,8 +1080,17 @@ public class TrieParserReader {
 	private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, short[] localData,
 										byte caseMask, int r, int t1, int t2) {
 		
+		///////////////////////////
+		//this is for "watching" the data to determine what it is we spend our time checking for
+		//if (r==8) { //set the length of the thing we are looking at
+		//	Appendables.appendUTF8(System.err, source, t2, r, sourceMask);
+		//	new Exception().printStackTrace();
+		//}
+		
+		
 		while ((--r >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask & t2++])) ) {
 		}
+		
 		reader.pos = t1;
 		reader.localSourcePos = t2;
 		return r;
