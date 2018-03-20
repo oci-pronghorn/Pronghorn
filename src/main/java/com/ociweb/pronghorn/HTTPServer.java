@@ -150,13 +150,10 @@ public class HTTPServer {
 							ResourceModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], ((HTTP1xRouterStageConfig)routerConfig).httpSpec, resourcesRoot, resourcesDefault);	
 						}
 					}
-					
 				}
-				
-				routerConfig.registerRoute(
-	                    (CharSequence) ((fileServerIndex == a) ? "/${path}" : null)
-	                    ); //NOTE: we did not request any headers here
-	
+							
+				routerConfig.registerCompositeRoute().path((CharSequence) ((fileServerIndex == a) ? "/${path}" : null));
+			
 				if (fileServerIndex == a) {
 					return staticFileOutputs;
 				} else {

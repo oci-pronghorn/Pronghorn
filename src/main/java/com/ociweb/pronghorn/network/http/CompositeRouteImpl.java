@@ -8,8 +8,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.json.JSONExtractor;
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
+import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class CompositeRouteImpl implements CompositeRoute {
@@ -25,11 +29,14 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final HTTP1xRouterStageConfig<?,?,?,?> config;
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	private final TrieParserReader reader = new TrieParserReader(4,true);
+	private final int structId;
     	
-	public CompositeRouteImpl(HTTP1xRouterStageConfig<?,?,?,?> config,
+	public CompositeRouteImpl(BStructSchema schema,
+			                  HTTP1xRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
 			                  URLTemplateParser parser, 
 			                  IntHashTable headerTable,
+			                  HTTPHeader[] headers,
 			                  int groupId,
 			                  AtomicInteger pathCounter) {
 		
@@ -40,6 +47,34 @@ public class CompositeRouteImpl implements CompositeRoute {
 		this.headerTable = headerTable;
 		this.groupId = groupId;
 		this.pathCounter = pathCounter;
+		
+		//begin building the structure with the JSON fields
+		if (null==extractor) {
+			//create structure with a single payload field
+			
+			String[] fieldNames = new String[]{"payload"};
+			BStructTypes[] fieldTypes = new BStructTypes[]{BStructTypes.Text};//TODO: should be array of bytes..
+			int[] fieldDims = new int[]{0};
+			this.structId = schema.addStruct(fieldNames, fieldTypes, fieldDims);
+		} else {
+			this.structId = ((JSONExtractor)extractor).toStruct(schema);
+		}
+		
+		/////////////////////////
+		//add the headers to the struct
+		if (null!=headers) {
+			int h = headers.length;
+			while (--h>=0) {
+				HTTPHeader header = headers[h];
+				
+				schema.growStruct(this.structId,
+						header.toString(), 
+						BStructTypes.Text, //TODO: need custom type per header; 
+						0);
+				
+			}
+		}
+		
 		
 	}
 

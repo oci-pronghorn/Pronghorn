@@ -301,11 +301,9 @@ public class HTTPSRoundTripTest {
 						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
 					}
 						
-				
-					routerConfig.registerRoute(
-                        "/${path}"
-						); //no headers requested
-
+					routerConfig.registerCompositeRoute().path("/${path}");
+					//no headers requested
+					
 				return staticFileOutputs;
 			}        
 		 	

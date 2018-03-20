@@ -59,14 +59,14 @@ public class HeaderUtil {
 	final static byte[] REV11_AND_HOST = " HTTP/1.1\r\nHost: ".getBytes();
 	
 	
-	public static final IntHashTable headerTable(TrieParserReader localReader, HTTPSpecification<?,?,?,?> httpSpec, byte[] ... headers) {
+	public static final IntHashTable headerTable(TrieParserReader localReader, HTTPSpecification<?,?,?,?> httpSpec, HTTPHeader ... headers) {
 		
 		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
 		int count = 0;
 		int i = headers.length;
 		
 		while (--i>=0) {
-			int ord = httpSpec.headerId(headers[i], localReader);
+			int ord = headers[i].ordinal();
 			assert(ord>=0) : "Bad header id";
 			boolean ok = IntHashTable.setItem(headerToPosTable, HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
 			assert(ok);

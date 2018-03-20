@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -48,6 +49,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
     
     private URLTemplateParser routeParser;
+    private BStructSchema schmea = new BStructSchema();//TODO: inject from elsewhere.
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
 
@@ -201,72 +203,22 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     	return httpSpec.headerId(h, localReader);
     }
     
-    
-	//new register composite route
-	//returns single pipe id, or we introduce a new value for this?
-	
-	
-//    private int registerRoute2(CharSequence path,
-//    		                  JSONExtractorCompleted extractor,
-//    		                  byte[] ... headers) {
-//
-//		URLTemplateParser parser = routeParser();
-//		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
-//		
-//		//TODO: may need array of routes here
-//		 //this is not right
-//		
-//
-//		FieldExtractionDefinitions fieldExDef = parser.addPath(path, pathsCount, pathsCount);//hold for defaults..
-//		storeRequestExtractionParsers(pathsCount, fieldExDef); //this looked up by pathId
-//		storeRequestedJSONMapping(pathsCount, extractor);
-//		storeRequestedHeaders(pathsCount, headerTable);		
-//		
-//		//add pathId to groupId array.
-//		
-//		//when users supscripbes to groupID must register every matching FieldExtractionDefinitions, walk list?
-//		
-//		//for these two they will be the same for all and looked up by groupId
-//
-//		//need pathId to groupId to support the routeId given to the user.
-//		//   that groupId is returned here
-//		//   that gorupId is used onregister but doesnot match??
-//		
-//		//TODO: iterate over a defaults object passed into all the registerRoute calls..
-//		//fieldExDef.addDefault("","");
-//		//fieldExDef.addDefault("","");
-//	
-//		return pathsCount++;
-//	}
-//
-//    
 
-    @Deprecated
-	public int registerRoute(CharSequence route, byte[] ... headers) {
-    	return registerCompositeRoute(headers).path(route).routeId();
-	}
-
-    @Deprecated
-	public int registerRoute(CharSequence route, JSONExtractorCompleted extractor, byte[] ... headers) {
-    	return registerCompositeRoute(extractor,headers).path(route).routeId();
-	}
-
-	
-	public CompositeRoute registerCompositeRoute(byte[] ... headers) {
+	public CompositeRoute registerCompositeRoute(HTTPHeader ... headers) {
 
 		URLTemplateParser parser = routeParser();
 		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
 		
-		return new CompositeRouteImpl(this, null, parser, headerTable, routeCount++, pathCount);
+		return new CompositeRouteImpl(schmea, this, null, parser, headerTable, headers, routeCount++, pathCount);
 	}
 
 
-	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, byte[] ... headers) {
+	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, HTTPHeader ... headers) {
 
 		URLTemplateParser parser = routeParser();
 		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
 		
-		return new CompositeRouteImpl(this, extractor, parser, headerTable, routeCount++, pathCount);
+		return new CompositeRouteImpl(schmea, this, extractor, parser, headerTable, headers, routeCount++, pathCount);
 	}
 
 	public boolean appendPipeIdMappingForAllGroupIds(
