@@ -30,7 +30,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	private final TrieParserReader reader = new TrieParserReader(4,true);
 	private final int structId;
-    	
+    private final BStructSchema schema;	
+	
 	public CompositeRouteImpl(BStructSchema schema,
 			                  HTTP1xRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
@@ -47,6 +48,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		this.headerTable = headerTable;
 		this.groupId = groupId;
 		this.pathCounter = pathCounter;
+		this.schema = schema;
 		
 		//begin building the structure with the JSON fields
 		if (null==extractor) {
@@ -70,7 +72,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 				schema.growStruct(this.structId,
 						header.toString(), 
 						BStructTypes.Text, //TODO: need custom type per header; 
-						0);
+						0); //TODO: need a way to define dimensions on headers
 				
 			}
 		}
@@ -115,11 +117,26 @@ public class CompositeRouteImpl implements CompositeRoute {
 		config.storeRequestedHeaders(pathsId, headerTable);		
 		defs.add(fieldExDef);
 		
+		
+		//reader.visit(that, visitor, source, localSourcePos, sourceLength, sourceMask);
+		//we need a new visitor of the tree
+		//must capture full string plus values put in here.
+		//this trie does not have any wild cards
+		//System.out.println("xxxxxxxxxxxxxxxxxxxxx\n "+fieldExDef.getRuntimeParser().toString());
+		
+		//TODO: get the params??
+		
+		//schema.modifyStruct(structId, key, BStructTypes.Long, 0);
+		
+		
+		
 		return this;
 	}
 	
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
+		
+		schema.modifyStruct(structId, key, BStructTypes.Long, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {
@@ -131,6 +148,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultText(String key, String value) {
 		
+		schema.modifyStruct(structId, key, BStructTypes.Text, 0);
+		
 		int i = defs.size();
 		while (--i>=0) {
 			defs.get(i).defaultText(reader, key, value);			
@@ -141,6 +160,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
 		
+		schema.modifyStruct(structId, key, BStructTypes.Decimal, 0);
+		
 		int i = defs.size();
 		while (--i>=0) {
 			defs.get(i).defaultDecimal(reader, key, m, e);			
@@ -150,6 +171,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 
 	@Override
 	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
+		
+		schema.modifyStruct(structId, key, BStructTypes.Rational, 0);
 		
 		int i = defs.size();
 		while (--i>=0) {

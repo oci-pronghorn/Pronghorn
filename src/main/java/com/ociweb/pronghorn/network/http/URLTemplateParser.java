@@ -127,8 +127,10 @@ public class URLTemplateParser {
 		return activeRouteDef;
 	}
 
-	
-	private static int convertEncoding(TrieParser runtimeParser, TrieParserReader templateParserReader, TrieParser templateParser, DataOutputBlobWriter<RawDataSchema> outputStream) {
+	private static int convertEncoding(TrieParser runtimeParser, 
+			                           TrieParserReader templateParserReader, 
+			                           TrieParser templateParser, 
+			                           DataOutputBlobWriter<RawDataSchema> outputStream) {
 		
 		//if we have nothing then use the root /
 		if (!TrieParserReader.parseHasContent(templateParserReader)) {
