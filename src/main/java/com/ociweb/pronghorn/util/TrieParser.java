@@ -315,31 +315,35 @@ public class TrieParser implements Serializable {
     }
         
     private void visitPatterns(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
-        switch (data[i]) {
-	        case TYPE_SAFE_END:
-	        	visitSafeEnd(pv,i,buffer,bufferPosition);
-	            break;
-	        case TYPE_ALT_BRANCH:
-	        	visitAltBranch(pv,i,buffer,bufferPosition);
-	            break;                    
-	        case TYPE_BRANCH_VALUE:
-	        	visitNomBranch(pv,i,buffer,bufferPosition);
-	            break;
-	        case TYPE_VALUE_NUMERIC:
-	        	visitNumeric(pv,i,buffer,bufferPosition);
-	            break;
-	        case TYPE_VALUE_BYTES:
-	        	visitBytes(pv,i,buffer,bufferPosition);
-	            break;
-	        case TYPE_RUN:
-	        	visitRun(pv,i,buffer,bufferPosition);  
-	            break;
-	        case TYPE_END:
-	        	visitEnd(pv,i,buffer,bufferPosition);
-	            break;
-	        default:
-	           throw new RuntimeException("unsupported operation "+data[i]);
-	    } 
+        if (i<limit){
+            	
+	    	switch (data[i]) {
+		        case TYPE_SAFE_END:
+		        	visitSafeEnd(pv,i,buffer,bufferPosition);
+		            break;
+		        case TYPE_ALT_BRANCH:
+		        	visitAltBranch(pv,i,buffer,bufferPosition);
+		            break;                    
+		        case TYPE_BRANCH_VALUE:
+		        	visitNomBranch(pv,i,buffer,bufferPosition);
+		            break;
+		        case TYPE_VALUE_NUMERIC:
+		        	visitNumeric(pv,i,buffer,bufferPosition);
+		            break;
+		        case TYPE_VALUE_BYTES:
+		        	visitBytes(pv,i,buffer,bufferPosition);
+		            break;
+		        case TYPE_RUN:
+		        	visitRun(pv,i,buffer,bufferPosition);  
+		            break;
+		        case TYPE_END:
+		        	visitEnd(pv,i,buffer,bufferPosition);
+		            break;
+		        default:
+		           throw new RuntimeException("unsupported operation "+data[i]);
+		    } 
+	    	
+        }
 		
 	}
 
@@ -428,7 +432,7 @@ public class TrieParser implements Serializable {
 	        int s = SIZE_OF_RESULT;
 	        long result = 0;
 	        while (--s >= 0) {
-	        	result = (result<<8) | ((long)data[i++]);
+	        	result = (result<<16) | (0xFFFF&(long)data[i++]);
 	        } 
 	        pv.visit(buffer, bufferPosition, result);
 	}

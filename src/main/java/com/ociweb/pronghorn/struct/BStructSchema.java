@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.struct;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.util.Appendables;
@@ -14,7 +15,7 @@ public class BStructSchema {
 	private int structCount = 0;
 	
 	private TrieParser[]     fields      = new TrieParser[4]; //grow as needed for fields
-	private String[][]       fieldNames  = new String[4][];
+	private byte[][][]       fieldNames  = new byte[4][][];
 	private BStructTypes[][] fieldTypes  = new BStructTypes[4][];
 	private int[][]          fieldDims   = new int[4][];
 	private Object[][]       fieldLocals = new Object[4][];
@@ -85,14 +86,15 @@ public class BStructSchema {
 				target.append("bss.").append(methodName).append("(");
 				target.append("new String[]{");
 				
-				String[] names = fieldNames[j];				
+				byte[][] names = fieldNames[j];				
 				for(int n=1; n<names.length; n++) {					
 					if (n==0) {
 						target.append("\"");
 					} else {
 						target.append(",\"");
 					}
-					target.append(names[n]).append("\"");					
+					Appendables.appendUTF8(target, names[n], 0, names[n].length, Integer.MAX_VALUE);
+					target.append("\"");					
 				}
 				target.append("}, new ").append(BStructTypes.class.getName()).append("[]{");
 				
@@ -150,7 +152,7 @@ public class BStructSchema {
 	 * @param fieldDims - dominations for this field, should be 0 for most cases of simple data
 	 * @return the array of field identifiers in the same order as defined
 	 */
-	public int addStruct(String[] fieldNames, 
+	public int addStruct(byte[][] fieldNames, 
 			                BStructTypes[] fieldTypes, //all fields are precede by array count byte
 			                int[] fieldDims //Dimensionality, should be 0 for simple objects.
 						   ) {
@@ -165,7 +167,7 @@ public class BStructSchema {
 		TrieParser fieldParser = new TrieParser(n*20,2,true,false);
 		while (--n>=0) {			
 			assert(isNotAlreadyDefined(fieldParser, fieldNames[n]));			
-			fieldParser.setUTF8Value(fieldNames[n], n);
+			fieldParser.setValue(fieldNames[n], n);
 		}
 		this.fields[idx] = fieldParser;
 		
@@ -177,17 +179,17 @@ public class BStructSchema {
 	}
 		
 	
-	private static boolean isNotAlreadyDefined(TrieParser fieldParser, String value) {
+	private static boolean isNotAlreadyDefined(TrieParser fieldParser, byte[] value) {
 		//we are trusting escape analysis to not create GC here.
-		return -1 == fieldIdLookup(fieldParser, value);
+		return -1 == fieldIdLookup(fieldParser, value, 0, value.length, Integer.MAX_VALUE);
 	}
 
-	private static long fieldIdLookup(TrieParser fieldParser, String value) {
-		return new TrieParserReader(true).query(fieldParser, value);
+	private static long fieldIdLookup(TrieParser fieldParser, byte[] value, int valuePos, int valueLen, int mask) {
+		return TrieParserReader.query(new TrieParserReader(true), fieldParser, value, valuePos, valueLen, mask);
 	}
 
 	public void growStruct(int structId,
-						   String fieldName,
+						   byte[] fieldName,
 						   BStructTypes fieldType,
 						   int fieldDim) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
@@ -195,7 +197,7 @@ public class BStructSchema {
 		
 		//add text lookup
 		assert(isNotAlreadyDefined(this.fields[idx], fieldName));
-		this.fields[idx].setUTF8Value(fieldName, this.fieldNames.length);
+		this.fields[idx].setValue(fieldName, this.fieldNames.length);
 		
 		//grow all the arrays with new value
 		this.fieldNames[idx] = grow(this.fieldNames[idx], fieldName);
@@ -205,14 +207,15 @@ public class BStructSchema {
 	}
 	
 	public void modifyStruct(int structId,
-						   String fieldName,
+						   byte[] fieldName, int fieldPos, int fieldLen,
 						   BStructTypes fieldType,
 						   int fieldDim) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
-		int fieldIdx = (int)fieldIdLookup(this.fields[idx], fieldName);
+		int fieldIdx = (int)fieldIdLookup(this.fields[idx], fieldName, fieldPos, fieldLen, Integer.MAX_VALUE);
 		if (-1 == fieldIdx) {
-			growStruct(structId, fieldName, fieldType, fieldDim);
+			//only creating copy here because we know it will be held for the run.
+			growStruct(structId, Arrays.copyOfRange(fieldName,fieldPos,fieldLen), fieldType, fieldDim);
 		} else {
 			//////////
 			//modify an existing field, we have new data to apply
@@ -241,8 +244,8 @@ public class BStructSchema {
 		return results;
 	}
 
-	private String[] grow(String[] source, String newValue) {
-		String[] results = new String[source.length+1];
+	private byte[][] grow(byte[][] source, byte[] newValue) {
+		byte[][] results = new byte[source.length+1][];
 		System.arraycopy(source, 0, results, 0, source.length);
 		results[source.length] = newValue;
 		return results;
@@ -290,7 +293,7 @@ public class BStructSchema {
 		return fieldTypes[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
 	}
 	
-	public String fieldName(long id) {
+	public byte[] fieldName(long id) {
 		return fieldNames[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
 	}
 	    	
@@ -323,8 +326,8 @@ public class BStructSchema {
 	}
 
 
-	private static String[][] grow(int newSize, String[][] source) {
-		String[][] result = new String[newSize][];
+	private static byte[][][] grow(int newSize, byte[][][] source) {
+		byte[][][] result = new byte[newSize][][];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}

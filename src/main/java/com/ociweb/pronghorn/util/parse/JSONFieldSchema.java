@@ -312,14 +312,14 @@ public class JSONFieldSchema implements JSONReader {
 		
 		int length = mappings.length;
 				
-		String[] fieldNames = new String[length];
+		byte[][] fieldNames = new byte[length][];
 		BStructTypes[] fieldTypes = new BStructTypes[length];
 		int[] fieldDims = new int[length];
 		
 		int i = length;
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];			
-			fieldNames[i] = mapping.getName();//TODO: make final and remove getter?
+			fieldNames[i] = mapping.getName().getBytes();//TODO: make final and remove getter?
 			switch(mapping.type) {
 				case TypeString:
 					fieldTypes[i] = BStructTypes.Text;
