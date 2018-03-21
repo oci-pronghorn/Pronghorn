@@ -55,7 +55,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <N, M> JSONArray<T, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ToEnding<P>() {
+        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -64,7 +64,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <N, M extends List<N>> JSONArray<T, P, M> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, depth + 1, accessor, new ToEnding<P>() {
+        return JSONArray.createListArray(builder, depth + 1, accessor, new ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -73,7 +73,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <N> JSONArray<T, P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ToEnding<P>() {
+        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -130,6 +130,11 @@ public class JSONRoot<T, P extends JSONRoot> {
 
     public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
         builder.addInteger(isNull, func);
+        return this.childCompleted();
+    }
+
+    public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+        builder.addInteger(isNull, func, encode);
         return this.childCompleted();
     }
 

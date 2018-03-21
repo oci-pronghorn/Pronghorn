@@ -1,6 +1,7 @@
 package com.ociweb.json.encode.function;
 
 //@FunctionalInterface
+@Deprecated
 public interface IterNullableLongFunction<T, N> {
     //@FunctionalInterface
     interface Visit {

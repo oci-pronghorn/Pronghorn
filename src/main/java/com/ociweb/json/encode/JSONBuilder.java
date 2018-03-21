@@ -84,7 +84,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterAccessFunction<T, N, M> accessor) {
+    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterMemberFunction<T, N, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -134,7 +134,7 @@ class JSONBuilder<T> {
         return accessorScript;
     }
 
-    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterAccessFunction<T, N, M> accessor) {
+    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, N, M> accessor) {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
         scripts.add(new StringTemplateIterScript<T, N>() {
@@ -181,7 +181,7 @@ class JSONBuilder<T> {
         return notNullBranch;
     }
 
-    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterAccessFunction<T, N, M> func) {
+    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, N, M> func) {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
