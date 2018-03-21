@@ -14,11 +14,14 @@ public class BStructSchema {
 	//selected headers, route params, plus json payloads makes up a fixed record structure
 	private int structCount = 0;
 	
-	private TrieParser[]     fields      = new TrieParser[4]; //grow as needed for fields
-	private byte[][][]       fieldNames  = new byte[4][][];
-	private BStructTypes[][] fieldTypes  = new BStructTypes[4][];
-	private int[][]          fieldDims   = new int[4][];
-	private Object[][]       fieldLocals = new Object[4][];
+	//field names supported here
+	private TrieParser[]     fields         = new TrieParser[4]; //grow as needed for fields
+	private byte[][][]       fieldNames     = new byte[4][][];
+	//type of the field data, its dims and how it can be parsed.
+	private BStructTypes[][] fieldTypes     = new BStructTypes[4][];
+	private int[][]          fieldDims      = new int[4][];
+	private Object[][]       fieldLocals    = new Object[4][];
+	private TrieParser[]     fieldTemplates = new TrieParser[4];
 
 	
 	//TODO: future feature
@@ -35,7 +38,7 @@ public class BStructSchema {
 	
 	private static final int FIELD_BITS    = 20;
 	private static final int FIELD_MAX     = 1<<FIELD_BITS;
-	private static final int FIELD_MASK    = FIELD_MAX-1;
+	public static final int FIELD_MASK    = FIELD_MAX-1;
 		
 	
 	
@@ -174,6 +177,7 @@ public class BStructSchema {
 		this.fieldNames[idx] = fieldNames;
 		this.fieldTypes[idx] = fieldTypes;
 		this.fieldDims[idx] = fieldDims;
+		this.fieldLocals[idx] = new Object[fieldNames.length];
 				
 		return idx|IS_STRUCT_BIT;
 	}
@@ -188,25 +192,30 @@ public class BStructSchema {
 		return TrieParserReader.query(new TrieParserReader(true), fieldParser, value, valuePos, valueLen, mask);
 	}
 
-	public void growStruct(int structId,
-						   byte[] fieldName,
+	public long growStruct(int structId,
 						   BStructTypes fieldType,
-						   int fieldDim) {
+						   int fieldDim,
+						   byte[] name) {
+		//grow all the arrays with new value
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
+		int newFieldIdx = fieldNames.length;
 		
 		//add text lookup
-		assert(isNotAlreadyDefined(this.fields[idx], fieldName));
-		this.fields[idx].setValue(fieldName, this.fieldNames.length);
-		
-		//grow all the arrays with new value
-		this.fieldNames[idx] = grow(this.fieldNames[idx], fieldName);
+		assert(isNotAlreadyDefined(this.fields[idx], name));
+		this.fields[idx].setValue(name, newFieldIdx);
+
+		//only 1 name is returned, the first is considered cannonical
+		this.fieldNames[idx] = grow(this.fieldNames[idx], name); 
 		this.fieldTypes[idx] = grow(this.fieldTypes[idx], fieldType);
 		this.fieldDims[idx] = grow(this.fieldDims[idx], fieldDim);
-		
+		this.fieldLocals[idx] = grow(this.fieldLocals[idx], null);
+						
+		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
+		return base | idx;
 	}
 	
-	public void modifyStruct(int structId,
+	public long modifyStruct(int structId,
 						   byte[] fieldName, int fieldPos, int fieldLen,
 						   BStructTypes fieldType,
 						   int fieldDim) {
@@ -215,7 +224,7 @@ public class BStructSchema {
 		int fieldIdx = (int)fieldIdLookup(this.fields[idx], fieldName, fieldPos, fieldLen, Integer.MAX_VALUE);
 		if (-1 == fieldIdx) {
 			//only creating copy here because we know it will be held for the run.
-			growStruct(structId, Arrays.copyOfRange(fieldName,fieldPos,fieldLen), fieldType, fieldDim);
+			growStruct(structId, fieldType, fieldDim, Arrays.copyOfRange(fieldName,fieldPos,fieldLen));
 		} else {
 			//////////
 			//modify an existing field, we have new data to apply
@@ -225,6 +234,10 @@ public class BStructSchema {
 			//keep largest dim value
 			this.fieldDims[idx][fieldIdx] = Math.max(this.fieldDims[idx][fieldIdx], fieldDim);
 		}
+		
+		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
+		return base | fieldIdx; //TODO: not sure if this is not already included..
+		
 	}
 			 
 	
@@ -243,6 +256,13 @@ public class BStructSchema {
 		results[source.length] = newValue;
 		return results;
 	}
+	
+	private Object[] grow(Object[] source, Object newValue) {
+		Object[] results = new Object[source.length+1];
+		System.arraycopy(source, 0, results, 0, source.length);
+		results[source.length] = newValue;
+		return results;
+	}
 
 	private byte[][] grow(byte[][] source, byte[] newValue) {
 		byte[][] results = new byte[source.length+1][];
@@ -253,13 +273,11 @@ public class BStructSchema {
 
 	public long[] newFieldIds(int structId) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
-		int idx = STRUCT_MASK & structId;
-				
 		int c = fieldNames.length;
 		assert(c<=FIELD_MASK) : "too many fields";
 		
 		long[] fieldIds = new long[c];
-		long base = ((long)idx)<<STURCT_OFFSET;
+		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
 		while (--c>=0) {
 			fieldIds[c] =  base | (long)c;
 		}
@@ -269,6 +287,14 @@ public class BStructSchema {
 	public void setAssociatedObject(long id, Object localObject) {
 		this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id] = localObject;
 	}
+	
+	public void addTemplate(int structId, CharSequence template, long value) {
+		if (null==this.fieldTemplates[structId]){
+			this.fieldTemplates[structId] = new TrieParser(200,2, false, true, true);
+		}
+		this.fieldTemplates[structId].setUTF8Value(template, value);
+	}	
+	
 	
 	public <T extends Object> T getAssociatedObject(long id) {
 		return (T) this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
@@ -309,11 +335,12 @@ public class BStructSchema {
 		if (records>fields.length) {
 			int newSize = records*2;
 			
-			fields      = grow(newSize, fields);
-			fieldNames  = grow(newSize, fieldNames);
-			fieldTypes  = grow(newSize, fieldTypes);
-			fieldDims   = grow(newSize, fieldDims);
-			fieldLocals = grow(newSize, fieldLocals);
+			fields         = grow(newSize, fields);
+			fieldNames     = grow(newSize, fieldNames);
+			fieldTypes     = grow(newSize, fieldTypes);
+			fieldDims      = grow(newSize, fieldDims);
+			fieldLocals    = grow(newSize, fieldLocals);
+			fieldTemplates = grow(newSize, fieldTemplates);
 						
 		}
 	}
