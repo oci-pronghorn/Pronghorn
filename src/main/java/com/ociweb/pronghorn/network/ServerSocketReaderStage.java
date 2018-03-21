@@ -424,13 +424,13 @@ public class ServerSocketReaderStage extends PronghornStage {
         	//logger.info("pump block for {} ",channelId);
             try {                
                 
-                //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap arround
+                //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap around
                 b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
                        
                 int r1 = b[0].remaining();
                 int r2 = b[1].remaining();
                 
-                                
+                tempBuf.limit(r1+r2);//max room                	
                 temp = sourceChannel.read(tempBuf);
                 if (temp>0) {
                 	tempBuf.flip();
