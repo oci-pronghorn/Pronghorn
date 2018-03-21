@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.util;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -706,27 +705,58 @@ public class TrieParserReader {
 			final long unfoundResult, boolean hasSafePoint, final int run) {
 		//scan returns -1 for a perfect match
 		final int sourceMask1 = sourceMask;
-		int r = scanForMismatch(reader, source, sourceMask1, trie.data, trie.caseRuleMask, run, reader.pos, reader.localSourcePos);
-		if (r >= 0) {
+		if (scanForNonMatchingBytes(reader, trie, source, run, sourceMask1)) {
 			if (!hasSafePoint) {                       	
 				if (reader.altStackPos > 0) {                                
 					reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
 				} else {
 					reader.normalExit=false;
-					reader.result = unfoundResult;                   
-					reader.runLength += run;
-					reader.type = trie.data[reader.pos++];
+					reader.result = unfoundResult;      
 				}
 			} else {
 				reader.normalExit=false;
-				reader.result = useSafePoint(reader);                        	
-				reader.runLength += run;
-				reader.type = trie.data[reader.pos++];
+				reader.result = useSafePoint(reader); 
 			}
 		} else {        
 			reader.runLength += run;
 			reader.type = trie.data[reader.pos++];
 		}
+	}
+
+	private static boolean scanForNonMatchingBytes(
+			TrieParserReader reader, 
+			TrieParser trie, byte[] source, 
+			final int run,
+			final int srcMask) {
+		
+				final byte caseMask = trie.caseRuleMask;
+				final int t1 = reader.pos+run;
+				final int t2 = reader.localSourcePos+run;
+				final short[] data = trie.data;
+				
+				int r = scanBytes(source, run, srcMask, caseMask, t1, t2, data);
+				
+				if (r<=0) {
+					reader.pos = t1;
+					reader.localSourcePos = t2;
+					return false;
+				} else {
+					return true;
+				}
+				
+	}
+
+	private static int scanBytes(byte[] source, 
+			final int run, final int srcMask, 
+			final byte caseMask, final int t1,
+			final int t2, final short[] data) {
+		int r = run;
+		while (
+				((caseMask&data[t1-r]) == (caseMask&source[srcMask & (t2-r)]))
+				&& (--r > 0) 
+			 ) {
+		}
+		return r;
 	}
 
 	
@@ -1075,25 +1105,6 @@ public class TrieParserReader {
 		reader.type = localData[p];
 		reader.pos = 1+p;
 		return altStackPos;
-	}
-
-	private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, short[] localData,
-										byte caseMask, int r, int t1, int t2) {
-		
-		///////////////////////////
-		//this is for "watching" the data to determine what it is we spend our time checking for
-		//if (r==8) { //set the length of the thing we are looking at
-		//	Appendables.appendUTF8(System.err, source, t2, r, sourceMask);
-		//	new Exception().printStackTrace();
-		//}
-		
-		
-		while ((--r >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask & t2++])) ) {
-		}
-		
-		reader.pos = t1;
-		reader.localSourcePos = t2;
-		return r;
 	}
 
 	private static long useSafePoint(TrieParserReader reader) {
@@ -1578,7 +1589,8 @@ public class TrieParserReader {
 	}
 
 
-	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target, boolean writeIndex) throws IOException {
+	@Deprecated
+	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target, boolean writeIndex) {
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
 		//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
@@ -1662,7 +1674,7 @@ public class TrieParserReader {
 						target.writePackedLong(value);
 						//System.err.println("A write packed long "+value);
 						if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
-							throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
+							throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
 						} 						
 						//write second part and it gets its own entry.
 						writePosition = target.position();                		
@@ -1682,7 +1694,7 @@ public class TrieParserReader {
 			}    
 
 			if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
-				throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for pipe varLength is "+target.getPipe().maxVarLen);
+				throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for pipe varLength is "+target.getPipe().maxVarLen);
 			}
 
 
@@ -1691,6 +1703,127 @@ public class TrieParserReader {
 		return totalBytes;
 	}
 
+	
+	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(
+			TrieParserReader reader, 
+			DataOutputBlobWriter<S> target, 
+			int[] indexPositions) {
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
+		//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		int limit = reader.capturedPos;
+		int[] localCapturedValues = reader.capturedValues;
+
+
+		int fieldPosition = 0; //moves forward with each use.
+		int totalBytes = 0;
+		int i = 0;
+		while (i < limit) {
+
+			int type = localCapturedValues[i++];
+
+			int writePosition = target.position();
+
+			if (isCapturedByteData(type)) {
+
+				int p = localCapturedValues[i++];
+				int l = localCapturedValues[i++];
+				int m = localCapturedValues[i++];   
+
+				totalBytes += l;
+
+				//       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
+
+				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
+				target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
+				DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
+
+			} else {
+
+				int sign = type;
+				long value1 = localCapturedValues[i++];
+				long value2 = localCapturedValues[i++]; 
+
+				int meta = localCapturedValues[i++]; 
+				boolean isDot = (meta<0);//if high bit is on this is a dot value
+				byte base = (byte)((meta>>16)&0xFF);
+				//int len  = meta&0xFFFF;
+
+				long value = sign*((value1<<32)|value2);
+				if (isDot) {
+					if (base!=10) {
+						throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+					}
+				} else {
+					int position = 0;
+
+					//Jump ahead to combine the dot part of the number if it is found.
+					if (i+4<=limit //if there is following data
+							&& (!isCapturedByteData(localCapturedValues[i])) //if next data is some kind of number	
+							&& (localCapturedValues[i+3]<0)) { //if that next data point is the second half
+
+						//decimal value                			
+						//grab the dot value and roll it in.
+						int dsign = localCapturedValues[i++];
+						long dvalue1 = localCapturedValues[i++];
+						long dvalue2 = localCapturedValues[i++];                    
+						int dmeta = localCapturedValues[i++];
+
+						byte dbase = (byte)((dmeta>>16)&0xFF);
+						if (dbase!=10) {
+							throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+						}
+
+						if (0 != position) {
+							throw new UnsupportedOperationException("Expected left side of . to be a simple integer.");
+						}
+
+						int dlen  = dmeta&0xFFFF;
+
+						long dvalue = dsign*((dvalue1<<32)|dvalue2);
+
+						//shift the integer part up and add the decimal part
+						value = (value*Decimal.longPow[dlen])+dvalue;
+
+						//modify position to have the right number of points
+						position = -dlen;  
+
+						target.writePackedLong(value);
+						
+						DataOutputBlobWriter.setIntBackData(target, 
+					               writePosition, 
+					               indexPositions[fieldPosition++]);
+						
+						//write second part and it gets its own entry.
+						writePosition = target.position();                		
+						target.writeByte(position);
+
+						//System.out.println("wrote "+value+" "+position);
+
+					} else {
+						//System.out.println("wrote "+value);
+						target.writePackedLong(value);
+						//System.err.println("B write packed long "+value);
+						//integers and rational only use normal long values, no position needed.
+					}
+
+
+				}
+			}    
+
+			
+			DataOutputBlobWriter.setIntBackData(target, 
+					               writePosition, 
+					               indexPositions[fieldPosition++]);
+
+		}        
+		assert(fieldPosition+1==indexPositions.length);
+		return totalBytes;
+	}
+	
+	
 	public static long capturedDecimalMField(TrieParserReader reader, int idx) {
 
 		int pos = idx*4;
