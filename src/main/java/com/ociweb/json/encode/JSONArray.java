@@ -125,9 +125,19 @@ public abstract class JSONArray<T, P, N> {
     // Array
 
     public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, N, M> accessor, IterMemberFunction<M, N2, N2> iterator) {
-        // TODO:
-        return null;
+        return new JSONArray<M, P, N2>(
+                builder.beginArray(this.iterator, accessor),
+                builder.getKeywords(),
+                iterator,
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
     }
+
+    // TODO: listArray and basicArray
 
     // Renderer
 
