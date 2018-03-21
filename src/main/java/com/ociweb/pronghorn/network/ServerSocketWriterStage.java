@@ -537,16 +537,22 @@ public class ServerSocketWriterStage extends PronghornStage {
     		boolean done = true;
     		if (!debugWithSlowWrites) {
 		        try {
+		        	assert(workingBuffers[idx].isDirect());
+
+		        	ByteBuffer target = workingBuffers[idx];
+		        	
 		        	int bytesWritten = 0;
-		        	do {
-			        	writeToChannel[idx].write(workingBuffers[idx]);	  
+		        	do {		        		
+		        		bytesWritten = writeToChannel[idx].write(target);	  
 			        	if (bytesWritten>0) {
 			        		totalBytesWritten+=bytesWritten;
+			        	} else {
+			        		break;
 			        	}
 			        	//output buffer may be too small so keep writing
-		        	} while (bytesWritten>0 && workingBuffers[idx].hasRemaining());
+		        	} while (target.hasRemaining());
 		        	
-		        	if (!workingBuffers[idx].hasRemaining()) {
+		        	if (!target.hasRemaining()) {
 		        		markDoneAndRelease(idx);
 		        	} else {
 		        		done = false;
