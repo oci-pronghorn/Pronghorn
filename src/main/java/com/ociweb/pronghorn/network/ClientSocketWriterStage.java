@@ -89,8 +89,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 			while (--i>=0) {
 								
 				if (connections[i]!=null) {
+					//we have multiple connections so one blocking does not impact others.
 					didWork |= tryWrite(i);
-					//may clear connections and if so look for more work immediately
 				} 
 
 				if (connections[i]==null) {
@@ -346,13 +346,14 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	
 	private boolean tryWrite(int i) {
-		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
+		MappedByteBuffer mappedByteBuffer = buffers[i];
+		assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write.";	
 		
 		try {
 			
 			if (!debugWithSlowWrites) {
-				assert(buffers[i].isDirect());	
-				while (connections[i].getSocketChannel().write(buffers[i])>0) {
+				assert(mappedByteBuffer.isDirect());	
+				while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
 					//keep writing the output buffer may be small
 				}
 			} else {
@@ -361,12 +362,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 				buf.clear();
 				
 				int j = debugMaxBlockSize;
-				int c = buffers[i].remaining();
-				int p = buffers[i].position();
+				int c = mappedByteBuffer.remaining();
+				int p = mappedByteBuffer.position();
 				while (--c>=0 && --j>=0) {
-					buf.put(buffers[i].get(p++));
+					buf.put(mappedByteBuffer.get(p++));
 				}
-				buffers[i].position(p);
+				mappedByteBuffer.position(p);
 				
 				buf.flip();
 				int expected = buf.limit();
@@ -392,13 +393,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
 			connections[i].close();
 			connections[i]=null;
-			buffers[i].clear();
+			mappedByteBuffer.clear();
 			return true;
 		}
-		if (!buffers[i].hasRemaining()) {
+		if (!mappedByteBuffer.hasRemaining()) {
 			
 			//logger.info("write clear {}",i);
-			buffers[i].clear();
+			mappedByteBuffer.clear();
 			connections[i]=null;
 			return true;
 		}  else {
