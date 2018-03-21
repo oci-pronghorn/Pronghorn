@@ -17,7 +17,41 @@ public abstract class JSONArray<T, P, N> {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
-    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, M> accessor, final ToEnding<P> ending) {
+    // T, P, N are not the class's
+    static <T, P, N, M> JSONArray<T, P, N> createArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, M> accessor, // Convert parent T to iteratable M
+            final IterMemberFunction<M, N, N> iterator, // iterate of M using N
+            final ToEnding<P> ending) {
+        return new JSONArray<T, P, N>(
+                // called by builder to select null script
+                builder.beginArray(new ToBoolFunction<T>() {
+                    @Override
+                    public boolean applyAsBool(T o) {
+                        return accessor.get(o) == null;
+                    }
+                }),
+                builder.getKeywords(),
+                // called by script to iterate over array given re-accessing M from T
+                new IterMemberFunction<T, N, N>() {
+                    @Override
+                    public N get(T o, int i, N node) {
+                        M m = accessor.get(o);
+                        return iterator.get(m, i, node);
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return ending.end();
+            }
+        };
+    }
+
+    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, M> accessor,
+            final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
@@ -41,7 +75,10 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<T, P, N> createBasicArray(JSONBuilder<T> builder, int depth, final ToMemberFunction<T, N[]> accessor, final ToEnding<P> ending) {
+    static <T, P, N> JSONArray<T, P, N> createBasicArray(
+            JSONBuilder<T> builder, int depth,
+            final ToMemberFunction<T, N[]> accessor,
+            final ToEnding<P> ending) {
         return new JSONArray<T, P, N>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
@@ -65,7 +102,7 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    private P endArray() {
+    private P childCompleted() {
         builder.endArray();
         return arrayEnded();
     }
@@ -80,28 +117,40 @@ public abstract class JSONArray<T, P, N> {
                 builder.getKeywords(),depth + 1) {
             @Override
             P objectEnded() {
-                return endArray();
+                return childCompleted();
             }
         };
     }
 
     // Array
 
-    // TODO
-    // TODO: do we need isNull variant?
+    public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, N, M> accessor, IterMemberFunction<M, N2, N2> iterator) {
+        return new JSONArray<M, P, N2>(
+                builder.beginArray(this.iterator, accessor),
+                builder.getKeywords(),
+                iterator,
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
+    }
+
+    // TODO: listArray and basicArray
 
     // Renderer
 
     public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, N, M> accessor) {
         builder.addRenderer(iterator, renderer, accessor);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     // Null
 
     public P constantNull() {
         builder.addNull(iterator);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     // TODO: nullable array elements for primitives
@@ -110,59 +159,59 @@ public abstract class JSONArray<T, P, N> {
 
     public P bool(IterBoolFunction<T, N> func) {
         builder.addBool(iterator, func);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     public P bool(IterBoolFunction<T, N> func, JSONType encode) {
         builder.addBool(iterator, func, encode);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     // Integer
 
     public P integer(IterLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     public P integer(IterLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     @Deprecated
     public P integerNull(IterNullableLongFunction<T, N> func) {
         builder.addInteger(iterator, func);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     @Deprecated
     public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     // Decimal
 
     public P decimal(int precision, IterDoubleFunction<T, N> func) {
         builder.addDecimal(iterator, precision, func);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     public P decimal(int precision, IterDoubleFunction<T, N> func, JSONType encode) {
         builder.addDecimal(iterator, precision, func, encode);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     // String
 
     public P string(IterStringFunction<T, N> func) {
         builder.addString(iterator, func);
-        return this.endArray();
+        return this.childCompleted();
     }
 
     public P string(IterStringFunction<T, N> func, JSONType encode) {
         builder.addString(iterator, func, encode);
-        return this.endArray();
+        return this.childCompleted();
     }
 }

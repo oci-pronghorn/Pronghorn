@@ -112,7 +112,7 @@ class JSONBuilder<T> {
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
-        StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
+        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         notNullBranch.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter appendable, T source) {
@@ -120,7 +120,7 @@ class JSONBuilder<T> {
             }
         });
 
-        StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
@@ -164,16 +164,11 @@ class JSONBuilder<T> {
 
     // Array
 
-    StringTemplateBuilder<T> beginArray() {
-        kw.OpenArray(scripts, depth);
-        return scripts;
-    }
-
     StringTemplateBuilder<T> beginArray(final ToBoolFunction<T> isNull) {
-        StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
+        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
-        StringTemplateBuilder[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
@@ -181,6 +176,32 @@ class JSONBuilder<T> {
             @Override
             public int branch(T o) {
                 return isNull.applyAsBool(o) ? 0 : 1;
+            }
+        });
+        return notNullBranch;
+    }
+
+    public <N, M> StringTemplateBuilder<M> beginArray(final IterMemberFunction<T, N, N> iterator, final IterMemberFunction<T, N, M> func) {
+        final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
+        kw.OpenArray(notNullBranch, depth);
+
+        scripts.add(new StringTemplateIterScript<T, N>() {
+            @Override
+            public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
+                node = iterator.get(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(appendable, depth);
+                    }
+                    M element = func.get(source, i, node);
+                    if (element == null) {
+                        kw.Null(appendable);
+                    }
+                    else {
+                        notNullBranch.render(appendable, element);
+                    }
+                }
+                return node;
             }
         });
         return notNullBranch;

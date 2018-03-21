@@ -4,6 +4,7 @@ import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Test;
 
+import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 class Bucket {
@@ -44,7 +45,7 @@ public class JSONBucketTests {
                 .string("s", o -> o.s1)
                 .array("a", (o,i,n) -> i < o.a1.length? o : null)
                     .integer((o, i, n, visit) -> visit.visit(o.a1[i]))
-                .nullableArray("a2", o -> o.a2 == null,(o,i,n) -> i < o.a2.length? o : null)
+                .array("a2", o -> o.a2,(o,i,n) -> i < o.length? o : null)
                     .constantNull()
                 .beginObject("nm", o -> o.nm)
                     .nullableBool("b", o->true, o->o.b2)
@@ -62,6 +63,34 @@ public class JSONBucketTests {
         assertTrue(json.isLocked());
 
         json.render(out, new Bucket());
-        //System.out.println(out);
+        System.out.println(out);
+        assertEquals(
+                "{\n" +
+                "\t\"b\": false,\n" +
+                "\t\"i\": 0,\n" +
+                "\t\"d\": 123.40,\n" +
+                "\t\"s\": \"bob\",\n" +
+                "\t\"a\": [\n" +
+                "\t\t9,\n" +
+                "\t\t\t8,\n" +
+                "\t\t\t7,\n" +
+                "\t\t\t6,\n" +
+                "\t\t\t5,\n" +
+                "\t\t\t4,\n" +
+                "\t\t\t3,\n" +
+                "\t\t\t2,\n" +
+                "\t\t\t1,\n" +
+                "\t\t\t0\n" +
+                "\t\t],\n" +
+                "\t\"a2\": null,\n" +
+                "\t\"nm\": null,\n" +
+                "\t\"m\": {\n" +
+                "\t\t\"b\": null,\n" +
+                "\t\t\"i\": null,\n" +
+                "\t\t\"d\": null,\n" +
+                "\t\t\"s\": null\n" +
+                "\t}\n" +
+                "}\n",
+                out.toString());
     }
 }

@@ -46,25 +46,21 @@ public class JSONRoot<T, P extends JSONRoot> {
     // Array
 
     public <N> JSONArray<T, P, N> array(IterMemberFunction<T, N, N> iterator) {
-        return new JSONArray<T, P, N>(
-                builder.beginArray(),
-                builder.getKeywords(), iterator, depth + 1) {
+        return array(new ToMemberFunction<T, T>() {
             @Override
-            P arrayEnded() {
-                return childCompleted();
+            public T get(T o) {
+                return o;
             }
-        };
+        }, iterator);
     }
 
-    public <N> JSONArray<T, P, N> nullableArray(ToBoolFunction<T> isNull, IterMemberFunction<T, N, N> iterator) {
-        return new JSONArray<T, P, N>(
-                builder.beginArray(isNull),
-                builder.getKeywords(), iterator, depth + 1) {
+    public <N, M> JSONArray<T, P, N> array(ToMemberFunction<T, M> accessor, IterMemberFunction<M, N, N> iterator) {
+        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ToEnding<P>() {
             @Override
-            P arrayEnded() {
+            public P end() {
                 return childCompleted();
             }
-        };
+        });
     }
 
     public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
