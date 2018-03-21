@@ -46,7 +46,7 @@ public abstract class JSONObject<T, P> {
 
     // Array
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, IterMemberFunction<T, N, N> iterator) {
+    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, IteratorFunction<T, N> iterator) {
         return array(name, new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -55,7 +55,7 @@ public abstract class JSONObject<T, P> {
         }, iterator);
     }
 
-    public <N, M> JSONArray<T, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IterMemberFunction<M, N, N> iterator) {
+    public <N, M> JSONArray<T, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
         return JSONArray.createArray(builder.addFieldPrefix(name), depth + 1, accessor, iterator,  new ToEnding<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {

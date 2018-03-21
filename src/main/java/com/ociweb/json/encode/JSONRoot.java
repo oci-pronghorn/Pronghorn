@@ -45,7 +45,7 @@ public class JSONRoot<T, P extends JSONRoot> {
 
     // Array
 
-    public <N> JSONArray<T, P, N> array(IterMemberFunction<T, N, N> iterator) {
+    public <N> JSONArray<T, P, N> array(IteratorFunction<T, N> iterator) {
         return array(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -54,7 +54,7 @@ public class JSONRoot<T, P extends JSONRoot> {
         }, iterator);
     }
 
-    public <N, M> JSONArray<T, P, N> array(ToMemberFunction<T, M> accessor, IterMemberFunction<M, N, N> iterator) {
+    public <N, M> JSONArray<T, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
         return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ToEnding<P>() {
             @Override
             public P end() {
