@@ -184,7 +184,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    try{
 		    	if (null == endPoint) {
 		    		endPoint = new InetSocketAddress(host, port);		
-		    		logger.info("bind to {} ",endPoint);
+		    		logger.trace("bind to {} ",endPoint);
 		    	}
 		    	server.socket().bind(endPoint);
 		    	notConnected = false;
