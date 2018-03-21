@@ -202,7 +202,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				|| !Pipe.hasContentToRead(localInput) //myPipeHasNoData so fire now
 	    				) {
 	    				writeToChannelMsg[x] = -1;
-		    			didWork = writeDataToChannel(x); 
+		    			if (!(didWork = writeDataToChannel(x))) {
+		    				break;//network blocked so try again later 
+		    			}; 
 		   		    			
 	    			} else {
 	    				
@@ -542,7 +544,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	ByteBuffer target = workingBuffers[idx];
 		        	
 		        	int bytesWritten = 0;
-		        	do {		        		
+		        	do {		 
 		        		bytesWritten = writeToChannel[idx].write(target);	  
 			        	if (bytesWritten>0) {
 			        		totalBytesWritten+=bytesWritten;
