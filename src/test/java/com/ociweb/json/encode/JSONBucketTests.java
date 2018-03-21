@@ -44,7 +44,7 @@ public class JSONBucketTests {
                 .decimal("d", 2, o->o.d1)
                 .string("s", o -> o.s1)
                 .array("a", (o,i,n) -> i < o.a1.length? o : null)
-                    .integer((o, i, n, visit) -> visit.visit(o.a1[i]))
+                    .integer((o, i, n) -> o.a1[i])
                 .array("a2", o -> o.a2,(o,i,n) -> i < o.length? o : null)
                     .constantNull()
                 .beginObject("nm", o -> o.nm)

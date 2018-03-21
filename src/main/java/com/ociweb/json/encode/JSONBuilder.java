@@ -276,16 +276,12 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    func.applyAsBool(source, i, node, new IterBoolFunction.Visit() {
-                        @Override
-                        public void visit(boolean b) {
-                            if (b) {
-                                kw.True(appendable);
-                            } else {
-                                kw.False(appendable);
-                            }
-                        }
-                    });
+                    boolean b = func.applyAsBool(source, i, node);
+                    if (b) {
+                        kw.True(appendable);
+                    } else {
+                        kw.False(appendable);
+                    }
                 }
                 return node;
             }
@@ -354,12 +350,8 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    func.applyAsLong(source, i, node, new IterLongFunction.Visit() {
-                        @Override
-                        public void visit(long v) {
-                            Appendables.appendValue(appendable, v);
-                        }
-                    });
+                    long v = func.applyAsLong(source, i, node);
+                    Appendables.appendValue(appendable, v);
                 }
                 return node;
             }
@@ -501,12 +493,8 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    func.applyAsDouble(source, i, node, new IterDoubleFunction.Visit() {
-                        @Override
-                        public void visit(double v) {
-                            Appendables.appendDecimalValue(appendable, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
-                        }
-                    });
+                    double v = func.applyAsDouble(source, i, node);
+                    Appendables.appendDecimalValue(appendable, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
                 }
                 return node;
             }
@@ -595,14 +583,14 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    func.applyAsString(source, i, node, new IterStringFunction.Visit() {
-                        @Override
-                        public void visit(String v) {
-                            kw.Quote(appendable);
-                            appendable.append(v);
-                            kw.Quote(appendable);
-                        }
-                    });
+                    CharSequence s = func.applyAsString(source, i, node);
+                    if (s == null) {
+                        kw.Null(appendable);
+                    } else {
+                        kw.Quote(appendable);
+                        appendable.append(s);
+                        kw.Quote(appendable);
+                    }
                 }
                 return node;
             }

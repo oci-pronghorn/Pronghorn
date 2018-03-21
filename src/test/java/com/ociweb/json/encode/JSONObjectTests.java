@@ -52,8 +52,8 @@ public class JSONObjectTests {
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .integer("y", o->o.i+6)
-                    .basicArray("bob", o-> new Integer[] {332}).string((o, i, node, visit) -> visit.visit(node[i].toString()))
-                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i, node, visit) -> visit.visit(node.get(i).toString()))
+                    .basicArray("bob", o-> new Integer[] {332}).string((o, i, node) -> node[i].toString())
+                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i, node) -> node.get(i).toString())
                 .endObject();
         JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
                 .beginObject()

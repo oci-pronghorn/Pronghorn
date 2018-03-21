@@ -21,7 +21,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArray_FromList() {
         JSONRenderer<List<Integer>> json = new JSONRenderer<List<Integer>>()
-                .listArray(o->o).integer((o, i, n, v) -> v.visit(o.get(i)));
+                .listArray(o->o).integer((o, i, n) -> o.get(i));
         assertTrue(json.isLocked());
         json.render(out, Arrays.asList(9, 8, 7, 6, 5, 4, 3, 2, 1));
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -30,7 +30,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArray_FromListNull() {
         JSONRenderer<List<Integer>> json = new JSONRenderer<List<Integer>>()
-                .listArray(o->o).integer((o, i, n, v) -> v.visit(o.get(i)));
+                .listArray(o->o).integer((o, i, n) -> o.get(i));
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -39,7 +39,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArray_FromArray() {
         JSONRenderer<Integer[]> json = new JSONRenderer<Integer[]>()
-                .basicArray(o->o).integer((o, i, n, v) -> v.visit(o[i]));
+                .basicArray(o->o).integer((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new Integer[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -48,7 +48,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArray_FromArrayNull() {
         JSONRenderer<Integer[]> json = new JSONRenderer<Integer[]>()
-                .basicArray(o->o).integer((o, i, n, v) -> v.visit(o[i]));
+                .basicArray(o->o).integer((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -77,7 +77,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayNull_Yes() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
+                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -86,7 +86,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayNull_No() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
+                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -121,7 +121,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayBool() {
         JSONRenderer<boolean[]> json = new JSONRenderer<boolean[]>()
-                .array((o, i, n)->i<o.length?o:null).bool((o, i, n, v) -> v.visit(o[i]));
+                .array((o, i, n)->i<o.length?o:null).bool((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new boolean[] {true, true, false, false, true, false, true, false});
         assertEquals("[true,true,false,false,true,false,true,false]", out.toString());
@@ -130,7 +130,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayInt() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array((o, i, n)->i<o.length?o:null).integer((o, i, n, v) -> v.visit(o[i]));
+                .array((o, i, n)->i<o.length?o:null).integer((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -139,7 +139,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayDouble() {
         JSONRenderer<double[]> json = new JSONRenderer<double[]>()
-                .array((o, i, n)->i<o.length?o:null).decimal(2, (o, i, n, v) -> v.visit(o[i]));
+                .array((o, i, n)->i<o.length?o:null).decimal(2, (o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new double[] {9.765, 0.8, 7.0009, 6.1, 0.00004});
         assertEquals("[9.76,0.80,7.00,6.10,0.00]", out.toString());
@@ -148,7 +148,7 @@ public class JSONRootArrayTests {
     @Test
     public void testRootArrayString() {
         JSONRenderer<String[]> json = new JSONRenderer<String[]>()
-                .basicArray(o->o).string((o, i, n, v) -> v.visit(o[i]));
+                .basicArray(o->o).string((o, i, n) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new String[] {"hello", "there"});
         assertEquals("[\"hello\",\"there\"]", out.toString());
@@ -164,7 +164,7 @@ public class JSONRootArrayTests {
                         // for k in o[i][j]
                         .array((o, j, node) -> o[j], (o, k, node) -> (k < o.length ? o : null))
                             // v = o[i][j][k]
-                            .integer((o, k, node, visit) -> visit.visit(o[k]));
+                            .integer((o, k, node) -> o[k]);
         assertTrue(json.isLocked());
         json.render(out, new int[][][] {{{}}});
         assertEquals("[[[]]]", out.toString());
@@ -180,7 +180,7 @@ public class JSONRootArrayTests {
                         // for k in o[i][j]
                         .array((o, j, node) -> o[j], (o, k, node) -> (k < o.length ? o : null))
                             // v = o[i][j][k]
-                            .integer((o, k, node, visit) -> visit.visit(o[k]));
+                            .integer((o, k, node) -> o[k]);
         assertTrue(json.isLocked());
         json.render(out, new int[][][]
                 {{{1, 2, 3},{1, 2},{1},{}},{{1, 2},{1},{}},{{1},{}},{{}},{}});
@@ -192,7 +192,7 @@ public class JSONRootArrayTests {
         JSONRenderer<int[][]> json = new JSONRenderer<int[][]>()
                 .array(o->o, (o, i, node) -> (i < o.length ? o : null))
                 .array((o, i, node) -> o[i], (o, j, node) -> (j < o.length ? o : null))
-                .integer((o, j, node, visit) -> visit.visit(o[j]));
+                .integer((o, j, node) -> o[j]);
         assertTrue(json.isLocked());
         json.render(out, new int[][] {{1, 2, 3}, null, {4, 5, 6}});
         assertEquals("[[1,2,3],null,[4,5,6]]", out.toString());
@@ -203,7 +203,7 @@ public class JSONRootArrayTests {
         JSONRenderer<List<List<Integer>>> json = new JSONRenderer<List<List<Integer>>>()
                 .listArray(o->o)
                 .listArray((o, i, node) -> o.get(i))
-                .integer((o, j, node, visit) -> visit.visit(o.get(j)));
+                .integer((o, j, node) -> o.get(j));
         assertTrue(json.isLocked());
         json.render(out, Arrays.asList(Arrays.asList(1, 2, 3), null, Arrays.asList(4, 5, 6)));
         assertEquals("[[1,2,3],null,[4,5,6]]", out.toString());
@@ -214,7 +214,7 @@ public class JSONRootArrayTests {
         JSONRenderer<Integer[][]> json = new JSONRenderer<Integer[][]>()
                 .basicArray(o->o)
                 .basicArray((o, i, node) -> o[i])
-                .integer((o, j, node, visit) -> visit.visit(o[j]));
+                .integer((o, j, node) -> o[j]);
         assertTrue(json.isLocked());
         json.render(out, new Integer[][] {{1, 2, 3}, null, {4, 5, 6}});
         assertEquals("[[1,2,3],null,[4,5,6]]", out.toString());
