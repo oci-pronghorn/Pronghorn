@@ -4,6 +4,7 @@ public enum BStructTypes {
 	////////////////////////////////////////////////////
 	//do not modify this order since the ordinal values may be saved
 	////////////////////////////////////////////////////
+	Blob,    //             http post payload
 	Boolean, //JSON 
 	Text,    //JSON URL     UTF8 encoded with packed int length
 	Decimal, //JSON URL

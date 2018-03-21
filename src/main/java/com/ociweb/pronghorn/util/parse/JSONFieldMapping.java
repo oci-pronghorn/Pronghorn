@@ -60,7 +60,7 @@ public class JSONFieldMapping {
 	}
 	
 	public String getName() {
-		return name;
+		return name; //TODO: store as array of bytes...
 	}
 	
 	public void setName(String name) {
