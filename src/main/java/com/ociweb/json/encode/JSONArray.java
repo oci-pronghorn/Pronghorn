@@ -48,11 +48,11 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N, M extends List<N>> JSONArray<T, P, N> createListArray(
+    static <T, P, N, M extends List<N>> JSONArray<T, P, M> createListArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, M> accessor,
             final ToEnding<P> ending) {
-        return new JSONArray<T, P, N>(
+        return new JSONArray<T, P, M>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
@@ -60,11 +60,11 @@ public abstract class JSONArray<T, P, N> {
                     }
                 }),
                 builder.getKeywords(),
-                new IterMemberFunction<T, N, N>() {
+                new IterMemberFunction<T, M, M>() {
                     @Override
-                    public N get(T o, int i, N node) {
-                        List<N> m = accessor.get(o);
-                        return i < m.size() ? m.get(i) : null;
+                    public M get(T o, int i, M node) {
+                        M m = accessor.get(o);
+                        return i < m.size() ? m : null;
                     }
                 },
                 depth + 1) {
@@ -75,11 +75,11 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<T, P, N> createBasicArray(
+    static <T, P, N> JSONArray<T, P, N[]> createBasicArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, N[]> accessor,
             final ToEnding<P> ending) {
-        return new JSONArray<T, P, N>(
+        return new JSONArray<T, P, N[]>(
                 builder.beginArray(new ToBoolFunction<T>() {
                     @Override
                     public boolean applyAsBool(T o) {
@@ -87,11 +87,11 @@ public abstract class JSONArray<T, P, N> {
                     }
                 }),
                 builder.getKeywords(),
-                new IterMemberFunction<T, N, N>() {
+                new IterMemberFunction<T, N[], N[]>() {
                     @Override
-                    public N get(T o, int i, N node) {
+                    public N[] get(T o, int i, N[] node) {
                         N[] m = accessor.get(o);
-                        return i < m.length ? m[i] : null;
+                        return i < m.length ? m : null;
                     }
                 },
                 depth + 1) {
@@ -137,7 +137,41 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    // TODO: listArray and basicArray
+    public <M extends List<N2>, N2> JSONArray<M, P, M> listArray(IterMemberFunction<T, N, M> accessor) {
+        return new JSONArray<M, P, M>(
+                builder.beginArray(this.iterator, accessor),
+                builder.getKeywords(),
+                new IterMemberFunction<M, M, M>() {
+                    @Override
+                    public M get(M obj, int i, M node) {
+                        return i < obj.size() ? obj : null;
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
+    }
+
+    public <N2> JSONArray<N2[], P, N2[]> basicArray(IterMemberFunction<T, N, N2[]> accessor) {
+        return new JSONArray<N2[], P, N2[]>(
+                builder.beginArray(this.iterator, accessor),
+                builder.getKeywords(),
+                new IterMemberFunction<N2[], N2[], N2[]>() {
+                    @Override
+                    public N2[] get(N2[] obj, int i, N2[] node) {
+                        return i < obj.length ? obj : null;
+                    }
+                },
+                depth + 1) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
+    }
 
     // Renderer
 

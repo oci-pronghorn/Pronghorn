@@ -63,7 +63,7 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
+    public <N, M extends List<N>> JSONArray<T, P, M> listArray(ToMemberFunction<T, M> accessor) {
         return JSONArray.createListArray(builder, depth + 1, accessor, new ToEnding<P>() {
             @Override
             public P end() {
@@ -72,7 +72,7 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <N> JSONArray<T, P, N> basicArray(ToMemberFunction<T, N[]> accessor) {
+    public <N> JSONArray<T, P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
         return JSONArray.createBasicArray(builder, depth + 1, accessor, new ToEnding<P>() {
             @Override
             public P end() {

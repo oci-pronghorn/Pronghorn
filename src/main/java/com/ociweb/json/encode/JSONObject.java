@@ -64,7 +64,7 @@ public abstract class JSONObject<T, P> {
         });
     }
 
-    public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, N> listArray(String name, ToMemberFunction<T, M> accessor) {
+    public <N, M extends List<N>> JSONArray<T, JSONObject<T, P>, M> listArray(String name, ToMemberFunction<T, M> accessor) {
         return JSONArray.createListArray(builder.addFieldPrefix(name), depth + 1, accessor, new ToEnding<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
@@ -73,7 +73,7 @@ public abstract class JSONObject<T, P> {
         });
     }
 
-    public <N> JSONArray<T, JSONObject<T, P>, N> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
+    public <N> JSONArray<T, JSONObject<T, P>, N[]> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
         return JSONArray.createBasicArray(builder.addFieldPrefix(name), depth + 1, accessor, new ToEnding<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
