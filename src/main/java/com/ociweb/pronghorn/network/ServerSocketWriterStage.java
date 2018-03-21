@@ -93,7 +93,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.releasePipe = null;
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
-
+        
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
@@ -107,6 +107,9 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.input = input;
         this.releasePipe = releasePipe;
         this.bufferMultiplier = bufferMultiplier;
+        
+        
+        
         this.graphManager = graphManager;
        
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
@@ -149,6 +152,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
     	int capacity = bufferMultiplier*maxVarLength(input);
+    	
     	//System.err.println("allocating "+capacity+" for "+c);
     	
     	while (--c>=0) {    	
@@ -533,11 +537,15 @@ public class ServerSocketWriterStage extends PronghornStage {
     		boolean done = true;
     		if (!debugWithSlowWrites) {
 		        try {
+		        	int bytesWritten = 0;
+		        	do {
+			        	writeToChannel[idx].write(workingBuffers[idx]);	  
+			        	if (bytesWritten>0) {
+			        		totalBytesWritten+=bytesWritten;
+			        	}
+			        	//output buffer may be too small so keep writing
+		        	} while (bytesWritten>0 && workingBuffers[idx].hasRemaining());
 		        	
-		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
-		        	if (bytesWritten>0) {
-		        		totalBytesWritten+=bytesWritten;
-		        	}
 		        	if (!workingBuffers[idx].hasRemaining()) {
 		        		markDoneAndRelease(idx);
 		        	} else {

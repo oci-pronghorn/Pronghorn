@@ -36,10 +36,12 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final int structId;
     private final BStructSchema schema;	
 	
+    private int[] activePathFieldIndexPosLookup;
     
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
 		public void visit(byte[] pattern, int length, long value) {
+			int inURLOrder = (int)value&0xFFFF;
 			
 			BStructTypes type = null;
 			switch((int)(value>>16)) {
@@ -58,8 +60,14 @@ public class CompositeRouteImpl implements CompositeRoute {
 				default:
 					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
 			}
+						
+			long fieldId = schema.modifyStruct(structId, pattern, 0, length, type, 0);
+		
+			//must build a list of fieldId ref in the order that these are disovered
+			//at postion inURL must store fieldId for use later... where is this held?
+			//one per path.
+			activePathFieldIndexPosLookup[inURLOrder-1] = (int)fieldId & BStructSchema.FIELD_MASK;
 			
-			schema.modifyStruct(structId, pattern, 0, length, type, 0);
 		}
     };
     
@@ -95,17 +103,38 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		/////////////////////////
 		//add the headers to the struct
+	
+	//	TrieParser headerMap = new TrieParser(2048,2,false,true,true);//do not skip deep checks, we do not know which new headers may appear.
 		if (null!=headers) {
 			int h = headers.length;
 			while (--h>=0) {
 				HTTPHeader header = headers[h];
 				
-				schema.growStruct(this.structId,
-						header.rootBytes(), 
-						BStructTypes.Text, //TODO: need custom type per header; 
-						0); //TODO: need a way to define dimensions on headers
+				
+				//headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
+				
+				long fieldId = schema.growStruct(this.structId,
+						BStructTypes.Blob,						
+						//TODO: need a way to define dimensions on headers
+						0,
+						//NOTE: associated object will be used to interpret 
+						header.rootBytes());
+				
+				schema.setAssociatedObject(fieldId, header);
+				//this template is used to parse data and recognize data for this field
+				schema.addTemplate(this.structId, header.readingTemplate(), fieldId);
 				
 			}
+
+//TODO: what about URLS and their params, this is a single parse with ordered fields.
+			
+			
+			
+//TODO: what about both tail endings, need single dim for these? or all headers?
+			
+//	        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
+//	        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
+
 		}
 		
 		
@@ -143,7 +172,10 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		//logger.trace("pathId: {} assinged for path: {}",pathsId, path);
 		FieldExtractionDefinitions fieldExDef = parser.addPath(path, groupId, pathsId);//hold for defaults..
+				
+		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];		
 		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
+		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup);
 		
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId
 		config.storeRequestedJSONMapping(pathsId, extractor);

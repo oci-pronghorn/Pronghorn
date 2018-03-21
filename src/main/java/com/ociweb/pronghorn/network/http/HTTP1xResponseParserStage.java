@@ -579,7 +579,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//stay here and read all the headers if possible
 						do {
 							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-																								
+																							
+							
+							//TODO: based on record/route ID look up the right header map
+
 							int len = trieReader.sourceLen;
 							headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);	
 						

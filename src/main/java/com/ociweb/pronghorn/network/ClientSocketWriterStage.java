@@ -50,7 +50,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.input = input;
 		this.shutCountDown = input.length;
 		this.bufMultiplier = bufMultiplier;
-		
+				
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 	}
 
@@ -62,7 +62,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 		connections = new ClientConnection[i];
 		buffers = new MappedByteBuffer[i];
 		while (--i>=0) {
-			buffers[i] = (MappedByteBuffer)ByteBuffer.allocateDirect(input[i].maxVarLen*bufMultiplier); //TODO: allocate 1 large block then split into buffers?
+			buffers[i] = (MappedByteBuffer)ByteBuffer.allocateDirect(
+					         input[i].maxVarLen
+					         *bufMultiplier);
+	
 		}
 		start = System.currentTimeMillis();		
 	}
@@ -348,8 +351,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 		try {
 			
 			if (!debugWithSlowWrites) {
-				assert(buffers[i].isDirect());
-				connections[i].getSocketChannel().write(buffers[i]);
+				assert(buffers[i].isDirect());	
+				while (connections[i].getSocketChannel().write(buffers[i])>0) {
+					//keep writing the output buffer may be small
+				}
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);

@@ -208,6 +208,7 @@ public class ClientConnection extends SSLConnection {
 			new Exception("we have host: "+host+" and port: "+port).printStackTrace();
 			return;
 		} else {
+			//TODO: note GC issue with toString on getAddress adress...
 			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
 		}
 

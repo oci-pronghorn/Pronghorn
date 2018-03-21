@@ -32,10 +32,22 @@ public class FieldExtractionDefinitions {
 	private static final TrieParser numberParser = textToNumberTrieParser();
 		
 	public FieldExtractionDefinitions(boolean trustText, int groupId, int pathId) {
+		
+		//field name to type and index
 		this.runtimeParser = new TrieParser(64, 2, trustText, true);
 		this.groupId = groupId;
 		this.pathId = pathId;
 
+	}
+
+	private int[] pathFieldLookup;
+	
+	public void setPathFieldLookup(int[] pathFieldLookup) {
+		this.pathFieldLookup = pathFieldLookup;
+	}
+	
+	public int[] paramIndexArray() {
+		return pathFieldLookup;
 	}
 
 	
@@ -389,6 +401,8 @@ public class FieldExtractionDefinitions {
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
+
+
 
 
 }

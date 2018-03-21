@@ -38,7 +38,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
     
     private final int defaultLength = 4;
-    private FieldExtractionDefinitions[] routeDefinitions = new FieldExtractionDefinitions[defaultLength];
+    private FieldExtractionDefinitions[] pathDefinitions = new FieldExtractionDefinitions[defaultLength];
     
 	private int routeCount = 0;
 	private AtomicInteger pathCount = new AtomicInteger();
@@ -140,13 +140,13 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
-		if (idx>=routeDefinitions.length) {
-			int i = routeDefinitions.length;
+		if (idx>=pathDefinitions.length) {
+			int i = pathDefinitions.length;
 			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
-			System.arraycopy(routeDefinitions, 0, newArray, 0, i);
-			routeDefinitions = newArray;
+			System.arraycopy(pathDefinitions, 0, newArray, 0, i);
+			pathDefinitions = newArray;
 		}
-		routeDefinitions[idx]=route;	
+		pathDefinitions[idx]=route;	
 	}
 
 	void storeRequestedHeaders(int idx, IntHashTable headers) {
@@ -176,8 +176,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return pathCount.get();
 	}	
 
-	public FieldExtractionDefinitions extractionParser(int routeId) {
-		return routeId<routeDefinitions.length ? routeDefinitions[routeId] : allHeadersExtraction;
+	public FieldExtractionDefinitions extractionParser(int pathId) {
+		return pathId<pathDefinitions.length ? pathDefinitions[pathId] : allHeadersExtraction;
 	}
 
 	public int headerCount(int routeId) {
@@ -235,11 +235,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			} else {
 				while (--i>=0) {
 					added  = true;
-					if (null != routeDefinitions[i] 
-						&& UNMAPPED_ROUTE!=routeDefinitions[i].pathId
+					if (null != pathDefinitions[i] 
+						&& UNMAPPED_ROUTE!=pathDefinitions[i].pathId
 					   ) {
-						assert(null != collectedHTTPRequstPipes[p][routeDefinitions[i].pathId]);
-						collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);
+						assert(null != collectedHTTPRequstPipes[p][pathDefinitions[i].pathId]);
+						collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);
 					}
 				}
 			}
@@ -252,12 +252,12 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			                      ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
 			                      int ... groupsIds) {
 		boolean added = false;
-		int i = routeDefinitions.length;
+		int i = pathDefinitions.length;
 		while (--i>=0) {
-			if (null!=routeDefinitions[i]) {
-				if (contains(groupsIds, routeDefinitions[i].groupId)) {	
+			if (null!=pathDefinitions[i]) {
+				if (contains(groupsIds, pathDefinitions[i].groupId)) {	
 					added = true;
-					collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+					collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
 				}
 			}
 		}
@@ -271,12 +271,12 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
             int ... groupsIds) {
 			boolean added = false;
-			int i = routeDefinitions.length;
+			int i = pathDefinitions.length;
 			while (--i>=0) {
-				if (null!=routeDefinitions[i]) {
-					if (!contains(groupsIds, routeDefinitions[i].groupId)) {			
+				if (null!=pathDefinitions[i]) {
+					if (!contains(groupsIds, pathDefinitions[i].groupId)) {			
 						added = true;
-						collectedHTTPRequstPipes[p][routeDefinitions[i].pathId].add(pipe);	
+						collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
 					}
 				}
 			}
@@ -292,14 +292,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		}
 		return false;
 	}
-	
-	
-	
-	
-	
-	
 
-	
-	
+
+	public int[] paramIndexArray(int pathId) {
+		return pathDefinitions[pathId].paramIndexArray();
+	}
+		
 	
 }

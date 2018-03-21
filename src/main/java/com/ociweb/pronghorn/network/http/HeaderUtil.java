@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -75,35 +76,75 @@ public class HeaderUtil {
 		return headerToPosTable;
 	}
 	
+	public static void captureRequestedHeader(DataOutputBlobWriter<?> writer,
+			final int indexOffsetCount, 
+			final BStructSchema schmea, 
+			final int structId, 
+			final TrieParserReader trieReader, 
+			final long fieldId) {
+		
+		//TODO: since the token process used the custom map for header parse
+		//      needed by this record the value retured is already the needed one.
+		
+		//need to map this ordinal ID to a specific field in a struct??
+		
+		//schmea.getAssociatedObject(id);
+		
+		//is this header in the record??
+		
+		
+		
+//		//this value is specific to this Route and the headers requested.
+//		int item = IntHashTable.getItem(headerToPositionTable,
+//				      HTTPHeader.HEADER_BIT | headerId);
+//	
+//		if (0 == item) {
+//		    //skip this data since the app module can not make use of it
+//		    //this is the normal most frequent case                    
+//		} else {
+//			try {
+//		    	//Id for the header
+//		    	writer.writeShort(headerId);
+//		    	//write values and write index to end of block??
+//		    	int writePosition = writer.position();
+//		    	                	
+//				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
+//				if (writeIndex) {					
+//					//we did not write index above so write here.
+//					DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
+//				}					
+//			} catch (IOException e) {
+//				throw new RuntimeException(e);
+//			}
+//		}
+	}
 
-
+    @Deprecated
 	public static void captureRequestedHeader(DataOutputBlobWriter<?> writer,
 			final int indexOffsetCount, 
 			final IntHashTable headerToPositionTable, 
 			final boolean writeIndex,
 			final TrieParserReader trieReader, 
-			final int headerId) {
+			final int headerFieldOrdinalId) {
 		//this value is specific to this Route and the headers requested.
-		int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+		int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerFieldOrdinalId);
 	
 		if (0 == item) {
 		    //skip this data since the app module can not make use of it
 		    //this is the normal most frequent case                    
 		} else {
-			try {
-		    	//Id for the header
-		    	writer.writeShort(headerId);
-		    	//write values and write index to end of block??
-		    	int writePosition = writer.position();
-		    	                	
-				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
-				if (writeIndex) {					
-					//we did not write index above so write here.
-					DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
-				}					
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
+			
+	    	//Id for the header
+	    	writer.writeShort(headerFieldOrdinalId);
+	    	//write values and write index to end of block??
+	    	int writePosition = writer.position();
+	    	                	
+			TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
+			if (writeIndex) {					
+				//we did not write index above so write here.
+				DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
+			}					
+	
 		}
 	}
 

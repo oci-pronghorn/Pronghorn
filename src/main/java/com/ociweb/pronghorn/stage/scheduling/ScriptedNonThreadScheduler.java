@@ -605,7 +605,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		            //
 		            // If we're still waiting, we need to wait until its time to run again.
 					long now = System.nanoTime();
-		        	final long wait = blockStartTime - now; 
+		        	final long wait = blockStartTime - now;
+		    		assert((blockStartTime-System.nanoTime())<=schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+		    		
+		    	//	System.out.println("checking fastest clock. "+wait+" common clock "+schedule.commonClock);
+		    		
 		            if (wait > 0) {
 		            	try {
 		            		 waitForBatch(wait, blockStartTime);		            		
@@ -613,6 +617,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 							Thread.currentThread().interrupt();
 							return;
 						}
+		            } else {
+		            	Thread.yield();
+		            	//may be over-scheduled but may be spikes from the OS or GC.
 		            }
 
 		            //NOTE: this moves the blockStartTime forward by the common clock unit.
@@ -641,29 +648,49 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	//members for automatic switching of timer from fast to slow 
 	//based on the presence of work load
 	long totalRequiredSleep = 0;
-	int noWorkCounter = 0;
+	long noWorkCounter = 0;
 	/////////////////
 	
 	private void waitForBatch(long wait, long blockStartTime) throws InterruptedException {
+
+		assert(wait<=schedule.commonClock) : "wait for next cycle was longer than cycle definition";
 		
+		////////////////
+		//without any delays the telemetry is likely to get backed up
+		////////////////
+		
+		
+		///////////////////////////////
+		//this section is only for the case when we need to wait long
+		//it is run it often dramatically lowers the CPU usage due to parking
+		//using many small yields usage of this is minimized.
+		//////////////////////////////
 		totalRequiredSleep+=wait;
 		long a = (totalRequiredSleep/1_000_000L);
 		long b = (totalRequiredSleep%1_000_000L);
 		
 		if (a>0) {
-			a=1;//do not stop longer than this.
+			
+			//logger.info("waiting {} ns and the clock rate is {} added wait {} ",totalRequiredSleep,schedule.commonClock,wait);
+			
 			long now = System.nanoTime();
 			Thread.yield();
 			Thread.sleep(a,(int)b);
 			long duration = System.nanoTime()-now;
 			totalRequiredSleep -= (duration>0?duration:(a*1_000_000));
 		} 
-		
+		//////////////////////////////
+		//////////////////////////////
+				
 		automaticLoadSwitchingDelay();
 
 	}
 
 	private void automaticLoadSwitchingDelay() {
+		if (totalRequiredSleep<200) {//in ns 
+			return;//nothing to do;
+		}
+		
 		accumulateWorkHistory();
 			
 		//if we have over 1000 cycles of non work found then
@@ -672,10 +699,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
 		if (noWorkCounter<1000) {//do it since we have had recent work
 			
-			long now2 = System.nanoTime()/1_000_000l;
+			long nowMS = System.nanoTime()/1_000_000l;
 			
-			if (0!=(now2&3)) {// 1/4 of the time every 1 ms we take a break for task manager
-				while (totalRequiredSleep>100_000) {
+			if (0!=(nowMS&7)) {// 1/8 of the time every 1 ms we take a break for task manager
+				while (totalRequiredSleep>2000) {
 					long now = System.nanoTime();
 					if (totalRequiredSleep>500_000) {
 						LockSupport.parkNanos(totalRequiredSleep);
@@ -683,8 +710,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 						Thread.yield();
 					}
 					long duration = System.nanoTime()-now;
-					if (duration<=0) {
-						break;
+					if (duration<0) {
+						duration = 1;
 					}
 					totalRequiredSleep-=duration;
 				}
@@ -693,9 +720,19 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				long now = System.nanoTime();
 				LockSupport.parkNanos(totalRequiredSleep);
 				long duration = System.nanoTime()-now;
+				//System.err.println(totalRequiredSleep+" vs "+duration);
 				if (duration>0) {
 					totalRequiredSleep -= duration;
 				}
+			}
+		} else {
+			//this is to support deep sleep when it has been a very long time without work.
+			if (noWorkCounter > 1_000_000) {
+				try {
+					Thread.sleep(2);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}				
 			}
 		}
 	}
@@ -729,6 +766,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			             PronghornStage[] stages,
 			             GraphManager gm, final boolean recordTime) {
 			
+		final long startNow = System.nanoTime();
+		
 		boolean shutDownRequestedHere = false;
 		int inProgressIdx;
 		// Once we're done waiting for a block, we need to execute it!
@@ -788,22 +827,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    }
 		} while (true);
 
-		long now = System.nanoTime();
+		//given how long this took to run set up the next run cycle.
+		blockStartTime = startNow+schedule.commonClock;
 		
-		//only add if we have already consumed the last cycle
-		if (blockStartTime-schedule.commonClock<now) {
-			// Update the block start time.
-			blockStartTime += schedule.commonClock;
-		}
-		
-		//if we have long running cycles which are longer than then common clock
-		//bump up the time so it does not keep falling further behind.  this allows
-		//the script to stop on the first "fast" cycle instead of taking multiple
-		//runs at the script to catch up when this will not help the performance.
-		if (blockStartTime <= now) {
-			blockStartTime = now;
-		}
-        		
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
 		if (!(shutDownRequestedHere || shutdownRequested.get())) {
 			return scheduleIdx;

@@ -409,6 +409,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
     
+    ByteBuffer tempBuf = ByteBuffer.allocateDirect(1<<24);
     
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
@@ -429,7 +430,24 @@ public class ServerSocketReaderStage extends PronghornStage {
                 int r1 = b[0].remaining();
                 int r2 = b[1].remaining();
                 
-                temp = sourceChannel.read(b);
+                                
+                temp = sourceChannel.read(tempBuf);
+                if (temp>0) {
+                	tempBuf.flip();
+                	
+                	int oldLimit = tempBuf.limit();
+                	if (oldLimit>b[0].remaining()) {
+                		tempBuf.limit(b[0].remaining());
+                	}
+                	
+                	b[0].put(tempBuf);
+                	tempBuf.limit(oldLimit);
+                	
+                	b[1].put(tempBuf);
+                	tempBuf.clear();
+                }
+                
+                //temp = sourceChannel.read(b);
                 
             	
             	if (temp>0){

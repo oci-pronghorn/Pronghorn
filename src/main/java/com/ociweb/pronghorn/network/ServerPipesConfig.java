@@ -109,7 +109,6 @@ public class ServerPipesConfig {
 		writeBufferMultiplier     = (moduleParallelism >= 2) ? 32 : 4; //write buffer on server
 
 
-
 		//defaults which are updated by method calls
 		fromRouterToModuleBlob		  = Math.max(maxRequestSize, 1<<9); //impacts post performance
 		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
