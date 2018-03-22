@@ -85,7 +85,7 @@ public abstract class JSONObject<T, P> {
     // Renderer
 
     public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
-        builder.addFieldPrefix(name).addRenderer(renderer, accessor);
+        builder.addFieldPrefix(name).addBuilder(renderer.builder, accessor);
         return this;
     }
 

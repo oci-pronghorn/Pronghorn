@@ -13,6 +13,8 @@ import com.ociweb.pronghorn.util.Appendables;
 // TODO: implement the primitive type converters
 // TODO: refactor for duplicate code
 
+// Maintain no dependencies the public API classes (i.e. JSONObject)
+
 class JSONBuilder<T> {
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
@@ -68,13 +70,12 @@ class JSONBuilder<T> {
         return this;
     }
 
-    // Renderer
+    // Sub Builders
 
-    // TODO: JSON builder should not be dependent on JSONRenderer
-    // TODO: recursive renderers
-    // TODO: selectable renderers
+    // TODO: recursive builders
+    // TODO: selectable builders
 
-    <M> void addRenderer(final JSONRenderer<M> renderer, final ToMemberFunction<T, M> accessor) {
+    <M> void addBuilder(final JSONBuilder<M> renderer, final ToMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
@@ -89,7 +90,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterMemberFunction<T, M> accessor) {
+    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<M> renderer, final IterMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter writer, T source, int i, N node) {

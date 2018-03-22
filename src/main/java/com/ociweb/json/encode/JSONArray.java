@@ -157,7 +157,7 @@ public abstract class JSONArray<T, P, N> {
     // Renderer
 
     public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, M> accessor) {
-        builder.addRenderer(iterator, renderer, accessor);
+        builder.addBuilder(iterator, renderer.builder, accessor);
         return this.childCompleted();
     }
 
