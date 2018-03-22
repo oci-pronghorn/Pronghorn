@@ -40,7 +40,7 @@ public class YCbCrToRGB extends PronghornStage {
 		this.verbose = verbose;
 	}
 
-	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
+	private static void convertToRGB(short Y, short Cb, short Cr) {
 		short r, g, b;
 		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
 		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
@@ -55,12 +55,11 @@ public class YCbCrToRGB extends PronghornStage {
 		rgb[1] = (byte)g;
 		rgb[2] = (byte)b;
 		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ")");
-		return rgb;
 	}
 	
 	public static void convertYCbCrToRGB(MCU mcu) {
 		for (int i = 0; i < 64; ++i) {
-			byte[] rgb = convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
+			convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
 			mcu.y[i] = rgb[0];
 			mcu.cb[i] = rgb[1];
 			mcu.cr[i] = rgb[2];
