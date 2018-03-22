@@ -6,6 +6,7 @@ import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -190,7 +191,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitBytes(String name, long id, ByteBuffer value) {
-        value.flip();
+        ((Buffer)value).flip();
         
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);

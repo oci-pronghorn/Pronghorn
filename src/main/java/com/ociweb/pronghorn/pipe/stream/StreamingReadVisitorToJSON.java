@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.pipe.stream;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.util.Appendables;
@@ -228,7 +229,7 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 
 	@Override
 	public void visitBytes(String name, long id, ByteBuffer value) {
-		value.flip();
+		((Buffer)value).flip();
 
 		writeTab();
         try {

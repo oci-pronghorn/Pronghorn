@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public class StreamingVisitorWriter {
@@ -339,7 +340,7 @@ public class StreamingVisitorWriter {
 
     private void processByteArray(String name, long id) {
         ByteBuffer bb = visitor.pullByteBuffer(name,id);
-        bb.flip();
+        ((Buffer)bb).flip();
         Pipe.addByteBuffer(bb, outputRing);
     }
 
