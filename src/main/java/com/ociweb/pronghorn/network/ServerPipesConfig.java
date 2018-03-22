@@ -106,14 +106,15 @@ public class ServerPipesConfig {
 		
 		// do not need multiple writers until we have giant load
 		serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
-		writeBufferMultiplier     = (moduleParallelism >= 2) ? 32 : 4; //write buffer on server
 
 
 		//defaults which are updated by method calls
-		fromRouterToModuleBlob		  = Math.max(maxRequestSize, 1<<9); //impacts post performance
-		serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+		fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
+		serverBlobToWrite               = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+		int targetServerWriteBufferSize = 1<<23;
+		writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
 		
-		releaseMsg                    = 2048;
+		releaseMsg                      = 2048;
 				
 	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
 	    

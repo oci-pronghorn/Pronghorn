@@ -1,8 +1,9 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.StandardSocketOptions;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	private final ClientCoordinator ccm;
 	private final Pipe<NetPayloadSchema>[] input;
-	private MappedByteBuffer[] buffers;
+	private ByteBuffer[] buffers;
 	private ClientConnection[] connections;
 	
 	private int shutCountDown;
@@ -60,13 +61,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		int i = input.length;
 		connections = new ClientConnection[i];
-		buffers = new MappedByteBuffer[i];
-		while (--i>=0) {
-			buffers[i] = (MappedByteBuffer)ByteBuffer.allocateDirect(
-					         input[i].maxVarLen
-					         *bufMultiplier);
-	
-		}
+		buffers = new ByteBuffer[i];
 		start = System.currentTimeMillis();		
 	}
 	
@@ -217,6 +212,18 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		
+		if (null==buffers[i]) {
+			try {
+				int sendBufSize = 
+						Math.max(pipe.maxVarLen, 
+						         cc.socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+				logger.info("new direct buffer of size {}",sendBufSize);
+				buffers[i] = ByteBuffer.allocateDirect(sendBufSize);						
+			} catch (IOException e) {
+				new RuntimeException(e);
+			}
+		}
+		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
 		buffers[i].clear();
@@ -265,7 +272,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        cc.recordSentTime(System.nanoTime());
 		    }	
 		
-		buffers[i].flip();	
+		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
 
 		didWork |= tryWrite(i);
@@ -278,9 +285,21 @@ public class ClientSocketWriterStage extends PronghornStage {
 		totalBytes += len;
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
+		if (null==buffers[i]) {
+			try {
+				int sendBufSize = 
+						Math.max(pipe.maxVarLen, 
+						         cc.socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+				logger.info("new direct buffer of size {}",sendBufSize);
+				buffers[i] = ByteBuffer.allocateDirect(sendBufSize);						
+			} catch (IOException e) {
+				new RuntimeException(e);
+			}
+		}
+		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
-		buffers[i].clear();
+		((Buffer)buffers[i]).clear();
 		buffers[i].put(writeHolder[0]);
 		buffers[i].put(writeHolder[1]);
 
@@ -336,7 +355,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		}											
 		
 
-		buffers[i].flip();	
+		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
 		
 		didWork |= tryWrite(i);
@@ -346,7 +365,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	
 	private boolean tryWrite(int i) {
-		MappedByteBuffer mappedByteBuffer = buffers[i];
+		ByteBuffer mappedByteBuffer = buffers[i];
 		assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write.";	
 		
 		try {
@@ -399,7 +418,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		if (!mappedByteBuffer.hasRemaining()) {
 			
 			//logger.info("write clear {}",i);
-			mappedByteBuffer.clear();
+			((Buffer)mappedByteBuffer).clear();
 			connections[i]=null;
 			return true;
 		}  else {

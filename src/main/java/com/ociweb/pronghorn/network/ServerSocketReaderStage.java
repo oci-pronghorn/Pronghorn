@@ -1,6 +1,8 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.StandardSocketOptions;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
@@ -409,11 +411,25 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
     
-    ByteBuffer tempBuf = ByteBuffer.allocateDirect(1<<24);
+    private ByteBuffer tempBuf;// = ByteBuffer.allocateDirect(1<<29);
     
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
     private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
+    	
+    	if (null==tempBuf) {
+    		
+    		try {
+				int size = Math.min(targetPipe.maxVarLen,
+									sourceChannel.getOption(StandardSocketOptions.SO_RCVBUF));
+				logger.info("new direct buffer of size {}",size);
+				tempBuf = ByteBuffer.allocateDirect(size);						
+			} catch (IOException e) {
+				new RuntimeException(e);
+			}
+    		
+    		
+    	}
     	
         //keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
@@ -430,21 +446,21 @@ public class ServerSocketReaderStage extends PronghornStage {
                 int r1 = b[0].remaining();
                 int r2 = b[1].remaining();
                 
-                tempBuf.limit(r1+r2);//max room                	
+                ((Buffer)tempBuf).limit(r1+r2);//max room                	
                 temp = sourceChannel.read(tempBuf);
                 if (temp>0) {
-                	tempBuf.flip();
+                	((Buffer)tempBuf).flip();
                 	
                 	int oldLimit = tempBuf.limit();
                 	if (oldLimit>b[0].remaining()) {
-                		tempBuf.limit(b[0].remaining());
+                		((Buffer)tempBuf).limit(b[0].remaining());
                 	}
                 	
                 	b[0].put(tempBuf);
-                	tempBuf.limit(oldLimit);
+                	((Buffer)tempBuf).limit(oldLimit);
                 	
                 	b[1].put(tempBuf);
-                	tempBuf.clear();
+                	((Buffer)tempBuf).clear();
                 }
                 
                 //temp = sourceChannel.read(b);

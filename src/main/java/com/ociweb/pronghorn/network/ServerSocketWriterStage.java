@@ -1,8 +1,9 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.StandardSocketOptions;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
@@ -44,7 +45,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
     
     
-    private MappedByteBuffer workingBuffers[];
+    private ByteBuffer    workingBuffers[];
     private SocketChannel writeToChannel[];
     private long          writeToChannelId[];
     private int           writeToChannelMsg[];
@@ -56,7 +57,7 @@ public class ServerSocketWriterStage extends PronghornStage {
   
     private long totalBytesWritten = 0;
    
-    private final int bufferMultiplier;
+    private final int bufferMultiplier; //TODO: remove after we know performance is good
     private int maxBatchCount;
 
 	private static final boolean enableWriteBatching = true;  
@@ -93,7 +94,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.releasePipe = null;
         this.bufferMultiplier = bufferMultiplier;
         this.graphManager = graphManager;
-        
+
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
     }
@@ -107,7 +108,6 @@ public class ServerSocketWriterStage extends PronghornStage {
         this.input = input;
         this.releasePipe = releasePipe;
         this.bufferMultiplier = bufferMultiplier;
-        
         
         
         this.graphManager = graphManager;
@@ -147,18 +147,11 @@ public class ServerSocketWriterStage extends PronghornStage {
     	writeToChannelMsg = new int[c];
     	writeToChannelBatchCountDown = new int[c];
     	
-    	workingBuffers = new MappedByteBuffer[c];
+    	workingBuffers = new ByteBuffer[c];
     	activeTails = new long[c];
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
-    	int capacity = bufferMultiplier*maxVarLength(input);
-    	
-    	//System.err.println("allocating "+capacity+" for "+c);
-    	
-    	while (--c>=0) {    	
-			workingBuffers[c] = (MappedByteBuffer)ByteBuffer.allocateDirect(capacity);    		
-    	}
-    	Arrays.fill(activeTails, -1);
+    	Arrays.fill(activeTails, -1);   	
     	
     }
     
@@ -209,9 +202,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			} else {
 	    				
 	    				//unflip
-	    				int p = localWorkingBuffer.limit();
-	    				localWorkingBuffer.limit(localWorkingBuffer.capacity());
-	    				localWorkingBuffer.position(p);	    				
+	    				int p = ((Buffer)localWorkingBuffer).limit();
+	    				((Buffer)localWorkingBuffer).limit(localWorkingBuffer.capacity());
+	    				((Buffer)localWorkingBuffer).position(p);	    				
 	    				
 	    				int h = 0;
 	    				while (	isNextMessageMergeable(localInput, writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
@@ -228,7 +221,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				if (h>0) {
 	    					Pipe.releaseAllPendingReadLock(localInput);
 	    				}
-	    				localWorkingBuffer.flip();
+	    				((Buffer)localWorkingBuffer).flip();
 
 	    			}
 	    			
@@ -363,7 +356,21 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
-		        workingBuffers[idx].clear();
+		        //lazy allocate since we need to wait for a socket to be created.
+		        if (null == workingBuffers[idx]) {
+					try {
+						int sendBufSize = 
+								Math.max(pipe.maxVarLen, 
+								         writeToChannel[idx].getOption(StandardSocketOptions.SO_SNDBUF));
+						logger.info("new direct buffer of size {}",sendBufSize);
+						workingBuffers[idx] = ByteBuffer.allocateDirect(sendBufSize);						
+					} catch (IOException e) {
+						new RuntimeException(e);
+					}
+		        }
+		        
+		        
+		        ((Buffer)workingBuffers[idx]).clear();
 		        workingBuffers[idx].put(writeBuffs[0]);
 		        workingBuffers[idx].put(writeBuffs[1]);
 		        
@@ -393,7 +400,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        
 		        if (ServerCoordinator.TEST_RECORDS) {
 		        	ByteBuffer temp = workingBuffers[idx].duplicate();
-		        	temp.flip();
+		        	((Buffer)temp).flip();
 		        	testValidContent(idx, temp);
 		        }
 		        
@@ -401,7 +408,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        
 		       // logger.info("write bytes {} for id {}",workingBuffers[idx].position(),channelId);
 		        
-		        workingBuffers[idx].flip();
+		        ((Buffer)workingBuffers[idx]).flip();
 	        } else {
 	        	//logger.info("no server connection found for id:{}",channelId);
 		        
@@ -539,13 +546,14 @@ public class ServerSocketWriterStage extends PronghornStage {
     		boolean done = true;
     		if (!debugWithSlowWrites) {
 		        try {
-		        	assert(workingBuffers[idx].isDirect());
-
+		        	
 		        	ByteBuffer target = workingBuffers[idx];
+		        	assert(target.isDirect());
 		        	
 		        	int bytesWritten = 0;
 		        	do {		 
-		        		bytesWritten = writeToChannel[idx].write(target);	  
+		        		bytesWritten = writeToChannel[idx].write(target);	
+		        	
 			        	if (bytesWritten>0) {
 			        		totalBytesWritten+=bytesWritten;
 			        	} else {
@@ -628,7 +636,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     private void markDoneAndRelease(int idx) {
        
     	//System.err.println("done with connection");
-    	workingBuffers[idx].clear();
+    	((Buffer)workingBuffers[idx]).clear();
     	
     	writeToChannel[idx]=null;
         int sequenceNo = 0;//not available here
