@@ -19,7 +19,8 @@ public class JSONRootBoolTests {
 
     @Test
     public void testEmpty() {
-        JSONRenderer<Object> json = new JSONRenderer<>().empty();
+        JSONRenderer<Object> json = new JSONRenderer<>()
+                .empty();
         assertTrue(json.isLocked());
         json.render(out, new Object());
         assertEquals("", out.toString());

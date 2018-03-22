@@ -76,5 +76,4 @@ public class JSONKeywords {
     public void NextArrayElement(ByteWriter writer, int depth) {
         writer.write(NextArrayElement);
     }
-
 }

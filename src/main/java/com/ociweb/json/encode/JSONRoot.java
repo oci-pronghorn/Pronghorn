@@ -35,7 +35,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(accessor),
-                builder.getKeywords()/*, owner*/, depth + 1) {
+                builder.getKeywords(), depth + 1) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -44,9 +44,9 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     // Array
-
-    public <N> JSONArray<T, P, N> array(IterMemberFunction<T, N, N> iterator) {
-        return array(new ToMemberFunction<T, T>() {
+    
+    public <N> JSONArray<T, P, N> array(IteratorFunction<T, N> iterator) {
+        return this.array(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
                 return o;
@@ -54,8 +54,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         }, iterator);
     }
 
-    public <N, M> JSONArray<T, P, N> array(ToMemberFunction<T, M> accessor, IterMemberFunction<M, N, N> iterator) {
-        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ToEnding<P>() {
+    public <M, N> JSONArray<M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
+        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -63,8 +63,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <N, M extends List<N>> JSONArray<T, P, N> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, depth + 1, accessor, new ToEnding<P>() {
+    public <M extends List<N>, N> JSONArray<M, P, M> listArray(ToMemberFunction<T, M> accessor) {
+        return JSONArray.createListArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -72,8 +72,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <N> JSONArray<T, P, N> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ToEnding<P>() {
+    public <N> JSONArray<N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
+        return JSONArray.createBasicArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -130,6 +130,11 @@ public class JSONRoot<T, P extends JSONRoot> {
 
     public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func) {
         builder.addInteger(isNull, func);
+        return this.childCompleted();
+    }
+
+    public P nullableInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+        builder.addInteger(isNull, func, encode);
         return this.childCompleted();
     }
 
