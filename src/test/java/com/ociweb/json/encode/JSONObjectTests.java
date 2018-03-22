@@ -46,15 +46,14 @@ public class JSONObjectTests {
     }
 
     @Test
-    @Ignore
     public void testObjectCompund() {
         JSONRenderer<Integer> json1 = new JSONRenderer<Integer>()
                 .integer(o->o);
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .integer("y", o->o.i+6)
-                    //.basicArray("bob", o-> new Integer[] {332}).string((o, i) -> node[i].toString())
-                    //.listArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> node.get(i).toString())
+                    .basicArray("bob", o-> new Integer[] {332}).string((o, i) -> o[i].toString())
+                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> o.get(i).toString())
                 .endObject();
         JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
                 .beginObject()

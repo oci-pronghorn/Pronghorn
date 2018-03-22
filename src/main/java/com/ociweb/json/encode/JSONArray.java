@@ -17,24 +17,17 @@ public abstract class JSONArray<T, P, N> {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
-    // T, P, N are not the class's
-    static <T, P, N, M> JSONArray<T, P, N> createArray(
+    static <T, P, M, N> JSONArray<M, P, N> createArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, M> accessor, // Convert parent T to iteratable M
             final IteratorFunction<M, N> iterator, // iterate of M using N
             final ArrayCompletion<P> ending) {
-        return new JSONArray<T, P, N>(
+        return new JSONArray<M, P, N>(
                 // called by builder to select null script
                 builder.beginArray(accessor),
                 builder.getKeywords(),
                 // called by script to iterate over array given re-accessing M from T
-                new IteratorFunction<T, N>() {
-                    @Override
-                    public N get(T o, int i, N node) {
-                        M m = accessor.get(o);
-                        return iterator.get(m, i, node);
-                    }
-                },
+                iterator,
                 depth + 1) {
             @Override
             P arrayEnded() {
@@ -43,18 +36,17 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N, M extends List<N>> JSONArray<T, P, M> createListArray(
+    static <T, P, M extends List<N>, N> JSONArray<M, P, M> createListArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, M> accessor,
             final ArrayCompletion<P> ending) {
-        return new JSONArray<T, P, M>(
+        return new JSONArray<M, P, M>(
                 builder.beginArray(accessor),
                 builder.getKeywords(),
-                new IteratorFunction<T, M>() {
+                new IteratorFunction<M, M>() {
                     @Override
-                    public M get(T o, int i, M node) {
-                        M m = accessor.get(o);
-                        return i < m.size() ? m : null;
+                    public M get(M o, int i, M node) {
+                        return i < o.size() ? o : null;
                     }
                 },
                 depth + 1) {
@@ -65,18 +57,17 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<T, P, N[]> createBasicArray(
+    static <T, P, N> JSONArray<N[], P, N[]> createBasicArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, N[]> accessor,
             final ArrayCompletion<P> ending) {
-        return new JSONArray<T, P, N[]>(
+        return new JSONArray<N[], P, N[]>(
                 builder.beginArray(accessor),
                 builder.getKeywords(),
-                new IteratorFunction<T, N[]>() {
+                new IteratorFunction<N[], N[]>() {
                     @Override
-                    public N[] get(T o, int i, N[] node) {
-                        N[] m = accessor.get(o);
-                        return i < m.length ? m : null;
+                    public N[] get(N[] o, int i, N[] node) {
+                        return i < o.length ? o : null;
                     }
                 },
                 depth + 1) {

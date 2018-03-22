@@ -164,9 +164,17 @@ class JSONBuilder<T> {
 
     // Array
 
-    <M> StringTemplateBuilder<T> beginArray(final ToMemberFunction<T, M> func) {
+    <M> StringTemplateBuilder<M> beginArray(final ToMemberFunction<T, M> func) {
+        final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
+        kw.OpenArray(arrayBuilder, depth);
+
         final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        kw.OpenArray(notNullBranch, depth);
+        notNullBranch.add(new StringTemplateScript<T>() {
+            @Override
+            public void fetch(AppendableByteWriter appendable, T source) {
+                arrayBuilder.render(appendable, func.get(source));
+            }
+        });
 
         final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
         nullableBranches[0] = objNullBranch;
@@ -178,7 +186,7 @@ class JSONBuilder<T> {
                 return func.get(o) == null ? 0 : 1;
             }
         });
-        return notNullBranch;
+        return arrayBuilder;
     }
 
     public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {

@@ -2,6 +2,7 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -18,12 +19,25 @@ public class JSONRootArrayTests {
         out = new StringBuilderWriter();
     }
 
+    static class Owner {
+        List<Integer> l = Arrays.asList(9, 8, 7, 6, 5, 4, 3, 2, 1);
+    }
+
     @Test
     public void testRootArray_FromList() {
         JSONRenderer<List<Integer>> json = new JSONRenderer<List<Integer>>()
                 .listArray(o->o).integer(List::get);
         assertTrue(json.isLocked());
         json.render(out, Arrays.asList(9, 8, 7, 6, 5, 4, 3, 2, 1));
+        assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
+    }
+
+    @Test
+    public void testRootArray_FromOwnedList() {
+        JSONRenderer<Owner> json = new JSONRenderer<Owner>()
+            .listArray(o->o.l).integer(List::get);
+        assertTrue(json.isLocked());
+        json.render(out, new Owner());
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
     }
 
