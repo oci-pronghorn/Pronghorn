@@ -192,7 +192,7 @@ public class StreamRegulatorTest {
             assertEquals(expectedBytesTotal,sr.getBytesRead());
             
             long measuredMbps = bitsPerSecond/mega;
-            assertTrue("Expected "+measuredMbps+"<"+mbps,measuredMbps < mbps);            
+            assertTrue("Expected "+measuredMbps+"<"+mbps,measuredMbps < mbps*1.25);            
         } 
     }
     

@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.pipe;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
@@ -130,12 +131,12 @@ public class PipeConverterTest {
         ring.reset(0,0);
         
         Pipe.validateVarLength(ring, 10);
-                
+             
         
         
         ByteBuffer source = ByteBuffer.allocate(100);
         source.put("HelloWorld".getBytes());
-        source.flip();
+        ((Buffer)source).flip();
         
         Pipe.addByteBuffer(source, ring);
         Pipe.publishWrites(ring);
