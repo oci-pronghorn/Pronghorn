@@ -80,11 +80,11 @@ class JSONBuilder<T> {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
                 M member = accessor.get(source);
-                if (member != null) {
-                    renderer.render(writer, member);
+                if (member == null) {
+                    kw.Null(writer);
                 }
                 else {
-                    kw.Null(writer);
+                    renderer.render(writer, member);
                 }
             }
         });
@@ -100,11 +100,11 @@ class JSONBuilder<T> {
                         kw.NextArrayElement(writer, depth);
                     }
                     M member = accessor.get(source, i);
-                    if (member != null) {
-                        renderer.render(writer, member);
+                    if (member == null) {
+                        kw.Null(writer);
                     }
                     else {
-                        kw.Null(writer);
+                        renderer.render(writer, member);
                     }
                 }
                 return node;
@@ -152,10 +152,10 @@ class JSONBuilder<T> {
                         kw.NextArrayElement(writer, depth);
                     }
                     M member = accessor.get(source, i);
-                    if (member != null) {
-                        accessorBranch.render(writer, member);
-                    } else {
+                    if (member == null) {
                         kw.Null(writer);
+                    } else {
+                        accessorBranch.render(writer, member);
                     }
                 }
                 return node;
@@ -398,11 +398,11 @@ class JSONBuilder<T> {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
-                if (!isNull.applyAsBool(source)) {
-                    Appendables.appendValue(writer, func.applyAsLong(source));
+                if (isNull.applyAsBool(source)) {
+                    kw.Null(writer);
                 }
                 else {
-                    kw.Null(writer);
+                    Appendables.appendValue(writer, func.applyAsLong(source));
                 }
             }
         });
