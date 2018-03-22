@@ -1429,13 +1429,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		int endPos = writeToPos+maxLen;
 
     	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
-		aBuf.limit(aBuf.capacity());
-		aBuf.position(writeToPos);   
-		aBuf.limit(Math.min(aBuf.capacity(), endPos ));
+		((Buffer)aBuf).limit(aBuf.capacity());
+		((Buffer)aBuf).position(writeToPos);   
+		((Buffer)aBuf).limit(Math.min(aBuf.capacity(), endPos ));
 		
 		ByteBuffer bBuf = output.wrappedBlobWritingRingB; //Get the blob array as a wrapped byte buffer     
-		bBuf.position(0);   
-		bBuf.limit(endPos>output.sizeOfBlobRing ? output.blobMask & endPos: 0);
+		((Buffer)bBuf).position(0);   
+		((Buffer)bBuf).limit(endPos>output.sizeOfBlobRing ? output.blobMask & endPos: 0);
 		
 		return output.wrappedWritingBuffers;
 	}
@@ -1537,13 +1537,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		((Buffer)aBuf).clear();
-		aBuf.position(position);
+		((Buffer)aBuf).position(position);
 		//use the end of the buffer if the length runs past it.
-		aBuf.limit(Math.min(pipe.sizeOfBlobRing, endPos));
+		((Buffer)aBuf).limit(Math.min(pipe.sizeOfBlobRing, endPos));
 		
 		ByteBuffer bBuf = wrappedBlobRingB(pipe);
-		bBuf.clear();
-		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.blobMask & endPos : 0 ); 
+		((Buffer)bBuf).clear();
+		((Buffer)bBuf).limit(endPos > pipe.sizeOfBlobRing ? pipe.blobMask & endPos : 0 ); 
 				
 		return pipe.wrappedReadingBuffers;
 	}
