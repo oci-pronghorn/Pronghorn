@@ -10,7 +10,8 @@ import com.ociweb.json.template.StringTemplateScript;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
-// TODO: implement the type converters
+// TODO: implement the primitive type converters
+// TODO: nullable primitive array elements
 
 class JSONBuilder<T> {
     private final StringTemplateBuilder<T> scripts;
@@ -68,6 +69,10 @@ class JSONBuilder<T> {
     }
 
     // Renderer
+
+    // TODO: JSON builder should not be dependent on JSONRenderer
+    // TODO: recursive renderers
+    // TODO: selectable renderers
 
     <M> void addRenderer(final JSONRenderer<M> renderer, final ToMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateScript<T>() {
@@ -215,9 +220,8 @@ class JSONBuilder<T> {
         return notNullBranch;
     }
 
-    StringTemplateBuilder<T> endArray() {
+    void endArray() {
         kw.CloseArray(scripts, depth);
-        return scripts;
     }
 
     // Null

@@ -2,5 +2,5 @@ package com.ociweb.json.encode.function;
 
 //@FunctionalInterface
 public interface IteratorFunction<T, N> {
-    N get(T obj, int i, N node);
+    N get(T o, int i, N node);
 }

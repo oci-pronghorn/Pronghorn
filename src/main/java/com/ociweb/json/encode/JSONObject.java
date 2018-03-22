@@ -56,7 +56,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <M, N> JSONArray<M, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder.addFieldPrefix(name), depth + 1, accessor, iterator,  new ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createArray(builder.addFieldPrefix(name), depth + 1, accessor, iterator,  new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;
@@ -65,7 +65,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <M extends List<N>, N> JSONArray<M, JSONObject<T, P>, M> listArray(String name, ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder.addFieldPrefix(name), depth + 1, accessor, new ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createListArray(builder.addFieldPrefix(name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;
@@ -74,7 +74,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <N> JSONArray<N[], JSONObject<T, P>, N[]> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder.addFieldPrefix(name), depth + 1, accessor, new ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createBasicArray(builder.addFieldPrefix(name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;
@@ -83,8 +83,6 @@ public abstract class JSONObject<T, P> {
     }
 
     // Renderer
-
-    // TODO: recursive renderer
 
     public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
         builder.addFieldPrefix(name).addRenderer(renderer, accessor);

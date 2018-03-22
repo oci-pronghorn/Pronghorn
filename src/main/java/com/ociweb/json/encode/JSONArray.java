@@ -17,6 +17,11 @@ public abstract class JSONArray<T, P, N> {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
+    //@FunctionalInterface
+    public static interface ArrayCompletion<P> {
+        P end();
+    }
+
     static <T, P, M, N> JSONArray<M, P, N> createArray(
             JSONBuilder<T> builder, int depth,
             final ToMemberFunction<T, M> accessor, // Convert parent T to iteratable M
@@ -162,8 +167,6 @@ public abstract class JSONArray<T, P, N> {
         builder.addNull(iterator);
         return this.childCompleted();
     }
-
-    // TODO: nullable array elements for primitives
 
     // Bool
 

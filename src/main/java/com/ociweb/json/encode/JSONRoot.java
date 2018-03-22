@@ -35,7 +35,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(accessor),
-                builder.getKeywords()/*, owner*/, depth + 1) {
+                builder.getKeywords(), depth + 1) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -55,7 +55,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <M, N> JSONArray<M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new ArrayCompletion<P>() {
+        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -64,7 +64,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <M extends List<N>, N> JSONArray<M, P, M> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, depth + 1, accessor, new ArrayCompletion<P>() {
+        return JSONArray.createListArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -73,7 +73,7 @@ public class JSONRoot<T, P extends JSONRoot> {
     }
 
     public <N> JSONArray<N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, depth + 1, accessor, new ArrayCompletion<P>() {
+        return JSONArray.createBasicArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
