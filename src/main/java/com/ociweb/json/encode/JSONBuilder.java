@@ -164,7 +164,7 @@ class JSONBuilder<T> {
 
     // Array
 
-    StringTemplateBuilder<T> beginArray(final ToBoolFunction<T> isNull) {
+    <M> StringTemplateBuilder<T> beginArray(final ToMemberFunction<T, M> func) {
         final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
@@ -175,7 +175,7 @@ class JSONBuilder<T> {
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
-                return isNull.applyAsBool(o) ? 0 : 1;
+                return func.get(o) == null ? 0 : 1;
             }
         });
         return notNullBranch;

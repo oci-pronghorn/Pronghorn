@@ -25,12 +25,7 @@ public abstract class JSONArray<T, P, N> {
             final ArrayCompletion<P> ending) {
         return new JSONArray<T, P, N>(
                 // called by builder to select null script
-                builder.beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
+                builder.beginArray(accessor),
                 builder.getKeywords(),
                 // called by script to iterate over array given re-accessing M from T
                 new IteratorFunction<T, N>() {
@@ -53,12 +48,7 @@ public abstract class JSONArray<T, P, N> {
             final ToMemberFunction<T, M> accessor,
             final ArrayCompletion<P> ending) {
         return new JSONArray<T, P, M>(
-                builder.beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
+                builder.beginArray(accessor),
                 builder.getKeywords(),
                 new IteratorFunction<T, M>() {
                     @Override
@@ -80,12 +70,7 @@ public abstract class JSONArray<T, P, N> {
             final ToMemberFunction<T, N[]> accessor,
             final ArrayCompletion<P> ending) {
         return new JSONArray<T, P, N[]>(
-                builder.beginArray(new ToBoolFunction<T>() {
-                    @Override
-                    public boolean applyAsBool(T o) {
-                        return accessor.get(o) == null;
-                    }
-                }),
+                builder.beginArray(accessor),
                 builder.getKeywords(),
                 new IteratorFunction<T, N[]>() {
                     @Override
