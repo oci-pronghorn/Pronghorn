@@ -225,12 +225,12 @@ public abstract class JSONArray<T, P, N> {
     }
 
     public P nullableDecimal(int precision, IterBoolFunction<T> isNull, IterDoubleFunction<T> func) {
-        builder.addDecimal(precision, iterator, isNull, func);
+        builder.addDecimal(iterator, precision, isNull, func);
         return this.childCompleted();
     }
 
     public P nullableDecimal(int precision, IterBoolFunction<T> isNull, IterDoubleFunction<T> func, JSONType encode) {
-        builder.addDecimal(precision, iterator, isNull, func, encode);
+        builder.addDecimal(iterator, precision, isNull, func, encode);
         return this.childCompleted();
     }
 

@@ -10,7 +10,7 @@ import com.ociweb.json.template.StringTemplateScript;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
-// TODO: implement the primitive type converters
+// TODO: implement the primitive type converters, including enums
 // TODO: refactor for duplicate code
 
 // Maintain no dependencies the public API classes (i.e. JSONObject)
@@ -269,8 +269,7 @@ class JSONBuilder<T> {
                     kw.Null(writer);
                 }
                 else {
-                    boolean b = func.applyAsBool(source);
-                    if (b) {
+                    if (func.applyAsBool(source)) {
                         kw.True(writer);
                     } else {
                         kw.False(writer);
@@ -289,8 +288,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(writer, depth);
                     }
-                    boolean b = func.applyAsBool(source, i);
-                    if (b) {
+                    if (func.applyAsBool(source, i)) {
                         kw.True(writer);
                     } else {
                         kw.False(writer);
@@ -314,8 +312,7 @@ class JSONBuilder<T> {
                         kw.Null(writer);
                     }
                     else {
-                        boolean b = func.applyAsBool(source, i);
-                        if (b) {
+                        if (func.applyAsBool(source, i)) {
                             kw.True(writer);
                         } else {
                             kw.False(writer);
@@ -417,8 +414,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(writer, depth);
                     }
-                    long v = func.applyAsLong(source, i);
-                    Appendables.appendValue(writer, v);
+                    Appendables.appendValue(writer, func.applyAsLong(source, i));
                 }
                 return node;
             }
@@ -438,8 +434,7 @@ class JSONBuilder<T> {
                         kw.Null(writer);
                     }
                     else {
-                        long v = func.applyAsLong(source, i);
-                        Appendables.appendValue(writer, v);
+                        Appendables.appendValue(writer, func.applyAsLong(source, i));
                     }
                 }
                 return node;
@@ -511,8 +506,8 @@ class JSONBuilder<T> {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(final AppendableByteWriter writer, T source) {
-                double value = func.applyAsDouble(source);
-                Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
+                double v = func.applyAsDouble(source);
+                Appendables.appendDecimalValue(writer, (long)(v * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
             }
         });
     }
@@ -525,8 +520,8 @@ class JSONBuilder<T> {
                     kw.Null(writer);
                 }
                 else {
-                    double value = func.applyAsDouble(source);
-                    Appendables.appendDecimalValue(writer, (long) (value * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
+                    double v = func.applyAsDouble(source);
+                    Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
                 }
             }
         });
@@ -549,7 +544,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addDecimal(final int precision, final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
+    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
@@ -613,14 +608,14 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addDecimal(int precision, IteratorFunction<T, N> iterator, IterBoolFunction<T> isNull, IterDoubleFunction<T> func, JSONType encode) {
+    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterBoolFunction<T> isNull, IterDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
             case TypeInteger:
                 break;
             case TypeDecimal:
-                addDecimal(precision, iterator, isNull, func);
+                addDecimal(iterator, precision, isNull, func);
                 break;
             case TypeBoolean:
                 break;
@@ -630,6 +625,7 @@ class JSONBuilder<T> {
     // String
 
     // TODO: support Appendable writing directly writer
+    // TODO: convenience API from "toString"
 
     void addString(final ToStringFunction<T> func) {
         kw.Quote(scripts);
@@ -667,9 +663,8 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(writer, depth);
                     }
-                    CharSequence s = func.applyAsString(source, i);
                     kw.Quote(writer);
-                    writer.append(s);
+                    writer.append(func.applyAsString(source, i));
                     kw.Quote(writer);
                 }
                 return node;
