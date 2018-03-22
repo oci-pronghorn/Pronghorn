@@ -111,7 +111,7 @@ public abstract class JSONArray<T, P, N> {
 
     // Object
 
-    public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, N, M> accessor) {
+    public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(iterator, accessor),
                 builder.getKeywords(),depth + 1) {
@@ -124,7 +124,7 @@ public abstract class JSONArray<T, P, N> {
 
     // Array
 
-    public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, N, M> accessor, IteratorFunction<M, N2> iterator) {
+    public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, M> accessor, IteratorFunction<M, N2> iterator) {
         return new JSONArray<M, P, N2>(
                 builder.beginArray(this.iterator, accessor),
                 builder.getKeywords(),
@@ -137,7 +137,7 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    public <M extends List<N2>, N2> JSONArray<M, P, M> listArray(IterMemberFunction<T, N, M> accessor) {
+    public <M extends List<N2>, N2> JSONArray<M, P, M> listArray(IterMemberFunction<T, M> accessor) {
         return new JSONArray<M, P, M>(
                 builder.beginArray(this.iterator, accessor),
                 builder.getKeywords(),
@@ -155,7 +155,7 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    public <N2> JSONArray<N2[], P, N2[]> basicArray(IterMemberFunction<T, N, N2[]> accessor) {
+    public <N2> JSONArray<N2[], P, N2[]> basicArray(IterMemberFunction<T, N2[]> accessor) {
         return new JSONArray<N2[], P, N2[]>(
                 builder.beginArray(this.iterator, accessor),
                 builder.getKeywords(),
@@ -175,7 +175,7 @@ public abstract class JSONArray<T, P, N> {
 
     // Renderer
 
-    public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, N, M> accessor) {
+    public <M> P renderer(JSONRenderer<M> renderer, IterMemberFunction<T, M> accessor) {
         builder.addRenderer(iterator, renderer, accessor);
         return this.childCompleted();
     }
@@ -191,60 +191,60 @@ public abstract class JSONArray<T, P, N> {
 
     // Bool
 
-    public P bool(IterBoolFunction<T, N> func) {
+    public P bool(IterBoolFunction<T> func) {
         builder.addBool(iterator, func);
         return this.childCompleted();
     }
 
-    public P bool(IterBoolFunction<T, N> func, JSONType encode) {
+    public P bool(IterBoolFunction<T> func, JSONType encode) {
         builder.addBool(iterator, func, encode);
         return this.childCompleted();
     }
 
     // Integer
 
-    public P integer(IterLongFunction<T, N> func) {
+    public P integer(IterLongFunction<T> func) {
         builder.addInteger(iterator, func);
         return this.childCompleted();
     }
 
-    public P integer(IterLongFunction<T, N> func, JSONType encode) {
+    public P integer(IterLongFunction<T> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
         return this.childCompleted();
     }
 
     @Deprecated
-    public P integerNull(IterNullableLongFunction<T, N> func) {
+    public P integerNull(IterNullableLongFunction<T> func) {
         builder.addInteger(iterator, func);
         return this.childCompleted();
     }
 
     @Deprecated
-    public P integerNull(IterNullableLongFunction<T, N> func, JSONType encode) {
+    public P integerNull(IterNullableLongFunction<T> func, JSONType encode) {
         builder.addInteger(iterator, func, encode);
         return this.childCompleted();
     }
 
     // Decimal
 
-    public P decimal(int precision, IterDoubleFunction<T, N> func) {
+    public P decimal(int precision, IterDoubleFunction<T> func) {
         builder.addDecimal(iterator, precision, func);
         return this.childCompleted();
     }
 
-    public P decimal(int precision, IterDoubleFunction<T, N> func, JSONType encode) {
+    public P decimal(int precision, IterDoubleFunction<T> func, JSONType encode) {
         builder.addDecimal(iterator, precision, func, encode);
         return this.childCompleted();
     }
 
     // String
 
-    public P string(IterStringFunction<T, N> func) {
+    public P string(IterStringFunction<T> func) {
         builder.addString(iterator, func);
         return this.childCompleted();
     }
 
-    public P string(IterStringFunction<T, N> func, JSONType encode) {
+    public P string(IterStringFunction<T> func, JSONType encode) {
         builder.addString(iterator, func, encode);
         return this.childCompleted();
     }

@@ -84,7 +84,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterMemberFunction<T, N, M> accessor) {
+    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -93,7 +93,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    M member = accessor.get(source, i, node);
+                    M member = accessor.get(source, i);
                     if (member != null) {
                         renderer.render(appendable, member);
                     }
@@ -134,7 +134,7 @@ class JSONBuilder<T> {
         return accessorScript;
     }
 
-    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, N, M> accessor) {
+    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
         scripts.add(new StringTemplateIterScript<T, N>() {
@@ -145,7 +145,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    M member = accessor.get(source, i, node);
+                    M member = accessor.get(source, i);
                     if (member != null) {
                         accessorBranch.render(appendable, member);
                     } else {
@@ -181,7 +181,7 @@ class JSONBuilder<T> {
         return notNullBranch;
     }
 
-    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, N, M> func) {
+    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
@@ -193,7 +193,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    M element = func.get(source, i, node);
+                    M element = func.get(source, i);
                     if (element == null) {
                         kw.Null(appendable);
                     }
@@ -267,7 +267,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T, N> func) {
+    <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -276,7 +276,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    boolean b = func.applyAsBool(source, i, node);
+                    boolean b = func.applyAsBool(source, i);
                     if (b) {
                         kw.True(appendable);
                     } else {
@@ -316,7 +316,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addBool(IteratorFunction<T, N> iterator, IterBoolFunction<T, N> func, JSONType encode) {
+    <N> void addBool(IteratorFunction<T, N> iterator, IterBoolFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -341,7 +341,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T, N> func) {
+    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -350,7 +350,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    long v = func.applyAsLong(source, i, node);
+                    long v = func.applyAsLong(source, i);
                     Appendables.appendValue(appendable, v);
                 }
                 return node;
@@ -373,7 +373,7 @@ class JSONBuilder<T> {
     }
 
     @Deprecated
-    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterNullableLongFunction<T, N> func) {
+    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterNullableLongFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -382,7 +382,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    func.applyAsLong(source, i, node, new IterNullableLongFunction.Visit() {
+                    func.applyAsLong(source, i, new IterNullableLongFunction.Visit() {
                         @Override
                         public void visit(long v, boolean isNull) {
                             if (isNull) {
@@ -426,7 +426,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addInteger(IteratorFunction<T, N> iterator, IterLongFunction<T, N> func, JSONType encode) {
+    <N> void addInteger(IteratorFunction<T, N> iterator, IterLongFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -441,7 +441,7 @@ class JSONBuilder<T> {
     }
 
     @Deprecated
-    <N> void addInteger(IteratorFunction<T, N> iterator, IterNullableLongFunction<T, N> func, JSONType encode) {
+    <N> void addInteger(IteratorFunction<T, N> iterator, IterNullableLongFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -484,7 +484,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T, N> func) {
+    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -493,7 +493,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    double v = func.applyAsDouble(source, i, node);
+                    double v = func.applyAsDouble(source, i);
                     Appendables.appendDecimalValue(appendable, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
                 }
                 return node;
@@ -529,7 +529,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T, N> func, JSONType encode) {
+    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
@@ -574,7 +574,7 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T, N> func) {
+    <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter appendable, T source, int i, N node) {
@@ -583,7 +583,7 @@ class JSONBuilder<T> {
                     if (i > 0) {
                         kw.NextArrayElement(appendable, depth);
                     }
-                    CharSequence s = func.applyAsString(source, i, node);
+                    CharSequence s = func.applyAsString(source, i);
                     if (s == null) {
                         kw.Null(appendable);
                     } else {
@@ -625,7 +625,7 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addString(IteratorFunction<T, N> iterator, IterStringFunction<T, N> func, JSONType encode) {
+    <N> void addString(IteratorFunction<T, N> iterator, IterStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 addString(iterator, func);
