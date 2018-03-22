@@ -4,6 +4,7 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
@@ -1535,7 +1536,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		final int endPos = position+len;
 		
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
-		aBuf.clear();
+		((Buffer)aBuf).clear();
 		aBuf.position(position);
 		//use the end of the buffer if the length runs past it.
 		aBuf.limit(Math.min(pipe.sizeOfBlobRing, endPos));
