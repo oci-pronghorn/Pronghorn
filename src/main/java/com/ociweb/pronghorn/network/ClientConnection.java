@@ -23,7 +23,7 @@ import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.util.Appendables;
 
 
-public class ClientConnection extends SSLConnection {
+public class ClientConnection extends SSLConnection implements SelectionKeyHashMappable {
 
 	public static int resolveWithDNSTimeoutMS = 10_000; //  §6.1.3.3 of RFC 1123 suggests a value not less than 5 seconds.
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
@@ -505,6 +505,18 @@ public class ClientConnection extends SSLConnection {
 
 	public int spaceReq(int maxVarLen) {
 		return payloadSize*(1 + (recBufferSize / (maxVarLen+2)));
+	}
+
+	private int skPos = -1;
+	
+	@Override
+	public void skPosition(int position) {
+		skPos=position;
+	}
+
+	@Override
+	public int skPosition() {
+		return skPos;
 	}
 	
 }

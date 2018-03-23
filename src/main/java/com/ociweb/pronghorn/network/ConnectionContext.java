@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.network;
 
-public final class ConnectionContext {
+public final class ConnectionContext implements SelectionKeyHashMappable {
 
     private long channelId;
     
@@ -14,6 +14,18 @@ public final class ConnectionContext {
 
 	public void setChannelId(long channelId) {
 		this.channelId = channelId;
+	}
+	
+	private int skPos = -1;
+	
+	@Override
+	public void skPosition(int position) {
+		skPos=position;
+	}
+
+	@Override
+	public int skPosition() {
+		return skPos;
 	}
 
 

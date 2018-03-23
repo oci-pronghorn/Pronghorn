@@ -6,7 +6,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -20,6 +22,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
@@ -57,6 +60,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void startup() {
 
+		selectedKeyHolder = new SelectedKeyHashMapHolder();
 		start = System.currentTimeMillis();
 		
 	}
@@ -81,7 +85,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 			public void accept(SelectionKey selection) {
 				processSelection(selection); 
 			}
-    };  
+    };
+    
+    private SelectedKeyHashMapHolder selectedKeyHolder;
+	private final BiConsumer keyVisitor = new BiConsumer() {
+		@Override
+		public void accept(Object k, Object v) {
+			selectionKeyAction.accept((SelectionKey)k);
+		}
+	};
 	
 	
 	@Override
@@ -120,8 +132,14 @@ public class ClientSocketReaderStage extends PronghornStage {
            doneSelectors.clear();
 	
            hasRoomForMore = true;
-           selectedKeys.forEach(selectionKeyAction);
-                 
+           
+           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+           if (null!=keyMap) {
+        	   keyMap.forEach(keyVisitor);
+           } else {
+        	   selectedKeys.forEach(selectionKeyAction);
+           }
+           
 		   removeDoneKeys(selectedKeys);
 		      
 		   if (!hasRoomForMore) {

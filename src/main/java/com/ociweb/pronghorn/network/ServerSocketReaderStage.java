@@ -9,7 +9,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -24,6 +26,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 public class ServerSocketReaderStage extends PronghornStage {
    
@@ -79,6 +82,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void startup() {
 
+    	selectedKeyHolder = new SelectedKeyHashMapHolder();
+    	
     	if (ServerCoordinator.TEST_RECORDS) {
 			int i = output.length;
 			accumulators = new StringBuilder[i];
@@ -106,13 +111,20 @@ public class ServerSocketReaderStage extends PronghornStage {
     }
     
     boolean hasRoomForMore = true;
-    private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
+    public final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
 			@Override
 			public void accept(SelectionKey selection) {
 				hasRoomForMore &= processSelection(selection); 
 			}
     };    
-        
+
+    private SelectedKeyHashMapHolder selectedKeyHolder;
+	private final BiConsumer keyVisitor = new BiConsumer() {
+		@Override
+		public void accept(Object k, Object v) {
+			selectionKeyAction.accept((SelectionKey)k);
+		}
+	};
     
     
     @Override
@@ -147,45 +159,16 @@ public class ServerSocketReaderStage extends PronghornStage {
            assert(selectedKeys.size()>0);	            
 
            doneSelectors.clear();
-	
-           //New idea..
-//           Field[] fields = selectedKeys.getClass().getDeclaredFields();
-//           int f = fields.length;
-//           while (--f>=0) {
-//        	   fields[f].setAccessible(true);
-//        	   Field[] fields2;
-//			try {
-//				Object objectF = fields[f].get(selectedKeys);
-//				if (objectF.getClass().isAssignableFrom(HashSet.class)) {
-//					fields2 = objectF.getClass().getDeclaredFields();
-//					int f2 = fields2.length;
-//					while (--f2>=0) {
-//						 fields2[f2].setAccessible(true);
-//						if (fields2[f2].getType().isAssignableFrom(HashMap.class)) {
-//							Object map = fields2[f2].get(objectF);
-//							
-//							//System.err.println(map);
-//							//map.values();
-//							//map.forEach((a,b)->{selectionKeyAction.accept(b);} );
-//							
-//							
-//						}					
-//					}
-//				}
-//				
-//			} catch (SecurityException e) {
-//				throw new RuntimeException(e);
-//			} catch (IllegalArgumentException e) {
-//				throw new RuntimeException(e);
-//			} catch (IllegalAccessException e) {
-//				throw new RuntimeException(e);
-//			}
-//        	   
-//           }
-//           
+           hasRoomForMore = true; //set this up before we visit
            
-           hasRoomForMore = true;
-           selectedKeys.forEach(selectionKeyAction);
+           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+           if (null!=keyMap) {
+			   keyMap.forEach(keyVisitor);
+           } else {
+        	   //fall back to old if the map can not be found.
+        	   selectedKeys.forEach(selectionKeyAction);
+           }
+           
            if (!hasRoomForMore) {
         	   maxIterations = -1;//try again later.
            }
@@ -195,14 +178,18 @@ public class ServerSocketReaderStage extends PronghornStage {
     	
     }
 
+    
+
+
 	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
 		//sad but this is the best way to remove these without allocating a new iterator
 		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
-		int c = doneSelectors.size();
+		ArrayList<SelectionKey> doneSelectors2 = doneSelectors;
+		int c = doneSelectors2.size();
 		while (--c>=0) {
-		    		selectedKeys.remove(doneSelectors.get(c));
+		    	selectedKeys.remove(doneSelectors2.get(c));
 		}
-		
+
 	}
 
 	private boolean processSelection(SelectionKey selection) {
