@@ -1260,7 +1260,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 								result = new Thread(r,"Unknown");	
 							} else {
 								//logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
-								result = new Thread(r, ((NamedRunnable)fields[f].get(r)).name());
+								NamedRunnable namedRunnable = (NamedRunnable)fields[f].get(r);
+								result = new Thread(r, namedRunnable.name());
+								namedRunnable.setThreadId(result.getId());
 							}
 						} catch (IllegalArgumentException e) {
 							logger.info("error pulling NamedRunnable",e);
@@ -1277,7 +1279,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 				if (null==result) {
 					result = new Thread(r,"Unknown");				
-				}				
+				}			
+				
+				result.setPriority(Thread.MAX_PRIORITY-1);//just below max since we sleep a lot.
+						
 				//logger.info("new thread created for {}",r.getClass().getName());
 				return result;
 			}        	
@@ -1301,6 +1306,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
         } catch (BrokenBarrierException e) {
         }
 		logger.trace("all stages started up");
+		
+		//once code is complete we can scan for all the NIds which are needed for core affinity.
+		//PinningUtil.visitStacks();
 		
 	}
 
@@ -1333,6 +1341,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			@Override
 			public String name() {
 				return nts.name();
+			}
+
+			@Override
+			public void setThreadId(long id) {
+				nts.setThreadId(id);
 			}	
 			
 		};
@@ -1353,6 +1366,11 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			@Override
 			public String name() {
 				return nts.name();
+			}
+
+			@Override
+			public void setThreadId(long id) {
+				nts.setThreadId(id);
 			}	
 			
 		};

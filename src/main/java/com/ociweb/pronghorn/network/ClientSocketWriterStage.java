@@ -217,6 +217,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 				int sendBufSize = 
 						Math.max(pipe.maxVarLen, 
 						         cc.socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+				
+				sendBufSize *= 10;
+				
 				logger.info("new direct buffer of size {}",sendBufSize);
 				buffers[i] = ByteBuffer.allocateDirect(sendBufSize);						
 			} catch (IOException e) {
@@ -290,6 +293,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 				int sendBufSize = 
 						Math.max(pipe.maxVarLen, 
 						         cc.socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+			
+				sendBufSize *= 10;
+				
 				logger.info("new direct buffer of size {}",sendBufSize);
 				buffers[i] = ByteBuffer.allocateDirect(sendBufSize);						
 			} catch (IOException e) {

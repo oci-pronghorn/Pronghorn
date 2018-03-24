@@ -173,10 +173,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		if (null == writeToChannel[x]) {
 	    			
 	    			if (Pipe.hasContentToRead(localInput)) {
-	    				didWork = true;
 		            	int activeMessageId = Pipe.takeMsgIdx(localInput);		            			            	
 		            	processMessage(activeMessageId, x);
 		            	if (activeMessageId < 0) {
+		            		didWork = true;
 		            		continue;
 		            	}	
 	    			} else {	    				
@@ -362,6 +362,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 						int sendBufSize = 
 								Math.max(pipe.maxVarLen, 
 								         writeToChannel[idx].getOption(StandardSocketOptions.SO_SNDBUF));
+						
+						sendBufSize *= 10;
+						
 						logger.info("new direct buffer of size {}",sendBufSize);
 						workingBuffers[idx] = ByteBuffer.allocateDirect(sendBufSize);						
 					} catch (IOException e) {

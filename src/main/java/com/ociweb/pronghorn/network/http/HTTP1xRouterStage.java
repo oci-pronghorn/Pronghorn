@@ -946,7 +946,6 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 //	    		     hasContinuedData(selectedInput, inChnl) );
 //    }
 
-    
     while ( //NOTE has content to read looks at slab position between last read and new head.
    
     		Pipe.hasContentToRead(selectedInput) && (    //content checked first to ensure asserts pass		
@@ -957,7 +956,6 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             )
           ) {
 
-        
         messageIdx = Pipe.takeMsgIdx(selectedInput);
         
         //logger.info("seen message id of {}",messageIdx);
@@ -972,8 +970,6 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         	}
         }        
     }
-    
-
  
     return messageIdx;
 }

@@ -69,7 +69,11 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-        //GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 10000, this);
+        
+        //can spin to pick up all the work and may starve others
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        //much larger limit since nothing needs this thread back.
+        GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
         
     }
@@ -147,10 +151,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         ///Read from socket
         ////////////////////////////////////////
 
-	    //max cycles before we take a break.
-    	int maxIterations = 100; //important or this stage will take all the resources.
-    	
-        while (--maxIterations>=0 & hasNewDataToRead()) { //single & to ensure we check has new data to read.
+        while (hasNewDataToRead()) { //single & to ensure we check has new data to read.
         	
         	//logger.info("found new data to read on "+groupIdx);
            
@@ -169,11 +170,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         	   selectedKeys.forEach(selectionKeyAction);
            }
            
+           removeDoneKeys(selectedKeys);
            if (!hasRoomForMore) {
-        	   maxIterations = -1;//try again later.
-           }
-		   removeDoneKeys(selectedKeys);
-		        	 
+        	   return;//try again later.
+           }    	 
         }	        
     	
     }

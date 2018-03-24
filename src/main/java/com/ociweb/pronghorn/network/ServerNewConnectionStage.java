@@ -60,6 +60,12 @@ public class ServerNewConnectionStage extends PronghornStage{
         this.newClientConnections = newClientConnections;
         
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+        
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        //much larger limit since nothing needs this thread back.
+        GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
+        
+        
     }
     
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, boolean isTLS) {
@@ -76,6 +82,8 @@ public class ServerNewConnectionStage extends PronghornStage{
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
   
+        GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
+         
     }
     
     @Override
