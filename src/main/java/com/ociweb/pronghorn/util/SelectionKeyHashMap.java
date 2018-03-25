@@ -126,6 +126,12 @@ public class SelectionKeyHashMap extends HashMap<SelectionKey, Object> {
 	}	
 	
 	@Override
+	public int size() {
+		return count;
+	}
+
+	
+	@Override
 	public boolean containsValue(Object arg0) {
 		throw new UnsupportedOperationException();
 	}
@@ -145,10 +151,6 @@ public class SelectionKeyHashMap extends HashMap<SelectionKey, Object> {
 		throw new UnsupportedOperationException();
 	}
 
-	@Override
-	public int size() {
-		throw new UnsupportedOperationException();
-	}
 
 	@Override
 	public Collection<Object> values() {

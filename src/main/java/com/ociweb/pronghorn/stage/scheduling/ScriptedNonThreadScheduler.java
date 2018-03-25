@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.util.math.ScriptedSchedule;
 public class ScriptedNonThreadScheduler extends StageScheduler implements Runnable {
 
 	//should have Numa truned on           -XX:+UseNUMA
-	//should have priorities on for linux  -XX:+UseThreadPriorities
+	//should have priorities on for linux  -XX:+UseThreadPriorities -XX:+UseNUMA
 	//thread pinning may be good as well.
 	
     public static Appendable debugStageOrder = null; //turn on to investigate performance issues.
@@ -788,7 +788,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    if ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
 
 		    	long start = 0;	
-		    	long SLAStart = System.currentTimeMillis();
+		    	long SLAStart = System.currentTimeMillis();		    	
 		    	start = System.nanoTime();
 				DidWorkMonitor.begin(localDidWork,start);
 		    			    	
