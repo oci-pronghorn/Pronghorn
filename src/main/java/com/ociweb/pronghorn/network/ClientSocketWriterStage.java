@@ -229,7 +229,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
-		buffers[i].clear();
+		((Buffer)buffers[i]).clear();
 		buffers[i].put(writeHolder[0]);
 		buffers[i].put(writeHolder[1]);
 		

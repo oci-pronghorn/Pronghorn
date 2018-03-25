@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -293,7 +294,7 @@ public class SSLUtil {
 
 			result = cc.getEngine().unwrap(sourceBuffer, targetBuffer);//common case where we can unwrap directly from the pipe.
 
-			sourceBuffer.limit(origLimit);//restore the limit so we can keep the remaining data (only critical for openSSL compatibility, see above)
+			((Buffer)sourceBuffer).limit(origLimit);//restore the limit so we can keep the remaining data (only critical for openSSL compatibility, see above)
 			assert(cc.localRunningBytesProduced>=0);
 			cc.localRunningBytesProduced += result.bytesProduced();
 			
@@ -335,7 +336,7 @@ public class SSLUtil {
 		
 						//	System.err.println("C unwrapped bytes produced "+result.bytesProduced()+"  "+result.getStatus()+"  "+"  "+rolling.hasRemaining()+" "+cc.getEngine().getHandshakeStatus() );
 						
-						rolling.limit(origLimit); //return origLimit, see above openSSL issue.
+						((Buffer)rolling).limit(origLimit); //return origLimit, see above openSSL issue.
 						
 						int bytesProduced = result.bytesProduced();
 						assert(cc.localRunningBytesProduced>=0);
@@ -354,7 +355,7 @@ public class SSLUtil {
 			rolling.compact(); //ready for append
 		} else {
 			//logger.info("CLEAR");
-			rolling.clear();
+			((Buffer)rolling).clear();
 		}
 		assert(rolling.limit()==rolling.capacity());
 		
@@ -534,7 +535,7 @@ public class SSLUtil {
 	                	                
 					SSLEngineResult result = gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, workspace, isServer, source);
 
-					rolling.flip();	
+					((Buffer)rolling).flip();	
 					//logger.trace("server {} unwrap rolling data {} for {} ", isServer, rolling, cc);
 										
 					
@@ -603,7 +604,7 @@ public class SSLUtil {
 				continue;
 			}
 			
-			buffer.clear(); //buffer will not bring in ANY data.
+			((Buffer)buffer).clear(); //buffer will not bring in ANY data.
 
 		//	logger.info("wrap data for {} ",cc.getId());
 			
@@ -656,7 +657,7 @@ public class SSLUtil {
 			}
 			
 		}
-		buffer.clear();
+		((Buffer)buffer).clear();
 		
 		return didWork;
 	}
