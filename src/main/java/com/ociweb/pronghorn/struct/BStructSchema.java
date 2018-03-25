@@ -21,7 +21,6 @@ public class BStructSchema {
 	private BStructTypes[][] fieldTypes     = new BStructTypes[4][];
 	private int[][]          fieldDims      = new int[4][];
 	private Object[][]       fieldLocals    = new Object[4][];
-	private TrieParser[]     fieldTemplates = new TrieParser[4];
 
 	
 	//TODO: future feature
@@ -288,13 +287,6 @@ public class BStructSchema {
 		this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id] = localObject;
 	}
 	
-	public void addTemplate(int structId, CharSequence template, long value) {
-		if (null==this.fieldTemplates[structId]){
-			this.fieldTemplates[structId] = new TrieParser(200,2, false, true, true);
-		}
-		this.fieldTemplates[structId].setUTF8Value(template, value);
-	}	
-	
 	
 	public <T extends Object> T getAssociatedObject(long id) {
 		return (T) this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
@@ -340,7 +332,6 @@ public class BStructSchema {
 			fieldTypes     = grow(newSize, fieldTypes);
 			fieldDims      = grow(newSize, fieldDims);
 			fieldLocals    = grow(newSize, fieldLocals);
-			fieldTemplates = grow(newSize, fieldTemplates);
 						
 		}
 	}

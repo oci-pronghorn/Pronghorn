@@ -1249,7 +1249,7 @@ public class TrieParserReader {
 			}
 		}
 
-		boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+1]) || ('x'!=source[sourceMask & sourcePos+2]);
+		boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+0]) || ('x'!=source[sourceMask & sourcePos+1]);
 		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
 			//just to keep it from spinning on values that are way out of bounds
 			sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLength); //never scan over 32
