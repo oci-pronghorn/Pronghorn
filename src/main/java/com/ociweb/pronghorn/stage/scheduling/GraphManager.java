@@ -2401,7 +2401,7 @@ public class GraphManager {
 		        if (consumerId < 0 && !Pipe.isInit(getPipe(m, pipeId))) {
 		            
 		            String schemaName = Pipe.schemaName(m.pipeIdToPipe[pipeId]);
-		            
+		            m.pipeIdToPipe[pipeId].creationStack();//reports where this pipe was created.
 		            int producerId = getRingProducerId(m, pipeId);
 		            if (producerId<0) {
 		                throw new UnsupportedOperationException("Can not find stage consuming Pipe<"+schemaName+"> #"+pipeId+" "+CHECK_GRAPH_CONSTRUCTION);		                
