@@ -544,7 +544,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
     	
     public Pipe(PipeConfig<T> config, boolean usingHighLevelAPI) {
-
+    	assert(holdConstructionLocation());
     	this.config = config;
     	this.usingHighLevelAPI = usingHighLevelAPI;
         byte primaryBits = config.slabBits;
@@ -592,7 +592,22 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
  
-    private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
+    
+    private Exception createdStack;
+    
+    private boolean holdConstructionLocation() {
+		createdStack = new Exception("new Pipe created");
+    	return true;
+	}
+    
+    public void creationStack() {
+    	if (null!=createdStack) {
+    		createdStack.printStackTrace();
+    	}
+    }
+    
+
+	private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
 
     //this is used along with tail position to capture the byte count
 	private long totalBlobBytesRead=0;
