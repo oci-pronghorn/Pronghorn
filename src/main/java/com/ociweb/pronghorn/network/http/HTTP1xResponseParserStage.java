@@ -538,6 +538,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							if (writeIndex) {
 								//clear header indexes
+								//TODO: this is not done here but earlir for all fields.
 								DataOutputBlobWriter.tryClearIntBackData(Pipe.outputStream(targetPipe),
 										                 IntHashTable.count(headersSupported)+indexOffsetCount); 
 							}
@@ -572,6 +573,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						assert(positionMemoData[stateIdx]==1);
 					case 1: ///////// HEADERS
+						
+						//TODO: look up the right headerMap...
+						//      these are based on the headers that the client caller requests
+						//      these headers should be defined in the ClientHostPortInstance object.
+						
+						
 						//this writer was opened when we parsed the first line, now we are appending to it.
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
 	
@@ -589,7 +596,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 							if (headerId>=0) {											
 								
-								if (END_OF_HEADER_ID != headerId) {								
+								if (END_OF_HEADER_ID != headerId) {	
+									
 									headerProcessing(i, writer, headerId, len, headersSupported, writeIndex, indexOffsetCount);
 									
 									//do not change state we want to come back here.									

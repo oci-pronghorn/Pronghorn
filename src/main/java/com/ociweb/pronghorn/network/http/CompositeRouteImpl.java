@@ -28,13 +28,14 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final JSONExtractorCompleted extractor; 
 	private final URLTemplateParser parser; 
 	private final IntHashTable headerTable;
-	private final int groupId;
+	private final int routeId;
 	private final AtomicInteger pathCounter;
 	private final HTTP1xRouterStageConfig<?,?,?,?> config;
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	private final TrieParserReader reader = new TrieParserReader(4,true);
 	private final int structId;
     private final BStructSchema schema;	
+
 	
     private int[] activePathFieldIndexPosLookup;
     
@@ -77,7 +78,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 			                  URLTemplateParser parser, 
 			                  IntHashTable headerTable,
 			                  HTTPHeader[] headers,
-			                  int groupId,
+			                  int routeId,
 			                  AtomicInteger pathCounter) {
 		
 		this.defs = new ArrayList<FieldExtractionDefinitions>();
@@ -85,9 +86,10 @@ public class CompositeRouteImpl implements CompositeRoute {
 		this.extractor = extractor;
 		this.parser = parser;
 		this.headerTable = headerTable;
-		this.groupId = groupId;
+		this.routeId = routeId;
 		this.pathCounter = pathCounter;
 		this.schema = schema;
+	    
 		
 		//begin building the structure with the JSON fields
 		if (null==extractor) {
@@ -103,16 +105,16 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		/////////////////////////
 		//add the headers to the struct
+	    //always add parser in order to ignore headers if non are requested.
+		TrieParser headerParser = new TrieParser(256,2,false,true,false);
+		
+		headerParser.setUTF8Value("\r\n", config.END_OF_HEADER_ID);
+		headerParser.setUTF8Value("\n", config.END_OF_HEADER_ID);
 	
-	//	TrieParser headerMap = new TrieParser(2048,2,false,true,true);//do not skip deep checks, we do not know which new headers may appear.
-		if (null!=headers) {
+		if (null!=headers) {			
 			int h = headers.length;
 			while (--h>=0) {
 				HTTPHeader header = headers[h];
-				
-				
-				//headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
-				
 				long fieldId = schema.growStruct(this.structId,
 						BStructTypes.Blob,						
 						//TODO: need a way to define dimensions on headers
@@ -121,21 +123,16 @@ public class CompositeRouteImpl implements CompositeRoute {
 						header.rootBytes());
 				
 				schema.setAssociatedObject(fieldId, header);
-				//this template is used to parse data and recognize data for this field
-				schema.addTemplate(this.structId, header.readingTemplate(), fieldId);
-				
+								
+				headerParser.setUTF8Value(header.readingTemplate(), "\r\n", fieldId);
+				headerParser.setUTF8Value(header.readingTemplate(), "\n", fieldId);
+			
 			}
-
-//TODO: what about URLS and their params, this is a single parse with ordered fields.
-			
-			
-			
-//TODO: what about both tail endings, need single dim for these? or all headers?
-			
-//	        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
-//	        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
-
+		
 		}
+		headerParser.setUTF8Value("%b: %b\r\n", config.UNKNOWN_HEADER_ID);        
+		headerParser.setUTF8Value("%b: %b\n", config.UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
+		config.storeRouteHeaders(routeId, headerParser);
 		
 		
 	}
@@ -157,12 +154,12 @@ public class CompositeRouteImpl implements CompositeRoute {
 			
 		}
 		
-		return groupId;
+		return routeId;
 	}
 
 	@Override
 	public int routeId() {
-		return groupId;
+		return routeId;
 	}
 	
 	@Override
@@ -171,7 +168,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		int pathsId = pathCounter.getAndIncrement();
 		
 		//logger.trace("pathId: {} assinged for path: {}",pathsId, path);
-		FieldExtractionDefinitions fieldExDef = parser.addPath(path, groupId, pathsId);//hold for defaults..
+		FieldExtractionDefinitions fieldExDef = parser.addPath(path, routeId, pathsId);//hold for defaults..
 				
 		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];		
 		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
@@ -181,7 +178,6 @@ public class CompositeRouteImpl implements CompositeRoute {
 		config.storeRequestedJSONMapping(pathsId, extractor);
 		config.storeRequestedHeaders(pathsId, headerTable);		
 		defs.add(fieldExDef);
-		
 		
 		
 		return this;

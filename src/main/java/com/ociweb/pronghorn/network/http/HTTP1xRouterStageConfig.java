@@ -34,6 +34,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
     
     private IntHashTable[] requestHeaderMask = new IntHashTable[4];
+    private TrieParser[] headersParser = new TrieParser[4];
+    
 
     private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
     
@@ -139,6 +141,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return parser;
 	}
 
+	public void storeRouteHeaders(int routeId, TrieParser headerParser) {
+		if (routeId>=headersParser.length) {
+			int i = headersParser.length;
+			TrieParser[] newArray = new TrieParser[i*2];
+			System.arraycopy(headerParser, 0, newArray, 0, i);
+			headersParser = newArray;
+		}
+		headersParser[routeId]=headerParser;
+	}
+	
 	void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
 		if (idx>=pathDefinitions.length) {
 			int i = pathDefinitions.length;
@@ -149,6 +161,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		pathDefinitions[idx]=route;	
 	}
 
+	@Deprecated
 	void storeRequestedHeaders(int idx, IntHashTable headers) {
 		
 		if (idx>=requestHeaderMask.length) {
@@ -174,20 +187,30 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	
 	public int totalPathsCount() {
 		return pathCount.get();
-	}	
+	}
 
+	public int getRouteId(int pathId) {
+		return extractionParser(pathId).routeId;
+	}
+	
 	public FieldExtractionDefinitions extractionParser(int pathId) {
 		return pathId<pathDefinitions.length ? pathDefinitions[pathId] : allHeadersExtraction;
 	}
 
+	@Deprecated
 	public int headerCount(int routeId) {
 		return IntHashTable.count(headerToPositionTable(routeId));
 	}
 
+	@Deprecated
 	public IntHashTable headerToPositionTable(int routeId) {
 		assert(null!=allHeadersTable);
 		return routeId<requestHeaderMask.length && (null!=requestHeaderMask[routeId]) ? 
 				           requestHeaderMask[routeId] : allHeadersTable;
+	}
+	
+	public TrieParser headerParserRouteId(int routeId) {
+		return headersParser[routeId];		
 	}
 
 	public JSONExtractorCompleted JSONExtractor(int routeId) {
@@ -255,7 +278,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		int i = pathDefinitions.length;
 		while (--i>=0) {
 			if (null!=pathDefinitions[i]) {
-				if (contains(groupsIds, pathDefinitions[i].groupId)) {	
+				if (contains(groupsIds, pathDefinitions[i].routeId)) {	
 					added = true;
 					collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
 				}
@@ -274,7 +297,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			int i = pathDefinitions.length;
 			while (--i>=0) {
 				if (null!=pathDefinitions[i]) {
-					if (!contains(groupsIds, pathDefinitions[i].groupId)) {			
+					if (!contains(groupsIds, pathDefinitions[i].routeId)) {			
 						added = true;
 						collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
 					}
@@ -297,6 +320,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	public int[] paramIndexArray(int pathId) {
 		return pathDefinitions[pathId].paramIndexArray();
 	}
+
+
 		
 	
 }

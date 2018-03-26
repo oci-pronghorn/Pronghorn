@@ -645,7 +645,10 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
 	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
-    //the above URLS always end with a white space to ensure they match the spec.
+    
+	final int routeId = 0; //TODO: what is the righ way to find the routeId?
+	
+	//the above URLS always end with a white space to ensure they match the spec.
     if (!catchAll && config.UNMAPPED_ROUTE == pathId) {
     	
 		//unsupported route path, send 404 error
@@ -752,7 +755,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
         
         int countOfAllPreviousFields = config.extractionParser(pathId).getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, pathId, writer, 
+		int requestContext = parseHeaderFields(trieReader, routeId, pathId, writer, 
 												httpRevisionId, countOfAllPreviousFields, config,
 												errorReporter);  // Write 2   10 //if header is presen
        
@@ -799,7 +802,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 }
 
 
-private static int parseHeaderFields(TrieParserReader trieReader, final int pathId,
+private static int parseHeaderFields(TrieParserReader trieReader, 
+		final int routeId, final int pathId,
 		DataOutputBlobWriter<HTTPRequestSchema> writer, int httpRevisionId, int countOfAllPreviousFields,
 		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2) {
 	
@@ -816,6 +820,11 @@ private static int parseHeaderFields(TrieParserReader trieReader, final int path
 	//      need to toggle and need to find where its created..
 	
 	DataOutputBlobWriter.tryClearIntBackData(writer, config.headerCount(pathId)); 
+	
+    //look up route?
+	
+	config.headerParser( config.getRouteId(pathId) );
+	
 	
 	long postLength = -2;
 	
