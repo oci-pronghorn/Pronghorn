@@ -13,8 +13,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPClientRequestStage extends PronghornStage {
+
+	private final TrieParserReader READER = new TrieParserReader(true);
 
 	public static final Logger logger = LoggerFactory.getLogger(HTTPClientRequestStage.class);
 	
@@ -208,6 +211,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
+	private final TrieParserReader reader = new TrieParserReader(true); 
+	
+
 	private ClientConnection activeConnection =  null;
 	private PipeUTF8MutableCharSquence mCharSequence = new PipeUTF8MutableCharSquence();
 	
@@ -245,7 +251,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
  			
-     		connectionId = ccm.lookup(ccm.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen)), port, userId);
+     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen), READER), port, userId);
  		}
 		
  		if (null!=activeConnection && activeConnection.getId()==connectionId) {
@@ -265,7 +271,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
- 					 port, userId, output, connectionId);
+ 					 port, userId, output, connectionId, reader);
  	
  		}
  		

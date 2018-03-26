@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.stage.network;
 
-import java.io.IOException;
 import java.util.Random;
 
 import com.ociweb.pronghorn.network.ClientConnection;
@@ -9,9 +8,11 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class SocketTestGenStage extends PronghornStage {
 
+	private final TrieParserReader READER = new TrieParserReader(true);
 	private final boolean useTLS=false;
 	private final String host = "127.0.0.1";
 	
@@ -57,7 +58,7 @@ public class SocketTestGenStage extends PronghornStage {
 			int hostMask = Integer.MAX_VALUE;
 			ClientConnection connection = ClientCoordinator.openConnection(
 					clientCoordinator, host, port, userIdx, pipe,	
-			        clientCoordinator.lookup(clientCoordinator.lookupHostId(host), port, userIdx));			
+			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(host, READER), port, userIdx), READER);			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
 				return;//try again later
 			}

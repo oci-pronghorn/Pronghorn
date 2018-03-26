@@ -24,8 +24,11 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class MQTTClientToServerEncodeStage extends PronghornStage {
+
+	private final TrieParserReader READER = new TrieParserReader(true);
 
 	private final Logger logger = LoggerFactory.getLogger(MQTTClientToServerEncodeStage.class);
 	
@@ -315,7 +318,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker,
-				                         ccm.lookup(ccm.lookupHostId(host), hostPort, uniqueConnectionId)); 
+				                         ccm.lookup(ClientCoordinator.lookupHostId(host, READER), hostPort, uniqueConnectionId), READER); 
 
 		if (null!=activeConnection) {		
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 

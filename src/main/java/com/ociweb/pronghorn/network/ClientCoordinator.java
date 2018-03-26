@@ -248,22 +248,24 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return selector;
 	}
 
-	public final ClientConnection connectionId(CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs, ClientConnection oldConnection) {
-		
-		if (host.length()==0) {
-			return null;
-		}
-		
-		if (null==oldConnection || ((!oldConnection.isValid()) && oldConnection.isFinishConnect() ) ) {
-			//only do reOpen if the previous one is finished connecting and its now invalid.
-			oldConnection = ClientCoordinator.openConnection(this, host, port,
-					sessionId, outputs,
-	                lookup(lookupHostId(host), port, sessionId));
-		}
-		
-		return oldConnection;
-		
-	}
+//	public final ClientConnection connectionId(CharSequence host, 
+//			int port, int sessionId, 
+//			Pipe<NetPayloadSchema>[] outputs, ClientConnection oldConnection) {
+//		
+//		if (host.length()==0) {
+//			return null;
+//		}
+//		
+//		if (null==oldConnection || ((!oldConnection.isValid()) && oldConnection.isFinishConnect() ) ) {
+//			//only do reOpen if the previous one is finished connecting and its now invalid.
+//			oldConnection = ClientCoordinator.openConnection(this, host, port,
+//					sessionId, outputs,
+//	                lookup(lookupHostId(host, new TrieParserReader(true)), port, sessionId));
+//		}
+//		
+//		return oldConnection;
+//		
+//	}
 
 
 	//we keep a single trie parser of all known domains, this is only
@@ -310,8 +312,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public static int lookupHostId(CharSequence host) {
-		int result = (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry, host);
+	public static int lookupHostId(CharSequence host, TrieParserReader reader) {
+		int result = (int)TrieParserReader.query(reader, domainRegistry, host);
 		if (result>=0) {
 			return result;
 		} else {
@@ -348,7 +350,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
-			long connectionId) {
+			long connectionId, TrieParserReader reader) {
 		
 		        ClientConnection cc = null;
 
@@ -385,7 +387,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 								        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
 								        :null;
 								        
-						cc = new ClientConnection(engine, host, lookupHostId(host), port, sessionId, pipeIdx, 
+						cc = new ClientConnection(engine, host, lookupHostId(host, reader), port, sessionId, pipeIdx, 
 								                  connectionId, ccm.isTLS, inFlightBits, 
 								                  ccm.receiveBufferSize);
 						
