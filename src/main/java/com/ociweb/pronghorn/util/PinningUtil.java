@@ -56,12 +56,27 @@ public class PinningUtil {
 		
 		
 		try {
+			TrieParserReader reader = new TrieParserReader(10,true);
 			Process process = Runtime.getRuntime().exec("jstack -l "+getPid());
-		    InputStream stream = process.getInputStream();		    
-		    byte[] backing = stream.readAllBytes();
+		    InputStream stream = process.getInputStream();	
 		    
-		    TrieParserReader reader = new TrieParserReader(10,true);
-		    TrieParserReader.parseSetup(reader, backing, 0, backing.length, Integer.MAX_VALUE);
+		    byte[] buffer = new byte[1<<17]; //128K //must be power of 2
+		    int bufferPos = 0;
+		    
+		    int val;
+		    while((val = stream.read())>=0) {
+		    	
+		    	if (bufferPos == buffer.length) {
+		    		//grow
+		    		byte[] temp = new byte[bufferPos*2];
+		    		System.arraycopy(buffer, 0, temp, 0, buffer.length);
+		    		buffer = temp;
+		    	}
+		    	buffer[bufferPos++] = (byte)val;		 		    	
+		    }
+		    		    
+		    TrieParserReader.parseSetup(reader, buffer, 0, bufferPos, Integer.MAX_VALUE);
+		    		    
 		    TrieParser parser = jstackParser();
 		    
 		    while (TrieParserReader.parseHasContent(reader)) {
