@@ -823,7 +823,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 	
     //look up route?
 	
-	config.headerParser( config.getRouteId(pathId) );
+	//config.headerParser( config.getRouteId(pathId) );
 	
 	
 	long postLength = -2;
