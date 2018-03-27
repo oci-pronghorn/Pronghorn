@@ -36,6 +36,28 @@ public class JSONRootBoolTests {
     }
 
     @Test
+    public void testRootRenderer() {
+        JSONRenderer<Integer> json1 = new JSONRenderer<Integer>()
+                .integer(o->o);
+        JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
+                .renderer(json1, o->o.i+5);
+        assertTrue(json.isLocked());
+        json.render(out, new BasicObj());
+        assertEquals("14", out.toString());
+    }
+
+    @Test
+    public void testRootRenderer_Null() {
+        JSONRenderer<Integer> json1 = new JSONRenderer<Integer>()
+                .integer(o->o);
+        JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
+                .renderer(json1, o->null);
+        assertTrue(json.isLocked());
+        json.render(out, null);
+        assertEquals("null", out.toString());
+    }
+
+    @Test
     public void testRootBoolTrue() {
         JSONRenderer<Boolean> json = new JSONRenderer<Boolean>()
                 .bool(o -> o);

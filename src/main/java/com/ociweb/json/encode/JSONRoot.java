@@ -83,7 +83,12 @@ public abstract class JSONRoot<T, P> {
         });
     }
 
-    // No need for Renderer methods
+    // Renderer
+
+    public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addBuilder(renderer.builder, accessor);
+        return this.childCompleted();
+    }
 
     // Null
 
