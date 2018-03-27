@@ -9,11 +9,9 @@ import java.util.List;
 public abstract class JSONArray<T, P, N> {
     private final JSONBuilder<T> builder;
     private final IteratorFunction<T, N> iterator;
-    private final int depth;
 
     JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, IteratorFunction<T, N> iterator, int depth) {
         this.iterator = iterator;
-        this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
@@ -95,7 +93,7 @@ public abstract class JSONArray<T, P, N> {
     public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(iterator, accessor),
-                builder.getKeywords(),depth + 1) {
+                builder.getKeywords(),builder.getDepth() + 1) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -110,7 +108,7 @@ public abstract class JSONArray<T, P, N> {
                 builder.beginArray(this.iterator, accessor),
                 builder.getKeywords(),
                 iterator,
-                depth + 1) {
+                builder.getDepth() + 1) {
             @Override
             P arrayEnded() {
                 return childCompleted();
@@ -128,7 +126,7 @@ public abstract class JSONArray<T, P, N> {
                         return i < obj.size() ? obj : null;
                     }
                 },
-                depth + 1) {
+                builder.getDepth() + 1) {
             @Override
             P arrayEnded() {
                 return childCompleted();
@@ -146,7 +144,7 @@ public abstract class JSONArray<T, P, N> {
                         return i < obj.length ? obj : null;
                     }
                 },
-                depth + 1) {
+                builder.getDepth() + 1) {
             @Override
             P arrayEnded() {
                 return childCompleted();

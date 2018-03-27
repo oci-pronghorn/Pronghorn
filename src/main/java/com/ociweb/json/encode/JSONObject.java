@@ -5,17 +5,14 @@ import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 public abstract class JSONObject<T, P> {
     private final JSONBuilder<T> builder;
-    private final int depth;
 
     private int objectElementIndex = -1;
     private boolean declaredEmpty = false;
 
     JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
-        this.depth = depth;
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
@@ -41,7 +38,7 @@ public abstract class JSONObject<T, P> {
     public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
         return new JSONObject<M, JSONObject<T, P>>(
                 builder.addFieldPrefix(++objectElementIndex, name).beginObject(accessor),
-                builder.getKeywords(),depth + 1) {
+                builder.getKeywords(),builder.getDepth() + 1) {
             @Override
             JSONObject<T, P> objectEnded() {
                 return JSONObject.this;
@@ -61,7 +58,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <M, N> JSONArray<M, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder.addFieldPrefix(++objectElementIndex, name), depth + 1, accessor, iterator,  new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createArray(builder.addFieldPrefix(++objectElementIndex, name), builder.getDepth() + 1, accessor, iterator,  new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;
@@ -70,7 +67,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <M extends List<N>, N> JSONArray<M, JSONObject<T, P>, M> listArray(String name, ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder.addFieldPrefix(++objectElementIndex, name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createListArray(builder.addFieldPrefix(++objectElementIndex, name), builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;
@@ -79,7 +76,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <N> JSONArray<N[], JSONObject<T, P>, N[]> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder.addFieldPrefix(++objectElementIndex, name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+        return JSONArray.createBasicArray(builder.addFieldPrefix(++objectElementIndex, name), builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
             @Override
             public JSONObject<T, P> end() {
                 return JSONObject.this;

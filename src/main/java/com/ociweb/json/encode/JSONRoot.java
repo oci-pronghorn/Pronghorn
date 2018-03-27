@@ -8,11 +8,9 @@ import java.util.List;
 
 public abstract class JSONRoot<T, P> {
     protected final JSONBuilder<T> builder;
-    private final int depth;
 
     JSONRoot(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
         this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.depth = depth;
         builder.start();
     }
 
@@ -37,7 +35,7 @@ public abstract class JSONRoot<T, P> {
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
         return new JSONObject<M, P>(
                 builder.beginObject(accessor),
-                builder.getKeywords(), depth + 1) {
+                builder.getKeywords(), builder.getDepth() + 1) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -57,7 +55,7 @@ public abstract class JSONRoot<T, P> {
     }
 
     public <M, N> JSONArray<M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
+        return JSONArray.createArray(builder, builder.getDepth() + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -66,7 +64,7 @@ public abstract class JSONRoot<T, P> {
     }
 
     public <M extends List<N>, N> JSONArray<M, P, M> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+        return JSONArray.createListArray(builder, builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -75,7 +73,7 @@ public abstract class JSONRoot<T, P> {
     }
 
     public <N> JSONArray<N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+        return JSONArray.createBasicArray(builder, builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();

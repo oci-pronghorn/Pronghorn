@@ -34,6 +34,10 @@ class JSONBuilder<T> {
         return kw;
     }
 
+    int getDepth() {
+        return depth;
+    }
+
     void start() {
         kw.Start(scripts, depth);
     }
