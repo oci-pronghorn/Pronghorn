@@ -220,7 +220,7 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 
 	@Override
 	public ByteBuffer targetBytes(String name, long id, int length) {
-		tempByteBuffer.clear();
+		((Buffer)tempByteBuffer).clear();
 		if (tempByteBuffer.capacity()<length) {
 			tempByteBuffer = ByteBuffer.allocate(length*2);
 		}
