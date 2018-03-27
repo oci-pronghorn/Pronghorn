@@ -16,14 +16,11 @@ import com.ociweb.pronghorn.util.Appendables;
 // Maintain no dependencies the public API classes (i.e. JSONObject)
 
 class JSONBuilder<T> {
+    // Do not store mutable state used during render.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
     private final StringTemplateBuilder<T> objNullBranch;
-
-    // Do not store mutable state used during render.
-    // This is only used between begin and end object declarations.
-    private int objectElementIndex = 0;
 
     JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
         this.scripts = scripts;
@@ -44,7 +41,6 @@ class JSONBuilder<T> {
     void complete() {
         kw.Complete(scripts, depth);
         scripts.lock();
-        objectElementIndex = -1;
     }
 
     boolean isLocked() {
@@ -57,7 +53,7 @@ class JSONBuilder<T> {
 
     // Helper
 
-    JSONBuilder<T> addFieldPrefix(String name) {
+    JSONBuilder<T> addFieldPrefix(int objectElementIndex, String name) {
         if (objectElementIndex == 0) {
             kw.FirstObjectElement(scripts, depth);
         }
@@ -75,7 +71,7 @@ class JSONBuilder<T> {
     // TODO: recursive builders
     // TODO: selectable builders
 
-    <M> void addBuilder(final JSONBuilder<M> renderer, final ToMemberFunction<T, M> accessor) {
+    <M> void addBuilder(final JSONBuilder<M> builder, final ToMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
@@ -84,13 +80,13 @@ class JSONBuilder<T> {
                     kw.Null(writer);
                 }
                 else {
-                    renderer.render(writer, member);
+                    builder.render(writer, member);
                 }
             }
         });
     }
 
-    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<M> renderer, final IterMemberFunction<T, M> accessor) {
+    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<M> builder, final IterMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
@@ -104,7 +100,7 @@ class JSONBuilder<T> {
                         kw.Null(writer);
                     }
                     else {
-                        renderer.render(writer, member);
+                        builder.render(writer, member);
                     }
                 }
                 return node;
@@ -154,7 +150,8 @@ class JSONBuilder<T> {
                     M member = accessor.get(source, i);
                     if (member == null) {
                         kw.Null(writer);
-                    } else {
+                    }
+                    else {
                         accessorBranch.render(writer, member);
                     }
                 }
@@ -254,7 +251,8 @@ class JSONBuilder<T> {
             public void fetch(AppendableByteWriter writer, T source) {
                 if (func.applyAsBool(source)) {
                     kw.True(writer);
-                } else {
+                }
+                else {
                     kw.False(writer);
                 }
             }
@@ -271,7 +269,8 @@ class JSONBuilder<T> {
                 else {
                     if (func.applyAsBool(source)) {
                         kw.True(writer);
-                    } else {
+                    }
+                    else {
                         kw.False(writer);
                     }
                 }
@@ -290,7 +289,8 @@ class JSONBuilder<T> {
                     }
                     if (func.applyAsBool(source, i)) {
                         kw.True(writer);
-                    } else {
+                    }
+                    else {
                         kw.False(writer);
                     }
                 }
@@ -314,7 +314,8 @@ class JSONBuilder<T> {
                     else {
                         if (func.applyAsBool(source, i)) {
                             kw.True(writer);
-                        } else {
+                        }
+                        else {
                             kw.False(writer);
                         }
                     }
@@ -645,7 +646,8 @@ class JSONBuilder<T> {
                 CharSequence s = func.applyAsString(source);
                 if (s == null) {
                     kw.Null(writer);
-                } else {
+                }
+                else {
                     kw.Quote(writer);
                     writer.append(s);
                     kw.Quote(writer);
