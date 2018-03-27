@@ -76,12 +76,15 @@ public class JSONObjectTests {
                     .integer("i", o->o.i)
                     .decimal("d", 2, o->o.d)
                     .string("s", o->o.s)
+                    .array("empty", null)
+                        .empty()
                     .beginObject("m")
+                        .empty()
                     .endObject()
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj(new BasicObj()));
-        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"m\":{}}", out.toString());
+        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"empty\":[],\"m\":{}}", out.toString());
     }
 
     @Test

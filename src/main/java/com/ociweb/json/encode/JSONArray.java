@@ -163,6 +163,10 @@ public abstract class JSONArray<T, P, N> {
 
     // Null
 
+    public P empty() {
+        return this.childCompleted();
+    }
+
     public P constantNull() {
         builder.addNull(iterator);
         return this.childCompleted();
