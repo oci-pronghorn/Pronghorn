@@ -103,8 +103,10 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 					@Override
 					public void fetch(AppendableByteWriter writer, T source) {
 						int i = branching.branch(source);
-						assert(i < localData.length) : "String template builder selected invalid branch.";
-						localData[i].render(writer, source);
+						if (i != -1) { // -1 is no-op
+							assert (i < localData.length) : "String template builder selected invalid branch.";
+							localData[i].render(writer, source);
+						}
 					}
 				});
 		return this;

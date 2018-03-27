@@ -5,12 +5,14 @@ import com.ociweb.json.JSONType;
 import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public abstract class JSONObject<T, P> {
     private final JSONBuilder<T> builder;
     private final int depth;
 
     private int objectElementIndex = -1;
+    private boolean declaredEmpty = false;
 
     JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
         this.depth = depth;
@@ -92,8 +94,6 @@ public abstract class JSONObject<T, P> {
         return this;
     }
 
-    // No need for empty()
-
     // Null
 
     public JSONObject<T, P> constantNull(String name) {
@@ -101,24 +101,35 @@ public abstract class JSONObject<T, P> {
         return this;
     }
 
+    // Allow for documented empty
+    public JSONObject<T, P> empty() {
+        assert(objectElementIndex == -1) : "empty can only be called on empty object";
+        declaredEmpty = true;
+        return this;
+    }
+
     // Boolean
 
     public JSONObject<T, P> bool(String name, ToBoolFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addBool(func);
         return this;
     }
 
     public JSONObject<T, P> bool(String name, ToBoolFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addBool(func, encode);
         return this;
     }
 
     public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addBool(isNull, func);
         return this;
     }
 
     public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addBool(isNull, func, encode);
         return this;
     }
@@ -126,21 +137,25 @@ public abstract class JSONObject<T, P> {
     // Integer
 
     public JSONObject<T, P> integer(String name, ToLongFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addInteger(func);
         return this;
     }
 
     public JSONObject<T, P> integer(String name, ToLongFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addInteger(func, encode);
         return this;
     }
 
     public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addInteger(isNull, func);
         return this;
     }
 
     public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addInteger(isNull, func, encode);
         return this;
     }
@@ -148,21 +163,25 @@ public abstract class JSONObject<T, P> {
     // Decimal
 
     public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addDecimal(precision, func);
         return this;
     }
 
     public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addDecimal(precision, func, encode);
         return this;
     }
 
     public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addDecimal(precision, isNull, func);
         return this;
     }
 
     public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addDecimal(precision, isNull, func, encode);
         return this;
     }
@@ -170,21 +189,25 @@ public abstract class JSONObject<T, P> {
     // String
 
     public JSONObject<T, P> string(String name, ToStringFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addString(func);
         return this;
     }
 
     public JSONObject<T, P> string(String name, ToStringFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addString(func, encode);
         return this;
     }
 
     public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addNullableString(func);
         return this;
     }
 
     public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(++objectElementIndex, name).addNullableString(func, encode);
         return this;
     }

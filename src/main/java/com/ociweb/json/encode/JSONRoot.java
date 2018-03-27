@@ -6,7 +6,7 @@ import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
-public class JSONRoot<T, P extends JSONRoot> {
+public abstract class JSONRoot<T, P> {
     final JSONBuilder<T> builder;
     private final int depth;
 
@@ -16,9 +16,15 @@ public class JSONRoot<T, P extends JSONRoot> {
         builder.start();
     }
 
+    abstract P rootEnded();
+
     private P childCompleted() {
         builder.complete();
-        return (P)this;
+        return rootEnded();
+    }
+
+    JSONBuilder<T> getBuilder() {
+        return builder;
     }
 
     // Object

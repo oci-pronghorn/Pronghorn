@@ -60,7 +60,6 @@ class JSONBuilder<T> {
         else {
             kw.NextObjectElement(scripts, depth);
         }
-        objectElementIndex++;
         scripts.add(name);
         kw.ObjectValue(scripts, depth);
         return this;

@@ -19,4 +19,9 @@ public class JSONRenderer<T> extends JSONRoot<T, JSONRenderer<T>> {
     public void render(AppendableByteWriter writer, T source) {
         builder.render(writer, source);
     }
+
+    @Override
+    JSONRenderer<T> rootEnded() {
+        return this;
+    }
 }
