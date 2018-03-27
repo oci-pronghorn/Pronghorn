@@ -22,6 +22,10 @@ class JSONBuilder<T> {
     private final int depth;
     private final StringTemplateBuilder<T> objNullBranch;
 
+    JSONBuilder() {
+        this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0);
+    }
+
     JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
         this.scripts = scripts;
         this.kw = kw;
@@ -113,7 +117,7 @@ class JSONBuilder<T> {
 
     // Object
 
-    public <M> StringTemplateBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
+    public <M> JSONBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
@@ -136,10 +140,10 @@ class JSONBuilder<T> {
                 return accessor.get(o) == null ? 0 : 1;
             }
         });
-        return accessorScript;
+        return new JSONBuilder<M>(accessorScript, kw, depth + 1);
     }
 
-    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
+    <N, M> JSONBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
         scripts.add(new StringTemplateIterScript<T, N>() {
@@ -161,7 +165,7 @@ class JSONBuilder<T> {
                 return node;
             }
         });
-        return accessorBranch;
+        return new JSONBuilder<M>(accessorBranch, kw, depth + 1);
     }
 
     void endObject() {
@@ -170,7 +174,7 @@ class JSONBuilder<T> {
 
     // Array
 
-    <M> StringTemplateBuilder<M> beginArray(final ToMemberFunction<T, M> func) {
+    <M> JSONBuilder<M> beginArray(final ToMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
         kw.OpenArray(arrayBuilder, depth);
 
@@ -192,10 +196,10 @@ class JSONBuilder<T> {
                 return func.get(o) == null ? 0 : 1;
             }
         });
-        return arrayBuilder;
+        return new JSONBuilder<M>(arrayBuilder, kw, depth + 1);
     }
 
-    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
+    public <N, M> JSONBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
@@ -218,7 +222,7 @@ class JSONBuilder<T> {
                 return node;
             }
         });
-        return notNullBranch;
+        return new JSONBuilder<M>(notNullBranch, kw, depth + 1);
     }
 
     void endArray() {

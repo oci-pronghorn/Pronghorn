@@ -2,7 +2,6 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
@@ -12,8 +11,8 @@ public abstract class JSONObject<T, P> {
     private int objectElementIndex = -1;
     private boolean declaredEmpty = false;
 
-    JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
+    JSONObject(JSONBuilder<T> builder) {
+        this.builder = builder;
     }
 
     public P endObject() {
@@ -36,9 +35,7 @@ public abstract class JSONObject<T, P> {
     }
 
     public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
-        return new JSONObject<M, JSONObject<T, P>>(
-                builder.addFieldPrefix(++objectElementIndex, name).beginObject(accessor),
-                builder.getKeywords(),builder.getDepth() + 1) {
+        return new JSONObject<M, JSONObject<T, P>>(builder.addFieldPrefix(++objectElementIndex, name).beginObject(accessor)) {
             @Override
             JSONObject<T, P> objectEnded() {
                 return JSONObject.this;

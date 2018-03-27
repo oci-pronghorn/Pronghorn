@@ -72,16 +72,16 @@ public class JSONBucketTests {
                 "\t\"s\": \"bob\",\n" +
                 "\t\"a\": [\n" +
                 "\t\t9,\n" +
-                "\t\t\t8,\n" +
-                "\t\t\t7,\n" +
-                "\t\t\t6,\n" +
-                "\t\t\t5,\n" +
-                "\t\t\t4,\n" +
-                "\t\t\t3,\n" +
-                "\t\t\t2,\n" +
-                "\t\t\t1,\n" +
-                "\t\t\t0\n" +
-                "\t\t],\n" +
+                "\t\t8,\n" +
+                "\t\t7,\n" +
+                "\t\t6,\n" +
+                "\t\t5,\n" +
+                "\t\t4,\n" +
+                "\t\t3,\n" +
+                "\t\t2,\n" +
+                "\t\t1,\n" +
+                "\t\t0\n" +
+                "\t],\n" +
                 "\t\"a2\": null,\n" +
                 "\t\"nm\": null,\n" +
                 "\t\"m\": {\n" +

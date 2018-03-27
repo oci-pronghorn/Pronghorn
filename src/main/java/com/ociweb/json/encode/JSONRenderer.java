@@ -5,11 +5,11 @@ import com.ociweb.json.appendable.AppendableByteWriter;
 
 public class JSONRenderer<T> extends JSONRoot<T, JSONRenderer<T>> {
     public JSONRenderer() {
-        super(new StringTemplateBuilder<T>(), new JSONKeywords(), 0);
+        super(new JSONBuilder<>());
     }
 
     public JSONRenderer(JSONKeywords keywords) {
-        super(new StringTemplateBuilder<T>(), keywords, 0);
+        super(new JSONBuilder<>(new StringTemplateBuilder<T>(), keywords, 0));
     }
 
     public boolean isLocked() {

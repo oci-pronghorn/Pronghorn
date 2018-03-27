@@ -2,7 +2,6 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
@@ -10,9 +9,9 @@ public abstract class JSONArray<T, P, N> {
     private final JSONBuilder<T> builder;
     private final IteratorFunction<T, N> iterator;
 
-    JSONArray(StringTemplateBuilder<T> scripts, JSONKeywords keywords, IteratorFunction<T, N> iterator, int depth) {
+    JSONArray(JSONBuilder<T> builder, IteratorFunction<T, N> iterator) {
+        this.builder = builder;
         this.iterator = iterator;
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
     }
 
     //@FunctionalInterface
@@ -28,10 +27,8 @@ public abstract class JSONArray<T, P, N> {
         return new JSONArray<M, P, N>(
                 // called by builder to select null script
                 builder.beginArray(accessor),
-                builder.getKeywords(),
                 // called by script to iterate over array given re-accessing M from T
-                iterator,
-                depth + 1) {
+                iterator) {
             @Override
             P arrayEnded() {
                 return ending.end();
@@ -45,14 +42,12 @@ public abstract class JSONArray<T, P, N> {
             final ArrayCompletion<P> ending) {
         return new JSONArray<M, P, M>(
                 builder.beginArray(accessor),
-                builder.getKeywords(),
                 new IteratorFunction<M, M>() {
                     @Override
                     public M get(M o, int i, M node) {
                         return i < o.size() ? o : null;
                     }
-                },
-                depth + 1) {
+                }) {
             @Override
             P arrayEnded() {
                 return ending.end();
@@ -66,14 +61,12 @@ public abstract class JSONArray<T, P, N> {
             final ArrayCompletion<P> ending) {
         return new JSONArray<N[], P, N[]>(
                 builder.beginArray(accessor),
-                builder.getKeywords(),
                 new IteratorFunction<N[], N[]>() {
                     @Override
                     public N[] get(N[] o, int i, N[] node) {
                         return i < o.length ? o : null;
                     }
-                },
-                depth + 1) {
+                }) {
             @Override
             P arrayEnded() {
                 return ending.end();
@@ -91,9 +84,7 @@ public abstract class JSONArray<T, P, N> {
     // Object
 
     public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, M> accessor) {
-        return new JSONObject<M, P>(
-                builder.beginObject(iterator, accessor),
-                builder.getKeywords(),builder.getDepth() + 1) {
+        return new JSONObject<M, P>(builder.beginObject(iterator, accessor)) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -104,11 +95,7 @@ public abstract class JSONArray<T, P, N> {
     // Array
 
     public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, M> accessor, IteratorFunction<M, N2> iterator) {
-        return new JSONArray<M, P, N2>(
-                builder.beginArray(this.iterator, accessor),
-                builder.getKeywords(),
-                iterator,
-                builder.getDepth() + 1) {
+        return new JSONArray<M, P, N2>(builder.beginArray(this.iterator, accessor), iterator) {
             @Override
             P arrayEnded() {
                 return childCompleted();
@@ -119,14 +106,12 @@ public abstract class JSONArray<T, P, N> {
     public <M extends List<N2>, N2> JSONArray<M, P, M> listArray(IterMemberFunction<T, M> accessor) {
         return new JSONArray<M, P, M>(
                 builder.beginArray(this.iterator, accessor),
-                builder.getKeywords(),
                 new IteratorFunction<M, M>() {
                     @Override
                     public M get(M obj, int i, M node) {
                         return i < obj.size() ? obj : null;
                     }
-                },
-                builder.getDepth() + 1) {
+                }) {
             @Override
             P arrayEnded() {
                 return childCompleted();
@@ -137,14 +122,12 @@ public abstract class JSONArray<T, P, N> {
     public <N2> JSONArray<N2[], P, N2[]> basicArray(IterMemberFunction<T, N2[]> accessor) {
         return new JSONArray<N2[], P, N2[]>(
                 builder.beginArray(this.iterator, accessor),
-                builder.getKeywords(),
                 new IteratorFunction<N2[], N2[]>() {
                     @Override
                     public N2[] get(N2[] obj, int i, N2[] node) {
                         return i < obj.length ? obj : null;
                     }
-                },
-                builder.getDepth() + 1) {
+                }) {
             @Override
             P arrayEnded() {
                 return childCompleted();

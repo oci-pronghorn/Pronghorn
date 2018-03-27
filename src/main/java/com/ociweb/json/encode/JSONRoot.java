@@ -2,15 +2,14 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
 public abstract class JSONRoot<T, P> {
     protected final JSONBuilder<T> builder;
 
-    JSONRoot(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
+    JSONRoot(JSONBuilder<T> builder) {
+        this.builder = builder;
         builder.start();
     }
 
@@ -33,9 +32,7 @@ public abstract class JSONRoot<T, P> {
     }
 
     public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
-        return new JSONObject<M, P>(
-                builder.beginObject(accessor),
-                builder.getKeywords(), builder.getDepth() + 1) {
+        return new JSONObject<M, P>(builder.beginObject(accessor)) {
             @Override
             P objectEnded() {
                 return childCompleted();
