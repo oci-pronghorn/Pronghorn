@@ -5,11 +5,11 @@ import com.ociweb.json.JSONType;
 
 import java.util.List;
 
-public abstract class JSONArray<T, P, N> {
-    private final JSONBuilder<T> builder;
+public abstract class JSONArray<R, T, P, N> {
+    private final JSONBuilder<R, T> builder;
     private final IteratorFunction<T, N> iterator;
 
-    JSONArray(JSONBuilder<T> builder, IteratorFunction<T, N> iterator) {
+    JSONArray(JSONBuilder<R, T> builder, IteratorFunction<T, N> iterator) {
         this.builder = builder;
         this.iterator = iterator;
     }
@@ -19,12 +19,12 @@ public abstract class JSONArray<T, P, N> {
         P end();
     }
 
-    static <T, P, M, N> JSONArray<M, P, N> createArray(
-            JSONBuilder<T> builder, int depth,
+    static <R, T, P, M, N> JSONArray<R, M, P, N> createArray(
+            JSONBuilder<R, T> builder,
             final ToMemberFunction<T, M> accessor, // Convert parent T to iteratable M
             final IteratorFunction<M, N> iterator, // iterate of M using N
             final ArrayCompletion<P> ending) {
-        return new JSONArray<M, P, N>(
+        return new JSONArray<R, M, P, N>(
                 // called by builder to select null script
                 builder.beginArray(accessor),
                 // called by script to iterate over array given re-accessing M from T
@@ -36,11 +36,11 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, M extends List<N>, N> JSONArray<M, P, M> createListArray(
-            JSONBuilder<T> builder, int depth,
+    static <R, T, P, M extends List<N>, N> JSONArray<R, M, P, M> createListArray(
+            JSONBuilder<R, T> builder,
             final ToMemberFunction<T, M> accessor,
             final ArrayCompletion<P> ending) {
-        return new JSONArray<M, P, M>(
+        return new JSONArray<R, M, P, M>(
                 builder.beginArray(accessor),
                 new IteratorFunction<M, M>() {
                     @Override
@@ -55,11 +55,11 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    static <T, P, N> JSONArray<N[], P, N[]> createBasicArray(
-            JSONBuilder<T> builder, int depth,
+    static <R, T, P, N> JSONArray<R, N[], P, N[]> createBasicArray(
+            JSONBuilder<R, T> builder,
             final ToMemberFunction<T, N[]> accessor,
             final ArrayCompletion<P> ending) {
-        return new JSONArray<N[], P, N[]>(
+        return new JSONArray<R, N[], P, N[]>(
                 builder.beginArray(accessor),
                 new IteratorFunction<N[], N[]>() {
                     @Override
@@ -83,8 +83,8 @@ public abstract class JSONArray<T, P, N> {
 
     // Object
 
-    public <M> JSONObject<M, P> beginObject(IterMemberFunction<T, M> accessor) {
-        return new JSONObject<M, P>(builder.beginObject(iterator, accessor)) {
+    public <M> JSONObject<R, M, P> beginObject(IterMemberFunction<T, M> accessor) {
+        return new JSONObject<R, M, P>(builder.beginObject(iterator, accessor)) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -94,8 +94,8 @@ public abstract class JSONArray<T, P, N> {
 
     // Array
 
-    public <M, N2> JSONArray<M, P, N2> array(IterMemberFunction<T, M> accessor, IteratorFunction<M, N2> iterator) {
-        return new JSONArray<M, P, N2>(builder.beginArray(this.iterator, accessor), iterator) {
+    public <M, N2> JSONArray<R, M, P, N2> array(IterMemberFunction<T, M> accessor, IteratorFunction<M, N2> iterator) {
+        return new JSONArray<R, M, P, N2>(builder.beginArray(this.iterator, accessor), iterator) {
             @Override
             P arrayEnded() {
                 return childCompleted();
@@ -103,8 +103,8 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    public <M extends List<N2>, N2> JSONArray<M, P, M> listArray(IterMemberFunction<T, M> accessor) {
-        return new JSONArray<M, P, M>(
+    public <M extends List<N2>, N2> JSONArray<R, M, P, M> listArray(IterMemberFunction<T, M> accessor) {
+        return new JSONArray<R, M, P, M>(
                 builder.beginArray(this.iterator, accessor),
                 new IteratorFunction<M, M>() {
                     @Override
@@ -119,8 +119,8 @@ public abstract class JSONArray<T, P, N> {
         };
     }
 
-    public <N2> JSONArray<N2[], P, N2[]> basicArray(IterMemberFunction<T, N2[]> accessor) {
-        return new JSONArray<N2[], P, N2[]>(
+    public <N2> JSONArray<R, N2[], P, N2[]> basicArray(IterMemberFunction<T, N2[]> accessor) {
+        return new JSONArray<R, N2[], P, N2[]>(
                 builder.beginArray(this.iterator, accessor),
                 new IteratorFunction<N2[], N2[]>() {
                     @Override
@@ -141,7 +141,12 @@ public abstract class JSONArray<T, P, N> {
         builder.addBuilder(iterator, renderer.builder, accessor);
         return this.childCompleted();
     }
-
+/* TODO: Does this make sense
+    public P recurseRoot(IterMemberFunction<T, R> accessor) {
+        builder.recurseRoot(iterator, accessor);
+        return this.childCompleted();
+    }
+*/
     // Null
 
     public P empty() {

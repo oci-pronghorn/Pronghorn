@@ -5,10 +5,10 @@ import com.ociweb.json.JSONType;
 
 import java.util.List;
 
-public abstract class JSONRoot<T, P> {
-    protected final JSONBuilder<T> builder;
+public abstract class JSONRoot<R, T, P> {
+    protected final JSONBuilder<R, T> builder;
 
-    JSONRoot(JSONBuilder<T> builder) {
+    JSONRoot(JSONBuilder<R, T> builder) {
         this.builder = builder;
         builder.start();
     }
@@ -22,7 +22,7 @@ public abstract class JSONRoot<T, P> {
 
     // Object
 
-    public JSONObject<T, P> beginObject() {
+    public JSONObject<R, T, P> beginObject() {
         return beginObject(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -31,8 +31,8 @@ public abstract class JSONRoot<T, P> {
         });
     }
 
-    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
-        return new JSONObject<M, P>(builder.beginObject(accessor)) {
+    public <M> JSONObject<R, M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<R, M, P>(builder.beginObject(accessor)) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -42,7 +42,7 @@ public abstract class JSONRoot<T, P> {
 
     // Array
     
-    public <N> JSONArray<T, P, N> array(IteratorFunction<T, N> iterator) {
+    public <N> JSONArray<R, T, P, N> array(IteratorFunction<T, N> iterator) {
         return this.array(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -51,8 +51,8 @@ public abstract class JSONRoot<T, P> {
         }, iterator);
     }
 
-    public <M, N> JSONArray<M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder, builder.getDepth() + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
+    public <M, N> JSONArray<R, M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
+        return JSONArray.createArray(builder, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -60,8 +60,8 @@ public abstract class JSONRoot<T, P> {
         });
     }
 
-    public <M extends List<N>, N> JSONArray<M, P, M> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+    public <M extends List<N>, N> JSONArray<R, M, P, M> listArray(ToMemberFunction<T, M> accessor) {
+        return JSONArray.createListArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -69,8 +69,8 @@ public abstract class JSONRoot<T, P> {
         });
     }
 
-    public <N> JSONArray<N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, builder.getDepth() + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+    public <N> JSONArray<R, N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
+        return JSONArray.createBasicArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -84,7 +84,12 @@ public abstract class JSONRoot<T, P> {
         builder.addBuilder(renderer.builder, accessor);
         return this.childCompleted();
     }
-
+/* TODO: does not make sense yet
+    public <M> P recurseRoot(ToMemberFunction<T, R> accessor) {
+        builder.recursiveRoot(accessor);
+        return this.childCompleted();
+    }
+*/
     // Null
 
     public P empty() {

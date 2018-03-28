@@ -10,36 +10,36 @@ import com.ociweb.json.template.StringTemplateScript;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
+// TODO: support rational, decimal
 // TODO: implement the primitive type converters, including enums
+// TODO: selectable builders - supports "not there" and requires ',' refactor
 // TODO: refactor for duplicate code
 
 // Maintain no dependencies the public API classes (i.e. JSONObject)
 
-class JSONBuilder<T> {
+class JSONBuilder<R, T> {
     // Do not store mutable state used during render.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
     private final StringTemplateBuilder<T> objNullBranch;
+    private /*final*/ JSONBuilder<R, R> root;
 
     JSONBuilder() {
-        this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0);
+        this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0, null);
     }
 
-    JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
+    JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth, JSONBuilder<R, R> root) {
         this.scripts = scripts;
         this.kw = kw;
         this.depth = depth;
+        this.root = root;
         objNullBranch = new StringTemplateBuilder<>();
         kw.Null(objNullBranch);
-    }
 
-    JSONKeywords getKeywords() {
-        return kw;
-    }
-
-    int getDepth() {
-        return depth;
+        if (root == null) {
+            this.root = (JSONBuilder<R, R>)this;
+        }
     }
 
     void start() {
@@ -61,7 +61,7 @@ class JSONBuilder<T> {
 
     // Helper
 
-    JSONBuilder<T> addFieldPrefix(int objectElementIndex, String name) {
+    JSONBuilder<R, T> addFieldPrefix(int objectElementIndex, String name) {
         if (objectElementIndex == 0) {
             kw.FirstObjectElement(scripts, depth);
         }
@@ -75,10 +75,7 @@ class JSONBuilder<T> {
 
     // Sub Builders
 
-    // TODO: recursive builders
-    // TODO: selectable builders
-
-    <M> void addBuilder(final JSONBuilder<M> builder, final ToMemberFunction<T, M> accessor) {
+    <M> void addBuilder(final JSONBuilder<?, M> builder, final ToMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
@@ -93,7 +90,13 @@ class JSONBuilder<T> {
         });
     }
 
-    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<M> builder, final IterMemberFunction<T, M> accessor) {
+    void recurseRoot(final ToMemberFunction<T, R> accessor) {
+        if (root != this) {
+            addBuilder(root, accessor);
+        }
+    }
+
+    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<?, M> builder, final IterMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
             public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
@@ -114,10 +117,14 @@ class JSONBuilder<T> {
             }
         });
     }
-
+/* TODO: does this make sense?
+    <N> void recurseRoot(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, R> accessor) {
+        addBuilder(iterator, root, accessor);
+    }
+*/
     // Object
 
-    public <M> JSONBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
+    public <M> JSONBuilder<R, M> beginObject(final ToMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
@@ -140,10 +147,10 @@ class JSONBuilder<T> {
                 return accessor.get(o) == null ? 0 : 1;
             }
         });
-        return new JSONBuilder<M>(accessorScript, kw, depth + 1);
+        return new JSONBuilder<R, M>(accessorScript, kw, depth + 1, root);
     }
 
-    <N, M> JSONBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
+    <N, M> JSONBuilder<R, M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
         scripts.add(new StringTemplateIterScript<T, N>() {
@@ -165,7 +172,7 @@ class JSONBuilder<T> {
                 return node;
             }
         });
-        return new JSONBuilder<M>(accessorBranch, kw, depth + 1);
+        return new JSONBuilder<R, M>(accessorBranch, kw, depth + 1, root);
     }
 
     void endObject() {
@@ -174,7 +181,7 @@ class JSONBuilder<T> {
 
     // Array
 
-    <M> JSONBuilder<M> beginArray(final ToMemberFunction<T, M> func) {
+    <M> JSONBuilder<R, M> beginArray(final ToMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
         kw.OpenArray(arrayBuilder, depth);
 
@@ -196,10 +203,10 @@ class JSONBuilder<T> {
                 return func.get(o) == null ? 0 : 1;
             }
         });
-        return new JSONBuilder<M>(arrayBuilder, kw, depth + 1);
+        return new JSONBuilder<R, M>(arrayBuilder, kw, depth + 1, root);
     }
 
-    public <N, M> JSONBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
+    public <N, M> JSONBuilder<R, M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
@@ -222,7 +229,7 @@ class JSONBuilder<T> {
                 return node;
             }
         });
-        return new JSONBuilder<M>(notNullBranch, kw, depth + 1);
+        return new JSONBuilder<R, M>(notNullBranch, kw, depth + 1, root);
     }
 
     void endArray() {
@@ -508,8 +515,6 @@ class JSONBuilder<T> {
 
     // Decimal
 
-    // TODO: support rational, decimal
-
     void addDecimal(final int precision, final ToDoubleFunction<T> func) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
@@ -631,9 +636,6 @@ class JSONBuilder<T> {
     }
 
     // String
-
-    // TODO: support Appendable writing directly writer
-    // TODO: convenience API from "toString"
 
     void addString(final ToStringFunction<T> func) {
         kw.Quote(scripts);
