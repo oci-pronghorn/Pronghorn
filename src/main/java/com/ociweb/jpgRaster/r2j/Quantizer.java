@@ -37,12 +37,10 @@ public class Quantizer extends PronghornStage {
 		}
 	}
 	
-	public static void quantize(MCU mcu, Header header) {
-		quantizeMCU(mcu.y, header.quantizationTables[header.colorComponents[0].quantizationTableID]);
-		if (header.numComponents > 1) {
-			quantizeMCU(mcu.cb, header.quantizationTables[header.colorComponents[1].quantizationTableID]);
-			quantizeMCU(mcu.cr, header.quantizationTables[header.colorComponents[2].quantizationTableID]);
-		}
+	public static void quantize(MCU mcu) {
+		quantizeMCU(mcu.y, JPG.qTable0);
+		quantizeMCU(mcu.cb, JPG.qTable1);
+		quantizeMCU(mcu.cr, JPG.qTable1);
 		return;
 	}
 
@@ -89,7 +87,7 @@ public class Quantizer extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 				
-				quantize(mcu, header);
+				quantize(mcu);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
