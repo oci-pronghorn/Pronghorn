@@ -1,6 +1,7 @@
 package com.ociweb.jpgRaster;
 
 import java.util.ArrayList;
+import com.ociweb.jpgRaster.j2r.HuffmanDecoder;
 
 public class JPG {
 	public static class QuantizationTable {
@@ -65,7 +66,7 @@ public class JPG {
 		public short[] cr = new short[64];
 	}
 	
-	public static final int[] zigZagMap = new int[]  {
+	public static final int[] zigZagMap = {
 			0,   1,  8, 16,  9,  2,  3, 10,
 			17, 24, 32, 25, 18, 11,  4,  5,
 			12, 19, 26, 33, 40, 48, 41, 34,
@@ -177,6 +178,11 @@ public class JPG {
 	public static final HuffmanTable hACTable0;
 	public static final HuffmanTable hACTable1;
 	
+	public static final ArrayList<ArrayList<Integer>> DCTableCodes0;
+	public static final ArrayList<ArrayList<Integer>> DCTableCodes1;
+	public static final ArrayList<ArrayList<Integer>> ACTableCodes0;
+	public static final ArrayList<ArrayList<Integer>> ACTableCodes1;
+	
 	static {
 		qTable0 = new QuantizationTable();
 		qTable0.precision = 8;
@@ -196,6 +202,7 @@ public class JPG {
 				hDCTable0.symbols.get(i).add(hDCTable0Symbols[pos]);
 			}
 		}
+		DCTableCodes0 = HuffmanDecoder.generateCodes(hDCTable0);
 
 		hDCTable1 = new HuffmanTable();
 		hDCTable1.tableID = 1;
@@ -206,6 +213,7 @@ public class JPG {
 				hDCTable1.symbols.get(i).add(hDCTable1Symbols[pos]);
 			}
 		}
+		DCTableCodes1 = HuffmanDecoder.generateCodes(hDCTable1);
 
 		hACTable0 = new HuffmanTable();
 		hACTable0.tableID = 0;
@@ -216,6 +224,7 @@ public class JPG {
 				hACTable0.symbols.get(i).add(hACTable0Symbols[pos]);
 			}
 		}
+		ACTableCodes0 = HuffmanDecoder.generateCodes(hACTable0);
 
 		hACTable1 = new HuffmanTable();
 		hACTable1.tableID = 1;
@@ -226,5 +235,6 @@ public class JPG {
 				hACTable1.symbols.get(i).add(hACTable1Symbols[pos]);
 			}
 		}
+		ACTableCodes1 = HuffmanDecoder.generateCodes(hACTable1);
 	}
 }

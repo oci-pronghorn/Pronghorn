@@ -27,3 +27,6 @@ RemoteSystemsTempFiles/\.project
 *.bmp
 
 bin/*
+tests/*
+tests.zip
+j2r.jar

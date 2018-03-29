@@ -19,7 +19,7 @@ public class RGBToYCbCr extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
-	static byte[] rgb = new byte[3];
+	static short[] ycbcr = new short[3];
 	
 	public RGBToYCbCr(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
@@ -28,30 +28,28 @@ public class RGBToYCbCr extends PronghornStage {
 		this.verbose = verbose;
 	}
 
-	private static byte[] convertToRGB(short Y, short Cb, short Cr) {
-		short r, g, b;
-		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
-		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
-		b = (short)((double)Y + 1.772 * ((double)Cb) + 128);
-		if (r < 0)   r = 0;
-		if (r > 255) r = 255;
-		if (g < 0)   g = 0;
-		if (g > 255) g = 255;
-		if (b < 0)   b = 0;
-		if (b > 255) b = 255;
-		rgb[0] = (byte)r;
-		rgb[1] = (byte)g;
-		rgb[2] = (byte)b;
-		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ")");
-		return rgb;
+	private static void convertToRGB(short r, short g, short b) {
+		short y, cb, cr;
+		y  = (short)(0   +  0.299    * r +  0.587    * g +  0.114    * b);
+		cb = (short)(128 + -0.168935 * r + -0.331665 * g + -0.500590 * b);
+		cr = (short)(128 +  0.499813 * r + -0.418531 * g + -0.081282 * b);
+		if (y < 0)    y = 0;
+		if (y > 255)  y = 255;
+		if (cb < 0)   cb = 0;
+		if (cb > 255) cb = 255;
+		if (cr < 0)   cr = 0;
+		if (cr > 255) cr = 255;
+		ycbcr[0] = y;
+		ycbcr[1] = cb;
+		ycbcr[2] = cr;
 	}
 	
 	public static void convertYCbCrToRGB(MCU mcu) {
 		for (int i = 0; i < 64; ++i) {
-			byte[] rgb = convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
-			mcu.y[i] = rgb[0];
-			mcu.cb[i] = rgb[1];
-			mcu.cr[i] = rgb[2];
+			convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
+			mcu.y[i] = ycbcr[0];
+			mcu.cb[i] = ycbcr[1];
+			mcu.cr[i] = ycbcr[2];
 		}
 		return;
 	}
