@@ -67,42 +67,7 @@ public class HuffmanEncoder extends PronghornStage {
 	}
 	
 	public static void main(String[] args) {
-		BitWriter b = new BitWriter();
-		
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(1);
-		
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(1);
-		
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(0);
-		b.putBit(0);
-		b.putBit(1);
-		b.putBit(1);
-		
-		b.putBits(7, 3);
-		b.putBits(0, 2);
-		
-		b.printData();
+//		System.out.print(String.format("%8s", Integer.toBinaryString(sizeCode(-7) & 0xFF)).replace(" ", "0") + "  ");
 	}
 	
 	private final Pipe<JPGSchema> input;
@@ -122,6 +87,20 @@ public class HuffmanEncoder extends PronghornStage {
 	static short previousCrDC = 0;
 
 	static BitWriter b;
+	
+	/*private static int sizeCode(int x) {
+		if ( x < 0) {
+			int length = (int) Math.ceil(Math.log(x) / Math.log(2));
+			int y = 2147483647;
+			x = 0 - x;
+			return (x^y);
+		}
+		return x;
+	}*/
+	
+	private static int bitLength(int x) {
+		return (int) Math.ceil(Math.log(x) / Math.log(2));
+	}
 
 	private static boolean encodeMCUComponent(
 			  ArrayList<ArrayList<Integer>> DCTableCodes,
@@ -131,8 +110,52 @@ public class HuffmanEncoder extends PronghornStage {
 			  short[] component,
 			  short previousDC) {
 
-
-
+		
+		boolean broken = false;
+		for (int j = 63; j > 0; --j) {
+			int numZeroes = 0;
+			if (component[j] == 0) {
+				++numZeroes;
+				continue;
+			}
+			if (numZeroes > 15) {
+				System.out.println("Huffman Error creating zero run length");
+				broken = true;
+				break;
+			}
+			
+			component[j] -= previousDC;
+			int length = bitLength(component[j]);
+			if (component[j] < 0) {
+				component[j] = (short)((0 - component[j])^32767);
+			}
+			
+			for (int i = 0; i < DCTable.symbols.get(length).size(); ++i) {
+				if (component[j] == DCTable.symbols.get(length).get(i)) {
+					b.putBits(component[j], length);
+					b.putBits(DCTableCodes.get(length).get(i), bitLength(DCTableCodes.get(length).get(i)));
+					b.putBits(numZeroes, 4);
+					break;
+				}
+			}
+		}
+		if (broken) {
+			return false;
+		}
+		
+		component[0] -= previousDC;
+		int length = bitLength(component[0]);
+		if ( component[0] < 0) {
+			component[0] = (short)((0 - component[0])^32767);
+		}
+		
+		for (int i = 0; i < DCTable.symbols.get(length).size(); ++i) {
+			if (component[0] == DCTable.symbols.get(length).get(i)) {
+				b.putBits(component[0], length);
+				b.putBits(DCTableCodes.get(length).get(i), bitLength(DCTableCodes.get(length).get(i)));
+				break;
+			}
+		}
 		return true;
 	}
 
