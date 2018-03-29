@@ -638,14 +638,14 @@ class JSONBuilder<R, T> {
     // String
 
     void addString(final ToStringFunction<T> func) {
-        kw.Quote(scripts);
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
+                kw.Quote(writer);
                 writer.append(func.applyAsString(source));
+                kw.Quote(writer);
             }
         });
-        kw.Quote(scripts);
     }
 
     void addNullableString(final ToStringFunction<T> func) {
