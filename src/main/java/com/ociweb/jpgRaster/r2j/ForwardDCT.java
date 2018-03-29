@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /*
- * Updated Inverse DCT Algorithm is based on the Guetzli JPEG encoder's
+ * Updated Forward DCT Algorithm is based on the Guetzli JPEG encoder's
  * DCT implementation. This code can be found here:
  * 	https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc
  */
@@ -33,9 +33,9 @@ public class ForwardDCT extends PronghornStage {
 		this.verbose = verbose;
 	}
 	
-	private static double[] idctMap = new double[64];
+	private static double[] fdctMap = new double[64];
 	
-	// prepare idctMap
+	// prepare fdctMap
 	static {
 		for (int u = 0; u < 8; ++u) {
 			double c = 1.0 / 2.0;
@@ -43,7 +43,7 @@ public class ForwardDCT extends PronghornStage {
 				c = 1 / Math.sqrt(2.0) / 2.0;
 			}
 			for (int x = 0; x < 8; ++x) {
-				idctMap[u * 8 + x] = c * Math.cos((2.0 * x + 1.0) * u * Math.PI / 16.0);
+				fdctMap[u * 8 + x] = c * Math.cos((2.0 * x + 1.0) * u * Math.PI / 16.0);
 			}
 		}
 	}
@@ -53,7 +53,7 @@ public class ForwardDCT extends PronghornStage {
 		for (int y = 0; y < 8; ++y) {
 			temp = 0;
 			for (int v = 0; v < 8; ++v) {
-				temp += in[v * 8 + offset] * idctMap[8 * v + y];
+				temp += in[v * 8 + offset] * fdctMap[8 * y + v];
 			}
 			out[y * 8 + offset] = temp;
 		}
@@ -64,7 +64,7 @@ public class ForwardDCT extends PronghornStage {
 		for (int x = 0; x < 8; ++x) {
 			temp = 0;
 			for (int u = 0; u < 8; ++u) {
-				temp += in[u + offset * 8] * idctMap[8 * u + x];
+				temp += in[u + offset * 8] * fdctMap[8 * x + u];
 			}
 			out[x + offset * 8] = (short) temp;
 		}
