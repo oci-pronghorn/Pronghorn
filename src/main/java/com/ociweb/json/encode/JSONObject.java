@@ -90,6 +90,15 @@ public abstract class JSONObject<R, T, P> {
         return this;
     }
 
+    public JSONSelect<R, T, JSONObject<R, T, P>> beginSelect(String name) {
+        return new JSONSelect<R, T, JSONObject<R, T, P>>(builder.addFieldPrefix(name).beginSelect()) {
+            @Override
+            JSONObject<R, T, P> selectEnded() {
+                return JSONObject.this;
+            }
+        };
+    }
+
     // Null
 
     public JSONObject<R, T, P> constantNull(String name) {

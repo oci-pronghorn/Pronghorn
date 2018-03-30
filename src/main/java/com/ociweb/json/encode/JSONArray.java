@@ -141,12 +141,22 @@ public abstract class JSONArray<R, T, P, N> {
         builder.addBuilder(iterator, renderer.builder, accessor);
         return this.childCompleted();
     }
-/* TODO: Does this make sense
+
+/* TODO: Does this make sense?
     public P recurseRoot(IterMemberFunction<T, R> accessor) {
         builder.recurseRoot(iterator, accessor);
         return this.childCompleted();
     }
 */
+    public JSONSelect<R, T, P> beginSelect() {
+        return new JSONSelect<R, T, P>(builder.beginSelect(iterator)) {
+            @Override
+            P selectEnded() {
+                return childCompleted();
+            }
+        };
+    }
+
     // Null
 
     public P empty() {

@@ -52,6 +52,9 @@ public class JSONObjectTests {
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
                     .integer("y", o->o.i+6)
+                    .beginSelect("cond")
+                        .tryCase(o->false).constantNull()
+                    .endSelect()
                     .basicArray("bob", o-> new Integer[] {332}).string((o, i) -> o[i].toString())
                     .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> o.get(i).toString())
                 .endObject();
@@ -60,12 +63,17 @@ public class JSONObjectTests {
                     .renderer("v", json1, o->o.i+5)
                     .renderer("x", json2, o->o)
                     .renderer("z", json2, o->null)
+                    .beginSelect("cond")
+                        .tryCase(o->false).integer(o->42)
+                        .tryCase(o->true).integer(o->43)
+                    .endSelect()
                     .beginObject("always", o->null)
+                        .empty()
                     .endObject()
                 .endObject();
         assertTrue(json3.isLocked());
         json3.render(out, new BasicObj());
-        assertEquals("{\"v\":14,\"x\":{\"y\":15,\"bob\":[\"332\"],\"bob\":[\"224\",\"213\"]},\"z\":null,\"always\":null}", out.toString());
+        assertEquals("{\"v\":14,\"x\":{\"y\":15,\"bob\":[\"332\"],\"bob\":[\"224\",\"213\"]},\"z\":null,\"cond\":43,\"always\":null}", out.toString());
     }
 
     @Test

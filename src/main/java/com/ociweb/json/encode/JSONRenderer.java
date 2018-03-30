@@ -23,11 +23,4 @@ public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
     JSONRenderer<T> rootEnded() {
         return this;
     }
-/* TODO: will need
-    @Override
-    public <M> JSONRenderer<T> recurseRoot(ToMemberFunction<T, T> accessor) {
-        assert(false) : "Renderer cannot recurse self";
-        return null;
-    }
-*/
 }

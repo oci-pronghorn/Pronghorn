@@ -2,7 +2,6 @@ package com.ociweb.json.template;
 
 import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.appendable.ByteWriter;
-import com.ociweb.json.encode.function.ToMemberFunction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +60,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		append(
 			new StringTemplateScript<T>() {
 				@Override
-				public void fetch(AppendableByteWriter writer, T source) {
+				public void render(AppendableByteWriter writer, T source) {
 					writer.write(byteData, 0, byteData.length);
 				}
 			});
@@ -71,7 +70,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
+					public void render(AppendableByteWriter writer, T source) {
 						N node = null;
 						for(int i = 0; (node = data.fetch(writer, source, i, node)) != null; i++) {
 						}
@@ -89,11 +88,11 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
+					public void render(AppendableByteWriter writer, T source) {
 						int i = branching.branch(source);
 						if (i != -1) { // -1 is no-op
 							assert (i < localData.length) : "String template builder selected invalid branch.";
-							localData[i].fetch(writer, source);
+							localData[i].render(writer, source);
 						}
 					}
 				});
@@ -108,7 +107,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 	public void render(AppendableByteWriter writer, T source) {
 		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
-			script[i].fetch(writer, source);
+			script[i].render(writer, source);
 		}
 	}
 

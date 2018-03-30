@@ -32,11 +32,20 @@ public class JSONRecursiveTests {
     public void testRecurseObjectMember_Null() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
                 .beginObject()
-                .integer("i", o->o.i)
-                .recurseRoot("m", o->o.m)
+                    .integer("i", o->o.i)
+                    .recurseRoot("m", o->o.m)
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj(null));
         assertEquals("{\"i\":9,\"m\":null}", out.toString());
+    }
+
+    @Test
+    public void testRecurseRenderer_NoOp() {
+        JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
+            .recurseRoot(o->o);
+        assertTrue(json.isLocked());
+        json.render(out, new BasicObj(null));
+        assertEquals("", out.toString());
     }
 }

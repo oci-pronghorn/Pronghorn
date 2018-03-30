@@ -18,12 +18,13 @@ import com.ociweb.pronghorn.util.Appendables;
 
 // Maintain no dependencies the public API classes (i.e. JSONObject)
 
-class JSONBuilder<R, T> {
+class JSONBuilder<R, T> implements StringTemplateScript<T> {
     // Do not store mutable state used during render.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
     private /*final*/ JSONBuilder<R, R> root;
+
     private byte[] declaredMemberName;
     private ThreadLocal<ObjectRenderState> ors;
 
@@ -59,7 +60,7 @@ class JSONBuilder<R, T> {
         return scripts.isLocked();
     }
 
-    void render(AppendableByteWriter writer, T source) {
+    public void render(AppendableByteWriter writer, T source) {
         scripts.render(writer, source);
     }
 
@@ -105,7 +106,7 @@ class JSONBuilder<R, T> {
     }
 
     private void prefixObjectMemberName(byte[] declaredMemberName, int depth, ByteWriter writer) {
-        if (this.ors != null) {
+        if (declaredMemberName != null && this.ors != null) {
             ObjectRenderState ors = this.ors.get();
             if (ors != null) {
                 ors.prefixObjectMemberName(declaredMemberName, depth, writer);
@@ -116,20 +117,26 @@ class JSONBuilder<R, T> {
     private StringTemplateScript<T> createNullObjectScript(byte[] declaredMemberName) {
         return new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 kw.Null(writer);
             }
         };
     }
 
+    private byte[] consumeDeclaredMemberName() {
+        byte[] declaredMemberName = this.declaredMemberName;
+        this.declaredMemberName = null;
+        return declaredMemberName;
+    }
+
     // Sub Builders
 
     <M> void addBuilder(final JSONBuilder<?, M> builder, final ToMemberFunction<T, M> accessor) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 M member = accessor.get(source);
                 if (member == null) {
@@ -169,15 +176,59 @@ class JSONBuilder<R, T> {
             }
         });
     }
+
 /* TODO: does this make sense?
     <N> void recurseRoot(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, R> accessor) {
         addBuilder(iterator, root, accessor);
     }
 */
+    JSONBuilder<R, T> beginSelect() {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
+        builder.declaredMemberName = declaredMemberName;
+        builder.ors = ors;
+        this.scripts.add(builder);
+        return builder;
+    }
+
+    <N> JSONBuilder<R,T> beginSelect(IteratorFunction<T, N> iterator) {
+        // TODO:
+        return null;
+    }
+
+    JSONBuilder<R, T> tryCase() {
+        final byte[] declaredMemberName = this.declaredMemberName;
+        JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
+        builder.declaredMemberName = declaredMemberName;
+        builder.ors = ors;
+        return builder;
+    }
+
+    void endSelect(int count, final ToBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
+        consumeDeclaredMemberName();
+        final StringTemplateScript<T>[] caseScripts = new StringTemplateScript[count];
+        for (int i = 0; i < count; i++) {
+            final JSONBuilder<?, T> builder = cases[i];
+            caseScripts[i] = builder;
+        }
+
+        scripts.add(caseScripts, new StringTemplateBranching<T>() {
+            @Override
+            public int branch(T source) {
+                for (int i = 0; i < count; i++) {
+                    if (branches[i].applyAsBool(source)) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+        });
+    }
+
     // Object
 
     public <M> JSONBuilder<R, M> beginObject(final ToMemberFunction<T, M> accessor) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
@@ -186,7 +237,7 @@ class JSONBuilder<R, T> {
         final StringTemplateScript<T> objNullBranch = createNullObjectScript(declaredMemberName);
         final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 newOrs.get().beginObjectRender();
                 accessorScript.render(writer, accessor.get(source));
@@ -246,14 +297,14 @@ class JSONBuilder<R, T> {
     // Array
 
     <M> JSONBuilder<R, M> beginArray(final ToMemberFunction<T, M> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
         kw.OpenArray(arrayBuilder, depth);
 
         final StringTemplateScript<T> objNullBranch = createNullObjectScript(declaredMemberName);
         final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 arrayBuilder.render(writer, func.get(source));
             }
@@ -305,14 +356,14 @@ class JSONBuilder<R, T> {
     // Null
 
     void addNull() {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(createNullObjectScript(declaredMemberName));
     }
 
     <N> void addNull(final IteratorFunction<T, N> iterator) {
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 N node = null;
                 for (int i = 0; (node = iterator.get(source, i, node)) != null; i++) {
                     if (i > 0) {
@@ -327,10 +378,10 @@ class JSONBuilder<R, T> {
     // Bool
 
     void addBool(final ToBoolFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 if (func.applyAsBool(source)) {
                     kw.True(writer);
@@ -343,10 +394,10 @@ class JSONBuilder<R, T> {
     }
 
     void addBool(final ToBoolFunction<T> isNull, final ToBoolFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
+            public void render(final AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 if (isNull.applyAsBool(source)) {
                     kw.Null(writer);
@@ -469,10 +520,10 @@ class JSONBuilder<R, T> {
     // Integer
 
     void addInteger(final ToLongFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 Appendables.appendValue(writer, func.applyAsLong(source));
             }
@@ -480,10 +531,10 @@ class JSONBuilder<R, T> {
     }
 
     void addInteger(final ToBoolFunction<T> isNull, final ToLongFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 if (isNull.applyAsBool(source)) {
                     kw.Null(writer);
@@ -591,10 +642,10 @@ class JSONBuilder<R, T> {
     // Decimal
 
     void addDecimal(final int precision, final ToDoubleFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
+            public void render(final AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 double v = func.applyAsDouble(source);
                 Appendables.appendDecimalValue(writer, (long)(v * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
@@ -603,10 +654,10 @@ class JSONBuilder<R, T> {
     }
 
     void addDecimal(final int precision, final ToBoolFunction<T> isNull, final ToDoubleFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
+            public void render(final AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 if (isNull.applyAsBool(source)) {
                     kw.Null(writer);
@@ -717,10 +768,10 @@ class JSONBuilder<R, T> {
     // String
 
     void addString(final ToStringFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 kw.Quote(writer);
                 writer.append(func.applyAsString(source));
@@ -730,10 +781,10 @@ class JSONBuilder<R, T> {
     }
 
     void addNullableString(final ToStringFunction<T> func) {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 CharSequence s = func.applyAsString(source);
                 if (s == null) {

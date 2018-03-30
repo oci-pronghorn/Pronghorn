@@ -84,12 +84,21 @@ public abstract class JSONRoot<R, T, P> {
         builder.addBuilder(renderer.builder, accessor);
         return this.childCompleted();
     }
-/* TODO: does not make sense yet
+
     public <M> P recurseRoot(ToMemberFunction<T, R> accessor) {
-        builder.recursiveRoot(accessor);
+        builder.recurseRoot(accessor);
         return this.childCompleted();
     }
-*/
+
+    public JSONSelect<R, T, P> beginSelect() {
+        return new JSONSelect<R, T, P>(builder.beginSelect()) {
+            @Override
+            P selectEnded() {
+                return childCompleted();
+            }
+        };
+    }
+
     // Null
 
     public P empty() {
