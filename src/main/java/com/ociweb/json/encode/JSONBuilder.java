@@ -108,7 +108,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         }
     }
 
-    private StringTemplateScript<T> createNullObjectScript(byte[] declaredMemberName) {
+    private StringTemplateScript<T> createNullObjectScript(final byte[] declaredMemberName) {
         return new StringTemplateScript<T>() {
             @Override
             public void render(AppendableByteWriter writer, T source) {
@@ -195,7 +195,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         return builder;
     }
 
-    void endSelect(int count, final ToBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
+    void endSelect(final int count, final ToBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
         consumeDeclaredMemberName();
         final StringTemplateScript<T>[] caseScripts = new StringTemplateScript[count];
         for (int i = 0; i < count; i++) {
