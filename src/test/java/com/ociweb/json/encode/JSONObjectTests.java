@@ -51,10 +51,10 @@ public class JSONObjectTests {
                 .integer(o->o);
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
                 .beginObject()
-                    .integer("y", o->o.i+6)
-                    .beginSelect("cond")
+                    .beginSelect("no comma")
                         .tryCase(o->false).constantNull()
                     .endSelect()
+                    .integer("y", o->o.i+6)
                     .basicArray("bob", o-> new Integer[] {332}).string((o, i) -> o[i].toString())
                     .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> o.get(i).toString())
                 .endObject();

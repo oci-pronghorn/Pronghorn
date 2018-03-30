@@ -13,7 +13,6 @@ import com.ociweb.pronghorn.util.Appendables;
 
 // TODO: support rational, decimal
 // TODO: implement the primitive type converters, including enums
-// TODO: selectable builders - supports "not there" and requires ',' refactor
 // TODO: refactor for duplicate code
 
 // Maintain no dependencies the public API classes (i.e. JSONObject)
@@ -182,6 +181,8 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         addBuilder(iterator, root, accessor);
     }
 */
+    // Select
+
     JSONBuilder<R, T> beginSelect() {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
@@ -189,11 +190,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         builder.ors = ors;
         this.scripts.add(builder);
         return builder;
-    }
-
-    <N> JSONBuilder<R,T> beginSelect(IteratorFunction<T, N> iterator) {
-        // TODO:
-        return null;
     }
 
     JSONBuilder<R, T> tryCase() {
@@ -223,6 +219,10 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 return -1;
             }
         });
+    }
+
+    <N> void endSelect(IteratorFunction<T, N> iterator, int count, final IterBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
+        // TODO
     }
 
     // Object

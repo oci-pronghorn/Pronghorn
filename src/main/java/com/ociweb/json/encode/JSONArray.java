@@ -6,7 +6,7 @@ import com.ociweb.json.JSONType;
 import java.util.List;
 
 public abstract class JSONArray<R, T, P, N> {
-    private final JSONBuilder<R, T> builder;
+    final JSONBuilder<R, T> builder;
     private final IteratorFunction<T, N> iterator;
 
     JSONArray(JSONBuilder<R, T> builder, IteratorFunction<T, N> iterator) {
@@ -148,8 +148,8 @@ public abstract class JSONArray<R, T, P, N> {
         return this.childCompleted();
     }
 */
-    public JSONSelect<R, T, P> beginSelect() {
-        return new JSONSelect<R, T, P>(builder.beginSelect(iterator)) {
+    public JSONArraySelect<R, T, P, N> beginSelect() {
+        return new JSONArraySelect<R, T, P, N>(builder.beginSelect(), iterator) {
             @Override
             P selectEnded() {
                 return childCompleted();

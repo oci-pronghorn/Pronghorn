@@ -2,6 +2,7 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertEquals;
@@ -73,5 +74,19 @@ public class JSONSelectTests {
         assertTrue(json.isLocked());
         json.render(out, true);
         assertEquals("{\"value\":true,\"recurse\":{\"value\":false}}", out.toString());
+    }
+
+    @Test
+    @Ignore
+    public void testCases_Array() {
+        JSONRenderer<Boolean[]> json = new JSONRenderer<Boolean[]>()
+                .basicArray(o->o)
+                    .beginSelect()
+                        .tryCase((o,i)->o[i]).integer((o,i)->o[i]?42:43)
+                        .tryCase((o,i)->!o[i]).string((o,i)->o[i]?"hello":"there")
+                    .endSelect();
+        assertTrue(json.isLocked());
+        json.render(out, new Boolean[] {true, true, false, true});
+        assertEquals("[42,42,\"there\",42]", out.toString());
     }
 }
