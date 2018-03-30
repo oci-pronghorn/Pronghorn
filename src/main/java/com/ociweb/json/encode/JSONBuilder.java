@@ -52,11 +52,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     void complete() {
         kw.Complete(scripts, depth);
-        scripts.lock();
-    }
-
-    boolean isLocked() {
-        return scripts.isLocked();
     }
 
     public void render(AppendableByteWriter writer, T source) {
@@ -157,7 +152,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<?, M> builder, final IterMemberFunction<T, M> accessor) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -267,7 +262,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -329,7 +324,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -417,7 +412,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -438,7 +433,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterBoolFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -549,7 +544,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -565,7 +560,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterLongFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -673,7 +668,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -690,7 +685,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -802,7 +797,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
@@ -820,7 +815,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     <N> void addNullableString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {

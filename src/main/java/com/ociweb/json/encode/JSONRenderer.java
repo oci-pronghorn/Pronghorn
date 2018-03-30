@@ -3,6 +3,8 @@ package com.ociweb.json.encode;
 import com.ociweb.json.appendable.AppendableByteWriter;
 
 public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
+    private boolean locked = false;
+
     public JSONRenderer() {
         super(new JSONBuilder<T, T>());
     }
@@ -12,15 +14,17 @@ public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
     }
 
     public boolean isLocked() {
-        return this.builder.isLocked();
+        return locked;
     }
 
     public void render(AppendableByteWriter writer, T source) {
+        assert(locked) : "JSONRenderers can only be rendered once locked";
         builder.render(writer, source);
     }
 
     @Override
     JSONRenderer<T> rootEnded() {
+        locked = true;
         return this;
     }
 }
