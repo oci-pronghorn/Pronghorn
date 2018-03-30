@@ -22,20 +22,28 @@ class JSONBuilder<R, T> {
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
-    private final StringTemplateBuilder<T> objNullBranch;
+    private final StringTemplateScript<T> objNullBranch;
     private /*final*/ JSONBuilder<R, R> root;
 
     JSONBuilder() {
         this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0, null);
     }
 
-    JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth, JSONBuilder<R, R> root) {
+    JSONBuilder(JSONKeywords kw) {
+        this(new StringTemplateBuilder<T>(), kw, 0, null);
+    }
+
+    private JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth, JSONBuilder<R, R> root) {
         this.scripts = scripts;
         this.kw = kw;
         this.depth = depth;
         this.root = root;
-        objNullBranch = new StringTemplateBuilder<>();
-        kw.Null(objNullBranch);
+        objNullBranch = new StringTemplateScript<T>() {
+            @Override
+            public void fetch(AppendableByteWriter appendable, Object source) {
+                kw.Null(appendable);
+            }
+        };
 
         if (root == null) {
             this.root = (JSONBuilder<R, R>)this;
@@ -128,19 +136,17 @@ class JSONBuilder<R, T> {
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
-        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        notNullBranch.add(new StringTemplateScript<T>() {
+        final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
                 accessorScript.render(writer, accessor.get(source));
             }
-        });
+        };
 
-        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateScript<T>[] nullableBranches = new StringTemplateScript[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
-        nullableBranches[1] = notNullBranch;
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
@@ -185,15 +191,14 @@ class JSONBuilder<R, T> {
         final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
         kw.OpenArray(arrayBuilder, depth);
 
-        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        notNullBranch.add(new StringTemplateScript<T>() {
+        final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
             public void fetch(AppendableByteWriter writer, T source) {
                 arrayBuilder.render(writer, func.get(source));
             }
-        });
+        };
 
-        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateScript<T>[] nullableBranches = new StringTemplateScript[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 

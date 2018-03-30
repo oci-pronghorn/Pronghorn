@@ -1,6 +1,5 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.template.StringTemplateBuilder;
 import com.ociweb.json.appendable.AppendableByteWriter;
 
 public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
@@ -9,7 +8,7 @@ public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
     }
 
     public JSONRenderer(JSONKeywords keywords) {
-        super(new JSONBuilder<T, T>(new StringTemplateBuilder<T>(), keywords, 0, null));
+        super(new JSONBuilder<T, T>(keywords));
     }
 
     public boolean isLocked() {

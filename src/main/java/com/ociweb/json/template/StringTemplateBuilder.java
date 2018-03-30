@@ -80,23 +80,11 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
-	public <M> StringTemplateBuilder<T> add(final StringTemplateBuilder<M> data, final ToMemberFunction<T, M> accessor) {
-		toLock(data);
-		append(
-				new StringTemplateScript<T>() {
-					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
-						data.render(writer, accessor.get(source));
-					}
-				});
-		return this;
-	}
-
-	public StringTemplateBuilder<T> add(final StringTemplateBuilder<T>[] data, final StringTemplateBranching<T> branching) {
-		final StringTemplateBuilder<T>[] localData = new StringTemplateBuilder[data.length];
+	public StringTemplateBuilder<T> add(final StringTemplateScript<T>[] data, final StringTemplateBranching<T> branching) {
+		final StringTemplateScript<T>[] localData = new StringTemplateScript[data.length];
 		System.arraycopy(data, 0, localData, 0, data.length);
 		for (int i = 0; i < localData.length; i++) {
-			toLock(data[i]);
+			//toLock(data[i]);
 		}
 		append(
 				new StringTemplateScript<T>() {
@@ -105,7 +93,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 						int i = branching.branch(source);
 						if (i != -1) { // -1 is no-op
 							assert (i < localData.length) : "String template builder selected invalid branch.";
-							localData[i].render(writer, source);
+							localData[i].fetch(writer, source);
 						}
 					}
 				});
