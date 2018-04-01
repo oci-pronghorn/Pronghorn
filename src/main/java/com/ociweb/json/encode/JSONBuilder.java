@@ -58,7 +58,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         scripts.render(writer, source);
     }
 
-    // Helper
+    // Object Helpers
 
     JSONBuilder<R, T> addFieldPrefix(String name) {
         this.declaredMemberName = name.getBytes();
@@ -124,6 +124,53 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         return declaredMemberName;
     }
 
+    // Array Helpers
+
+    interface RenderIteration<M, N> {
+        void render(AppendableByteWriter appendable, M member, int i, N node);
+    }
+
+    private <M, N> StringTemplateIterScript<T, N> createIterator(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor, final RenderIteration<M, N> func) {
+        return new StringTemplateIterScript<T, N>() {
+            @Override
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
+                node = iterator.get(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(writer, depth);
+                    }
+                    M member = accessor.get(source, i);
+                    if (member == null) {
+                        kw.Null(writer);
+                    } else {
+                        func.render(writer, member, i, node);
+                    }
+                }
+                return node;
+            }
+        };
+    }
+
+    private <N> StringTemplateIterScript<T, N> createIterator(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final RenderIteration<T, N> func) {
+        return new StringTemplateIterScript<T, N>() {
+            @Override
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
+                node = iterator.get(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(writer, depth);
+                    }
+                    if (isNull != null && isNull.applyAsBool(source, i)) {
+                        kw.Null(writer);
+                    } else {
+                        func.render(writer, source, i, node);
+                    }
+                }
+                return node;
+            }
+        };
+    }
+
     // Sub Builders
 
     <M> void addBuilder(final JSONBuilder<?, M> builder, final ToMemberFunction<T, M> accessor) {
@@ -150,25 +197,12 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<?, M> builder, final IterMemberFunction<T, M> accessor) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, accessor, new RenderIteration<M, N>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    M member = accessor.get(source, i);
-                    if (member == null) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        builder.render(writer, member);
-                    }
-                }
-                return node;
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                builder.render(writer, m);
             }
-        });
+        }));
     }
 
 /* TODO: does this make sense?
@@ -260,26 +294,19 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
         final ThreadLocal<ObjectRenderState> newOrs = createOrs();
 
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, new IterMemberFunction<T, M>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    M member = accessor.get(source, i);
-                    newOrs.get().beginObjectRender();
-                    if (member == null) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        accessorBranch.render(writer, member);
-                    }
-                }
-                return node;
+            public M get(T o, int i) {
+                newOrs.get().beginObjectRender();
+                return accessor.get(o, i);
             }
-        });
+        }, new RenderIteration<M, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                accessorBranch.render(writer, m);
+            }
+        }));
+
         JSONBuilder<R, M> builder = new JSONBuilder<>(accessorBranch, kw, depth + 1, root);
         builder.ors = newOrs;
         return builder;
@@ -322,25 +349,12 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, func, new RenderIteration<M, N>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    M element = func.get(source, i);
-                    if (element == null) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        notNullBranch.render(writer, element);
-                    }
-                }
-                return node;
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                notNullBranch.render(writer, m);
             }
-        });
+        }));
         return new JSONBuilder<R, M>(notNullBranch, kw, depth + 1, root);
     }
 
@@ -410,50 +424,20 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (func.applyAsBool(source, i)) {
-                        kw.True(writer);
-                    }
-                    else {
-                        kw.False(writer);
-                    }
-                }
-                return node;
-            }
-        });
+        addBool(iterator, null, func);
     }
 
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterBoolFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        if (func.applyAsBool(source, i)) {
-                            kw.True(writer);
-                        }
-                        else {
-                            kw.False(writer);
-                        }
-                    }
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                if (func.applyAsBool(source, i)) {
+                    kw.True(writer);
                 }
-                return node;
-            }
-        });
+                else {
+                    kw.False(writer);
+                }
+            }}));
     }
 
     void addBool(ToBoolFunction<T> func, JSONType encode) {
@@ -542,40 +526,15 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    Appendables.appendValue(writer, func.applyAsLong(source, i));
-                }
-                return node;
-            }
-        });
+        addInteger(iterator, null, func);
     }
 
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterLongFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        Appendables.appendValue(writer, func.applyAsLong(source, i));
-                    }
-                }
-                return node;
-            }
-        });
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                Appendables.appendValue(writer, func.applyAsLong(source, i));
+            }}));
     }
 
     void addInteger(ToLongFunction<T> func, JSONType encode) {
@@ -666,42 +625,17 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    double v = func.applyAsDouble(source, i);
-                    Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
-                }
-                return node;
-            }
-        });
+        addDecimal(iterator, precision, null, func);
     }
 
     <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        double v = func.applyAsDouble(source, i);
-                        Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
-                    }
-                }
-                return node;
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                double v = func.applyAsDouble(source, i);
+                Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
             }
-        });
+        }));
     }
 
     void addDecimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
@@ -795,44 +729,23 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    kw.Quote(writer);
-                    writer.append(func.applyAsString(source, i));
-                    kw.Quote(writer);
-                }
-                return node;
-            }
-        });
+        addNullableString(iterator, func);
     }
 
     <N> void addNullableString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        scripts.add(createIterator(iterator, new IterMemberFunction<T, CharSequence>() {
             @Override
-            public N render(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    CharSequence s = func.applyAsString(source, i);
-                    if (s == null) {
-                        kw.Null(writer);
-                    } else {
-                        kw.Quote(writer);
-                        writer.append(s);
-                        kw.Quote(writer);
-                    }
-                }
-                return node;
+            public CharSequence get(T o, int i) {
+                return func.applyAsString(o, i);
             }
-        });
+        }, new RenderIteration<CharSequence, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, CharSequence member, int i, N node) {
+                kw.Quote(writer);
+                writer.append(member);
+                kw.Quote(writer);
+            }
+        }));
     }
 
     void addString(ToStringFunction<T> func, JSONType encode) {
