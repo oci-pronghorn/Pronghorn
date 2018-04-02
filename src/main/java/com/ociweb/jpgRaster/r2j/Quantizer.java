@@ -30,10 +30,9 @@ public class Quantizer extends PronghornStage {
 	}
 	
 	private static void quantizeMCU(short[] MCU, QuantizationTable table) {
-
 		for (int i = 0; i < MCU.length; ++i) {
 			// type casting might be unsafe for 16-bit precision quantization tables
-			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] * table.table[i]);
+			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] / table.table[i]);
 		}
 	}
 	
