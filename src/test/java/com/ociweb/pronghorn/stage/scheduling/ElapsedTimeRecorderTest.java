@@ -22,7 +22,7 @@ public class ElapsedTimeRecorderTest {
 			
 		assertEquals(32,etr.elapsedAtPercentile(etr, .5f));
 		//this is an estimate so this value is ok.
-		assertEquals(12,etr.elapsedAtPercentile(etr, .16f));	
+		assertEquals(16,etr.elapsedAtPercentile(etr, .16f));	
 	}
 	
 	@Test

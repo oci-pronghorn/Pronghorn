@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
@@ -50,7 +51,7 @@ public class TapeReadStage extends PronghornStage {
     public void startup() {
         fileChannel = inputFile.getChannel();
         header = ByteBuffer.allocate(8);
-        header.clear();
+        ((Buffer)header).clear();
         intHeader = header.asIntBuffer();
         INT_BUFFER_WRAPPER = new IntBuferWritableByteChannel();
         
@@ -106,13 +107,13 @@ public class TapeReadStage extends PronghornStage {
                     return false;
                 }
                 
-                intHeader.clear();                
+                ((Buffer)intHeader).clear();                
                 blobToRead = intHeader.get();
                 slabToRead = intHeader.get();                
 
                 assert(slabToRead>0);
 
-                header.clear();                      
+                ((Buffer)header).clear();                      
                 
                 if ((slabToRead>>2) >= target.sizeOfSlabRing) {
                     throw new UnsupportedOperationException("Unable to read file into short target pipe. The file chunks are larger than the pipe, please define a pipe to hold at least "+(slabToRead>>2)+" messages.");
@@ -133,7 +134,7 @@ public class TapeReadStage extends PronghornStage {
                 //  * may need to wait for free space on ring
                 //
                 ByteBuffer byteBuff = Pipe.wrappedBlobRingA(target);  //Get the blob array as a wrapped byte buffer     
-                byteBuff.clear();
+                ((Buffer)byteBuff).clear();
                 
                 int blobMask = Pipe.blobMask(target);
                 
@@ -141,12 +142,12 @@ public class TapeReadStage extends PronghornStage {
                 int tail = Pipe.getBlobRingTailPosition(target) & blobMask;
                 
                 int writeToPos = targetBlobPos & blobMask; //Get the offset in the blob where we should write
-                byteBuff.position(writeToPos);   
+                ((Buffer)byteBuff).position(writeToPos);   
                 
                 if (writeToPos < tail) {
-                    byteBuff.limit(Math.min(tail, writeToPos + blobToRead ));
+                	((Buffer)byteBuff).limit(Math.min(tail, writeToPos + blobToRead ));
                 } else {
-                    byteBuff.limit(Math.min(byteBuff.capacity(), writeToPos +  blobToRead ));
+                	((Buffer)byteBuff).limit(Math.min(byteBuff.capacity(), writeToPos +  blobToRead ));
                 }                                
                 
                 int count = fileChannel.read(byteBuff);
@@ -162,20 +163,20 @@ public class TapeReadStage extends PronghornStage {
             if (0==blobToRead && slabToRead>0) {
                           
                 IntBuffer slabBuffer = Pipe.wrappedSlabRing(target);
-                slabBuffer.clear();
+                ((Buffer)slabBuffer).clear();
                                 
                 int slabMask = Pipe.slabMask(target);
                 //NOTE: this is the published tail position and may be the most expensive call if we have contention, could be cached if this becomes a problem.
                 int tail = (int)Pipe.tailPosition(target) & slabMask;
    
                 int writeToPos = (int)targetSlabPos & slabMask;
-                slabBuffer.position( writeToPos );
+                ((Buffer)slabBuffer).position( writeToPos );
 
                 int slabToReadInts = slabToRead>>2;
                 if (writeToPos < tail) {
-                    slabBuffer.limit(Math.min(tail, writeToPos + slabToReadInts ));
+                	((Buffer)slabBuffer).limit(Math.min(tail, writeToPos + slabToReadInts ));
                 } else {
-                    slabBuffer.limit(Math.min(slabBuffer.capacity(), writeToPos + slabToReadInts ));
+                	((Buffer)slabBuffer).limit(Math.min(slabBuffer.capacity(), writeToPos + slabToReadInts ));
                 }
     
                 long count = fileChannelRead(slabBuffer);

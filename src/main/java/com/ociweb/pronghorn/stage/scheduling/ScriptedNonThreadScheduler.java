@@ -31,9 +31,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private long[] rates;
     private long[] lastRun;
     public PronghornStage[] stages;
+    private long[] sla;
 
     private DidWorkMonitor didWorkMonitor;
-    
+	private long deepSleepCycleLimt;
+	
     private static AtomicInteger threadGroupIdGen = new AtomicInteger();
     
     private long maxRate;
@@ -48,6 +50,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
+    private static final long humanLimitNS = 10_000_000;
+    
 
     private int[] producersIdx;
 
@@ -66,8 +70,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private static final boolean debugNonReturningStages = false;
 
     private ScriptedSchedule schedule = null;
-    private int[] enabled; //used for turning off subGraph sequences when not in use. has jumps for jump over
-    private int[] sequenceLookup; //schedule
 
     private boolean recordTime;    
     
@@ -77,6 +79,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private boolean shownLowLatencyWarning = false;
     
+	private ElapsedTimeRecorder sleepETL = null;//new ElapsedTimeRecorder();
+	
     private byte[] stateArray;
     
     public int indexOfStage(PronghornStage stage) {
@@ -107,9 +111,34 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		//skipScript = new int[0];
     		return;
     	}
+    	
+    	this.sla = new long[stages.length];
+    	int j = stages.length;
+    	while (--j>=0) {
+    		Number num = (Number) GraphManager.getNota(graphManager, stages[j].stageId, 
+    				GraphManager.SLA_LATENCY, null);
+    		this.sla[j] = null==num?Long.MAX_VALUE:num.longValue(); 
+    	}
     	        
-		PronghornStage pronghornStage = stages[stages.length-1];
-		name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
+    	StringBuilder totalName = new StringBuilder();
+    	
+    	for(int s = 0; s<stages.length; s++) {
+    		PronghornStage pronghornStage = stages[s];
+    		Appendables.appendValue(totalName, pronghornStage.stageId).append(":");
+    		totalName.append(pronghornStage.getClass().getSimpleName()
+    				 .replace("Stage","")
+    				 .replace("Supervisor","")
+    				 .replace("Extraction","")
+    				 .replace("Listener","L")
+    				 .replace("Reader","R")
+    				 .replace("Writer","W")    				 
+    				 .replace("Server","S")
+    				 .replace("Client","C"));
+    		if (s<stages.length-1) {
+    			totalName.append(",");
+    		}
+    	}
+    	name = totalName.toString();
 
         // Pre-allocate rates based on number of stages.
     	final int defaultValue = 2_000_000;
@@ -138,48 +167,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         // Build the script.
         schedule = PMath.buildScriptedSchedule(rates, reverseOrder);
 
-        boolean newBlock = true;
-        int scriptLength = schedule.script.length;
-        
-        sequenceLookup = new int[scriptLength];
-        enabled = new int[scriptLength];//zeros are not used
-                
-        int lastBlockIdx = -1;
-        int blockRun = 0;
-        int blockId = 0;
-        for(int i = 0; i<scriptLength; i++) {
-        	
-        	int value = schedule.script[i];
-     
-        	if (newBlock) {
-        		//record this position as a new block
-        		sequenceLookup[blockId] = i; //allows lookup to the right index for enable/disable call and is disbled
-        		lastBlockIdx = i;
-        		blockRun = 0;
-        		     		
-        		//TODO: need all the pipes associated with this sequence
-        		//TODO: need all the pipes going into this sequence;
-        		
-        		
-        		
-        		
-        		blockId++;
-        	}
-        	blockRun++;
-        	
-        	if (-1==value) { //end of run
-        	    //write the skip size but negative to enable all blocks for now.
-        		enabled[lastBlockIdx] = (0-blockRun);
-        		
-        		newBlock = true;
-        	} else {
-        		newBlock = false;
-        	}
-        	    	
-        	
-        }
-        
-             
+        //in cycles but under the human perception of time
+        deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
 
         if (null != debugStageOrder) {	
         	try {
@@ -318,7 +307,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	if (null==stages) {
     		return;
     	}
-
+    	modificationLock.lock(); //hold the lock
         startupAllStages(stages.length);
        
         setupHousekeeping();
@@ -497,7 +486,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                         //client work is complete so move stage of stage to started.
                         GraphManager.setStateToStarted(graphManager, stage.stageId);
                         unInitCount--;
-                    } catch (Throwable t) {
+                    } catch (Exception t) {
                         recordTheException(stage, t, this);
                         try {
                             if (null != stage) {
@@ -505,7 +494,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                                 GraphManager.shutdownStage(graphManager, stage);
                                 clearCallerId();
                             }
-                        } catch (Throwable tx) {
+                        } catch (Exception tx) {
                             recordTheException(stage, tx, this);
                         } finally {
                             if (null != stage) {
@@ -572,87 +561,78 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     
     private int platformThresholdForSleep = 0;
 
+    private ReentrantLock modificationLock = new ReentrantLock();
 
-	
-	private ReentrantLock modificationLock = new ReentrantLock();
-    
     @Override
     public void run() {
-
-    	assert(null != shutdownRequested) : "startup() must be called before run.";
-        
-    	playScript(graphManager, stages, schedule.script, recordTime);
-				
+    	try {
+    		playScript(this);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();						
+			return;
+		}
     }
 
-	private void playScript(GraphManager gm, PronghornStage[] localStages, 
-			                int[] script, final boolean recordTime) {
+	public static void playScript(ScriptedNonThreadScheduler that) throws InterruptedException {
 
-		if (modificationLock.tryLock()) try {
-			
-			//TODO: before running the full group must compute part of the DynamicDisableSubGraph...
-			
-			
-			int scheduleIdx = 0;
+			assert(null != that.shutdownRequested) : "startup() must be called before run.";
 	
-	        //play the script
-			while (scheduleIdx < script.length) {
-	    		        	   
-				if (enabled[scheduleIdx] > 0) {
-					//skip over this one, it is disabled due to lack of use.
-					scheduleIdx += enabled[scheduleIdx];
-				} else {
-					try {
-						scheduleIdx = runScript(gm, localStages, script, recordTime, scheduleIdx);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();						
-						return;
-					}
-				}
-	        }
+			if (that.modificationLock.hasQueuedThreads()) {
+				that.modificationLock.unlock();
+				Thread.yield();//allow for modification				
+				that.modificationLock.lock();				
+			}			
 			
-		} finally {
-			//release the modification lock so the schedule can be changed. 
-			modificationLock.unlock();
-		}
+		        //play the script
+	   			int scheduleIdx = 0;
+				while (scheduleIdx < that.schedule.script.length) {
+		  
+								long now = System.nanoTime();
+								final long wait = that.blockStartTime - now;
+								assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+						
+								if (Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
+									if (wait>200) { //TODO: this is a hack test for now...
+										//System.err.println(wait);
+										Thread.yield();
+									}
+								} else {
+								
+									if (wait > 0) {
+										that.waitForBatch(wait, that.blockStartTime);
+									} else {
+										//System.err.println("called yield to avoid tight spin");
+										Thread.yield();
+										//may be over-scheduled but may be spikes from the OS or GC.
+									}
+								}
+								
+								if (null!=that.sleepETL) {
+									ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
+								}
+								
+								//NOTE: this moves the blockStartTime forward by the common clock unit.
+								scheduleIdx = that.runBlock(scheduleIdx, that.schedule.script, that.stages, that.graphManager, that.recordTime);
+						
+					
+		        }
+	
 		
     	//this must NOT be inside the lock because this visit can cause a modification
 		//to this same scheduler which will require the lock.
-    	if (null!=checksForLongRuns && System.nanoTime()>nextLongRunningCheck) {
+    	if (null!=that.checksForLongRuns && System.nanoTime()>that.nextLongRunningCheck) {
+    		
+    		long now = System.nanoTime();
     		//NOTE: this is only called by 1 of the nonThreadSchedulers and not often
-    		GraphManager.visitLongRunningStages(gm, checksForLongRuns );
+    		GraphManager.visitLongRunningStages(that.graphManager, that.checksForLongRuns );
 		//////
-			nextLongRunningCheck = System.nanoTime() + longRunningCheckFreqNS;
+    		that.nextLongRunningCheck = System.nanoTime() + that.longRunningCheckFreqNS;
+    		
+    		long duration = System.nanoTime()-now;
+    		logger.info("Thread:{} checking for long runs, took {}",that.name,duration);
+    		
     	}
 	
-	}
-
-	private int runScript(GraphManager gm, PronghornStage[] localStages, int[] script, final boolean recordTime,
-			int scheduleIdx) throws InterruptedException {
-		//  -XX:+UseG1GC
-		//  -XX:+UseConcMarkSweepGC 
-		
-		// We need to wait between scheduler blocks, or else
-		// we'll just burn through the entire schedule nearly instantaneously.
-		//
-		// If we're still waiting, we need to wait until its time to run again.
-		long now = System.nanoTime();
-		final long wait = blockStartTime - now;
-		assert((blockStartTime-System.nanoTime())<=schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-		
-  	//	System.out.println("checking fastest clock. "+wait+" common clock "+schedule.commonClock);
-		
-		if (wait > 0) {
-			waitForBatch(wait, blockStartTime);
-		} else {
-			//System.err.println("called yield to avoid tight spin");
-			Thread.yield();
-			//may be over-scheduled but may be spikes from the OS or GC.
-		}
-
-		//NOTE: this moves the blockStartTime forward by the common clock unit.
-		scheduleIdx = runBlock(scheduleIdx, script, localStages, gm, recordTime);
-		return scheduleIdx;
 	}
 
 	/////////////////
@@ -708,12 +688,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
-		if (noWorkCounter<1000) {//do it since we have had recent work
+		if (noWorkCounter<1000 || deepSleepCycleLimt<=0) {//do it since we have had recent work
 			
 			long nowMS = System.nanoTime()/1_000_000l;
 			
 			if (0!=(nowMS&7)) {// 1/8 of the time every 1 ms we take a break for task manager
-				while (totalRequiredSleep>2000) {
+
+				while (totalRequiredSleep>400) {
 					long now = System.nanoTime();
 					if (totalRequiredSleep>500_000) {
 						LockSupport.parkNanos(totalRequiredSleep);
@@ -738,99 +719,148 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			}
 		} else {
 			//this is to support deep sleep when it has been a very long time without work.
-			if (noWorkCounter > 1_000_000) {
+			
+			while ((noWorkCounter > deepSleepCycleLimt)) {
 				try {
-					Thread.sleep(2);
+					Thread.sleep(humanLimitNS/1_000_000);
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
-				}				
-			}
+					break;
+				}
+				//we stay in this loop until we find real work needs to be done
+				if (!accumulateWorkHistory()) {
+					break;
+				}
+			}	
 		}
 	}
 
-	private void accumulateWorkHistory() {
+	@SuppressWarnings("unchecked")
+	private boolean accumulateWorkHistory() {
 		boolean hasData=false;
 		int p = inputPipes.length;
-		while (--p>=0) {			
-			if (Pipe.contentRemaining(inputPipes[p])>0) {
-				hasData=true;
-				break;
+		//if we have any producers we must not do this!!!
+		if (p>0 && producersIdx.length==0) {			
+			while (--p>=0) {			
+				if (Pipe.contentRemaining(inputPipes[p])>0) {
+					hasData=true;
+					break;
+				}
 			}
-		}
-		if (hasData) {
-			noWorkCounter = 0;	
-		} else {			
-			noWorkCounter++;
+			if (hasData) {
+				noWorkCounter = 0;	
+			} else {			
+				noWorkCounter++;
+			}
+			return true; //we had something to count
+		} else {
+			noWorkCounter = 0;
+			return false; //this stage has no inputs and must always be run.
 		}
 	}
-
-	private int storeNewThreshold(long wait) {
-		int platformThresholdForSleep;
-		platformThresholdForSleep = (int)Math.min( wait*2, 2_000_000);//2 MS max value
-		//logger.trace("new sleep threshold {}", platformThresholdForSleep);
-		return platformThresholdForSleep;
-	}
-
 	
 	private int runBlock(int scheduleIdx, int[] script, 
 			             PronghornStage[] stages,
 			             GraphManager gm, final boolean recordTime) {
 			
 		final long startNow = System.nanoTime();
-		final DidWorkMonitor localDidWork = didWorkMonitor;
-		
 		boolean shutDownRequestedHere = false;
 		int inProgressIdx;
 		// Once we're done waiting for a block, we need to execute it!
-		top:
-		do {
-		    // If it isn't out of bounds or a block-end (-1), run it!
-		    if ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
-
-		    	long start = 0;	
-		    	long SLAStart = System.currentTimeMillis();		    	
-		    	start = System.nanoTime();
-				DidWorkMonitor.begin(localDidWork,start);
-		    			    	
-		    	PronghornStage stage = stages[inProgressIdx];
-				if (!run(gm, stage, this)) {
-					shutDownRequestedHere = true;
-				}
-		        
-				if (DidWorkMonitor.didWork(localDidWork)) {
-			    	final long now = System.nanoTime();		        
-			    	long duration = now-start;
-			    	
-			    	Number sla = (Number) GraphManager.getNota(graphManager, stage.stageId, GraphManager.SLA_LATENCY, null);
-			    	if (null!=sla && duration>sla.longValue()) {		    		
-			    		reportSLAViolation(stages, gm, inProgressIdx, SLAStart, duration);		    		
-			    	}
-					if (recordTime) {		
-			 			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
-							if (!shownLowLatencyWarning) {
-								shownLowLatencyWarning = true;
-								logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
-							}
-						}
-					}
-				}
-				
-		    } else {
-		    	break;
-		    }
-		} while (true);
+	
+		// If it isn't out of bounds or a block-end (-1), run it!
+		while ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
+			shutDownRequestedHere = monitoredStageRun(stages, gm, 
+	    			recordTime, didWorkMonitor, 
+	    			shutDownRequestedHere,
+					inProgressIdx);			
+		}
 
 		//given how long this took to run set up the next run cycle.
 		blockStartTime = startNow+schedule.commonClock;
 		
+		return detectShutdownScheduleIdx(scheduleIdx, shutDownRequestedHere);
+	}
+
+	private final int detectShutdownScheduleIdx(int scheduleIdx, boolean shutDownRequestedHere) {
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
-		if (!(shutDownRequestedHere || shutdownRequested.get())) {
-			return scheduleIdx;
+		return (!(shutDownRequestedHere || shutdownRequested.get())) ? scheduleIdx : triggerShutdown();
+	}
+
+	private int triggerShutdown() {
+		if (!shutdownRequested.get()) {
+			shutdown();
+		}
+		return Integer.MAX_VALUE;
+	}
+
+	private boolean monitoredStageRun(PronghornStage[] stages, GraphManager gm, final boolean recordTime,
+			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere, int inProgressIdx) {
+		long start = 0;	
+		long SLAStart = System.currentTimeMillis();		    	
+		start = System.nanoTime();
+		DidWorkMonitor.begin(localDidWork,start);
+				    	
+		PronghornStage stage = stages[inProgressIdx];
+		
+		if (!GraphManager.isStageShuttingDown(stateArray, stage.stageId)) {
+
+		        if (debugNonReturningStages) {
+		            logger.info("begin run {}", stage);///for debug of hang
+		        }
+		        setCallerId(stage.boxedStageId);
+		        
+		        runStage(stage);
+		        
+		        clearCallerId();
+
+		        if (debugNonReturningStages) {
+		            logger.info("end run {}", stage);
+		        }
 		} else {
-			if (!shutdownRequested.get()) {
-				shutdown();
+		    processShutdown(gm, stage);
+		    shutDownRequestedHere = true;
+		}
+		 
+			        
+		if (!DidWorkMonitor.didWork(localDidWork)) {
+		} else {
+			final long now = System.nanoTime();		        
+			long duration = now-start;
+			
+			if (duration <= sla[inProgressIdx]) {
+			} else {
+				reportSLAViolation(stages, gm, inProgressIdx, SLAStart, duration);		    		
 			}
-		    return Integer.MAX_VALUE;
+			if (recordTime) {		
+				if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
+					if (!shownLowLatencyWarning) {
+						shownLowLatencyWarning = true;
+						logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
+					}
+				}
+			}
+		}
+		return shutDownRequestedHere;
+	}
+
+	private final void runStage(PronghornStage stage) {
+		try {
+			stage.run();
+		} catch (Exception e) {			
+			recordTheException(stage, e, this);
+			//////////////////////
+			//check the output pipes to ensure no writes are in progress
+			/////////////////////
+			int c = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
+			for(int i=1; i<=c; i++) {		
+				if (Pipe.isInBlobFieldWrite((Pipe<?>) GraphManager.getOutputPipe(graphManager, stage.stageId, i))) {
+					//we can't recover from this exception because write was left open....
+					shutdown();	
+					break;
+				}
+			}
+			
 		}
 	}
 
@@ -864,46 +894,32 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return false;
 	}
 
-    private static boolean run(GraphManager graphManager, 
-    		                   PronghornStage stage, 
-    		                   ScriptedNonThreadScheduler that) {
-        try {
-            if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
 
-                if (debugNonReturningStages) {
-                    logger.info("begin run {}", stage);///for debug of hang
-                }
-                that.setCallerId(stage.boxedStageId);
-                stage.run();
-                that.clearCallerId();
 
-                if (debugNonReturningStages) {
-                    logger.info("end run {}", stage);
-                }
-                return true;
-            } else {
-                if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {
-                    GraphManager.shutdownStage(graphManager, stage);
-                    GraphManager.setStateToShutdown(graphManager, stage.stageId);
-                }
-                return false;
-            }
-        } catch (Throwable t) {
-            recordTheException(stage, t, that);
-            throw t;
-        }
-
-    }
+	private static boolean processShutdown(GraphManager graphManager, PronghornStage stage) {
+		if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {
+		    GraphManager.shutdownStage(graphManager, stage);
+		    GraphManager.setStateToShutdown(graphManager, stage.stageId);
+		}
+		return false;
+	}
 
     private Object key = "key";
     
     @Override
     public void shutdown() {
     	
+    	
         if (null!=stages && shutdownRequested.compareAndSet(false, true)) {
 
         	synchronized(key) {
-                boolean debug = false;
+        		
+        		if (null!=sleepETL) {        			
+        			System.err.println("sleep: "+graphManager.name+" "+name);
+        			System.err.println(sleepETL.toString());
+        		}
+        		
+        		boolean debug = false;
                 if (debug) {	
         	        System.err.println();
         	        System.err.println("----------full stages ------------- clock:"+schedule.commonClock);
@@ -993,14 +1009,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         return true;
     }
 
-    private static void recordTheException(final PronghornStage stage, Throwable t, ScriptedNonThreadScheduler that) {
+    private static void recordTheException(final PronghornStage stage, Exception e, ScriptedNonThreadScheduler that) {
         synchronized (that) {
             if (null == that.firstException) {
-                that.firstException = t;
+                that.firstException = e;
             }
         }
 
-        GraphManager.reportError(that.graphManager, stage, t, logger);
+        GraphManager.reportError(that.graphManager, stage, e, logger);
     }
     
     
@@ -1135,6 +1151,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	public ScriptedNonThreadScheduler splitOn(int idx) {
 		assert(idx<stages.length);
 		assert(idx>=0);
+		
+		
+		
 		//stop running while we do the split.
 		modificationLock.lock();
 		//all running of this script is not blocked until we finish this modification.

@@ -114,14 +114,14 @@ public class URLTemplateParser {
 	 * @param path
 	 */
 	public FieldExtractionDefinitions addPath(CharSequence path,
-			                                  int routeId, int pathId) {
+			                                  int routeId, int pathId, int structId) {
 
 		////////////////////////////////////
 		//convert public supported route format eg ${} and #{} into the 
 		//internal trie parser format, field names are extracted and added to lookup parser
 		////////////////////////////////////		
 		activePathId = pathId;
-		activeRouteDef = new FieldExtractionDefinitions(trustText, routeId, pathId);		
+		activeRouteDef = new FieldExtractionDefinitions(trustText, routeId, pathId, structId);		
 		converter.convert(path, et, es);
 				
 		return activeRouteDef;

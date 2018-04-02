@@ -61,8 +61,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
     
 	public final boolean requireClientAuth;//clients must send their cert to connect
 	
-	public static boolean TEST_RECORDS = false;
-
 //	public static long acceptConnectionStart;
 //	public static long acceptConnectionRespond;
 //	

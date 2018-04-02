@@ -337,7 +337,10 @@ public class GraphManager {
 	}
 	
 	public static GraphManager cloneStagesWithNotaKey(GraphManager m, Object key) {
-		GraphManager clone = new GraphManager();
+		GraphManager clone = new GraphManager(
+				m.new GraphManagerStageStateData(),
+				m.recordTypeData, m.name);
+		
 		//register each stage
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
@@ -417,7 +420,11 @@ public class GraphManager {
     }
 	
 	public static GraphManager cloneStagesWithNotaKeyValue(GraphManager m, Object key, Object value) {
-		GraphManager clone = new GraphManager();
+		GraphManager clone = new GraphManager(
+				m.new GraphManagerStageStateData(),
+				m.recordTypeData, m.name);
+		
+		
 		//register each stage
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
@@ -970,6 +977,7 @@ public class GraphManager {
 
 			while (--x>=0) {
 				if (outputs[x]!=null) {
+					Pipe.typeData(outputs[x],gm.recordTypeData);
 					alreadyReg |= (localOutput.id == outputs[x].id);
 				}
 			}
@@ -986,7 +994,8 @@ public class GraphManager {
 			boolean alreadyReg = false;
 
 			while (--x>=0) {
-				if (inputs[x]!=null) {
+				if (inputs[x]!=null) {					
+					Pipe.typeData(inputs[x],gm.recordTypeData);
 					alreadyReg |= (localInput.id == inputs[x].id);
 				}
 			}
@@ -1087,22 +1096,24 @@ public class GraphManager {
 		return true;
 	}
 
-	private static void regOutput(GraphManager pm, Pipe output, int stageId) {
+	private static void regOutput(GraphManager gm, Pipe output, int stageId) {
 		if (null!=output) {
 			int outputId = output.id;
-			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId, pm.stageIdToStage[stageId]); //source +0 then target +1
-			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, outputId, output);				
-			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId, output);
+			Pipe.typeData(output,gm.recordTypeData);
+			gm.ringIdToStages = setValue(gm.ringIdToStages, (outputId*2) , stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
+			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, outputId, output);				
+			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, outputId, output);
 		}
 	}
 	
 
-	private static void regInput(GraphManager pm, Pipe input, int stageId) {
+	private static void regInput(GraphManager gm, Pipe input, int stageId) {
 		if (null!=input) {
 			int inputId = input.id;
-			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId, pm.stageIdToStage[stageId]); //source +0 then target +1
-			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, inputId, input);
-			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId, input);
+			Pipe.typeData(input,gm.recordTypeData);
+			gm.ringIdToStages = setValue(gm.ringIdToStages, (inputId*2)+1, stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
+			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, inputId, input);
+			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, inputId, input);
 		}
 	}
 	

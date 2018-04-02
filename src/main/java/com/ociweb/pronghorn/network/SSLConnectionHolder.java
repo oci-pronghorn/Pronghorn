@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.network;
 public abstract class SSLConnectionHolder {
 
 	public final boolean isTLS;
-	final SSLEngineFactory engineFactory;
+	public final SSLEngineFactory engineFactory;
 
 	SSLConnectionHolder(TLSCertificates tlsCerificates) {
 		this.isTLS = tlsCerificates != null;

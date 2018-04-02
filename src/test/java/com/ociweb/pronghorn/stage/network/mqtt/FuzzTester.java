@@ -6,6 +6,8 @@ import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.mqtt.IdGenStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientResponseStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientToServerEncodeStage;
+import com.ociweb.pronghorn.struct.BStructSchema;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -20,7 +22,7 @@ public class FuzzTester {
 	public void testMQTTClientToServerEncodeStage() {
 		assertTrue(
 				StageTester.runFuzzTest(MQTTClientToServerEncodeStage.class, testDuration, generatorSeed,
-						new Object[]{new ClientCoordinator(3,3, TLSCertificates.defaultCerts),1,1}
+						new Object[]{new ClientCoordinator(3,3, TLSCertificates.defaultCerts, new BStructSchema()),1,1}
 						)
         );
 	}
@@ -29,7 +31,7 @@ public class FuzzTester {
 	public void testMQTTClientResponseStage() {
 		assertTrue(
 				StageTester.runFuzzTest(MQTTClientResponseStage.class, testDuration, generatorSeed,
-						new Object[]{new ClientCoordinator(3,3,TLSCertificates.defaultCerts),1,1}
+						new Object[]{new ClientCoordinator(3,3,TLSCertificates.defaultCerts, new BStructSchema()),1,1}
 						)
         );
 	}

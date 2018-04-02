@@ -87,14 +87,6 @@ public class ServerSocketReaderStage extends PronghornStage {
     public void startup() {
 
     	selectedKeyHolder = new SelectedKeyHashMapHolder();
-    	
-    	if (ServerCoordinator.TEST_RECORDS) {
-			int i = output.length;
-			accumulators = new StringBuilder[i];
-			while (--i >= 0) {
-				accumulators[i]=new StringBuilder();					
-			}
-    	}
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
                 
@@ -397,27 +389,13 @@ public class ServerSocketReaderStage extends PronghornStage {
             return false;
         }
     }
-    
-    private ByteBuffer tempBuf;// = ByteBuffer.allocateDirect(1<<29);
-    
+
+    private int r1; //needed by assert
+    private int r2; //needed by assert
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
     private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
-    	
-    	if (null==tempBuf) {
-    		
-    		try {
-				int size = Math.min(targetPipe.maxVarLen,
-									sourceChannel.getOption(StandardSocketOptions.SO_RCVBUF));
-				logger.info("new direct buffer of size {}",size);
-				tempBuf = ByteBuffer.allocateDirect(size);						
-			} catch (IOException e) {
-				new RuntimeException(e);
-			}
-    		
-    		
-    	}
-    	
+
         //keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
     	ByteBuffer[] b = null;
@@ -430,45 +408,21 @@ public class ServerSocketReaderStage extends PronghornStage {
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap around
                 b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
                        
-                int r1 = b[0].remaining();
-                int r2 = b[1].remaining();
+                assert(collectRemainingCount(b));
                 
-                ((Buffer)tempBuf).limit(r1+r2);//max room                	
-                temp = sourceChannel.read(tempBuf);
-                if (temp>0) {
-                	((Buffer)tempBuf).flip();
-                	
-                	int oldLimit = tempBuf.limit();
-                	if (oldLimit>b[0].remaining()) {
-                		((Buffer)tempBuf).limit(b[0].remaining());
-                	}
-                	
-                	b[0].put(tempBuf);
-                	((Buffer)tempBuf).limit(oldLimit);
-                	
-                	b[1].put(tempBuf);
-                	((Buffer)tempBuf).clear();
-                }
-                
-                //temp = sourceChannel.read(b);
-                
-            	
+                temp = sourceChannel.read(b);
+                                  	
             	if (temp>0){
             		len+=temp;
             	}            
                  
-                int readCount = (r1-b[0].remaining())+(r2-b[1].remaining());
-                assert(readCount == len) : "server "+readCount+" vs "+len;
+                assert(readCountMatchesLength(len, b));
                 
-                if (temp<0) {
-                	//logger.info("client disconnected, so release");
-                	//client was disconnected so release all our resources to ensure they can be used by new connections.
-                	selection.cancel();                	
-                	coordinator.releaseResponsePipeLineIdx(cc.id);    
-    				cc.clearPoolReservation();
-
+                if (temp>=0) {
+                	return publishOrAbandon(channelId, targetPipe, len, b, true, newBeginning, cc);
+                } else {
+                	return disconnected(channelId, targetPipe, newBeginning, cc, selection, len, b);                	
                 }
-                return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
             	
@@ -486,6 +440,28 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
 
+	private int disconnected(long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc,
+			SelectionKey selection, long len, ByteBuffer[] b) {
+		//logger.info("client disconnected, so release");
+		//client was disconnected so release all our resources to ensure they can be used by new connections.
+		selection.cancel();                	
+		coordinator.releaseResponsePipeLineIdx(cc.id);    
+		cc.clearPoolReservation();
+		return publishOrAbandon(channelId, targetPipe, len, b, false, newBeginning, cc);
+	}
+
+	private boolean collectRemainingCount(ByteBuffer[] b) {
+		r1 = b[0].remaining();
+		r2 = b[1].remaining();
+		return true;
+	}
+
+	private final boolean readCountMatchesLength(long len, ByteBuffer[] b) {
+		int readCount = (r1-b[0].remaining())+(r2-b[1].remaining());
+		assert(readCount == len) : "server "+readCount+" vs "+len;
+		return true;
+	}
+
 	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, SSLConnection cc) {
 		//logger.info("{} publish or abandon",System.currentTimeMillis());
 		if (len>0) {
@@ -502,14 +478,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}				
 			
 		//	logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
-			assert(cc.id == channelId) : "should match "+cc.id+" vs "+channelId;
-			
+			assert(cc.id == channelId);			
 	
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 	
 			
-			
-//			bytesConsumed+=len;
 			publishData(targetPipe, channelId, len, cc);                  	 
 			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len,targetPipe,((fullTarget&&isOpen) ? 0 : 1));
 			
@@ -571,11 +544,6 @@ public class ServerSocketReaderStage extends PronghornStage {
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
 
         
-        
-        if (ServerCoordinator.TEST_RECORDS) {
-           testValidContent(cc.getPoolReservation(), targetPipe, originalBlobPosition, (int)len);
-        }
-        
 //ONLY VALID FOR UTF8
 
         if (showRequests) {
@@ -583,7 +551,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         			
         			//TODO: the len here is wrong and must be  both the header size plus the payload size....
         			
-        			Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
+        			Appendables.appendUTF8(new StringBuilder(), 
+        					targetPipe.blobRing, 
+        					originalBlobPosition, 
+        					(int)len, targetPipe.blobMask));               
         }
         
         
@@ -598,32 +569,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         //logger.info("done with publish pipe is now "+targetPipe);
     }
     
-    
-	private void testValidContent(final int idx, Pipe<NetPayloadSchema> pipe, int pos, int len) {
-		
-		if (ServerCoordinator.TEST_RECORDS) {
-			
-			//write pipeIdx identifier.
-			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-		
-			
-			boolean confirmExpectedRequests = true;
-			if (confirmExpectedRequests) {
-				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
-				
-				while (accumulators[idx].length() >= HTTPUtil.expectedGet.length()) {
-					
-				   int c = startsWith(accumulators[idx],HTTPUtil.expectedGet); 
-				   if (c>0) {					   
-					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedGet.length());
-					   accumulators[idx].setLength(0);
-					   accumulators[idx].append(remaining);
-				   }
-				}
-			}
-		}
-	}
-    
+     
 	private int startsWith(StringBuilder stringBuilder, String expected2) {
 		
 		int count = 0;

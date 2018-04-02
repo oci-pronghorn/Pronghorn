@@ -219,7 +219,7 @@ public class NetGraphBuilder {
 		
 		while (--i>=0) {
 			if (clientRequests[i].length>0) {
-				ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, writeBufferMultiplier, clientRequests[i]);
+				ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, clientRequests[i]);
 		    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
 		    	ccm.processNota(gm, socketWriteStage);
 			}
@@ -332,26 +332,33 @@ public class NetGraphBuilder {
         
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
-        Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(coordinator.moduleParallelism(), fromModule, config);        
-        boolean captureAll = false;
-        buildRouters(graphManager, receivedFromNet, releaseAfterParse, 
-        		     toModules, errorResponsePipes, routerConfig, coordinator, captureAll);
-		        
+        
+        buildRouters(graphManager, coordinator, releaseAfterParse, 
+        		receivedFromNet, fromModule, toModules, routerConfig,
+				config, false);
+        
         //logger.info("build http ordering supervisors");
         buildOrderingSupers(graphManager, coordinator, coordinator.moduleParallelism(), 
         		            fromModule, sendingToNet);
         
 	}
 
-	private static Pipe<ServerResponseSchema>[] buildErrorResponsePipes(final int routerCount,
-			Pipe<ServerResponseSchema>[][] fromModule, PipeConfig<ServerResponseSchema> config) {
-		Pipe<ServerResponseSchema>[] errorResponsePipes = new Pipe[routerCount];
-        int r = routerCount;
-        while (--r>=0) {
-        	errorResponsePipes[r] = new Pipe<ServerResponseSchema>(config);        	
-        	fromModule[r] = PronghornStage.join(errorResponsePipes[r], fromModule[r]);
-        }
-		return errorResponsePipes;
+	private static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
+			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
+			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPRequestSchema>[][] toModules,
+			final HTTP1xRouterStageConfig routerConfig, PipeConfig<ServerResponseSchema> config,
+			boolean captureAll) {
+		
+
+        Pipe<ServerResponseSchema>[] errorResponsePipes1 = new Pipe[coordinator.moduleParallelism()];
+		int r = coordinator.moduleParallelism();
+		while (--r>=0) {
+					errorResponsePipes1[r] = new Pipe<ServerResponseSchema>(config);        	
+					fromModule[r] = PronghornStage.join(errorResponsePipes1[r], fromModule[r]);
+		}
+		
+		buildRouters(graphManager, receivedFromNet, releaseAfterParse, 
+        		     toModules, errorResponsePipes1, routerConfig, coordinator, captureAll);
 	}
 
 	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(GraphManager graphManager, ServerCoordinator coordinator, final int routerCount,
@@ -491,7 +498,7 @@ public class NetGraphBuilder {
 		int w = socketWriters;
 		while (--w>=0) {
 			
-			ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, coordinator, writeBufferMultiplier, req[w]); //pump bytes out
+			ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, coordinator, req[w]); //pump bytes out
 		    GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", writerStage);
 		   	coordinator.processNota(graphManager, writerStage);
 		}
@@ -533,15 +540,17 @@ public class NetGraphBuilder {
 					continue;
 				}
 				prev = fromRouter[routeId];
+				
+				//this lookup is not right we are mixing route and route..
 				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
 				if (null != extractor) {
-					
+
 					Pipe<HTTPRequestSchema> newFromJSON = 
 							new Pipe<HTTPRequestSchema>( pipe.config() );
 
 					new HTTPRequestJSONExtractionStage(
 							 	graphManager, 
-							 	extractor,
+							 	extractor, routerConfig.getStructIdForRouteId(routeId),
 							 	newFromJSON,
 							 	fromRouter[routeId]
 							);
@@ -1028,7 +1037,7 @@ public class NetGraphBuilder {
 			int maxPartialResponses, int connectionsInBits, int clientRequestCount, int clientRequestSize,
 			TLSCertificates tlsCertificates) {
 		
-		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates);
+		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates, gm.recordTypeData);
 				
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 

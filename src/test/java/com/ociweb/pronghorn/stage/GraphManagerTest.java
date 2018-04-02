@@ -16,7 +16,7 @@ public class GraphManagerTest {
     @Test
     public void notaTests() {
     
-        GraphManager gm = new GraphManager();
+        final GraphManager gm = new GraphManager();
         
         Pipe rb1 = new Pipe(new PipeConfig(RawDataSchema.instance));
         rb1.initBuffers();

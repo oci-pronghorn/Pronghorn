@@ -21,6 +21,7 @@ public class FieldExtractionDefinitions {
 
 	private final TrieParser runtimeParser;
 	private int indexCount;
+	public final int structId;
 	public final int routeId;
 	public final int pathId;
 	public int defaultsCount = 0;
@@ -31,13 +32,13 @@ public class FieldExtractionDefinitions {
 		
 	private static final TrieParser numberParser = textToNumberTrieParser();
 		
-	public FieldExtractionDefinitions(boolean trustText, int routeId, int pathId) {
+	public FieldExtractionDefinitions(boolean trustText, int routeId, int pathId, int structId) {
 		
 		//field name to type and index
 		this.runtimeParser = new TrieParser(64, 2, trustText, true);
 		this.routeId = routeId;
 		this.pathId = pathId;
-
+		this.structId = structId;
 	}
 
 	public int routeId() {

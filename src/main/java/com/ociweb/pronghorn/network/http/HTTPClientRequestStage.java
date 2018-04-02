@@ -5,6 +5,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -13,6 +14,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPClientRequestStage extends PronghornStage {
@@ -55,14 +57,20 @@ public class HTTPClientRequestStage extends PronghornStage {
 		//TODO: we have a bug here detecting EOF so this allows us to shutdown until its found.
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
+		
+		recordTypeData = graphManager.recordTypeData;
+		
 	}
 	
+	private final BStructSchema recordTypeData;
+	private HTTPClientConnectionFactory ccf;
 	
 	@Override
 	public void startup() {
 		
 		super.startup();		
-		
+		ccf = new HTTPClientConnectionFactory(recordTypeData);
+
 	}
 	
 	@Override
@@ -213,7 +221,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	private final TrieParserReader reader = new TrieParserReader(true); 
 	
-
 	private ClientConnection activeConnection =  null;
 	private PipeUTF8MutableCharSquence mCharSequence = new PipeUTF8MutableCharSquence();
 	
@@ -236,7 +243,8 @@ public class HTTPClientRequestStage extends PronghornStage {
  		
  		long connectionId;
 
- 		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200)) {
+ 		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
+ 			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
  			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
  			assert(-1 != connectionId);
  		} else {
@@ -251,7 +259,8 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
  			
-     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen), READER), port, userId);
+     		int hostId = ClientCoordinator.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen), READER);
+			connectionId = ccm.lookup(hostId, port, userId);
  		}
 		
  		if (null!=activeConnection && activeConnection.getId()==connectionId) {
@@ -268,11 +277,19 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  			}
  		
+ 			
+
+ 			
+			//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
+			//int structureId = 
+			
+					
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
- 					 port, userId, output, connectionId, reader);
+ 					 port, userId, output, connectionId, reader, ccf);
  	
+ 			
  		}
  		
 		if (null != activeConnection) {

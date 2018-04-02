@@ -10,6 +10,7 @@ import javax.net.ssl.SSLEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
@@ -17,6 +18,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
@@ -27,12 +29,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	private final ServiceObjectHolder<ClientConnection> connections;
 	
-	//private final TrieParser hostTrie;
-	private static final int inFlightBits = 10;//TODO: make configurable, 1024 is the limit for calls in flight.
-	public static boolean showHistogramResults = false;
-	
-	private final TrieParserReader hostTrieReader;
-	private final byte[] guidWorkspace = new byte[6+512];
 	private final PoolIdx responsePipeLinePool;
 	private Selector selector;
 	private static final Logger logger = LoggerFactory.getLogger(ClientCoordinator.class);
@@ -45,12 +41,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static final TrieParser domainRegistry = new TrieParser(64, 2, false, false, true);
 	public static LongLongHashTable[] conTables = new LongLongHashTable[4];
 	///////////////////////////////////////////////
-	
-	public final int receiveBufferSize;
 
-
+	public static long busyCounter;//dirty count of occurences where client is waiting backed up.
+	private final BStructSchema typeData;
     private PronghornStageProcessor optionalStageProcessor;
-
+	public final int receiveBufferSize;
 	//public long sentTime;
     
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
@@ -61,26 +56,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     		firstStage.requestShutdown();
     		firstStage=null;
     	}
-   // 	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
-    	    	
-    	//logger.trace("Begin hisogram build");
-    	
-    	ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
-    	
-    	int c = 5;
-    	ClientConnection cc = connections.next();
-    	do {
-    		if (null!=cc) {
-    			histRoundTrip.add(cc.histogram());
-    		}
-    			
-    	} while (--c>=0 && null!=(cc = connections.next()));
-    	
-    	if (showHistogramResults) {
-    		
-    		histRoundTrip.report(System.out);
-    	}
-    	
+      	
     }
     
 
@@ -89,7 +65,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, TLSCertificates tlsCertificates) {
+	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, 
+			                 TLSCertificates tlsCertificates, BStructSchema typeData) {
 		super(tlsCertificates);
 		
 		/////////////////////////////////////////////////////////////////////////////////////
@@ -100,11 +77,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		logger.trace("init of Client TLS called {}",isTLS);
 		/////////////////////////////////////////////////////////////////////////////////////
-		
-		
-		int maxUsers = 1<<connectionsInBits;
-		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
-				
 		try {
 			//get values we can not modify from the networking subsystem
 			
@@ -117,11 +89,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		
-		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-		hostTrieReader = new TrieParserReader();
-		
-		responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
+		this.typeData = typeData;
+		this.connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
+
+		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
 	public SSLConnection connectionForSessionId(long hostId) {
@@ -350,7 +321,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
-			long connectionId, TrieParserReader reader) {
+			long connectionId, TrieParserReader reader, AbstractClientConnectionFactory ccf) {
 		
 		        ClientConnection cc = null;
 
@@ -383,13 +354,16 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					try {
 
 				    	//create new connection because one was not found or the old one was closed
-						SSLEngine engine =  ccm.isTLS ?
-								        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
-								        :null;
-								        
-						cc = new ClientConnection(engine, host, lookupHostId(host, reader), port, sessionId, pipeIdx, 
-								                  connectionId, ccm.isTLS, inFlightBits, 
-								                  ccm.receiveBufferSize);
+				
+						//recycle from old one if it is found/given		        
+						int hostId = null!=cc? cc.hostId : lookupHostId(host, reader);						
+						int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
+						
+						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
+													connectionId, 
+													pipeIdx, 
+													hostId,
+													structureId);
 						
 					} catch (IOException ex) {
 						logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
@@ -424,6 +398,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				return doRegister(ccm, outputs, cc);
 
 	}
+
 
 
 	private static ClientConnection doRegister(ClientCoordinator ccm,

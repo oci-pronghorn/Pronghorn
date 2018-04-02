@@ -7,14 +7,15 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ElapsedTimeRecorder {
 
-	private final int[] buckets; 
+	private final int[] buckets = new int[64]; 
+	private final long[] sums   = new long[64]; 
+	
+	
 	private long totalCount;
 	private long maxValue;
 	
 	public ElapsedTimeRecorder() {
-		
-		buckets = new int[64];
-		
+				
 	}
 	
 	public String toString() {
@@ -47,7 +48,11 @@ public class ElapsedTimeRecorder {
 	}
 	
 	public static void record(ElapsedTimeRecorder that, long valueNS) {
-		that.buckets[64 - Long.numberOfLeadingZeros(valueNS)]++;
+
+		int base = 64 - Long.numberOfLeadingZeros(valueNS);
+		that.buckets[base]++;
+		that.sums[base]+=valueNS;
+	
 		that.totalCount++;
 		that.maxValue = Math.max(that.maxValue, valueNS);
 	}
@@ -63,20 +68,29 @@ public class ElapsedTimeRecorder {
 		
 		if (0 != targetCount) {
 			int i = 0;
-			int j = 0; //max;
-			while (i<63) {
+			while (i<that.buckets.length-1) {
 				
+				long sum = that.buckets[i];
 				int b = that.buckets[i++];
-				if (b>0) {
-					j = i;
-				}
+		
 				if (targetCount<=b) {
-					
-					long floor = i<=1 ? 0 : (1L<<(i-2));
-					long ceil = (1L<<(i-1));
-					
-					long dif = ((ceil-floor) * targetCount)/(long)b ; 
-					
+				
+					long floor = i<=1 ? 0 : (1L<<(i-2));					
+					long avg = sum/(long)b;
+										
+					long dif;
+					int half = b>>1;
+					if (half>1) {
+						//weighted to the average
+						if (targetCount<half) {
+							dif = ((floor+avg) * targetCount)/half ;						
+						} else {
+							dif = ((avg+(2*floor)) * (targetCount-half))/half ;
+						}
+					} else {
+						//this is the old linear less accurate solution
+						dif = ((2*floor) * targetCount)/(long)b ; 
+					}
 					return Math.min(that.maxValue, floor + dif); 
 					
 				} else {
@@ -92,7 +106,8 @@ public class ElapsedTimeRecorder {
 	public void add(ElapsedTimeRecorder source) {
 		int i = buckets.length;
 		while (--i>=0) {
-			buckets[i] += source.buckets[i];			
+			buckets[i] += source.buckets[i];	
+			sums[i]+= source.sums[i];
 		}
 		totalCount += source.totalCount;
 		maxValue = Math.max(maxValue, source.maxValue);
@@ -102,7 +117,8 @@ public class ElapsedTimeRecorder {
 	public static void clear(ElapsedTimeRecorder that) {
 		that.totalCount = 0;
 		that.maxValue = 0;
-		Arrays.fill(that.buckets, 0);		
+		Arrays.fill(that.buckets, 0);	
+		Arrays.fill(that.sums, 0);
 	}
 	
 	

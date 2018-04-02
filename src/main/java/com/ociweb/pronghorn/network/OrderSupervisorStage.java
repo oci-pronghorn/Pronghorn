@@ -195,7 +195,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	            haveWork |= processPipe(dataToSend[c], c);
   
 	        }  
-    	} while (--maxIterations>0 && haveWork);
+    	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
     			//|| (quietPeriodCounter<quietPeriod));
     	
     }
@@ -222,6 +222,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
 		    			  
+		    	//dataToSend.length
 		        myPipeIdx = (int)(channelId % poolMod);
 		        outPipe = outgoingPipes[myPipeIdx];
 		        
@@ -277,7 +278,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
 
 				        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-				        	
+				        	if (shutdownInProgress) {
+				        		break;
+				        	}
 		        			//drop the data
 		        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
@@ -329,6 +332,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		continue;
 		    	} else {	
+		    		
 		    		assert(-1 == idx) : "unexpected value";
 		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
 		        	Pipe.releaseReadLock(sourcePipe);
@@ -355,7 +359,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
 				
-		if (failureIterations>10000) {
+		if (failureIterations==10000) { //equals so we only do this once.
 
 	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
 	        
@@ -367,8 +371,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					//we have the most recent history so do display it.
 					displayRecentRequests();
 				}
-				requestShutdown();
-			        
+				shutdownInProgress = true;
 		} else {
 			failureIterations++;
 		}

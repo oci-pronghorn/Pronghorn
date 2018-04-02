@@ -61,7 +61,7 @@ public class ServerNewConnectionStage extends PronghornStage{
         
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         
-        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+ //       GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
         //much larger limit since nothing needs this thread back.
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
@@ -277,7 +277,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           }
 						  
 						  
-						  //logger.debug("server new connection attached for new id {} ",channelId);
+						  logger.info("new server connection attached for new id {} ",channelId);
 						  
 						  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
                                                                                                                             
@@ -286,6 +286,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, channelId));
     						
 						  if (null!=newClientConnections) {
+							  
 	                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
 						  }
 						  

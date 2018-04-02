@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
@@ -75,13 +76,13 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 	    //for paranoid safety we keep our own byteBufferWrappers
 	    blobBuffer1 = Pipe.wrappedBlobRingA(source).duplicate();
 	    slabBuffer1 = Pipe.wrappedSlabRing(source).duplicate();
-	    blobBuffer1.limit(0);
-	    slabBuffer1.limit(0);
+	    ((Buffer)blobBuffer1).limit(0);
+	    ((Buffer)slabBuffer1).limit(0);
 	    
 	    blobBuffer2 = Pipe.wrappedBlobRingB(source).duplicate();
 	    slabBuffer2 = Pipe.wrappedSlabRing(source).duplicate();
-	    blobBuffer2.limit(0);
-	    slabBuffer2.limit(0);
+	    ((Buffer)blobBuffer2).limit(0);
+	    ((Buffer)slabBuffer2).limit(0);
 	    
 	    header = ByteBuffer.allocate(8);
 	    headerInt = header.asIntBuffer();
@@ -134,14 +135,14 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
         int blobLimitB = (blobPosition+ss.totalBytesCopy);
         
         if (blobLimitB>blobLimitA) {
-            ss.blobBuffer1.limit(blobLimitA);
-            ss.blobBuffer2.limit(ss.source.blobMask & blobLimitB);
+        	((Buffer)ss.blobBuffer1).limit(blobLimitA);
+        	((Buffer)ss.blobBuffer2).limit(ss.source.blobMask & blobLimitB);
         } else {
-            ss.blobBuffer1.limit(blobLimitB);
-            ss.blobBuffer2.limit(        0  );                
+        	((Buffer)ss.blobBuffer1).limit(blobLimitB);
+        	((Buffer)ss.blobBuffer2).limit(        0  );                
         }
-        ss.blobBuffer1.position(blobPosition);
-        ss.blobBuffer2.position(            0 );
+        ((Buffer)ss.blobBuffer1).position(blobPosition);
+        ((Buffer)ss.blobBuffer2).position(            0 );
         
         
         int slabLimitA = ss.source.sizeOfSlabRing;
@@ -149,20 +150,20 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
         int slabLimitB =  (int)(slabPosition+ss.totalPrimaryCopy); 
         
         if (slabLimitB>slabLimitA) {
-            ss.slabBuffer1.limit(slabLimitA);
-            ss.slabBuffer2.limit(ss.source.slabMask & slabLimitB);
+        	((Buffer)ss.slabBuffer1).limit(slabLimitA);
+        	((Buffer)ss.slabBuffer2).limit(ss.source.slabMask & slabLimitB);
         } else {         
-            ss.slabBuffer1.limit(slabLimitB);
-            ss.slabBuffer2.limit(       0  );                
+        	((Buffer)ss.slabBuffer1).limit(slabLimitB);
+        	((Buffer)ss.slabBuffer2).limit(       0  );                
         }
-        ss.slabBuffer1.position(slabPosition);
-        ss.slabBuffer2.position(0);
+        ((Buffer)ss.slabBuffer1).position(slabPosition);
+        ((Buffer)ss.slabBuffer2).position(0);
                 
-        ss.headerInt.clear();
+        ((Buffer)ss.headerInt).clear();
         ss.headerInt.put(ss.totalBytesCopy);
         ss.headerInt.put((int)ss.totalPrimaryCopy<<2); //TODO: this value x4 is not right when we use packed values, TODO: how to determine this?
         
-        ss.header.clear();
+        ((Buffer)ss.header).clear();
     }
 
     private static <S extends MessageSchema<S>> void copyToFile(TapeWriteStage<S> ss) {

@@ -32,7 +32,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final Pipe<ReleaseSchema>[] releasePipes;
 	private final static Logger logger = LoggerFactory.getLogger(ClientSocketReaderStage.class);
 
-	public static final boolean showResponse = false;
+	public static boolean showResponse = false;
 	
 	private long start;
 	private long totalBytes=0;
@@ -267,8 +267,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 		return didWork;
 	}
 
-	//ByteBuffer temp = ByteBuffer.allocateDirect(1<<24);
-	
 	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
 		
 		assert(cc.spaceReq(target.maxVarLen) <= target.sizeOfSlabRing) : "can not fit input buffer on ring";		
@@ -285,14 +283,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 				SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
 				//NOTE: warning note cast to int.
 				readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-				
-//				readCount = (int)socketChannel.read(temp);
-//			
-//				//temp.flip();
-//				Pipe.copyByteBuffer(temp, readCount, target);
-//				temp.clear();
-				
-				
+
 			} catch (IOException ioex) {
 				readCount = -1;
 				//logger.info("unable to read socket, may not be an error. ",ioex);

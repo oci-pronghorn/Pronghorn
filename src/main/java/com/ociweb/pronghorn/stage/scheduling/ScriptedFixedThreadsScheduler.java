@@ -1249,6 +1249,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			@Override
 			public Thread newThread(Runnable r) {
 				Thread result = null;
+				int prioirity = Thread.NORM_PRIORITY;
 				Field[] fields = r.getClass().getDeclaredFields();
 				int f = fields.length;
 				while (--f>=0) {
@@ -1263,6 +1264,13 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 								NamedRunnable namedRunnable = (NamedRunnable)fields[f].get(r);
 								result = new Thread(r, namedRunnable.name());
 								namedRunnable.setThreadId(result.getId());
+								
+								//long names are more important and get a higher priority
+								//may want to count commas instead..
+								if (namedRunnable.name().length()>40) {
+									logger.info("priority thread {}",namedRunnable.name());
+									prioirity = Thread.MAX_PRIORITY;
+								}
 							}
 						} catch (IllegalArgumentException e) {
 							logger.info("error pulling NamedRunnable",e);
@@ -1281,7 +1289,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					result = new Thread(r,"Unknown");				
 				}			
 				
-				result.setPriority(Thread.MAX_PRIORITY-1);//just below max since we sleep a lot.
+				result.setPriority(prioirity);
 						
 				//logger.info("new thread created for {}",r.getClass().getName());
 				return result;
@@ -1332,10 +1340,16 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//TODO: fixed thread scheduler must also group by common frequencies
 				//      if we have a list with the same rate they can be on a simple loop
 				//      this saves the constant checking of which one is to run next...
-			
+
+				try {
 					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
-						nts.run();										
+						ScriptedNonThreadScheduler.playScript(nts);										
 					}		
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();						
+					return;
+				}
+
 			}
 
 			@Override

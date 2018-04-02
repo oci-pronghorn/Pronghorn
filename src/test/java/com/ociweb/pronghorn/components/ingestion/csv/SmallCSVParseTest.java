@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
@@ -240,7 +241,7 @@ public class SmallCSVParseTest {
 			target.put(bytes);
 			bytes = buildLine(++i);
 		}
-		target.flip();
+		((Buffer)target).flip();
 		return target;
 	}
 

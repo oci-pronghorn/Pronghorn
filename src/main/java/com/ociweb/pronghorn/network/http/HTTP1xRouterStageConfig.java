@@ -9,13 +9,14 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -24,41 +25,45 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     V extends Enum<V> & HTTPVerb,
 									H extends Enum<H> & HTTPHeader> implements RouterStageConfig {
 	
+	public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
+
 	public final HTTPSpecification<T,R,V,H> httpSpec;
 	
     public final TrieParser urlMap;
     public final TrieParser verbMap;
     public final TrieParser revisionMap;
-    public final TrieParser headerMap;
-    
-    public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
-    
-    private IntHashTable[] requestHeaderMask = new IntHashTable[4];
-    private TrieParser[] headersParser = new TrieParser[4];
-    
-
-    private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[4];
-    
+      
     private final int defaultLength = 4;
+    
+    private TrieParser[] headersParser = new TrieParser[4];    
+    private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[defaultLength];    
     private FieldExtractionDefinitions[] pathDefinitions = new FieldExtractionDefinitions[defaultLength];
     
 	private int routeCount = 0;
 	private AtomicInteger pathCount = new AtomicInteger();
-	    
-    public final int END_OF_HEADER_ID;
-    public final int UNKNOWN_HEADER_ID;
+ 
     
-    public final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
+    final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
+    public final int UNMAPPED_STRUCT; 
+    final TrieParser unmappedHeaders;
+    public final long unmappedPathField;
+    public int[] unmappedIndexPos;
+    
     
     private URLTemplateParser routeParser;
     private final BStructSchema userStructs;
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
 
-	private IntHashTable allHeadersTable;
-	private FieldExtractionDefinitions allHeadersExtraction;
-	
 
+	public int totalSizeOfIndexes(int structId) {
+		return userStructs.totalSizeOfIndexes(structId);
+	}
+	
+	public <T extends Object> T getAssociatedObject(long field) {
+		return userStructs.getAssociatedObject(field);
+	}
+	
 	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, BStructSchema userStructs) {
 		this.httpSpec = httpSpec;
 		this.userStructs = userStructs;
@@ -85,39 +90,32 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	            verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
 	        }
         }
-        END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
-        UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
 
-        this.headerMap = new TrieParser(2048,2,false,true,true);//do not skip deep checks, we do not know which new headers may appear.
 
-        headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
-        headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
-    
-        //Load the supported header keys
-        H[] shr =  (H[])httpSpec.supportedHTTPHeaders.getEnumConstants();
-        if (shr != null) {
-	        int w = shr.length;
-	        while (--w >= 0) {
-	            //must have tail because the first char of the tail is required for the stop byte
-	            headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
-	            headerMap.setUTF8Value(shr[w].readingTemplate(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
-	        }     
-        }
         //unknowns are the least important and must be added last 
         this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
-        	 	                   ,true,true);  
-   
-        this.allHeadersTable = httpSpec.headerTable(localReader);        
-
+        	 	                   ,true,true);
+        
 		String constantUnknownRoute = "${path}";//do not modify
-		int groupId = UNMAPPED_ROUTE;//routeCount can not be inc due to our using it to know if there are valid routes.
+		int routeId = UNMAPPED_ROUTE;//routeCount can not be inc due to our using it to know if there are valid routes.
 		int pathId = UNMAPPED_ROUTE;
-
-		this.allHeadersExtraction = routeParser().addPath(constantUnknownRoute, groupId, pathId);
-   
-        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
-       
+				
+		int structId = HTTPUtil.newHTTPStruct(userStructs);
+		unmappedPathField = userStructs.growStruct(structId,BStructTypes.Text,0,"path".getBytes());				
+		
+		unmappedIndexPos = new int[] {BStructSchema.FIELD_MASK&(int)unmappedPathField};
+		
+		routeParser().addPath(constantUnknownRoute, routeId, pathId, structId);
+		UNMAPPED_STRUCT = structId;
+		
+		unmappedHeaders = HTTPUtil.buildHeaderParser(
+				userStructs, 
+    			structId,
+    			HTTPHeaderDefaults.CONTENT_LENGTH,
+    			HTTPHeaderDefaults.TRANSFER_ENCODING,
+    			HTTPHeaderDefaults.CONNECTION
+			);
+		
 	}
 
 		
@@ -137,8 +135,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	        boolean trustText = false; 
 			routeParser = new URLTemplateParser(urlMap, trustText);
 		}
-		URLTemplateParser parser = routeParser;
-		return parser;
+		return routeParser;
 	}
 
 	public void storeRouteHeaders(int routeId, TrieParser headerParser) {
@@ -151,29 +148,24 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		headersParser[routeId]=headerParser;
 	}
 	
-	void storeRequestExtractionParsers(int idx, FieldExtractionDefinitions route) {
-		if (idx>=pathDefinitions.length) {
+	void storeRequestExtractionParsers(int pathIdx, FieldExtractionDefinitions route) {
+		
+		//////////store for lookup by path
+		if (pathIdx>=pathDefinitions.length) {
 			int i = pathDefinitions.length;
 			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
 			System.arraycopy(pathDefinitions, 0, newArray, 0, i);
 			pathDefinitions = newArray;
 		}
-		pathDefinitions[idx]=route;	
+		pathDefinitions[pathIdx]=route;	
+		
+		//we have 1 pipe per composite route so nothing gets stuck and
+		//we have max visibility into the traffic by route type.
+		//any behavior can process multiple routes but it comes in as multiple pipes.
+		//each pipe can however send multiple different routes if needed since each 
+		//message contains its own structId
 	}
 
-	@Deprecated
-	void storeRequestedHeaders(int idx, IntHashTable headers) {
-		
-		if (idx>=requestHeaderMask.length) {
-			int i = requestHeaderMask.length;
-			IntHashTable[] newArray = new IntHashTable[i*2]; //only grows on startup as needed
-			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
-			requestHeaderMask = newArray;
-		}
-		requestHeaderMask[idx]=headers;
-	}
-	
-	
 	void storeRequestedJSONMapping(int idx, JSONExtractorCompleted extractor) {
 		
 		if (idx>=requestJSONExtractor.length) {
@@ -189,24 +181,30 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return pathCount.get();
 	}
 
-	public int getRouteId(int pathId) {
-		return extractionParser(pathId).routeId;
+	public int getRouteIdForPathId(int pathId) {
+		return (pathId != UNMAPPED_ROUTE) ? extractionParser(pathId).routeId : -1;
+	}
+
+	//only needed on startup, ok to be linear search
+	public int getStructIdForRouteId(int routeId) {
+		
+		int result = -1;
+		int i = pathDefinitions.length;
+		while (--i>=0) {
+			
+			if ((pathDefinitions[i]!=null) && (routeId == pathDefinitions[i].routeId)) {
+				if (result==-1) {
+					result = pathDefinitions[i].structId;
+				} else {
+					assert(result == pathDefinitions[i].structId) : "route may only have 1 structure, found more";					
+				}
+			}
+		}
+		return result;
 	}
 	
 	public FieldExtractionDefinitions extractionParser(int pathId) {
-		return pathId<pathDefinitions.length ? pathDefinitions[pathId] : allHeadersExtraction;
-	}
-
-	@Deprecated
-	public int headerCount(int routeId) {
-		return IntHashTable.count(headerToPositionTable(routeId));
-	}
-
-	@Deprecated
-	public IntHashTable headerToPositionTable(int routeId) {
-		assert(null!=allHeadersTable);
-		return routeId<requestHeaderMask.length && (null!=requestHeaderMask[routeId]) ? 
-				           requestHeaderMask[routeId] : allHeadersTable;
+		return pathDefinitions[pathId];
 	}
 	
 	public TrieParser headerParserRouteId(int routeId) {
@@ -229,19 +227,13 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public CompositeRoute registerCompositeRoute(HTTPHeader ... headers) {
 
-		URLTemplateParser parser = routeParser();
-		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
-		
-		return new CompositeRouteImpl(userStructs, this, null, parser, headerTable, headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(userStructs, this, null, routeParser(), headers, routeCount++, pathCount);
 	}
 
 
 	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, HTTPHeader ... headers) {
 
-		URLTemplateParser parser = routeParser();
-		IntHashTable headerTable = HeaderUtil.headerTable(localReader, httpSpec, headers);
-		
-		return new CompositeRouteImpl(userStructs, this, extractor, parser, headerTable, headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(userStructs, this, extractor, routeParser(), headers, routeCount++, pathCount);
 	}
 
 	public boolean appendPipeIdMappingForAllGroupIds(
@@ -316,12 +308,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return false;
 	}
 
-
 	public int[] paramIndexArray(int pathId) {
 		return pathDefinitions[pathId].paramIndexArray();
 	}
 
-
-		
-	
 }

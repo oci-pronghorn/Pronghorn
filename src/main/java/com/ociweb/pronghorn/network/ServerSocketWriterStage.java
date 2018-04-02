@@ -24,6 +24,9 @@ public class ServerSocketWriterStage extends PronghornStage {
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     private final static boolean showAllContentSent = false;
     
+	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
+	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
+	
     private final Pipe<NetPayloadSchema>[] input;
     private final Pipe<ReleaseSchema> releasePipe;
     
@@ -46,6 +49,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     
     private ByteBuffer    workingBuffers[];
+    private boolean       bufferChecked[];
     private SocketChannel writeToChannel[];
     private long          writeToChannelId[];
     private int           writeToChannelMsg[];
@@ -56,13 +60,11 @@ public class ServerSocketWriterStage extends PronghornStage {
     private int activeMessageIds[];    
   
     private long totalBytesWritten = 0;
-   
-    private final int bufferMultiplier; //TODO: remove after we know performance is good
+
     private int maxBatchCount;
 
 	private static final boolean enableWriteBatching = true;  
     
-    private StringBuilder[] accumulators;
 
 	private final boolean debugWithSlowWrites = false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests
 	private final int debugMaxBlockSize = 7;//50000;
@@ -87,12 +89,12 @@ public class ServerSocketWriterStage extends PronghornStage {
      * @param coordinator
      * @param dataToSend
      */
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, int bufferMultiplier, Pipe<NetPayloadSchema>[] dataToSend) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend) {
         super(graphManager, dataToSend, NONE);
         this.coordinator = coordinator;
         this.input = dataToSend;
         this.releasePipe = null;
-        this.bufferMultiplier = bufferMultiplier;
+     
         this.graphManager = graphManager;
 
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
@@ -102,13 +104,12 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     //optional ack mode for testing and other configuraitons..  
     
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, int bufferMultiplier, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe) {
         super(graphManager, input, releasePipe);
         this.coordinator = coordinator;
         this.input = input;
         this.releasePipe = releasePipe;
-        this.bufferMultiplier = bufferMultiplier;
-        
+          
         
         this.graphManager = graphManager;
        
@@ -127,16 +128,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	//   1. the buffer has run out of space (the multiplier controls this)
     	//   2. if the pipe has no more data.
     	
-    	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue());
-    	    	
-		if (ServerCoordinator.TEST_RECORDS) {
-			int i = input.length;
-			accumulators = new StringBuilder[i];
-			while (--i >= 0) {
-				accumulators[i]=new StringBuilder();					
-			}
-		} 	
-    	
+    	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue());  	
     	
     	int c = input.length;
     	if (c > (1<<12)) {
@@ -148,10 +140,20 @@ public class ServerSocketWriterStage extends PronghornStage {
     	writeToChannelBatchCountDown = new int[c];
     	
     	workingBuffers = new ByteBuffer[c];
+    	bufferChecked = new boolean[c];
     	activeTails = new long[c];
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
     	Arrays.fill(activeTails, -1);   	
+    	
+		int j = c;
+		while (--j>=0) {
+			//warning: this is the entire ring and may be too large.
+			workingBuffers[j] = ByteBuffer.allocateDirect(
+						Math.max(MINIMUM_BUFFER_SIZE, 
+							input[j].sizeOfBlobRing)					
+					);
+		}
     	
     }
     
@@ -170,18 +172,14 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	while (--x>=0) {
 	    		Pipe<NetPayloadSchema> localInput = input[x];
 	    		
-	    		if (null == writeToChannel[x]) {
-	    			
-	    			if (Pipe.hasContentToRead(localInput)) {
+	    		if (null == writeToChannel[x]) {	    			
+	    			if (!Pipe.hasContentToRead(localInput)) {    				
+	    				//no content to read on the pipe
+	    				//all the old data has been written so the writeChannel remains null	    		
+	    			} else {
 		            	int activeMessageId = Pipe.takeMsgIdx(localInput);		            			            	
 		            	processMessage(activeMessageId, x);
-		            	if (activeMessageId < 0) {
-		            		didWork = true;
-		            		continue;
-		            	}	
-	    			} else {	    				
-	    				//no content to read on the pipe
-	    				//all the old data has been written so the writeChannel is null	    		
+		            	didWork |= (activeMessageId < 0);
 	    			}
 	    			
 	    		} else {
@@ -271,8 +269,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			//set the pipe for any further communications
 		    long channelId = Pipe.takeLong(input[idx]);
 			int pipeIdx = Pipe.takeInt(input[idx]);
-			
-			
+						
 			ServerCoordinator.setUpgradePipe(coordinator, 
 		    		channelId, //connection Id 
 		    		pipeIdx); //pipe idx
@@ -288,7 +285,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    assert(Pipe.contentRemaining(input[idx])>=0);
 		    
 		} else if (NetPayloadSchema.MSG_BEGIN_208 == activeMessageId) {
-
 			int seqNo = Pipe.takeInt(input[idx]);
 			Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208));
 			Pipe.releaseReadLock(input[idx]);
@@ -356,6 +352,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
+		        checkBuffers(idx, pipe, writeToChannel[idx]);
 		        //lazy allocate since we need to wait for a socket to be created.
 		        if (null == workingBuffers[idx]) {
 					try {
@@ -399,13 +396,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 				}
 		        		        
 		        Pipe.releaseAllPendingReadLock(input[idx]);
-		        
-		        
-		        if (ServerCoordinator.TEST_RECORDS) {
-		        	ByteBuffer temp = workingBuffers[idx].duplicate();
-		        	((Buffer)temp).flip();
-		        	testValidContent(idx, temp);
-		        }
+		
 		        
 		      //  logger.info("total bytes written {} ",totalBytesWritten);
 		        
@@ -472,76 +463,23 @@ public class ServerSocketWriterStage extends PronghornStage {
 				workingBuffers[idx].remaining()>pipe.maxVarLen && 
 				Pipe.peekLong(pipe, 1)==channelId;
 	}
-
-    int totalB;
-	private void testValidContent(final int idx, ByteBuffer buf) {
-	
-		if (ServerCoordinator.TEST_RECORDS) {
-							
-			
-			boolean confirmExpectedRequests = true;
-			if (confirmExpectedRequests) {
-			
-				 
-				int pos = buf.position();
-				int len = buf.remaining();
-				
-				
-				while (--len>=0) {
-					totalB++;
-					accumulators[idx].append((char)buf.get(pos++));
-				}
-				
-			//	Appendables.appendUTF8(accumulators[idx], buf.array(), pos, len, Integer.MAX_VALUE);						    				
-				
-				while (accumulators[idx].length() >= HTTPUtil.expectedOK.length()) {
-					
-				   int c = startsWith(accumulators[idx],HTTPUtil.expectedOK); 
-				   if (c>0) {
-					   
-					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedOK.length());
-					   accumulators[idx].setLength(0);
-					   accumulators[idx].append(remaining);							    					   
-					   
-					   
-				   } else {
-					   logger.info("A"+Arrays.toString(HTTPUtil.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString().getBytes()   ));
-					   
-					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",HTTPUtil.expectedOK.length(),totalB);
-					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString());
-					   System.exit(-1);
-					   	
-					   
-					   
-				   }
-				
-					
-				}
-			}
-			
-			
-		}
-	}
     
-    
-	private int startsWith(StringBuilder stringBuilder, String expected2) {
-		
-		int count = 0;
-		int rem = stringBuilder.length();
-		int base = 0;
-		while(rem>=expected2.length()) {
-			int i = expected2.length();
-			while (--i>=0) {
-				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-					return count;
+	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
+		if (!bufferChecked[i]) {
+			try {
+				int minBufSize = 
+						Math.max(pipe.maxVarLen, 
+						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+				logger.info("buffer is {} and must be larger than {}",workingBuffers[i].capacity(), minBufSize);
+				if (workingBuffers[i].capacity()<minBufSize) {
+					logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
+					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
 				}
+				bufferChecked[i] = true;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
-			base+=expected2.length();
-			rem-=expected2.length();
-			count++;
 		}
-		return count;
 	}
 
     private boolean writeDataToChannel(int idx) {

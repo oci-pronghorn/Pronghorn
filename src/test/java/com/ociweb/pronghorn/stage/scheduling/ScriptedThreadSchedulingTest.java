@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
-import static org.junit.Assert.*;
-
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;

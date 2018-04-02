@@ -11,15 +11,19 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.ClientSocketReaderStage;
+import com.ociweb.pronghorn.network.ClientSocketWriterStage;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerPipesConfig;
+import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
@@ -40,6 +44,10 @@ public class HTTPSRoundTripTest {
     @Test
 	public void allCertHTTPSTest() {
     
+    	//show the decrypted data which was sent to the client
+    	//HTTP1xResponseParserStage.showData = true;
+    	
+    	
     	int maxPartialResponses=10;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
@@ -132,6 +140,8 @@ public class HTTPSRoundTripTest {
     	int messagesToOrderingSuper = 1<<12;
     	int messageSizeToOrderingSuper = 1<<12;
     	
+    	ClientCoordinator.registerDomain("127.0.0.1");
+    	
     	GraphManager gm = new GraphManager();
     	
     	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
@@ -206,9 +216,11 @@ public class HTTPSRoundTripTest {
     	String bindHost = "127.0.0.1";
     	int port        = 8198;
     	int processors  = 1;
-    	String testFile = "groovySum.json";
+    	String testFile = "groovySum.json"; // contains: {"x":9,"y":17,"groovySum":26}
     	int messagesToOrderingSuper = 1<<12;
     	int messageSizeToOrderingSuper = 1<<12;
+    	
+    	ClientCoordinator.registerDomain("127.0.0.1");
     	
     	GraphManager gm = new GraphManager();
     	
@@ -265,8 +277,10 @@ public class HTTPSRoundTripTest {
 		}
 		scheduler.shutdown();
 		
-		//System.err.println("got "+results);
-		assertTrue(results.toString().contains("0xff,0xff,0x7b,0x22,0x78,0x22,0x3a,0x39,0x2c,0x22,0x79,0x22,0x3a,0x31,0x37,0x2c,0x22,0x67,0x72,0x6f,0x6f,0x76,0x79,0x53,0x75,0x6d,0x22,0x3a,0x32,0x36,0x7d,0x0a"));
+		// expecting  {"x":9,"y":17,"groovySum":26} in the payload
+
+		assertTrue(results.toString(),
+				results.toString().contains("0xff,0xff,0x7b,0x22,0x78,0x22,0x3a,0x39,0x2c,0x22,0x79,0x22,0x3a,0x31,0x37,0x2c,0x22,0x67,0x72,0x6f,0x6f,0x76,0x79,0x53,0x75,0x6d,0x22,0x3a,0x32,0x36,0x7d,0x0a"));
 	}
 
 

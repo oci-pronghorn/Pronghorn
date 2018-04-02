@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.util;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public class MemberHolder {
@@ -33,7 +34,7 @@ public class MemberHolder {
             ///must grow 
             ByteBuffer buff = data[listId];
             ByteBuffer newBuff = allocate(buff.capacity()*2);
-            buff.flip();
+            ((Buffer)buff).flip();
             newBuff.put(buff);
             data[listId] = buff = newBuff;
             assert(data[listId].remaining()>10) : "failure in growing ByteBuffer";
@@ -46,7 +47,7 @@ public class MemberHolder {
     //is not thread safe so only one thread should remove members
     public boolean removeMember(int listId, long member) {
         ByteBuffer buff = data[listId];
-        buff.flip();
+        ((Buffer)buff).flip();
         while (buff.hasRemaining()) {
             int lastPosition = buff.position();            
             if (member == VarLenLong.readLongSigned(buff)) {
@@ -65,12 +66,12 @@ public class MemberHolder {
                     int oldLimit = buff.limit();
                     
                     ByteBuffer newBuff = allocate(buff.capacity());
-                    buff.position(0);
-                    buff.limit(lastPosition);
+                    ((Buffer)buff).position(0);
+                    ((Buffer)buff).limit(lastPosition);
                     newBuff.put(buff);
                     
-                    buff.limit(oldLimit);
-                    buff.position(newPosition);
+                    ((Buffer)buff).limit(oldLimit);
+                    ((Buffer)buff).position(newPosition);
                     newBuff.put(buff);
                     
                     buff = newBuff;  
@@ -91,26 +92,26 @@ public class MemberHolder {
             return 0;
         }
         ByteBuffer buff = data[listId];
-        buff.flip();
+        ((Buffer)buff).flip();
         int found = 0;
         while (buff.hasRemaining()) {
             if (member == VarLenLong.readLongSigned(buff)) {
                 found++;
             }
         }
-        buff.limit(buff.capacity());
+        ((Buffer)buff).limit(buff.capacity());
         return found;
     }
     
     public void visit(int listId, MemberHolderVisitor visitor) {
 
         ByteBuffer buff = data[listId];
-        buff.flip();
+        ((Buffer)buff).flip();
         while (buff.hasRemaining()) {
             visitor.visit(VarLenLong.readLongSigned(buff));
         }
         visitor.finished();
-        buff.limit(buff.capacity());
+        ((Buffer)buff).limit(buff.capacity());
     }    
     
 }

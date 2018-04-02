@@ -56,7 +56,7 @@ public class SocketIOStageTest {
 
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, maxConnBits, 
         		maxConcurrentInputs, maxConcurrentOutputs, routerCount, false);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null,gm.recordTypeData);
 
 		
 		PipeConfig<NetPayloadSchema> payloadPipeConfig 
@@ -76,7 +76,7 @@ public class SocketIOStageTest {
         ////   
         {
 	        Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-	        ClientSocketWriterStage.newInstance(gm, clientCoordinator, 20, input);
+	        ClientSocketWriterStage.newInstance(gm, clientCoordinator, input);
 	        new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
         }
 
@@ -92,7 +92,7 @@ public class SocketIOStageTest {
 		    }	    
 		    Pipe<ReleaseSchema>[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
 			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, encryptedContent);	
-	        new ServerSocketWriterStage(gm, serverCoordinator, 16, output, releasePipes[0]); 
+	        new ServerSocketWriterStage(gm, serverCoordinator, output, releasePipes[0]); 
         }
 		
 
@@ -149,7 +149,7 @@ public class SocketIOStageTest {
 				maxConcurrentInputs, 
 				maxConcurrentOutputs, 
 				routerCount, false);
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null);
+		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null,gm.recordTypeData);
 					
 		///
 		///server new connections e-poll
@@ -173,7 +173,7 @@ public class SocketIOStageTest {
         ////client to write data to socket
         ////                
         Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-		ClientSocketWriterStage.newInstance(gm, clientCoordinator, 20, input);
+		ClientSocketWriterStage.newInstance(gm, clientCoordinator, input);
 		new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
 		
 

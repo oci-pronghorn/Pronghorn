@@ -92,7 +92,7 @@ public class MQTTClientGraphBuilder {
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate*10, idGenStage);
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, idGenStage);
 		
-		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates);
+		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates, gm.recordTypeData);
 		
 		ccm.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system

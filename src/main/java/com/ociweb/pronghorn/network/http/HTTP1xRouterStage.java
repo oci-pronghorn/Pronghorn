@@ -12,6 +12,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -22,6 +23,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
@@ -39,8 +43,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     public static boolean showHeader = false; //set to true for debug to see headers in console.
     
-    
-	private static final boolean writeIndex = true; //must be on to ensure we can index to the header locations.
     private final int indexOffsetCount = 1;
     
     
@@ -199,30 +201,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         inputSlabPos = new long[inputs.length];
         sequences = new int[inputs.length];
         sequencesSent = new int[inputs.length];
-        
-        final int sizeOfVarField = 2;
- 
-        int h = config.totalPathsCount();
-        
-        while (--h>=0) { 
-            byte[] offsets = new byte[config.httpSpec.headerCount+1];
-            byte runningOffset = 0;
-            
-            IntHashTable table = config.headerToPositionTable(h);
-            
-            for(int ordinalValue = 0; ordinalValue<=config.httpSpec.headerCount; ordinalValue++) {
-                //only set fields for those which are on, and do in this order.
-                if (IntHashTable.hasItem(table, HTTPHeader.HEADER_BIT | ordinalValue)) {
-                    offsets[ordinalValue] = runningOffset;
-                    runningOffset += sizeOfVarField;
-                }
-            }
-               
-        }
-
-        ///
-        
-
+      
         trieReader = new TrieParserReader(16);//max fields we support capturing.
         
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
@@ -325,29 +304,29 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         if (isOpen[idx]) {  
 
         	//logger.info("accum off this pipe "+isOpen[idx]+"   "+inputChannels[idx]);
-        	int[] localInputLengths = inputLengths;
-        	final int start = localInputLengths[idx];
+        	final int start = inputLengths[idx];
             if (accumulateRunningBytes(idx, selectedInput) < 0) {//message idx
             	//logger.trace("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consumed.
                 isOpen[idx] = false;
-                if (localInputLengths[idx]<=0) {
+                if (inputLengths[idx]<=0) {
+                	//closed so return
                 	return -1;
                 }
             }
             
             if (needsData[idx]) {
-	            if (localInputLengths[idx]==start) {
+	            if (inputLengths[idx]==start) {
 	            	//we got no data so move on to the next
 	            	return 0;
 	            } else {
 	            	needsData[idx]=false;
 	            }
             }            
-        }
-
-        return ((activeChannel = inputChannels[idx]) >= 0) ?
-	        	(parseAvail(idx, selectedInput, activeChannel) ? 1 : 0) : 0;
+        }       
+        //the common case is -1 so that is first.
+        return ((activeChannel = inputChannels[idx]) < 0) ? 0 :
+	        	(parseAvail(idx, selectedInput, activeChannel) ? 1 : 0);
     }
 
 
@@ -588,12 +567,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx) {    
 
-    
-    boolean newCode = false;
-
-    
     if (showHeader) {
-    	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
+    	System.out.println("///////////////// ROUTE HEADER "+channel+" pos:"+trieReader.sourcePos+"///////////////////");
     	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data
     	if (trieReader.sourceLen>8192) {
     		System.out.println("...");
@@ -610,10 +585,13 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
+    	
+    	
     		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
-    			logger.info("bad HTTP data recieved by server, channel will be closed.");
+    			//trieReader.debugAsUTF8(trieReader, System.out);
+    			logger.info("bad HTTP data recieved by server, channel will be closed. Bytes abandoned:{} looking for verb at {} ",tempLen, tempPos);
     			sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
     			
     			//we have bad data we have been sent, there is enough data yet the verb was not found
@@ -645,15 +623,15 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
 	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
-    
-	final int routeId = 0; //TODO: what is the righ way to find the routeId?
-	
 	//the above URLS always end with a white space to ensure they match the spec.
-    if (!catchAll && config.UNMAPPED_ROUTE == pathId) {
-    	
-		//unsupported route path, send 404 error
-		sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
-		return SUCCESS;
+
+    if (config.UNMAPPED_ROUTE == pathId) {
+	    if (!catchAll) {
+	    	
+			//unsupported route path, send 404 error
+			sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
+			return SUCCESS;
+	    }
     }
     
     if (pathId<0) {
@@ -667,6 +645,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 			return SUCCESS;
 		}
     }
+
  
    // logger.info("send this message to route {}",routeId);
     
@@ -676,11 +655,11 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     	return NEED_MORE_DATA;
     }    	
     
+
     //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     //      if catch all is enabled use it because all outputs will be null in that mode
     Pipe<HTTPRequestSchema> outputPipe = pathId<outputs.length ? outputs[pathId] : outputs[0];
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
-    
     if (Pipe.hasRoomForWrite(outputPipe) ) {
 
         final int size =  Pipe.addMsgIdx(outputPipe, HTTPRequestSchema.MSG_RESTREQUEST_300);        // Write 1   1                         
@@ -690,28 +669,36 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         //route and verb
         Pipe.addIntValue((pathId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
         
-		DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
-		                                                                                                                          //write 2   7
-        DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
-
-        if (writeIndex) {
-        	//this is writing room for the position of the body later.
-        	int i = indexOffsetCount; //provide room for these (if there is more than one)
-        	while (--i>=0) {
-        		
-				if (!DataOutputBlobWriter.tryWriteIntBackData(writer, 0)) {//we write zero for now
-					throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+writer.getPipe());
-				}
-        	}
-        }
-
-        if (newCode) {
-        	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.paramIndexArray(pathId));
-        } else {
-        	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, writeIndex);
-        }
         
+        DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
+        //write 2   7
+        DataOutputBlobWriter.openField(writer); //the beginning of the payload always clear all indexes
 
+        
+        int routeId;
+        int structId;
+        TrieParser headerMap;
+        
+        if (config.UNMAPPED_ROUTE != pathId) {
+        	routeId = config.getRouteIdForPathId(pathId);
+        	structId = config.extractionParser(pathId).structId;
+            DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
+          	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.paramIndexArray(pathId));
+            
+        	headerMap = config.headerParserRouteId( routeId );
+        	        
+        } else {
+        	routeId = config.UNMAPPED_ROUTE;        	
+        	structId = config.UNMAPPED_STRUCT;
+            DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
+            TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos);
+              
+            
+        	headerMap = config.unmappedHeaders;
+      
+        }
+
+      
     	tempLen = trieReader.sourceLen;
     	tempPos = trieReader.sourcePos;
         int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
@@ -751,12 +738,12 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////also write the requested headers out to the payload
         /////////////////////////////////////////////////////////////////////////
-        
+  
         //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
         
-        int countOfAllPreviousFields = config.extractionParser(pathId).getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, routeId, pathId, writer, 
-												httpRevisionId, countOfAllPreviousFields, config,
+	//	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
+		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, 
+												httpRevisionId, config,
 												errorReporter);  // Write 2   10 //if header is presen
        
         
@@ -770,7 +757,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
    
         ////////TODO: URGENT: re-think this as we still need to add the chunked post payload??
         
-    	DataOutputBlobWriter.commitBackData(writer);
+    	DataOutputBlobWriter.commitBackData(writer,structId);
     	DataOutputBlobWriter.closeLowLevelField(writer);
         
         
@@ -803,42 +790,28 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
 
 private static int parseHeaderFields(TrieParserReader trieReader, 
-		final int routeId, final int pathId,
-		DataOutputBlobWriter<HTTPRequestSchema> writer, int httpRevisionId, int countOfAllPreviousFields,
+		final int pathId, final TrieParser headerMap,
+		DataOutputBlobWriter<HTTPRequestSchema> writer, int httpRevisionId,
 		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2) {
 	
-	final int indexOffsetCount = countOfAllPreviousFields;
+	
+	//final int indexOffsetCount = countOfAllPreviousFields;
 	int requestContext = keepAliveOrNotContext(httpRevisionId);
-	final TrieParserReader trieReader1 = trieReader;
-	
-	//TODO: at the top we must clear all the fields not here.
-	
-	
-	//TODO: based on record/route ID look up the right header map
-	//TODO: special headers will have bit set to mark them as NOT part of record
-	//      this smaller trie should be quicker than the full list.
-	//      need to toggle and need to find where its created..
-	
-	DataOutputBlobWriter.tryClearIntBackData(writer, config.headerCount(pathId)); 
-	
-    //look up route?
-	
-	//config.headerParser( config.getRouteId(pathId) );
-	
-	
+
+		
 	long postLength = -2;
 	
 	int iteration = 0;
 	int remainingLen;
-	while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader1))>0){
+	while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
 	
-		int headerId = (int)TrieParserReader.parseNext(trieReader1, config.headerMap);
+		long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 		
-	    if (config.END_OF_HEADER_ID == headerId) { 
+	    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
 	        return endOfHeadersLogic(writer, errorReporter2, 
-	        		writeIndex, requestContext, trieReader1,
+	        		requestContext, trieReader,
 					postLength, iteration);
-	    } else if (-1 == headerId) {            	
+	    } else if (-1 == headerToken) {            	
 	    	if (remainingLen>MAX_HEADER) {   
 	    		//client has sent very bad data.
 	    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
@@ -847,20 +820,53 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 	        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
 	    }
 		
-	    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == headerId) {
-	    	postLength = TrieParserReader.capturedLongField(trieReader1, 0);
-	    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == headerId) {
-	    	postLength = -1;
-	    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == headerId) {            	
-	        requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader1);                
+	    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
+		    HTTPHeader header = config.getAssociatedObject(headerToken);
+		    
+		    if (null!=header) {
+			    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
+			    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
+		
+			    	postLength = TrieParserReader.capturedLongField(trieReader, 0);
+			    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == header.ordinal()) {
+			    	assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
+		
+			    	postLength = -1;
+			    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
+			    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
+		
+			    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
+			    }
+			                
+			    int writePosition = writer.position();
+			    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
+			    DataOutputBlobWriter.setIntBackData(writer, writePosition, BStructSchema.FIELD_MASK & (int)headerToken);
+	
+		    }
+	    } else {
+	    	//assert that important headers are not skipped..
+	    	assert(confirmCoreHeadersSupported(trieReader));	    	
 	    }
-	                
-	    HeaderUtil.captureRequestedHeader(writer, indexOffsetCount, 
-	    		config.headerToPositionTable(pathId), 
-	    		writeIndex, trieReader1, headerId);
 	    iteration++;
 	}
 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+}
+
+private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) {
+	StringBuilder headerName = new StringBuilder();					
+	TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, headerName); //in TRIE if we have any exact matches that run short must no pick anything.
+	headerName.append(": ");
+	String header = headerName.toString();
+			
+	if (   HTTPHeaderDefaults.CONTENT_LENGTH.writingRoot().equals(header) 
+		|| HTTPHeaderDefaults.CONNECTION.writingRoot().equals(header) 
+		|| HTTPHeaderDefaults.TRANSFER_ENCODING.writingRoot().equals(header) 
+			) {
+		logger.warn("Did not recognize header {}", header);
+		return false;
+	}
+	
+	return true;
 }
 
  void sendError(TrieParserReader trieReader, final long channel, final int idx, int tempLen, int tempPos,
@@ -1102,8 +1108,9 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 	
 
     private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer, ErrorReporter errorReporter,
-			final boolean writeIndex, int requestContext, final TrieParserReader trieReader, long postLength,
+			int requestContext, final TrieParserReader trieReader, long postLength,
 			int iteration) {
+    
 		if (iteration==0) {
 			//needs more data 
 			requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
@@ -1133,13 +1140,11 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 				if (cpyLen<postLength) {
 				   //needs more data 
 					requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-				} else {	           			
-		   			if (writeIndex) {
-		   				//logger.info("write the position of the body to {} ",writePosition);
-		   				//NOTE: record position of the body in the new way, at beginning of the index
-		   				DataOutputBlobWriter.setIntBackData(writer, writePosition, 1);
-						
-					}
+				} else {	
+					
+					//NOTE: payload index is always found at position 0 since it is the first field.
+					DataOutputBlobWriter.setIntBackData(writer, writePosition, 0);
+	
 				}
 		   	}     
 		}

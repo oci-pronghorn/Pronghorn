@@ -8,8 +8,10 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
@@ -17,17 +19,22 @@ import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 public class HTTPRequestJSONExtractionStage extends PronghornStage {
 
 	private final JSONExtractorCompleted extractor;
+	private int[] indexPositions;
+	
 	private final Pipe<HTTPRequestSchema> input;
 	private final Pipe<HTTPRequestSchema> output;
 		
 	private TrieParserReader reader;
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
+	private final BStructSchema typeData;
+	private final int structId;
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
 		
+	//TODO: add error response pipe however we first need to update graph building to pass this in.
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 
-											JSONExtractorCompleted extractor,
+											JSONExtractorCompleted extractor,  int structId,
 											Pipe<HTTPRequestSchema> input,
 											Pipe<HTTPRequestSchema> output) {
 		
@@ -35,6 +42,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		this.extractor = extractor;
 		this.input = input;
 		this.output = output;
+		this.typeData = graphManager.recordTypeData;
+		this.structId = structId;
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
@@ -46,7 +55,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		reader = new TrieParserReader(5,true);
 		parser = new JSONStreamParser();
 		visitor = extractor.newJSONVisitor();
-			
+		indexPositions = extractor.indexTable(typeData, structId);
+		
 	}
 	
 	@Override
@@ -63,11 +73,16 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	int sequenceNum = Pipe.takeInt(input);
 		        	int verb = Pipe.takeInt(input);      	
 		        	
-		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);        	
-		        	int payloadOffset = inputStream.readFromEndLastInt(1);
-		        			        	
-
+		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);
+	
+    //TODO: must add these checks but the router is not setting the value.				
+	//	        	assert(inputStream.isStructured()) : "Structured stream is required for JSON";
+	//	        	assert(DataInputBlobReader.getStructType(inputStream) == structId) : "Only supports one JSON Strcture at a time.";
 		        	
+		        	StructuredReader r = inputStream.structured();        	
+		        	
+		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
+		        			        		        	
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(output);
 		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
 		    
@@ -81,9 +96,14 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		}
 		    		
 		    		if (visitor.isReady() ) {
+		    			
+		    			//send404 code!
+		    			
 		    			//parser wants more data or the data is not understood, eg broken
 		    			
 		    			//TODO: send 404
+		    			//DataOutputBlobWriter.closeLowLevelField(outputStream);
+		    			output.closeBlobFieldWrite();
 		    			
 		    			
 		    		} else {
@@ -93,7 +113,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 			        	Pipe.addIntValue(verb, output); //verb
 			        	
 		    			//parser is not "ready for data" and requires export to be called
-		    			visitor.export(outputStream);		
+		    			visitor.export(outputStream, indexPositions);		
 		    			//moves the index data as is
 		    			inputStream.readFromEndInto(outputStream);
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
@@ -114,8 +134,12 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	int maskVal = Pipe.takeInt(input);
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(input);
-		        	int payloadOffset = inputStream.readFromEndLastInt(1);
-		        			        	
+					
+		        	assert(inputStream.isStructured()) : "Structured stream is required for JSON";
+		        	assert(DataInputBlobReader.getStructType(inputStream) == structId) : "Only supports one JSON Strcture at a time.";
+		        
+		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
+		    		        			        	
 		        	int size = Pipe.addMsgIdx(output, msgIdx);
 		        	Pipe.addLongValue(channelId, output); //channel
 		        	Pipe.addIntValue(sequenceNum, output); //sequence
@@ -139,7 +163,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		}
 		    		
 		    		//TODO: may need multiple of these for streaming..
-		    		visitor.export(outputStream);		
+		    		visitor.export(outputStream, indexPositions);		
 		    		
 		    		//moves the index data as is
 		        	inputStream.readFromEndInto(outputStream); //TODO: only needed on first block
@@ -157,38 +181,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			
 			
 		}
-		
-		
-		//HTTPRequestSchema.consume(input);
-		
-		
-		
-		//NOTE: we assume the last index is always for the payload and we have nothing after it.
-		//DataOutputBlobWriter.countOfBytesUsedByIndex(writer)// min 4 is the body position??
-		//setPositionBytesFromStart(readFromEndLastInt(payloadIndexOffset));
-		
-		
-		/////////////////
-		
-		//take all data from input and write to output
-		//except extract data from the JSON.
-		
-		//payload postion
-//        builder.routeHeaderToPositionTable(routeId), 
-//         builder.routeExtractionParserIndexCount(routeId),
-//		this.payloadIndexOffset = paraIndexCount + IntHashTable.count(headerHash) + 1;
-		
-        // add field forthe position of the payload?
-		// add second field just for payload
-		
-		//JSON now? add it to open topic? run in place??
-		//could do in router.
-		  
-		//1. is there an easy way to find this? position 
-		//2. compute in line and do faster integration.
-		//2. begin conversion to add the new fields
-		
-		
+						
 	}
 
 }

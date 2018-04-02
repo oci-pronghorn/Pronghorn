@@ -23,17 +23,15 @@ import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xResponseParserStage extends PronghornStage {
-
 	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
@@ -45,12 +43,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
 	private int[]  blockedState;
-	private IntHashTable headersSupported;
 	
 	private final Pipe<ReleaseSchema> releasePipe;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
-	private final int END_OF_HEADER_ID;
-	private final int UNSUPPORTED_HEADER_ID;
 	
 	private static final boolean showTossedData = false;
 	
@@ -70,7 +65,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
    	
 	private TrieParser revisionMap;
-	private TrieParser headerMap;	
 	
 	private TrieParserReader trieReader;
 	private int[] positionMemoData;
@@ -78,17 +72,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private long[] ccIdData;
 	
 	private int[] runningHeaderBytes;
-	
-	
-	private static final int H_TRANSFER_ENCODING = 4;	
-	private static final int H_CONTENT_LENGTH = 5;
-	private static final int H_CONTENT_TYPE = 6;
-	
+		
 	private int[] lastMessageParseSizes;
 	private int   lastMessageParseSizeCount = 0;
 	
 	private int lastMessageType=-1;   //does not change
 	private long lastPayloadSize=-1;  //does not change
+	
+	public static boolean showData = false;
 	
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
@@ -103,19 +94,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		this.ccm = ccm;
 		this.releasePipe = ackStop;
 		this.httpSpec = httpSpec;		
+
 		
 		int i = input.length;
 		while (--i>=0) {
 			assert(	input[i].sizeOfBlobRing >=  MAX_VALID_HEADER*2 ); //size of blob ring is the largest a header can ever be.			
 		}
-		
-		assert(this.httpSpec.headerMatches(H_TRANSFER_ENCODING, HTTPHeaderDefaults.TRANSFER_ENCODING.writingRoot()));
-		assert(this.httpSpec.headerMatches(H_CONTENT_LENGTH, HTTPHeaderDefaults.CONTENT_LENGTH.writingRoot()));		
-		assert(this.httpSpec.headerMatches(H_CONTENT_TYPE, HTTPHeaderDefaults.CONTENT_TYPE.writingRoot()));
-		
-		this.UNSUPPORTED_HEADER_ID  = httpSpec.headerCount+2;
-		this.END_OF_HEADER_ID       = httpSpec.headerCount+3;//for the empty header found at the bottom of the header
-		
+
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
@@ -144,11 +129,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  blockedState = new int[input.length];
 		  
 		  runningHeaderBytes = new int[input.length];
-		  
-			  
+		  			  
 		  trieReader = new TrieParserReader(4);//max fields we support capturing.
-
-		  headersSupported = httpSpec.headerTable(trieReader); 
 		  
 		  int x;
 		  
@@ -168,32 +150,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be last because we prefer to have it pick \r\n
 	      }
 
-	      ///////////////////////////
-	      //Load the supported header keys
-	      ///////////////////////////
-	      boolean ignoreCase = true;
-	  	  boolean supportsExtraction = true;
-		  headerMap = new TrieParser(2048,1,false,supportsExtraction,ignoreCase);//deep check on to detect unexpected headers.
-	 
-	      HTTPHeader[] shr =  httpSpec.headers;
-	      x = shr.length;
-	      while (--x >= 0) {
-	          //must have tail because the first char of the tail is required for the stop byte
-	          CharSequence key = shr[x].readingTemplate();
-
-	          headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());	          
-	          headerMap.setUTF8Value(key, "\n",shr[x].ordinal());   //\n must be last because we prefer to have it pick \r\n
-	      }    
-	      headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);	        
-	      headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
-
-	      //unknowns are the least important and therefore must be added LAST to the map.
-	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	 
-	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n  
-		      
-	     // System.out.println(headerMap.toDOT(new StringBuilder()));
-	      
-
 	    }
 
 	int lastUser;
@@ -210,17 +166,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		lastState = state;
 		lastUser = user;
 	}
-
-	private static final boolean writeIndex = true;//NOTE: must be on for random access to headers.		
-	//we keep 1 index at the beginning to the position of the payload start can be stored
-	private static final int indexOffsetCount = 1;
 		
 	@Override
 	public void run() {
 		
 		int foundWork; //keep going until we make a pass and there is no work.
-		
-		
+			
 
 		do {		
 			foundWork = 0;
@@ -255,14 +206,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 				TrieParserReader.parseSetup(trieReader,Pipe.blob(localInputPipe), 0, 0, Pipe.blobMask(localInputPipe));
 			
-				ClientConnection cc = null;
+				HTTPClientConnection cc = null;
 					
 				int len1 = positionMemoData[lenIdx];
 				int len2 = localInputPipe.maxVarLen;
 				int len3 = Pipe.blobMask(localInputPipe);
 				
 				if (Pipe.hasContentToRead(localInputPipe) 
-						&& outputsHaveRoom(output) //need to ensure room for close messsage
 						&& 	((positionMemoData[lenIdx]+localInputPipe.maxVarLen+Pipe.releasePendingByteCount(localInputPipe)) < (Pipe.blobMask(localInputPipe) ) )  //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
 						) {
 					
@@ -271,19 +221,30 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//ensure that it can be consumed 
 					///////////////
 					ccId = Pipe.peekLong(localInputPipe, 1);
-					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
+					cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId, true);
 				
 					if (null != cc) {
 						//do not process if an active write for a different pipe is in process
 						if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
-						    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
+								&&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
 							//move to the next pipe so we get it done.
 							continue;
 						}
 						outputOwner[(int)cc.readDestinationRouteId()] = i;
-						
 					}
-					     
+
+					boolean isClosed = ((null==cc) || (!cc.isValid()));
+					if (isClosed) {	
+						//this connection has been closed but before the
+						//message is consumed we must make sure there is room
+						//to write the close message.
+						
+						if (!Pipe.hasRoomForWrite(output[(int)cc.readDestinationRouteId()])) {
+							continue;///can not process this close right now, no room.							
+						}
+					}
+
+					
 					//////////////////////////////
 					//we have new data to consume
 					//////////////////////////////		
@@ -305,12 +266,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						arrivalTimeAtPosition[i] = arrivalTime;
 					}
 					
-					inputPosition[i] = Pipe.takeLong(localInputPipe);
-										
+					inputPosition[i] = Pipe.takeLong(localInputPipe);										
 					ccIdData[i] = ccId;
-					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
-								
-					if (null==cc || (!cc.isValid())) {				
+		
+					if (isClosed) {				
 						
 						int meta = Pipe.takeRingByteMetaData(localInputPipe);
 						int len  = Pipe.takeRingByteLen(localInputPipe);
@@ -359,24 +318,19 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					targetPipe = output[(int)cc.readDestinationRouteId()];					
 	
-					
-					
 					//append the new data
 					int meta = Pipe.takeRingByteMetaData(localInputPipe);
 					int len = Pipe.takeRingByteLen(localInputPipe);
 					int pos = Pipe.bytePosition(meta, localInputPipe, len);
 					int mask = Pipe.blobMask(localInputPipe);
 					
-					//TODO: can we do the JSON conversion here....???? Tippy?
-					
 					///////////////////////////////////
 					//logger.info("parse new data of {} for connection {}",len,cc.getId());
 					//////////////////////////////////
 					
-//					boolean showRawData = true;
-//					if (showRawData) {
-//						Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(pipe), pos, len, mask);
-//					}
+					if (showData) {
+						Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(localInputPipe), pos, len, mask);
+					}
 					///////////////////////////////////////////
 					/////////////////////////////////////////
 					
@@ -431,7 +385,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//else use the data we have since no new data came in.
 						
 						ccId = ccIdData[i];
-						cc = (ClientConnection)ccm.connectionForSessionId(ccId);					
+						cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId);					
 						if (null==cc) {	//skip data the connection was closed	
 							ccm.releaseResponsePipeLineIdx(ccId);
 							
@@ -530,19 +484,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 
 							positionMemoData[stateIdx]= ++state;//state change is key
-							TrieParserReader.writeCapturedShort(trieReader, 0, Pipe.openOutputStream(targetPipe)); //status code	
+							DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);
+							
+							DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
+	
+							//NOTE: this is always first and not indexed...
+							TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
 										
-							int consumed = startingLength1 - trieReader.sourceLen;						
-							
-							runningHeaderBytes[i] = consumed;
-							
-							if (writeIndex) {
-								//clear header indexes
-								//TODO: this is not done here but earlir for all fields.
-								DataOutputBlobWriter.tryClearIntBackData(Pipe.outputStream(targetPipe),
-										                 IntHashTable.count(headersSupported)+indexOffsetCount); 
-							}
-							
+							runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
+	
+												
 						} else {
 							assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
@@ -581,31 +532,37 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						//this writer was opened when we parsed the first line, now we are appending to it.
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-	
-						int headerId=0;
+						
+						final int startingPosition = writer.absolutePosition();
+							
+						
+						long headerToken=0;
 						//stay here and read all the headers if possible
 						do {
 							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-																							
-							
+													
 							//TODO: based on record/route ID look up the right header map
 
-							int len = trieReader.sourceLen;
-							headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);	
+							headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
 						
+							assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
+							
+							//TODO: get the associated object with this field
+							//      remove the old constants for check
+							//      get map from the host pipe instance
+							// 
 									
-							if (headerId>=0) {											
+							if (headerToken != -1) {											
 								
-								if (END_OF_HEADER_ID != headerId) {	
+								if (HTTPSpecification.END_OF_HEADER_ID != headerToken) {	
 									
-									headerProcessing(i, writer, headerId, len, headersSupported, writeIndex, indexOffsetCount);
+									headerProcessing(i, writer, headerToken, cc);
 									
 									//do not change state we want to come back here.									
 								} else {
 									//logger.trace("end of headers");
 									state = endOfHeaderProcessing(i, stateIdx, writer);
-									
-																		
+																											
 									//logger.trace("finished reading header now going to state {}",state);
 								
 									if (3==state) {
@@ -616,22 +573,24 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									}
 									//only case where state is not 1 so we must call save all others will call when while loops back to top.
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
-									if (writeIndex) {
-										//logger.info("body length to write {}",payloadLengthData[i]);
-										//write index to where the body starts.
-										//logger.info("{} wrote the index of the body {} to position {} ",state, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
-										DataOutputBlobWriter.setIntBackData(writer, writer.position(),1);
-										
-									}
+
+									//logger.info("payload position {} {}  {}",Long.toBinaryString(cc.payloadToken),cc.payloadToken,writer.position());
+									//NOTE: payload index position is always zero 
+									DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
+									
+									
 								}								
 								
 								int consumed = startingLength - trieReader.sourceLen;							
 								runningHeaderBytes[i] += consumed;
 								
 							} 
-						} while (headerId>=0 && state==1);
+						} while ((headerToken != -1) && state==1);
 						
-						if (headerId<0) {
+						if (headerToken == -1) {
+							
+							writer.absolutePosition(startingPosition);
+							
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
 							if (trieReader.sourceLen<MAX_VALID_HEADER) {		
@@ -656,13 +615,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								break;
 							}
 							if (2==state) {
-								
 								//TODO: should we do the JSON Extraction here??
 								//      no we need to inject another stage between for that.
 								
 																
 								long lengthRemaining = payloadLengthData[i];
-																	
+													
 		//						logger.info("source position {} state {} length remaining to copy {} source len ",trieReader.sourcePos,state,lengthRemaining,trieReader.sourceLen);
 								
 								final DataOutputBlobWriter<NetResponseSchema> writer2 = Pipe.outputStream(targetPipe);
@@ -682,11 +640,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//TODO: add and fix this feature...
 									if (lengthRemaining>0) {
 										logger.info("incomplete feature needs to be finshed.");
-										
-										if (writeIndex) {
-											logger.info("commit the back data indexes");
-											DataOutputBlobWriter.commitBackData(writer2);
-										}
+			
+										DataOutputBlobWriter.commitBackData(writer2, cc.getStructureId());
+									
 										
 										int len = writer2.closeLowLevelField();
 										//logger.trace("conform low level write of len {} ",len);
@@ -726,15 +682,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
 									
 									Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
-									
-
-									//NOTE: input is low level, TireParser is using low level take
-									//      writer output is high level;
-									if (writeIndex) {
-										//logger.trace("commit the back data indexes AAA");
-										DataOutputBlobWriter.commitBackData(writer2);
-									}
-									
+					
+									DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
+																	
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 									//logger.info("length of full message written {} ",length);
 									
@@ -753,7 +703,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
 									//expecting H to be the next valid char 
-									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
+	//								assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
 									
 									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
@@ -808,19 +758,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									if (0==chunkRemaining) {
 
 										//TODO: Must add parse support for trailing headers!, this is a hack for now.
-										headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);
+										headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 											
 										int consumed = startingLength3 - trieReader.sourceLen;
 					
 										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
-										assert(END_OF_HEADER_ID==headerId);
+										assert(HTTPSpecification.END_OF_HEADER_ID==headerToken);
 							///////			
-										//NOTE: input is low level, TireParser is using low level take
-										//      writer output is high level;
-										if (writeIndex) {
-											DataOutputBlobWriter.commitBackData(writer3);
-										}
+
+										DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
+										
 										int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 										positionMemoData[stateIdx] = state = 5;
 																				
@@ -856,10 +804,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										
 										//ensure we do not override the indexes
 										if ((DataOutputBlobWriter.lastBackPositionOfIndex(writer3)-(writer3.length() + chunkRemaining))>0) {
-								
-											if (writeIndex) {
-												DataOutputBlobWriter.commitBackData(writer3);
-											}
+											DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
+											
 											int len = writer3.closeLowLevelField();
 											//logger.trace("conform low level write of len {} ",len);
 											Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
@@ -960,17 +906,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
-	private boolean outputsHaveRoom(Pipe<NetResponseSchema>[] output) {
-		
-		int i = output.length;
-		while (--i>=0) {
-			if (!Pipe.hasRoomForWrite(output[i])) {
-				return false;
-			}
-		}
-		
-		return true;
-	}
+
 
 	@Override
 	public void shutdown() {
@@ -1037,81 +973,75 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private void headerProcessing(int i, 
 			                     DataOutputBlobWriter<NetResponseSchema> writer, 
-			                     int headerId, int len, IntHashTable headerToPositionTable, 
-			                     boolean writeIndex, int indexOffsetCount) {
+			                     long headerToken, HTTPClientConnection cc) {
+		
+		if (HTTPSpecification.UNKNOWN_HEADER_ID == headerToken) {
+			assert(confirmCoreHeadersSupported());
+			boolean verboseShowHeaders = false;
+			if (verboseShowHeaders) {
+				reportUnsupportedHeader(); //ignore since we did not want this	
+			}
+		} else {
+			//NOTE: any replacement headers must hold the same ordinal positions!!
+			//NOTE: any header fields must hold the associated enum 
+			HTTPHeader header = cc.associatedFieldObject(headerToken);
+			
+			//logger.info("header found {} ",header);
+			
+			if (null!=header) {
+				int writePosition = writer.position();				
 
-		//NB: any specific case will capture this header and prevent the application layer from getting it
-		//    they must add data as needed to make these seen or not because the app layer should not see them.
-		switch (headerId) {
-			case H_TRANSFER_ENCODING:
-				{
-					int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
-				    
-					writer.writeShort((short)H_TRANSFER_ENCODING);
-					int writePosition = writer.position();
+				if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal()==header.ordinal()) {
+					assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
 					
-					writer.writeBoolean(true); //true for chunked
-					payloadLengthData[i] = -1; //marked as chunking	
+					long length = TrieParserReader.capturedLongField(trieReader, 0);
+					//logger.info("content length of  {} found in headers ",length);
 					
-					if (writeIndex && 0!=item) {
-						DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
-					}	
-				}	
-				break;
-			case H_CONTENT_LENGTH:
-				//app should not be given length since they already have it parsed.
-				long length = TrieParserReader.capturedLongField(trieReader, 0);
-				if (-1 != payloadLengthData[i]) {
-					payloadLengthData[i] = length;
-					lastPayloadSize = length;
-						
-				}
-				break;
-				
-			//other values to write to stream?	
-			case H_CONTENT_TYPE:
-				{
-					int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+					writer.writePackedLong(length);
 					
+					if (-1 != payloadLengthData[i]) {
+						payloadLengthData[i] = length;
+						lastPayloadSize = length;						
+					}			
 					
-					writer.writeShort((short)H_CONTENT_TYPE);
-					int writePosition = writer.position();
-					
+				} else if (HTTPHeaderDefaults.CONTENT_TYPE.ordinal()==header.ordinal()) {
+					assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_TYPE.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_TYPE does not match";
+								
 					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, httpSpec.contentTypeTrieBuilder());
-
+	
 					//logger.trace("detected content type and set value to {} ",type);
 					
 					lastMessageType = type;			
 					writer.writeShort((short)type);
-					if (writeIndex && 0!=item) {
-						//we did not write index above so write here.
-						DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
-					} 
-				}
-				break;
-			default:
-				if (headerId ==UNSUPPORTED_HEADER_ID) {
-					reportUnsupportedHeader(len);					
+									
+				} else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal()==header.ordinal()) {
+					assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
+								
+					writer.writeBoolean(true); //true for chunked
+					payloadLengthData[i] = -1; //marked as chunking	
+				
 				} else {
-					//anything not already captured goes here
-					if (null!=headerToPositionTable) {
-						///capture all the requested header bodies.
-						HeaderUtil.captureRequestedHeader(writer, 
-														 indexOffsetCount, 
-													 	 headerToPositionTable, 
-														 writeIndex, 
-														 trieReader, headerId);
-					}
-					
+					//normal processing
+					TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
 				}
-				break;
+				
+				
+				final long id1 = headerToken;
+				
+				//logger.info("aaa struct {} wrote position {} for header {} at location {} in pipe {}",
+				//		Integer.toHexString((int)(id1>>>BStructSchema.STRUCT_OFFSET)),
+				//		writePosition, header, BStructSchema.FIELD_MASK & (int)headerToken, writer.getPipe().id);
+				
+				DataOutputBlobWriter.setIntBackData(writer, writePosition, BStructSchema.FIELD_MASK & (int)headerToken);
+			}
+			
 		}
 				 
 	}
 
 	private BloomFilter filter;
 	
-	private void reportUnsupportedHeader(int len) {
+	private void reportUnsupportedHeader() {
 		StringBuilder headerName = new StringBuilder();					
 		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, headerName); //in TRIE if we have any exact matches that run short must no pick anything.
 		
@@ -1124,12 +1054,29 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		} else {
 			filter.addValue(headerName);
 		}
-		
+				
 		StringBuilder headerValue = new StringBuilder();					
 		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 1, headerValue); //in TRIE if we have any exact matches that run short must no pick anything.
 							
 		logger.info("WARNING unsupported header found: {}: {}",headerName, headerValue);
 		///logger.trace("length avail when parsed {}",len);
+	}
+	
+	private boolean confirmCoreHeadersSupported() {
+		StringBuilder headerName = new StringBuilder();					
+		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, headerName); //in TRIE if we have any exact matches that run short must no pick anything.
+		headerName.append(": ");
+		String header = headerName.toString();
+				
+		if (   HTTPHeaderDefaults.CONTENT_LENGTH.writingRoot().equals(header) 
+			|| HTTPHeaderDefaults.CONTENT_TYPE.writingRoot().equals(header) 
+			|| HTTPHeaderDefaults.TRANSFER_ENCODING.writingRoot().equals(header) 
+				) {
+			logger.warn("Did not recognize header {}", header);
+			return false;
+		}
+		
+		return true;
 	}
 
 	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {
@@ -1157,14 +1104,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		//records the leading edge of arrival time.
 		long temp = arrivalTimeAtPosition[i];
 		if (0 != temp) {
-			long latencyNS = cc.recordArrivalTime(temp);
+			cc.recordArrivalTime(temp);
 			arrivalTimeAtPosition[i] = 0;
 		}
-
-		if (ServerCoordinator.TEST_RECORDS &&  trieReader.sourceLen>0) {
-		   assert('H'==(char)pipe.blobRing[ pipe.blobMask&trieReader.sourcePos ]);			
-		}
-				
+		
 		return foundWork;
 	}
 

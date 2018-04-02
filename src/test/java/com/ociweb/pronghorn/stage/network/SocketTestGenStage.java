@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.network;
 
 import java.util.Random;
 
+import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -50,6 +51,10 @@ public class SocketTestGenStage extends PronghornStage {
 		byte[] hostBytes = host.getBytes();
 		while (true) {
 			
+			//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
+			//only add header support for http calls..
+			//int structureId = 
+			
 			
 			//////////
 			//crazy connection open logic  (need to simplify)
@@ -58,7 +63,8 @@ public class SocketTestGenStage extends PronghornStage {
 			int hostMask = Integer.MAX_VALUE;
 			ClientConnection connection = ClientCoordinator.openConnection(
 					clientCoordinator, host, port, userIdx, pipe,	
-			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(host, READER), port, userIdx), READER);			
+			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(host, READER),
+			        port, userIdx), READER, BasicClientConnectionFactory.instance);			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
 				return;//try again later
 			}

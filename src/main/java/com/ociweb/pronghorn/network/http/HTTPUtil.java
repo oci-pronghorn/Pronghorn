@@ -4,12 +4,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 
 public class HTTPUtil {
@@ -91,15 +95,61 @@ public class HTTPUtil {
 	    //logger.info("published error {} ",status);
 	}
 
-	public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
-	 "Host: 127.0.0.1\r\n"+
-	 "Connection: keep-alive\r\n"+
-	 "\r\n";
-	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
-	"Content-Type: application/json\r\n"+
-	"Content-Length: 30\r\n"+
-	"Connection: open\r\n"+
-	"\r\n"+
-	"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
+
+	public static void addHeader(TrieParser headerParser, long value, CharSequence template) {
+		
+		//logger.info("building parsers for: {} {}",template,((0xFF)&value));
+		
+		headerParser.setUTF8Value(template, "\r\n", value);
+		if (HTTPSpecification.supportWrongLineFeeds) {				
+			headerParser.setUTF8Value(template, "\n", value);
+		}
+	}
+
+	public static void addHeader(BStructSchema schema, int structId, TrieParser headerParser, HTTPHeader header) {
+		long fieldId = schema.growStruct(structId,
+				BStructTypes.Blob,	//TODO: need a way to define dimensions on headers
+				0,
+				//NOTE: associated object will be used to interpret 
+				header.rootBytes());
+		
+		if (!schema.setAssociatedObject(fieldId, header)) {
+			throw new UnsupportedOperationException("A header with the same identity hash is already held, can not add "+header);
+		}
+						
+		assert(schema.getAssociatedObject(fieldId) == header) : "unable to get associated object";
+		assert(fieldId == schema.fieldLookupByIdentity(header, structId));
+		
+		
+		CharSequence template = header.readingTemplate();
+		addHeader(headerParser, fieldId, template);
+	}
+
+	public static TrieParser buildHeaderParser(BStructSchema schema, int structId, HTTPHeader ... headers) {
+				
+		boolean skipDeepChecks = false;
+		boolean supportsExtraction = true;
+		boolean ignoreCase = true;
+		TrieParser headerParser = new TrieParser(256,4,skipDeepChecks,supportsExtraction,ignoreCase);
+	
+		addHeader(headerParser,HTTPSpecification.END_OF_HEADER_ID, "");
+						
+		int i = headers.length;
+		while (--i>=0) {
+			addHeader(schema, structId, headerParser, headers[i]);
+		}
+				
+		addHeader(headerParser, HTTPSpecification.UNKNOWN_HEADER_ID, "%b: %b");
+		
+		return headerParser;
+	}
+
+	public static int newHTTPStruct(BStructSchema typeData) {
+		//all HTTP structs must start with payload as the first field, this is required
+		//so the payload processing stages do not need to look up this common index.
+		return typeData.addStruct(new byte[][] {"payload".getBytes()},
+				                  new BStructTypes[] {BStructTypes.Blob},
+				                  new int[] {0});
+	}
 
 }

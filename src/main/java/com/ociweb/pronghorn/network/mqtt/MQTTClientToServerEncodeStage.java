@@ -7,6 +7,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
@@ -303,7 +304,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		if (null==activeConnection || ((!activeConnection.isValid()) && activeConnection.isFinishConnect() ) ) {
 			//only do reOpen if the previous one is finished connecting and its now invalid.
-			reOpenConnection();
+			reOpenConnection(activeConnection);
 		}
 		
 		long result = (null!=activeConnection) ? activeConnection.id : -1;
@@ -311,14 +312,21 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 	}
 
-	private void reOpenConnection() {
+	private void reOpenConnection(ClientConnection old) {
 		//logger.info("opening connection to broker {}:{} ",
 		//		     Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
 
+		//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
+		//only add header support for http calls..
+		//int structureId = 
+		
+		
+		int hostId = null!=old? old.hostId : ClientCoordinator.lookupHostId(host, READER);
+		long lookup = null!=old? old.id : ccm.lookup(hostId, hostPort, uniqueConnectionId);
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
-				                         toBroker,
-				                         ccm.lookup(ClientCoordinator.lookupHostId(host, READER), hostPort, uniqueConnectionId), READER); 
+				                         toBroker, lookup, READER,
+				                         BasicClientConnectionFactory.instance); 
 
 		if (null!=activeConnection) {		
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 

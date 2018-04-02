@@ -17,14 +17,23 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
+import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.Appendables;
 
 
 public class ClientConnection extends SSLConnection implements SelectionKeyHashMappable {
 
+	//TODO: limitations with client side calls
+	//      only supports 1 struct or 1 JSON parser or 1 set of headers per ClientSession
+	//      this may force developers to use interleaving in some cases to solve this 
+	//      paths will need to be pre-defined and given identifications.  (future feature)
+	
 	public static int resolveWithDNSTimeoutMS = 10_000; //  §6.1.3.3 of RFC 1123 suggests a value not less than 5 seconds.
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
 	private static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
@@ -32,6 +41,7 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
 	
 	public static boolean logDisconnects = false;
+	public static boolean logLatencyData = false;
 	
 	private SelectionKey key; //only registered after handshake is complete.
 
@@ -52,29 +62,32 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 	public final int port;
 	public final int hostId;
 		  
-	
 	private long lastUsedTime;
 	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 	private ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
 
-	private final int maxInFlightBits;
-	public  final int maxInFlight;
-	private final int maxInFlightMask;
-
+	private final static int maxInFlightBits  = 18;//256K  about 3MB per client connection
+	public  final static int maxInFlight      = 1<<maxInFlightBits;
+	private final static int maxInFlightMask  = maxInFlight-1;
+	
+	//TODO: if memory needs to be saved this flight time feature could be "turned off" 
 	private int inFlightTimeSentPos;
 	private int inFlightTimeRespPos;	
 	private long[] inFlightTimes;
 	
 	private int inFlightRoutesSentPos;
 	private int inFlightRoutesRespPos;
-	private long[] inFlightRoutes;
+	private int[] inFlightRoutes;
 
 	private final long creationTimeNS;
 	
 	public final boolean isTLS;
 	boolean isFinishedConnection = false;
+	
+	//also holds structureId for use as needed.  This can be any protocols payload for indexing
+	protected final int structureId;
 	
 	private final int payloadSize;
 	
@@ -99,22 +112,29 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 	public long getLastUsedTime() {
 		return lastUsedTime;
 	}
+
+	public int getStructureId() {
+		return structureId;
+	}
 	
-	public ClientConnection(SSLEngine engine, CharSequence host, int hostId, int port, int sessionId, int pipeIdx,
-			                 long conId, boolean isTLS, int inFlightBits, int recBufSize) throws IOException {
+	
+	public ClientConnection(SSLEngine engine, 
+			                CharSequence host, int hostId, int port, int sessionId,
+			                int pipeIdx, long conId, int structureId		                 
+			 			  ) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
 		
-		this.maxInFlightBits = inFlightBits;
-		this.maxInFlight = 1<<maxInFlightBits;
-		this.maxInFlightMask = maxInFlight-1;
-		this.inFlightTimes = new long[maxInFlight];
-		this.inFlightRoutes = new long[maxInFlight];
 		
-		this.isTLS = isTLS;
+		this.inFlightTimes = new long[maxInFlight];
+		this.inFlightRoutes = new int[maxInFlight];
+		
+		
+		this.structureId = structureId;
 		
 		this.creationTimeNS = System.nanoTime();
 		
+		this.isTLS = (engine!=null);
 		if (isTLS) {
 			getEngine().setUseClientMode(true);
 		}
@@ -135,16 +155,14 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 				
 		SocketChannel localSocket = this.getSocketChannel();
 		initSocket(localSocket);
-
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, recBufSize); 
-		
-		//TODO: we know the pipe size but the socket takes this as a suggestion...
-		localSocket.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 						
 		this.recBufferSize = this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
 		
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
-		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
+		//logger.info("client send buffer size
+//		this.maxInFlightBits = inFlightBits;
+//		this.maxInFlight = 
+//		this.maxInFlightMask =  {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 	
 		this.payloadSize = isTLS ?
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200) :
@@ -430,6 +448,10 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 	
 	public void beginDisconnect() {
 
+		if (logLatencyData) {
+			logger.info("closing connection, latencies for {}:{}\n{}",this.host,this.port,histRoundTrip);
+		}
+		
 		try {
 			 isDisconnecting = true;
 			 if (isTLS) {
@@ -459,31 +481,36 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 		long value = time - inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
 			
 		if (value>=0 && value<MAX_HIST_VALUE) {
-		
-			boolean showAllTimes = false;
-			if (showAllTimes) {
-				Appendables.appendNearestTimeUnit(System.err, value, " client latency\n");
-			}
 			ElapsedTimeRecorder.record(histRoundTrip, value);
 		}
 		return value;
 	}
 		
+	
 	public boolean isBusy() {
-		//turn back on after this is everywhere.
-		return  ((maxInFlightMask&inFlightRoutesSentPos) != (maxInFlightMask&inFlightRoutesRespPos)) &&
-				((maxInFlightMask&inFlightRoutesSentPos) == (maxInFlightMask&(maxInFlight+inFlightRoutesRespPos)));
+		boolean ok = ((maxInFlightMask&inFlightRoutesSentPos) != (maxInFlightMask&inFlightRoutesRespPos)) &&
+				     ((maxInFlightMask&inFlightRoutesSentPos) == (maxInFlightMask&(maxInFlight+inFlightRoutesRespPos)));
+	
+		long busyCounter = ClientCoordinator.busyCounter;
+		if (ok) {
+			if (Long.numberOfLeadingZeros(busyCounter) != Long.numberOfLeadingZeros(++busyCounter)) {
+				logger.warn("client connection to {}:{} session {} has not received any responses, waiting for {} messages",host,port,sessionId,maxInFlight);
+			}
+			ClientCoordinator.busyCounter = busyCounter;
+		}
+		
+		return ok;
 	}
 		
-	public void recordDestinationRouteId(long id) {
+	public void recordDestinationRouteId(int id) {
 		inFlightRoutes[++inFlightRoutesSentPos & maxInFlightMask] = id;
 	}
 	
-	public long consumeDestinationRouteId() {
+	public int consumeDestinationRouteId() {
 		return inFlightRoutes[++inFlightRoutesRespPos & maxInFlightMask];
 	}
 	
-	public long readDestinationRouteId() {
+	public int readDestinationRouteId() {
 		return inFlightRoutes[(1+inFlightRoutesRespPos) & maxInFlightMask];
 	}
 
@@ -518,5 +545,6 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 	public int skPosition() {
 		return skPos;
 	}
+
 	
 }

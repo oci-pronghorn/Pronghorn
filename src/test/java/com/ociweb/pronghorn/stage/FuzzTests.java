@@ -4,6 +4,8 @@ import com.ociweb.pronghorn.code.StageTester;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.struct.BStructSchema;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -17,7 +19,7 @@ public class FuzzTests {
 	public void fuzzClientSocketReaderStage() {
 		TLSCertificates certs = TLSCertificates.defaultCerts;
 		assertTrue(StageTester.runFuzzTest(ClientSocketReaderStage.class, testDuration, generatorSeed++,
-				new Object[]{new ClientCoordinator(3, 10, certs),false}) );
+				new Object[]{new ClientCoordinator(3, 10, certs, new BStructSchema()),false}) );
 	}
 
 //	@Test

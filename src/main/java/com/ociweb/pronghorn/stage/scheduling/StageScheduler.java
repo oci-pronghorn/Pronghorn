@@ -44,9 +44,8 @@ public abstract class StageScheduler {
 		return true;
 	}
 
-	protected void setCallerId(Integer caller) {
+	protected final void setCallerId(Integer caller) {
 		assert(setC(caller)); //only do with assertions on
-		
 	}
 	
 	public boolean checkForException() {
@@ -59,7 +58,7 @@ public abstract class StageScheduler {
 		return true;
 	}
 	
-	protected void clearCallerId() {
+	protected final void clearCallerId() {
 		assert(setC(null)); //only do with assertions on
 	}
 	

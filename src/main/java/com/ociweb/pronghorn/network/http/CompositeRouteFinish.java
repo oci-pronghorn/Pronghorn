@@ -9,5 +9,5 @@ public interface CompositeRouteFinish {
 	CompositeRouteFinish defaultText(String key, String value);
 	CompositeRouteFinish defaultDecimal(String key, long m, byte e);	
 	CompositeRouteFinish defaultRational(String key, long numerator, long denominator);
-	
+	CompositeRouteFinish associatedObject(String key, Object object);
 }

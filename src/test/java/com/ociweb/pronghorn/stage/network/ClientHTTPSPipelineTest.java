@@ -42,7 +42,7 @@ public class ClientHTTPSPipelineTest {
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 
 		TLSCertificates certs = TLSCertificates.defaultCerts;
-		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,certs);
+		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,certs,gm.recordTypeData);
 
 		
 		//IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0

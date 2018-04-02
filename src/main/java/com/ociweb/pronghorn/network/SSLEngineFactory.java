@@ -4,7 +4,7 @@ import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.io.InputStream;
 
-class SSLEngineFactory {
+public class SSLEngineFactory {
     private TLSService privateService;
 	private final TLSCertificates certificates;
 
@@ -12,7 +12,7 @@ class SSLEngineFactory {
         this.certificates = certificates;
     }
 
-    SSLEngine createSSLEngine(String host, int port) {
+    public SSLEngine createSSLEngine(String host, int port) {
         return getService().createSSLEngineClient(host, port);
     }
 

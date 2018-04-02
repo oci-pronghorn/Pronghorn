@@ -37,7 +37,14 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	private TrieParser contentTypeTrie;
 	
 	public final IntHashTable fileExtHashTable;
+	public static final boolean supportWrongLineFeeds = false;
+
+	//TODO: if these values are Long.MAX_VALUE-1 then the trie parser does not rebuild them. 
+	//      assembly bug in the trie parser for very large longs.
 	
+    //must not collide with any valid struct field ID so we start with max value
+	public final static long END_OF_HEADER_ID  = Integer.MAX_VALUE-1;//for the empty header found at the bottom of the header
+	public final static long UNKNOWN_HEADER_ID = Integer.MAX_VALUE-2;
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> defaultSpec;
     
@@ -65,22 +72,6 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	}
     
     
-	public final IntHashTable headerTable(TrieParserReader localReader) {
-		assert(headers!=null) : "check ProGuard it may be removing enums in the build process.";
-		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
-		int h = headers.length;
-		int count = 0;
-		while (--h>=0) {
-			int ord = headers[h].ordinal();
-			boolean ok = IntHashTable.setItem(headerToPosTable, 
-					                          HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
-			assert(ok);
-		}
-		return headerToPosTable;
-	}
-    
-    
-    
     private HTTPSpecification(Class<T> supportedHTTPContentTypes, Class<R> supportedHTTPRevisions, Class<V> supportedHTTPVerbs, Class<H> supportedHTTPHeaders) {
 
         this.supportedHTTPContentTypes = supportedHTTPContentTypes;
@@ -90,7 +81,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         
         this.headers = supportedHTTPHeaders.getEnumConstants();
         this.headerCount = null==this.headers? 0 : headers.length;
-        
+   
         this.revisions = supportedHTTPRevisions.getEnumConstants();
         this.contentTypes = supportedHTTPContentTypes.getEnumConstants();
         
@@ -120,6 +111,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	        }
         }
 
+        
     }
   
     public TrieParser headerParser() {

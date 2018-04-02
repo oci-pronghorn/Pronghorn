@@ -89,15 +89,14 @@ public class OrderSupervisorTest {
 		PronghornStage watch = ConsoleJSONDumpStage.newInstance(gm, outgoingPipes[0], console);
 				
 		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-		
+
 		ByteArrayOutputStream baost = new ByteArrayOutputStream();
 		PrintStream temp = System.err;
 		System.setErr(new PrintStream(baost));
-		
+	
 		scheduler.startup();
-		
 		GraphManager.blockUntilStageBeginsShutdown(gm, watch);
-			
+		
 		scheduler.shutdown();
 		
 		System.setErr(temp);

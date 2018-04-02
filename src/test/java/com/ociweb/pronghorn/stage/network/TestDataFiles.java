@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.network;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -41,7 +42,7 @@ public class TestDataFiles {
                     while (--j >=0 ) {
                         fakeData.put((byte)rand.nextInt(255));   
                     }
-                    fakeData.flip();
+                    ((Buffer)fakeData).flip();
                     
                     Path path = f.toPath();
                     FileChannel channel = FileChannel.open(path,StandardOpenOption.WRITE, StandardOpenOption.SYNC);                
