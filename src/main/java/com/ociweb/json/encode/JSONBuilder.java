@@ -729,7 +729,14 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        addNullableString(iterator, func);
+        scripts.add(createIterator(iterator, (IterBoolFunction<T>)null, new RenderIteration<T, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                kw.Quote(writer);
+                writer.append(func.applyAsString(source, i));
+                kw.Quote(writer);
+            }
+        }));
     }
 
     <N> void addNullableString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
