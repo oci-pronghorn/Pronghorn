@@ -19,9 +19,10 @@ public class ElapsedTimeRecorderTest {
 		etr.record(etr, 32);
 		etr.record(etr, 32);
 		
+			
+		assertEquals(32,etr.elapsedAtPercentile(etr, .5f));
 		//this is an estimate so this value is ok.
-		assertEquals(40,etr.elapsedAtPercentile(etr, .5f));
-				
+		assertEquals(12,etr.elapsedAtPercentile(etr, .16f));	
 	}
 	
 	@Test
@@ -55,7 +56,7 @@ public class ElapsedTimeRecorderTest {
 		etr.record(etr, 32);
 	
 		//this is an estimate so this value is ok
-		assertEquals(64, etr.elapsedAtPercentile(etr, 1f));
+		assertEquals(32, etr.elapsedAtPercentile(etr, 1f));
 				
 	}
 	

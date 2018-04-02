@@ -1,11 +1,15 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.io.IOException;
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.util.Appendables;
 
 public class ElapsedTimeRecorder {
 
 	private final int[] buckets; 
 	private long totalCount;
+	private long maxValue;
 	
 	public ElapsedTimeRecorder() {
 		
@@ -22,6 +26,11 @@ public class ElapsedTimeRecorder {
 	}
 	
 	public <A extends Appendable> A report(A target) {
+		try {
+			Appendables.appendValue(target.append("Total:"), totalCount).append("\n");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .25f), " 25 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .50f), " 50 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .80f), " 80 percentile\n");
@@ -33,20 +42,24 @@ public class ElapsedTimeRecorder {
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .9999f), " 99.99 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .99999f), " 99.999 percentile\n");
 		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, .999999f), " 99.9999 percentile\n");
-		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, 1f), " max update\n");
+		Appendables.appendNearestTimeUnit(target, ElapsedTimeRecorder.elapsedAtPercentile(this, 1f), " max\n");
 		return target;
 	}
 	
 	public static void record(ElapsedTimeRecorder that, long valueNS) {
 		that.buckets[64 - Long.numberOfLeadingZeros(valueNS)]++;
 		that.totalCount++;
+		that.maxValue = Math.max(that.maxValue, valueNS);
 	}
 	
 	public static long elapsedAtPercentile(ElapsedTimeRecorder that, double pct) {
 		if (pct>1) {
 			throw new UnsupportedOperationException("pct should be entered as a value between 0 and 1 where 1 represents 100% and .5 represents 50%");
+		}		
+		long targetCount = (long)Math.rint(pct * that.totalCount);
+		if (targetCount==that.totalCount) {
+			return that.maxValue;
 		}
-		long targetCount = (long)(pct * that.totalCount);
 		
 		if (0 != targetCount) {
 			int i = 0;
@@ -64,14 +77,13 @@ public class ElapsedTimeRecorder {
 					
 					long dif = ((ceil-floor) * targetCount)/(long)b ; 
 					
-					return floor + dif; 
+					return Math.min(that.maxValue, floor + dif); 
 					
 				} else {
 					targetCount -= b;				
 				}
 			}
-			
-			return 1L<<(j-1);//largest value		
+			return that.maxValue;		
 		} else {
 			return 0;
 		}
@@ -83,7 +95,14 @@ public class ElapsedTimeRecorder {
 			buckets[i] += source.buckets[i];			
 		}
 		totalCount += source.totalCount;
+		maxValue = Math.max(maxValue, source.maxValue);
 		
+	}
+
+	public static void clear(ElapsedTimeRecorder that) {
+		that.totalCount = 0;
+		that.maxValue = 0;
+		Arrays.fill(that.buckets, 0);		
 	}
 	
 	
