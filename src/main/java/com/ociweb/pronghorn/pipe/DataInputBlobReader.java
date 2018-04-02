@@ -5,12 +5,11 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
-import javax.swing.plaf.basic.BasicSeparatorUI;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.util.IntArrayPool;
+import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -32,7 +31,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     protected boolean isStructured;
     
     private IntArrayPool dimVisitorFields;
-    
+    private final StructuredReader structuredReader;
     
     /////////////////////////
     //package protected DimArray methods
@@ -54,7 +53,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     
     private static TrieParser textToNumberParser;
-    private TrieParserReader reader;
+    protected TrieParserReader reader;
     
     private long mostRecentPacked=-1; //used for asserts;
     
@@ -67,6 +66,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         this.byteMask = Pipe.blobMask(pipe); 
         this.workspace = new StringBuilder(64);
         assert(this.backing!=null) : "The pipe must be init before use.";
+        
+        structuredReader = null!=Pipe.typeData(pipe) ? new StructuredReader(this, Pipe.typeData(pipe)) : null; 
     }
         
 	public void debug() {
@@ -111,6 +112,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	return readFromLastInt(this, negativeIntOffset);
     }
 
+    
     public static boolean structTypeValidation(DataInputBlobReader<?> reader, int structId) {
     	if (getStructType(reader)!=structId) {
     		throw new UnsupportedOperationException("Type mismatch");
@@ -145,18 +147,23 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 				   (0xFF & back[mask & position]);
 	}
     
-	public static int readFromLastInt(DataInputBlobReader<?> reader, int negativeIntOffset) {
-		assert(negativeIntOffset>0) : "there is no data found at the end";
+	public static int readFromLastInt(DataInputBlobReader<?> reader, int pos) {
+		assert(pos>=0) : "there is no data found at the end";
     	//logger.info("readFromEndLastInt pos {} ",position);    	
-    	return bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*negativeIntOffset), reader.byteMask, reader.backing);
+    	return bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*(pos+1)), reader.byteMask, reader.backing);
 	}
         
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
+		assert(isStructured) : "method can only be called on structured readers";
 
-		final int copyLen = outputStream.remaining();	
+		int type = getStructType(this);
+
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
-		DataOutputBlobWriter.copyBackData(outputStream, backing, end-copyLen, copyLen, byteMask);
+		final int copyLen = structuredReader.indexCopyLenInBytes(type);
+		int start = end-copyLen;
+		
+		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask, type);
 
 	}
 	
@@ -300,7 +307,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     public static void position(DataInputBlobReader<?> reader, int byteIndexFromStart) {
     	//assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
-    	reader.position = reader.bytesLowBound+byteIndexFromStart;
+    	reader.position = 
+    			reader.bytesLowBound+byteIndexFromStart;
     }
 
     @Override
@@ -699,8 +707,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	return reader;
     }
     
-    public static long readUTFAsLong(DataInputBlobReader<?> reader) {
-    	
+    public static long readUTFAsLong(DataInputBlobReader<?> reader) {    	
     	return convertTextToLong(reader.parserReader(), reader.backing, reader.position, reader.byteMask, reader.available());
     }
 
@@ -920,6 +927,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader, int length) {
 		TrieParserReader.parseSetup(reader, input.backing, input.position, Math.min(bytesRemaining(input), length), input.byteMask); 
+	}
+	@Override
+	public StructuredReader structured() {
+		return structuredReader;
 	}
 
 

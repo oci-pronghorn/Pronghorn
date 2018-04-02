@@ -28,11 +28,6 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		this.writeDot = writeDot;
 	}
 	
-	public int toStruct(BStructSchema struct) {
-		return schema.toStruct(struct);
-
-	}
-	
     @Override
 	public JSONReader reader() {
 		return schema; //clone if baseoffset is different??
@@ -120,6 +115,28 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		schema.addMappings(activeMapping);
 		return this;
 	}
+	
+	@Override
+	public JSONExtractorCompleted completePath(String pathName, Object optionalAssociation) {
+		
+		activeMapping.setName(pathName);
+		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	
+		schema.addMappings(activeMapping);
+		activeMapping.setAssociatedObject(optionalAssociation);
+		
+		return this;
+	}
+
+	@Override
+	public int[] indexTable(BStructSchema typeData, int structId) {
+		return schema.indexTable(typeData, structId);
+	}
+
+	@Override
+	public void addToStruct(BStructSchema typeData, int structId) {
+		schema.addToStruct(typeData, structId);
+	}
+
 
 	
 }

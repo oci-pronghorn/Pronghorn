@@ -24,12 +24,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     private int lastPosition;
     private int backPosition;
     
-    private int recTypeIndex = -1;
-    public static final int REC_TYPE_CHECK = (0xD03)<<20; //value 3331, 12 bits pushed up 
+ //   private int recTypeIndex = -1;
+ //   public static final int REC_TYPE_CHECK = (0xD03)<<20; //value 3331, 12 bits pushed up 
    	
 	private final RunningStdDev objectSizeData = new RunningStdDev();
 
-    private boolean keepIndexRoom = false;
+    private boolean structuredWithIndexData = false;
+    private final StructuredWriter structuredWriter;
     
     public DataOutputBlobWriter(Pipe<S> p) {
         this.backingPipe = p;
@@ -38,6 +39,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);  
         assert(this.byteMask!=0): "mask is "+p.blobMask+" size of blob is "+p.sizeOfBlobRing;
+        
+        structuredWriter = null!=Pipe.typeData(p) ? new StructuredWriter(this,Pipe.typeData(p)) : null;
     }
     
     public void openField() {
@@ -91,9 +94,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         //with an index we are limited because room is saved for type data lookup.
         writer.backPosition = writer.startPosition + Pipe.blobIndexBasePosition(writer.backingPipe);
         //this is turned on when callers begin to add index data
-        writer.keepIndexRoom = false;
-        //clear rec type
-        writer.recTypeIndex = -1;
+        writer.structuredWithIndexData = false;
         return writer;
 	}
     
@@ -117,36 +118,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         System.out.println();
     }
     
-    //used to write indexes to fields in order, requires that the fields are written in order
-    //this also requires that we copy the full max data block but it may have empty space in the middle.
-    public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
-    	
-    	if (writer.position() < (writer.lastBackPositionOfIndex(writer)-4) ) {
-
-     		writer.backPosition-=4;
-     		
-//     		logger.info("writeIntBackData to index {} the value {} at position {} ",
-//     				(writer.lastPosition-writer.backPosition)/4,
-//     				value,
-//     				writer.backPosition);
-     		     		
-    		write32(writer.byteBuffer, writer.byteMask, writer.backPosition, value);       
-    		return true;
-    	} else {
-    		return false;
-    	}
-    }
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
-    	int bytes = intCount*4;
+    	int bytes = (1+intCount)*4;//one for the schema index
     	
     	Pipe.validateVarLength(writer.getPipe(), bytes);
     	
     	int temp = writer.backPosition-bytes;
     	if (temp >= writer.activePosition) {
-    		int p = writer.activePosition;
+    		int p = writer.lastPosition;
     		while (--p >= temp) {//clear all
-    			writer.byteBuffer[writer.byteMask & p] = 0;
+    			writer.byteBuffer[writer.byteMask & p] = (byte)0xFF;
     		}    		
     		writer.backPosition = temp;
     		return true;
@@ -178,21 +160,15 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     	return true;
     }
     
+    public static <T extends MessageSchema<T>> void setStructType(DataOutputBlobWriter<T> writer, int value) {
+    	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe), value);
+    }
 
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
-    	assert(pos>0) : "Can not write beyond the end.";
-    	assert(Pipe.blobIndexBasePosition(writer.backingPipe) >= (4*pos));    	
-    	assert(Pipe.blobIndexBasePosition(writer.backingPipe) - (4*pos) > writer.position()) : "error index is writing over data";
-    	   	
-    	int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
-    	//logger.info("writing int {} to position {} to pipe {} ",value, base-(4*pos), writer.getPipe().id);
-		
-    	write32(writer.byteBuffer, writer.byteMask, base-(4*pos), value);       
+    	assert(pos>=0) : "Can not write beyond the end. Index values must be zero or positive";
+    	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-(4*(pos+1)), value);       
     }
-       
-    public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {  	
-    	writer.keepIndexRoom = true;
-    }
+
     
     public int closeHighLevelField(int targetFieldLoc) {
         return closeHighLevelField(this, targetFieldLoc);
@@ -208,7 +184,6 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         PipeWriter.writeSpecialBytesPosAndLen(writer.backingPipe, targetFieldLoc, len, writer.startPosition);
         writer.backingPipe.closeBlobFieldWrite();
         
-        //System.out.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxx");
         //Appendables.appendUTF8(System.out, writer.getPipe().blobRing, writer.startPosition, len, writer.getPipe().blobMask);
         
         return len;
@@ -235,38 +210,20 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     
-    //TODO: what if this id is passed in with the check sum already included?
-    private static <T extends MessageSchema<T>> void setRecordType(DataOutputBlobWriter<T> writer, int type) {
-        if (type>(1<<20)) {
-        	throw new UnsupportedOperationException("Can only support "+(1<<20)+" record types");
-        }
-        if (type<0) {
-        	throw new UnsupportedOperationException("Record id must be positive");
-        }
-    	writer.recTypeIndex = type;
-    }
+	 public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer, int structId) {  	
+	 	writer.structuredWithIndexData = true;
+	 	setStructType(writer, structId);
+	 }
     
 	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
-		//NOTE: index data can only be used with the low level API at this time.
-		if (writer.keepIndexRoom) {
-			
-//			if (writer.recTypeIndex<0) {
-//				throw new UnsupportedOperationException("Before closing this field the record type must be set");
-//			}
-			
-			//we only support 2^20 record types, eg 1 million, the remaining 12 bits are reserved.
-			int recordTypeId = REC_TYPE_CHECK | writer.recTypeIndex; 
-			// 32-20 gives 12 bits or 4K
-			
-			write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-4, recordTypeId);		
+		if (writer.structuredWithIndexData) {
 			
 			//write this field as length len but move head to the end of maxvarlen
 			writer.activePosition = writer.lastPosition;
-			Pipe.setBytesWorkingHead(writer.backingPipe, writer.activePosition & Pipe.BYTES_WRAP_MASK);			
+			Pipe.setBytesWorkingHead(writer.backingPipe, 
+					                 writer.activePosition & Pipe.BYTES_WRAP_MASK);			
 		    
-		    
-		
 		} else { 
 			//do not keep index just move forward by length size
 			Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
@@ -279,6 +236,11 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         Pipe.validateVarLength(writer.backingPipe, len);
         writer.backingPipe.closeBlobFieldWrite();
  
+        if (writer.structuredWithIndexData) {
+        	//set the flag marking this as structed.
+        	Pipe.slab(writer.backingPipe)[writer.backingPipe.slabMask & (int)(Pipe.workingHeadPosition(writer.backingPipe)-2)] |= Pipe.STRUCTURED_POS_MASK;
+        }
+        
         return len;
 	}
  
@@ -935,14 +897,19 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writePackedLong(this,denominator);
 	}
 
-	public static void copyBackData(DataOutputBlobWriter that, byte[] backing, int start, int copyLen, int byteMask2) {
+	public static void copyBackData(DataOutputBlobWriter that, 
+			                        byte[] backing, int start, int copyLen, int byteMask2, int structId) {
+		
+		//method must be redone to only copy what we need.
+		
 		Pipe.copyBytesFromToRing(backing, start, byteMask2, 
                 that.byteBuffer, 
                 that.activePosition, //??this value not right 
                 that.byteMask, 
                 copyLen);
 
-       commitBackData(that);//must call before close!!
+	   //records the struct id	
+       commitBackData(that, structId);//must call before close!!
 	}
 
 	public long startsWith(TrieParserReader reader, TrieParser tp) {
@@ -950,6 +917,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		return TrieParserReader.query(reader, tp, byteBuffer, startPosition,
 				               activePosition - startPosition, byteMask);
 
+	}
+
+	@Override
+	public StructuredWriter structured() {
+		return structuredWriter;
+	}
+
+	@Override
+	public void writeDecimal(long m, byte e) {
+		writeByte(e);
+		writePackedLong(m);	
 	}
 
     

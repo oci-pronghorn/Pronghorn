@@ -221,7 +221,7 @@ public class TrieParserTest {
 		DataOutputBlobWriter.openField(x);
 
 		// write something
-		int numCapturedBytes = TrieParserReader.writeCapturedValuesToDataOutput(reader, x, true); // ->
+		int numCapturedBytes = TrieParserReader.writeCapturedValuesToDataOutput(reader, x); // ->
 																									// should
 																									// equal
 																									// 4
@@ -265,7 +265,7 @@ public class TrieParserTest {
 		DataOutputBlobWriter.openField(x);
 
 		// write something
-		numCapturedBytes = TrieParserReader.writeCapturedValuesToDataOutput(reader, x, true); // ->
+		numCapturedBytes = TrieParserReader.writeCapturedValuesToDataOutput(reader, x); // ->
 																								// should
 																								// equal
 																								// 4

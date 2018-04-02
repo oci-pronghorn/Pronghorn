@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.util.parse;
 
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +18,8 @@ public class JSONFieldMapping {
 	
 	private final JSONFieldSchema schema;
 	private String name;
+	private Object association;
+	
 	public final JSONType type;
 	
 	public JSONAccumRule accumRule;	
@@ -65,6 +66,15 @@ public class JSONFieldMapping {
 	
 	public void setName(String name) {
 		this.name = name;
+	}
+	
+	public void setAssociatedObject(Object optionalAssociation) {
+		this.association = optionalAssociation;
+		
+	}
+	
+	public Object getAssociatedObject() {
+		return association;
 	}
 	
 	public void setPath(JSONFieldSchema schema, String... path) {
@@ -238,5 +248,6 @@ public class JSONFieldMapping {
 		
 		return out;
 	}
+
 	
 }

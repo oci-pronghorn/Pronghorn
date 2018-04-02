@@ -4,36 +4,47 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 
-public class BStructSchema {
+public class BStructSchema { //prong struct store  
+	
+	private final static Logger logger = LoggerFactory.getLogger(BStructSchema.class);
 	
 	//selected headers, route params, plus json payloads makes up a fixed record structure
 	private int structCount = 0;
 	
 	//field names supported here
-	private TrieParser[]     fields         = new TrieParser[4]; //grow as needed for fields
-	private byte[][][]       fieldNames     = new byte[4][][];
+	private TrieParser[]     fields             = new TrieParser[4]; //grow as needed for fields
+	private byte[][][]       fieldNames         = new byte[4][][];
 	//type of the field data, its dims and how it can be parsed.
-	private BStructTypes[][] fieldTypes     = new BStructTypes[4][];
-	private int[][]          fieldDims      = new int[4][];
-	private Object[][]       fieldLocals    = new Object[4][];
-
+	private BStructTypes[][] fieldTypes         = new BStructTypes[4][];
+	private int[][]          fieldDims          = new int[4][];
+	private Object[][]       fieldLocals        = new Object[4][];
+	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
 	
 	//TODO: future feature
 	//private Class<Enum<?>>[][] fieldOptionalEnum = new Class[4][]; //TODO: add method to set this on a field.
 
+	//TODO: structures need to provide structure IDs of those built on
+	//      JSON is added on to the normal HTTP messaage so we must keep the fields..
+	//      urgent.
+	
 	
 	private int              maxDims    = 0;
 	
 	private static final int STRUCT_BITS   = 20;
 	private static final int STRUCT_MAX    = 1<<STRUCT_BITS;
 	private static final int STRUCT_MASK   = STRUCT_MAX-1;
-	private static final int STURCT_OFFSET = 32;
-	private static final int IS_STRUCT_BIT = 1<<31;
+	public static final int STRUCT_OFFSET = 32;
+	public static final int IS_STRUCT_BIT = 1<<30;
 	
 	private static final int FIELD_BITS    = 20;
 	private static final int FIELD_MAX     = 1<<FIELD_BITS;
@@ -147,6 +158,10 @@ public class BStructSchema {
 //	}
 	
 	
+	public int addStruct() {
+		return addStruct(new byte[][] {}, new BStructTypes[] {}, new int[] {});
+	}
+	
 	/**
 	 * Add new Structure to the schema
 	 * @param fieldNames - name for each field
@@ -155,39 +170,51 @@ public class BStructSchema {
 	 * @return the array of field identifiers in the same order as defined
 	 */
 	public int addStruct(byte[][] fieldNames, 
-			                BStructTypes[] fieldTypes, //all fields are precede by array count byte
-			                int[] fieldDims //Dimensionality, should be 0 for simple objects.
-						   ) {
+			             BStructTypes[] fieldTypes, //all fields are precede by array count byte
+			             int[] fieldDims //Dimensionality, should be 0 for simple objects.
+						) {
 		
 		assert(fieldNames.length == fieldTypes.length);
 		assert(fieldNames.length == fieldDims.length);
 		maxDims(fieldDims);
-		int idx = structCount++;
+		int structIdx = structCount++;
 		grow(structCount);
 		
 		int n = fieldNames.length;
-		TrieParser fieldParser = new TrieParser(n*20,2,true,false);
+		boolean skipDeepChecks = false;
+		boolean supportsExtraction = false;
+		boolean ignoreCase = true;
+		TrieParser fieldParser = new TrieParser(n*20,4,skipDeepChecks,supportsExtraction,ignoreCase);
+		long base = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structIdx)))<<STRUCT_OFFSET;
 		while (--n>=0) {			
 			assert(isNotAlreadyDefined(fieldParser, fieldNames[n]));			
-			fieldParser.setValue(fieldNames[n], n);
+			fieldParser.setValue(fieldNames[n], base | n); //bad value..
 		}
-		this.fields[idx] = fieldParser;
+		this.fields[structIdx] = fieldParser;
 		
-		this.fieldNames[idx] = fieldNames;
-		this.fieldTypes[idx] = fieldTypes;
-		this.fieldDims[idx] = fieldDims;
-		this.fieldLocals[idx] = new Object[fieldNames.length];
+		this.fieldNames[structIdx] = fieldNames;
+		this.fieldTypes[structIdx] = fieldTypes;
+		this.fieldDims[structIdx] = fieldDims;
+		this.fieldLocals[structIdx] = new Object[fieldNames.length];
+		this.fieldAttachedIndex[structIdx] = new IntHashTable(IntHashTable.computeBits(Math.max(fieldNames.length,8)*3));
 				
-		return idx|IS_STRUCT_BIT;
+		
+		return structIdx|IS_STRUCT_BIT;
 	}
 		
 	
-	private static boolean isNotAlreadyDefined(TrieParser fieldParser, byte[] value) {
-		//we are trusting escape analysis to not create GC here.
-		return -1 == fieldIdLookup(fieldParser, value, 0, value.length, Integer.MAX_VALUE);
+	private static boolean isNotAlreadyDefined(TrieParser fieldParser, byte[] raw) {
+		long val = -1;
+		boolean ok = -1 == (val=fieldIdLookup(fieldParser, raw, 0, raw.length, Integer.MAX_VALUE));
+		if (!ok) {
+			System.err.println("Already have text "+new String(raw)+" associated with "+val);
+		}
+		
+		return ok;
 	}
 
 	private static long fieldIdLookup(TrieParser fieldParser, byte[] value, int valuePos, int valueLen, int mask) {
+		//we are trusting escape analysis to not create GC here.
 		return TrieParserReader.query(new TrieParserReader(true), fieldParser, value, valuePos, valueLen, mask);
 	}
 
@@ -198,11 +225,10 @@ public class BStructSchema {
 		//grow all the arrays with new value
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
-		int newFieldIdx = fieldNames.length;
+		int newFieldIdx = fieldNames[idx].length;
 		
 		//add text lookup
-		assert(isNotAlreadyDefined(this.fields[idx], name));
-		this.fields[idx].setValue(name, newFieldIdx);
+		assert(isNotAlreadyDefined(this.fields[idx], name)) : "field of this name already defined.";
 
 		//only 1 name is returned, the first is considered cannonical
 		this.fieldNames[idx] = grow(this.fieldNames[idx], name); 
@@ -210,8 +236,10 @@ public class BStructSchema {
 		this.fieldDims[idx] = grow(this.fieldDims[idx], fieldDim);
 		this.fieldLocals[idx] = grow(this.fieldLocals[idx], null);
 						
-		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
-		return base | idx;
+		long fieldId = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET | newFieldIdx;
+		this.fields[idx].setValue(name, fieldId);
+		return fieldId;
+	
 	}
 	
 	public long modifyStruct(int structId,
@@ -229,13 +257,12 @@ public class BStructSchema {
 			//modify an existing field, we have new data to apply
 			//////////
 			//use the newest defined type
-			this.fieldTypes[idx][fieldIdx] = fieldType;		
+			this.fieldTypes[idx][ FIELD_MASK&fieldIdx] = fieldType;		
 			//keep largest dim value
-			this.fieldDims[idx][fieldIdx] = Math.max(this.fieldDims[idx][fieldIdx], fieldDim);
+			this.fieldDims[idx][ FIELD_MASK&fieldIdx] = Math.max(this.fieldDims[idx][FIELD_MASK&fieldIdx], fieldDim);
 		}
 		
-		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
-		return base | fieldIdx; //TODO: not sure if this is not already included..
+		return fieldIdx;
 		
 	}
 			 
@@ -262,6 +289,13 @@ public class BStructSchema {
 		results[source.length] = newValue;
 		return results;
 	}
+	
+	private IntHashTable[] grow(IntHashTable[] source, IntHashTable newValue) {
+		IntHashTable[] results = new IntHashTable[source.length+1];
+		System.arraycopy(source, 0, results, 0, source.length);
+		results[source.length] = newValue;
+		return results;
+	}
 
 	private byte[][] grow(byte[][] source, byte[] newValue) {
 		byte[][] results = new byte[source.length+1][];
@@ -276,20 +310,64 @@ public class BStructSchema {
 		assert(c<=FIELD_MASK) : "too many fields";
 		
 		long[] fieldIds = new long[c];
-		long base = ((long)(STRUCT_MASK & structId))<<STURCT_OFFSET;
+		long base = ((long)(STRUCT_MASK & structId))<<STRUCT_OFFSET;
 		while (--c>=0) {
 			fieldIds[c] =  base | (long)c;
 		}
 		return fieldIds;
 	}
 	
-	public void setAssociatedObject(long id, Object localObject) {
-		this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id] = localObject;
+	
+	public boolean setAssociatedObject(final long id, Object localObject) {
+		assert(null!=localObject) : "must not be null, not supported";
+		
+		int structIdx = extractStructId(id);
+		int fieldIdx = extractFieldPosition(id);
+		
+		Object[] objects = this.fieldLocals[structIdx];
+		objects[fieldIdx] = localObject;
+		
+		if (null==this.fieldAttachedIndex[structIdx]) {			
+			this.fieldAttachedIndex[structIdx] = new IntHashTable(
+						IntHashTable.computeBits(this.fieldLocals[structIdx].length*2)
+					);
+		}
+		
+		int identityHashCode = System.identityHashCode(localObject);
+		assert(0!=identityHashCode) : "can not insert null";
+		assert(!IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], identityHashCode)) : "These objects are too similar or was attached twice, System.identityHash must be unique. Choose different objects";
+		if (IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], identityHashCode)) {
+			logger.warn("Unable to add object {} as an association, Another object with an identical System.identityHash is already held. Try a different object.", localObject);		
+			return false;
+		} else {
+			if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], identityHashCode, fieldIdx)) {
+				//we are out of space
+				this.fieldAttachedIndex[structIdx] = IntHashTable.doubleSize(this.fieldAttachedIndex[structIdx]);
+				if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], identityHashCode, fieldIdx)) {
+					throw new RuntimeException("internal error");
+				}
+				
+			}
+		
+			assert(fieldIdx == IntHashTable.getItem(this.fieldAttachedIndex[structIdx], identityHashCode));
+			assert(id == fieldLookupByIdentity(localObject,structIdx|IS_STRUCT_BIT));
+			
+			return true;
+		}
+	}
+
+	public static int extractStructId(final long id) {
+		return STRUCT_MASK&(int)(id>>>STRUCT_OFFSET);
+	}
+	
+	public static int extractFieldPosition(long fieldId) {
+		return FIELD_MASK&(int)fieldId;
 	}
 	
 	
-	public <T extends Object> T getAssociatedObject(long id) {
-		return (T) this.fieldLocals[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+	public <T extends Object> T getAssociatedObject(long fieldId) {
+		assert(fieldId>=0) : "bad fieldId";
+		return (T) this.fieldLocals[extractStructId(fieldId)][extractFieldPosition(fieldId)];
 	}
 	
 	private void maxDims(int[] fieldDims) {
@@ -304,38 +382,61 @@ public class BStructSchema {
 	}
 
 	public int dims(long id) {
-		return fieldDims[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+		return fieldDims[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
 	public BStructTypes fieldType(long id) {
-		return fieldTypes[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+		return fieldTypes[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
 	public byte[] fieldName(long id) {
-		return fieldNames[STRUCT_MASK&(int)(id>>>STURCT_OFFSET)][FIELD_MASK&(int)id];
+		return fieldNames[extractStructId(id)][extractFieldPosition(id)];
 	}
 	    	
-	public long fieldLookup(TrieParserReader reader, CharSequence sequence, int struct) {
-		return TrieParserReader.query(reader, fields[struct], sequence);
+	public long fieldLookup(CharSequence sequence, int struct) {
+		assert ((IS_STRUCT_BIT&struct) !=0 ) : "Struct Id must be passed in";
+		TrieParserReader reader = TrieParserReaderLocal.get();
+		return TrieParserReader.query(reader, fields[STRUCT_MASK&struct], sequence);
 	}
 	
-	public long fieldLookup(TrieParserReader reader, byte[] source, int pos, int len, int mask, int struct) {
+	public long fieldLookup(byte[] source, int pos, int len, int mask, int struct) {
+		TrieParserReader reader = TrieParserReaderLocal.get();
 		return TrieParserReader.query(reader, fields[struct], source, pos, len, mask);
 	}
+	
+	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		int identityHashCode = System.identityHashCode(attachedObject);
+		int idx = IntHashTable.getItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
+		if (0==idx) {
+			if (!IntHashTable.hasItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode)) {
+				throw new UnsupportedOperationException("Object not found: "+attachedObject);			
+			}
+		}
+		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
+		
+	}
+	
 	
 	private void grow(int records) {
 		if (records>fields.length) {
 			int newSize = records*2;
 			
-			fields         = grow(newSize, fields);
-			fieldNames     = grow(newSize, fieldNames);
-			fieldTypes     = grow(newSize, fieldTypes);
-			fieldDims      = grow(newSize, fieldDims);
-			fieldLocals    = grow(newSize, fieldLocals);
-						
+			fields             = grow(newSize, fields);
+			fieldNames         = grow(newSize, fieldNames);
+			fieldTypes         = grow(newSize, fieldTypes);
+			fieldDims          = grow(newSize, fieldDims);
+			fieldLocals        = grow(newSize, fieldLocals);
+			fieldAttachedIndex = grow(newSize, fieldAttachedIndex);	
 		}
 	}
 
+
+	private IntHashTable[] grow(int newSize, IntHashTable[] source) {
+		IntHashTable[] result = new IntHashTable[newSize];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
 
 	private static BStructTypes[][] grow(int newSize, BStructTypes[][] source) {
 		BStructTypes[][] result = new BStructTypes[newSize][];
@@ -368,30 +469,60 @@ public class BStructSchema {
 		return result;
 	}
 	
-	private static long[][] grow(int newSize, long[][] source) {
-		long[][] result = new long[newSize][];
-		System.arraycopy(source, 0, result, 0, source.length);
-		return result;
-	}
-	
 	public int maxDim() {
 		return maxDims;
 	}
 
-	public <T> void visit(DataInputBlobReader<?> reader, 
+	public <T> boolean visit(DataInputBlobReader<?> reader, 
 			              Class<T> attachedInstanceOf, 
 			              BStructFieldVisitor<T> visitor) {
 				
+		boolean result = false;
 		int structId = DataInputBlobReader.getStructType(reader);
 		if (structId>0) {
-			Object[] locals = this.fieldLocals[structId];
+			
+			Object[] locals = this.fieldLocals[BStructSchema.STRUCT_MASK & structId];
 			for(int i = 0; i<locals.length; i++) {
 				if (attachedInstanceOf.isInstance(locals[i])) {
-					DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, i));								
-					visitor.read((T) locals[i], reader);
+					int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, i);
+					//if no value then do not visit
+					if (readFromLastInt>=0) {
+						result = true;
+						DataInputBlobReader.position(reader, readFromLastInt);	
+						
+						//logger.info("visit struct id {} {}",structId, Integer.toHexString(structId));
+						//logger.info("bbb reading {} from position {} pos {} from pipe {}",locals[i], readFromLastInt, i, reader.getBackingPipe(reader).id );
+												
+						visitor.read((T) locals[i], reader);
+					}
 				}
 			}
 		}
+		return result;
+	}
+	
+	public <T> boolean identityVisit(DataInputBlobReader<?> reader, T attachedObject, BStructFieldVisitor<T> visitor) {
+
+		int structId = DataInputBlobReader.getStructType(reader);
+		
+		int identityHashCode = System.identityHashCode(attachedObject);
+		int idx = IntHashTable.getItem(this.fieldAttachedIndex[structId], identityHashCode);
+		if (0==idx) {
+			if (!IntHashTable.hasItem(this.fieldAttachedIndex[structId], identityHashCode)) {
+				return false;				
+			}
+		}
+		DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
+		visitor.read((T)(fieldLocals[structId][idx]), reader);
+		return true;
+	}
+	
+	
+
+	public int totalSizeOfIndexes(int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		assert (structId>=0) : "Bad Struct ID "+structId;
+		return fieldTypes[STRUCT_MASK & structId].length;
 	}
 	
 }

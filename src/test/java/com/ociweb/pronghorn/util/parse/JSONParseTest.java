@@ -495,7 +495,7 @@ public class JSONParseTest {
 			Pipe.presumeRoomForWrite(targetData);
 			int writeSize = Pipe.addMsgIdx(targetData, 0);
 			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
-			visitor.export(stream);		
+			visitor.export(stream,null);		
 			stream.closeLowLevelField();
 			Pipe.confirmLowLevelWrite(targetData, writeSize);
 			Pipe.publishWrites(targetData);
@@ -560,7 +560,7 @@ public class JSONParseTest {
 			/////write the captured data into the pipe
 			int writeSize = Pipe.addMsgIdx(targetData, 0);
 			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
-			visitor.export(stream);
+			visitor.export(stream,null);
 			stream.closeLowLevelField();
 			Pipe.confirmLowLevelWrite(targetData, writeSize);
 			Pipe.publishWrites(targetData);

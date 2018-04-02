@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.struct.BStructSchema;
 import com.ociweb.pronghorn.struct.BStructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 
 public class JSONFieldSchema implements JSONReader {
 
@@ -26,10 +27,6 @@ public class JSONFieldSchema implements JSONReader {
 	 private final boolean completeFields = true;
 	 private JSONFieldMapping[] mappings;  //immutable once established
 
-	 private final TrieParserReader reader = new TrieParserReader(maxFields, completeFields); //only on startup
-	 
-	 //TODO: how do we find the position of the nulls when we have headers or params?
-	 
 	 public JSONFieldSchema(int nullPosition) {
 		 
 		 this.mappings = new JSONFieldMapping[0];
@@ -249,7 +246,7 @@ public class JSONFieldSchema implements JSONReader {
 	 public int lookupId(String text) {
 		 //adds new one if it is not found.
 		 	
-		 long idx = TrieParserReader.query(reader, 
+		 long idx = TrieParserReader.query(TrieParserReaderLocal.get(), 
 				                           parser, 
 				                           text);
 		 
@@ -308,40 +305,51 @@ public class JSONFieldSchema implements JSONReader {
 	public void clear() {
 	}
 
-	public int toStruct(BStructSchema struct) {
+	public void addToStruct(BStructSchema struct, int structId) {
 		
 		int length = mappings.length;
-				
-		byte[][] fieldNames = new byte[length][];
-		BStructTypes[] fieldTypes = new BStructTypes[length];
-		int[] fieldDims = new int[length];
-		
+						
 		int i = length;
 		while (--i>=0) {
-			JSONFieldMapping mapping = mappings[i];			
-			fieldNames[i] = mapping.getName().getBytes();//TODO: make final and remove getter?
+			JSONFieldMapping mapping = mappings[i];		
+			BStructTypes fieldType = null;
 			switch(mapping.type) {
 				case TypeString:
-					fieldTypes[i] = BStructTypes.Text;
+					fieldType = BStructTypes.Text;
 				break;
 				case TypeInteger:
-					fieldTypes[i] = BStructTypes.Long;
+					fieldType = BStructTypes.Long;
 				break;
 				case TypeDecimal:
-					fieldTypes[i] = BStructTypes.Decimal;
+					fieldType = BStructTypes.Decimal;
 				break;
 				case TypeBoolean:
-					fieldTypes[i] = BStructTypes.Boolean;
+					fieldType = BStructTypes.Boolean;
 				break;					
 			}
-			fieldDims[i] = mapping.dimensions();
+			long fieldId = struct.growStruct(structId, fieldType, mapping.dimensions(), mapping.getName().getBytes());
+			Object assoc = mapping.getAssociatedObject();
+			if (null!=assoc) {
+				if (!struct.setAssociatedObject(fieldId, assoc)) {
+					throw new UnsupportedOperationException("An object with the same identity hash is already held, can not add "+assoc);
+				}
+			}
 		}
-		return struct.addStruct(fieldNames, fieldTypes, fieldDims);
-		
 	}
 
+	public int[] indexTable(BStructSchema typeData, int structId) {
+
+		int[] table = new int[mappings.length];
 		
-	
+		int t = table.length;
+		while(--t>0) {
+			long fieldId = typeData.fieldLookup(mappings[t].getName(), structId);
+			assert(fieldId!=-1) : "bad field name "+mappings[t].getName()+" not found in struct";
+			table[t] = (BStructSchema.FIELD_MASK & (int)fieldId);
+		}
+		return table;
+
+	}
 	 
 	 
 }

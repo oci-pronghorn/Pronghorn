@@ -1188,7 +1188,9 @@ public class TrieParserReader {
 		}
 	}
 
-	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, short numType) {
+	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, 
+			                         byte[] source, int sourcePos, 
+			                         long sourceLength, int sourceMask, short numType) {
 
 		//////////////support for fixed length numbers up to 1024
 		final boolean absentIsZero = 0!=(NUMERIC_ABSENT_IS_ZERO_MASK&numType);
@@ -1202,7 +1204,6 @@ public class TrieParserReader {
 		byte sign = 1;
 		long intValue = 0;
 		byte intLength = 0;
-		byte base = 10;
 		int  dot = 0;//only set to one for NUMERIC_FLAG_DECIMAL        
 
 		final short c1 = source[sourceMask & sourcePos];
@@ -1240,15 +1241,24 @@ public class TrieParserReader {
 
 		//NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
 		if (0!=(TrieParser.NUMERIC_FLAG_SIGN&numType)) {
-			if (c1=='-') { //NOTE: check ASCII table there may be a fater way to do this.
+			if (c1=='-') { //NOTE: check ASCII table there may be a faster way to do this.
 				sign = -1;
 				sourcePos++;
-			}
-			if (c1=='+') {
+			} else if (c1=='+') {
 				sourcePos++;
 			}
 		}
 
+		return parseNumericImpl(reader, source, sourcePos, sourceLength, 
+				sourceMask, numType, absentIsZero, templateLimited,
+				sign, intValue, intLength, dot);
+	}
+
+	private static int parseNumericImpl(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
+			int sourceMask, short numType, final boolean absentIsZero, final boolean templateLimited, byte sign,
+			long intValue, byte intLength, int dot) {
+		
+		byte base;
 		boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+0]) || ('x'!=source[sourceMask & sourcePos+1]);
 		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
 			//just to keep it from spinning on values that are way out of bounds
@@ -1256,6 +1266,7 @@ public class TrieParserReader {
 
 			base = 10;
 			short c = 0;
+			
 			do {
 				c = source[sourceMask & sourcePos++];        
 
@@ -1267,10 +1278,12 @@ public class TrieParserReader {
 						continue;
 					} else {
 						break;//next char is not valid.
+						
 					}
 				} else {
 					if (reader.alwaysCompletePayloads || templateLimited) {
 						break;
+						
 					} else {
 						return -1; //we are waiting for more digits in the feed. 
 					}
@@ -1588,9 +1601,7 @@ public class TrieParserReader {
 
 	}
 
-
-	@Deprecated
-	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target, boolean writeIndex) {
+	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target) {
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
 		//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
@@ -1672,10 +1683,7 @@ public class TrieParserReader {
 						position = -dlen;  
 
 						target.writePackedLong(value);
-						//System.err.println("A write packed long "+value);
-						if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
-							throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
-						} 						
+				
 						//write second part and it gets its own entry.
 						writePosition = target.position();                		
 						target.writeByte(position);
@@ -1693,15 +1701,11 @@ public class TrieParserReader {
 				}
 			}    
 
-			if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
-				throw new UnsupportedOperationException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for pipe varLength is "+target.getPipe().maxVarLen);
-			}
-
-
 		}        
 
 		return totalBytes;
 	}
+	
 
 	
 	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(
@@ -1819,7 +1823,7 @@ public class TrieParserReader {
 					               indexPositions[fieldPosition++]);
 
 		}        
-		assert(fieldPosition+1==indexPositions.length);
+		assert(fieldPosition==indexPositions.length);
 		return totalBytes;
 	}
 	

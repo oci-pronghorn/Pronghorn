@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public abstract class ChannelReader extends InputStream implements ObjectInput {
-
+	
 	public abstract int available();
 	
 	public abstract <A extends Appendable> A readUTF(A target);
@@ -88,6 +88,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	public abstract void position(int position);
 	
 	public abstract boolean isStructured();
-	
+
+	public abstract StructuredReader structured();
 	
 }
