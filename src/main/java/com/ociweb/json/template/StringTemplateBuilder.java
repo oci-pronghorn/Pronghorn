@@ -38,37 +38,37 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
-	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> data) {
+	public StringTemplateBuilder<T> add(StringTemplateScript<T> script) {
+		return append(script);
+	}
+
+	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> script) {
 		return append(
 				new StringTemplateScript<T>() {
 					@Override
 					public void render(AppendableByteWriter writer, T source) {
 						N node = null;
-						for(int i = 0; (node = data.render(writer, source, i, node)) != null; i++) {
+						for(int i = 0; (node = script.render(writer, source, i, node)) != null; i++) {
 						}
 					}
 				});
 	}
 
-	public StringTemplateBuilder<T> add(final StringTemplateScript<T>[] data, final StringTemplateBranching<T> branching) {
-		final StringTemplateScript<T>[] localData = new StringTemplateScript[data.length];
-		System.arraycopy(data, 0, localData, 0, data.length);
+	public StringTemplateBuilder<T> add(final StringTemplateScript<T>[] branches, final StringTemplateBranching<T> select) {
+		final StringTemplateScript<T>[] localData = new StringTemplateScript[branches.length];
+		System.arraycopy(branches, 0, localData, 0, branches.length);
 
 		return append(
 				new StringTemplateScript<T>() {
 					@Override
 					public void render(AppendableByteWriter writer, T source) {
-						int i = branching.branch(source);
-						if (i != -1) { // -1 is no-op
-							assert (i < localData.length) : "String template builder selected invalid branch.";
-							localData[i].render(writer, source);
+						int s = select.branch(source);
+						if (s != -1) {
+							assert (s < localData.length) : "String template builder selected invalid branch.";
+							localData[s].render(writer, source);
 						}
 					}
 				});
-	}
-
-	public StringTemplateBuilder<T> add(StringTemplateScript<T> data) {
-		return append(data);
 	}
 
 	public void render(AppendableByteWriter writer, T source) {
