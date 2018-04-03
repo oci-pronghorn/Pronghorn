@@ -29,12 +29,22 @@ public class StructBuilder {
 		
 	}
 	
+	public StructBuilder(StructRegistry typeData, StructBuilder template) {
+		this.typeData = typeData;
+		
+		this.fieldNames = Arrays.copyOfRange(template.fieldNames, 0, template.fieldCount); 
+		this.fieldTypes = Arrays.copyOfRange(template.fieldTypes, 0, template.fieldCount); 
+		this.fieldDims  = Arrays.copyOfRange(template.fieldDims, 0, template.fieldCount); 
+		this.fieldAssoc = Arrays.copyOfRange(template.fieldAssoc, 0, template.fieldCount); 
+		
+	}
+	
 	public static StructBuilder newStruct(StructRegistry typeData) {
 		return new StructBuilder(typeData);
 	}
 	
 	public static StructBuilder newStruct(StructRegistry typeData, StructBuilder template) {
-		return new StructBuilder(typeData);
+		return new StructBuilder(typeData, template);
 	}
 	
 	public StructBuilder removeLastNFields(int n) {
