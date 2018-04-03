@@ -142,7 +142,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		if (routeId>=headersParser.length) {
 			int i = headersParser.length;
 			TrieParser[] newArray = new TrieParser[i*2];
-			System.arraycopy(headerParser, 0, newArray, 0, i);
+			System.arraycopy(headersParser, 0, newArray, 0, i);
 			headersParser = newArray;
 		}
 		headersParser[routeId]=headerParser;
