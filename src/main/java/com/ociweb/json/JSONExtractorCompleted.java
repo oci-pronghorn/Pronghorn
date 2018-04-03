@@ -1,6 +1,6 @@
 package com.ociweb.json;
 
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
@@ -13,6 +13,6 @@ public interface JSONExtractorCompleted {
 	TrieParser trieParser();
 	JSONStreamVisitorToChannel newJSONVisitor();
 	JSONReader reader();
-	int[] indexTable(BStructSchema schema, int structId);
-	void addToStruct(BStructSchema schema, int structId);
+	int[] indexTable(StructRegistry schema, int structId);
+	void addToStruct(StructRegistry schema, int structId);
 }

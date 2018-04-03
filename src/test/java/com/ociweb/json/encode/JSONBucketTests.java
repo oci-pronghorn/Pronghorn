@@ -63,7 +63,6 @@ public class JSONBucketTests {
         assertTrue(json.isLocked());
 
         json.render(out, new Bucket());
-        System.out.println(out);
         assertEquals(
                 "{\n" +
                 "\t\"b\": false,\n" +

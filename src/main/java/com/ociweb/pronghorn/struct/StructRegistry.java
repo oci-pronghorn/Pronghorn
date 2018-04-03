@@ -14,9 +14,9 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 
-public class BStructSchema { //prong struct store  
+public class StructRegistry { //prong struct store  
 	
-	private final static Logger logger = LoggerFactory.getLogger(BStructSchema.class);
+	private final static Logger logger = LoggerFactory.getLogger(StructRegistry.class);
 	
 	//selected headers, route params, plus json payloads makes up a fixed record structure
 	private int structCount = 0;
@@ -25,7 +25,7 @@ public class BStructSchema { //prong struct store
 	private TrieParser[]     fields             = new TrieParser[4]; //grow as needed for fields
 	private byte[][][]       fieldNames         = new byte[4][][];
 	//type of the field data, its dims and how it can be parsed.
-	private BStructTypes[][] fieldTypes         = new BStructTypes[4][];
+	private StructTypes[][] fieldTypes         = new StructTypes[4][];
 	private int[][]          fieldDims          = new int[4][];
 	private Object[][]       fieldLocals        = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
@@ -33,10 +33,6 @@ public class BStructSchema { //prong struct store
 	//TODO: future feature
 	//private Class<Enum<?>>[][] fieldOptionalEnum = new Class[4][]; //TODO: add method to set this on a field.
 
-	//TODO: structures need to provide structure IDs of those built on
-	//      JSON is added on to the normal HTTP messaage so we must keep the fields..
-	//      urgent.
-	
 	
 	private int              maxDims    = 0;
 	
@@ -52,9 +48,9 @@ public class BStructSchema { //prong struct store
 		
 	
 	
-	public BStructSchema merge(BStructSchema source) {
+	public StructRegistry merge(StructRegistry source) {
 		
-		BStructSchema result = new BStructSchema();
+		StructRegistry result = new StructRegistry();
 		
 		for(int i=0; i<structCount; i++) {			
 			maxDims(fieldDims[i]);
@@ -74,11 +70,11 @@ public class BStructSchema { //prong struct store
 	public <A extends Appendable> A asSource(A target) {
 		
 		try {
-			target.append(BStructSchema.class.getSimpleName());
-			target.append(" bss = new ").append(BStructSchema.class.getSimpleName()).append("();\n");
+			target.append(StructRegistry.class.getSimpleName());
+			target.append(" bss = new ").append(StructRegistry.class.getSimpleName()).append("();\n");
 			
 			String methodName = null;
-			Method[] m = BStructSchema.class.getMethods();
+			Method[] m = StructRegistry.class.getMethods();
 			int i = m.length;
 			while (--i>=0) {
 				Class<?>[] parameterTypes = m[i].getParameterTypes();
@@ -87,7 +83,7 @@ public class BStructSchema { //prong struct store
 					&& parameterTypes[0].getComponentType().isArray()
 					&& parameterTypes[0].getComponentType() == String.class
 					&& parameterTypes[1].getComponentType().isArray()
-					&& parameterTypes[1].getComponentType() == BStructTypes.class
+					&& parameterTypes[1].getComponentType() == StructTypes.class
 					&& parameterTypes[2].getComponentType().isArray()
 					&& parameterTypes[2].getComponentType() == Integer.TYPE
 				 ) {					
@@ -109,15 +105,15 @@ public class BStructSchema { //prong struct store
 					Appendables.appendUTF8(target, names[n], 0, names[n].length, Integer.MAX_VALUE);
 					target.append("\"");					
 				}
-				target.append("}, new ").append(BStructTypes.class.getName()).append("[]{");
+				target.append("}, new ").append(StructTypes.class.getName()).append("[]{");
 				
 				
-				BStructTypes[] type = fieldTypes[j];				
+				StructTypes[] type = fieldTypes[j];				
 				for(int t=1; t<type.length; t++) {					
 					if (t!=0) {
 						target.append(",");
 					}
-					target.append(BStructTypes.class.getName()).append('.');
+					target.append(StructTypes.class.getName()).append('.');
 					target.append(type[t].name());			
 				}
 				target.append("}, new int[]{");
@@ -159,24 +155,41 @@ public class BStructSchema { //prong struct store
 	
 	
 	public int addStruct() {
-		return addStruct(new byte[][] {}, new BStructTypes[] {}, new int[] {});
+		return addStruct(new byte[][] {}, new StructTypes[] {}, new int[] {});
+	}
+	
+	public int addStruct(byte[][] fieldNames, 
+            StructTypes[] fieldTypes //all fields are precede by array count byte
+            
+			) {
+		return addStruct(fieldNames, fieldTypes, null, null);
+	}
+	
+	public int addStruct(byte[][] fieldNames, 
+            StructTypes[] fieldTypes, //all fields are precede by array count byte
+            int[] fieldDims //Dimensionality, should be 0 for simple objects.
+			) {
+		return addStruct(fieldNames, fieldTypes, fieldDims, null);
 	}
 	
 	/**
 	 * Add new Structure to the schema
 	 * @param fieldNames - name for each field
 	 * @param fieldTypes - type for each field
-	 * @param fieldDims - dominations for this field, should be 0 for most cases of simple data
+	 * @param fieldDim - dominations for this field, should be 0 for most cases of simple data
 	 * @return the array of field identifiers in the same order as defined
 	 */
 	public int addStruct(byte[][] fieldNames, 
-			             BStructTypes[] fieldTypes, //all fields are precede by array count byte
-			             int[] fieldDims //Dimensionality, should be 0 for simple objects.
-						) {
+			             StructTypes[] fieldTypes, //all fields are precede by array count byte
+			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
+			             Object[] fieldAssoc
+			) {
 		
 		assert(fieldNames.length == fieldTypes.length);
-		assert(fieldNames.length == fieldDims.length);
-		maxDims(fieldDims);
+		if (null!=fieldDim) {
+			assert(fieldNames.length == fieldDim.length);
+			maxDims(fieldDim);
+		}	
 		int structIdx = structCount++;
 		grow(structCount);
 		
@@ -194,10 +207,18 @@ public class BStructSchema { //prong struct store
 		
 		this.fieldNames[structIdx] = fieldNames;
 		this.fieldTypes[structIdx] = fieldTypes;
-		this.fieldDims[structIdx] = fieldDims;
+		this.fieldDims[structIdx] = null==fieldDim?new int[fieldTypes.length]:fieldDim;
 		this.fieldLocals[structIdx] = new Object[fieldNames.length];
 		this.fieldAttachedIndex[structIdx] = new IntHashTable(IntHashTable.computeBits(Math.max(fieldNames.length,8)*3));
 				
+		if (null!=fieldAssoc) {
+			int j = fieldAssoc.length;
+			while (--j >= 0) {
+				if (null!=fieldAssoc[j]) {
+					setAssoc(fieldAssoc[j], structIdx, j);
+				}
+			}
+		}
 		
 		return structIdx|IS_STRUCT_BIT;
 	}
@@ -219,7 +240,7 @@ public class BStructSchema { //prong struct store
 	}
 
 	public long growStruct(int structId,
-						   BStructTypes fieldType,
+						   StructTypes fieldType,
 						   int fieldDim,
 						   byte[] name) {
 		//grow all the arrays with new value
@@ -244,7 +265,7 @@ public class BStructSchema { //prong struct store
 	
 	public long modifyStruct(int structId,
 						   byte[] fieldName, int fieldPos, int fieldLen,
-						   BStructTypes fieldType,
+						   StructTypes fieldType,
 						   int fieldDim) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
@@ -276,8 +297,8 @@ public class BStructSchema { //prong struct store
 		return results;
 	}
 
-	private BStructTypes[] grow(BStructTypes[] source, BStructTypes newValue) {
-		BStructTypes[] results = new BStructTypes[source.length+1];
+	private StructTypes[] grow(StructTypes[] source, StructTypes newValue) {
+		StructTypes[] results = new StructTypes[source.length+1];
 		System.arraycopy(source, 0, results, 0, source.length);
 		results[source.length] = newValue;
 		return results;
@@ -324,8 +345,11 @@ public class BStructSchema { //prong struct store
 		int structIdx = extractStructId(id);
 		int fieldIdx = extractFieldPosition(id);
 		
-		Object[] objects = this.fieldLocals[structIdx];
-		objects[fieldIdx] = localObject;
+		return setAssoc(localObject, structIdx, fieldIdx);
+	}
+
+	private boolean setAssoc(Object localObject, int structIdx, int fieldIdx) {
+		this.fieldLocals[structIdx][fieldIdx] = localObject;
 		
 		if (null==this.fieldAttachedIndex[structIdx]) {			
 			this.fieldAttachedIndex[structIdx] = new IntHashTable(
@@ -350,8 +374,7 @@ public class BStructSchema { //prong struct store
 			}
 		
 			assert(fieldIdx == IntHashTable.getItem(this.fieldAttachedIndex[structIdx], identityHashCode));
-			assert(id == fieldLookupByIdentity(localObject,structIdx|IS_STRUCT_BIT));
-			
+
 			return true;
 		}
 	}
@@ -385,7 +408,7 @@ public class BStructSchema { //prong struct store
 		return fieldDims[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
-	public BStructTypes fieldType(long id) {
+	public StructTypes fieldType(long id) {
 		return fieldTypes[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
@@ -438,8 +461,8 @@ public class BStructSchema { //prong struct store
 		return result;
 	}
 
-	private static BStructTypes[][] grow(int newSize, BStructTypes[][] source) {
-		BStructTypes[][] result = new BStructTypes[newSize][];
+	private static StructTypes[][] grow(int newSize, StructTypes[][] source) {
+		StructTypes[][] result = new StructTypes[newSize][];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
@@ -481,7 +504,7 @@ public class BStructSchema { //prong struct store
 		int structId = DataInputBlobReader.getStructType(reader);
 		if (structId>0) {
 			
-			Object[] locals = this.fieldLocals[BStructSchema.STRUCT_MASK & structId];
+			Object[] locals = this.fieldLocals[StructRegistry.STRUCT_MASK & structId];
 			for(int i = 0; i<locals.length; i++) {
 				if (attachedInstanceOf.isInstance(locals[i])) {
 					int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, i);
@@ -516,7 +539,7 @@ public class BStructSchema { //prong struct store
 	}
 
 	public <T> int lookupFieldIndex(T attachedObject, int structId) {
-		return lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[BStructSchema.STRUCT_MASK & structId]);
+		return lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[StructRegistry.STRUCT_MASK & structId]);
 	}
 
 	private int lookupFieldIndex(final int identityHashCode, final IntHashTable table) {

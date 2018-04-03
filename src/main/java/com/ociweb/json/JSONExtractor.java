@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
 import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
@@ -128,12 +128,12 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	}
 
 	@Override
-	public int[] indexTable(BStructSchema typeData, int structId) {
+	public int[] indexTable(StructRegistry typeData, int structId) {
 		return schema.indexTable(typeData, structId);
 	}
 
 	@Override
-	public void addToStruct(BStructSchema typeData, int structId) {
+	public void addToStruct(StructRegistry typeData, int structId) {
 		schema.addToStruct(typeData, structId);
 	}
 

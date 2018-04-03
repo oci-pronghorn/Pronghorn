@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.struct.StructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
@@ -305,26 +305,26 @@ public class JSONFieldSchema implements JSONReader {
 	public void clear() {
 	}
 
-	public void addToStruct(BStructSchema struct, int structId) {
+	public void addToStruct(StructRegistry struct, int structId) {
 		
 		int length = mappings.length;
 						
 		int i = length;
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
-			BStructTypes fieldType = null;
+			StructTypes fieldType = null;
 			switch(mapping.type) {
 				case TypeString:
-					fieldType = BStructTypes.Text;
+					fieldType = StructTypes.Text;
 				break;
 				case TypeInteger:
-					fieldType = BStructTypes.Long;
+					fieldType = StructTypes.Long;
 				break;
 				case TypeDecimal:
-					fieldType = BStructTypes.Decimal;
+					fieldType = StructTypes.Decimal;
 				break;
 				case TypeBoolean:
-					fieldType = BStructTypes.Boolean;
+					fieldType = StructTypes.Boolean;
 				break;					
 			}
 			long fieldId = struct.growStruct(structId, fieldType, mapping.dimensions(), mapping.getName().getBytes());
@@ -337,7 +337,7 @@ public class JSONFieldSchema implements JSONReader {
 		}
 	}
 
-	public int[] indexTable(BStructSchema typeData, int structId) {
+	public int[] indexTable(StructRegistry typeData, int structId) {
 
 		int[] table = new int[mappings.length];
 		
@@ -345,7 +345,7 @@ public class JSONFieldSchema implements JSONReader {
 		while(--t>0) {
 			long fieldId = typeData.fieldLookup(mappings[t].getName(), structId);
 			assert(fieldId!=-1) : "bad field name "+mappings[t].getName()+" not found in struct";
-			table[t] = (BStructSchema.FIELD_MASK & (int)fieldId);
+			table[t] = (StructRegistry.FIELD_MASK & (int)fieldId);
 		}
 		return table;
 

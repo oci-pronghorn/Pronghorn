@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -75,7 +75,7 @@ public class Pipe<T extends MessageSchema<T>> {
     PipePublishListener pubListener = PipePublishListener.NO_OP;
     PipeReleaseListener relListener = PipeReleaseListener.NO_OP;
     
-    private BStructSchema typeData;    
+    private StructRegistry typeData;    
     
     public static void setPubListener(Pipe p, PipePublishListener listener) {
     	p.pubListener = listener;
@@ -85,14 +85,14 @@ public class Pipe<T extends MessageSchema<T>> {
     	p.relListener = listener;
     }
     
-    public static void typeData(Pipe p, BStructSchema recordTypeData) {
+    public static void typeData(Pipe p, StructRegistry recordTypeData) {
     	assert(null!=recordTypeData) : "must not be null";
     	assert(null==p.typeData || recordTypeData==p.typeData) :
     		"can not modify type data after setting";
     	p.typeData = recordTypeData;
     }
     
-    public static BStructSchema typeData(Pipe p) {
+    public static StructRegistry typeData(Pipe p) {
     	return p.typeData;
     }
     
@@ -360,7 +360,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static final int STRUCTURED_POS_MASK = 0x40000000; 
     
     static {
-    	assert(STRUCTURED_POS_MASK == BStructSchema.IS_STRUCT_BIT);    	
+    	assert(STRUCTURED_POS_MASK == StructRegistry.IS_STRUCT_BIT);    	
     }
     
     //This mask is here to support the fact that variable-length fields will run out of space because the head/tail are 32 bit ints instead of
