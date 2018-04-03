@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
@@ -27,7 +27,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	private TrieParserReader reader;
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
-	private final BStructSchema typeData;
+	private final StructRegistry typeData;
 	private final int structId;
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);

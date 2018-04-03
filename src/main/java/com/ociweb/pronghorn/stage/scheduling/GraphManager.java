@@ -30,7 +30,7 @@ import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
@@ -264,7 +264,7 @@ public class GraphManager {
   
 	//These objects should be shared with all clones
 	private final GraphManagerStageStateData stageStateData;
-	public final BStructSchema recordTypeData;
+	public final StructRegistry recordTypeData;
 	
 	
 	//add the nota to this list first so we have an Id associated with it
@@ -299,11 +299,11 @@ public class GraphManager {
 		Arrays.fill(multNotaIds, -1);
 		
 		this.stageStateData = new GraphManagerStageStateData();
-		this.recordTypeData = new BStructSchema();
+		this.recordTypeData = new StructRegistry();
 		this.name = name;		
 	}
 	
-	private GraphManager(GraphManagerStageStateData parentStageStateData, BStructSchema parentRecordTypeData, String name) {
+	private GraphManager(GraphManagerStageStateData parentStageStateData, StructRegistry parentRecordTypeData, String name) {
 		Arrays.fill(ringIdToStages, -1);
 		Arrays.fill(stageIdToInputsBeginIdx, -1);
 		Arrays.fill(multInputIds, -1);

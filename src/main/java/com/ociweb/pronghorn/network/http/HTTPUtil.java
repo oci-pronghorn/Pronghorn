@@ -12,8 +12,8 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.struct.StructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 
 public class HTTPUtil {
@@ -106,9 +106,9 @@ public class HTTPUtil {
 		}
 	}
 
-	public static void addHeader(BStructSchema schema, int structId, TrieParser headerParser, HTTPHeader header) {
+	public static void addHeader(StructRegistry schema, int structId, TrieParser headerParser, HTTPHeader header) {
 		long fieldId = schema.growStruct(structId,
-				BStructTypes.Blob,	//TODO: need a way to define dimensions on headers
+				StructTypes.Blob,	//TODO: need a way to define dimensions on headers
 				0,
 				//NOTE: associated object will be used to interpret 
 				header.rootBytes());
@@ -125,7 +125,7 @@ public class HTTPUtil {
 		addHeader(headerParser, fieldId, template);
 	}
 
-	public static TrieParser buildHeaderParser(BStructSchema schema, int structId, HTTPHeader ... headers) {
+	public static TrieParser buildHeaderParser(StructRegistry schema, int structId, HTTPHeader ... headers) {
 				
 		boolean skipDeepChecks = false;
 		boolean supportsExtraction = true;
@@ -144,11 +144,11 @@ public class HTTPUtil {
 		return headerParser;
 	}
 
-	public static int newHTTPStruct(BStructSchema typeData) {
+	public static int newHTTPStruct(StructRegistry typeData) {
 		//all HTTP structs must start with payload as the first field, this is required
 		//so the payload processing stages do not need to look up this common index.
 		return typeData.addStruct(new byte[][] {"payload".getBytes()},
-				                  new BStructTypes[] {BStructTypes.Blob},
+				                  new StructTypes[] {StructTypes.Blob},
 				                  new int[] {0});
 	}
 

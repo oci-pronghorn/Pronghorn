@@ -15,8 +15,8 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.struct.StructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -51,7 +51,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
     
     private URLTemplateParser routeParser;
-    private final BStructSchema userStructs;
+    private final StructRegistry userStructs;
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
 
@@ -64,7 +64,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return userStructs.getAssociatedObject(field);
 	}
 	
-	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, BStructSchema userStructs) {
+	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, StructRegistry userStructs) {
 		this.httpSpec = httpSpec;
 		this.userStructs = userStructs;
         this.revisionMap = new TrieParser(256,true); //avoid deep check        
@@ -101,9 +101,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		int pathId = UNMAPPED_ROUTE;
 				
 		int structId = HTTPUtil.newHTTPStruct(userStructs);
-		unmappedPathField = userStructs.growStruct(structId,BStructTypes.Text,0,"path".getBytes());				
+		unmappedPathField = userStructs.growStruct(structId,StructTypes.Text,0,"path".getBytes());				
 		
-		unmappedIndexPos = new int[] {BStructSchema.FIELD_MASK&(int)unmappedPathField};
+		unmappedIndexPos = new int[] {StructRegistry.FIELD_MASK&(int)unmappedPathField};
 		
 		routeParser().addPath(constantUnknownRoute, routeId, pathId, structId);
 		UNMAPPED_STRUCT = structId;

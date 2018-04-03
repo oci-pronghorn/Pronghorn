@@ -13,8 +13,8 @@ import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.struct.StructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
@@ -35,7 +35,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	
 	private final int structId;
-    private final BStructSchema schema;	
+    private final StructRegistry schema;	
 
 	
     private int[] activePathFieldIndexPosLookup;
@@ -45,19 +45,19 @@ public class CompositeRouteImpl implements CompositeRoute {
 		public void visit(byte[] pattern, int length, long value) {
 			int inURLOrder = (int)value&0xFFFF;
 			
-			BStructTypes type = null;
+			StructTypes type = null;
 			switch((int)(value>>16)) {
 				case TrieParser.ESCAPE_CMD_SIGNED_INT:
-					type = BStructTypes.Long;
+					type = StructTypes.Long;
 					break;			
 				case TrieParser.ESCAPE_CMD_RATIONAL:
-					type = BStructTypes.Rational;
+					type = StructTypes.Rational;
 					break;
 				case TrieParser.ESCAPE_CMD_DECIMAL:
-					type = BStructTypes.Decimal;
+					type = StructTypes.Decimal;
 					break;
 				case TrieParser.ESCAPE_CMD_BYTES:
-					type = BStructTypes.Blob;
+					type = StructTypes.Blob;
 					break;
 				default:
 					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
@@ -68,13 +68,13 @@ public class CompositeRouteImpl implements CompositeRoute {
 			//must build a list of fieldId ref in the order that these are disovered
 			//at postion inURL must store fieldId for use later... where is this held?
 			//one per path.
-			activePathFieldIndexPosLookup[inURLOrder-1] = (int)fieldId & BStructSchema.FIELD_MASK;
+			activePathFieldIndexPosLookup[inURLOrder-1] = (int)fieldId & StructRegistry.FIELD_MASK;
 			
 		}
     };
 
     
-	public CompositeRouteImpl(BStructSchema schema,
+	public CompositeRouteImpl(StructRegistry schema,
 			                  HTTP1xRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
 			                  URLTemplateParser parser, 
@@ -89,7 +89,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		this.parser = parser;
 
 		//this limits routes to 1 billion.
-		assert((routeId & BStructSchema.IS_STRUCT_BIT) == 0) : "routeId must never be confused with StructId";
+		assert((routeId & StructRegistry.IS_STRUCT_BIT) == 0) : "routeId must never be confused with StructId";
 		
 		this.routeId = routeId;
 		this.pathCounter = pathCounter;
@@ -204,7 +204,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Long, 0);
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Long, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -217,7 +217,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultText(String key, String value) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Text, 0);
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Text, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -230,7 +230,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Decimal, 0);
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Decimal, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -243,7 +243,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, BStructTypes.Rational, 0);
+		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Rational, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();

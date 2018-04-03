@@ -20,11 +20,9 @@ import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -840,7 +838,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			                
 			    int writePosition = writer.position();
 			    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
-			    DataOutputBlobWriter.setIntBackData(writer, writePosition, BStructSchema.FIELD_MASK & (int)headerToken);
+			    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
 	
 		    }
 	    } else {

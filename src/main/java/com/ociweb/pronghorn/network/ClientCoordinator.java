@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
@@ -43,7 +43,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	///////////////////////////////////////////////
 
 	public static long busyCounter;//dirty count of occurences where client is waiting backed up.
-	private final BStructSchema typeData;
+	private final StructRegistry typeData;
     private PronghornStageProcessor optionalStageProcessor;
 	public final int receiveBufferSize;
 	//public long sentTime;
@@ -66,7 +66,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, 
-			                 TLSCertificates tlsCertificates, BStructSchema typeData) {
+			                 TLSCertificates tlsCertificates, StructRegistry typeData) {
 		super(tlsCertificates);
 		
 		/////////////////////////////////////////////////////////////////////////////////////

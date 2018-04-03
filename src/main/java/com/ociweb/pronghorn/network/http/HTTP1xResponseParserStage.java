@@ -25,7 +25,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -1032,7 +1032,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				//		Integer.toHexString((int)(id1>>>BStructSchema.STRUCT_OFFSET)),
 				//		writePosition, header, BStructSchema.FIELD_MASK & (int)headerToken, writer.getPipe().id);
 				
-				DataOutputBlobWriter.setIntBackData(writer, writePosition, BStructSchema.FIELD_MASK & (int)headerToken);
+				DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
 			}
 			
 		}

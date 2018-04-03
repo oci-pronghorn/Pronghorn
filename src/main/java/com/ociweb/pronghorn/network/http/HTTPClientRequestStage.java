@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPClientRequestStage extends PronghornStage {
@@ -62,7 +62,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 	}
 	
-	private final BStructSchema recordTypeData;
+	private final StructRegistry recordTypeData;
 	private HTTPClientConnectionFactory ccf;
 	
 	@Override

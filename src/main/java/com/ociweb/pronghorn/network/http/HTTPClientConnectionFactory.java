@@ -8,19 +8,19 @@ import com.ociweb.pronghorn.network.AbstractClientConnectionFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory{
 	
 	
-	private final BStructSchema recordTypeData;
+	private final StructRegistry recordTypeData;
 
 	private static final int initSize = 16;
 	TrieParser[] headerParsers=new TrieParser[initSize];
 	
-	public HTTPClientConnectionFactory(BStructSchema recordTypeData) {
+	public HTTPClientConnectionFactory(StructRegistry recordTypeData) {
 		this.recordTypeData = recordTypeData;
 	}
 
