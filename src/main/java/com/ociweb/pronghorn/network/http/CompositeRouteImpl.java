@@ -64,7 +64,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 			}
 						
 			long fieldId = schema.modifyStruct(structId, pattern, 0, length, type, 0);
-		
+	
 			//must build a list of fieldId ref in the order that these are disovered
 			//at postion inURL must store fieldId for use later... where is this held?
 			//one per path.
@@ -140,7 +140,6 @@ public class CompositeRouteImpl implements CompositeRoute {
 		}
 		
 		if (!headerContentLength) {
-			System.err.println("Added content header");
 			HTTPUtil.addHeader(schema, structId, headerParser, HTTPHeaderDefaults.CONTENT_LENGTH);
 		}
 		if (!headerTransferEncodeing) {
@@ -190,6 +189,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 				
 		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];		
 		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
+		
 		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup);
 		
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId

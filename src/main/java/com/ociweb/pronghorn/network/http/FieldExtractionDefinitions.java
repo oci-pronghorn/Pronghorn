@@ -47,7 +47,7 @@ public class FieldExtractionDefinitions {
 	
 	private int[] pathFieldLookup;
 	
-	public void setPathFieldLookup(int[] pathFieldLookup) {
+	public void setPathFieldLookup(int[] pathFieldLookup) {		
 		this.pathFieldLookup = pathFieldLookup;
 	}
 	
