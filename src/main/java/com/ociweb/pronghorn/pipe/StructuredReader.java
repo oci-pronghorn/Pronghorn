@@ -42,6 +42,13 @@ public final class StructuredReader {
 		return channelReader.readUTF();
 	}
 	
+
+	public boolean isEqual(long fieldId, byte[] value) {
+		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
+		return channelReader.equalUTF(value);
+	}
+
+	
 	public long readTextAsLong(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
 		return DataInputBlobReader.readUTFAsLong(channelReader);
