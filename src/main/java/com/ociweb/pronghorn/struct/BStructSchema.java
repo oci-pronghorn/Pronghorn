@@ -248,18 +248,18 @@ public class BStructSchema { //prong struct store
 						   int fieldDim) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
-		int fieldIdx = (int)fieldIdLookup(this.fields[idx], fieldName, fieldPos, fieldLen, Integer.MAX_VALUE);
+		long fieldIdx = fieldIdLookup(this.fields[idx], fieldName, fieldPos, fieldLen, Integer.MAX_VALUE);
 		if (-1 == fieldIdx) {
 			//only creating copy here because we know it will be held for the run.
-			growStruct(structId, fieldType, fieldDim, Arrays.copyOfRange(fieldName,fieldPos,fieldLen));
+			fieldIdx = growStruct(structId, fieldType, fieldDim, Arrays.copyOfRange(fieldName,fieldPos,fieldLen));
 		} else {
 			//////////
 			//modify an existing field, we have new data to apply
 			//////////
 			//use the newest defined type
-			this.fieldTypes[idx][ FIELD_MASK&fieldIdx] = fieldType;		
+			this.fieldTypes[idx][ FIELD_MASK&(int)fieldIdx] = fieldType;		
 			//keep largest dim value
-			this.fieldDims[idx][ FIELD_MASK&fieldIdx] = Math.max(this.fieldDims[idx][FIELD_MASK&fieldIdx], fieldDim);
+			this.fieldDims[idx][ FIELD_MASK&(int)fieldIdx] = Math.max(this.fieldDims[idx][FIELD_MASK&(int)fieldIdx], fieldDim);
 		}
 		
 		return fieldIdx;
@@ -505,16 +505,28 @@ public class BStructSchema { //prong struct store
 
 		int structId = DataInputBlobReader.getStructType(reader);
 		
-		int identityHashCode = System.identityHashCode(attachedObject);
-		int idx = IntHashTable.getItem(this.fieldAttachedIndex[structId], identityHashCode);
+		int idx = lookupFieldIndex(attachedObject, structId);
+		if (idx>=0) {
+			DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
+			visitor.read((T)(fieldLocals[structId][idx]), reader);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public <T> int lookupFieldIndex(T attachedObject, int structId) {
+		return lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[BStructSchema.STRUCT_MASK & structId]);
+	}
+
+	private int lookupFieldIndex(final int identityHashCode, final IntHashTable table) {
+		int idx = IntHashTable.getItem(table, identityHashCode);
 		if (0==idx) {
-			if (!IntHashTable.hasItem(this.fieldAttachedIndex[structId], identityHashCode)) {
-				return false;				
+			if (!IntHashTable.hasItem(table, identityHashCode)) {
+				return -1;				
 			}
 		}
-		DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
-		visitor.read((T)(fieldLocals[structId][idx]), reader);
-		return true;
+		return idx;
 	}
 	
 	

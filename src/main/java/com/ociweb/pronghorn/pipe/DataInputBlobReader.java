@@ -797,7 +797,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
             return result;
     }
 
-    private boolean storeMostRecentPacked(long result) {
+    boolean storeMostRecentPacked(long result) {
     	mostRecentPacked=result;
     	return true;
 	}

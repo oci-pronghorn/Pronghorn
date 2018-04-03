@@ -4,7 +4,7 @@ import com.ociweb.pronghorn.struct.BStructDimIntListener;
 import com.ociweb.pronghorn.struct.BStructFieldVisitor;
 import com.ociweb.pronghorn.struct.BStructIntListener;
 import com.ociweb.pronghorn.struct.BStructSchema;
-import com.ociweb.pronghorn.struct.BStructTypes;
+import com.ociweb.pronghorn.util.Appendables;
 
 public final class StructuredReader {
 
@@ -58,6 +58,11 @@ public final class StructuredReader {
 		return target;
 	}
 	
+	public <A extends Appendable> A readIntAsText(long fieldId, A target) {
+		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
+		return Appendables.appendValue(target, channelReader.readPackedLong());
+	}
+	
 	public double readRationalAsDouble(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
 		return channelReader.readRationalAsDouble();
@@ -68,6 +73,23 @@ public final class StructuredReader {
 		return channelReader.readDecimalAsDouble();
 	}
 	
+	
+	public long readDecimalMantissa(long fieldId) {
+		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
+    	long m = channelReader.readPackedLong();
+    	assert(channelReader.storeMostRecentPacked(m));    	
+    	return m;
+	}
+	
+	
+	public byte readDecimalExponent(long fieldId) {
+		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
+		long m = channelReader.readPackedLong();
+    	assert(channelReader.storeMostRecentPacked(m));
+    	return channelReader.readByte();
+	}	
+	
+	
 	public boolean readBoolean(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
 		return channelReader.readBoolean();
@@ -77,7 +99,7 @@ public final class StructuredReader {
 		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
 		return (int)channelReader.readPackedLong();
 	}
-	
+		
 	public long readLong(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(BStructSchema.FIELD_MASK&(int)fieldId));
 		return channelReader.readPackedLong();
@@ -134,4 +156,43 @@ public final class StructuredReader {
     	
 	}
 	
+	public <A extends Appendable> A readIntAsText(Object attachedInstance, A target) {
+		
+		positionToField(this, attachedInstance);
+		return Appendables.appendValue(target, channelReader.readPackedLong());
+	}
+	
+	public <A extends Appendable> A readDecimalAsText(Object attachedInstance, A target) {
+		
+		positionToField(this, attachedInstance);
+		
+		long m = channelReader.readPackedLong();
+    	assert(channelReader.storeMostRecentPacked(m));
+    	
+    	return Appendables.appendDecimalValue(target, m, 
+    											channelReader.readByte());
+	}
+
+	public long readDecimalMantissa(Object attachedInstance) {
+		positionToField(this, attachedInstance);
+    	long m = channelReader.readPackedLong();
+    	assert(channelReader.storeMostRecentPacked(m));    	
+    	return m;
+	}
+	
+	
+	public byte readDecimalExponent(Object attachedInstance) {
+		positionToField(this, attachedInstance);
+		long m = channelReader.readPackedLong();
+    	assert(channelReader.storeMostRecentPacked(m));
+    	return channelReader.readByte();
+	}	
+	
+	private static void positionToField(StructuredReader that, Object attachedInstance) {
+		that.channelReader.position(
+				that.channelReader.readFromEndLastInt(
+						that.typeData.lookupFieldIndex(attachedInstance, 
+								DataInputBlobReader.getStructType(that.channelReader))));
+	}
+
 }
