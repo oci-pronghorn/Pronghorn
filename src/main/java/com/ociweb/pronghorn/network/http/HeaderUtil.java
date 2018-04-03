@@ -1,16 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
-import java.io.IOException;
-
-import com.ociweb.pronghorn.network.config.HTTPHeader;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
-import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HeaderUtil {
 
