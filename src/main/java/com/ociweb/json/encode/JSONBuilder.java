@@ -373,18 +373,12 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void addNull(final IteratorFunction<T, N> iterator) {
-        scripts.add(new StringTemplateScript<T>() {
+        iterate(iterator, new IterBoolFunction<T>() {
             @Override
-            public void render(AppendableByteWriter writer, T source) {
-                N node = null;
-                for (int i = 0; (node = iterator.get(source, i, node)) != null; i++) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    kw.Null(writer);
-                }
+            public boolean applyAsBool(T o, int i) {
+                return true;
             }
-        });
+        }, null);
     }
 
     // Bool
