@@ -339,22 +339,34 @@ public class JPGScanner extends PronghornStage {
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
 				System.err.println("Error during scan " + numScans);
+				// add blank mcus on error to avoid out of bounds errors later
+				while (mcus.size() < numMCUs + ((header.width + 7) / 8)) {
+					mcus.add(new MCU());
+				}
 				return false;
 			}
-			mcus.add(mcu1);
-			numProcessed += 1;
-			if (header.colorComponents[0].horizontalSamplingFactor == 2) {
-				mcus.add(mcu2);
-				numProcessed += 1;
-			}
-			if (header.colorComponents[0].verticalSamplingFactor == 2) {
-				mcus.add(mcu3);
-				numProcessed += 1;
-			}
-			if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
-				header.colorComponents[0].verticalSamplingFactor == 2) {
-				mcus.add(mcu4);
-				numProcessed += 1;
+			if (mcus.size() < numMCUs) {
+				if (horizontal == 1 && vertical == 1) {
+					mcus.add(mcu1);
+					numProcessed += 1;
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					mcus.add(mcu1);
+					mcus.add(mcu2);
+					numProcessed += 2;
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					mcus.add(mcu1);
+					mcus.add(mcu2);
+					numProcessed += 2;
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					mcus.add(mcu1);
+					mcus.add(mcu2);
+					mcus.add(mcu3);
+					mcus.add(mcu4);
+					numProcessed += 4;
+				}
 			}
 		}
 		header.imageData.clear();
