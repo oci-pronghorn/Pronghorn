@@ -24,9 +24,14 @@ public class BMPScanner extends PronghornStage {
 	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
+	int numProcessedInRow = 0;
+	int paddingSize = 0;
 	
+	DataInputStream f;
 	Header header;
 	MCU mcu = new MCU();
+	
+	short[][] mcuRow;
 	
 	public BMPScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, NONE, output);
@@ -37,10 +42,166 @@ public class BMPScanner extends PronghornStage {
 	public Header ReadBMP(String filename) throws IOException {
 		Header header = new Header();
 		header.filename = filename;
-		DataInputStream f = new DataInputStream(new FileInputStream(filename));
+		f = new DataInputStream(new FileInputStream(filename));
 		
-		f.close();
+		if (f.readUnsignedByte() != 'B' || f.readUnsignedByte() != 'M') {
+			System.err.println("Error - not a BMP file");
+			header.valid = false;
+			f.close();
+			return header;
+		}
+		
+		int offset, dibSize, planes, depth, compr = 0;
+		
+		// file size
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		// nothing
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		f.readUnsignedByte();
+		offset  = f.readUnsignedByte(); // hopefully 26 or 54 (or more)
+		offset |= f.readUnsignedByte() << 8;
+		offset |= f.readUnsignedByte() << 16;
+		offset |= f.readUnsignedByte() << 24;
+		
+		dibSize  = f.readUnsignedByte(); // hopefully 12 or 40
+		dibSize |= f.readUnsignedByte() << 8;
+		dibSize |= f.readUnsignedByte() << 16;
+		dibSize |= f.readUnsignedByte() << 24;
+		if (dibSize == 12) {
+			header.width   = f.readUnsignedByte();
+			header.width  |= f.readUnsignedByte() << 8;
+			header.height  = f.readUnsignedByte();
+			header.height |= f.readUnsignedByte() << 8;
+			planes         = f.readUnsignedByte();
+			planes        |= f.readUnsignedByte() << 8;
+			depth          = f.readUnsignedByte();
+			depth         |= f.readUnsignedByte() << 8;
+			
+			offset -= 26;
+		}
+		else if (dibSize == 40) {
+			header.width   = f.readUnsignedByte();
+			header.width  |= f.readUnsignedByte() << 8;
+			header.width  |= f.readUnsignedByte() << 16;
+			header.width  |= f.readUnsignedByte() << 24;
+			header.height  = f.readUnsignedByte();
+			header.height |= f.readUnsignedByte() << 8;
+			header.height |= f.readUnsignedByte() << 16;
+			header.height |= f.readUnsignedByte() << 24;
+			planes         = f.readUnsignedByte();
+			planes        |= f.readUnsignedByte() << 8;
+			depth          = f.readUnsignedByte();
+			depth         |= f.readUnsignedByte() << 8;
+			compr          = f.readUnsignedByte();
+			compr         |= f.readUnsignedByte() << 8;
+			compr         |= f.readUnsignedByte() << 16;
+			compr         |= f.readUnsignedByte() << 24;
+			
+			// image size
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			// horizontal resolution
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			// vertical resolution
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			// color palette size
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			// important colors
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			f.readUnsignedByte();
+			
+			offset -= 54;
+		}
+		else {
+			System.err.println("Error - DIB Header not supported");
+			header.valid = false;
+			f.close();
+			return null;
+		}
+		
+		if (planes != 1) {
+			System.err.println("Error - Number of color planes must be 1");
+			header.valid = false;
+			f.close();
+			return null;
+		}
+		if (depth != 24) {
+			System.err.println("Error - Only 24bpp color depth supported");header.valid = false;
+			f.close();
+			return null;
+		}
+		if (compr != 0) {
+			System.err.println("Error - BMP compression not supported");
+			f.close();
+			return null;
+		}
+		if (offset < 0) {
+			System.err.println("Error - Invalid offset");
+			f.close();
+			return null;
+		}
+		
+		while (offset > 0) {
+			f.readUnsignedByte();
+			--offset;
+		}
+		
+		// begin reading pixels...
+		mcuWidth = (header.width + 7) / 8;
+		mcuHeight = (header.height + 7) / 8;
+		numMCUs = mcuWidth * mcuHeight;
+		numProcessed = 0;
+		numProcessedInRow = 0;
+		paddingSize = (4 - (header.width * 3) % 4) % 4;
+		mcuRow = new short[8][mcuWidth * 8 * 3];
+
+		int trailingRows = 8 - (mcuHeight * 8 - header.height);
+		
+		readMCURow(trailingRows);
+		
+		//f.close();
 		return header;
+	}
+	
+	private void readMCURow(int numRows) throws IOException {
+		for (int i = numRows - 1; i >= 0; --i) {
+			for (int j = 0; j < header.width; ++j) {
+				mcuRow[i][j * 3 + 2] = (short) f.readUnsignedByte();
+				mcuRow[i][j * 3 + 1] = (short) f.readUnsignedByte();
+				mcuRow[i][j * 3 + 0] = (short) f.readUnsignedByte();
+			}
+			for (int j = 0; j < paddingSize; j++) {
+				f.readUnsignedByte();
+			}
+		}
+	}
+	
+	private void fillMCU(int index) {
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				mcu.y [i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 0];
+				mcu.cb[i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 1];
+				mcu.cr[i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 2];
+			}
+		}
 	}
 	
 	public void queueFile(String inFile) {
@@ -72,6 +233,7 @@ public class BMPScanner extends PronghornStage {
 			PipeWriter.publishWrites(output);
 			
 			numProcessed += 1;
+			numProcessedInRow += 1;
 		}
 		else {
 			System.err.println("BMP Scanner requesting shutdown");
@@ -82,10 +244,21 @@ public class BMPScanner extends PronghornStage {
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			// get next mcu
+			if (numProcessedInRow == mcuWidth) {
+				try {
+					readMCURow(8);
+				} catch (IOException e) {}
+				numProcessedInRow = 0;
+			}
+			fillMCU(numProcessedInRow);
 			sendMCU(mcu);
 		}
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
+			if (f != null)
+				try {
+					f.close();
+				} catch (IOException e) {}
+			
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			System.out.println(file);
@@ -108,11 +281,6 @@ public class BMPScanner extends PronghornStage {
 					System.err.println("BMP Scanner requesting shutdown");
 					requestShutdown();
 				}
-				
-				mcuWidth = (header.width + 7) / 8;
-				mcuHeight = (header.height + 7) / 8;
-				numMCUs = mcuWidth * mcuHeight;
-				numProcessed = 0;
 			}
 			catch (IOException e) {
 				System.err.println("Error - Unknown error reading file '" + file + "'");
@@ -123,4 +291,12 @@ public class BMPScanner extends PronghornStage {
 			}
 		}
 	}
+	
+	/*public static void main(String[] args) {
+		try {
+			ReadBMP("test_jpgs/car.bmp");
+		} catch (Exception e) {
+			System.err.println("Error - Unknown error reading BMP file");
+		}
+	}*/
 }

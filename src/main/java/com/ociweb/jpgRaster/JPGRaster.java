@@ -29,7 +29,7 @@ public class JPGRaster {
 			}
 		}
 		
-		String defaultDirectory = "test_jpgs/";
+		String defaultDirectory = "";
 		String inputDirectory = getOptArg("--directory", "-d", args, defaultDirectory);
 		if (!inputDirectory.equals("") && !inputDirectory.endsWith("/")) {
 			inputDirectory += "/";
