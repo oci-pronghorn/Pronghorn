@@ -129,6 +129,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     private <M, N> void iterate(
             final IteratorFunction<T, N> iterator,
+            final boolean checkNull,
             final IterMemberFunction<T, M> accessor,
             final RenderIteration<M, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
@@ -140,7 +141,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                         kw.NextArrayElement(writer, depth);
                     }
                     M member = accessor.get(source, i);
-                    if (member == null) {
+                    if (checkNull && member == null) {
                         kw.Null(writer);
                     } else {
                         func.render(writer, member, i, node);
@@ -200,7 +201,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<?, M> builder, final IterMemberFunction<T, M> accessor) {
-        iterate(iterator, accessor, new RenderIteration<M, N>() {
+        iterate(iterator, true, accessor, new RenderIteration<M, N>() {
             @Override
             public void render(AppendableByteWriter writer, M m, int i, N node) {
                 builder.render(writer, m);
@@ -297,7 +298,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
         final ThreadLocal<ObjectRenderState> newOrs = createOrs();
 
-        iterate(iterator, new IterMemberFunction<T, M>() {
+        iterate(iterator, true, new IterMemberFunction<T, M>() {
             @Override
             public M get(T o, int i) {
                 newOrs.get().beginObjectRender();
@@ -352,7 +353,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
-        iterate(iterator, func, new RenderIteration<M, N>() {
+        iterate(iterator, true, func, new RenderIteration<M, N>() {
             @Override
             public void render(AppendableByteWriter writer, M m, int i, N node) {
                 notNullBranch.render(writer, m);
@@ -383,29 +384,13 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // Bool
 
-    void addBool(final ToBoolFunction<T> func) {
-        final byte[] declaredMemberName = consumeDeclaredMemberName();
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void render(AppendableByteWriter writer, T source) {
-                prefixObjectMemberName(declaredMemberName, depth, writer);
-                if (func.applyAsBool(source)) {
-                    kw.True(writer);
-                }
-                else {
-                    kw.False(writer);
-                }
-            }
-        });
-    }
-
     void addBool(final ToBoolFunction<T> isNull, final ToBoolFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void render(final AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
-                if (isNull.applyAsBool(source)) {
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
                 else {
@@ -418,10 +403,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 }
             }
         });
-    }
-
-    <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> func) {
-        addBool(iterator, null, func);
     }
 
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterBoolFunction<T> func) {
@@ -437,20 +418,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
             }});
     }
 
-    void addBool(ToBoolFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                addBool(func);
-                break;
-        }
-    }
-
     void addBool(final ToBoolFunction<T> isNull, final ToBoolFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
@@ -461,20 +428,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 break;
             case TypeBoolean:
                 addBool(isNull, func);
-                break;
-        }
-    }
-
-    <N> void addBool(IteratorFunction<T, N> iterator, IterBoolFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                addBool(iterator, func);
                 break;
         }
     }
@@ -495,24 +448,13 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // Integer
 
-    void addInteger(final ToLongFunction<T> func) {
-        final byte[] declaredMemberName = consumeDeclaredMemberName();
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void render(AppendableByteWriter writer, T source) {
-                prefixObjectMemberName(declaredMemberName, depth, writer);
-                Appendables.appendValue(writer, func.applyAsLong(source));
-            }
-        });
-    }
-
     void addInteger(final ToBoolFunction<T> isNull, final ToLongFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
-                if (isNull.applyAsBool(source)) {
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
                 else {
@@ -520,10 +462,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 }
             }
         });
-    }
-
-    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T> func) {
-        addInteger(iterator, null, func);
     }
 
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterLongFunction<T> func) {
@@ -534,40 +472,12 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
             }});
     }
 
-    void addInteger(ToLongFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                addInteger(func);
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
     void addInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
             case TypeInteger:
                 addInteger(isNull, func);
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addInteger(IteratorFunction<T, N> iterator, IterLongFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                addInteger(iterator, func);
                 break;
             case TypeDecimal:
                 break;
@@ -592,25 +502,13 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // Decimal
 
-    void addDecimal(final int precision, final ToDoubleFunction<T> func) {
-        final byte[] declaredMemberName = consumeDeclaredMemberName();
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void render(final AppendableByteWriter writer, T source) {
-                prefixObjectMemberName(declaredMemberName, depth, writer);
-                double v = func.applyAsDouble(source);
-                Appendables.appendDecimalValue(writer, (long)(v * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
-            }
-        });
-    }
-
     void addDecimal(final int precision, final ToBoolFunction<T> isNull, final ToDoubleFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void render(final AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
-                if (isNull.applyAsBool(source)) {
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
                 else {
@@ -619,10 +517,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 }
             }
         });
-    }
-
-    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T> func) {
-        addDecimal(iterator, precision, null, func);
     }
 
     <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
@@ -635,20 +529,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-    void addDecimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(precision, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
     void addDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
@@ -657,20 +537,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 break;
             case TypeDecimal:
                 addDecimal(precision, isNull, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(iterator, precision, func);
                 break;
             case TypeBoolean:
                 break;
@@ -693,27 +559,14 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // String
 
-    void addString(final ToStringFunction<T> func) {
-        final byte[] declaredMemberName = consumeDeclaredMemberName();
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void render(AppendableByteWriter writer, T source) {
-                prefixObjectMemberName(declaredMemberName, depth, writer);
-                kw.Quote(writer);
-                writer.append(func.applyAsString(source));
-                kw.Quote(writer);
-            }
-        });
-    }
-
-    void addNullableString(final ToStringFunction<T> func) {
+    void addString(boolean checkNull, final ToStringFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
             public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
                 CharSequence s = func.applyAsString(source);
-                if (s == null) {
+                if (checkNull && s == null) {
                     kw.Null(writer);
                 }
                 else {
@@ -725,19 +578,8 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-    <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        iterate(iterator, (IterBoolFunction<T>)null, new RenderIteration<T, N>() {
-            @Override
-            public void render(AppendableByteWriter writer, T source, int i, N node) {
-                kw.Quote(writer);
-                writer.append(func.applyAsString(source, i));
-                kw.Quote(writer);
-            }
-        });
-    }
-
-    <N> void addNullableString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        iterate(iterator, new IterMemberFunction<T, CharSequence>() {
+    <N> void addString(final IteratorFunction<T, N> iterator, boolean checkNull, final IterStringFunction<T> func) {
+        iterate(iterator, checkNull, new IterMemberFunction<T, CharSequence>() {
             @Override
             public CharSequence get(T o, int i) {
                 return func.applyAsString(o, i);
@@ -752,10 +594,10 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-    void addString(ToStringFunction<T> func, JSONType encode) {
+    void addString(boolean checkNull, ToStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
-                addString(func);
+                addString(checkNull, func);
                 break;
             case TypeInteger:
                 break;
@@ -766,38 +608,10 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         }
     }
 
-    void addNullableString(ToStringFunction<T> func, JSONType encode) {
+    <N> void addString(IteratorFunction<T, N> iterator, boolean checkNull, IterStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
-                addNullableString(func);
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addString(IteratorFunction<T, N> iterator, IterStringFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                addString(iterator, func);
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addNullableString(IteratorFunction<T, N> iterator, IterStringFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                addNullableString(iterator, func);
+                addString(iterator, checkNull, func);
                 break;
             case TypeInteger:
                 break;

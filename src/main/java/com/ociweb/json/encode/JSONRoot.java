@@ -113,12 +113,12 @@ public abstract class JSONRoot<R, T, P> {
     // Bool
 
     public P bool(ToBoolFunction<T> func) {
-        builder.addBool(func);
+        builder.addBool(null, func);
         return this.childCompleted();
     }
 
     public P bool(ToBoolFunction<T> func, JSONType encode) {
-        builder.addBool(func, encode);
+        builder.addBool(null, func, encode);
         return this.childCompleted();
     }
 
@@ -135,12 +135,12 @@ public abstract class JSONRoot<R, T, P> {
     // Integer
 
     public P integer(ToLongFunction<T> func) {
-        builder.addInteger(func);
+        builder.addInteger(null, func);
         return this.childCompleted();
     }
 
     public P integer(ToLongFunction<T> func, JSONType encode) {
-        builder.addInteger(func, encode);
+        builder.addInteger(null, func, encode);
         return this.childCompleted();
     }
 
@@ -157,12 +157,12 @@ public abstract class JSONRoot<R, T, P> {
     // Decimal
 
     public P decimal(int precision, ToDoubleFunction<T> func) {
-        builder.addDecimal(precision, func);
+        builder.addDecimal(precision, null, func);
         return this.childCompleted();
     }
 
     public P decimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
-        builder.addDecimal(precision, func, encode);
+        builder.addDecimal(precision, null, func, encode);
         return this.childCompleted();
     }
 
@@ -179,22 +179,22 @@ public abstract class JSONRoot<R, T, P> {
     // String
 
     public P string(ToStringFunction<T> func) {
-        builder.addString(func);
+        builder.addString(false, func);
         return this.childCompleted();
     }
 
     public P string(ToStringFunction<T> func, JSONType encode) {
-        builder.addString(func, encode);
+        builder.addString(false, func, encode);
         return this.childCompleted();
     }
 
-    public P nullableString(ToStringFunction<T> func) {
-        builder.addNullableString(func);
+    public P nullableString(final ToStringFunction<T> func) {
+        builder.addString(true, func);
         return this.childCompleted();
     }
 
     public P nullableString(ToStringFunction<T> func, JSONType encode) {
-        builder.addNullableString(func, encode);
+        builder.addString(true, func, encode);
         return this.childCompleted();
     }
 }

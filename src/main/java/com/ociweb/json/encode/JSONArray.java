@@ -171,12 +171,12 @@ public abstract class JSONArray<R, T, P, N> {
     // Bool
 
     public P bool(IterBoolFunction<T> func) {
-        builder.addBool(iterator, func);
+        builder.addBool(iterator, null, func);
         return this.childCompleted();
     }
 
     public P bool(IterBoolFunction<T> func, JSONType encode) {
-        builder.addBool(iterator, func, encode);
+        builder.addBool(iterator, null, func, encode);
         return this.childCompleted();
     }
 
@@ -193,12 +193,12 @@ public abstract class JSONArray<R, T, P, N> {
     // Integer
 
     public P integer(IterLongFunction<T> func) {
-        builder.addInteger(iterator, func);
+        builder.addInteger(iterator, null, func);
         return this.childCompleted();
     }
 
     public P integer(IterLongFunction<T> func, JSONType encode) {
-        builder.addInteger(iterator, func, encode);
+        builder.addInteger(iterator, null, func, encode);
         return this.childCompleted();
     }
 
@@ -215,12 +215,12 @@ public abstract class JSONArray<R, T, P, N> {
     // Decimal
 
     public P decimal(int precision, IterDoubleFunction<T> func) {
-        builder.addDecimal(iterator, precision, func);
+        builder.addDecimal(iterator, precision, null, func);
         return this.childCompleted();
     }
 
     public P decimal(int precision, IterDoubleFunction<T> func, JSONType encode) {
-        builder.addDecimal(iterator, precision, func, encode);
+        builder.addDecimal(iterator, precision, null, func, encode);
         return this.childCompleted();
     }
 
@@ -237,22 +237,22 @@ public abstract class JSONArray<R, T, P, N> {
     // String
 
     public P string(IterStringFunction<T> func) {
-        builder.addString(iterator, func);
+        builder.addString(iterator, false, func);
         return this.childCompleted();
     }
 
     public P string(IterStringFunction<T> func, JSONType encode) {
-        builder.addString(iterator, func, encode);
+        builder.addString(iterator, false, func, encode);
         return this.childCompleted();
     }
 
     public P nullableString(IterStringFunction<T> func) {
-        builder.addNullableString(iterator, func);
+        builder.addString(iterator, true, func);
         return this.childCompleted();
     }
 
     public P nullableString(IterStringFunction<T> func, JSONType encode) {
-        builder.addNullableString(iterator, func, encode);
+        builder.addString(iterator, true, func, encode);
         return this.childCompleted();
     }
 }
