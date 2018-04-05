@@ -8,6 +8,11 @@ import com.ociweb.jpgRaster.j2r.InverseDCT;
 import com.ociweb.jpgRaster.j2r.InverseQuantizer;
 import com.ociweb.jpgRaster.j2r.JPGScanner;
 import com.ociweb.jpgRaster.j2r.YCbCrToRGB;
+import com.ociweb.jpgRaster.r2j.BMPScanner;
+import com.ociweb.jpgRaster.r2j.ForwardDCT;
+import com.ociweb.jpgRaster.r2j.HuffmanEncoder;
+import com.ociweb.jpgRaster.r2j.Quantizer;
+import com.ociweb.jpgRaster.r2j.RGBToYCbCr;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
@@ -18,6 +23,7 @@ public class JPGRaster {
 //		String defaultFiles = "test_jpgs/huff_simple0.jpg test_jpgs/robot.jpg test_jpgs/cat.jpg test_jpgs/car.jpg test_jpgs/squirrel.jpg test_jpgs/nathan.jpg test_jpgs/earth.jpg test_jpgs/dice.jpg test_jpgs/pyramids.jpg test_jpgs/static.jpg test_jpgs/turtle.jpg";
 		
 		boolean verbose = hasArg("--verbose", "-v", args);
+		boolean encode = hasArg("--encode", "-e", args);
 		
 		String defaultFiles = "";
 		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
@@ -29,7 +35,7 @@ public class JPGRaster {
 			}
 		}
 		
-		String defaultDirectory = "test_jpgs/";
+		String defaultDirectory = "";
 		String inputDirectory = getOptArg("--directory", "-d", args, defaultDirectory);
 		if (!inputDirectory.equals("") && !inputDirectory.endsWith("/")) {
 			inputDirectory += "/";
@@ -51,7 +57,12 @@ public class JPGRaster {
 		
 		GraphManager gm = new GraphManager();
 		
-		populateGraph(gm, inputFiles, verbose);
+		if (encode) {
+			populateEncoderGraph(gm, inputFiles, verbose);
+		}
+		else {
+			populateDecoderGraph(gm, inputFiles, verbose);
+		}
 		
 		String defaultPort = "";
 		String portString = getOptArg("--port", "-p", args, defaultPort);
@@ -70,7 +81,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose) {
+	private static void populateDecoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -82,6 +93,25 @@ public class JPGRaster {
 		new InverseDCT(gm, pipe2, pipe3, verbose);
 		new YCbCrToRGB(gm, pipe3, pipe4, verbose);
 		new BMPDumper(gm, pipe4, verbose);
+		
+		for (int i = 0; i < inputFiles.size(); ++i) {
+			String file = inputFiles.get(i);
+			scanner.queueFile(file);
+		}
+	}
+
+	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose) {
+		
+		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);
+		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(500, 200);
+		
+		BMPScanner scanner = new BMPScanner(gm, pipe1, verbose);
+		new RGBToYCbCr(gm, pipe1, pipe2, verbose);
+		new ForwardDCT(gm, pipe2, pipe3, verbose);
+		new Quantizer(gm, pipe3, pipe4, verbose);
+		new HuffmanEncoder(gm, pipe4, verbose);
 		
 		for (int i = 0; i < inputFiles.size(); ++i) {
 			String file = inputFiles.get(i);
