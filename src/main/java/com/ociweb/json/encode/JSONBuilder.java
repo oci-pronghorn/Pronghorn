@@ -559,7 +559,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // String
 
-    void addString(boolean checkNull, final ToStringFunction<T> func) {
+    void addString(final boolean checkNull, final ToStringFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
