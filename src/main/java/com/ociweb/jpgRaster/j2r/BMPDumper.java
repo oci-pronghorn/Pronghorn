@@ -75,14 +75,14 @@ public class BMPDumper extends PronghornStage {
 		fileStream.close();
 	}
 	
-	private static void putInt(ByteBuffer buffer, int v) throws IOException {
+	private static void putInt(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 		buffer.put((byte)((v >> 16) & 0xFF));
 		buffer.put((byte)((v >> 24) & 0xFF));
 	}
 	
-	private static void putShort(ByteBuffer buffer, int v) throws IOException {
+	private static void putShort(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 	}
