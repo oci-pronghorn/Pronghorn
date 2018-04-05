@@ -2,12 +2,16 @@ package com.ociweb.pronghorn.util;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 
 public class CharSequenceToUTF8 {
 
 	private byte[] backing = new byte[256];
 	private int length;
+	private final static Logger logger = (Logger) LoggerFactory.getLogger(CharSequenceToUTF8.class);
 		
 	public CharSequenceToUTF8 convert(CharSequence charSeq) {
 		convert(charSeq, 0, charSeq.length());
@@ -22,6 +26,9 @@ public class CharSequenceToUTF8 {
 	public CharSequenceToUTF8 convert(CharSequence charSeq, int pos, int len) {
 		if (len*8>backing.length) {
 			backing = new byte[len*8];
+			if (backing.length>(1<<24)) {
+				logger.warn("large string conversion has caused backing to grow to {} ", backing.length);
+			}
 		}		
 		length = Pipe.convertToUTF8(charSeq, pos, len, backing, 0, Integer.MAX_VALUE);
 		return this;
@@ -32,6 +39,9 @@ public class CharSequenceToUTF8 {
 			byte[] newBacking = new byte[len*8];
 			System.arraycopy(backing, 0, newBacking, 0, length);
 			backing = newBacking;
+			if (backing.length>(1<<24)) {
+				logger.warn("large string conversion has caused backing to grow to {} ", backing.length);
+			}
 			
 		}		
 		length += Pipe.convertToUTF8(charSeq, pos, len, backing, length, Integer.MAX_VALUE);
