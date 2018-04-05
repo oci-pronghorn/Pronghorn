@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ociweb.pronghorn.struct.BStructSchema;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
 import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
@@ -26,11 +26,6 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	public JSONExtractor(boolean writeDot) {
 		this.schema = new JSONFieldSchema(0);
 		this.writeDot = writeDot;
-	}
-	
-	public int toStruct(BStructSchema struct) {
-		return schema.toStruct(struct);
-
 	}
 	
     @Override
@@ -120,6 +115,28 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		schema.addMappings(activeMapping);
 		return this;
 	}
+	
+	@Override
+	public JSONExtractorCompleted completePath(String pathName, Object optionalAssociation) {
+		
+		activeMapping.setName(pathName);
+		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	
+		schema.addMappings(activeMapping);
+		activeMapping.setAssociatedObject(optionalAssociation);
+		
+		return this;
+	}
+
+	@Override
+	public int[] indexTable(StructRegistry typeData, int structId) {
+		return schema.indexTable(typeData, structId);
+	}
+
+	@Override
+	public void addToStruct(StructRegistry typeData, int structId) {
+		schema.addToStruct(typeData, structId);
+	}
+
 
 	
 }

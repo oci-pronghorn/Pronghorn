@@ -20,6 +20,7 @@ import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -74,6 +75,7 @@ public class Pipe<T extends MessageSchema<T>> {
     PipePublishListener pubListener = PipePublishListener.NO_OP;
     PipeReleaseListener relListener = PipeReleaseListener.NO_OP;
     
+    private StructRegistry typeData;    
     
     public static void setPubListener(Pipe p, PipePublishListener listener) {
     	p.pubListener = listener;
@@ -83,6 +85,16 @@ public class Pipe<T extends MessageSchema<T>> {
     	p.relListener = listener;
     }
     
+    public static void typeData(Pipe p, StructRegistry recordTypeData) {
+    	assert(null!=recordTypeData) : "must not be null";
+    	assert(null==p.typeData || recordTypeData==p.typeData) :
+    		"can not modify type data after setting";
+    	p.typeData = recordTypeData;
+    }
+    
+    public static StructRegistry typeData(Pipe p) {
+    	return p.typeData;
+    }
     
     /**
      * Holds the active head position information.
@@ -345,7 +357,11 @@ public class Pipe<T extends MessageSchema<T>> {
     //NOTE: when the 32nd bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
     //NOTE: when the 31nd bit is set this blob is structured.
     public static final int RELATIVE_POS_MASK = 0x3FFFFFFF; //removes flag bits which indicate this is a constant and/or structure
-    public static final int STRUCTURED_POS_MASK = 0x40000000;    
+    public static final int STRUCTURED_POS_MASK = 0x40000000; 
+    
+    static {
+    	assert(STRUCTURED_POS_MASK == StructRegistry.IS_STRUCT_BIT);    	
+    }
     
     //This mask is here to support the fact that variable-length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
@@ -623,11 +639,22 @@ public class Pipe<T extends MessageSchema<T>> {
     public void openBlobFieldWrite() {  
     	//System.out.println("open stream on "+id);
         if (!isInBlobFieldWrite.compareAndSet(false, true)) {
+        	if (null!=blobOpenStack) {
+        		blobOpenStack.printStackTrace();
+        	}        	
             throw new UnsupportedOperationException("only one open write against the blob at a time.");
-        }        
+        } 
+        assert(recordOpenStack());
     }
 
-    public void closeBlobFieldWrite() {
+    private Exception blobOpenStack;
+    private boolean recordOpenStack() {
+    	blobOpenStack = new Exception("Blob first opened here but it is attempted to be opened again later.");
+		return true;
+	}
+
+	public void closeBlobFieldWrite() {
+		blobOpenStack = null;
     	//System.out.println("close stream on "+id);
         if (!isInBlobFieldWrite.compareAndSet(true, false)) {
             throw new UnsupportedOperationException("can not close blob if not open.");
@@ -733,14 +760,16 @@ public class Pipe<T extends MessageSchema<T>> {
 		//NOTE while replay is in effect the head can be moved by the other (writing) thread.
 	}
 
+	private static final int INDEX_BASE_OFFSET = 4; //Room for 1 int (struct info)
+	
 	///////////
 	//support for adding indexes onto the end of the var len blob field
 	///////////
 	public static <S extends MessageSchema<S>> int blobIndexBasePosition(Pipe<S> rb) {
-		if (rb.maxVarLen<4) {
+		if (rb.maxVarLen<INDEX_BASE_OFFSET) {
 			throw new UnsupportedOperationException("no var length for index");
 		}		
-		return rb.maxVarLen-4;
+		return rb.maxVarLen-INDEX_BASE_OFFSET;
 	}
 	
 	
@@ -1497,15 +1526,15 @@ public class Pipe<T extends MessageSchema<T>> {
         if (meta < 0) {
         	buffer = wrappedBlobConstBuffer(pipe);
         	int position = PipeReader.POS_CONST_MASK & meta;    
-        	buffer.position(position);
-        	buffer.limit(position+len);        	
+        	((Buffer)buffer).position(position);
+        	((Buffer)buffer).limit(position+len);        	
         } else {
         	buffer = wrappedBlobRingA(pipe);
         	int position = pipe.blobMask & restorePosition(pipe,meta);
-        	buffer.clear();
-        	buffer.position(position);
+        	((Buffer)buffer).clear();
+        	((Buffer)buffer).position(position);
         	//use the end of the buffer if the length runs past it.
-        	buffer.limit(Math.min(pipe.sizeOfBlobRing, position+len));
+        	((Buffer)buffer).limit(Math.min(pipe.sizeOfBlobRing, position+len));
         }
         return buffer;
     }
@@ -1520,18 +1549,18 @@ public class Pipe<T extends MessageSchema<T>> {
         if (meta < 0) {
         	//always zero because constant array never wraps
         	buffer = wrappedBlobConstBuffer(pipe);
-        	buffer.position(0);
-        	buffer.limit(0);
+        	((Buffer)buffer).position(0);
+        	((Buffer)buffer).limit(0);
         } else {
         	buffer = wrappedBlobRingB(pipe);
         	int position = pipe.blobMask & restorePosition(pipe,meta);
-        	buffer.clear();
+        	((Buffer)buffer).clear();
             //position is zero
         	int endPos = position+len;
         	if (endPos>pipe.sizeOfBlobRing) {
-        		buffer.limit(pipe.blobMask & endPos);
+        		((Buffer)buffer).limit(pipe.blobMask & endPos);
         	} else {
-        		buffer.limit(0);
+        		((Buffer)buffer).limit(0);
         	}
         }		
     	return buffer;

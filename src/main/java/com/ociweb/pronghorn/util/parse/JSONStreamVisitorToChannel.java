@@ -234,7 +234,9 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}	
 	}
 	
-	public void export(ChannelWriter writer) {
+	public void export(ChannelWriter writer, int[] fieldIndexPositions) {
+		
+		//TODO: are we going to remove these header bits??
 		
 		headerBits.clear();
 		//gather the bits for the nulls since all the fields are nullable
@@ -253,11 +255,16 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}
 		/////////////////////////////////////////////////////
 		
-		
 		for(int i = 0; i<indexData.length; i++) {
-			
 			JSONFieldMapping mapping = schema.getMapping(i);
 			
+			/////////////////write index into the data
+			if (null!=fieldIndexPositions) {
+				assert(fieldIndexPositions.length==indexData.length);
+				DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)writer, writer.position(), fieldIndexPositions[i]);
+			}
+			
+			/////////////////write data			
 			final int dims = mapping.dimensions(); 
 			if (dims>0) {
 				//write matrix data then 
@@ -274,8 +281,6 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				}
 			}
 			
-			
-			//possible new feature, TODO: still undicided. ask Dave
 			JSONType type = schema.getMapping(i).type;
 			if (JSONType.TypeString == type) {
 				//convert the write to packed values as we send

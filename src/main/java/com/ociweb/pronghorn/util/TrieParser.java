@@ -812,6 +812,9 @@ public class TrieParser implements Serializable {
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
  
+    	assert(isValidSize(value));
+    	
+    	
     	extractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
@@ -1041,6 +1044,17 @@ public class TrieParser implements Serializable {
         
         
     }
+
+	private boolean isValidSize(long value) {
+		int actualBits = (int)Math.ceil(Math.log(value)/Math.log(2));
+		int maxBits = 16*SIZE_OF_RESULT;
+		if (actualBits>maxBits) {
+			logger.warn("This TrieParser was created to hold max values of {} bits but was passed {} which requires {}"
+					      ,maxBits,value,actualBits);
+			return false;
+		}
+		return true;
+	}
 
 	private int choseOptimalPathFromStack(int[] choices) {
 		int i = altStackPos;
@@ -1587,7 +1601,7 @@ public class TrieParser implements Serializable {
     }
     
     static long readEndValue(short[] data, int pos, int resultSize) {
-        
+   
     	if (resultSize<=2) {
     		if (resultSize == 2) {
     			//2 -- most common choice
