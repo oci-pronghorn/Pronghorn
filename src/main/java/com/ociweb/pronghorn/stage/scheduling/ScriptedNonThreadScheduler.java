@@ -71,6 +71,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     private ScriptedSchedule schedule = null;
 
+
+    
+    public static boolean globalStartupLockCheck = false;
+    static {
+    	assert(globalStartupLockCheck=true);//yes this assigns and returns true   	
+    }
+    
     private boolean recordTime;    
     
     private long nextLongRunningCheck;
@@ -308,10 +315,29 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		return;
     	}
     	modificationLock.lock(); //hold the lock
-        startupAllStages(stages.length);
+
+        startupAllStages(stages.length, globalStartupLockCheck);
        
         setupHousekeeping();
 
+    }
+    
+    public void startup(boolean watchForHang) {
+    	if (null==stages) {
+    		return;
+    	}
+
+    	if (!watchForHang) {
+    		startup();
+    	} else {
+    		
+	    	modificationLock.lock(); //hold the lock
+
+	        startupAllStages(stages.length, watchForHang);
+	        logger.info("wait for collection of housekeeping data");
+	        setupHousekeeping();
+	        logger.info("finished startup");
+    	}
     }
 
 	private void setupHousekeeping() {
@@ -434,17 +460,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
      * Stages have unknown dependencies based on their own internal locks and the pipe usages.  As a result we do not
      * know the right order for starting them. 
      */
-    private void startupAllStages(final int stageCount) {
+    private void startupAllStages(final int stageCount, boolean log) {
 
         int j;
-        boolean isAnyRateLimited = false;
         //to avoid hang we must init all the inputs first
         j = stageCount;
         while (--j >= 0) {
             //this is a half init which is required when loops in the graph are discovered and we need to initialized cross dependent stages.
             if (null != stages[j]) {
                 GraphManager.initInputPipesAsNeeded(graphManager, stages[j].stageId);
-                isAnyRateLimited |= GraphManager.isRateLimited(graphManager, stages[j].stageId);
             }
         }
 
@@ -461,12 +485,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     GraphManager.initAllPipes(graphManager, stage.stageId);
 
                     try {
-                        logger.debug("begin startup of    {}", stage);
+                    	if (log) {
+                    		logger.info("waiting for startup of {}", stage);
+                    	}
 
-                       // Thread thread = Thread.currentThread();
-                       // new ThreadLocal<Integer>();
-
-        		    	long start = 0;
+                    	long start = 0;
         		    	if (recordTime) {
         		    		start = System.nanoTime();	
         		    	}
@@ -480,9 +503,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         		        	long duration = now-start;
         		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
         				}
+                        if (log) {
+                        	logger.info("finished startup of {}", stage);
+                        }
                         
-                        logger.debug("finished startup of {}", stage);
-
                         //client work is complete so move stage of stage to started.
                         GraphManager.setStateToStarted(graphManager, stage.stageId);
                         unInitCount--;
@@ -502,10 +526,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                                                                 stage.stageId); //Must ensure marked as terminated
                             }
                         }
-                        //TODO: need to halt more startups
-                        //      while j< stage count must shutdown those started
-                        //      then call shutdown on this scheduler
-                        System.exit(-1); //this is a hack for now until the above is completed.
+                        
+                        for(int k=j+1;j<stageCount;j++) {
+                            final PronghornStage stage2 = stages[k];
+                            if (null != stage2 && GraphManager.isStageStarted(graphManager, stage2.stageId)) {
+                            	stage2.requestShutdown();
+                            }
+                        }
+                        this.shutdown();
                         return;
                     }
                 }
