@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
@@ -35,6 +36,11 @@ public class SchemaTest {
 	@Test
 	public void testPersistedBlobLoadConsumerSchema() {
 		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoadConsumer.xml", PersistedBlobLoadConsumerSchema.class));
+	}
+
+	@Test
+	public void testPersistedBlobLoadReleaseSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoadRelease.xml", PersistedBlobLoadReleaseSchema.class));
 	}
 	
 	@Test

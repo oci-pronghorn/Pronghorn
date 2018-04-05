@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.FileGraphBuilder;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -134,11 +135,12 @@ public class MQTTClientGraphBuilder {
 
 		short inFlightCount = (short)maxInFlight;
 		
+		Pipe<PersistedBlobLoadReleaseSchema>  perLoadRelease = PersistedBlobLoadReleaseSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		
 		
-		FileGraphBuilder.buildSequentialReplayer(gm, perLoadConsumer, perLoadProducer,
+		FileGraphBuilder.buildSequentialReplayer(gm, perLoadRelease, perLoadConsumer, perLoadProducer,
 				persistanceConsumerPipe, persistanceProducerPipe, multiplierBeforeCompact, maxValueBits,
 				inFlightCount, maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10, BACKGROUND_COLOR);
 
@@ -159,7 +161,7 @@ public class MQTTClientGraphBuilder {
 				                                        ccm, maxInFlight, uniqueId, clientToServer, 
 				                                        clientToServerAck, 
 				                                        persistanceConsumerPipe, persistanceProducerPipe,
-				                                        perLoadConsumer, perLoadProducer,
+				                                        perLoadRelease, perLoadConsumer, perLoadProducer,
 				                                        idRangeControl, toBroker);
 		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, encodeStage);

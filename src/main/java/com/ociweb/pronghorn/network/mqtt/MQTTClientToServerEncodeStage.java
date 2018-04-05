@@ -24,6 +24,7 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -40,7 +41,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	private final Pipe<PersistedBlobStoreConsumerSchema> persistBlobStoreConsumer;
 	private final Pipe<PersistedBlobStoreProducerSchema> persistBlobStoreProducer;
-		
+	
+	private final Pipe<PersistedBlobLoadReleaseSchema> persistBlobLoadRelease;
 	private final Pipe<PersistedBlobLoadConsumerSchema> persistBlobLoadConsumer;
 	private final Pipe<PersistedBlobLoadProducerSchema> persistBlobLoadProducer;
 	
@@ -96,6 +98,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			                             Pipe<MQTTClientToServerSchemaAck> inputAck,
 			                             Pipe<PersistedBlobStoreConsumerSchema> persistBlobStoreConsumer,
 			                             Pipe<PersistedBlobStoreProducerSchema> persistBlobStoreProducer,			                             
+			                             Pipe<PersistedBlobLoadReleaseSchema> persistBlobLoadRelease,
 			                             Pipe<PersistedBlobLoadConsumerSchema> persistBlobLoadConsumer,
 			                             Pipe<PersistedBlobLoadProducerSchema> persistBlobLoadProducer,
 			                             Pipe<MQTTIdRangeControllerSchema> idRangeControl,
@@ -106,6 +109,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		this.idRangeControl = idRangeControl;
 		this.persistBlobStoreConsumer = persistBlobStoreConsumer;
 		this.persistBlobStoreProducer = persistBlobStoreProducer;		
+				
+		this.persistBlobLoadRelease = persistBlobLoadRelease;
 		this.persistBlobLoadConsumer = persistBlobLoadConsumer;
 		this.persistBlobLoadProducer = persistBlobLoadProducer;
 		
@@ -375,7 +380,22 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private boolean processPersistLoad() {
 		long connectionId = -1;
-		
+				
+		while ( (connectionId = connectionId())>=0
+				&& Pipe.hasContentToRead(persistBlobLoadRelease)) {
+			
+		    int msgIdx = Pipe.takeMsgIdx(persistBlobLoadRelease);
+		    switch(msgIdx) {
+		        case PersistedBlobLoadReleaseSchema.MSG_ACKRELEASE_10:
+		        	ackPublishedPosLocal((int)Pipe.takeLong(persistBlobLoadRelease));
+		        break;		       		        
+		        case -1:
+		           requestShutdown();
+		        break;
+		    }
+		    PipeReader.releaseReadLock(persistBlobLoadRelease);
+		}
+				
 		while ( (connectionId = connectionId())>=0
 				&& Pipe.hasContentToRead(persistBlobLoadConsumer)) {
 			
@@ -429,11 +449,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        	Pipe.presumeRoomForWrite(idRangeControl);
 		        	FragmentWriter.write(idRangeControl, MQTTIdRangeControllerSchema.MSG_READY_3);
 		        	isInReloadPersisted = false;
-				break;
-				
-		        case PersistedBlobLoadConsumerSchema.MSG_ACKRELEASE_10:
-		        	ackPublishedPosLocal((int)Pipe.takeLong(persistBlobLoadConsumer));
-		        break;		       		        
+				break;      		        
 		        case -1:
 		           requestShutdown();
 		        break;

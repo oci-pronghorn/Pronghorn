@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
@@ -19,7 +20,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FileGraphBuilder {
 
-	public static void buildSequentialReplayer(GraphManager gm, 
+	public static void buildSequentialReplayer(GraphManager gm,
+			Pipe<PersistedBlobLoadReleaseSchema>  fromStoreRelease,
 			Pipe<PersistedBlobLoadConsumerSchema> fromStoreConsumer,
 			Pipe<PersistedBlobLoadProducerSchema> fromStoreProducer,
 			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,
@@ -112,11 +114,11 @@ public class FileGraphBuilder {
 				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt2);
 			}			
 			
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreConsumer, fromStoreProducer, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits);
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreRelease, fromStoreConsumer, fromStoreProducer, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		} else {
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreConsumer, fromStoreProducer, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits);
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreRelease, fromStoreConsumer, fromStoreProducer, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		}

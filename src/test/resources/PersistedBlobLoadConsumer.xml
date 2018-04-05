@@ -11,9 +11,5 @@
      
      <template name="FinishReplay" id="9">
      </template> 
-     
-     <template name="AckRelease" id="10">
-       <uInt64 name="BlockId" id="3"/>
-     </template>
-     
+
 </templates>

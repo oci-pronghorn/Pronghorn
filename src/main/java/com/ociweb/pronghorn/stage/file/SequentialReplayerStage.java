@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
@@ -25,7 +26,8 @@ public class SequentialReplayerStage extends PronghornStage {
 	
 	private final Pipe<PersistedBlobStoreConsumerSchema> storeConsumerRequests;
 	private final Pipe<PersistedBlobStoreProducerSchema> storeProducerRequests;
-		
+	
+	private final Pipe<PersistedBlobLoadReleaseSchema>  loadReleaseResponses;
     private final Pipe<PersistedBlobLoadConsumerSchema> loadConsumerResponses;
     private final Pipe<PersistedBlobLoadProducerSchema> loadProducerResponses;
     
@@ -69,6 +71,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		            Pipe<PersistedBlobStoreConsumerSchema> storeConsumerRequests, 
 		            Pipe<PersistedBlobStoreProducerSchema> storeProducerRequests, 
 		            
+		            Pipe<PersistedBlobLoadReleaseSchema>  loadReleaseResponses,
 		            Pipe<PersistedBlobLoadConsumerSchema> loadConsumerResponses,
 		            Pipe<PersistedBlobLoadProducerSchema> loadProducerResponses,
 		            
@@ -83,11 +86,12 @@ public class SequentialReplayerStage extends PronghornStage {
 	            ) {
 				
 		super(graphManager, join(join(fileResponse, storeConsumerRequests, storeProducerRequests),fileReadData),
-				            join(join(fileControl, loadConsumerResponses, loadProducerResponses),fileWriteData));
+				            join(join(fileControl, loadReleaseResponses, loadConsumerResponses, loadProducerResponses),fileWriteData));
 
 		this.storeConsumerRequests = storeConsumerRequests;
 		this.storeProducerRequests = storeProducerRequests;
 		
+		this.loadReleaseResponses = loadReleaseResponses;
 		this.loadConsumerResponses = loadConsumerResponses;
 		this.loadProducerResponses = loadProducerResponses;
 		
@@ -307,12 +311,16 @@ public class SequentialReplayerStage extends PronghornStage {
 	
 	private void fileResponseProcessing() {
 
+		
 		int i = fileResponse.length;
 		while (--i>=0) {
 		
 			Pipe<SequentialRespSchema> input = fileResponse[i];
 			
-			while (Pipe.hasContentToRead(input)) {
+			while (Pipe.hasContentToRead(input)
+					&& Pipe.hasRoomForWrite(loadProducerResponses)
+					&& Pipe.hasRoomForWrite(loadReleaseResponses)
+					) {
 			    int msgIdx = Pipe.takeMsgIdx(input);
 			    switch(msgIdx) {
 			        case SequentialRespSchema.MSG_CLEARACK_1:
@@ -332,8 +340,8 @@ public class SequentialReplayerStage extends PronghornStage {
 			           		Pipe.presumeRoomForWrite(loadProducerResponses);			           		
 							FragmentWriter.writeL(loadProducerResponses, PersistedBlobLoadProducerSchema.MSG_ACKWRITE_11, ackId);	
 			        	} else {
-			        		Pipe.presumeRoomForWrite(loadConsumerResponses);
-			        		FragmentWriter.writeL(loadConsumerResponses, PersistedBlobLoadConsumerSchema.MSG_ACKRELEASE_10, ackId);
+			        		Pipe.presumeRoomForWrite(loadReleaseResponses);
+			        		FragmentWriter.writeL(loadReleaseResponses, PersistedBlobLoadReleaseSchema.MSG_ACKRELEASE_10, ackId);
 			        	}
 			        break;
 			        case -1:
