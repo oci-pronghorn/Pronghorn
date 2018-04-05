@@ -16,6 +16,9 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.JSONTap;
+import com.ociweb.pronghorn.util.CharSequenceToUTF8;
+import com.ociweb.pronghorn.util.CharSequenceToUTF8Local;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +68,10 @@ public class MQTTClientGraphBuilder {
 		if (username!=null && password!=null) {
 
 			cypherBlock = new byte[16];
-			SecureRandom sr = new SecureRandom((username+":"+password).getBytes());
+			
+			CharSequenceToUTF8 charSequenceToUTF8 = CharSequenceToUTF8Local.get();
+			SecureRandom sr = new SecureRandom(charSequenceToUTF8.convert(username).append(":").append(password).asBytes());
+			charSequenceToUTF8.clear();
 			sr.nextBytes(cypherBlock);
 
 			if (tlsCertificates == null) {
