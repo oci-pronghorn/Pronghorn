@@ -14,13 +14,30 @@ public class CharSequenceToUTF8 {
 		return this;
 	}
 	
-	public CharSequenceToUTF8 convert(CharSequence charSeq, int pos, int length) {
-		if (length*8>backing.length) {
-			backing = new byte[length*8];
-		}		
-		length = Pipe.convertToUTF8(charSeq, pos, length, backing, 0, Integer.MAX_VALUE);
+	public CharSequenceToUTF8 append(CharSequence charSeq) {
+		append(charSeq, 0, charSeq.length());
 		return this;
 	}
+	
+	public CharSequenceToUTF8 convert(CharSequence charSeq, int pos, int len) {
+		if (len*8>backing.length) {
+			backing = new byte[len*8];
+		}		
+		length = Pipe.convertToUTF8(charSeq, pos, len, backing, 0, Integer.MAX_VALUE);
+		return this;
+	}
+	
+	public CharSequenceToUTF8 append(CharSequence charSeq, int pos, int len) {
+		if ((length+(len*8))>backing.length) {
+			byte[] newBacking = new byte[len*8];
+			System.arraycopy(backing, 0, newBacking, 0, length);
+			backing = newBacking;
+			
+		}		
+		length += Pipe.convertToUTF8(charSeq, pos, len, backing, length, Integer.MAX_VALUE);
+		return this;
+	}
+	
 	
 	public byte[] asBytes() {
 		return Arrays.copyOfRange(backing, 0, length);
@@ -44,6 +61,12 @@ public class CharSequenceToUTF8 {
 			}
 			return true;
 		}
+	}
+
+	public void clear() {
+		length = 0;
+		//do not leak data
+		Arrays.fill(backing, (byte)0);
 	}
 	
 }
