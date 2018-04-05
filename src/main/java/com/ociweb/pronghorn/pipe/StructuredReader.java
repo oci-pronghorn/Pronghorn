@@ -48,6 +48,11 @@ public final class StructuredReader {
 		return channelReader.equalUTF(value);
 	}
 
+	public boolean isEqual(Object association, byte[] value) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader.equalUTF(value);
+	}
 	
 	public long readTextAsLong(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
