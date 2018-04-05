@@ -9,23 +9,24 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.encrypt.RawDataCryptAESCBCPKCS5Stage;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FileGraphBuilder {
 
-	public static Pipe<PersistedBlobLoadSchema> buildSequentialReplayer(GraphManager gm,
-			Pipe<PersistedBlobStoreSchema> toStore, 
-			byte multiplierForCompaction, 
-			byte maxIdValueBits, 
-			short inFlightCount, 
-			int largestBlock,
-			File targetDirectory, 
-			byte[] cypherBlock, 
-			long rate, String backgroundColor) {
+	public static void buildSequentialReplayer(GraphManager gm, 
+			Pipe<PersistedBlobLoadConsumerSchema> fromStoreConsumer,
+			Pipe<PersistedBlobLoadProducerSchema> fromStoreProducer,
+			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,
+			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer,
+			byte multiplierForCompaction, byte maxIdValueBits,
+			short inFlightCount, int largestBlock, File targetDirectory, byte[] cypherBlock, long rate,
+			String backgroundColor) {
 		
 		if (cypherBlock != null) {
 			if (cypherBlock.length!=16) {
@@ -38,7 +39,6 @@ public class FileGraphBuilder {
 		PipeConfig<RawDataSchema> releaseConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, 128);		
 		PipeConfig<RawDataSchema> dataConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, largestBlock);
 					
-		Pipe<PersistedBlobLoadSchema> perLoad = PersistedBlobLoadSchema.instance.newPipe(inFlightCount, largestBlock);
 				
 		Pipe<SequentialCtlSchema>[] control = new Pipe[]  {
 				             new Pipe<SequentialCtlSchema>(ctlConfig),
@@ -112,15 +112,14 @@ public class FileGraphBuilder {
 				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt2);
 			}			
 			
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits);
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreConsumer, fromStoreProducer, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		} else {
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits);
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreConsumer, fromStoreProducer, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		}
-		return perLoad;
 	}
 
 }

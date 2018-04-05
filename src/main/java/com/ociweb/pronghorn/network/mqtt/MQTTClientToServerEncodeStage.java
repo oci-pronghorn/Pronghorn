@@ -22,8 +22,10 @@ import com.ociweb.pronghorn.pipe.FragmentWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -36,8 +38,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private final Pipe<MQTTClientToServerSchema> input;
 	private final Pipe<MQTTClientToServerSchemaAck> inputAck;
 	
-	private final Pipe<PersistedBlobStoreSchema> persistBlobStore;
-	private final Pipe<PersistedBlobLoadSchema> persistBlobLoad;
+	private final Pipe<PersistedBlobStoreConsumerSchema> persistBlobStoreConsumer;
+	private final Pipe<PersistedBlobStoreProducerSchema> persistBlobStoreProducer;
+		
+	private final Pipe<PersistedBlobLoadConsumerSchema> persistBlobLoadConsumer;
+	private final Pipe<PersistedBlobLoadProducerSchema> persistBlobLoadProducer;
 	
 	private final Pipe<NetPayloadSchema>[] toBroker; //array is the size of supported "in-flight" messages.
 			
@@ -89,16 +94,20 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	public MQTTClientToServerEncodeStage(GraphManager gm, ClientCoordinator ccm, int maxInFlight, int uniqueId, 
 			                             Pipe<MQTTClientToServerSchema> input,
 			                             Pipe<MQTTClientToServerSchemaAck> inputAck,
-			                             Pipe<PersistedBlobStoreSchema> persistBlobStore,
-			                             Pipe<PersistedBlobLoadSchema> persistBlobLoad,
+			                             Pipe<PersistedBlobStoreConsumerSchema> persistBlobStoreConsumer,
+			                             Pipe<PersistedBlobStoreProducerSchema> persistBlobStoreProducer,			                             
+			                             Pipe<PersistedBlobLoadConsumerSchema> persistBlobLoadConsumer,
+			                             Pipe<PersistedBlobLoadProducerSchema> persistBlobLoadProducer,
 			                             Pipe<MQTTIdRangeControllerSchema> idRangeControl,
 			                             Pipe<NetPayloadSchema>[] toBroker) {
-		super(gm, join(input,inputAck,persistBlobLoad), join(toBroker,persistBlobStore,idRangeControl));
+		super(gm, join(input,inputAck,persistBlobLoadConsumer,persistBlobLoadProducer ), join(toBroker,persistBlobStoreConsumer, persistBlobStoreProducer,idRangeControl));
 		this.input = input;
 		this.inputAck = inputAck;
 		this.idRangeControl = idRangeControl;
-		this.persistBlobStore = persistBlobStore;
-		this.persistBlobLoad = persistBlobLoad;
+		this.persistBlobStoreConsumer = persistBlobStoreConsumer;
+		this.persistBlobStoreProducer = persistBlobStoreProducer;		
+		this.persistBlobLoadConsumer = persistBlobLoadConsumer;
+		this.persistBlobLoadProducer = persistBlobLoadProducer;
 		
 		this.toBroker = toBroker;
 		assert(ofSchema(toBroker, NetPayloadSchema.instance));
@@ -171,8 +180,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	private void storePublishedPosPersisted(int blobPosition, int blobConsumed, byte[] blob, final int packetId) {
-		Pipe.presumeRoomForWrite(persistBlobStore);
-		FragmentWriter.writeLV(persistBlobStore, PersistedBlobStoreSchema.MSG_BLOCK_1,
+		Pipe.presumeRoomForWrite(persistBlobStoreProducer);
+		FragmentWriter.writeLV(persistBlobStoreProducer, PersistedBlobStoreProducerSchema.MSG_BLOCK_1,
 				packetId, //persist store supports long but we only have a packetId.
 				blob, blobPosition, blobConsumed
 				);
@@ -199,8 +208,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		if (isPersistantSession) {
 			//logger.trace("BBB must clear top level ack from drive {} ",packetId);
 			
-			Pipe.presumeRoomForWrite(persistBlobStore);
-			FragmentWriter.writeL(persistBlobStore, PersistedBlobStoreSchema.MSG_RELEASE_7,
+			Pipe.presumeRoomForWrite(persistBlobStoreConsumer);
+			FragmentWriter.writeL(persistBlobStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_RELEASE_7,
 					packetId
 					);
 			
@@ -368,11 +377,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		long connectionId = -1;
 		
 		while ( (connectionId = connectionId())>=0
-				&& Pipe.hasContentToRead(persistBlobLoad)) {
+				&& Pipe.hasContentToRead(persistBlobLoadConsumer)) {
 			
-		    int msgIdx = Pipe.takeMsgIdx(persistBlobLoad);
+		    int msgIdx = Pipe.takeMsgIdx(persistBlobLoadConsumer);
 		    switch(msgIdx) {
-		    	case PersistedBlobLoadSchema.MSG_BEGINREPLAY_8:
+		    	case PersistedBlobLoadConsumerSchema.MSG_BEGINREPLAY_8:
 		    		clearAckPublishedCollection();
 		    		
 		    		Pipe.presumeRoomForWrite(idRangeControl);
@@ -380,9 +389,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		    		
 					isInReloadPersisted = true;
 		    	break;
-		        case PersistedBlobLoadSchema.MSG_BLOCK_1:
+		        case PersistedBlobLoadConsumerSchema.MSG_BLOCK_1:
 		        {		        	
-		        	int fieldBlockId = (int)Pipe.takeLong(persistBlobLoad);
+		        	int fieldBlockId = (int)Pipe.takeLong(persistBlobLoadConsumer);
 
 		        	//Tell the IdGen that this value is already consumed
 		        	Pipe.presumeRoomForWrite(idRangeControl);
@@ -404,7 +413,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		    				    			    		
 		    		//payload
 		    		DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
-		    		Pipe.readBytes(persistBlobLoad, output);
+		    		Pipe.readBytes(persistBlobLoadConsumer, output);
 		    		output.closeLowLevelField();
 		    		
 					//NOTE: no need to re-store persistently since we are loading..
@@ -416,17 +425,28 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					//logger.info("wrote block of {}",len2);					
 		        }
 		        break;
-		        case PersistedBlobLoadSchema.MSG_FINISHREPLAY_9:				
+		        case PersistedBlobLoadConsumerSchema.MSG_FINISHREPLAY_9:				
 		        	Pipe.presumeRoomForWrite(idRangeControl);
 		        	FragmentWriter.write(idRangeControl, MQTTIdRangeControllerSchema.MSG_READY_3);
 		        	isInReloadPersisted = false;
 				break;
 				
-		        case PersistedBlobLoadSchema.MSG_ACKRELEASE_10:
-		        	ackPublishedPosLocal((int)Pipe.takeLong(persistBlobLoad));
+		        case PersistedBlobLoadConsumerSchema.MSG_ACKRELEASE_10:
+		        	ackPublishedPosLocal((int)Pipe.takeLong(persistBlobLoadConsumer));
+		        break;		       		        
+		        case -1:
+		           requestShutdown();
 		        break;
-		        
-		        case PersistedBlobLoadSchema.MSG_ACKWRITE_11:
+		    }
+		    PipeReader.releaseReadLock(persistBlobLoadConsumer);
+		}
+		
+		while ( (connectionId = connectionId())>=0
+				&& Pipe.hasContentToRead(persistBlobLoadProducer)) {
+			
+		    int msgIdx = Pipe.takeMsgIdx(persistBlobLoadProducer);
+		    switch(msgIdx) {
+		        case PersistedBlobLoadProducerSchema.MSG_ACKWRITE_11:
 		        	
 		        	Pipe<NetPayloadSchema> pipe = toBroker[activeConnection.requestPipeLineIdx()];
 					Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
@@ -439,19 +459,19 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        	
 		        	isInPersistWrite = false;//can now continue with next write
 		        			        	
-		        	long comittedBlockId = Pipe.takeLong(persistBlobLoad);	
+		        	long comittedBlockId = Pipe.takeLong(persistBlobLoadProducer);	
 		        	assert(comittedBlockId>=0);
 		        	//logger.trace("publish ack write is now on disk for id {} ",comittedBlockId);
 		        	//NOTE: if desired we could send this id back to MQTTClient, but I see no need at this time.
 		        			        	
-		        break;
-		        
+		        break;		        
 		        case -1:
 		           requestShutdown();
 		        break;
 		    }
-		    PipeReader.releaseReadLock(persistBlobLoad);
-		}
+		    PipeReader.releaseReadLock(persistBlobLoadProducer);
+		}		
+		
 		return isInReloadPersisted || isInPersistWrite;
 	}
 
@@ -747,7 +767,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	int countOfPersistStoreBlocks = 0;
 	private boolean hasRoomToPersist() {
-		boolean result = Pipe.hasRoomForWrite(persistBlobStore);
+		boolean result = Pipe.hasRoomForWrite(persistBlobStoreConsumer)&&Pipe.hasRoomForWrite(persistBlobStoreProducer);
 		if ((!result) &
 			(Integer.numberOfLeadingZeros(countOfPersistStoreBlocks) != Integer.numberOfLeadingZeros(++countOfPersistStoreBlocks))) {
 			logger.info("Warning: encoding blocked {} times waiting to persist store ",countOfPersistStoreBlocks);
@@ -1226,13 +1246,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private void requestReplayOfPersistedCollection() {
-		Pipe.presumeRoomForWrite(persistBlobStore);
-		FragmentWriter.write(persistBlobStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
+		Pipe.presumeRoomForWrite(persistBlobStoreConsumer);
+		FragmentWriter.write(persistBlobStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_REQUESTREPLAY_6);
 	}
 
 	private void clearPersistedCollection() {
-		Pipe.presumeRoomForWrite(persistBlobStore);
-		FragmentWriter.write(persistBlobStore, PersistedBlobStoreSchema.MSG_CLEAR_12);
+		Pipe.presumeRoomForWrite(persistBlobStoreConsumer);
+		FragmentWriter.write(persistBlobStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_CLEAR_12);
 	}
 
 	private void requestPing(long now, long connectionId, Pipe<NetPayloadSchema> server) {

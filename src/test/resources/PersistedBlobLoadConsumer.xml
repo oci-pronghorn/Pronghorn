@@ -16,8 +16,4 @@
        <uInt64 name="BlockId" id="3"/>
      </template>
      
-     <template name="AckWrite" id="11">
-       <uInt64 name="BlockId" id="3"/>
-     </template>
-     
 </templates>

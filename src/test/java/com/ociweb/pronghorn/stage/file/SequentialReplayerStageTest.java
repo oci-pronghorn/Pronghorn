@@ -11,8 +11,10 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -62,23 +64,26 @@ public class SequentialReplayerStageTest {
 	
 
 	private void writeWithAckImpl(boolean encryption, boolean telemetry) {
-		Pipe<PersistedBlobStoreSchema> perStore = PersistedBlobStoreSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreProducerSchema> perStoreProducer = PersistedBlobStoreProducerSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer = PersistedBlobStoreConsumerSchema.instance.newPipe(10, 1000);
 		
-		perStore.initBuffers();
+		perStoreProducer.initBuffers();
+		perStoreConsumer.initBuffers();
+		
 		
 		long fieldBlockId = 10;
 		byte[] fieldByteArrayBacking = "hello".getBytes();
 		int fieldByteArrayPosition = 0;
 		int fieldByteArrayLength = fieldByteArrayBacking.length;
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_BLOCK_1);
-		PipeWriter.writeLong(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, fieldBlockId);
-		PipeWriter.writeBytes(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreProducer, PersistedBlobStoreProducerSchema.MSG_BLOCK_1);
+		PipeWriter.writeLong(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, fieldBlockId);
+		PipeWriter.writeBytes(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
+		PipeWriter.publishWrites(perStoreProducer);
 		
-		PipeWriter.publishEOF(perStore);
+		PipeWriter.publishEOF(perStoreConsumer);
 				
-		String result = runGraph(perStore, encryption, telemetry);
+		String result = runGraph(perStoreProducer, perStoreConsumer, encryption, telemetry);
 			
 		assertTrue(result, result.indexOf("AckWrite")>0);
 		assertTrue(result, result.indexOf("{\"BlockId\":10}")>0);
@@ -86,24 +91,27 @@ public class SequentialReplayerStageTest {
 
 
 	private void writeAndReadImpl(boolean encryption, boolean telemetry) {
-		Pipe<PersistedBlobStoreSchema> perStore = PersistedBlobStoreSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreProducerSchema> perStoreProducer = PersistedBlobStoreProducerSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer = PersistedBlobStoreConsumerSchema.instance.newPipe(10, 1000);
 		
-		perStore.initBuffers();
+		perStoreProducer.initBuffers();
+		perStoreConsumer.initBuffers();
 		
 		byte[] fieldByteArrayBacking = "hello".getBytes();
 		int fieldByteArrayLength = fieldByteArrayBacking.length;
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_BLOCK_1);
-		PipeWriter.writeLong(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, (long) 10);
-		PipeWriter.writeBytes(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreProducer, PersistedBlobStoreProducerSchema.MSG_BLOCK_1);
+		PipeWriter.writeLong(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, (long) 10);
+		PipeWriter.writeBytes(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
+		PipeWriter.publishWrites(perStoreProducer);
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStoreConsumer);
 		
-		PipeWriter.publishEOF(perStore); //ensure that the parts do not shut down before we are done
+		PipeWriter.publishEOF(perStoreConsumer); //ensure that the parts do not shut down before we are done
+		PipeWriter.publishEOF(perStoreProducer);
 				
-		String result = runGraph(perStore, encryption, telemetry);
+		String result = runGraph(perStoreProducer, perStoreConsumer, encryption, telemetry);
 					
 		assertTrue(result, result.indexOf("AckWrite")>0);
 		assertTrue(result, result.indexOf("{\"BlockId\":10}")>0);
@@ -113,16 +121,18 @@ public class SequentialReplayerStageTest {
 
 	
 	private void emptyReplayImpl(boolean encryption, boolean telemetry) {
-		Pipe<PersistedBlobStoreSchema> perStore = PersistedBlobStoreSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreProducerSchema> perStoreProducer = PersistedBlobStoreProducerSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer = PersistedBlobStoreConsumerSchema.instance.newPipe(10, 1000);
 		
-		perStore.initBuffers();
+		perStoreProducer.initBuffers();
+		perStoreConsumer.initBuffers();
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStoreConsumer);
 					
-		PipeWriter.publishEOF(perStore);
+		PipeWriter.publishEOF(perStoreConsumer);
 				
-		String result = runGraph(perStore, encryption, telemetry);
+		String result = runGraph(perStoreProducer, perStoreConsumer, encryption, telemetry);
 
 		assertTrue(result, result.indexOf("BeginReplay")>0);
 		assertTrue(result, result.indexOf("FinishReplay")>0);
@@ -131,27 +141,30 @@ public class SequentialReplayerStageTest {
 
 
 	private void writeReleaseAndReadImpl(boolean encryption, boolean telemetry) {
-		Pipe<PersistedBlobStoreSchema> perStore = PersistedBlobStoreSchema.instance.newPipe(10, 1000);
-		perStore.initBuffers();
+		Pipe<PersistedBlobStoreProducerSchema> perStoreProducer = PersistedBlobStoreProducerSchema.instance.newPipe(10, 1000);
+		Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer = PersistedBlobStoreConsumerSchema.instance.newPipe(10, 1000);
+		
+		perStoreProducer.initBuffers();
+		perStoreConsumer.initBuffers();
 		
 		byte[] fieldByteArrayBacking = "hello".getBytes();
 		int fieldByteArrayLength = fieldByteArrayBacking.length;
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_BLOCK_1);
-		PipeWriter.writeLong(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, (long) 10);
-		PipeWriter.writeBytes(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreProducer, PersistedBlobStoreProducerSchema.MSG_BLOCK_1);
+		PipeWriter.writeLong(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, (long) 10);
+		PipeWriter.writeBytes(perStoreProducer,PersistedBlobStoreProducerSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
+		PipeWriter.publishWrites(perStoreProducer);
 		
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_RELEASE_7);
-		PipeWriter.writeLong(perStore,PersistedBlobStoreSchema.MSG_RELEASE_7_FIELD_BLOCKID_3, (long) 10);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_RELEASE_7);
+		PipeWriter.writeLong(perStoreConsumer,PersistedBlobStoreConsumerSchema.MSG_RELEASE_7_FIELD_BLOCKID_3, (long) 10);
+		PipeWriter.publishWrites(perStoreConsumer);
 				
-		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
-		PipeWriter.publishWrites(perStore);
+		PipeWriter.presumeWriteFragment(perStoreConsumer, PersistedBlobStoreConsumerSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStoreConsumer);
 						
-		PipeWriter.publishEOF(perStore);
+		PipeWriter.publishEOF(perStoreConsumer);
 				
-		String result = runGraph(perStore, encryption, telemetry);
+		String result = runGraph(perStoreProducer, perStoreConsumer, encryption, telemetry);
 		
 		assertTrue(result, result.indexOf("AckWrite")>0);
 		assertTrue(result, result.indexOf("{\"BlockId\":10}")>0);
@@ -205,7 +218,9 @@ public class SequentialReplayerStageTest {
 //	}
 	
 	
-	private String runGraph(Pipe<PersistedBlobStoreSchema> perStore, boolean encryption, boolean telemetry) {
+	private String runGraph(Pipe<PersistedBlobStoreProducerSchema> perStoreProducer,
+							Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer,
+			                boolean encryption, boolean telemetry) {
 		///////////////////////////////
 		
 		
@@ -228,11 +243,17 @@ public class SequentialReplayerStageTest {
 		}
 		
 		long rate = 2400;
-		Pipe<PersistedBlobLoadSchema> perLoad = FileGraphBuilder.buildSequentialReplayer(gm, perStore, multi, bits, inFlightCount,
-				largestBlock, dir, cypher,rate, null);
 		
-		StringBuilder result = new StringBuilder();
-		ConsoleJSONDumpStage watch = ConsoleJSONDumpStage.newInstance(gm, perLoad, result);
+		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, largestBlock);
+		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, largestBlock);
+				
+		FileGraphBuilder.buildSequentialReplayer(gm, perLoadConsumer, perLoadProducer, perStoreConsumer, perStoreProducer, multi, bits,
+				inFlightCount, largestBlock, dir, cypher, rate, null);
+	
+		StringBuilder result1 = new StringBuilder();
+		ConsoleJSONDumpStage.newInstance(gm, perLoadProducer, result1);
+		StringBuilder result2 = new StringBuilder();
+		ConsoleJSONDumpStage watch = ConsoleJSONDumpStage.newInstance(gm, perLoadConsumer, result2);
 		
 		/////////////////////////////////////////
 		/////////////////////////////////////////
@@ -253,7 +274,7 @@ public class SequentialReplayerStageTest {
 		
 		
 		///////////////////////
-		return result.toString();
+		return result1.toString()+result2.toString();
 	}
 	
 	

@@ -11,8 +11,10 @@ import com.ociweb.pronghorn.stage.file.schema.BlockManagerRequestSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockManagerResponseSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 
@@ -31,13 +33,24 @@ public class SchemaTest {
 	}
 
 	@Test
-	public void testPersistedBlobLoadSchema() {
-		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoad.xml", PersistedBlobLoadSchema.class));
+	public void testPersistedBlobLoadConsumerSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoadConsumer.xml", PersistedBlobLoadConsumerSchema.class));
+	}
+	
+	@Test
+	public void testPersistedBlobLoadProducerSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoadProducer.xml", PersistedBlobLoadProducerSchema.class));
 	}
 
 	@Test
-	public void testPersistedBlobSaveSchema() {
-		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobStore.xml", PersistedBlobStoreSchema.class));
+	public void testPersistedBlobSaveConsumerSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobStoreConsumer.xml", PersistedBlobStoreConsumerSchema.class));
+
+	}
+	
+	@Test
+	public void testPersistedBlobSaveProducerSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobStoreProducer.xml", PersistedBlobStoreProducerSchema.class));
 
 	}
 	

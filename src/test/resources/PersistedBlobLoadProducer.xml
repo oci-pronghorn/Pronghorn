@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 
+     <template name="AckWrite" id="11">
+       <uInt64 name="BlockId" id="3"/>
+     </template>
+     
+</templates>

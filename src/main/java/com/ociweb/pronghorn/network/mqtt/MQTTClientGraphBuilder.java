@@ -9,8 +9,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.FileGraphBuilder;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
-import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
+import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.JSONTap;
 import org.slf4j.Logger;
@@ -116,8 +118,10 @@ public class MQTTClientGraphBuilder {
 			}
 		};
 				
-		Pipe<PersistedBlobStoreSchema> persistancePipe = PersistedBlobStoreSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
+		Pipe<PersistedBlobStoreConsumerSchema> persistanceConsumerPipe = PersistedBlobStoreConsumerSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
+		Pipe<PersistedBlobStoreProducerSchema> persistanceProducerPipe = PersistedBlobStoreProducerSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 
+		
 		File rootFolder = null;
 		try {
 			rootFolder = new File(Files.createTempDirectory("mqttClientData").toString());
@@ -125,30 +129,19 @@ public class MQTTClientGraphBuilder {
 			throw new RuntimeException(e);
 		}
 		
-		
-//		//TODO: pass these 3 pipes ino the PersistedBlobStage
-//		Pipe<FileManagerSchema> control = FileManagerSchema.instance.newPipe(10, 1000);
-//		Pipe<RawDataSchema> inPipe = RawDataSchema.instance.newPipe(10, 1000);
-//		Pipe<RawDataSchema> outPipe = RawDataSchema.instance.newPipe(10, 1000);		
-//		FileBlobReadWriteStage fileReadWrite = new FileBlobReadWriteStage(gm, control, inPipe, outPipe, "filename");
-		
+	
 		byte multiplierBeforeCompact = 4;//x time the pipe size
-		
 
-		
-//		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = PersistedBlobLoadSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
-//		PersistedUnsafeBlobStage persistedStage = new PersistedUnsafeBlobStage(gm, 
-//				                     persistancePipe, persistanceLoadPipe, 
-//				                     multi, maxValueBits, rootFolder );
-//		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, persistedStage);
-//		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "darkolivegreen2", persistedStage);
-		
 		short inFlightCount = (short)maxInFlight;
-		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = 
-				FileGraphBuilder.buildSequentialReplayer(
-				gm, persistancePipe, multiplierBeforeCompact, maxValueBits, inFlightCount,
-				maximumLenghOfVariableLengthFields, rootFolder, cypherBlock,
-				rate*10, BACKGROUND_COLOR);
+		
+		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
+		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
+		
+		
+		FileGraphBuilder.buildSequentialReplayer(gm, perLoadConsumer, perLoadProducer,
+				persistanceConsumerPipe, persistanceProducerPipe, multiplierBeforeCompact, maxValueBits,
+				inFlightCount, maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10, BACKGROUND_COLOR);
+
 		
 		
 		int independentClients = 1; 
@@ -164,7 +157,9 @@ public class MQTTClientGraphBuilder {
 		int uniqueId = 1; //Different for each client instance. so ccm and toBroker can be shared across all clients.
 		MQTTClientToServerEncodeStage encodeStage = new MQTTClientToServerEncodeStage(gm, 
 				                                        ccm, maxInFlight, uniqueId, clientToServer, 
-				                                        clientToServerAck, persistancePipe, persistanceLoadPipe, 
+				                                        clientToServerAck, 
+				                                        persistanceConsumerPipe, persistanceProducerPipe,
+				                                        perLoadConsumer, perLoadProducer,
 				                                        idRangeControl, toBroker);
 		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, encodeStage);
