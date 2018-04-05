@@ -1,5 +1,6 @@
 package com.ociweb.jpgRaster.r2j;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.JPG;
@@ -16,15 +17,11 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class HuffmanEncoder extends PronghornStage {
 	
 	private static class BitWriter {
-		private int nextByte = 0;
-		private int nextBit = 0;
-		private ArrayList<Byte> data = new ArrayList<Byte>();
+		private int nextByte = -1;
+		private int nextBit = 8;
+		public ArrayList<Byte> data = new ArrayList<Byte>();
 		
 //		private int[] masks = new int[]{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383};
-		
-		public BitWriter() {
-			data.add((byte)0);
-		}
 		
 		public void putBit(int x) {
 			
@@ -34,7 +31,7 @@ public class HuffmanEncoder extends PronghornStage {
 				nextByte++;
 			}
 			
-			data.set(nextByte, (byte)((data.get(nextByte) << 1) | (x & 1)));
+			data.set(nextByte, (byte)(data.get(nextByte) | ((x & 1) << nextBit)));
 			nextBit++;
 		}
 		
@@ -54,16 +51,9 @@ public class HuffmanEncoder extends PronghornStage {
 		
 		public void restart() {
 			data.clear();
-			data.add((byte) 0);
+			nextByte = -1;
+			nextBit = 8;
 		}
-		
-		/*public boolean hasBits() {
-			
-		}*/
-		
-		/*public void align() {
-			
-		}*/
 	}
 	
 	public static void main(String[] args) {
@@ -111,6 +101,11 @@ public class HuffmanEncoder extends PronghornStage {
 	Header header;
 	MCU mcu = new MCU();
 	
+	int count;
+	int mcuHeight;
+	int mcuWidth;
+	int numMCUs;
+	
 	public HuffmanEncoder(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -121,9 +116,9 @@ public class HuffmanEncoder extends PronghornStage {
 	static short previousCbDC = 0;
 	static short previousCrDC = 0;
 
-	static BitWriter b;
+	static BitWriter b = new BitWriter();
 
-	private static boolean encodeMCUComponent(
+	private static void encodeMCUComponent(
 			  ArrayList<ArrayList<Integer>> DCTableCodes,
 			  ArrayList<ArrayList<Integer>> ACTableCodes,
 			  HuffmanTable DCTable,
@@ -133,7 +128,7 @@ public class HuffmanEncoder extends PronghornStage {
 
 
 
-		return true;
+		return;
 	}
 
 
@@ -159,6 +154,12 @@ public class HuffmanEncoder extends PronghornStage {
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
 				PipeReader.releaseReadLock(input);
+				
+				count = 0;
+				mcuHeight = (header.height + 7) / 8;
+				mcuWidth = (header.width + 7) / 8;
+				numMCUs = mcuHeight * mcuWidth;
+				b.restart();
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
 				DataInputBlobReader<JPGSchema> mcuReader = PipeReader.inputStream(input, JPGSchema.MSG_MCUMESSAGE_4_FIELD_Y_104);
@@ -176,6 +177,22 @@ public class HuffmanEncoder extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 
 				encodeHuffmanData(mcu);
+				
+				count += 1;
+				if (count >= numMCUs) {
+					
+					// temporary, remove later
+					b.putBits(0b11111011, 8);
+					header.height = 8;
+					header.width = 8;
+					
+					try {
+						JPGDumper.Dump(b.data, header);
+					}
+					catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				}
 			}
 			else {
 				System.err.println("Huffman Encoder requesting shutdown");

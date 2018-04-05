@@ -40,7 +40,7 @@ public class BMPScanner extends PronghornStage {
 	}
 	
 	public Header ReadBMP(String filename) throws IOException {
-		Header header = new Header();
+		header = new Header();
 		header.filename = filename;
 		f = new DataInputStream(new FileInputStream(filename));
 		
@@ -144,7 +144,8 @@ public class BMPScanner extends PronghornStage {
 			return null;
 		}
 		if (depth != 24) {
-			System.err.println("Error - Only 24bpp color depth supported");header.valid = false;
+			System.err.println("Error - Only 24bpp color depth supported");
+			header.valid = false;
 			f.close();
 			return null;
 		}

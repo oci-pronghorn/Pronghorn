@@ -14,6 +14,14 @@ import java.util.ArrayList;
 public class JPGDumper {
 
 	public static void Dump(ArrayList<Byte> data, Header header) throws IOException {
+		int extension = header.filename.lastIndexOf('.');
+		if (extension == -1) {
+			header.filename += ".jpg";
+		}
+		else {
+			header.filename = header.filename.substring(0, extension) + ".jpg";
+		}
+		
 		FileOutputStream fileStream = new FileOutputStream(header.filename);
 		FileChannel file = fileStream.getChannel();
 		int size = 277; // 2 + 18 + 69 + 69 + 19 + 21 + 21 + 21 + 21 + 14 + 2
