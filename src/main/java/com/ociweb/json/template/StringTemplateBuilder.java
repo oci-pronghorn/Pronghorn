@@ -2,36 +2,18 @@ package com.ociweb.json.template;
 
 import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.json.appendable.ByteWriter;
-import com.ociweb.json.encode.function.ToMemberFunction;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class StringTemplateBuilder<T> implements ByteWriter {
-	private StringTemplateScript[] script;
-	private final List<StringTemplateBuilder> locks = new ArrayList<>();
+	private StringTemplateScript<T>[] script;
 	private int count;
-	private boolean immutable = false;
 
 	public StringTemplateBuilder() {
 		this.script = new StringTemplateScript[8];
 	}
 
-	public StringTemplateBuilder<T> lock() {
-		immutable = true;
-		for (int i = 0; i < locks.size(); i++) {
-			locks.get(i).lock();
-		}
-		return this;
-	}
-
-	public boolean isLocked() {
-		return immutable;
-	}
-
-	public StringTemplateBuilder<T> add(String text) {
-		addBytes(text.getBytes());
-		return this;
+	@Override
+	public void write(byte[] b) {
+		write(b, 0, b.length);
 	}
 
 	@Override
@@ -39,9 +21,8 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		add(b, pos, len);
 	}
 
-	@Override
-	public void write(byte[] b) {
-		write(b, 0, b.length);
+	public StringTemplateBuilder<T> add(String text) {
+		return addBytes(text.getBytes());
 	}
 
 	public StringTemplateBuilder<T> add(final byte[] byteData) {
@@ -57,82 +38,64 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
-	private void addBytes(final byte[] byteData) {
-		append(
-			new StringTemplateScript<T>() {
-				@Override
-				public void fetch(AppendableByteWriter writer, T source) {
-					writer.write(byteData, 0, byteData.length);
-				}
-			});
+	public StringTemplateBuilder<T> add(StringTemplateScript<T> script) {
+		return append(script);
 	}
 
-	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> data) {
-		append(
+	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> script) {
+		return append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
+					public void render(AppendableByteWriter writer, T source) {
 						N node = null;
-						for(int i = 0; (node = data.fetch(writer, source, i, node)) != null; i++) {
+						for(int i = 0; (node = script.render(writer, source, i, node)) != null; i++) {
 						}
 					}
 				});
-		return this;
 	}
 
-	public <M> StringTemplateBuilder<T> add(final StringTemplateBuilder<M> data, final ToMemberFunction<T, M> accessor) {
-		toLock(data);
-		append(
+	public StringTemplateBuilder<T> add(final StringTemplateScript<T>[] branches, final StringTemplateBranching<T> select) {
+		final StringTemplateScript<T>[] localData = new StringTemplateScript[branches.length];
+		System.arraycopy(branches, 0, localData, 0, branches.length);
+
+		return append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
-						data.render(writer, accessor.get(source));
+					public void render(AppendableByteWriter writer, T source) {
+						int s = select.branch(source);
+						if (s != -1) {
+							assert (s < localData.length) : "String template builder selected invalid branch.";
+							localData[s].render(writer, source);
+						}
 					}
 				});
-		return this;
-	}
-
-	public StringTemplateBuilder<T> add(final StringTemplateBuilder<T>[] data, final StringTemplateBranching<T> branching) {
-		final StringTemplateBuilder<T>[] localData = new StringTemplateBuilder[data.length];
-		System.arraycopy(data, 0, localData, 0, data.length);
-		for (int i = 0; i < localData.length; i++) {
-			toLock(data[i]);
-		}
-		append(
-				new StringTemplateScript<T>() {
-					@Override
-					public void fetch(AppendableByteWriter writer, T source) {
-						int i = branching.branch(source);
-						assert(i < localData.length) : "String template builder selected invalid branch.";
-						localData[i].render(writer, source);
-					}
-				});
-		return this;
-	}
-
-	public StringTemplateBuilder<T> add(StringTemplateScript<T> data) {
-		append(data);
-		return this;
 	}
 
 	public void render(AppendableByteWriter writer, T source) {
 		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
-			script[i].fetch(writer, source);
+			script[i].render(writer, source);
 		}
 	}
 
-	private void toLock(StringTemplateBuilder builder) {
-		locks.add(builder);
+	private StringTemplateBuilder<T> addBytes(final byte[] byteData) {
+		return append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void render(AppendableByteWriter writer, T source) {
+						writer.write(byteData, 0, byteData.length);
+					}
+				});
 	}
 
-	private void append(StringTemplateScript<T> fetchData) {
+	private StringTemplateBuilder<T> append(StringTemplateScript<T> fetchData) {
 		//assert(!immutable) : "String template builder cannot be modified after lock.";
 		if (count==script.length) {
-			StringTemplateScript[] newScript = new StringTemplateScript[script.length*2];
+			StringTemplateScript<T>[] newScript = new StringTemplateScript[script.length*2];
 			System.arraycopy(script, 0, newScript, 0, script.length);
 			script = newScript;
 		}
 		script[count++] = fetchData;
+		return this;
 	}
 }

@@ -2,17 +2,15 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
-public abstract class JSONObject<T, P> {
-    private final JSONBuilder<T> builder;
-    private final int depth;
+public abstract class JSONObject<R, T, P> {
+    private final JSONBuilder<R, T> builder;
+    private boolean declaredEmpty = false;
 
-    JSONObject(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
-        this.depth = depth;
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
+    JSONObject(JSONBuilder<R, T> builder) {
+        this.builder = builder;
     }
 
     public P endObject() {
@@ -24,7 +22,7 @@ public abstract class JSONObject<T, P> {
 
     // Object
 
-    public JSONObject<T, JSONObject<T, P>> beginObject(String name) {
+    public JSONObject<R, T, JSONObject<R, T, P>> beginObject(String name) {
         return beginObject(name, new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -33,12 +31,10 @@ public abstract class JSONObject<T, P> {
         });
     }
 
-    public <M> JSONObject<M, JSONObject<T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
-        return new JSONObject<M, JSONObject<T, P>>(
-                builder.addFieldPrefix(name).beginObject(accessor),
-                builder.getKeywords(),depth + 1) {
+    public <M> JSONObject<R, M, JSONObject<R, T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
+        return new JSONObject<R, M, JSONObject<R, T, P>>(builder.addFieldPrefix(name).beginObject(accessor)) {
             @Override
-            JSONObject<T, P> objectEnded() {
+            JSONObject<R, T, P> objectEnded() {
                 return JSONObject.this;
             }
         };
@@ -46,7 +42,7 @@ public abstract class JSONObject<T, P> {
 
     // Array
     
-    public <N> JSONArray<T, JSONObject<T, P>, N> array(String name, IteratorFunction<T, N> iterator) {
+    public <N> JSONArray<R, T, JSONObject<R, T, P>, N> array(String name, IteratorFunction<T, N> iterator) {
         return this.array(name, new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -55,28 +51,28 @@ public abstract class JSONObject<T, P> {
         }, iterator);
     }
 
-    public <M, N> JSONArray<M, JSONObject<T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder.addFieldPrefix(name), depth + 1, accessor, iterator,  new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+    public <M, N> JSONArray<R, M, JSONObject<R, T, P>, N> array(String name, ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
+        return JSONArray.createArray(builder.addFieldPrefix(name), accessor, iterator,  new JSONArray.ArrayCompletion<JSONObject<R, T, P>>() {
             @Override
-            public JSONObject<T, P> end() {
+            public JSONObject<R, T, P> end() {
                 return JSONObject.this;
             }
         });
     }
 
-    public <M extends List<N>, N> JSONArray<M, JSONObject<T, P>, M> listArray(String name, ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder.addFieldPrefix(name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+    public <M extends List<N>, N> JSONArray<R, M, JSONObject<R, T, P>, M> listArray(String name, ToMemberFunction<T, M> accessor) {
+        return JSONArray.createListArray(builder.addFieldPrefix(name), accessor, new JSONArray.ArrayCompletion<JSONObject<R, T, P>>() {
             @Override
-            public JSONObject<T, P> end() {
+            public JSONObject<R, T, P> end() {
                 return JSONObject.this;
             }
         });
     }
 
-    public <N> JSONArray<N[], JSONObject<T, P>, N[]> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder.addFieldPrefix(name), depth + 1, accessor, new JSONArray.ArrayCompletion<JSONObject<T, P>>() {
+    public <N> JSONArray<R, N[], JSONObject<R, T, P>, N[]> basicArray(String name, ToMemberFunction<T, N[]> accessor) {
+        return JSONArray.createBasicArray(builder.addFieldPrefix(name), accessor, new JSONArray.ArrayCompletion<JSONObject<R, T, P>>() {
             @Override
-            public JSONObject<T, P> end() {
+            public JSONObject<R, T, P> end() {
                 return JSONObject.this;
             }
         });
@@ -84,105 +80,140 @@ public abstract class JSONObject<T, P> {
 
     // Renderer
 
-    public <M> JSONObject<T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
-        builder.addFieldPrefix(name).addRenderer(renderer, accessor);
+    public <M> JSONObject<R, T, P> renderer(String name, JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addFieldPrefix(name).addBuilder(renderer.builder, accessor);
         return this;
     }
 
-    // No need for empty()
+    public JSONObject<R, T, P> recurseRoot(String name, ToMemberFunction<T, R> accessor) {
+        builder.addFieldPrefix(name).recurseRoot(accessor);
+        return this;
+    }
+
+    public JSONSelect<R, T, JSONObject<R, T, P>> beginSelect(String name) {
+        return new JSONSelect<R, T, JSONObject<R, T, P>>(builder.addFieldPrefix(name).beginSelect()) {
+            @Override
+            JSONObject<R, T, P> selectEnded() {
+                return JSONObject.this;
+            }
+        };
+    }
 
     // Null
 
-    public JSONObject<T, P> constantNull(String name) {
+    public JSONObject<R, T, P> constantNull(String name) {
         builder.addFieldPrefix(name).addNull();
+        return this;
+    }
+
+    // Allow for documented empty
+    public JSONObject<R, T, P> empty() {
+        //assert(objectElementIndex == -1) : "empty can only be called on empty object";
+        declaredEmpty = true;
         return this;
     }
 
     // Boolean
 
-    public JSONObject<T, P> bool(String name, ToBoolFunction<T> func) {
-        builder.addFieldPrefix(name).addBool(func);
+    public JSONObject<R, T, P> bool(String name, ToBoolFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addBool(null, func);
         return this;
     }
 
-    public JSONObject<T, P> bool(String name, ToBoolFunction<T> func, JSONType encode) {
-        builder.addFieldPrefix(name).addBool(func, encode);
+    public JSONObject<R, T, P> bool(String name, ToBoolFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addBool(null, func, encode);
         return this;
     }
 
-    public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+    public JSONObject<R, T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addBool(isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+    public JSONObject<R, T, P> nullableBool(String name, ToBoolFunction<T> isNull, ToBoolFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addBool(isNull, func, encode);
         return this;
     }
 
     // Integer
 
-    public JSONObject<T, P> integer(String name, ToLongFunction<T> func) {
-        builder.addFieldPrefix(name).addInteger(func);
+    public JSONObject<R, T, P> integer(String name, ToLongFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addInteger(null, func);
         return this;
     }
 
-    public JSONObject<T, P> integer(String name, ToLongFunction<T> func, JSONType encode) {
-        builder.addFieldPrefix(name).addInteger(func, encode);
+    public JSONObject<R, T, P> integer(String name, ToLongFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addInteger(null, func, encode);
         return this;
     }
 
-    public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+    public JSONObject<R, T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addInteger(isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+    public JSONObject<R, T, P> nullableInteger(String name, ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addInteger(isNull, func, encode);
         return this;
     }
 
     // Decimal
 
-    public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func) {
-        builder.addFieldPrefix(name).addDecimal(precision, func);
+    public JSONObject<R, T, P> decimal(String name, int precision, ToDoubleFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addDecimal(precision, null, func);
         return this;
     }
 
-    public JSONObject<T, P> decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
-        builder.addFieldPrefix(name).addDecimal(precision, func, encode);
+    public JSONObject<R, T, P> decimal(String name, int precision, ToDoubleFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addDecimal(precision, null, func, encode);
         return this;
     }
 
-    public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+    public JSONObject<R, T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addDecimal(precision, isNull, func);
         return this;
     }
 
-    public JSONObject<T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+    public JSONObject<R, T, P> nullableDecimal(String name, int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
         builder.addFieldPrefix(name).addDecimal(precision, isNull, func, encode);
         return this;
     }
 
     // String
 
-    public JSONObject<T, P> string(String name, ToStringFunction<T> func) {
-        builder.addFieldPrefix(name).addString(func);
+    public JSONObject<R, T, P> string(String name, ToStringFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addString(false, func);
         return this;
     }
 
-    public JSONObject<T, P> string(String name, ToStringFunction<T> func, JSONType encode) {
-        builder.addFieldPrefix(name).addString(func, encode);
+    public JSONObject<R, T, P> string(String name, ToStringFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addString(false, func, encode);
         return this;
     }
 
-    public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func) {
-        builder.addFieldPrefix(name).addNullableString(func);
+    public JSONObject<R, T, P> nullableString(String name, ToStringFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addString(true, func);
         return this;
     }
 
-    public JSONObject<T, P> nullableString(String name, ToStringFunction<T> func, JSONType encode) {
-        builder.addFieldPrefix(name).addNullableString(func, encode);
+    public JSONObject<R, T, P> nullableString(String name, ToStringFunction<T> func, JSONType encode) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addString(true, func, encode);
         return this;
     }
 }

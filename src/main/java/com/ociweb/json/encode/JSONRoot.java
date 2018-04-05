@@ -2,28 +2,27 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBuilder;
 
 import java.util.List;
 
-public class JSONRoot<T, P extends JSONRoot> {
-    final JSONBuilder<T> builder;
-    private final int depth;
+public abstract class JSONRoot<R, T, P> {
+    protected final JSONBuilder<R, T> builder;
 
-    JSONRoot(StringTemplateBuilder<T> scripts, JSONKeywords keywords, int depth) {
-        this.builder = new JSONBuilder<>(scripts, keywords, depth);
-        this.depth = depth;
+    JSONRoot(JSONBuilder<R, T> builder) {
+        this.builder = builder;
         builder.start();
     }
 
+    abstract P rootEnded();
+
     private P childCompleted() {
         builder.complete();
-        return (P)this;
+        return rootEnded();
     }
 
     // Object
 
-    public JSONObject<T, P> beginObject() {
+    public JSONObject<R, T, P> beginObject() {
         return beginObject(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -32,10 +31,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <M> JSONObject<M, P> beginObject(ToMemberFunction<T, M> accessor) {
-        return new JSONObject<M, P>(
-                builder.beginObject(accessor),
-                builder.getKeywords(), depth + 1) {
+    public <M> JSONObject<R, M, P> beginObject(ToMemberFunction<T, M> accessor) {
+        return new JSONObject<R, M, P>(builder.beginObject(accessor)) {
             @Override
             P objectEnded() {
                 return childCompleted();
@@ -45,7 +42,7 @@ public class JSONRoot<T, P extends JSONRoot> {
 
     // Array
     
-    public <N> JSONArray<T, P, N> array(IteratorFunction<T, N> iterator) {
+    public <N> JSONArray<R, T, P, N> array(IteratorFunction<T, N> iterator) {
         return this.array(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
@@ -54,8 +51,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         }, iterator);
     }
 
-    public <M, N> JSONArray<M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
-        return JSONArray.createArray(builder, depth + 1, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
+    public <M, N> JSONArray<R, M, P, N> array(ToMemberFunction<T, M> accessor, IteratorFunction<M, N> iterator) {
+        return JSONArray.createArray(builder, accessor, iterator, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -63,8 +60,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <M extends List<N>, N> JSONArray<M, P, M> listArray(ToMemberFunction<T, M> accessor) {
-        return JSONArray.createListArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+    public <M extends List<N>, N> JSONArray<R, M, P, M> listArray(ToMemberFunction<T, M> accessor) {
+        return JSONArray.createListArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -72,8 +69,8 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    public <N> JSONArray<N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
-        return JSONArray.createBasicArray(builder, depth + 1, accessor, new JSONArray.ArrayCompletion<P>() {
+    public <N> JSONArray<R, N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
+        return JSONArray.createBasicArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();
@@ -81,7 +78,26 @@ public class JSONRoot<T, P extends JSONRoot> {
         });
     }
 
-    // No need for Renderer methods
+    // Renderer
+
+    public <M> P renderer(JSONRenderer<M> renderer, ToMemberFunction<T, M> accessor) {
+        builder.addBuilder(renderer.builder, accessor);
+        return this.childCompleted();
+    }
+
+    public <M> P recurseRoot(ToMemberFunction<T, R> accessor) {
+        builder.recurseRoot(accessor);
+        return this.childCompleted();
+    }
+
+    public JSONSelect<R, T, P> beginSelect() {
+        return new JSONSelect<R, T, P>(builder.beginSelect()) {
+            @Override
+            P selectEnded() {
+                return childCompleted();
+            }
+        };
+    }
 
     // Null
 
@@ -97,12 +113,12 @@ public class JSONRoot<T, P extends JSONRoot> {
     // Bool
 
     public P bool(ToBoolFunction<T> func) {
-        builder.addBool(func);
+        builder.addBool(null, func);
         return this.childCompleted();
     }
 
     public P bool(ToBoolFunction<T> func, JSONType encode) {
-        builder.addBool(func, encode);
+        builder.addBool(null, func, encode);
         return this.childCompleted();
     }
 
@@ -119,12 +135,12 @@ public class JSONRoot<T, P extends JSONRoot> {
     // Integer
 
     public P integer(ToLongFunction<T> func) {
-        builder.addInteger(func);
+        builder.addInteger(null, func);
         return this.childCompleted();
     }
 
     public P integer(ToLongFunction<T> func, JSONType encode) {
-        builder.addInteger(func, encode);
+        builder.addInteger(null, func, encode);
         return this.childCompleted();
     }
 
@@ -141,12 +157,12 @@ public class JSONRoot<T, P extends JSONRoot> {
     // Decimal
 
     public P decimal(int precision, ToDoubleFunction<T> func) {
-        builder.addDecimal(precision, func);
+        builder.addDecimal(precision, null, func);
         return this.childCompleted();
     }
 
     public P decimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
-        builder.addDecimal(precision, func, encode);
+        builder.addDecimal(precision, null, func, encode);
         return this.childCompleted();
     }
 
@@ -163,22 +179,22 @@ public class JSONRoot<T, P extends JSONRoot> {
     // String
 
     public P string(ToStringFunction<T> func) {
-        builder.addString(func);
+        builder.addString(false, func);
         return this.childCompleted();
     }
 
     public P string(ToStringFunction<T> func, JSONType encode) {
-        builder.addString(func, encode);
+        builder.addString(false, func, encode);
         return this.childCompleted();
     }
 
-    public P nullableString(ToStringFunction<T> func) {
-        builder.addNullableString(func);
+    public P nullableString(final ToStringFunction<T> func) {
+        builder.addString(true, func);
         return this.childCompleted();
     }
 
     public P nullableString(ToStringFunction<T> func, JSONType encode) {
-        builder.addNullableString(func, encode);
+        builder.addString(true, func, encode);
         return this.childCompleted();
     }
 }

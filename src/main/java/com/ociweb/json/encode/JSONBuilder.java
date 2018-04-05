@@ -1,38 +1,46 @@
 package com.ociweb.json.encode;
 
+import com.ociweb.json.appendable.ByteWriter;
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.StringTemplateBranching;
-import com.ociweb.json.template.StringTemplateBuilder;
+import com.ociweb.json.template.*;
 import com.ociweb.json.appendable.AppendableByteWriter;
-import com.ociweb.json.template.StringTemplateIterScript;
-import com.ociweb.json.template.StringTemplateScript;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
-// TODO: implement the primitive type converters
+// TODO: support rational, decimal
+// TODO: implement the primitive type converters, including enums
 // TODO: refactor for duplicate code
 
-class JSONBuilder<T> {
+// Maintain no dependencies the public API classes (i.e. JSONObject)
+
+class JSONBuilder<R, T> implements StringTemplateScript<T> {
+    // Do not store mutable state used during render.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
-    private final StringTemplateBuilder<T> objNullBranch;
+    private /*final*/ JSONBuilder<R, R> root;
 
-    // Do not store mutable state used during render.
-    // This is only used between begin and end object declarations.
-    private int objectElementIndex = 0;
+    private byte[] declaredMemberName;
+    private ThreadLocal<ObjectRenderState> ors;
 
-    JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth) {
+    JSONBuilder() {
+        this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0, null);
+    }
+
+    JSONBuilder(JSONKeywords kw) {
+        this(new StringTemplateBuilder<T>(), kw, 0, null);
+    }
+
+    private JSONBuilder(StringTemplateBuilder<T> scripts, JSONKeywords kw, int depth, JSONBuilder<R, R> root) {
         this.scripts = scripts;
         this.kw = kw;
         this.depth = depth;
-        objNullBranch = new StringTemplateBuilder<>();
-        kw.Null(objNullBranch);
-    }
+        this.root = root;
 
-    JSONKeywords getKeywords() {
-        return kw;
+        if (root == null) {
+            this.root = (JSONBuilder<R, R>)this;
+        }
     }
 
     void start() {
@@ -41,69 +49,102 @@ class JSONBuilder<T> {
 
     void complete() {
         kw.Complete(scripts, depth);
-        scripts.lock();
-        objectElementIndex = -1;
     }
 
-    boolean isLocked() {
-        return scripts.isLocked();
-    }
-
-    void render(AppendableByteWriter writer, T source) {
+    public void render(AppendableByteWriter writer, T source) {
         scripts.render(writer, source);
     }
 
-    // Helper
+    // Object Helpers
 
-    JSONBuilder<T> addFieldPrefix(String name) {
-        if (objectElementIndex == 0) {
-            kw.FirstObjectElement(scripts, depth);
-        }
-        else {
-            kw.NextObjectElement(scripts, depth);
-        }
-        objectElementIndex++;
-        scripts.add(name);
-        kw.ObjectValue(scripts, depth);
+    JSONBuilder<R, T> addFieldPrefix(String name) {
+        this.declaredMemberName = name.getBytes();
         return this;
     }
 
-    // Renderer
+    private static class ObjectRenderState {
+        private final JSONKeywords kw;
+        private int objectElementIndex = -1;
 
-    // TODO: JSON builder should not be dependent on JSONRenderer
-    // TODO: recursive renderers
-    // TODO: selectable renderers
+        ObjectRenderState(JSONKeywords kw) {
+            this.kw = kw;
+        }
 
-    <M> void addRenderer(final JSONRenderer<M> renderer, final ToMemberFunction<T, M> accessor) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                M member = accessor.get(source);
-                if (member != null) {
-                    renderer.render(writer, member);
-                }
-                else {
-                    kw.Null(writer);
-                }
+        private void beginObjectRender() {
+            objectElementIndex = -1;
+        }
+
+        void prefixObjectMemberName(byte[] declaredMemberName, int depth, ByteWriter writer) {
+            objectElementIndex++;
+            if (objectElementIndex == 0) {
+                kw.FirstObjectElement(writer, depth);
             }
-        });
+            else {
+                kw.NextObjectElement(writer, depth);
+            }
+            writer.write(declaredMemberName);
+            kw.ObjectValue(writer, depth);
+        }
     }
 
-    <N, M> void addRenderer(final IteratorFunction<T, N> iterator, final JSONRenderer<M> renderer, final IterMemberFunction<T, M> accessor) {
+    private ThreadLocal<ObjectRenderState> createOrs() {
+        return new ThreadLocal<ObjectRenderState>() {
+            @Override
+            protected ObjectRenderState initialValue() {
+                return new ObjectRenderState(kw);
+            }
+        };
+    }
+
+    private void prefixObjectMemberName(byte[] declaredMemberName, int depth, ByteWriter writer) {
+        if (declaredMemberName != null && this.ors != null) {
+            ObjectRenderState ors = this.ors.get();
+            if (ors != null) {
+                ors.prefixObjectMemberName(declaredMemberName, depth, writer);
+            }
+        }
+    }
+
+    private StringTemplateScript<T> createNullObjectScript(final byte[] declaredMemberName) {
+        return new StringTemplateScript<T>() {
+            @Override
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                kw.Null(writer);
+            }
+        };
+    }
+
+    private byte[] consumeDeclaredMemberName() {
+        byte[] declaredMemberName = this.declaredMemberName;
+        this.declaredMemberName = null;
+        return declaredMemberName;
+    }
+
+    // Array Helpers
+
+    interface RenderIteration<M, N> {
+        void render(AppendableByteWriter appendable, M member, int i, N node);
+    }
+
+    private <M, N> void iterate(
+            final IteratorFunction<T, N> iterator,
+            final boolean checkNull,
+            final IterMemberFunction<T, M> accessor,
+            final RenderIteration<M, N> func) {
         scripts.add(new StringTemplateIterScript<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
                 node = iterator.get(source, i, node);
                 if (node != null) {
                     if (i > 0) {
                         kw.NextArrayElement(writer, depth);
                     }
                     M member = accessor.get(source, i);
-                    if (member != null) {
-                        renderer.render(writer, member);
-                    }
-                    else {
+                    if (checkNull && member == null) {
                         kw.Null(writer);
+                    } else {
+                        func.render(writer, member, i, node);
                     }
                 }
                 return node;
@@ -111,56 +152,168 @@ class JSONBuilder<T> {
         });
     }
 
+    private <N> void iterate(
+            final IteratorFunction<T, N> iterator,
+            final IterBoolFunction<T> isNull,
+            final RenderIteration<T, N> func) {
+        scripts.add(new StringTemplateIterScript<T, N>() {
+            @Override
+            public N render(final AppendableByteWriter writer, T source, int i, N node) {
+                node = iterator.get(source, i, node);
+                if (node != null) {
+                    if (i > 0) {
+                        kw.NextArrayElement(writer, depth);
+                    }
+                    if (isNull != null && isNull.applyAsBool(source, i)) {
+                        kw.Null(writer);
+                    } else {
+                        func.render(writer, source, i, node);
+                    }
+                }
+                return node;
+            }
+        });
+    }
+
+    // Sub Builders
+
+    <M> void addBuilder(final JSONBuilder<?, M> builder, final ToMemberFunction<T, M> accessor) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                M member = accessor.get(source);
+                if (member == null) {
+                    kw.Null(writer);
+                }
+                else {
+                    builder.render(writer, member);
+                }
+            }
+        });
+    }
+
+    void recurseRoot(final ToMemberFunction<T, R> accessor) {
+        if (root != this) {
+            addBuilder(root, accessor);
+        }
+    }
+
+    <N, M> void addBuilder(final IteratorFunction<T, N> iterator, final JSONBuilder<?, M> builder, final IterMemberFunction<T, M> accessor) {
+        iterate(iterator, true, accessor, new RenderIteration<M, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                builder.render(writer, m);
+            }
+        });
+    }
+
+/* TODO: does this make sense?
+    <N> void recurseRoot(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, R> accessor) {
+        addBuilder(iterator, root, accessor);
+    }
+*/
+    // Select
+
+    JSONBuilder<R, T> beginSelect() {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
+        builder.declaredMemberName = declaredMemberName;
+        builder.ors = ors;
+        this.scripts.add(builder);
+        return builder;
+    }
+
+    JSONBuilder<R, T> tryCase() {
+        final byte[] declaredMemberName = this.declaredMemberName;
+        JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
+        builder.declaredMemberName = declaredMemberName;
+        builder.ors = ors;
+        return builder;
+    }
+
+    void endSelect(final int count, final ToBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
+        consumeDeclaredMemberName();
+        final StringTemplateScript<T>[] caseScripts = new StringTemplateScript[count];
+        for (int i = 0; i < count; i++) {
+            final JSONBuilder<?, T> builder = cases[i];
+            caseScripts[i] = builder;
+        }
+
+        scripts.add(caseScripts, new StringTemplateBranching<T>() {
+            @Override
+            public int branch(T source) {
+                for (int i = 0; i < count; i++) {
+                    if (branches[i].applyAsBool(source)) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+        });
+    }
+
+    <N> void endSelect(IteratorFunction<T, N> iterator, int count, final IterBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
+        // TODO
+    }
+
     // Object
 
-    public <M> StringTemplateBuilder<M> beginObject(final ToMemberFunction<T, M> accessor) {
+    public <M> JSONBuilder<R, M> beginObject(final ToMemberFunction<T, M> accessor) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
-        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        notNullBranch.add(new StringTemplateScript<T>() {
+        final ThreadLocal<ObjectRenderState> newOrs = createOrs();
+
+        final StringTemplateScript<T> objNullBranch = createNullObjectScript(declaredMemberName);
+        final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                newOrs.get().beginObjectRender();
                 accessorScript.render(writer, accessor.get(source));
             }
-        });
+        };
 
-        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateScript<T>[] nullableBranches = new StringTemplateScript[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
-        nullableBranches[1] = notNullBranch;
         scripts.add(nullableBranches, new StringTemplateBranching<T>() {
             @Override
             public int branch(T o) {
                 return accessor.get(o) == null ? 0 : 1;
             }
         });
-        return accessorScript;
+        JSONBuilder<R, M> builder = new JSONBuilder<>(accessorScript, kw, depth + 1, root);
+        builder.ors = newOrs;
+        return builder;
     }
 
-    <N, M> StringTemplateBuilder<M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
+    <N, M> JSONBuilder<R, M> beginObject(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> accessor) {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
-        scripts.add(new StringTemplateIterScript<T, N>() {
+
+        final ThreadLocal<ObjectRenderState> newOrs = createOrs();
+
+        iterate(iterator, true, new IterMemberFunction<T, M>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    M member = accessor.get(source, i);
-                    if (member != null) {
-                        accessorBranch.render(writer, member);
-                    } else {
-                        kw.Null(writer);
-                    }
-                }
-                return node;
+            public M get(T o, int i) {
+                newOrs.get().beginObjectRender();
+                return accessor.get(o, i);
+            }
+        }, new RenderIteration<M, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                accessorBranch.render(writer, m);
             }
         });
-        return accessorBranch;
+
+        JSONBuilder<R, M> builder = new JSONBuilder<>(accessorBranch, kw, depth + 1, root);
+        builder.ors = newOrs;
+        return builder;
     }
 
     void endObject() {
@@ -169,19 +322,21 @@ class JSONBuilder<T> {
 
     // Array
 
-    <M> StringTemplateBuilder<M> beginArray(final ToMemberFunction<T, M> func) {
+    <M> JSONBuilder<R, M> beginArray(final ToMemberFunction<T, M> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         final StringTemplateBuilder<M> arrayBuilder = new StringTemplateBuilder<>();
         kw.OpenArray(arrayBuilder, depth);
 
-        final StringTemplateBuilder<T> notNullBranch = new StringTemplateBuilder<>();
-        notNullBranch.add(new StringTemplateScript<T>() {
+        final StringTemplateScript<T> objNullBranch = createNullObjectScript(declaredMemberName);
+        final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
                 arrayBuilder.render(writer, func.get(source));
             }
-        });
+        };
 
-        final StringTemplateBuilder<T>[] nullableBranches = new StringTemplateBuilder[2];
+        final StringTemplateScript<T>[] nullableBranches = new StringTemplateScript[2];
         nullableBranches[0] = objNullBranch;
         nullableBranches[1] = notNullBranch;
 
@@ -191,33 +346,20 @@ class JSONBuilder<T> {
                 return func.get(o) == null ? 0 : 1;
             }
         });
-        return arrayBuilder;
+        return new JSONBuilder<R, M>(arrayBuilder, kw, depth + 1, root);
     }
 
-    public <N, M> StringTemplateBuilder<M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
+    public <N, M> JSONBuilder<R, M> beginArray(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, M> func) {
         final StringTemplateBuilder<M> notNullBranch = new StringTemplateBuilder<>();
         kw.OpenArray(notNullBranch, depth);
 
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        iterate(iterator, true, func, new RenderIteration<M, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    M element = func.get(source, i);
-                    if (element == null) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        notNullBranch.render(writer, element);
-                    }
-                }
-                return node;
+            public void render(AppendableByteWriter writer, M m, int i, N node) {
+                notNullBranch.render(writer, m);
             }
         });
-        return notNullBranch;
+        return new JSONBuilder<R, M>(notNullBranch, kw, depth + 1, root);
     }
 
     void endArray() {
@@ -227,117 +369,53 @@ class JSONBuilder<T> {
     // Null
 
     void addNull() {
-        kw.Null(scripts);
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        scripts.add(createNullObjectScript(declaredMemberName));
     }
 
     <N> void addNull(final IteratorFunction<T, N> iterator) {
-        scripts.add(new StringTemplateScript<T>() {
+        iterate(iterator, new IterBoolFunction<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                N node = null;
-                for (int i = 0; (node = iterator.get(source, i, node)) != null; i++) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    kw.Null(writer);
-                }
+            public boolean applyAsBool(T o, int i) {
+                return true;
             }
-        });
+        }, null);
     }
 
     // Bool
 
-    void addBool(final ToBoolFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                if (func.applyAsBool(source)) {
-                    kw.True(writer);
-                } else {
-                    kw.False(writer);
-                }
-            }
-        });
-    }
-
     void addBool(final ToBoolFunction<T> isNull, final ToBoolFunction<T> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                if (isNull.applyAsBool(source)) {
+            public void render(final AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
                 else {
-                    boolean b = func.applyAsBool(source);
-                    if (b) {
+                    if (func.applyAsBool(source)) {
                         kw.True(writer);
-                    } else {
+                    }
+                    else {
                         kw.False(writer);
                     }
                 }
-            }
-        });
-    }
-
-    <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    boolean b = func.applyAsBool(source, i);
-                    if (b) {
-                        kw.True(writer);
-                    } else {
-                        kw.False(writer);
-                    }
-                }
-                return node;
             }
         });
     }
 
     <N> void addBool(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterBoolFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        iterate(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        boolean b = func.applyAsBool(source, i);
-                        if (b) {
-                            kw.True(writer);
-                        } else {
-                            kw.False(writer);
-                        }
-                    }
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                if (func.applyAsBool(source, i)) {
+                    kw.True(writer);
                 }
-                return node;
-            }
-        });
-    }
-
-    void addBool(ToBoolFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                addBool(func);
-                break;
-        }
+                else {
+                    kw.False(writer);
+                }
+            }});
     }
 
     void addBool(final ToBoolFunction<T> isNull, final ToBoolFunction<T> func, JSONType encode) {
@@ -350,20 +428,6 @@ class JSONBuilder<T> {
                 break;
             case TypeBoolean:
                 addBool(isNull, func);
-                break;
-        }
-    }
-
-    <N> void addBool(IteratorFunction<T, N> iterator, IterBoolFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                addBool(iterator, func);
                 break;
         }
     }
@@ -384,80 +448,28 @@ class JSONBuilder<T> {
 
     // Integer
 
-    void addInteger(final ToLongFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                Appendables.appendValue(writer, func.applyAsLong(source));
-            }
-        });
-    }
-
     void addInteger(final ToBoolFunction<T> isNull, final ToLongFunction<T> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                if (!isNull.applyAsBool(source)) {
-                    Appendables.appendValue(writer, func.applyAsLong(source));
-                }
-                else {
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
-            }
-        });
-    }
-
-    <N> void addInteger(final IteratorFunction<T, N> iterator, final IterLongFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    long v = func.applyAsLong(source, i);
-                    Appendables.appendValue(writer, v);
+                else {
+                    Appendables.appendValue(writer, func.applyAsLong(source));
                 }
-                return node;
             }
         });
     }
 
     <N> void addInteger(final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterLongFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+        iterate(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        long v = func.applyAsLong(source, i);
-                        Appendables.appendValue(writer, v);
-                    }
-                }
-                return node;
-            }
-        });
-    }
-
-    void addInteger(ToLongFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                addInteger(func);
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                Appendables.appendValue(writer, func.applyAsLong(source, i));
+            }});
     }
 
     void addInteger(ToBoolFunction<T> isNull, ToLongFunction<T> func, JSONType encode) {
@@ -466,20 +478,6 @@ class JSONBuilder<T> {
                 break;
             case TypeInteger:
                 addInteger(isNull, func);
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addInteger(IteratorFunction<T, N> iterator, IterLongFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                addInteger(iterator, func);
                 break;
             case TypeDecimal:
                 break;
@@ -504,84 +502,31 @@ class JSONBuilder<T> {
 
     // Decimal
 
-    // TODO: support rational, decimal
-
-    void addDecimal(final int precision, final ToDoubleFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                double value = func.applyAsDouble(source);
-                Appendables.appendDecimalValue(writer, (long)(value * PipeWriter.powd[64 + precision]), (byte)(precision * -1));
-            }
-        });
-    }
-
     void addDecimal(final int precision, final ToBoolFunction<T> isNull, final ToDoubleFunction<T> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(final AppendableByteWriter writer, T source) {
-                if (isNull.applyAsBool(source)) {
+            public void render(final AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                if (isNull != null && isNull.applyAsBool(source)) {
                     kw.Null(writer);
                 }
                 else {
-                    double value = func.applyAsDouble(source);
-                    Appendables.appendDecimalValue(writer, (long) (value * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
-                }
-            }
-        });
-    }
-
-    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterDoubleFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    double v = func.applyAsDouble(source, i);
+                    double v = func.applyAsDouble(source);
                     Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
                 }
-                return node;
             }
         });
     }
 
-    <N> void addDecimal(final int precision, final IteratorFunction<T, N> iterator, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+    <N> void addDecimal(final IteratorFunction<T, N> iterator, final int precision, final IterBoolFunction<T> isNull, final IterDoubleFunction<T> func) {
+        iterate(iterator, isNull, new RenderIteration<T, N>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    if (isNull.applyAsBool(source, i)) {
-                        kw.Null(writer);
-                    }
-                    else {
-                        double v = func.applyAsDouble(source, i);
-                        Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
-                    }
-                }
-                return node;
+            public void render(AppendableByteWriter writer, T source, int i, N node) {
+                double v = func.applyAsDouble(source, i);
+                Appendables.appendDecimalValue(writer, (long) (v * PipeWriter.powd[64 + precision]), (byte) (precision * -1));
             }
         });
-    }
-
-    void addDecimal(int precision, ToDoubleFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(precision, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
     }
 
     void addDecimal(int precision, ToBoolFunction<T> isNull, ToDoubleFunction<T> func, JSONType encode) {
@@ -598,28 +543,14 @@ class JSONBuilder<T> {
         }
     }
 
-    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterDoubleFunction<T> func, JSONType encode) {
+    <N> void addDecimal(IteratorFunction<T, N> iterator, int precision, IterBoolFunction<T> isNull, IterDoubleFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
                 break;
             case TypeInteger:
                 break;
             case TypeDecimal:
-                addDecimal(iterator, precision, func);
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addDecimal(int precision, IteratorFunction<T, N> iterator, IterBoolFunction<T> isNull, IterDoubleFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                addDecimal(precision, iterator, isNull, func);
+                addDecimal(iterator, precision, isNull, func);
                 break;
             case TypeBoolean:
                 break;
@@ -628,27 +559,17 @@ class JSONBuilder<T> {
 
     // String
 
-    // TODO: support Appendable writing directly writer
-
-    void addString(final ToStringFunction<T> func) {
-        kw.Quote(scripts);
+    void addString(final boolean checkNull, final ToStringFunction<T> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
-            public void fetch(AppendableByteWriter writer, T source) {
-                writer.append(func.applyAsString(source));
-            }
-        });
-        kw.Quote(scripts);
-    }
-
-    void addNullableString(final ToStringFunction<T> func) {
-        scripts.add(new StringTemplateScript<T>() {
-            @Override
-            public void fetch(AppendableByteWriter writer, T source) {
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
                 CharSequence s = func.applyAsString(source);
-                if (s == null) {
+                if (checkNull && s == null) {
                     kw.Null(writer);
-                } else {
+                }
+                else {
                     kw.Quote(writer);
                     writer.append(s);
                     kw.Quote(writer);
@@ -657,52 +578,26 @@ class JSONBuilder<T> {
         });
     }
 
-    <N> void addString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
+    <N> void addString(final IteratorFunction<T, N> iterator, boolean checkNull, final IterStringFunction<T> func) {
+        iterate(iterator, checkNull, new IterMemberFunction<T, CharSequence>() {
             @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    CharSequence s = func.applyAsString(source, i);
-                    kw.Quote(writer);
-                    writer.append(s);
-                    kw.Quote(writer);
-                }
-                return node;
+            public CharSequence get(T o, int i) {
+                return func.applyAsString(o, i);
+            }
+        }, new RenderIteration<CharSequence, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, CharSequence member, int i, N node) {
+                kw.Quote(writer);
+                writer.append(member);
+                kw.Quote(writer);
             }
         });
     }
 
-    <N> void addNullableString(final IteratorFunction<T, N> iterator, final IterStringFunction<T> func) {
-        scripts.add(new StringTemplateIterScript<T, N>() {
-            @Override
-            public N fetch(final AppendableByteWriter writer, T source, int i, N node) {
-                node = iterator.get(source, i, node);
-                if (node != null) {
-                    if (i > 0) {
-                        kw.NextArrayElement(writer, depth);
-                    }
-                    CharSequence s = func.applyAsString(source, i);
-                    if (s == null) {
-                        kw.Null(writer);
-                    } else {
-                        kw.Quote(writer);
-                        writer.append(s);
-                        kw.Quote(writer);
-                    }
-                }
-                return node;
-            }
-        });
-    }
-
-    void addString(ToStringFunction<T> func, JSONType encode) {
+    void addString(boolean checkNull, ToStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
-                addString(func);
+                addString(checkNull, func);
                 break;
             case TypeInteger:
                 break;
@@ -713,38 +608,10 @@ class JSONBuilder<T> {
         }
     }
 
-    void addNullableString(ToStringFunction<T> func, JSONType encode) {
+    <N> void addString(IteratorFunction<T, N> iterator, boolean checkNull, IterStringFunction<T> func, JSONType encode) {
         switch (encode) {
             case TypeString:
-                addNullableString(func);
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addString(IteratorFunction<T, N> iterator, IterStringFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                addString(iterator, func);
-                break;
-            case TypeInteger:
-                break;
-            case TypeDecimal:
-                break;
-            case TypeBoolean:
-                break;
-        }
-    }
-
-    <N> void addNullableString(IteratorFunction<T, N> iterator, IterStringFunction<T> func, JSONType encode) {
-        switch (encode) {
-            case TypeString:
-                addNullableString(iterator, func);
+                addString(iterator, checkNull, func);
                 break;
             case TypeInteger:
                 break;
