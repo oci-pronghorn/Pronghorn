@@ -550,7 +550,8 @@ public class NetGraphBuilder {
 
 					new HTTPRequestJSONExtractionStage(
 							 	graphManager, 
-							 	extractor, routerConfig.getStructIdForRouteId(routeId),
+							 	extractor, 
+							 	routerConfig.getStructIdForRouteId(routeId),
 							 	newFromJSON,
 							 	fromRouter[routeId]
 							);

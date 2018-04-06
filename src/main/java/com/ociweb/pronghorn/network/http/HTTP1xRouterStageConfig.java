@@ -189,16 +189,23 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	public int getStructIdForRouteId(int routeId) {
 		
 		int result = -1;
-		int i = pathDefinitions.length;
-		while (--i>=0) {
-			
-			if ((pathDefinitions[i]!=null) && (routeId == pathDefinitions[i].routeId)) {
-				if (result==-1) {
-					result = pathDefinitions[i].structId;
-				} else {
-					assert(result == pathDefinitions[i].structId) : "route may only have 1 structure, found more";					
+		if (routeId != UNMAPPED_ROUTE) {
+			int i = pathDefinitions.length;
+			while (--i>=0) {
+				
+				if ((pathDefinitions[i]!=null) && (routeId == pathDefinitions[i].routeId)) {
+					if (result==-1) {
+						result = pathDefinitions[i].structId;
+					} else {
+						assert(result == pathDefinitions[i].structId) : "route may only have 1 structure, found more";					
+					}
 				}
 			}
+			if (-1 == result) {
+				throw new UnsupportedOperationException("Unable to find routeId "+routeId);			
+			}
+		} else {
+			result = UNMAPPED_STRUCT;
 		}
 		return result;
 	}
