@@ -156,7 +156,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
 		assert(isStructured) : "method can only be called on structured readers";
 
-		int type = getStructType(this);
+		final int type = getStructType(this);
 
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);

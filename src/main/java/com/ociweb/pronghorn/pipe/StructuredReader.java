@@ -207,4 +207,16 @@ public final class StructuredReader {
 								DataInputBlobReader.getStructType(that.channelReader))));
 	}
 
+	public int type() {
+		return DataInputBlobReader.getStructType(channelReader);
+	}
+
+	public int fullIndexSizeInBytes() {
+		return 4*typeData.totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader));
+	}
+
+	public void fullIndexReadInto(DataOutputBlobWriter<RawDataSchema> str) {
+		channelReader.readFromEndInto(str);
+	}
+
 }
