@@ -21,10 +21,7 @@ public class HuffmanEncoder extends PronghornStage {
 		private int nextBit = 8;
 		public ArrayList<Byte> data = new ArrayList<Byte>();
 		
-//		private int[] masks = new int[]{1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383};
-		
 		public void putBit(int x) {
-			
 			if (nextBit > 7) {
 				data.add((byte) 0);
 				nextBit = 0;
@@ -36,16 +33,9 @@ public class HuffmanEncoder extends PronghornStage {
 		}
 		
 		public void putBits(int x, int length) {
-			
 			for(int i = 0; i < length; ++i) {
 				putBit(x);
-				x = x >> 1;
-			}
-		}
-		
-		public void printData() {
-			for (int i = 0; i < data.size(); ++i) {
-				System.out.print(String.format("%8s", Integer.toBinaryString(data.get(i) & 0xFF)).replace(" ", "0") + "  ");
+				x >>= 1;
 			}
 		}
 		
@@ -56,10 +46,6 @@ public class HuffmanEncoder extends PronghornStage {
 		}
 	}
 	
-	public static void main(String[] args) {
-//		System.out.print(String.format("%8s", Integer.toBinaryString(sizeCode(-7) & 0xFF)).replace(" ", "0") + "  ");
-	}
-	
 	private final Pipe<JPGSchema> input;
 	boolean verbose;
 	
@@ -67,31 +53,19 @@ public class HuffmanEncoder extends PronghornStage {
 	MCU mcu = new MCU();
 	
 	int count;
-	int mcuHeight;
-	int mcuWidth;
 	int numMCUs;
+
+	static Short previousYDC = 0;
+	static Short previousCbDC = 0;
+	static Short previousCrDC = 0;
+
+	static BitWriter b = new BitWriter();
 	
 	public HuffmanEncoder(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
 	}
-
-	static short previousYDC = 0;
-	static short previousCbDC = 0;
-	static short previousCrDC = 0;
-
-	static BitWriter b = new BitWriter();
-	
-	/*private static int sizeCode(int x) {
-		if ( x < 0) {
-			int length = (int) Math.ceil(Math.log(x) / Math.log(2));
-			int y = 2147483647;
-			x = 0 - x;
-			return (x^y);
-		}
-		return x;
-	}*/
 	
 	private static int bitLength(int x) {
 		return (int) Math.ceil(Math.log(x) / Math.log(2));
@@ -103,52 +77,84 @@ public class HuffmanEncoder extends PronghornStage {
 			  HuffmanTable DCTable,
 			  HuffmanTable ACTable,
 			  short[] component,
-			  short previousDC) {
+			  Short previousDC) {
 		
-		boolean broken = false;
-		for (int j = 63; j > 0; --j) {
-			int numZeroes = 0;
-			if (component[j] == 0) {
-				++numZeroes;
-				continue;
-			}
-			if (numZeroes > 15) {
-				System.out.println("Huffman Error creating zero run length");
-				broken = true;
-				break;
-			}
-			
-			component[j] -= previousDC;
-			int length = bitLength(component[j]);
-			if (component[j] < 0) {
-				component[j] = (short)((0 - component[j])^0xFFFF);
-			}
-			
-			for (int i = 0; i < DCTable.symbols.get(length).size(); ++i) {
-				if (component[j] == DCTable.symbols.get(length).get(i)) {
-					b.putBits(component[j], length);
-					b.putBits(DCTableCodes.get(length).get(i), bitLength(DCTableCodes.get(length).get(i)));
-					b.putBits(numZeroes, 4);
+		// code DC value
+		int coeff = component[0] - previousDC;
+		previousDC = (short) coeff;
+		int coeffLength = bitLength(Math.abs(coeff));
+		if (coeff <= 0) {
+			coeff += (1 << coeffLength) - 1;
+		}
+		boolean found = false;
+		for (int j = 0; j < 16; ++j) {
+			for (int k = 0; k < DCTable.symbols.get(j).size(); ++k) {
+				if (DCTable.symbols.get(j).get(k) == coeffLength) {
+					int code = DCTableCodes.get(j).get(k);
+					int codeLength = bitLength(code);
+					b.putBits(code, codeLength);
+					found = true;
 					break;
 				}
 			}
+			if (found) break;
 		}
-		if (broken) {
-			return false;
-		}
+		if (!found) return false;
 		
-		component[0] -= previousDC;
-		int length = bitLength(component[0]);
-		if ( component[0] < 0) {
-			component[0] = (short)((0 - component[0])^32767);
-		}
-		
-		for (int i = 0; i < DCTable.symbols.get(length).size(); ++i) {
-			if (component[0] == DCTable.symbols.get(length).get(i)) {
-				b.putBits(component[0], length);
-				b.putBits(DCTableCodes.get(length).get(i), bitLength(DCTableCodes.get(length).get(i)));
-				break;
+		// code AC values
+		for (int i = 1; i < 64; ++i) {
+			// find zero run length
+			int numZeroes = 0;
+			while (i < 64 && component[JPG.zigZagMap[i]] == 0) {
+				++numZeroes;
+				++i;
 			}
+			
+			if (i == 64) {
+				// write terminator code
+				for (int j = 0; j < 16; ++j) {
+					// find code that gives the symbol 0
+					for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
+						if (ACTable.symbols.get(j).get(k) == 0) {
+							int code = ACTableCodes.get(j).get(k);
+							int codeLength = bitLength(code);
+							b.putBits(code, codeLength);
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+			
+			while (numZeroes > 15) {
+				b.putBits(15, 4);
+				b.putBits(0, 4);
+				numZeroes -= 15;
+			}
+			
+			// find coeff length
+			coeff = component[JPG.zigZagMap[i]];
+			coeffLength = bitLength(Math.abs(coeff));
+			if (coeff <= 0) {
+				coeff += (1 << coeffLength) - 1;
+			}
+			// find symbol in table
+			int symbol = numZeroes << 4 | coeffLength;
+			found = false;
+			for (int j = 0; j < 16; ++j) {
+				for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
+					if (ACTable.symbols.get(j).get(k) == symbol) {
+						int code = ACTableCodes.get(j).get(k);
+						int codeLength = bitLength(code);
+						b.putBits(code, codeLength);
+						b.putBits(coeff, coeffLength);
+						found = true;
+						break;
+					}
+				}
+				if (found) break;
+			}
+			if (!found) return false;
 		}
 		return true;
 	}
@@ -178,9 +184,10 @@ public class HuffmanEncoder extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 				
 				count = 0;
-				mcuHeight = (header.height + 7) / 8;
-				mcuWidth = (header.width + 7) / 8;
-				numMCUs = mcuHeight * mcuWidth;
+				numMCUs = ((header.height + 7) / 8) * ((header.width + 7) / 8);
+				previousYDC = 0;
+				previousCbDC = 0;
+				previousCrDC = 0;
 				b.restart();
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
@@ -204,9 +211,9 @@ public class HuffmanEncoder extends PronghornStage {
 				if (count >= numMCUs) {
 					
 					// temporary, remove later
-					b.putBits(0b11111011, 8);
-					header.height = 8;
-					header.width = 8;
+					//b.putBits(0b11111011, 8);
+					//header.height = 8;
+					//header.width = 8;
 					
 					try {
 						JPGDumper.Dump(b.data, header);
