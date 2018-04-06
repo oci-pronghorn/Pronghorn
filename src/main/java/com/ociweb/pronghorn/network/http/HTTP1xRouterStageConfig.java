@@ -319,4 +319,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return pathDefinitions[pathId].paramIndexArray();
 	}
 
+	public int totalRoutesCount() {
+		return routeCount;
+	}
+
 }
