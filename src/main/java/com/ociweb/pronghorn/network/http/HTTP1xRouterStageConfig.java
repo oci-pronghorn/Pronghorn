@@ -186,7 +186,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	//only needed on startup, ok to be linear search
-	public int getStructIdForRouteId(int routeId) {
+	public int getStructIdForRouteId(final int routeId) {
 		
 		int result = -1;
 		if (routeId != UNMAPPED_ROUTE) {

@@ -195,6 +195,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId
 		config.storeRequestedJSONMapping(pathsId, extractor);
 	
+		assert(structId == config.getStructIdForRouteId(routeId));
+		
 		defs.add(fieldExDef);
 		
 		
