@@ -338,7 +338,10 @@ public class JSONFieldSchema implements JSONReader {
 	}
 
 	public int[] indexTable(StructRegistry typeData, int structId) {
-
+		if ((StructRegistry.IS_STRUCT_BIT&structId) == 0  || structId<0) {
+			throw new UnsupportedOperationException("invalid structId");
+		}		
+		
 		int[] table = new int[mappings.length];
 		
 		int t = table.length;
