@@ -60,4 +60,27 @@ public class ElapsedTimeRecorderTest {
 				
 	}
 	
+	
+	
+	@Test
+	public void nominalTest() {
+		
+		ElapsedTimeRecorder etr = new ElapsedTimeRecorder();
+	
+		etr.record(etr, 100);
+		etr.record(etr, 100);
+		etr.record(etr, 120);
+		etr.record(etr, 120);
+//should be 120 for 50%
+		etr.record(etr, 130);
+		etr.record(etr, 130);
+		etr.record(etr, 400);
+		etr.record(etr, 400);
+	
+		//this is an estimate so this value is ok
+		assertEquals(128, ElapsedTimeRecorder.elapsedAtPercentile(etr, .5f));
+				
+	}
+	
+	
 }
