@@ -81,10 +81,17 @@ public class LongHashSet {
 		return 0==ht.space;
 	}
 	
+	public static boolean isPctFull(LongHashSet ht, double pct) {
+		return ht.space<(ht.mask*(1d-pct));
+	}
 
 	public static boolean isEmpty(LongHashSet ht) {
 		return ht.space == ht.mask;
 	}	
+	
+	public static int size(LongHashSet ht) {
+		return ht.mask+1;
+	}
 		    
 	public static boolean hasItem(LongHashSet ht, long key) {
 
@@ -115,6 +122,7 @@ public class LongHashSet {
 	public static int computeBits(int count) {
 		return (int)Math.ceil(Math.log(count)/Math.log(2));
 	}
+
 
 	
 }
