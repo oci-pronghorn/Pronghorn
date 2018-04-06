@@ -70,7 +70,7 @@ public class ElapsedTimeRecorder {
 			int i = 0;
 			while (i<that.buckets.length-1) {
 				
-				long sum = that.buckets[i];
+				long sum = that.sums[i];
 				int b = that.buckets[i++];
 		
 				if (targetCount<=b) {
@@ -81,11 +81,14 @@ public class ElapsedTimeRecorder {
 					long dif;
 					int half = b>>1;
 					if (half>1) {
+						long center = avg-floor;
+						
 						//weighted to the average
 						if (targetCount<half) {
-							dif = ((floor+avg) * targetCount)/half ;						
+							dif = (center * targetCount)/half ;						
 						} else {
-							dif = ((avg+(2*floor)) * (targetCount-half))/half ;
+							
+							dif = center+(((floor-center) * (targetCount-half))/half) ;
 						}
 					} else {
 						//this is the old linear less accurate solution
