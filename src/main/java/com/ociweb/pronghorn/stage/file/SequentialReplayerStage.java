@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.file;
 
-import java.util.Arrays;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +8,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.FragmentWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.util.hash.LongHashSet;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
@@ -36,7 +35,7 @@ public class SequentialReplayerStage extends PronghornStage {
 	private final Pipe<RawDataSchema>[] fileOutput;
 	private final Pipe<RawDataSchema>[] fileInput;
 	
-	private long[] idMap;
+	private LongHashSet mapSet;
 	private int activeFile;
 	private int waitCount;
 	
@@ -60,8 +59,8 @@ public class SequentialReplayerStage extends PronghornStage {
 	private boolean isDirty = true;
 	private int fileSizeLimit;
 	private int fileSizeWritten;
-	private int idMapSize;
-	private final long maxId;
+	private long maxId = 0;
+
 	private int shutdownCount = 3;//waits for all 3 files to complete before shutdown
 	
 	private boolean shutdownInProgress = false;
@@ -78,11 +77,8 @@ public class SequentialReplayerStage extends PronghornStage {
 					Pipe<SequentialCtlSchema>[] fileControl,//last file is the ack index file
 					Pipe<SequentialRespSchema>[] fileResponse,
 					Pipe<RawDataSchema>[] fileWriteData,
-					Pipe<RawDataSchema>[] fileReadData,
-		            
-		            byte fileSizeMultiplier, //cycle data after file is this * storeRequests size
-		            byte maxIdValueBits //ID values for each block
-		            
+					Pipe<RawDataSchema>[] fileReadData
+	
 	            ) {
 				
 		super(graphManager, join(join(fileResponse, storeConsumerRequests, storeProducerRequests),fileReadData),
@@ -103,12 +99,9 @@ public class SequentialReplayerStage extends PronghornStage {
 		assert(fileControl.length == fileResponse.length);
 		assert(fileControl.length == fileReadData.length);
 		assert(fileWriteData.length == fileReadData.length);
-		
-		this.idMapSize = 1<<(maxIdValueBits-6);
-		this.maxId = 1L<<maxIdValueBits;
-		this.fileSizeLimit = fileSizeMultiplier
-				             * Math.max(storeProducerRequests.sizeOfBlobRing,
-				            		    loadConsumerResponses.sizeOfBlobRing);
+
+		this.fileSizeLimit = 10 * Math.max(storeProducerRequests.sizeOfBlobRing,
+				            	    loadConsumerResponses.sizeOfBlobRing);
 	}
 
 	@Override 
@@ -126,8 +119,8 @@ public class SequentialReplayerStage extends PronghornStage {
 			
 		}
 		
-		//create space for full filter
-		this.idMap = new long[idMapSize];	
+		//will grow as needed
+		mapSet = new LongHashSet(15);
 		
 	}
 	
@@ -212,8 +205,7 @@ public class SequentialReplayerStage extends PronghornStage {
 	        		while (   (fieldByteArray.available() >=10) 
 	        				|| (endOfDataDetected && (fieldByteArray.available()>0))) {
 	        			//only read packed long when we know it will succeed
-	        			long readPackedLong = fieldByteArray.readPackedLong();
-						recordReleaseId(readPackedLong);
+	        			recordReleaseId(fieldByteArray.readPackedLong());
 	        		}
 		        	if (endOfDataDetected) {
 		        		logger.trace("finished read of all releases");
@@ -239,22 +231,27 @@ public class SequentialReplayerStage extends PronghornStage {
 		
 	///////////////////////
 	///////////////////////
-
+    //The in-memory index of those items released is done with 
+	//a simple long set, we only set values and check then
+	//when we reload/compact the entire map is cleared.
 	private void clearIdMap() {
-		Arrays.fill(idMap,0);
+		LongHashSet.clear(mapSet);
 	}
 	
 	private void recordReleaseId(long releasedId) {
-		idMap[(int)(releasedId>>6)] |= (1<<(0x3F & (int)releasedId));
+		if (LongHashSet.isFull(mapSet)) {
+			mapSet = LongHashSet.doubleClone(mapSet);
+		}
+		LongHashSet.setItem(mapSet, releasedId);
 	}
 	
 	private boolean isReleased(long fieldBlockId) {
-		return  (0 != (idMap[(int)(fieldBlockId>>6)]&(1<<(0x3F & (int)fieldBlockId))));
+		return LongHashSet.hasItem(mapSet, fieldBlockId);
 	}
 
 	//////////////////////
-	//////////////////////
-	
+
+
 	private boolean initPhase() {
 		boolean didWork = false;
 		//watch for the files for startup
@@ -481,7 +478,12 @@ public class SequentialReplayerStage extends PronghornStage {
 		        case PersistedBlobStoreProducerSchema.MSG_BLOCK_1:
 		   
 		    		//write this block to the active file.
-				    writeBlock(Pipe.takeLong(storeProducerRequests), 
+					final long blockId = Pipe.takeLong(storeProducerRequests);
+									
+					if (blockId > maxId) {
+						maxId = blockId;
+					}
+					writeBlock(blockId, 
 				    		   Pipe.openInputStream(storeProducerRequests), 
 				    		   fileOutput[activeIdx], 
 				    		   fileControl[activeIdx]);		        	
@@ -678,8 +680,11 @@ public class SequentialReplayerStage extends PronghornStage {
 
 	private void detectAndTriggerCompaction() {
 		//if the file size is large it is time to roll-over to the next one
-		if (fileSizeWritten > fileSizeLimit) {
-		        	
+		//but if the released count is empty there is no point
+		//if the map set is large and mostly full then also compact.
+		if ( ((fileSizeWritten > fileSizeLimit) || (LongHashSet.size(mapSet)>(1<<21)))				
+				&& (LongHashSet.isPctFull(mapSet,.33))			
+	    	) {		        	
         	//ensure new file is clear
         	clearInProgress = 1;
 			Pipe<SequentialCtlSchema> output2 = fileControl[1&(activeIdx+1)];

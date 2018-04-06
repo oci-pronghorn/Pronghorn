@@ -86,8 +86,6 @@ public class MQTTClientGraphBuilder {
 		if (tlsCertificates != null && maximumLenghOfVariableLengthFields<(1<<15)) {
 			maximumLenghOfVariableLengthFields = (1<<15);//ensure we have enough room for TLS work.
 		}
-		
-		byte maxValueBits = (byte)Math.ceil(Math.log(maximumLenghOfVariableLengthFields)/Math.log(2));
 
 		final Pipe<MQTTClientToServerSchema> clientToServer = MQTTClientToServerSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the application 
 		final Pipe<MQTTClientToServerSchemaAck> clientToServerAck = MQTTClientToServerSchemaAck.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the application 
@@ -136,9 +134,6 @@ public class MQTTClientGraphBuilder {
 			throw new RuntimeException(e);
 		}
 		
-	
-		byte multiplierBeforeCompact = 4;//x time the pipe size
-
 		short inFlightCount = (short)maxInFlight;
 		
 		Pipe<PersistedBlobLoadReleaseSchema>  perLoadRelease = PersistedBlobLoadReleaseSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
@@ -147,7 +142,7 @@ public class MQTTClientGraphBuilder {
 		
 		
 		FileGraphBuilder.buildSequentialReplayer(gm, perLoadRelease, perLoadConsumer, perLoadProducer,
-				persistanceConsumerPipe, persistanceProducerPipe, multiplierBeforeCompact, maxValueBits,
+				persistanceConsumerPipe, persistanceProducerPipe,
 				inFlightCount, maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10, BACKGROUND_COLOR);
 
 		

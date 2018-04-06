@@ -231,8 +231,6 @@ public class SequentialReplayerStageTest {
 			gm.enableTelemetry(8089);
 		}
 		
-		byte multi = 3;
-		byte bits = 16;
 		short inFlightCount = 20;
 		int largestBlock = 1<<12;
 		File dir=null;
@@ -251,7 +249,7 @@ public class SequentialReplayerStageTest {
 				
 		FileGraphBuilder.buildSequentialReplayer(gm, 
 				perLoadRelease, perLoadConsumer, perLoadProducer, 
-				perStoreConsumer, perStoreProducer, multi, bits,
+				perStoreConsumer, perStoreProducer,
 				inFlightCount, largestBlock, dir, cypher, rate, null);
 	
 		StringBuilder result0 = new StringBuilder();
