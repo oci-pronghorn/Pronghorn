@@ -8,7 +8,7 @@ public class PipeConfigManager {
 	private int defaultMaximumLenghOfVariableLengthFields;
 	
 	public PipeConfigManager() {
-		this(4, 16, 512);
+		this(4, 32, 512);
 	}
 	
 	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLenghOfVariableLengthFields) {		
