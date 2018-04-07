@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 public class JPGDumper {
 
-	public static void Dump(ArrayList<Byte> data, Header header) throws IOException {
+	public static void Dump(ArrayList<Byte> data, Header header, boolean verbose) throws IOException {
 		int extension = header.filename.lastIndexOf('.');
 		if (extension == -1) {
 			header.filename += ".jpg";
@@ -21,6 +21,9 @@ public class JPGDumper {
 		else {
 			header.filename = header.filename.substring(0, extension) + ".jpg";
 		}
+		
+		if (verbose) 
+			System.out.println("Writing to '" + header.filename + "'...");
 		
 		FileOutputStream fileStream = new FileOutputStream(header.filename);
 		FileChannel file = fileStream.getChannel();
@@ -70,6 +73,9 @@ public class JPGDumper {
 		}
 		file.close();
 		fileStream.close();
+
+		if (verbose) 
+			System.out.println("Done.");
 	}
 	
 	private static void WriteAPP0(ByteBuffer buffer) {
@@ -144,11 +150,13 @@ public class JPGDumper {
 	
 	public static void main(String[] args) throws IOException {
 		ArrayList<Byte> data = new ArrayList<Byte>();
-		data.add((byte)0b11111011);
+		data.add((byte)0b1110_1111);   // Y DC code: 1110
+		data.add((byte)0b10_1010_00);  // Y DC coeff: 111110, Y DC terminator: 1010
+		data.add((byte)0b00_00_00_00); // Cb/Cr DC/AC terminator: 00 x4 (two unused bits)
 		Header header = new Header();
 		header.height = 8;
 		header.width = 8;
 		header.filename = "simple_test.jpg";
-		Dump(data, header);
+		Dump(data, header, true);
 	}
 }

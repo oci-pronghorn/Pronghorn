@@ -72,10 +72,15 @@ public class HuffmanEncoder extends PronghornStage {
 	}
 	
 	private static int bitLength(int x) {
-		return (int) Math.ceil(Math.log(x) / Math.log(2));
+		int len = 0;
+		while (x > 0) {
+			x >>= 1;
+			++len;
+		}
+		return len;
 	}
 
-	private static boolean encodeMCUComponent(
+	private boolean encodeMCUComponent(
 			  ArrayList<ArrayList<Integer>> DCTableCodes,
 			  ArrayList<ArrayList<Integer>> ACTableCodes,
 			  HuffmanTable DCTable,
@@ -87,6 +92,9 @@ public class HuffmanEncoder extends PronghornStage {
 		int coeff = component[0] - previousDC[compID];
 		previousDC[compID] = component[0];
 		int coeffLength = (coeff == 0 ? 0 : bitLength(Math.abs(coeff)));
+		if (coeffLength > 11) {
+			System.err.println("Error - coeffLength > 11 : " + coeffLength);
+		}
 		if (coeff <= 0) {
 			coeff += (1 << coeffLength) - 1;
 		}
@@ -141,6 +149,12 @@ public class HuffmanEncoder extends PronghornStage {
 			// find coeff length
 			coeff = component[JPG.zigZagMap[i]];
 			coeffLength = bitLength(Math.abs(coeff));
+			if (coeffLength > 10) {
+				System.err.println("Error - coeffLength > 10 : " + coeffLength);
+			}
+			else if (coeffLength == 0) {
+				System.err.println("Error - coeffLength = 0");
+			}
 			if (coeff <= 0) {
 				coeff += (1 << coeffLength) - 1;
 			}
@@ -168,7 +182,7 @@ public class HuffmanEncoder extends PronghornStage {
 	}
 
 
-	public static void encodeHuffmanData(MCU mcu) {
+	public void encodeHuffmanData(MCU mcu) {
 		if (!encodeMCUComponent(JPG.DCTableCodes0, JPG.ACTableCodes0, JPG.hDCTable0, JPG.hACTable0, mcu.y, 0)) {
 			System.err.println("Error during Y component Huffman coding");
 		}
@@ -222,7 +236,7 @@ public class HuffmanEncoder extends PronghornStage {
 				count += 1;
 				if (count >= numMCUs) {
 					try {
-						JPGDumper.Dump(b.data, header);
+						JPGDumper.Dump(b.data, header, verbose);
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
