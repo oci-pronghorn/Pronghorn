@@ -265,7 +265,7 @@ public class GraphManager {
 	//These objects should be shared with all clones
 	private final GraphManagerStageStateData stageStateData;
 	public final StructRegistry recordTypeData;
-	
+	public final long startupTimeNS;
 	
 	//add the nota to this list first so we have an Id associated with it
 	private Object[] notaIdToKey = new Object[INIT_STAGES];
@@ -297,7 +297,7 @@ public class GraphManager {
 		Arrays.fill(notaIdToStageId, -1);
 		Arrays.fill(stageIdToNotasBeginIdx, -1);
 		Arrays.fill(multNotaIds, -1);
-		
+		this.startupTimeNS = System.nanoTime();
 		this.stageStateData = new GraphManagerStageStateData();
 		this.recordTypeData = new StructRegistry();
 		this.name = name;		
@@ -312,7 +312,7 @@ public class GraphManager {
 		Arrays.fill(notaIdToStageId, -1);
 		Arrays.fill(stageIdToNotasBeginIdx, -1);
 		Arrays.fill(multNotaIds, -1);
-		
+		this.startupTimeNS = System.nanoTime();
 		//enables single point of truth for the stages states, all clones  share this object
 		this.stageStateData = parentStageStateData;
 		this.recordTypeData = parentRecordTypeData;
