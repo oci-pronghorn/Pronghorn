@@ -1,7 +1,7 @@
 package com.ociweb.json.appendable;
 
 
-import java.io.UnsupportedEncodingException;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class StringBuilderWriter implements AppendableByteWriter {
     private final StringBuilder builder = new StringBuilder();
@@ -15,13 +15,8 @@ public class StringBuilderWriter implements AppendableByteWriter {
     }
 
     @Override
-    public void write(byte b[], int pos, int len){
-        CharSequence x = null;
-        try {
-            x = new String(b, pos, len, "UTF-8");
-        } catch (UnsupportedEncodingException ignored) {
-        }
-        builder.append(x);
+    public void write(byte b[], int pos, int len){    	
+    	Appendables.appendUTF8(builder, b, pos, len, Integer.MAX_VALUE);
     }
 
     @Override

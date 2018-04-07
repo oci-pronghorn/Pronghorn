@@ -6,6 +6,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 
 /**
@@ -385,7 +386,38 @@ public class Appendables {
 	}
     
     public static <A extends Appendable> A appendValue(A target, int value) {
-    	try {
+    	
+    	//////////////////////////////
+    	//can be optimized due to knowing the target type
+    	//////////////////////////////
+    	if (value>=0 && (target instanceof ChannelWriter)) {	    
+    		ChannelWriter dataOutputBlobWriter = (ChannelWriter)target;
+    		if (value<10) {
+				dataOutputBlobWriter.writeByte(('0'+(int)value));
+    			return target;
+    		} else if (value<100) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		} else if (value<1000) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		} else if (value<10000) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		}
+    	}
+    	return appendValueSlow(target, value);
+    }
+
+
+	private static <A extends Appendable> A appendValueSlow(A target, int value) {
+		try {
 	        int tens = 1000000000;
 	        
 	        boolean isNegative = value<0;
@@ -418,7 +450,7 @@ public class Appendables {
     	} catch (IOException ex) {
 			throw new RuntimeException(ex); 
 		}
-    }
+	}
     
     public static <A extends Appendable> A appendHexDigits(A target, int value) {
      try{
@@ -487,8 +519,43 @@ public class Appendables {
     	return result;
     }
     
+  
+    
+    
     public static <A extends Appendable> A appendValue(A target, long value) {
-    	try {
+    	
+    	//////////////////////////////
+    	//can be optimized due to knowing the target type
+    	//////////////////////////////
+    	if (value>=0 && (target instanceof ChannelWriter)) {	    
+    		ChannelWriter dataOutputBlobWriter = (ChannelWriter)target;
+    		if (value<10) {
+				dataOutputBlobWriter.writeByte(('0'+(int)value));
+    			return target;
+    		} else if (value<100) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		} else if (value<1000) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		} else if (value<10000) {
+    			dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
+    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+    			return target;
+    		}
+    	}
+    	/////////////////////////////    	
+    	return appendValueSlow(target, value);
+    }
+
+
+	private static <A extends Appendable> A appendValueSlow(A target, long value) {
+		try {
 	        long tens = 1000000000000000000L;
 	        
 	        boolean isNegative = value<0;
@@ -516,7 +583,7 @@ public class Appendables {
     	} catch (IOException ex) {
 			throw new RuntimeException(ex); 
 		}
-    }
+	}
     
     public static <A extends Appendable> A appendHexDigits(A target, long value) {
         try{

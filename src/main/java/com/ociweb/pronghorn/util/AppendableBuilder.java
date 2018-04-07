@@ -3,11 +3,7 @@ package com.ociweb.pronghorn.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.ociweb.pronghorn.pipe.ChannelWriter;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class AppendableBuilder implements Appendable {
 

@@ -1201,24 +1201,43 @@ public class TrieParserReader {
 		sourceLength = templateLimited?fixedLength:sourceLength;
 		///////////////
 		
-		byte sign = 1;
-		long intValue = 0;
-		byte intLength = 0;
-		int  dot = 0;//only set to one for NUMERIC_FLAG_DECIMAL        
-
 		final short c1 = source[sourceMask & sourcePos];
+		if (escapeByte != c1) {
+			
+			//this is the most common case, normal unsigned integers
+			if (0 == ((TrieParser.NUMERIC_FLAG_DECIMAL
+					  |TrieParser.NUMERIC_FLAG_RATIONAL
+					  |TrieParser.NUMERIC_FLAG_SIGN)&numType) ) {
+								
+				return parseNumericImpl(reader, source, sourcePos, sourceLength, 
+						sourceMask, numType, absentIsZero, templateLimited,
+						(byte) 1, (long) 0, (byte) 0, 0);
+			} else {			
+			
+				return parseNumericSlow(reader, source, sourcePos, sourceLength, sourceMask, numType, absentIsZero,
+						templateLimited, (byte) 1, (long) 0, (byte) 0, 0, c1);
+			}			
+			
+		} else {
+			//////////////////////////////////////////////////////////////
+			//This is for supporting %i as an actual value to match that pattern rather than a number
 
-		//////////////////////////////////////////////////////////////
-		//This is for supporting %i as an actual value to match that pattern rather than a number
-		if (escapeByte == c1) {
 			sourcePos++;
 			final int typeMask = TrieParser.buildNumberBits(source[sourceMask & sourcePos]);
 			sourcePos++;
-			return ((typeMask&numType)==typeMask) ? sourcePos : -1;			
+			return ((typeMask&numType)==typeMask) ? sourcePos : -1;	
+			
 		}
+	}
 
-
+	private static int parseNumericSlow(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
+			int sourceMask, short numType, final boolean absentIsZero, final boolean templateLimited, byte sign,
+			long intValue, byte intLength, int dot, final short c1) {
+		
+		// dot is  only set to one for NUMERIC_FLAG_DECIMAL 
+		
 		if (0!= (TrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
+			//support for decimals
 			dot=1;
 			if ('.'!=c1) {
 				publish(reader, 1, 0, 1, 10, dot);
@@ -1227,8 +1246,9 @@ public class TrieParserReader {
 			} else {
 				sourcePos++;
 			}
-
+			
 		} else if (0!= (TrieParser.NUMERIC_FLAG_RATIONAL&numType)) {
+			//support of rational
 			if ('/'!=c1) {
 				publish(reader, 1, 1, 1, 10, dot);
 				//do not parse numeric
@@ -1236,11 +1256,12 @@ public class TrieParserReader {
 			} else {
 				sourcePos++;
 			}
-
+			
 		}
-
+		
 		//NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
 		if (0!=(TrieParser.NUMERIC_FLAG_SIGN&numType)) {
+			//support for signed ints
 			if (c1=='-') { //NOTE: check ASCII table there may be a faster way to do this.
 				sign = -1;
 				sourcePos++;
@@ -1248,7 +1269,7 @@ public class TrieParserReader {
 				sourcePos++;
 			}
 		}
-
+		
 		return parseNumericImpl(reader, source, sourcePos, sourceLength, 
 				sourceMask, numType, absentIsZero, templateLimited,
 				sign, intValue, intLength, dot);
