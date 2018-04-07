@@ -79,6 +79,24 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 	};
 	
+
+	private void hangDetection(long nowNS) {
+		//all threads will check up on the other threads,
+		//this works providing we have more than 1 thread in play
+		ScriptedNonThreadScheduler[] localArray = ntsArray;
+		int c = localArray.length;
+		while (--c>=0) {
+			PronghornStage hungStage = localArray[c].hungStage(nowNS);
+			if (null != hungStage) {
+				
+				//TODO: should report back to telemetry screen 
+				logger.info("Hung stage {}", hungStage);
+								
+			}
+		}
+		
+	}
+	
 	//////////////////////////////////
 	//methods for increasing and decreasing the thread count
 	//these will be callable from the GreenRuntime and from Telemetry server?
@@ -354,7 +372,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    //this is done from the middle because the small 1's must be isolated and the
 	    //large ones already have too much work to do.
 	    int threadCountdown = (countOfGroups-targetThreadCount);
-	    boolean debug = false;
+	    final boolean debug = false;
 	    while (--threadCountdown>=0) {
 	    	
 	    	int idx = countOfGroups/2;
@@ -1320,6 +1338,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		
 	}
 
+	
 	private Runnable buildRunnable(final CyclicBarrier allStagesLatch, final ScriptedNonThreadScheduler nts) {
 		assert(null!=allStagesLatch);
 		assert(null!=nts);
@@ -1337,16 +1356,15 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			        } catch (BrokenBarrierException e) {
 			        }
 				
-				//TODO: fixed thread scheduler must also group by common frequencies
-				//      if we have a list with the same rate they can be on a simple loop
-				//      this saves the constant checking of which one is to run next...
-
+	
 				try {
 					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
-						ScriptedNonThreadScheduler.playScript(nts);										
+						ScriptedNonThreadScheduler.playScript(nts);
+						hangDetection(System.nanoTime());						
 					}		
 				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();						
+					Thread.currentThread().interrupt();	
+					nts.shutdown();
 					return;
 				}
 

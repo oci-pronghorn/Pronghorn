@@ -309,7 +309,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                          }
 							  
 							  
-							  logger.info("new server connection attached for new id {} ",channelId);
+							//  logger.info("new server connection attached for new id {} ",channelId);
 							  
 							  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
 	                                                                                                                            

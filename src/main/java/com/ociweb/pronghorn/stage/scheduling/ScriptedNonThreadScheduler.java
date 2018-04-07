@@ -43,6 +43,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     private long nextRun = 0; //keeps times of the last pass so we need not check again
 
+    private long timeStartedRunningStage;
+    private PronghornStage runningStage;
+    
+    
     private volatile Throwable firstException;//will remain null if nothing is wrong
 
     //Time based events will poll at least this many times over the period.
@@ -67,8 +71,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private String name = "";
     private PronghornStage lastRunStage = null;
   
-    private static final boolean debugNonReturningStages = false;
-
     private ScriptedSchedule schedule = null;
 
 
@@ -99,7 +101,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	}
 		return -1;
 	}
-    
+
     private void buildSchedule(GraphManager graphManager, 
     		                   PronghornStage[] stages, 
     		                   boolean reverseOrder) {
@@ -108,7 +110,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	this.stateArray = GraphManager.stageStateArray(graphManager);    	
     	this.recordTime = GraphManager.isTelemetryEnabled(graphManager);
     	
-    	final int groupId = threadGroupIdGen.incrementAndGet();
+    	int groupId = threadGroupIdGen.incrementAndGet();
     	
     	this.didWorkMonitor = new DidWorkMonitor();
     	
@@ -596,57 +598,54 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	try {
     		playScript(this);
 		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();						
-			return;
+			Thread.currentThread().interrupt();
+			shutdown();
 		}
     }
 
 	public static void playScript(ScriptedNonThreadScheduler that) throws InterruptedException {
 
-			assert(null != that.shutdownRequested) : "startup() must be called before run.";
-	
-			if (that.modificationLock.hasQueuedThreads()) {
-				that.modificationLock.unlock();
-				Thread.yield();//allow for modification				
-				that.modificationLock.lock();				
-			}			
+				assert(null != that.shutdownRequested) : "startup() must be called before run.";
+					
+				checkForModifications(that);			
 			
 		        //play the script
 	   			int scheduleIdx = 0;
-				while (scheduleIdx < that.schedule.script.length) {
-		  
-								long now = System.nanoTime();
-								final long wait = that.blockStartTime - now;
-								assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-						
-								if (Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
-									if (wait>200) { //TODO: this is a hack test for now...
-										//System.err.println(wait);
-										Thread.yield();
-									}
-								} else {
-								
-									if (wait > 0) {
-										that.waitForBatch(wait, that.blockStartTime);
-									} else {
-										//System.err.println("called yield to avoid tight spin");
-										Thread.yield();
-										//may be over-scheduled but may be spikes from the OS or GC.
-									}
-								}
-								
-								if (null!=that.sleepETL) {
-									ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
-								}
-								
-								//NOTE: this moves the blockStartTime forward by the common clock unit.
-								scheduleIdx = that.runBlock(scheduleIdx, that.schedule.script, that.stages, that.graphManager, that.recordTime);
-						
-					
-		        }
-	
+				while (scheduleIdx < that.schedule.script.length) {	
 		
-    	//this must NOT be inside the lock because this visit can cause a modification
+						waitBeforeRun(that, System.nanoTime());
+		
+						scheduleIdx = that.runBlock(scheduleIdx, that.schedule.script, that.stages, that.graphManager, that.recordTime);
+		        }
+		
+				checkForLongRun(that);
+	
+	}
+
+	private static void waitBeforeRun(ScriptedNonThreadScheduler that, long now) throws InterruptedException {
+		final long wait = that.blockStartTime - now;
+		assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+
+		if (Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
+			if (wait>200) {
+				Thread.yield();
+			}
+		} else {
+			if (wait > 0) {
+				assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+				that.waitForBatch(that.totalRequiredSleep+wait);
+			} else {
+				Thread.yield();
+			}
+		}
+		
+		if (null!=that.sleepETL) {
+			ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
+		}
+	}
+
+	private static void checkForLongRun(ScriptedNonThreadScheduler that) {
+		//this must NOT be inside the lock because this visit can cause a modification
 		//to this same scheduler which will require the lock.
     	if (null!=that.checksForLongRuns && System.nanoTime()>that.nextLongRunningCheck) {
     		
@@ -660,7 +659,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		logger.info("Thread:{} checking for long runs, took {}",that.name,duration);
     		
     	}
-	
+	}
+
+	private static void checkForModifications(ScriptedNonThreadScheduler that) {
+		if (that.modificationLock.hasQueuedThreads()) {
+			that.modificationLock.unlock();
+			Thread.yield();//allow for modification				
+			that.modificationLock.lock();				
+		}
 	}
 
 	/////////////////
@@ -670,10 +676,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	long noWorkCounter = 0;
 	/////////////////
 	
-	private void waitForBatch(long wait, long blockStartTime) throws InterruptedException {
-
-		assert(wait<=schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-		
+	private void waitForBatch(long local) throws InterruptedException {
 		////////////////
 		//without any delays the telemetry is likely to get backed up
 		////////////////
@@ -684,11 +687,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//it is run it often dramatically lowers the CPU usage due to parking
 		//using many small yields usage of this is minimized.
 		//////////////////////////////
-		totalRequiredSleep+=wait;
-		long a = (totalRequiredSleep/1_000_000L);
-		long b = (totalRequiredSleep%1_000_000L);
+		totalRequiredSleep = local;
+		if (local<1_000_000) {
+			automaticLoadSwitchingDelay();
+		} else {
 		
-		if (a>0) {
+			long a = (totalRequiredSleep/1_000_000L);
+			long b = (totalRequiredSleep%1_000_000L);
 			
 			//logger.info("waiting {} ns and the clock rate is {} added wait {} ",totalRequiredSleep,schedule.commonClock,wait);
 			
@@ -697,12 +702,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			Thread.sleep(a,(int)b);
 			long duration = System.nanoTime()-now;
 			totalRequiredSleep -= (duration>0?duration:(a*1_000_000));
-		} 
-		//////////////////////////////
-		//////////////////////////////
-				
-		automaticLoadSwitchingDelay();
-
+		
+			//////////////////////////////
+			//////////////////////////////
+					
+			automaticLoadSwitchingDelay();
+		}
 	}
 
 	private void automaticLoadSwitchingDelay() {
@@ -795,13 +800,27 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		boolean shutDownRequestedHere = false;
 		int inProgressIdx;
 		// Once we're done waiting for a block, we need to execute it!
-	
+		long SLABase = System.currentTimeMillis();
+		long SLAStart = SLABase;
+		long SLAStartNano = System.nanoTime();
 		// If it isn't out of bounds or a block-end (-1), run it!
-		while ((scheduleIdx<script.length) && ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
-			shutDownRequestedHere = monitoredStageRun(stages, gm, 
-	    			recordTime, didWorkMonitor, 
-	    			shutDownRequestedHere,
-					inProgressIdx);			
+		while ((scheduleIdx<script.length)
+				&& ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
+			
+			long start = System.nanoTime();
+			if (start>SLAStartNano) {
+				SLAStart = SLABase + ((start-SLAStartNano)/1_000_000);  				
+			} else {
+				SLABase = System.currentTimeMillis();
+				SLAStart = SLABase;
+				SLAStartNano = System.nanoTime();
+			}			
+	
+			shutDownRequestedHere = runStage(gm, recordTime, 
+					didWorkMonitor, 
+			        shutDownRequestedHere,
+			        inProgressIdx, SLAStart, start,
+			        stages[inProgressIdx]);			
 		}
 
 		//given how long this took to run set up the next run cycle.
@@ -822,54 +841,53 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return Integer.MAX_VALUE;
 	}
 
-	private boolean monitoredStageRun(PronghornStage[] stages, GraphManager gm, final boolean recordTime,
-			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere, int inProgressIdx) {
-		long start = 0;	
-		long SLAStart = System.currentTimeMillis();		    	
-		start = System.nanoTime();
-		DidWorkMonitor.begin(localDidWork,start);
-				    	
-		PronghornStage stage = stages[inProgressIdx];
+	private boolean runStage(GraphManager gm, final boolean recordTime,
+			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere, int inProgressIdx, long SLAStart,
+			long start, final PronghornStage stage) {
 		
+		DidWorkMonitor.begin(localDidWork,start);
 		if (!GraphManager.isStageShuttingDown(stateArray, stage.stageId)) {
+				//////////these two are for hang detection
+				timeStartedRunningStage = start;
+				runningStage = stage;
 
-		        if (debugNonReturningStages) {
-		            logger.info("begin run {}", stage);///for debug of hang
-		        }
-		        setCallerId(stage.boxedStageId);
-		        
-		        runStage(stage);
-		        
+		        setCallerId(stage.boxedStageId);		        
+		        runStage(stage);		        
 		        clearCallerId();
-
-		        if (debugNonReturningStages) {
-		            logger.info("end run {}", stage);
-		        }
+		        
+		        timeStartedRunningStage = 0;
 		} else {
 		    processShutdown(gm, stage);
 		    shutDownRequestedHere = true;
 		}
-		 
-			        
+		
 		if (!DidWorkMonitor.didWork(localDidWork)) {
 		} else {
-			final long now = System.nanoTime();		        
-			long duration = now-start;
-			
-			if (duration <= sla[inProgressIdx]) {
-			} else {
-				reportSLAViolation(stages, gm, inProgressIdx, SLAStart, duration);		    		
-			}
-			if (recordTime) {		
-				if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
-					if (!shownLowLatencyWarning) {
-						shownLowLatencyWarning = true;
-						logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
-					}
+			recordRunResults(System.nanoTime(), gm, recordTime, 
+					         inProgressIdx, start, SLAStart, stage);
+		}
+		return shutDownRequestedHere;
+	}
+
+	private void recordRunResults(final long now, GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
+			long SLAStart, PronghornStage stage) {
+			        
+		long duration = now-start;
+		
+		if (duration <= sla[inProgressIdx]) {
+		} else {
+			reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
+		}
+
+		if (recordTime) {		
+			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
+				if (shownLowLatencyWarning) {
+				} else {
+					shownLowLatencyWarning = true;
+					logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
 				}
 			}
 		}
-		return shutDownRequestedHere;
 	}
 
 	private final void runStage(PronghornStage stage) {
@@ -892,9 +910,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		}
 	}
 
-	private void reportSLAViolation(PronghornStage[] stages, GraphManager gm, int inProgressIdx, long SLAStart,
+	private void reportSLAViolation(String stageName, GraphManager gm, int inProgressIdx, long SLAStart,
 			long duration) {
-		String stageName = stages[inProgressIdx].toString();
 		int nameLen = stageName.indexOf('\n');
 		if (-1==nameLen) {
 			nameLen = stageName.length();
@@ -1177,6 +1194,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	///////////////////
 	
 	public ScriptedNonThreadScheduler splitOn(int idx) {
+		
+		logger.info("-------------- splitting scheduler -------------------------");
+		
 		assert(idx<stages.length);
 		assert(idx>=0);
 		
@@ -1213,6 +1233,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		} finally {
 			modificationLock.unlock();
 		}
+	}
+
+	private final static long hangTimeNS = 1_000_000_000 * 10;//20 sec;
+	public PronghornStage hungStage(long nowNS) {
+		if ((0!=timeStartedRunningStage) 
+			&& (nowNS-timeStartedRunningStage)>hangTimeNS) {
+			return runningStage;
+		}
+		return null;
 	}
 
 

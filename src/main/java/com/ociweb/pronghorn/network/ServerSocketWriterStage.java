@@ -245,7 +245,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			loadPayloadForXmit(activeMessageId, idx);
 
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
-					
+			//logger.info("server side disconnecting");		
 			final long channelId = Pipe.takeLong(input[idx]);
 
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
@@ -470,7 +470,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 				int minBufSize = 
 						Math.max(pipe.maxVarLen, 
 						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
-				logger.info("buffer is {} and must be larger than {}",workingBuffers[i].capacity(), minBufSize);
+				//logger.info("buffer is {} and must be larger than {}",workingBuffers[i].capacity(), minBufSize);
 				if (workingBuffers[i].capacity()<minBufSize) {
 					logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
 					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);

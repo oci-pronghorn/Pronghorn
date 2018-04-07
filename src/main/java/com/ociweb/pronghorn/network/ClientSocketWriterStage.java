@@ -102,17 +102,20 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void run() {
+		Pipe<NetPayloadSchema>[] localInput = input;
+		ClientConnection[] localConnections = connections;
 		
 		boolean didWork;
 		
 		do {
-			didWork = false;
-		
-			int i = input.length;
+			didWork = false;	
+			
+			int i = localInput.length;
 			while (--i>=0) {
-				if (connections[i]==null) {
-					if (Pipe.hasContentToRead(input[i])) {	
-						didWork = writeAll(didWork, i, input[i], Pipe.takeMsgIdx(input[i]));
+				if (localConnections[i]==null) {
+					Pipe<NetPayloadSchema> pipe = localInput[i];
+					if (Pipe.hasContentToRead(pipe)) {	
+						didWork = writeAll(didWork, i, pipe, Pipe.takeMsgIdx(pipe));
 					}
 				} else {
 					//we have multiple connections so one blocking does not impact others.
