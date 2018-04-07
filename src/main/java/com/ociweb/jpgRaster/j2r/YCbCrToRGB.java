@@ -42,9 +42,9 @@ public class YCbCrToRGB extends PronghornStage {
 
 	private static void convertToRGB(short Y, short Cb, short Cr) {
 		short r, g, b;
-		r = (short)((double)Y + 1.402 * ((double)Cr) + 128);
-		g = (short)(((double)(Y) - (0.114 * (Y + 1.772 * (double)Cb)) - 0.299 * (Y + 1.402 * ((double)Cr))) / 0.587 + 128);
-		b = (short)((double)Y + 1.772 * ((double)Cb) + 128);
+		r = (short)(Y + 1.402 * Cr + 128);
+		g = (short)((Y - (0.114 * (Y + 1.772 * Cb)) - 0.299 * (Y + 1.402 * Cr)) / 0.587 + 128);
+		b = (short)(Y + 1.772 * Cb + 128);
 		if (r < 0)   r = 0;
 		if (r > 255) r = 255;
 		if (g < 0)   g = 0;

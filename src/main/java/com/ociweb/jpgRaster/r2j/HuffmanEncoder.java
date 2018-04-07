@@ -28,14 +28,13 @@ public class HuffmanEncoder extends PronghornStage {
 				nextByte++;
 			}
 			
-			data.set(nextByte, (byte)(data.get(nextByte) | ((x & 1) << nextBit)));
+			data.set(nextByte, (byte)(data.get(nextByte) | ((x & 1) << (7 - nextBit))));
 			nextBit++;
 		}
 		
 		public void putBits(int x, int length) {
 			for(int i = 0; i < length; ++i) {
-				putBit(x);
-				x >>= 1;
+				putBit(x >> (length - 1 - i));
 			}
 		}
 		
@@ -43,6 +42,13 @@ public class HuffmanEncoder extends PronghornStage {
 			data.clear();
 			nextByte = -1;
 			nextBit = 8;
+		}
+		
+		public void printData() {
+			for (int i = 0; i < data.size(); ++i) {
+				System.out.print(String.format("%8s", Integer.toBinaryString(data.get(i) & 0xFF)).replace(" ", "0") + " ");
+			}
+			System.out.println();
 		}
 	}
 	
@@ -55,9 +61,7 @@ public class HuffmanEncoder extends PronghornStage {
 	int count;
 	int numMCUs;
 
-	static Short previousYDC = 0;
-	static Short previousCbDC = 0;
-	static Short previousCrDC = 0;
+	static short[] previousDC = new short[3];
 
 	static BitWriter b = new BitWriter();
 	
@@ -77,12 +81,12 @@ public class HuffmanEncoder extends PronghornStage {
 			  HuffmanTable DCTable,
 			  HuffmanTable ACTable,
 			  short[] component,
-			  Short previousDC) {
+			  int compID) {
 		
 		// code DC value
-		int coeff = component[0] - previousDC;
-		previousDC = (short) coeff;
-		int coeffLength = bitLength(Math.abs(coeff));
+		int coeff = component[0] - previousDC[compID];
+		previousDC[compID] = component[0];
+		int coeffLength = (coeff == 0 ? 0 : bitLength(Math.abs(coeff)));
 		if (coeff <= 0) {
 			coeff += (1 << coeffLength) - 1;
 		}
@@ -91,15 +95,18 @@ public class HuffmanEncoder extends PronghornStage {
 			for (int k = 0; k < DCTable.symbols.get(j).size(); ++k) {
 				if (DCTable.symbols.get(j).get(k) == coeffLength) {
 					int code = DCTableCodes.get(j).get(k);
-					int codeLength = bitLength(code);
-					b.putBits(code, codeLength);
+					b.putBits(code, j+1);
+					b.putBits(coeff, coeffLength);
 					found = true;
 					break;
 				}
 			}
 			if (found) break;
 		}
-		if (!found) return false;
+		if (!found) {
+			System.err.println("Error during DC Huffman coding");
+			return false;
+		}
 		
 		// code AC values
 		for (int i = 1; i < 64; ++i) {
@@ -117,8 +124,7 @@ public class HuffmanEncoder extends PronghornStage {
 					for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
 						if (ACTable.symbols.get(j).get(k) == 0) {
 							int code = ACTableCodes.get(j).get(k);
-							int codeLength = bitLength(code);
-							b.putBits(code, codeLength);
+							b.putBits(code, j+1);
 							return true;
 						}
 					}
@@ -145,8 +151,7 @@ public class HuffmanEncoder extends PronghornStage {
 				for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
 					if (ACTable.symbols.get(j).get(k) == symbol) {
 						int code = ACTableCodes.get(j).get(k);
-						int codeLength = bitLength(code);
-						b.putBits(code, codeLength);
+						b.putBits(code, j+1);
 						b.putBits(coeff, coeffLength);
 						found = true;
 						break;
@@ -154,18 +159,25 @@ public class HuffmanEncoder extends PronghornStage {
 				}
 				if (found) break;
 			}
-			if (!found) return false;
+			if (!found) {
+				System.err.println("Error during AC Huffman coding with symbol: " + symbol);
+				return false;
+			}
 		}
 		return true;
 	}
 
 
 	public static void encodeHuffmanData(MCU mcu) {
-		encodeMCUComponent(JPG.DCTableCodes0, JPG.ACTableCodes0, JPG.hDCTable0, JPG.hACTable0, mcu.y, previousYDC);
-
-		encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cb, previousCbDC);
-
-		encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cr, previousCrDC);
+		if (!encodeMCUComponent(JPG.DCTableCodes0, JPG.ACTableCodes0, JPG.hDCTable0, JPG.hACTable0, mcu.y, 0)) {
+			System.err.println("Error during Y component Huffman coding");
+		}
+		if (!encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cb, 1)) {
+			System.err.println("Error during Cb component Huffman coding");
+		}
+		if (!encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cr, 2)) {
+			System.err.println("Error during Cr component Huffman coding");
+		}
 	}
 
 
@@ -185,9 +197,9 @@ public class HuffmanEncoder extends PronghornStage {
 				
 				count = 0;
 				numMCUs = ((header.height + 7) / 8) * ((header.width + 7) / 8);
-				previousYDC = 0;
-				previousCbDC = 0;
-				previousCrDC = 0;
+				previousDC[0] = 0;
+				previousDC[1] = 0;
+				previousDC[2] = 0;
 				b.restart();
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
@@ -209,12 +221,6 @@ public class HuffmanEncoder extends PronghornStage {
 				
 				count += 1;
 				if (count >= numMCUs) {
-					
-					// temporary, remove later
-					//b.putBits(0b11111011, 8);
-					//header.height = 8;
-					//header.width = 8;
-					
 					try {
 						JPGDumper.Dump(b.data, header);
 					}

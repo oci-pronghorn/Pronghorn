@@ -237,4 +237,32 @@ public class JPG {
 		}
 		ACTableCodes1 = HuffmanDecoder.generateCodes(hACTable1);
 	}
+	
+	public static void printMCU(MCU mcu) {
+		System.out.println("Y:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				System.out.print(mcu.y[i * 8 + j] + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+		
+		System.out.println("Cb:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				System.out.print(mcu.cb[i * 8 + j] + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+		System.out.println("Cr:");
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				System.out.print(mcu.cr[i * 8 + j] + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
 }

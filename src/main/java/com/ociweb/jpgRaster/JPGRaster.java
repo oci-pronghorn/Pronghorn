@@ -51,7 +51,7 @@ public class JPGRaster {
 		}
 		
 		if (inputFiles.size() == 0) {
-			System.out.println("Usage: j2r [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
+			System.out.println("Usage: j2r [ -e ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
 			return;
 		}
 		

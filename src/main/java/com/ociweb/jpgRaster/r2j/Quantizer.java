@@ -31,7 +31,6 @@ public class Quantizer extends PronghornStage {
 	
 	private static void quantizeMCU(short[] MCU, QuantizationTable table) {
 		for (int i = 0; i < MCU.length; ++i) {
-			// type casting might be unsafe for 16-bit precision quantization tables
 			MCU[JPG.zigZagMap[i]] = (short)(MCU[JPG.zigZagMap[i]] / table.table[i]);
 		}
 	}
@@ -87,6 +86,7 @@ public class Quantizer extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 				
 				quantize(mcu);
+				//JPG.printMCU(mcu);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);

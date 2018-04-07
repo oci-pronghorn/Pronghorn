@@ -81,10 +81,8 @@ public class ForwardDCT extends PronghornStage {
 	
 	public static void inverseDCT(MCU mcu, Header header) {
 		TransformBlock(mcu.y);
-		if (header.numComponents > 1) {
-			TransformBlock(mcu.cb);
-			TransformBlock(mcu.cr);
-		}
+		TransformBlock(mcu.cb);
+		TransformBlock(mcu.cr);
 		return;
 	}
 
@@ -132,6 +130,7 @@ public class ForwardDCT extends PronghornStage {
 				PipeReader.releaseReadLock(input);
 				
 				inverseDCT(mcu, header);
+				//JPG.printMCU(mcu);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 					DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);

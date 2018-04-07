@@ -24,14 +24,12 @@ public class BMPScanner extends PronghornStage {
 	int mcuHeight = 0;
 	int numMCUs = 0;
 	int numProcessed = 0;
-	int numProcessedInRow = 0;
 	int paddingSize = 0;
 	
-	DataInputStream f;
 	Header header;
 	MCU mcu = new MCU();
 	
-	short[][] mcuRow;
+	short[][] pixels;
 	
 	public BMPScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, NONE, output);
@@ -42,7 +40,7 @@ public class BMPScanner extends PronghornStage {
 	public Header ReadBMP(String filename) throws IOException {
 		header = new Header();
 		header.filename = filename;
-		f = new DataInputStream(new FileInputStream(filename));
+		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
 		if (f.readUnsignedByte() != 'B' || f.readUnsignedByte() != 'M') {
 			System.err.println("Error - not a BMP file");
@@ -170,24 +168,27 @@ public class BMPScanner extends PronghornStage {
 		mcuHeight = (header.height + 7) / 8;
 		numMCUs = mcuWidth * mcuHeight;
 		numProcessed = 0;
-		numProcessedInRow = 0;
 		paddingSize = (4 - (header.width * 3) % 4) % 4;
-		mcuRow = new short[8][mcuWidth * 8 * 3];
+		pixels = new short[mcuHeight * 8][mcuWidth * 8 * 3];
 
 		int trailingRows = 8 - (mcuHeight * 8 - header.height);
 		
-		readMCURow(trailingRows);
+		readMCURow(f, trailingRows, (mcuHeight - 1) * 8);
 		
-		//f.close();
+		for (int i = mcuHeight - 2; i >= 0; --i) {
+			readMCURow(f, 8, i * 8);
+		}
+		
+		f.close();
 		return header;
 	}
 	
-	private void readMCURow(int numRows) throws IOException {
+	private void readMCURow(DataInputStream f, int numRows, int startRow) throws IOException {
 		for (int i = numRows - 1; i >= 0; --i) {
 			for (int j = 0; j < header.width; ++j) {
-				mcuRow[i][j * 3 + 2] = (short) f.readUnsignedByte();
-				mcuRow[i][j * 3 + 1] = (short) f.readUnsignedByte();
-				mcuRow[i][j * 3 + 0] = (short) f.readUnsignedByte();
+				pixels[i + startRow][j * 3 + 2] = (short) f.readUnsignedByte();
+				pixels[i + startRow][j * 3 + 1] = (short) f.readUnsignedByte();
+				pixels[i + startRow][j * 3 + 0] = (short) f.readUnsignedByte();
 			}
 			for (int j = 0; j < paddingSize; j++) {
 				f.readUnsignedByte();
@@ -196,11 +197,12 @@ public class BMPScanner extends PronghornStage {
 	}
 	
 	private void fillMCU(int index) {
+		int row = numProcessed / mcuWidth * 8;
 		for (int i = 0; i < 8; ++i) {
 			for (int j = 0; j < 8; ++j) {
-				mcu.y [i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 0];
-				mcu.cb[i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 1];
-				mcu.cr[i * 8 + j] = mcuRow[i][index * 24 + j * 3 + 2];
+				mcu.y [i * 8 + j] = pixels[i + row][index * 24 + j * 3 + 0];
+				mcu.cb[i * 8 + j] = pixels[i + row][index * 24 + j * 3 + 1];
+				mcu.cr[i * 8 + j] = pixels[i + row][index * 24 + j * 3 + 2];
 			}
 		}
 	}
@@ -234,7 +236,6 @@ public class BMPScanner extends PronghornStage {
 			PipeWriter.publishWrites(output);
 			
 			numProcessed += 1;
-			numProcessedInRow += 1;
 		}
 		else {
 			System.err.println("BMP Scanner requesting shutdown");
@@ -245,21 +246,11 @@ public class BMPScanner extends PronghornStage {
 	@Override
 	public void run() {
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
-			if (numProcessedInRow == mcuWidth) {
-				try {
-					readMCURow(8);
-				} catch (IOException e) {}
-				numProcessedInRow = 0;
-			}
-			fillMCU(numProcessedInRow);
+			fillMCU(numProcessed % mcuWidth);
+			//JPG.printMCU(mcu);
 			sendMCU(mcu);
 		}
 		if (PipeWriter.hasRoomForWrite(output) && !inputFiles.isEmpty()) {
-			if (f != null)
-				try {
-					f.close();
-				} catch (IOException e) {}
-			
 			String file = inputFiles.get(0);
 			inputFiles.remove(0);
 			System.out.println(file);
@@ -292,12 +283,4 @@ public class BMPScanner extends PronghornStage {
 			}
 		}
 	}
-	
-	/*public static void main(String[] args) {
-		try {
-			ReadBMP("test_jpgs/car.bmp");
-		} catch (Exception e) {
-			System.err.println("Error - Unknown error reading BMP file");
-		}
-	}*/
 }
