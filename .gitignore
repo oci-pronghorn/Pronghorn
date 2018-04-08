@@ -29,6 +29,7 @@ RemoteSystemsTempFiles/\.project
 
 bin/*
 
-j2r\.jar
+*.jar
 
-tests\.zip
+*.zip
+

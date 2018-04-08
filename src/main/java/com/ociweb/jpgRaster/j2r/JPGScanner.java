@@ -1,6 +1,8 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
 import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPGConstants;
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
@@ -35,7 +37,7 @@ public class JPGScanner extends PronghornStage {
 	MCU mcu4 = new MCU();
 	ArrayList<MCU> mcus = null;
 	
-	protected JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
+	public JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
@@ -59,108 +61,144 @@ public class JPGScanner extends PronghornStage {
 		last = (short)f.readUnsignedByte();
 		current = (short)f.readUnsignedByte();
 		
-		while (true) {
-			if (header.valid == false) {
-				break;
-			}
-			
-			if (last == 0xFF) {
-				if      (current == JPGConstants.DQT) {
-					ReadQuantizationTable(f, header);
-				}
-				else if (current == JPGConstants.SOF0) {
-					header.frameType = "Baseline";
-					ReadStartOfFrame(f, header);
-				}
-				// only Baseline and Progressive are supported for now
-				/*else if (current == JPGConstants.SOF1) {
-					header.frameType = "Extended Sequential";
-					ReadStartOfFrame(f, header);
-				}*/
-				else if (current == JPGConstants.SOF2) {
-					header.frameType = "Progressive";
-					ReadStartOfFrame(f, header);
-				}
-				/*else if (current == JPGConstants.SOF3) {
-					header.frameType = "Lossless";
-					ReadStartOfFrame(f, header);
-				}*/
-				else if (current == JPGConstants.DHT) {
-					ReadHuffmanTable(f, header);
-				}
-				else if (current == JPGConstants.SOS) {
-					ReadStartOfScan(f, header);
-					break;
-				}
-				else if (current == JPGConstants.DRI) {
-					ReadRestartInterval(f, header);
-				}
-				else if (current >= JPGConstants.APP0 && current <= JPGConstants.APP15) {
-					ReadAPPN(f, header);
-				}
-				else if (current == JPGConstants.COM) {
-					ReadComment(f, header);
-				}
-				else if (current == 0xFF) {
-					// skip
-					current = (short)f.readUnsignedByte();
-					continue;
-				}
-				else if ((current >= JPGConstants.JPG0 &&
-						 current <= JPGConstants.JPG13) ||
-						 current == JPGConstants.DNL ||
-						 current == JPGConstants.DHP ||
-						 current == JPGConstants.EXP) {
-					// unsupported segments that can be skipped
-					ReadComment(f, header);
-				}
-				else if (current == JPGConstants.TEM) {
-					// unsupported segment with no size
-				}
-				else if (current == JPGConstants.SOI) {
-					System.err.println("Error - This JPG contains an embedded JPG; This is not supported");
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else if (current == JPGConstants.EOI) {
-					System.err.println("Error - EOI detected before SOS");
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else if (current == JPGConstants.DAC) {
-					System.err.println("Error - Arithmetic Table mode is not supported");
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else if (current >= JPGConstants.SOF0 && current <= JPGConstants.SOF15) {
-					System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-					System.err.println("Error - RSTN detected before SOS");
-					header.valid = false;
-					f.close();
-					return header;
-				}
-				else {
-					System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
-					header.valid = false;
-					f.close();
-					return header;
-				}
-			}
-			else { //if (last != 0xFF) {
+		while (header.valid) {
+			if (last != 0xFF) {
 				System.err.println("Error - Expected a marker");
 				header.valid = false;
 				f.close();
 				return header;
 			}
-			
+			switch (current) {
+			case JPGConstants.DQT:
+				ReadQuantizationTable(f, header);
+				break;
+			case JPGConstants.SOF0:
+				header.frameType = "Baseline";
+				ReadStartOfFrame(f, header);
+				break;
+			case JPGConstants.SOF1:
+				header.frameType = "Extended Sequential";
+				ReadStartOfFrame(f, header);
+				break;
+			case JPGConstants.SOF2:
+				header.frameType = "Progressive";
+				ReadStartOfFrame(f, header);
+				break;
+			case JPGConstants.SOF3:
+				header.frameType = "Lossless";
+				ReadStartOfFrame(f, header);
+				break;
+			case JPGConstants.DHT:
+				ReadHuffmanTable(f, header);
+				break;
+			case JPGConstants.SOS:
+				ReadStartOfScan(f, header);
+				// break out of while loop
+				break;
+			case JPGConstants.DRI:
+				ReadRestartInterval(f, header);
+				break;
+			case JPGConstants.APP0:
+			case JPGConstants.APP1:
+			case JPGConstants.APP2:
+			case JPGConstants.APP3:
+			case JPGConstants.APP4:
+			case JPGConstants.APP5:
+			case JPGConstants.APP6:
+			case JPGConstants.APP7:
+			case JPGConstants.APP8:
+			case JPGConstants.APP9:
+			case JPGConstants.APP10:
+			case JPGConstants.APP11:
+			case JPGConstants.APP12:
+			case JPGConstants.APP13:
+			case JPGConstants.APP14:
+			case JPGConstants.APP15:
+				ReadAPPN(f, header);
+				break;
+			case JPGConstants.COM:
+				ReadComment(f, header);
+				break;
+			case 0xFF: // skip
+				current = (short)f.readUnsignedByte();
+				break;
+			case JPGConstants.JPG0:
+			case JPGConstants.JPG1:
+			case JPGConstants.JPG2:
+			case JPGConstants.JPG3:
+			case JPGConstants.JPG4:
+			case JPGConstants.JPG5:
+			case JPGConstants.JPG6:
+			case JPGConstants.JPG7:
+			case JPGConstants.JPG8:
+			case JPGConstants.JPG9:
+			case JPGConstants.JPG10:
+			case JPGConstants.JPG11:
+			case JPGConstants.JPG12:
+			case JPGConstants.JPG13:
+			case JPGConstants.DNL:
+			case JPGConstants.DHP:
+			case JPGConstants.EXP:
+				// unsupported segments that can be skipped
+				ReadComment(f, header);
+				break;
+			case JPGConstants.TEM:
+				// unsupported segment with no size
+				break;
+			case JPGConstants.SOI:
+				System.err.println("Error - This JPG contains an embedded JPG; THis is not supported");
+				header.valid = false;
+				f.close();
+				return header;
+			case JPGConstants.EOI:
+				System.err.println("Error - EOI detected before SOS");
+				header.valid = false;
+				f.close();
+				return header;
+			case JPGConstants.DAC:
+				System.err.println("Error - Arithmetic Table mode is not supported");
+				header.valid = false;
+				f.close();
+				return header;
+				// case JPGConstants.SOF4:
+			case JPGConstants.SOF5:
+			case JPGConstants.SOF6:
+			case JPGConstants.SOF7:
+				// case JPGConstants.SOF8:
+			case JPGConstants.SOF9:
+			case JPGConstants.SOF10:
+			case JPGConstants.SOF11:
+				// case JPGConstants.SOF12:
+			case JPGConstants.SOF13:
+			case JPGConstants.SOF14:
+			case JPGConstants.SOF15:
+				System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
+				header.valid = false;
+				f.close();
+				return header;
+			case JPGConstants.RST0:
+			case JPGConstants.RST1:
+			case JPGConstants.RST2:
+			case JPGConstants.RST3:
+			case JPGConstants.RST4:
+			case JPGConstants.RST5:
+			case JPGConstants.RST6:
+			case JPGConstants.RST7:
+				System.err.println("Error - RSTN detected before SOS");
+				header.valid = false;
+				f.close();
+				return header;
+			default:
+				System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
+				header.valid = false;
+				f.close();
+				return header;
+			}
+			if (current == JPGConstants.SOS) {
+				// break out of while loop
+				break;
+			}
+
 			last = (short)f.readUnsignedByte();
 			current = (short)f.readUnsignedByte();
 		}
@@ -365,6 +403,29 @@ public class JPGScanner extends PronghornStage {
 					mcus.add(mcu2);
 					mcus.add(mcu3);
 					mcus.add(mcu4);
+					numProcessed += 4;
+				}
+			}
+			else {
+				if (horizontal == 1 && vertical == 1) {
+					mcus.set(numProcessed, mcu1);
+					numProcessed += 1;
+				}
+				else if (horizontal == 2 && vertical == 1) {
+					mcus.set(numProcessed, mcu1);
+					mcus.set(numProcessed + 1, mcu2);
+					numProcessed += 2;
+				}
+				else if (horizontal == 1 && vertical == 2) {
+					mcus.set(numProcessed, mcu1);
+					mcus.set(numProcessed + 1, mcu2);
+					numProcessed += 2;
+				}
+				else if (horizontal == 2 && vertical == 2) {
+					mcus.set(numProcessed, mcu1);
+					mcus.set(numProcessed + 1, mcu2);
+					mcus.set(numProcessed + 2, mcu3);
+					mcus.set(numProcessed + 3, mcu4);
 					numProcessed += 4;
 				}
 			}
@@ -683,7 +744,7 @@ public class JPGScanner extends PronghornStage {
 			}
 		}
 		else {
-			System.err.println("Requesting shutdown");
+			System.err.println("JPG Scanner requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -793,21 +854,21 @@ public class JPGScanner extends PronghornStage {
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
 					if (verbose) 
-						System.out.println("Scanner writing header to pipe...");
+						System.out.println("JPG Scanner writing header to pipe...");
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Scanner requesting shutdown");
+					System.err.println("JPG Scanner requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
 				for (int i = 0; i < header.numComponents; ++i) {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
 						if (verbose) 
-							System.out.println("Scanner writing color component to pipe...");
+							System.out.println("JPG Scanner writing color component to pipe...");
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
@@ -815,7 +876,7 @@ public class JPGScanner extends PronghornStage {
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("Scanner requesting shutdown");
+						System.err.println("JPG Scanner requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -824,7 +885,7 @@ public class JPGScanner extends PronghornStage {
 					if (header.quantizationTables[i] != null) {
 						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
 							if (verbose) 
-								System.out.println("Scanner writing quantization table to pipe...");
+								System.out.println("JPG Scanner writing quantization table to pipe...");
 	
 							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
 							DataOutputBlobWriter.openField(quantizationTableWriter);
@@ -844,7 +905,7 @@ public class JPGScanner extends PronghornStage {
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("Scanner requesting shutdown");
+							System.err.println("JPG Scanner requesting shutdown");
 							requestShutdown();
 						}
 					}

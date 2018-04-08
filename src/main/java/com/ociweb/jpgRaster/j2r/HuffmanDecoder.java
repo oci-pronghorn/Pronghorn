@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -81,7 +82,7 @@ public class HuffmanDecoder {
 	
 	static int skips;
 	
-	private static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
+	public static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
 		ArrayList<ArrayList<Integer>> codes = new ArrayList<ArrayList<Integer>>(16);
 		for (int i = 0; i < 16; ++i) {
 			codes.add(new ArrayList<Integer>());

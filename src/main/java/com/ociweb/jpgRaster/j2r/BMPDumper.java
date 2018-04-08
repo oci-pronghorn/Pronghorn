@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -29,7 +30,7 @@ public class BMPDumper extends PronghornStage {
 	int numMCUs;
 	int pos;
 	
-	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
+	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
@@ -74,14 +75,14 @@ public class BMPDumper extends PronghornStage {
 		fileStream.close();
 	}
 	
-	private static void putInt(ByteBuffer buffer, int v) throws IOException {
+	private static void putInt(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 		buffer.put((byte)((v >> 16) & 0xFF));
 		buffer.put((byte)((v >> 24) & 0xFF));
 	}
 	
-	private static void putShort(ByteBuffer buffer, int v) throws IOException {
+	private static void putShort(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 	}
