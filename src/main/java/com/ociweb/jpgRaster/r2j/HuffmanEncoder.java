@@ -91,6 +91,7 @@ public class HuffmanEncoder extends PronghornStage {
 		int coeffLength = (coeff == 0 ? 0 : bitLength(Math.abs(coeff)));
 		if (coeffLength > 11) {
 			System.err.println("Error - coeffLength > 11 : " + coeffLength);
+			return false;
 		}
 		if (coeff <= 0) {
 			coeff += (1 << coeffLength) - 1;
@@ -117,6 +118,7 @@ public class HuffmanEncoder extends PronghornStage {
 				++numZeroes;
 				++i;
 			}
+			
 			if (i == 64) {
 				// write terminator code
 				for (int j = 0; j < 16; ++j) {
@@ -129,10 +131,10 @@ public class HuffmanEncoder extends PronghornStage {
 						}
 					}
 				}
-				return false;
+				return false; // never going to happen
 			}
 			
-			while (numZeroes > 15) {
+			while (numZeroes >= 16) {
 				found = false;
 				for (int j = 0; j < 16; ++j) {
 					for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
@@ -145,7 +147,7 @@ public class HuffmanEncoder extends PronghornStage {
 					}
 					if (found) break;
 				}
-				numZeroes -= 15;
+				numZeroes -= 16;
 			}
 			
 			// find coeff length
@@ -153,6 +155,7 @@ public class HuffmanEncoder extends PronghornStage {
 			coeffLength = bitLength(Math.abs(coeff));
 			if (coeffLength > 10) {
 				System.err.println("Error - coeffLength > 10 : " + coeffLength);
+				return false;
 			}
 			if (coeff <= 0) {
 				coeff += (1 << coeffLength) - 1;
