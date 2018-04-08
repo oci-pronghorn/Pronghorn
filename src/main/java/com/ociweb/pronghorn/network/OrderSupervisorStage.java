@@ -120,8 +120,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
-        
     }
+    
 
 
 	@Override
@@ -175,11 +175,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	        
 	        while (--c >= 0) {
-	        	
-	        	
-	        	//WARNING a single response sits on the pipe and its output is full so nothing happens until it is cleared.
-	        	//System.err.println("process pipe: "+c+" of "+dataToSend.length);
-	        	
+
 	        	//Hold position pending, and write as data becomes available
 	        	//this lets us read deep into the pipe
 	        	
@@ -195,6 +191,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	            haveWork |= processPipe(dataToSend[c], c);
   
 	        }  
+	        
+	        
     	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
     			//|| (quietPeriodCounter<quietPeriod));
     	
@@ -203,13 +201,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
+		//if (Pipe.contentRemaining(sourcePipe) >= sourcePipe.slabMask*.75) {
+			
+		//	System.err.println("this pipe is backed up "+sourcePipe);
+			
+		//}
 		
-
 		boolean didWork = false;
 		while (Pipe.contentRemaining(sourcePipe)>0) {
-	
-			
-			
+				
 			assert(Pipe.bytesReadBase(sourcePipe)>=0);
 			
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
@@ -226,94 +226,85 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        myPipeIdx = (int)(channelId % poolMod);
 		        outPipe = outgoingPipes[myPipeIdx];
 		        
-		        //logger.trace("sending new content out for channelId {} ", channelId);
-		        
-		        ///////////////////////////////
-		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
-		        ///////////////////////////////
-		    	if (!Pipe.hasRoomForWrite(outPipe, maxOuputSize)) {	
+		    	if (Pipe.hasRoomForWrite(outPipe, maxOuputSize)) {	
+				    	
+			    	//only after we know that we are doing something.
+					didWork = true;
+	
+			        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
+			    			        
+			        //read the next non-blocked pipe, sequenceNo is never reset to zero
+			        //every number is used even if there is an exception upon write.
+			      
+			        int idx = (int)(channelId & channelBitsMask);
+			        
+			        /////////////////////
+			        //clear when we discover a new connection
+			        ///////////////////
+			        if (expectedSquenceNosChannelId[idx] == channelId) {
+			        } else {
+			        	//logger.info("connection beginning **************");
+			        	conClearLogic(channelId, idx);
+			        }
+		
+					int expected = expectedSquenceNos[idx]; 
+					
+			        if (sequenceNo >= expected) {
+			        } else {
+			        	logger.info("warning moved forward. *****************************",new Exception());
+			        	expected = rareMoveForward(sequenceNo, idx);
+			        } 
+			        
+			        if (expected == sequenceNo) {
+			        	//logger.trace("found expected sequence {}",sequenceNo);
+			        	final short expectedPipe = expectedSquenceNosPipeIdx[idx];
+						if (-1 == expectedPipe) {
+			        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
+			        	} else {
+			        		if (expectedPipe !=(short)pipeIdx) {
+	
+					        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+					        	if (shutdownInProgress) {
+					        		break;
+					        	}
+			        			//drop the data
+			        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
+			        			Pipe.skipNextFragment(sourcePipe);
+					        	continue;
+			        		}
+			        	}
+			        	failureIterations = -1;
+			        	
+			        } else {
+			        	
+			        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+			        	
+			            //larger value and not ready yet
+			        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
+			        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
+			        				        	
+			        	logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+			        	return didWork;//must check the other pipes this can not be processed yet.
+	
+			        }
+	
+			        assert(recordInputs(channelId, sequenceNo, pipeIdx));
+			        
+			        if (!isTLS) {
+			        } else {
+						finishHandshake(outPipe, channelId);
+					}	                    
+			         
+			        assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		    	} else {
+			        
+			        ///////////////////////////////
+			        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
+			        ///////////////////////////////
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		//logger.info("no room to write out, try again later");
 		    		break;
-		    	}		    	
-		    	
-		    	//only after we know that we are doing something.
-				didWork = true;
-
-		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
-		    
-		        
-		        //read the next non-blocked pipe, sequenceNo is never reset to zero
-		        //every number is used even if there is an exception upon write.
-		      
-		        int idx = (int)(channelId & channelBitsMask);
-		        
-		        /////////////////////
-		        //clear when we discover a new connection
-		        ///////////////////
-		        if (expectedSquenceNosChannelId[idx] != channelId) {
-		        	expectedSquenceNos[idx] = 0;
-		        	expectedSquenceNosChannelId[idx] = channelId;
-		        	
-					
-				//	ServerCoordinator.orderSuperStart = System.nanoTime();
-					
-		        }
-	
-				int expected = expectedSquenceNos[idx]; 
-				
-		        if (sequenceNo < expected) {
-		        	//moved up sequence number and continue
-		        	//rare case but we do not want to fail when it happens
-		        	//this is related to rapid requests from a client, like frequent 404s
-		        	expectedSquenceNos[idx] =  expected = sequenceNo;		
-		        	movedUpCount++;
-		        } 
-		        
-		        if (expected==sequenceNo) {
-		        	//logger.trace("found expected sequence {}",sequenceNo);
-		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
-		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
-		        	} else {
-		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
-
-				        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-				        	if (shutdownInProgress) {
-				        		break;
-				        	}
-		        			//drop the data
-		        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
-		        			Pipe.skipNextFragment(sourcePipe);
-				        	continue;
-		        		}
-		        	}
-		        	failureIterations = -1;
-		        	
-		        } else {
-		        	
-		        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-		        	
-		            //larger value and not ready yet
-		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
-		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	
-		        	
-		        	//logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
-		        	return didWork;//must check the other pipes this can not be processed yet.
-
-		        }
-
-		        assert(recordInputs(channelId, sequenceNo, pipeIdx));
-		        
-		        if (isTLS) {
-					SSLConnection con = socketHolder.get(channelId);			
-					if (!SSLUtil.handshakeProcessing(outPipe, con)) {
-						//TODO: we must wait until later...
-					}
-				}	                    
-		         
-		        assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        
+		    	}
 		    } else {
 		    	didWork = true;
 		    	////////////////
@@ -357,8 +348,34 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return didWork;
 	}
 
+	private void finishHandshake(Pipe<NetPayloadSchema> outPipe, long channelId) {
+		SSLConnection con = socketHolder.get(channelId);			
+		if (!SSLUtil.handshakeProcessing(outPipe, con)) {
+			//TODO: we must wait until later...
+		}
+	}
+
+	private int rareMoveForward(int sequenceNo, int idx) {
+		int expected;
+		//moved up sequence number and continue
+		//rare case but we do not want to fail when it happens
+		//this is related to rapid requests from a client, like frequent 404s
+		expectedSquenceNos[idx] =  expected = sequenceNo;		
+		movedUpCount++;
+		return expected;
+	}
+
+	private void conClearLogic(long channelId, int idx) {
+		expectedSquenceNos[idx] = 0;
+		expectedSquenceNosChannelId[idx] = channelId;
+								
+//	ServerCoordinator.orderSuperStart = System.nanoTime();
+	}
+
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
 				
+		logger.info("hang detect at iteration "+failureIterations);
+		
 		if (failureIterations==10000) { //equals so we only do this once.
 
 	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
@@ -631,7 +648,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 //////////////
 		 
 		 if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
-			 
+			 //logger.info("closing connection server side");
 			 int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
 			 Pipe.addLongValue(channelId, output);
 			 Pipe.confirmLowLevelWrite(output, disSize);
