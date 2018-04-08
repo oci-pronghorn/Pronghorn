@@ -18,27 +18,94 @@ public class StructuredWriter {
 	//writes using associated object
 	//////////////////////////
 	
+	private int pos = 0;
+	private int[] positions = new int[4];
+	private Object[] associations = new Object[4];	
+	
 	public void writeInt(Object assoc, int value) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedInt(value);
+	}
+	
+	public void writeShort(Object assoc, short value) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedInt(value);
+	}
+	
+	public void writeByte(Object assoc, byte value) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.write(value);
+	}
+
+	public void writeText(Object assoc, CharSequence text) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writeUTF(text);
+	}
+	
+	public <A extends Appendable> A writeText(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		return (A)channelWriter;
+	}
+	
+	public void selectStruct(int structId) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		DataOutputBlobWriter.setStructType(channelWriter, structId);
+		int p = pos;
+		while (--p>=0) {
+			DataOutputBlobWriter.setIntBackData(channelWriter,
+					positions[p],
+					typeData.lookupFieldIndex(associations[p], structId) & StructRegistry.FIELD_MASK);
+		}
+	
+	}
+	
+	///////////////////////
+
+	private void storeAssocAndPosition(Object assoc) {
+		if (null==assoc) {
+			throw new NullPointerException("associated object must not be null");
+		}
+		grow(pos);
+		
 		int positionToKeep = channelWriter.position();
 		//keep object
-		
-		//where to store array?
-		
-		//typeData.maxFieldsPerStrct
-		//created..
-		
-		//write value...
-		//need array to store
-		
+		positions[pos]=positionToKeep;
+		associations[pos]=assoc;
+		pos++;
 	}
 	
 	
+	private void grow(int pos) {
+		if (pos==positions.length) {
+			positions = grow(positions);
+			associations = grow(associations);
+		}
+	}
 	
 	
-	/////////////////////////
+	////////////////////////
 	//writes using fieldId
 	////////////////////////
-	
+
+
+	private Object[] grow(Object[] source) {
+		Object[] result = new Object[source.length*2];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
+
+	private int[] grow(int[] source) {
+		int[] result = new int[source.length*2];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
+
+
 	public ChannelWriter writeBlob(long fieldId) {
 		
 		assert(typeData.fieldType(fieldId) == StructTypes.Blob);

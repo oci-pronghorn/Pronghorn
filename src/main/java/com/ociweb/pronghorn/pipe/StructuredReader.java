@@ -24,10 +24,7 @@ public final class StructuredReader {
 	public <T,B extends T> boolean identityVisit(B attachedInstance, BStructFieldVisitor<T> visitor) {		
 		return typeData.identityVisit(channelReader, attachedInstance, visitor);
 	}
-	
-//TODO: add isEqual method
-	
-	
+
 	int indexCopyLenInBytes(int type) {
 		return typeData.totalSizeOfIndexes(type)*4;
 	}
@@ -37,11 +34,22 @@ public final class StructuredReader {
 		return channelReader;
 	}
 	
+	public ChannelReader read(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader;
+	}
+	
 	public String readText(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		return channelReader.readUTF();
 	}
 	
+	public String readText(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader.readUTF();
+	}
 
 	public boolean isEqual(long fieldId, byte[] value) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
@@ -59,12 +67,31 @@ public final class StructuredReader {
 		return DataInputBlobReader.readUTFAsLong(channelReader);
 	}
 	
+	public long readTextAsLong(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return DataInputBlobReader.readUTFAsLong(channelReader);
+	}
+	
 	public double readTextAsDouble(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		return DataInputBlobReader.readUTFAsDecimal(channelReader);
 	}
 	
+	public double readTextAsDouble(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return DataInputBlobReader.readUTFAsDecimal(channelReader);
+	}
+	
 	public <A extends Appendable> A readText(long fieldId, A target) {
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		channelReader.readUTF(target);
+		return target;
+	}
+	
+	public <A extends Appendable> A readText(Object association, A target) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		channelReader.readUTF(target);
 		return target;
@@ -80,11 +107,22 @@ public final class StructuredReader {
 		return channelReader.readRationalAsDouble();
 	}
 	
+	public double readRationalAsDouble(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader.readRationalAsDouble();
+	}
+	
 	public double readDecimalAsDouble(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		return channelReader.readDecimalAsDouble();
 	}
 	
+	public double readDecimalAsDouble(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader.readDecimalAsDouble();
+	}
 	
 	public long readDecimalMantissa(long fieldId) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
@@ -103,6 +141,13 @@ public final class StructuredReader {
 	
 	
 	public boolean readBoolean(long fieldId) {
+		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
+		return channelReader.readBoolean();
+	}
+	
+	
+	public boolean readBoolean(Object association) {
+		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		return channelReader.readBoolean();
 	}	

@@ -142,16 +142,12 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
     
     public static <T extends MessageSchema<T>> boolean structTypeValidation(DataOutputBlobWriter<T> writer, int value) {
-    	int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
-    	
-        int old = ( ( (       writer.byteBuffer[writer.byteMask & base]) << 24) |
-                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+1)]) << 16) |
-                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+2)]) << 8) |
-                  (0xFF & writer.byteBuffer[writer.byteMask & (base+3)]) ); 
+    	int old = getStructType(writer); 
         
     	if (value!=old) {
-    		if (0==old) {
-    			write32(writer.byteBuffer, writer.byteMask, base, value);
+    		if (old<=0) {
+    			int base2 = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
+    			write32(writer.byteBuffer, writer.byteMask, base2, value);
     		} else {
     			throw new UnsupportedOperationException("Type mismatch found "+old+" expected "+value);
     		}
@@ -159,6 +155,16 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     	}
     	return true;
     }
+
+	public static <T extends MessageSchema<T>> int getStructType(DataOutputBlobWriter<T> writer) {
+		final int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
+    	
+        return ( ( (       writer.byteBuffer[writer.byteMask & base]) << 24) |
+                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+1)]) << 16) |
+                ( (0xFF & writer.byteBuffer[writer.byteMask & (base+2)]) << 8) |
+                  (0xFF & writer.byteBuffer[writer.byteMask & (base+3)]) );
+	
+	}
     
     public static <T extends MessageSchema<T>> void setStructType(DataOutputBlobWriter<T> writer, int value) {
     	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe), value);
