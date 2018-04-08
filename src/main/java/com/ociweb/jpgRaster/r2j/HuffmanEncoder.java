@@ -25,6 +25,10 @@ public class HuffmanEncoder extends PronghornStage {
 			if (nextBit > 7) {
 				data.add((byte) 0);
 				nextBit = 0;
+				if (data.size() > 1 && data.get(nextByte) == (byte)0xFF) {
+					data.add((byte) 0);
+					nextByte++;
+				}
 				nextByte++;
 			}
 			
@@ -42,13 +46,6 @@ public class HuffmanEncoder extends PronghornStage {
 			data.clear();
 			nextByte = -1;
 			nextBit = 8;
-		}
-		
-		public void printData() {
-			for (int i = 0; i < data.size(); ++i) {
-				System.out.print(String.format("%8s", Integer.toBinaryString(data.get(i) & 0xFF)).replace(" ", "0") + " ");
-			}
-			System.out.println();
 		}
 	}
 	
@@ -111,10 +108,6 @@ public class HuffmanEncoder extends PronghornStage {
 			}
 			if (found) break;
 		}
-		if (!found) {
-			System.err.println("Error during DC Huffman coding");
-			return false;
-		}
 		
 		// code AC values
 		for (int i = 1; i < 64; ++i) {
@@ -124,7 +117,6 @@ public class HuffmanEncoder extends PronghornStage {
 				++numZeroes;
 				++i;
 			}
-			
 			if (i == 64) {
 				// write terminator code
 				for (int j = 0; j < 16; ++j) {
@@ -141,8 +133,18 @@ public class HuffmanEncoder extends PronghornStage {
 			}
 			
 			while (numZeroes > 15) {
-				b.putBits(15, 4);
-				b.putBits(0, 4);
+				found = false;
+				for (int j = 0; j < 16; ++j) {
+					for (int k = 0; k < ACTable.symbols.get(j).size(); ++k) {
+						if (ACTable.symbols.get(j).get(k) == 0xF0) {
+							int code = ACTableCodes.get(j).get(k);
+							b.putBits(code, j+1);
+							found = true;
+							break;
+						}
+					}
+					if (found) break;
+				}
 				numZeroes -= 15;
 			}
 			
@@ -151,9 +153,6 @@ public class HuffmanEncoder extends PronghornStage {
 			coeffLength = bitLength(Math.abs(coeff));
 			if (coeffLength > 10) {
 				System.err.println("Error - coeffLength > 10 : " + coeffLength);
-			}
-			else if (coeffLength == 0) {
-				System.err.println("Error - coeffLength = 0");
 			}
 			if (coeff <= 0) {
 				coeff += (1 << coeffLength) - 1;
@@ -172,10 +171,6 @@ public class HuffmanEncoder extends PronghornStage {
 					}
 				}
 				if (found) break;
-			}
-			if (!found) {
-				System.err.println("Error during AC Huffman coding with symbol: " + symbol);
-				return false;
 			}
 		}
 		return true;
