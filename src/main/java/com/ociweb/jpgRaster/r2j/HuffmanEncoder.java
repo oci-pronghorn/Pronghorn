@@ -51,6 +51,7 @@ public class HuffmanEncoder extends PronghornStage {
 	
 	private final Pipe<JPGSchema> input;
 	boolean verbose;
+	int quality;
 	
 	Header header;
 	MCU mcu = new MCU();
@@ -62,10 +63,11 @@ public class HuffmanEncoder extends PronghornStage {
 
 	static BitWriter b = new BitWriter();
 	
-	public HuffmanEncoder(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
+	public HuffmanEncoder(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, int quality) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
+		this.quality = quality;
 	}
 	
 	private static int bitLength(int x) {
@@ -234,7 +236,7 @@ public class HuffmanEncoder extends PronghornStage {
 				count += 1;
 				if (count >= numMCUs) {
 					try {
-						JPGDumper.Dump(b.data, header, verbose);
+						JPGDumper.Dump(b.data, header, verbose, quality);
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);

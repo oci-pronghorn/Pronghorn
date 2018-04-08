@@ -28,6 +28,10 @@ BMP was chosen as the output file type due to its very small header (26 bytes) f
 J2R uses decoding mode by default, but you can enable encoding mode with the `-e` option.
 Then use the `-f` or `-d` option to specify input BMP files.
 This encodes the BMP files using the standard JPG quantization tables and Huffman tables.
+Additionally, you can use the `-q` option to specify the output JPG file quality (50, 75, or 100) (75 by default).
+50 is moderate loss of detail.
+75 is some loss of detail.
+100 is no loss of detail.
 
 ## Known Bugs
 Some progressive images (especially progressive images that also use chroma subsampling) can produce wrong output. This will be fixed soon.

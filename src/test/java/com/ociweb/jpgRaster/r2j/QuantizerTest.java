@@ -20,8 +20,8 @@ public class QuantizerTest {
         // These tables are obtained from running djpeg on jpeg_test.jpg
         // from the test_jpeg folder.
         header = new JPG.Header();
-        header.quantizationTables[0] = JPG.qTable0;
-        header.quantizationTables[1] = JPG.qTable1;
+        header.quantizationTables[0] = JPG.qTable0_50;
+        header.quantizationTables[1] = JPG.qTable1_50;
         // Setup Color Components
         JPG.ColorComponent colorComponent;
         colorComponent = new JPG.ColorComponent();
@@ -66,7 +66,7 @@ public class QuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        Quantizer.quantize(outputmcu);
+        Quantizer.quantize(outputmcu, 50);
         // Check output MCU against expected result
         quantizeCheck(inputmcu, outputmcu);
     }
@@ -93,7 +93,7 @@ public class QuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        Quantizer.quantize(outputmcu);
+        Quantizer.quantize(outputmcu, 50);
         // Check output MCU against expected result
         quantizeCheck(inputmcu, outputmcu);
     }

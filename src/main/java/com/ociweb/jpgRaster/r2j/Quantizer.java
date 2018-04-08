@@ -18,15 +18,17 @@ public class Quantizer extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	int quality;
 	
 	Header header;
 	MCU mcu = new MCU();
 	
-	public Quantizer(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
+	public Quantizer(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose, int quality) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+		this.quality = quality;
 	}
 	
 	private static void quantizeMCU(short[] MCU, QuantizationTable table) {
@@ -35,10 +37,22 @@ public class Quantizer extends PronghornStage {
 		}
 	}
 	
-	public static void quantize(MCU mcu) {
-		quantizeMCU(mcu.y, JPG.qTable0);
-		quantizeMCU(mcu.cb, JPG.qTable1);
-		quantizeMCU(mcu.cr, JPG.qTable1);
+	public static void quantize(MCU mcu, int quality) {
+		if (quality == 50) {
+			quantizeMCU(mcu.y, JPG.qTable0_50);
+			quantizeMCU(mcu.cb, JPG.qTable1_50);
+			quantizeMCU(mcu.cr, JPG.qTable1_50);
+		}
+		else if (quality == 75) {
+			quantizeMCU(mcu.y, JPG.qTable0_75);
+			quantizeMCU(mcu.cb, JPG.qTable1_75);
+			quantizeMCU(mcu.cr, JPG.qTable1_75);
+		}
+		else {
+			quantizeMCU(mcu.y, JPG.qTable0_100);
+			quantizeMCU(mcu.cb, JPG.qTable1_100);
+			quantizeMCU(mcu.cr, JPG.qTable1_100);
+		}
 		return;
 	}
 
@@ -85,7 +99,7 @@ public class Quantizer extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 				
-				quantize(mcu);
+				quantize(mcu, quality);
 				//JPG.printMCU(mcu);
 
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {

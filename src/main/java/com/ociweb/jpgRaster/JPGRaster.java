@@ -20,7 +20,6 @@ import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 public class JPGRaster {
 
 	public static void main(String[] args) {
-//		String defaultFiles = "test_jpgs/huff_simple0.jpg test_jpgs/robot.jpg test_jpgs/cat.jpg test_jpgs/car.jpg test_jpgs/squirrel.jpg test_jpgs/nathan.jpg test_jpgs/earth.jpg test_jpgs/dice.jpg test_jpgs/pyramids.jpg test_jpgs/static.jpg test_jpgs/turtle.jpg";
 		
 		boolean verbose = hasArg("--verbose", "-v", args);
 		boolean encode = hasArg("--encode", "-e", args);
@@ -50,15 +49,22 @@ public class JPGRaster {
 			}
 		}
 		
-		if (inputFiles.size() == 0) {
-			System.out.println("Usage: j2r [ -e ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
+		if (inputFiles.size() == 0 || hasArg("--help", "-h", args)) {
+			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
 			return;
 		}
 		
 		GraphManager gm = new GraphManager();
 		
 		if (encode) {
-			populateEncoderGraph(gm, inputFiles, verbose);
+			String defaultQuality = "";
+			String qualityString = getOptArg("--quality", "-q", args, defaultQuality);
+			int quality = 75;
+			try {
+				quality = Integer.parseInt(qualityString);
+			}
+			catch (Exception e) {}
+			populateEncoderGraph(gm, inputFiles, verbose, quality);
 		}
 		else {
 			populateDecoderGraph(gm, inputFiles, verbose);
@@ -100,7 +106,7 @@ public class JPGRaster {
 		}
 	}
 
-	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose) {
+	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, int quality) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -110,8 +116,8 @@ public class JPGRaster {
 		BMPScanner scanner = new BMPScanner(gm, pipe1, verbose);
 		new RGBToYCbCr(gm, pipe1, pipe2, verbose);
 		new ForwardDCT(gm, pipe2, pipe3, verbose);
-		new Quantizer(gm, pipe3, pipe4, verbose);
-		new HuffmanEncoder(gm, pipe4, verbose);
+		new Quantizer(gm, pipe3, pipe4, verbose, quality);
+		new HuffmanEncoder(gm, pipe4, verbose, quality);
 		
 		for (int i = 0; i < inputFiles.size(); ++i) {
 			String file = inputFiles.get(i);

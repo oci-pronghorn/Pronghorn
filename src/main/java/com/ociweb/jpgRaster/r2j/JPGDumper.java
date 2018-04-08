@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 public class JPGDumper {
 
-	public static void Dump(ArrayList<Byte> data, Header header, boolean verbose) throws IOException {
+	public static void Dump(ArrayList<Byte> data, Header header, boolean verbose, int quality) throws IOException {
 		int extension = header.filename.lastIndexOf('.');
 		if (extension == -1) {
 			header.filename += ".jpg";
@@ -43,8 +43,18 @@ public class JPGDumper {
 		WriteAPP0(buffer);
 		
 		// write quantization tables
-		WriteQuantizationTable(buffer, JPG.qTable0);
-		WriteQuantizationTable(buffer, JPG.qTable1);
+		if (quality == 50) {
+			WriteQuantizationTable(buffer, JPG.qTable0_50);
+			WriteQuantizationTable(buffer, JPG.qTable1_50);
+		}
+		else if (quality == 75) {
+			WriteQuantizationTable(buffer, JPG.qTable0_75);
+			WriteQuantizationTable(buffer, JPG.qTable1_75);
+		}
+		else {
+			WriteQuantizationTable(buffer, JPG.qTable0_100);
+			WriteQuantizationTable(buffer, JPG.qTable1_100);
+		}
 		
 		// write start of frame
 		WriteStartOfFrame(buffer, header);
@@ -157,6 +167,6 @@ public class JPGDumper {
 		header.height = 8;
 		header.width = 8;
 		header.filename = "simple_test.jpg";
-		Dump(data, header, true);
+		Dump(data, header, true, 50);
 	}
 }

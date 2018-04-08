@@ -77,18 +77,7 @@ public class JPG {
 			53, 60, 61, 54, 47, 55, 62, 63
 			};
 	
-	public static final int[] zagZigMap = {
-			 0,  1,  5,  6, 14, 15, 27, 28,
-			 2,  4,  7, 13, 16, 26, 29, 42,
-			 3,  8, 12, 17, 25, 30, 41, 43,
-			 9, 11, 18, 24, 31, 40, 44, 53,
-			10, 19, 23, 32, 39, 45, 52, 54,
-			20, 22, 33, 38, 46, 51, 55, 60,
-			21, 34, 37, 47, 50, 56, 59, 61,
-			35, 36, 48, 49, 57, 58, 62, 63
-	};
-	
-	private static final int[] qTable0Vals = {
+	private static final int[] qTable0Vals_50 = {
 			16,   11,  12,  14,  12,  10,  16,  14,
 			13,   14,  18,  17,  16,  19,  24,  40,
 			26,   24,  22,  22,  24,  49,  35,  37,
@@ -99,7 +88,7 @@ public class JPG {
 			121, 112, 100, 120,  92, 101, 103,  99
 			};
 	
-	private static final int[] qTable1Vals = {
+	private static final int[] qTable1Vals_50 = {
 			17,  18,  18,  24,  21,  24,  47,  26,
 			26,  47,  99,  66,  56,  66,  99,  99,
 			99,  99,  99,  99,  99,  99,  99,  99,
@@ -108,6 +97,50 @@ public class JPG {
 			99,  99,  99,  99,  99,  99,  99,  99,
 			99,  99,  99,  99,  99,  99,  99,  99,
 			99,  99,  99,  99,  99,  99,  99,  99
+			};
+	
+	private static final int[] qTable0Vals_75 = {
+			16/2,   11/2,  12/2,  14/2,  12/2,  10/2,  16/2,  14/2,
+			13/2,   14/2,  18/2,  17/2,  16/2,  19/2,  24/2,  40/2,
+			26/2,   24/2,  22/2,  22/2,  24/2,  49/2,  35/2,  37/2,
+			29/2,   40/2,  58/2,  51/2,  61/2,  60/2,  57/2,  51/2,
+			56/2,   55/2,  64/2,  72/2,  92/2,  78/2,  64/2,  68/2,
+			87/2,   69/2,  55/2,  56/2,  80/2, 109/2,  81/2,  87/2,
+			95/2,   98/2, 103/2, 104/2, 103/2,  62/2,  77/2, 113/2,
+			121/2, 112/2, 100/2, 120/2,  92/2, 101/2, 103/2,  99/2
+			};
+	
+	private static final int[] qTable1Vals_75 = {
+			17/2,  18/2,  18/2,  24/2,  21/2,  24/2,  47/2,  26/2,
+			26/2,  47/2,  99/2,  66/2,  56/2,  66/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,
+			99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2,  99/2
+			};
+	
+	private static final int[] qTable0Vals_100 = {
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			};
+	
+	private static final int[] qTable1Vals_100 = {
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
 			};
 	
 	public static final short[] hDCTable0Lengths = {
@@ -170,8 +203,12 @@ public class JPG {
 			0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
 			0xf9, 0xfa };
 	
-	public static final QuantizationTable qTable0;
-	public static final QuantizationTable qTable1;
+	public static final QuantizationTable qTable0_50;
+	public static final QuantizationTable qTable1_50;
+	public static final QuantizationTable qTable0_75;
+	public static final QuantizationTable qTable1_75;
+	public static final QuantizationTable qTable0_100;
+	public static final QuantizationTable qTable1_100;
 
 	public static final HuffmanTable hDCTable0;
 	public static final HuffmanTable hDCTable1;
@@ -184,14 +221,32 @@ public class JPG {
 	public static final ArrayList<ArrayList<Integer>> ACTableCodes1;
 	
 	static {
-		qTable0 = new QuantizationTable();
-		qTable0.precision = 8;
-		qTable0.tableID = 0;
-		qTable0.table = qTable0Vals;
-		qTable1 = new QuantizationTable();
-		qTable1.precision = 8;
-		qTable1.tableID = 1;
-		qTable1.table = qTable1Vals;
+		qTable0_50 = new QuantizationTable();
+		qTable0_50.precision = 8;
+		qTable0_50.tableID = 0;
+		qTable0_50.table = qTable0Vals_50;
+		qTable1_50 = new QuantizationTable();
+		qTable1_50.precision = 8;
+		qTable1_50.tableID = 1;
+		qTable1_50.table = qTable1Vals_50;
+
+		qTable0_75 = new QuantizationTable();
+		qTable0_75.precision = 8;
+		qTable0_75.tableID = 0;
+		qTable0_75.table = qTable0Vals_75;
+		qTable1_75 = new QuantizationTable();
+		qTable1_75.precision = 8;
+		qTable1_75.tableID = 1;
+		qTable1_75.table = qTable1Vals_75;
+
+		qTable0_100 = new QuantizationTable();
+		qTable0_100.precision = 8;
+		qTable0_100.tableID = 0;
+		qTable0_100.table = qTable0Vals_100;
+		qTable1_100 = new QuantizationTable();
+		qTable1_100.precision = 8;
+		qTable1_100.tableID = 1;
+		qTable1_100.table = qTable1Vals_100;
 
 		hDCTable0 = new HuffmanTable();
 		hDCTable0.tableID = 0;
