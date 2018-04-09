@@ -60,6 +60,7 @@ public class SequentialReplayerStage extends PronghornStage {
 	private int fileSizeLimit;
 	private int fileSizeWritten;
 	private long maxId = 0;
+	private final NoiseProducer noiseProducer;
 
 	private int shutdownCount = 3;//waits for all 3 files to complete before shutdown
 	
@@ -77,8 +78,9 @@ public class SequentialReplayerStage extends PronghornStage {
 					Pipe<SequentialCtlSchema>[] fileControl,//last file is the ack index file
 					Pipe<SequentialRespSchema>[] fileResponse,
 					Pipe<RawDataSchema>[] fileWriteData,
-					Pipe<RawDataSchema>[] fileReadData
-	
+					Pipe<RawDataSchema>[] fileReadData,
+					
+					NoiseProducer noiseProducer	
 	            ) {
 				
 		super(graphManager, join(join(fileResponse, storeConsumerRequests, storeProducerRequests),fileReadData),
@@ -90,6 +92,8 @@ public class SequentialReplayerStage extends PronghornStage {
 		this.loadReleaseResponses = loadReleaseResponses;
 		this.loadConsumerResponses = loadConsumerResponses;
 		this.loadProducerResponses = loadProducerResponses;
+		
+		this.noiseProducer = noiseProducer;
 		
 		this.fileControl = fileControl;
 		this.fileResponse = fileResponse;
@@ -371,49 +375,19 @@ public class SequentialReplayerStage extends PronghornStage {
 		    didWork = true;
 			int msgIdx = Pipe.takeMsgIdx(input);
 			
-			logger.trace("replay data msgIdx: {}",msgIdx);
+			//logger.trace("replay data msgIdx: {}",msgIdx);
 			
 		    switch(msgIdx) {
 		        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
 	
 		        	DataInputBlobReader<RawDataSchema> reader = Pipe.inputStream(input);
 		        	int payloadLen = Pipe.peekInt(input, 1); //length is after meta data
-		        	int temp = reader.openLowLevelAPIField();		        	
-		        	assert(payloadLen==temp || (payloadLen==-1 && temp==0));
-	
-		        	if (payloadLen>=0) {
-		        			        		
-			        			
-			        	final long id = reader.readPackedLong();
-			        	final int length = reader.readPackedInt();
-			        	
-			        	//without this check we might go off into strange data
-			        	if ((length!=reader.available()) || (id<0) || (id>maxId)) {
-			        		logger.info("Reading the active data file, and discovered it is corrupt, send request to clean");
-			        	} else {
-			        	
-					    	if (!isReleased(id)) {
-					    		//not released so this must be sent back to the caller
-					    	    Pipe.presumeRoomForWrite(loadConsumerResponses);
-					    	    int size = Pipe.addMsgIdx(loadConsumerResponses, PersistedBlobLoadConsumerSchema.MSG_BLOCK_1);
-					    	    Pipe.addLongValue(id, loadConsumerResponses);
-
-					    	    DataOutputBlobWriter<PersistedBlobLoadConsumerSchema> outStr = Pipe.outputStream(loadConsumerResponses);
-					    	    DataOutputBlobWriter.openField(outStr);
-							
-					    	    reader.readInto(outStr, length);		
-					    	    DataOutputBlobWriter.closeLowLevelField(outStr);
-					    	    
-					    	    
-					    	    Pipe.confirmLowLevelWrite(loadConsumerResponses, size);
-					    	    Pipe.publishWrites(loadConsumerResponses);
-								//logger.info("reading block for replay");		        		
-				        	} else {
-				        		//released so do not repeat back to the caller
-				        		reader.skipBytes(length);
-				        		//logger.info("skipping block for replay");
-				        	}
-			        	}
+		        	
+		        	reader.accumLowLevelAPIField();
+		        	
+		        	int consumed = 0;
+		        	if (payloadLen>=0) {		        		        		
+			        	consumed = consumeBlock(reader);			        	
 		        	} else {
 		        		//logger.info("end of replay");
 			        	//when payloadlen == -1 then
@@ -428,7 +402,9 @@ public class SequentialReplayerStage extends PronghornStage {
 		        		requestsInFlight--;
 		        	}
 		        	Pipe.confirmLowLevelRead(input, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-		        	
+		        	Pipe.readNextWithoutReleasingReadLock(input);
+		        	Pipe.releasePendingAsReadLock(input, consumed);
+		        	 
 		        	break;
 		        case -1:
 		        	logger.trace("end of replay and shutdown request");
@@ -441,15 +417,72 @@ public class SequentialReplayerStage extends PronghornStage {
 	        		mode = MODE_WRITE;
 	        		requestsInFlight--;
 		        	Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
-		        	
+		        	Pipe.releaseReadLock(input);
 	        		break;
 		    }
 		    
-		    Pipe.releaseReadLock(input);
-		   // System.err.println("after release lock "+input);
 		}
 		return didWork;
 	
+	}
+
+	private int consumeBlock(DataInputBlobReader<RawDataSchema> reader) {
+		
+    	int mark = reader.position();
+    	
+    	final long id = reader.readPackedLong();
+    	final int totalLength = reader.readInt();
+    			
+		if (reader.available() < totalLength) {
+			//we have not yet accumulated all the data so try again later.
+			reader.position(mark);
+			return 0;
+		}
+		
+		//without this check we might go off into strange data
+		if ((id<0) || (id>maxId)) {
+			logger.info(" Reading the active data file, and discovered it is corrupt, send request to clean");
+		    throw new UnsupportedOperationException();
+		} else { 		
+			
+			if (!isReleased(id)) {
+				//noise data stored to reduce data leakage.
+				final int skipLength = reader.readPackedInt();
+				reader.absolutePosition(reader.absolutePosition()+skipLength);
+				
+				final int dataLength = reader.readPackedInt();
+				
+				//not released so this must be sent back to the caller
+			    Pipe.presumeRoomForWrite(loadConsumerResponses);
+			    int size = Pipe.addMsgIdx(loadConsumerResponses, PersistedBlobLoadConsumerSchema.MSG_BLOCK_1);
+			    Pipe.addLongValue(id, loadConsumerResponses);
+
+			    DataOutputBlobWriter<PersistedBlobLoadConsumerSchema> outStr = Pipe.outputStream(loadConsumerResponses);
+			    DataOutputBlobWriter.openField(outStr);
+			
+			    reader.readInto(outStr, dataLength);
+			    					    	    
+			    final int structLength = reader.readPackedInt();
+			    if (structLength>0) {					    	    	
+			    	outStr.structured().fullIndexWriteFrom(structLength, reader);
+			    	DataOutputBlobWriter.setStructType(outStr, reader.readPackedInt());
+			    }
+			    
+			    DataOutputBlobWriter.closeLowLevelField(outStr);
+			    
+			    
+			    Pipe.confirmLowLevelWrite(loadConsumerResponses, size);
+			    Pipe.publishWrites(loadConsumerResponses);
+			    //logger.info("reading block for replay");	
+			    
+			} else {
+				//released so do not repeat back to the caller
+				reader.absolutePosition(reader.absolutePosition()+totalLength);
+			}
+			
+		}
+		
+		return reader.position()-mark;
 	}
 
 ///////////////////////////////////////////////////////////////
@@ -642,7 +675,8 @@ public class SequentialReplayerStage extends PronghornStage {
 
 
 	private void writeBlock(long blockId, DataInputBlobReader<?> data,
-			                Pipe<RawDataSchema> pipe, Pipe<SequentialCtlSchema> control) {
+			                Pipe<RawDataSchema> pipe,
+			                Pipe<SequentialCtlSchema> control) {
 		
 		
 		//logger.info("write output data for encrypt to pipe "+pipe.id);
@@ -651,18 +685,53 @@ public class SequentialReplayerStage extends PronghornStage {
 		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 		DataOutputBlobWriter<RawDataSchema> str = Pipe.outputStream(pipe);
 		DataOutputBlobWriter.openField(str);
-		
-		//logger.trace("wrote blockId from sequential replayer {} ", blockId);		
+				
 		str.writePackedLong(blockId);/////packed LONG for the ID
-		//str.writeLong(blockId);
-		int length = data.available();
+			
+		int dataLength = data.available();		
+			
+		assert(dataLength+15<pipe.maxVarLen) : "Outgoing pipe to filesystem is too small";
 		
-		assert(length+15<pipe.maxVarLen) : "Outgoing pipe to filesystem is too small";
+		//NOTE: must write total packed length up front or the messages will get split
+		int indexOfLength = str.absolutePosition();
+		str.writeInt(0); //length place holder
+		int dataBeginPosition=str.position();
+		
+		
+		if (null==noiseProducer) {
+			str.writePackedInt(0);	
+		} else {
+			//Noise must NOT push us past the maxVarLen size so compute how big it can be.
+			int realDataSize = 8+dataLength+(3*10); //for length packed ints
+			if (data.isStructured()) {
+				realDataSize += data.structured().fullIndexSizeInBytes();
+			}
+			System.err.println("full producer size: "+str.getPipe().maxVarLen);
+			//we now have the size so build the noise.			
+			//NOTE: also writes leading backed int for size
+			noiseProducer.writeNoise(str, blockId, str.getPipe().maxVarLen-realDataSize);			
+		}
 		
 		//logger.trace("wrote length from sequential replayer {} ", length);		
-		str.writePackedInt(length);        /////packed INT for the data length  
-		//str.writeInt(length);
-		data.readInto(str, length);        /////then the data   
+		//str.writePackedInt(totalLength);        /////packed INT for the full data length  
+		str.writePackedInt(dataLength); 		
+		data.readInto(str, dataLength);        /////then the data 
+		
+		if (data.isStructured()) {
+			int fullIndexSizeInBytes = data.structured().fullIndexSizeInBytes();
+			str.writePackedInt(fullIndexSizeInBytes);
+			if (fullIndexSizeInBytes>0) {
+				data.structured().fullIndexReadInto(str);
+				str.writePackedInt(DataInputBlobReader.getStructType(data));
+			}			
+		} else {
+			str.writePackedInt(0);
+		}
+		
+		DataOutputBlobWriter.write32(
+				pipe.blobRing, pipe.blobMask,
+				indexOfLength, str.position()-dataBeginPosition);
+	
 		
 		DataOutputBlobWriter.closeLowLevelField(str);
 		

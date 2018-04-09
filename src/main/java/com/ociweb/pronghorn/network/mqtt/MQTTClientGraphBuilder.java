@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.FileGraphBuilder;
+import com.ociweb.pronghorn.stage.file.NoiseProducer;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
@@ -64,16 +65,14 @@ public class MQTTClientGraphBuilder {
 											short maxPartialResponses,
 											CharSequence username, CharSequence password) {
 		
-		byte[] cypherBlock = null; //default value if no user/pass is provided		
+		NoiseProducer noiseProducer = null;	
 		if (username!=null && password!=null) {
-
-			cypherBlock = new byte[16];
 			
 			CharSequenceToUTF8 charSequenceToUTF8 = CharSequenceToUTF8Local.get();
 			SecureRandom sr = new SecureRandom(charSequenceToUTF8.convert(username).append(":").append(password).asBytes());
 			charSequenceToUTF8.clear();
-			sr.nextBytes(cypherBlock);
-
+			noiseProducer = new NoiseProducer(sr);
+			
 			if (tlsCertificates == null) {
 				tlsCertificates = TLSCertificates.defaultCerts;
 			}
@@ -141,9 +140,11 @@ public class MQTTClientGraphBuilder {
 		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		
 		
-		FileGraphBuilder.buildSequentialReplayer(gm, perLoadRelease, perLoadConsumer, perLoadProducer,
+		FileGraphBuilder.buildSequentialReplayer(gm, 
+				perLoadRelease, perLoadConsumer, perLoadProducer,
 				persistanceConsumerPipe, persistanceProducerPipe,
-				inFlightCount, maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10, BACKGROUND_COLOR);
+				inFlightCount, maximumLenghOfVariableLengthFields, 
+				rootFolder, noiseProducer, rate*10, BACKGROUND_COLOR);
 
 		
 		

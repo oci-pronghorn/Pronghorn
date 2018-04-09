@@ -27,15 +27,9 @@ public class FileGraphBuilder {
 			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,
 			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer,
 			short inFlightCount, int largestBlock,
-			File targetDirectory, byte[] cypherBlock, long rate,
+			File targetDirectory, NoiseProducer noiseProducer, long rate,
 			String backgroundColor) {
-		
-		if (cypherBlock != null) {
-			if (cypherBlock.length!=16) {
-				throw new UnsupportedOperationException("cypherBlock must be 16 bytes");
-			}
-		}
-		
+				
 		PipeConfig<SequentialCtlSchema> ctlConfig = SequentialCtlSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<SequentialRespSchema> respConfig = SequentialRespSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<RawDataSchema> releaseConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, 128);		
@@ -75,13 +69,16 @@ public class FileGraphBuilder {
 		SequentialFileReadWriteStage readWriteStage = new SequentialFileReadWriteStage(gm, control, response, 
 									     fileDataToSave, fileDataToLoad, 
 									     paths);
+		
+		//TODO: need visitor to do this for each!!! see the other Bulder code..
 		if (rate>0) {
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, readWriteStage);
 		}
 		if (null!=backgroundColor) {
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, readWriteStage);
 		}
-		if (null != cypherBlock) {
+		if (null != noiseProducer) {
+			
 			
 			Pipe<RawDataSchema>[] cypherDataToLoad = new Pipe[] {
 					 new Pipe<RawDataSchema>(dataConfig),
@@ -93,35 +90,51 @@ public class FileGraphBuilder {
 					 new Pipe<RawDataSchema>(dataConfig.grow2x()),
 		             new Pipe<RawDataSchema>(releaseConfig.grow2x())};
 			
+			
 			int i = 3;
 			while (--i>=0) {
+				byte[] cypherBlock = noiseProducer.nextCypherBlock();
 				
-				Pipe<BlockStorageReceiveSchema> doFinalReceive1 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
-				Pipe<BlockStorageXmitSchema> doFinalXmit1 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
+				if (cypherBlock != null) {
+					if (cypherBlock.length!=16) {
+						throw new UnsupportedOperationException("cypherBlock must be 16 bytes");
+					}
+				}
+				
+				Pipe<BlockStorageReceiveSchema> doFinalReceive1 = BlockStorageReceiveSchema.instance.newPipe(7, largestBlock);
+				Pipe<BlockStorageXmitSchema> doFinalXmit1 = BlockStorageXmitSchema.instance.newPipe(7, largestBlock);
 					
-				Pipe<BlockStorageReceiveSchema> doFinalReceive2 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
-				Pipe<BlockStorageXmitSchema> doFinalXmit2 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
+				Pipe<BlockStorageReceiveSchema> doFinalReceive2 = BlockStorageReceiveSchema.instance.newPipe(7, largestBlock);
+				Pipe<BlockStorageXmitSchema> doFinalXmit2 = BlockStorageXmitSchema.instance.newPipe(7, largestBlock);
 				
 				BlockStorageStage.newInstance(gm, paths[i]+".tail", 
 						              new Pipe[] {doFinalXmit1, doFinalXmit2},
 						              new Pipe[] {doFinalReceive1, doFinalReceive2});
 				
-				RawDataCryptAESCBCPKCS5Stage crypt1 = new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
+				RawDataCryptAESCBCPKCS5Stage crypt1 = new RawDataCryptAESCBCPKCS5Stage(gm, 
+						cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
 				                         doFinalReceive1, doFinalXmit1);
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt1);
 				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt1);
 				
-				RawDataCryptAESCBCPKCS5Stage crypt2 = new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
+				RawDataCryptAESCBCPKCS5Stage crypt2 = new RawDataCryptAESCBCPKCS5Stage(gm, 
+						cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
 				                         doFinalReceive2, doFinalXmit2);
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt2);
 				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt2);
 			}			
-			
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreRelease, fromStoreConsumer, fromStoreProducer, control, response, cypherDataToSave, cypherDataToLoad);
+		
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, 
+					toStoreConsumer, toStoreProducer, 
+					fromStoreRelease, fromStoreConsumer, fromStoreProducer, 
+					control, response, cypherDataToSave, cypherDataToLoad, noiseProducer);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		} else {
-			SequentialReplayerStage stage = new SequentialReplayerStage(gm, toStoreConsumer, toStoreProducer, fromStoreRelease, fromStoreConsumer, fromStoreProducer, control, response, fileDataToSave, fileDataToLoad);
+			SequentialReplayerStage stage = new SequentialReplayerStage(gm, 
+					toStoreConsumer, toStoreProducer, 
+					fromStoreRelease, fromStoreConsumer, fromStoreProducer, 
+					control, response, fileDataToSave, fileDataToLoad, null);
 			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
 		}

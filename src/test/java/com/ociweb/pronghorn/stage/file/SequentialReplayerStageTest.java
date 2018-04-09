@@ -4,9 +4,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.util.Random;
+import java.security.SecureRandom;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -142,6 +141,8 @@ public class SequentialReplayerStageTest {
 
 
 	private void writeReleaseAndReadImpl(boolean encryption, boolean telemetry) {
+		
+		
 		Pipe<PersistedBlobStoreProducerSchema> perStoreProducer = PersistedBlobStoreProducerSchema.instance.newPipe(10, 1000);
 		Pipe<PersistedBlobStoreConsumerSchema> perStoreConsumer = PersistedBlobStoreConsumerSchema.instance.newPipe(10, 1000);
 		
@@ -232,13 +233,16 @@ public class SequentialReplayerStageTest {
 		}
 		
 		short inFlightCount = 20;
-		int largestBlock = 1<<12;
+		
+		//This Must NOT be larger than the consumer!!
+		int largestBlock = 1<<12;//1000;//perStoreConsumer.maxVarLen;//1<<12;
+		
 		File dir=null;
 	
-		byte[] cypher = null;
+		NoiseProducer np = null;
+		
 		if (encryption) {
-			cypher = new byte[16];
-			new Random(123).nextBytes(cypher);
+			np = new NoiseProducer(new SecureRandom("seed".getBytes()));
 		}
 		
 		long rate = 2400;
@@ -250,7 +254,7 @@ public class SequentialReplayerStageTest {
 		FileGraphBuilder.buildSequentialReplayer(gm, 
 				perLoadRelease, perLoadConsumer, perLoadProducer, 
 				perStoreConsumer, perStoreProducer,
-				inFlightCount, largestBlock, dir, cypher, rate, null);
+				inFlightCount, largestBlock, dir, np, rate, null);
 	
 		StringBuilder result0 = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, perLoadRelease, result0);		
