@@ -64,7 +64,7 @@ public class GraphManager {
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
 	//set to false when we see telemetry missing edges. 
-	//still debugging for neural net.
+	//TODO; still debugging for neural net, this not working when switched on.
 	public static boolean combineCommonEdges = true; 
 	
 	//turn off to minimize memory and remove from profiler.
@@ -1957,9 +1957,8 @@ public class GraphManager {
 		                }
 		                ////////////////////////////////////////
 		                
-		                if (showLabels && pipe.config().showLabels()) {
-		                	
-		                	
+		                if (showLabels) {
+		                			                	
 		                	
 			                target.append(pipeIdBytes);
 			                
