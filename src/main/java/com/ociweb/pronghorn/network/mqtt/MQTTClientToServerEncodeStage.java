@@ -103,7 +103,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			                             Pipe<PersistedBlobLoadProducerSchema> persistBlobLoadProducer,
 			                             Pipe<MQTTIdRangeControllerSchema> idRangeControl,
 			                             Pipe<NetPayloadSchema>[] toBroker) {
-		super(gm, join(input,inputAck,persistBlobLoadConsumer,persistBlobLoadProducer ), join(toBroker,persistBlobStoreConsumer, persistBlobStoreProducer,idRangeControl));
+		super(gm, join(input,inputAck,persistBlobLoadRelease, persistBlobLoadConsumer, persistBlobLoadProducer ), join(toBroker,persistBlobStoreConsumer, persistBlobStoreProducer,idRangeControl));
 		this.input = input;
 		this.inputAck = inputAck;
 		this.idRangeControl = idRangeControl;
