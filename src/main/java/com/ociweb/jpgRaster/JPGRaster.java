@@ -70,6 +70,9 @@ public class JPGRaster {
 			int quality = 75;
 			try {
 				quality = Integer.parseInt(qualityString);
+				if (quality != 50 && quality != 75 && quality != 100) {
+					quality = 75;
+				}
 			}
 			catch (Exception e) {}
 			populateEncoderGraph(gm, inputFiles, verbose, quality);
