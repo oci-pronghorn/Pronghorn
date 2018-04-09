@@ -63,6 +63,9 @@ public class GraphManager {
 	public static boolean showThreadIdOnTelemetry = true;
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
+	//set to false when we see telemetry missing edges. 
+	//still debugging for neural net.
+	public static boolean combineCommonEdges = true; 
 	
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
@@ -1906,49 +1909,52 @@ public class GraphManager {
 		                boolean fanOutGrouping = false;
 		                boolean fanInGrouping = false;
 		                
-	                	//if this producer writes to many pipes
-	                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
-						if (outputPipeCount >= 4) {
-							//destinations must share same destination and be of same type;	
-							if (isSameDestination(m, producer, 1, 2) 
-								&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
-							    ) {
-								
-								//Must they must not ALL go to the same place, this may be a fan in.
-								boolean allTheSame = allTheSame(m, producer, outputPipeCount);
-								
-								if (!allTheSame) {
-									showLabels = false;
-							    	fanOutGrouping = true;
-								}
-							  
-							}
-	                	}
-						
-						//already grouped so do not do it again.
-						if (showLabels) {
-		                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
-							if (inputPipeCount >= 4) {
+		                if (combineCommonEdges) {
+		                	//if this producer writes to many pipes
+		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+							if (outputPipeCount >= 4) {
 								//destinations must share same destination and be of same type;	
-								if (isSameSource(m, consumer, 1, 2) &&
-								    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
-								  
-								  //if they all go to the same place that is ok for this case	
+								if (isSameDestination(m, producer, 1, 2) 
+									&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
+								    ) {
 									
-								  showLabels = false;
-								  fanInGrouping = true;
+									//Must they must not ALL go to the same place, this may be a fan in.
+									boolean allTheSame = allTheSame(m, producer, outputPipeCount);
+									
+									if (!allTheSame) {
+										showLabels = false;
+								    	fanOutGrouping = true;
+									}
+								  
 								}
 		                	}
-						}
-						
-		                
-		                //disables the pipe back label
-//		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
-//			                	) {
-//			                	if (GraphManager.getOutputPipeCount(m, consumer)>=16) {
-//			                		showLabels = false; //do not show labels for large load balancers
-//			                	}
-//			            }
+							
+							//already grouped so do not do it again.
+							if (showLabels) {
+			                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+								if (inputPipeCount >= 4) {
+									//destinations must share same destination and be of same type;	
+									if (isSameSource(m, consumer, 1, 2) &&
+									    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
+									  
+									  //if they all go to the same place that is ok for this case	
+										
+									  showLabels = false;
+									  fanInGrouping = true;
+									}
+			                	}
+							}
+							
+			                
+			                //disables the pipe back label
+	//		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
+	//			                	) {
+	//			                	if (GraphManager.getOutputPipeCount(m, consumer)>=16) {
+	//			                		showLabels = false; //do not show labels for large load balancers
+	//			                	}
+	//			            }
+							
+		                }
 		                ////////////////////////////////////////
 		                
 		                if (showLabels && pipe.config().showLabels()) {
