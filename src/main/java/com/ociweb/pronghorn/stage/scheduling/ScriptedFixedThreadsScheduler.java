@@ -24,6 +24,7 @@ import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
+import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.primitive.IntArrayHolder;
 
 public class ScriptedFixedThreadsScheduler extends StageScheduler {
@@ -79,7 +80,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		}
 	};
 	
-
+	private final BloomFilter hangman = new BloomFilter(10000, .00001); //32K
+		
 	private void hangDetection(long nowNS) {
 		//all threads will check up on the other threads,
 		//this works providing we have more than 1 thread in play
@@ -88,10 +90,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		while (--c>=0) {
 			PronghornStage hungStage = localArray[c].hungStage(nowNS);
 			if (null != hungStage) {
-				
-				//TODO: should report back to telemetry screen 
-				logger.info("Hung stage {}", hungStage);
-								
+				synchronized(hangman) {
+					String stageNname = hungStage.toString();					
+					if (!hangman.mayContain(stageNname)) {
+						//TODO: should report back to telemetry screen 
+						logger.info("Hung stage {}", hungStage);
+						hangman.addValue(stageNname);
+					}
+				}
 			}
 		}
 		
