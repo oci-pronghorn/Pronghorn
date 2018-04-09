@@ -272,15 +272,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         return bytesRemaining(this);
     }
 
-    public static int bytesRemaining(DataInputBlobReader<?> that) {                
-        return bytesRemaining(that, that.byteMask & that.position);
+    public static int bytesRemaining(DataInputBlobReader<?> that) {
+    	return that.length - that.position();
     }
-
-	private static int bytesRemaining(DataInputBlobReader<?> that, int maskPos) {
-		return  that.bytesHighBound >= maskPos ? 
-        		that.bytesHighBound - maskPos : 
-        		(that.pipe.sizeOfBlobRing - maskPos) + that.bytesHighBound;
-	}
 
     public DataInput nullable() {
         return length<0 ? null : this;
@@ -399,6 +393,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     @Override
     public int skipBytes(int n) {
+    	
     	int count = Math.min(n, bytesRemaining(this));
         position += count;
         return count;
@@ -611,7 +606,6 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	    	assert(reader.storeMostRecentPacked(-1));
 	    	long charAndPos = ((long)reader.position)<<32;
 	        long limit = ((long)reader.position+length)<<32;
-	        assert(length <= reader.available()) : "malformed data";
 	
 	        while (charAndPos<limit) {
 	            charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);

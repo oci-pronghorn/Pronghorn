@@ -175,6 +175,15 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-(4*(pos+1)), value);       
     }
 
+	public static <T extends MessageSchema<T>> void writeToEndFrom(DataOutputBlobWriter<T> writer, int sizeInBytes, DataInputBlobReader<RawDataSchema> reader) {
+	
+		DataInputBlobReader.read(reader, 
+				    writer.byteBuffer, 
+				    writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-sizeInBytes, 
+				    sizeInBytes, 
+				    writer.byteMask);
+		
+	}
     
     public int closeHighLevelField(int targetFieldLoc) {
         return closeHighLevelField(this, targetFieldLoc);
@@ -935,6 +944,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writeByte(e);
 		writePackedLong(m);	
 	}
+
 
     
 }

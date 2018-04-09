@@ -271,5 +271,9 @@ public class StructuredWriter {
 		channelWriter.writeDecimal(m, e);
 		
 	}
+
+	public void fullIndexWriteFrom(int indexSizeInBytes, DataInputBlobReader<RawDataSchema> reader) {
+		DataOutputBlobWriter.writeToEndFrom(channelWriter,indexSizeInBytes,reader);
+	}
 	
 }
