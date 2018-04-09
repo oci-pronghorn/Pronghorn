@@ -1958,36 +1958,39 @@ public class GraphManager {
 		                ////////////////////////////////////////
 		                
 		                if (showLabels) {
-		                			                	
+		                	
+		                	
 		                	
 			                target.append(pipeIdBytes);
 			                
 			                target.append(LABEL_OPEN);
 			                
-			                target.append(m.pipeDOTSchemaNames[pipe.id]);
-			                		                
-			                if (null!=pipePercentileFullValues) {
-			                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
+			                if (pipe.config().showLabels()) {
+				                target.append(m.pipeDOTSchemaNames[pipe.id]);
+				                		                
+				                if (null!=pipePercentileFullValues) {
+				                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
+				                }
+				              
+				                if (null!=pipeTraffic) {
+				                	appendVolume(target, pipeTraffic[pipe.id]);
+				                } 
+				                target.append(WHITE_SPACE_NL);
+				               			                
+				                if (null!=msgPerSec) {
+				                	target.append(WHITE_SPACE);
+				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
+				                	target.append(WHITE_SPACE);
+				                }
+				                	                    
+			                    
+			                    String pipeMemory = m.pipeDOTConst[pipe.id];
+			                    if (null==pipeMemory) {
+			                    	pipeMemory = buildPipeConstantText(pipe);
+			                    	m.pipeDOTConst[pipe.id] = pipeMemory;
+			                    }
+			                    target.append(pipeMemory);
 			                }
-			              
-			                if (null!=pipeTraffic) {
-			                	appendVolume(target, pipeTraffic[pipe.id]);
-			                } 
-			                target.append(WHITE_SPACE_NL);
-			               			                
-			                if (null!=msgPerSec) {
-			                	target.append(WHITE_SPACE);
-			                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
-			                	target.append(WHITE_SPACE);
-			                }
-			                	                    
-		                    
-		                    String pipeMemory = m.pipeDOTConst[pipe.id];
-		                    if (null==pipeMemory) {
-		                    	pipeMemory = buildPipeConstantText(pipe);
-		                    	m.pipeDOTConst[pipe.id] = pipeMemory;
-		                    }
-		                    target.append(pipeMemory);
 		                    target.append(AQUOTE);	
     		                
 						    int lineWidth = computeLineWidth(pipeTraffic, pipe);
