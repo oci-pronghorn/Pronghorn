@@ -27,7 +27,7 @@ public class JPGRaster {
 		boolean verbose = hasArg("--verbose", "-v", args);
 		boolean encode = hasArg("--encode", "-e", args);
 		
-		String defaultFiles = "";
+		String defaultFiles = "tests/*.jpg";
 		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 
 		HashSet<String> inputFiles = new HashSet<String>();

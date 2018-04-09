@@ -54,6 +54,7 @@ public class HuffmanEncoder extends PronghornStage {
 	int quality;
 	
 	Header header;
+	int last = 0;
 	MCU mcu = new MCU();
 	
 	int count;
@@ -207,6 +208,7 @@ public class HuffmanEncoder extends PronghornStage {
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				last = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401);
 				PipeReader.releaseReadLock(input);
 				
 				count = 0;
@@ -240,6 +242,9 @@ public class HuffmanEncoder extends PronghornStage {
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
+					}
+					if (last == 1) {
+						System.exit(0);
 					}
 				}
 			}

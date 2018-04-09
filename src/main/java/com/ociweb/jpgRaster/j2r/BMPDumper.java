@@ -21,6 +21,7 @@ public class BMPDumper extends PronghornStage {
 	boolean verbose;
 	
 	Header header;
+	int last = 0;
 	MCU mcu = new MCU();
 	
 	short[][] pixels;
@@ -114,6 +115,7 @@ public class BMPDumper extends PronghornStage {
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				last = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401);
 				PipeReader.releaseReadLock(input);
 
 				pixels = new short[header.height][header.width * 3];
@@ -187,6 +189,9 @@ public class BMPDumper extends PronghornStage {
 						Dump(pixels, header.filename);
 						if (verbose) 
 							System.out.println("Done.");
+						if (last == 1) {
+							System.exit(0);
+						}
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
