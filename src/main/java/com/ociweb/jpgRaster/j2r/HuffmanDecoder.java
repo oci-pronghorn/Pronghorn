@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.HuffmanTable;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -81,7 +82,7 @@ public class HuffmanDecoder {
 	
 	static int skips;
 	
-	private static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
+	public static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
 		ArrayList<ArrayList<Integer>> codes = new ArrayList<ArrayList<Integer>>(16);
 		for (int i = 0; i < 16; ++i) {
 			codes.add(new ArrayList<Integer>());
@@ -176,13 +177,13 @@ public class HuffmanDecoder {
 						else {
 							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
 							short coeffLength = (short)(decoderValue & 0x0F);
+							short coeff = 0;
 
 							if (progressive && header.successiveApproximationHigh != 0) {
 								if (coeffLength > 0) {
 									if (coeffLength != 1) {
 										System.err.println("Error - Refinement coeffLength not 1");
 									}
-									short coeff = 0;
 									if (b.nextBit() == 1) {
 										coeff = large;
 									}
@@ -211,7 +212,10 @@ public class HuffmanDecoder {
 									}
 									else {
 										numZeroes -= 1;
-										if (numZeroes == 0) {
+										if (numZeroes < 0) {
+											if (coeff != 0 && k < 64) {
+												component[JPG.zigZagMap[k]] = coeff;
+											}
 											tripleBreak = true;
 											break;
 										}
@@ -239,7 +243,7 @@ public class HuffmanDecoder {
 								}
 								
 								if (coeffLength != 0) {
-									short coeff = (short)b.nextBits(coeffLength);
+									coeff = (short)b.nextBits(coeffLength);
 									
 									if (coeff < (1 << (coeffLength - 1))) {
 										coeff -= (1 << coeffLength) - 1;
@@ -271,9 +275,6 @@ public class HuffmanDecoder {
 			}
 			if (!found ) {
 				System.err.println("Error - Invalid AC Value: " + currentCode);
-				if (!b.hasBits()) {
-					System.err.println("all out");
-				}
 				return false;
 			}
 		}

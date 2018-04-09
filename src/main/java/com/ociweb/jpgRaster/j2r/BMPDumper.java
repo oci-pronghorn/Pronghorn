@@ -1,5 +1,6 @@
-package com.ociweb.jpgRaster;
+package com.ociweb.jpgRaster.j2r;
 
+import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -17,9 +18,9 @@ import java.nio.channels.FileChannel;
 public class BMPDumper extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
+	boolean verbose;
 	
 	Header header;
-	String filename;
 	MCU mcu = new MCU();
 	
 	short[][] pixels;
@@ -29,9 +30,10 @@ public class BMPDumper extends PronghornStage {
 	int numMCUs;
 	int pos;
 	
-	protected BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input) {
+	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
 		super(graphManager, input, NONE);
 		this.input = input;
+		this.verbose = verbose;
 	}
 
 	public static void Dump(short[][] pixels, String filename) throws IOException {
@@ -73,14 +75,14 @@ public class BMPDumper extends PronghornStage {
 		fileStream.close();
 	}
 	
-	private static void putInt(ByteBuffer buffer, int v) throws IOException {
+	private static void putInt(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 		buffer.put((byte)((v >> 16) & 0xFF));
 		buffer.put((byte)((v >> 24) & 0xFF));
 	}
 	
-	private static void putShort(ByteBuffer buffer, int v) throws IOException {
+	private static void putShort(ByteBuffer buffer, int v) {
 		buffer.put((byte)(v & 0xFF));
 		buffer.put((byte)((v >> 8) & 0xFF));
 	}
@@ -111,7 +113,7 @@ public class BMPDumper extends PronghornStage {
 				header = new Header();
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
-				filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
 				PipeReader.releaseReadLock(input);
 
 				pixels = new short[header.height][header.width * 3];
@@ -173,16 +175,18 @@ public class BMPDumper extends PronghornStage {
 				
 				if (count >= numMCUs) {
 					try {
-						int extension = filename.lastIndexOf('.');
+						int extension = header.filename.lastIndexOf('.');
 						if (extension == -1) {
-							filename += ".bmp";
+							header.filename += ".bmp";
 						}
 						else {
-							filename = filename.substring(0, extension) + ".bmp";
+							header.filename = header.filename.substring(0, extension) + ".bmp";
 						}
-						System.out.println("Writing to " + filename + " ...");
-						Dump(pixels, filename);
-						System.out.println("Done.");
+						if (verbose) 
+							System.out.println("Writing to '" + header.filename + "'...");
+						Dump(pixels, header.filename);
+						if (verbose) 
+							System.out.println("Done.");
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
