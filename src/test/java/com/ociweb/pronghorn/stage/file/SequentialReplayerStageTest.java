@@ -10,6 +10,8 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
@@ -233,9 +235,7 @@ public class SequentialReplayerStageTest {
 		}
 		
 		short inFlightCount = 20;
-		
-		//This Must NOT be larger than the consumer!!
-		int largestBlock = 1<<12;//1000;//perStoreConsumer.maxVarLen;//1<<12;
+		int largestBlock = 1<<12;
 		
 		File dir=null;
 	
@@ -251,10 +251,18 @@ public class SequentialReplayerStageTest {
 		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, largestBlock);
 		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, largestBlock);
 				
+		PronghornStageProcessor proc = new PronghornStageProcessor() {
+
+			@Override
+			public void process(GraphManager gm, PronghornStage stage) {
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);				
+			}
+			
+		};
 		FileGraphBuilder.buildSequentialReplayer(gm, 
 				perLoadRelease, perLoadConsumer, perLoadProducer, 
 				perStoreConsumer, perStoreProducer,
-				inFlightCount, largestBlock, dir, np, rate, null);
+				inFlightCount, largestBlock, dir, np, proc);
 	
 		StringBuilder result0 = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, perLoadRelease, result0);		

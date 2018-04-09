@@ -6,6 +6,7 @@ import java.io.IOException;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.encrypt.RawDataCryptAESCBCPKCS5Stage;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
@@ -27,8 +28,8 @@ public class FileGraphBuilder {
 			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,
 			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer,
 			short inFlightCount, int largestBlock,
-			File targetDirectory, NoiseProducer noiseProducer, long rate,
-			String backgroundColor) {
+			File targetDirectory, NoiseProducer noiseProducer, 
+			PronghornStageProcessor stageProcessor) {
 				
 		PipeConfig<SequentialCtlSchema> ctlConfig = SequentialCtlSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<SequentialRespSchema> respConfig = SequentialRespSchema.instance.newPipeConfig(inFlightCount);
@@ -70,12 +71,8 @@ public class FileGraphBuilder {
 									     fileDataToSave, fileDataToLoad, 
 									     paths);
 		
-		//TODO: need visitor to do this for each!!! see the other Bulder code..
-		if (rate>0) {
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, readWriteStage);
-		}
-		if (null!=backgroundColor) {
-			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, readWriteStage);
+		if (null!=stageProcessor) {
+			stageProcessor.process(gm,  readWriteStage);
 		}
 		if (null != noiseProducer) {
 			
@@ -114,29 +111,42 @@ public class FileGraphBuilder {
 				RawDataCryptAESCBCPKCS5Stage crypt1 = new RawDataCryptAESCBCPKCS5Stage(gm, 
 						cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
 				                         doFinalReceive1, doFinalXmit1);
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt1);
-				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt1);
+				
+				if (null!=stageProcessor) {
+					stageProcessor.process(gm,  crypt1);
+				}
 				
 				RawDataCryptAESCBCPKCS5Stage crypt2 = new RawDataCryptAESCBCPKCS5Stage(gm, 
 						cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
 				                         doFinalReceive2, doFinalXmit2);
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, crypt2);
-				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, crypt2);
+				
+				
+				if (null!=stageProcessor) {
+					stageProcessor.process(gm,  crypt2);
+				}
+		
 			}			
 		
 			SequentialReplayerStage stage = new SequentialReplayerStage(gm, 
 					toStoreConsumer, toStoreProducer, 
 					fromStoreRelease, fromStoreConsumer, fromStoreProducer, 
 					control, response, cypherDataToSave, cypherDataToLoad, noiseProducer);
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
-			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
+			
+			
+			if (null!=stageProcessor) {
+				stageProcessor.process(gm,  stage);
+			}
+			
 		} else {
 			SequentialReplayerStage stage = new SequentialReplayerStage(gm, 
 					toStoreConsumer, toStoreProducer, 
 					fromStoreRelease, fromStoreConsumer, fromStoreProducer, 
 					control, response, fileDataToSave, fileDataToLoad, null);
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
-			GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, backgroundColor, stage);
+			
+			if (null!=stageProcessor) {
+				stageProcessor.process(gm,  stage);
+			}
+			
 		}
 	}
 

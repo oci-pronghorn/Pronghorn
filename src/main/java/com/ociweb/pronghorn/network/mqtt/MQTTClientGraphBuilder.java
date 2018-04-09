@@ -100,6 +100,14 @@ public class MQTTClientGraphBuilder {
 		
 		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, tlsCertificates, gm.recordTypeData);
 		
+		PronghornStageProcessor proc = new PronghornStageProcessor() {
+			@Override
+			public void process(GraphManager gm, PronghornStage stage) {
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate*10, stage);
+				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, stage);
+			}			
+		};
+		
 		ccm.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system
 			@Override
@@ -140,11 +148,13 @@ public class MQTTClientGraphBuilder {
 		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		
 		
+
+		
 		FileGraphBuilder.buildSequentialReplayer(gm, 
 				perLoadRelease, perLoadConsumer, perLoadProducer,
 				persistanceConsumerPipe, persistanceProducerPipe,
 				inFlightCount, maximumLenghOfVariableLengthFields, 
-				rootFolder, noiseProducer, rate*10, BACKGROUND_COLOR);
+				rootFolder, noiseProducer, proc);
 
 		
 		

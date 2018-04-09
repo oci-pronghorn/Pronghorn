@@ -1235,7 +1235,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		}
 	}
 
-	private final static long hangTimeNS = 1_000_000_000 * 10;//20 sec;
+	private final static long hangTimeNS = 1_000_000_000 * 20;//20 sec;
 	public PronghornStage hungStage(long nowNS) {
 		if ((0!=timeStartedRunningStage) 
 			&& (nowNS-timeStartedRunningStage)>hangTimeNS) {
