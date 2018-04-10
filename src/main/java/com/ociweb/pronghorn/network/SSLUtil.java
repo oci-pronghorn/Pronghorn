@@ -1014,7 +1014,7 @@ public class SSLUtil {
 		    	break;
 		    } 
 		} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
-		assert(HandshakeStatus.NEED_UNWRAP != hanshakeStatus) : "Unexpected unwrap request";
+
 		return result;
 	}
 
