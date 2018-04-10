@@ -340,11 +340,11 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 				return finishConnect;
 				
 			} catch (IOException io) {
-				logger.info("finish connection exception ",io);
+				//logger.trace("finish connection exception ",io);
 				return false;
 			} catch (NoConnectionPendingException ncpe) {
 				close();
-				logger.warn("no pending connection ",ncpe);
+				//logger.trace("no pending connection ",ncpe);
 				return false;
 			}
 		}
