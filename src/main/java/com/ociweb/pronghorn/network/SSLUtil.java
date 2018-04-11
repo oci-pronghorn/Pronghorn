@@ -162,7 +162,7 @@ public class SSLUtil {
 			//This is only needed because engine.wrap does not take multiple target ByteBuffers as it should have.
 			///////////
 			try {
-				buffer.clear();
+				((Buffer)buffer).clear();
 				SSLEngineResult result2 = cc.getEngine().wrap(bbHolder, buffer);
 				
 				status = result2.getStatus();				
@@ -173,7 +173,7 @@ public class SSLUtil {
 				if (status == Status.OK) {
 					
 					//write buffer to openA and openB
-					buffer.flip();
+					((Buffer)buffer).flip();
 					
 					copyBufferIntoTwoBuffers(buffer, targetBuffers);
 															
@@ -218,10 +218,10 @@ public class SSLUtil {
 		int finalLimit = buffer.limit();
 		int room = targetBuffers[0].remaining();
 		if (room<finalLimit) {
-			buffer.limit(room);
+			((Buffer)buffer).limit(room);
 		}										
 		targetBuffers[0].put(buffer);
-		buffer.limit(finalLimit);
+		((Buffer)buffer).limit(finalLimit);
 		if (buffer.hasRemaining()) {
 			targetBuffers[1].put(buffer);
 		}
@@ -403,7 +403,7 @@ public class SSLUtil {
 			rolling.compact(); //ready for append
 		} else {
 			//logger.info("CLEAR");
-			rolling.clear();
+			((Buffer)rolling).clear();
 		}
 		assert(rolling.limit()==rolling.capacity());
 		
