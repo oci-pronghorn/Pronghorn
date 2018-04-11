@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
 import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
-import com.ociweb.pronghorn.util.parse.JSONReader;
+
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
 public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActive {
@@ -26,11 +26,6 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	public JSONExtractor(boolean writeDot) {
 		this.schema = new JSONFieldSchema(0);
 		this.writeDot = writeDot;
-	}
-	
-    @Override
-	public JSONReader reader() {
-		return schema; //clone if baseoffset is different??
 	}
 	
 	public TrieParser trieParser() {

@@ -19,10 +19,14 @@ public class JSONResponse {
             .string("body", o->o.body)
             .endObject();
 
+    public enum Fields {
+    	Status, Message, Body;
+    }    
+    
     public static final JSONExtractorCompleted jsonExtractor = new JSONExtractor()
-            .newPath(JSONType.TypeInteger).key("status").completePath("status")
-            .newPath(JSONType.TypeString).key("message").completePath("message")
-            .newPath(JSONType.TypeString).key("body").completePath("body");
+            .newPath(JSONType.TypeInteger).key("status").completePath("status", Fields.Status)
+            .newPath(JSONType.TypeString).key("message").completePath("message", Fields.Message)
+            .newPath(JSONType.TypeString).key("body").completePath("body", Fields.Body);
 
     public void reset() {
         status = 0;
@@ -50,14 +54,12 @@ public class JSONResponse {
         this.body.append(body);
     }
 
-    public static JSONReader createReader() {
-        return jsonExtractor.reader();
-    }
-
-    public boolean readFromJSON(JSONReader jsonReader, ChannelReader reader) {
-        status = (int)jsonReader.getLong(0, reader);
-        jsonReader.getText(1, reader, message);
-        jsonReader.getText(2, reader, body);
+    public boolean readFromJSON(ChannelReader reader) {
+    	
+    	status = reader.structured().readInt(Fields.Status);
+    	reader.structured().readText(Fields.Message, message);
+    	reader.structured().readText(Fields.Body, body);
+    	
         return true;
     }
 
