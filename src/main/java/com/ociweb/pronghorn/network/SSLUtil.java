@@ -886,7 +886,7 @@ public class SSLUtil {
 					logger.warn("Error closing connection ",e);
 				}				
 				//clear the rolling for the next user/call since this one is closed
-				rolling.clear();
+				((Buffer)rolling).clear();
 				cc.close();
 				
 			}
