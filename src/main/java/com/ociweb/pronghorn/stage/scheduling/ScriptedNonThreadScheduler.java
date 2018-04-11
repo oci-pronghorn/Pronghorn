@@ -145,7 +145,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     				 .replace("Writer","W") 
     				 .replace("Module","M")
     				 .replace("SSLEngine","TLS")
-    				 .replace("Wrap","W")    				 
+    				 .replace("Wrap","W") 
+    				 .replace("Parser", "P")
+    				 .replace("Response", "Resp")
     				 .replace("Server","S")
     				 .replace("Client","C"));
     		if (s<stages.length-1) {
@@ -1244,9 +1246,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	//                                        ms  mi ns  must use longs!
 	private final static long hangTimeNS = 1_000_000_000L * 20L;//20 sec;
 	public PronghornStage hungStage(long nowNS) {
-		if ((0!=timeStartedRunningStage) 
+		final long local = timeStartedRunningStage;
+		if (((0!=timeStartedRunningStage) && (local>0)) 
 			&& ((nowNS-timeStartedRunningStage)>hangTimeNS)) {
-			return runningStage;
+			//watches for dirty read
+			if (local == timeStartedRunningStage) {
+				return runningStage;
+			}
 		}
 		return null;
 	}
