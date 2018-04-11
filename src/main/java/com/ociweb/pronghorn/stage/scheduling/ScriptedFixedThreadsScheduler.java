@@ -96,7 +96,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					if (!hangman.mayContain(stageNname)) {
 						
 						//TODO: should report back to telemetry screen 
-						logger.info("{} Hung stage {}", Appendables.appendNearestTimeUnit(new StringBuilder(), localArray[c].hangTime(nowNS)), hungStage);
+						long hangTime = localArray[c].hangTime(nowNS);
+						logger.info("{} Hung stage {}", Appendables.appendNearestTimeUnit(new StringBuilder(), hangTime), hungStage);
 						hangman.addValue(stageNname);
 					}
 				}
