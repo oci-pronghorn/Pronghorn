@@ -842,7 +842,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	private boolean runStage(GraphManager gm, final boolean recordTime,
-			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere, int inProgressIdx, long SLAStart,
+			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere,
+			int inProgressIdx, long SLAStart,
 			long start, final PronghornStage stage) {
 		
 		DidWorkMonitor.begin(localDidWork,start);
@@ -1235,15 +1236,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		}
 	}
 
-	private final static long hangTimeNS = 1_000_000_000 * 20;//20 sec;
+	//                                        ms  mi ns  must use longs!
+	private final static long hangTimeNS = 1_000_000_000L * 20L;//20 sec;
 	public PronghornStage hungStage(long nowNS) {
 		if ((0!=timeStartedRunningStage) 
-			&& (nowNS-timeStartedRunningStage)>hangTimeNS) {
+			&& ((nowNS-timeStartedRunningStage)>hangTimeNS)) {
 			return runningStage;
 		}
 		return null;
 	}
-
 
 	
 	
