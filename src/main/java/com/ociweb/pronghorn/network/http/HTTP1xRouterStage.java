@@ -830,6 +830,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		
 	    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
 		    HTTPHeader header = config.getAssociatedObject(headerToken);
+		    int writePosition = writer.position();
 		    
 		    if (null!=header) {
 			    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
@@ -842,11 +843,10 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    	postLength = -1;
 			    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
 			    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
-		
+			    	
 			    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
-			    }
-			                
-			    int writePosition = writer.position();
+			    }			                
+
 			    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
 			    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
 	

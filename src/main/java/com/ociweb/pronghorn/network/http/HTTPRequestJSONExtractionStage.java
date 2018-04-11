@@ -100,10 +100,11 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			Pipe.addIntValue(sequenceNum, localOutput); //sequence
 		    			Pipe.addIntValue(verb, localOutput); //verb
 		    			
-		    			//parser is not "ready for data" and requires export to be called
-		    			visitor.export(outputStream, indexPositions);		
-		    			//moves the index data as is
+		    			//moves the index data as is and must happen before JSON updates index
 		    			inputStream.readFromEndInto(outputStream);
+		    			//parser is not "ready for data" and requires export to be called
+		    			//this expoert will populate the index positinos for the JSON fields
+		    			visitor.export(outputStream, indexPositions);		
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
 		    			
 		    			Pipe.addIntValue(Pipe.takeInt(localInput), localOutput); //revision

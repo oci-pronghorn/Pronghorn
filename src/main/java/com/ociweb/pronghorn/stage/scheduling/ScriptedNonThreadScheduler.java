@@ -495,7 +495,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
                     try {
                     	if (log) {
-                    		logger.info("waiting for startup of {}", stage);
+                    		logger.info("waiting for startup of {}", stage.toString().replace("\n",""));
                     	}
 
                     	long start = 0;
@@ -513,7 +513,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
         				}
                         if (log) {
-                        	logger.info("finished startup of {}", stage);
+                        	logger.info("finished startup of {}", stage.toString().replace("\n",""));
                         }
                         
                         //client work is complete so move stage of stage to started.
