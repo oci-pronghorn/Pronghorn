@@ -349,6 +349,7 @@ public class StructRegistry { //prong struct store
 	}
 
 	private boolean setAssoc(Object localObject, int structIdx, int fieldIdx) {
+		assert(this.fieldLocals[structIdx][fieldIdx]==null) : "associated object may only be set once. Already set to: "+this.fieldLocals[structIdx][fieldIdx];
 		this.fieldLocals[structIdx][fieldIdx] = localObject;
 		
 		if (null==this.fieldAttachedIndex[structIdx]) {			
@@ -436,6 +437,7 @@ public class StructRegistry { //prong struct store
 				throw new UnsupportedOperationException("Object not found: "+attachedObject);			
 			}
 		}
+		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx];
 		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
 		
 	}
@@ -539,7 +541,9 @@ public class StructRegistry { //prong struct store
 	}
 
 	public <T> int lookupFieldIndex(T attachedObject, int structId) {
-		return lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[StructRegistry.STRUCT_MASK & structId]);
+		int result = lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[StructRegistry.STRUCT_MASK & structId]);
+		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&result] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&result];
+		return result;
 	}
 
 	private int lookupFieldIndex(final int identityHashCode, final IntHashTable table) {
