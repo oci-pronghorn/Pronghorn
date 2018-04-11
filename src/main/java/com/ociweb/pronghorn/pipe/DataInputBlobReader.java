@@ -109,6 +109,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     
     public int readFromEndLastInt(int negativeIntOffset) {
+    	assert(readFromLastInt(this, negativeIntOffset)<this.length) :
+    		 "index position is out of bounds int pipe "+this.getBackingPipe(this).id+" at idx "+negativeIntOffset;
     	return readFromLastInt(this, negativeIntOffset);
     }
 
@@ -155,15 +157,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         
 	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
 		assert(isStructured) : "method can only be called on structured readers";
-
+		//WARNING: this method will carry the same exact struct forward to the destination
+		
 		final int type = getStructType(this);
 
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
-		final int copyLen = structuredReader.indexCopyLenInBytes(type);
+				
+		final int copyLen = structuredReader.indexCopyLenInBytes(type)+4;//plus the type
 		int start = end-copyLen;
 		
-		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask, type);
+		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);
 
 	}
 	
@@ -586,11 +590,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     @Override
 	public boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen) {
 		int len = available();
-		if (len!=bytesLen) {
+		if (len<bytesLen) {
+			//if its too short then it can not be equal, this is a stream so longer is ok.
 			return false;
 		}
 		int pp = position;
-		while (--len>=0) {
+		while (--bytesLen>=0) {
 			if (bytes[bytesPos++]!=backing[byteMask & pp++]) {
 				return false;
 			}

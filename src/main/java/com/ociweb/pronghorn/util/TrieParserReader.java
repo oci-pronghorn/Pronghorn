@@ -1733,6 +1733,7 @@ public class TrieParserReader {
 			TrieParserReader reader, 
 			DataOutputBlobWriter<S> target, 
 			int[] indexPositions) {
+		
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
 		//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
@@ -1759,8 +1760,10 @@ public class TrieParserReader {
 
 				totalBytes += l;
 
-				//       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
+				//logger.info("pipe:{} data pos {} idxPos {} captured text: {}",
+	    		//        target.getPipe().id, writePosition, indexPositions[fieldPosition], Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
 
+	      
 				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
 				target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
 				DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
@@ -1816,7 +1819,7 @@ public class TrieParserReader {
 						position = -dlen;  
 
 						target.writePackedLong(value);
-						
+
 						DataOutputBlobWriter.setIntBackData(target, 
 					               writePosition, 
 					               indexPositions[fieldPosition++]);

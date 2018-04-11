@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.util.ma.RunningStdDev;
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWriter {
 
     protected final Pipe<S> backingPipe;
-    private final byte[] byteBuffer;
+    final byte[] byteBuffer;
     private final int byteMask;
     private static final Logger logger = LoggerFactory.getLogger(DataOutputBlobWriter.class);
     
@@ -171,6 +171,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
+    	
+    	assert(value<=writer.position()) : "wrote "+value+" but all the data is only "+writer.position();
+    	
     	assert(pos>=0) : "Can not write beyond the end. Index values must be zero or positive";
     	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-(4*(pos+1)), value);       
     }
@@ -913,18 +916,31 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	}
 
 	public static void copyBackData(DataOutputBlobWriter that, 
-			                        byte[] backing, int start, int copyLen, int byteMask2, int structId) {
-		
+			                        byte[] backing, int start, 
+			                        int copyLen, int byteMask2) {
+
+		//Appendables.appendArray(System.out.append("To be copied"),  backing, start, byteMask2, copyLen).append("\n");
+				
 		//method must be redone to only copy what we need.
-		
 		Pipe.copyBytesFromToRing(backing, start, byteMask2, 
                 that.byteBuffer, 
-                that.activePosition, //??this value not right 
+                that.startPosition + 
+                //Pipe.blobIndexBasePosition(that.backingPipe)
+                that.backingPipe.maxVarLen    -    copyLen,
                 that.byteMask, 
                 copyLen);
 
 	   //records the struct id	
-       commitBackData(that, structId);//must call before close!!
+       that.structuredWithIndexData = true; //no need to set struct since we copied it over
+
+//		Appendables.appendArray(System.out.append("  After copy"),  
+//				that.byteBuffer,
+//				 that.startPosition +that.backingPipe.maxVarLen-copyLen,
+//				 that.byteMask,
+//				 copyLen).append("\n");
+		 
+	   
+	   
 	}
 
 	public long startsWith(TrieParserReader reader, TrieParser tp) {

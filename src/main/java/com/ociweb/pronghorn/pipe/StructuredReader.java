@@ -12,6 +12,9 @@ public final class StructuredReader {
 	private final DataInputBlobReader<?> channelReader; 
 	private final StructRegistry typeData;
 	
+	//TODO: add is absent, was absent methods..
+	//TODO: add direct copy over methods.
+	
 	public StructuredReader(DataInputBlobReader<?> reader, StructRegistry typeData) {
 		this.channelReader = reader;
 		this.typeData = typeData;
@@ -47,19 +50,30 @@ public final class StructuredReader {
 	
 	public String readText(Object association) {
 		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
+		
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
 		return channelReader.readUTF();
 	}
 
 	public boolean isEqual(long fieldId, byte[] value) {
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
-		return channelReader.equalUTF(value);
+		if (channelReader.available()>=2) {
+			int length = channelReader.readShort(); 
+			return value.length==length && channelReader.equalBytes(value);
+		} else {
+			return false;
+		}
 	}
 
 	public boolean isEqual(Object association, byte[] value) {
 		long fieldId = typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader));		
 		channelReader.position(channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId));
-		return channelReader.equalUTF(value);
+		if (channelReader.available()>=2) {
+			int length = channelReader.readShort(); 
+			return value.length==length && channelReader.equalBytes(value);
+		} else {
+			return false;
+		}
 	}
 	
 	public long readTextAsLong(long fieldId) {
