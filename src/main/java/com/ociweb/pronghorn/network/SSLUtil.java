@@ -387,7 +387,7 @@ public class SSLUtil {
 			    	System.exit(-1);
 			    	
 			    }
-				rolling.limit(origLimit); //return origLimit, see above openSSL issue.
+				((Buffer)rolling).limit(origLimit); //return origLimit, see above openSSL issue.
 				
 				int bytesProduced = result.bytesProduced();
 				assert(cc.localRunningBytesProduced>=0);
@@ -841,7 +841,7 @@ public class SSLUtil {
 			Status status = null==result?null:result.getStatus();			
 	
 			if ((null==status || Status.OK==status) && rolling.position()>0) { //rolling has content to consume
-				rolling.flip();	
+				((Buffer)rolling).flip();	
 				
 				try {
 					/////////////////
