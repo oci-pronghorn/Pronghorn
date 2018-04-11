@@ -140,7 +140,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     				 .replace("Extraction","")
     				 .replace("Listener","L")
     				 .replace("Reader","R")
-    				 .replace("Writer","W")    				 
+    				 .replace("Request","Req")
+    				 .replace("Reactive","R")
+    				 .replace("Writer","W") 
+    				 .replace("Module","M")
+    				 .replace("SSLEngine","TLS")
+    				 .replace("Wrap","W")    				 
     				 .replace("Server","S")
     				 .replace("Client","C"));
     		if (s<stages.length-1) {
@@ -1246,6 +1251,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return null;
 	}
 
+	public long hangTime(long nowNS) {
+		if (0!=timeStartedRunningStage) {
+			return nowNS-timeStartedRunningStage;
+		} else {
+			return 0;
+		}
+	}
 	
 	
 }

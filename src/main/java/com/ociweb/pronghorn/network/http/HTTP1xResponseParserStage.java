@@ -470,7 +470,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						if (startingLength1<(revisionMap.shortestKnown()+1)) {
 							break;
-						}						
+						}		
 					
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId>=0) {

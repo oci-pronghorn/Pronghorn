@@ -24,6 +24,7 @@ import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.primitive.IntArrayHolder;
 
@@ -93,8 +94,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				synchronized(hangman) {
 					String stageNname = hungStage.toString();					
 					if (!hangman.mayContain(stageNname)) {
+						
 						//TODO: should report back to telemetry screen 
-						logger.info("Hung stage {}", hungStage);
+						logger.info("{} Hung stage {}", Appendables.appendNearestTimeUnit(new StringBuilder(), localArray[c].hangTime(nowNS)), hungStage);
 						hangman.addValue(stageNname);
 					}
 				}
