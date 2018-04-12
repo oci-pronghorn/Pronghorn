@@ -116,13 +116,13 @@ public class JSONParseTest {
 		assertEquals(5,      dataStream.readPackedInt());
 		assertEquals(2,      dataStream.readPackedInt());	
 		
-		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("three",   dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("four", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("five", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("six", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("seven", dataStream.readUTFOfLength(dataStream.readPackedInt()));
+		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("three",   dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("six", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("seven", dataStream.readUTFOfLength(dataStream.readShort()));
 		
 		
 		assertEquals(2, dataStream.readPackedInt());
@@ -174,11 +174,11 @@ public class JSONParseTest {
 			assertEquals(0,header);
 			
 			assertEquals(5,      dataStream.readPackedInt());
-			assertEquals("one",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-			assertEquals("two",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-			assertEquals(null,   dataStream.readUTFOfLength(dataStream.readPackedInt()));
-			assertEquals("four", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-			assertEquals("five", dataStream.readUTFOfLength(dataStream.readPackedInt()));
+			assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort()));
+			assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
+			assertEquals(null,   dataStream.readUTFOfLength(dataStream.readShort()));
+			assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+			assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
 					
 			assertEquals(5, dataStream.readPackedInt());
 			assertEquals(1, dataStream.readPackedLong());
@@ -222,11 +222,11 @@ public class JSONParseTest {
 		assertEquals(0,header);
 		
 		assertEquals(5,      dataStream.readPackedInt());
-		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("four", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("five", dataStream.readUTFOfLength(dataStream.readPackedInt()));
+		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
 				
 		assertEquals(5, dataStream.readPackedInt());
 		assertEquals(1, dataStream.readPackedLong());
@@ -274,11 +274,11 @@ public class JSONParseTest {
 		assertEquals(0,header);
 		
 		assertEquals(5,      dataStream.readPackedInt());
-		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readPackedInt())); //these are 19 bytes plus 10, 29
-		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("four", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("five", dataStream.readUTFOfLength(dataStream.readPackedInt()));
+		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort())); //these are 19 bytes plus 10, 29
+		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals(null,   dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
 				
 		assertEquals(5, dataStream.readPackedInt());
 		assertEquals(1, dataStream.readPackedLong());
@@ -314,11 +314,11 @@ public class JSONParseTest {
 		assertEquals(0,header);
 		
 		assertEquals(5,      dataStream.readPackedInt());
-		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readPackedInt())); //these are 19 bytes plus 10, 29
-		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("three",dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("four", dataStream.readUTFOfLength(dataStream.readPackedInt()));
-		assertEquals("five", dataStream.readUTFOfLength(dataStream.readPackedInt()));
+		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort())); //these are 19 bytes plus 10, 29
+		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("three",dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
 				
 		assertEquals(5, dataStream.readPackedInt());
 		assertEquals(1, dataStream.readPackedLong());
@@ -350,7 +350,7 @@ public class JSONParseTest {
 		long header = dataStream.readPackedLong();		
 		assertEquals(2,header);//the second field is null so the bit pattern is 10
 
-		String valueB = dataStream.readUTFOfLength(dataStream.readPackedInt());
+		String valueB = dataStream.readUTFOfLength(dataStream.readShort());
 		assertEquals("hello",valueB);
 
 		//a is missing by design
@@ -393,7 +393,7 @@ public class JSONParseTest {
 		long header = dataStream.readPackedLong();		
 		assertEquals(0,header);
 
-		String valueB = dataStream.readUTFOfLength(dataStream.readPackedInt());
+		String valueB = dataStream.readUTFOfLength(dataStream.readShort());
 		assertEquals("hello",valueB);
 
 		long valueA = dataStream.readPackedLong();
@@ -418,7 +418,7 @@ public class JSONParseTest {
 			long header = dataStream.readPackedLong();		
 			assertEquals(0,header);
 	
-			String valueB = dataStream.readUTFOfLength(dataStream.readPackedInt());
+			String valueB = dataStream.readUTFOfLength(dataStream.readShort());
 			assertEquals(null,valueB);
 	
 			long valueA = dataStream.readPackedLong();
@@ -445,7 +445,7 @@ public class JSONParseTest {
 		long header = dataStream.readPackedLong();		
 		assertEquals(0,header);
 
-		String valueB = dataStream.readUTFOfLength(dataStream.readPackedInt());
+		String valueB = dataStream.readUTFOfLength(dataStream.readShort());
 		assertEquals("hello",valueB);
 
 		long valueA = dataStream.readPackedLong();
