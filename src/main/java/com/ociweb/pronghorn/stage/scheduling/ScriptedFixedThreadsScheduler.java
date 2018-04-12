@@ -1367,9 +1367,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				
 	
 				try {
+					long c = 0;
 					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
 						ScriptedNonThreadScheduler.playScript(nts);
-						hangDetection(System.nanoTime());						
+						if ((++c&0xFFFF)==0) {
+							hangDetection(System.nanoTime());
+						}
 					}		
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();	
