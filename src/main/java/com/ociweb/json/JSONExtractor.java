@@ -122,14 +122,17 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		return this;
 	}
 
+	private int[] indexLookup;
+	
 	@Override
-	public int[] indexTable(StructRegistry typeData, int structId) {
-		return schema.indexTable(typeData, structId);
+	public void addToStruct(StructRegistry typeData, int structId) {
+		indexLookup = schema.addToStruct(typeData, structId);
 	}
 
 	@Override
-	public void addToStruct(StructRegistry typeData, int structId) {
-		schema.addToStruct(typeData, structId);
+	public int[] getIndexPositions() {
+		assert(null!=indexLookup);
+		return indexLookup;
 	}
 
 

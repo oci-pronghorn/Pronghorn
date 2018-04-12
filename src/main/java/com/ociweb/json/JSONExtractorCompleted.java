@@ -11,6 +11,7 @@ public interface JSONExtractorCompleted {
 	JSONExtractorActive newPath(JSONType type);
 	TrieParser trieParser();
 	JSONStreamVisitorToChannel newJSONVisitor();
-	int[] indexTable(StructRegistry schema, int structId);
 	void addToStruct(StructRegistry schema, int structId);
+	int[] getIndexPositions();
+	
 }

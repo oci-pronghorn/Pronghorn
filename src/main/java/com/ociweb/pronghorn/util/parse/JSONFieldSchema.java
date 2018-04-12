@@ -99,10 +99,11 @@ public class JSONFieldSchema {
 		maxPathLength = Math.max(maxPathLength, length);
 	}
 
-
-	public void addToStruct(StructRegistry struct, int structId) {
-		
+	//returns the JSON look up index array
+	public int[] addToStruct(StructRegistry struct, int structId) {
+				
 		int length = mappings.length;
+		int[] jsonIndexLoookup = new int[length];
 						
 		int i = length;
 		while (--i>=0) {
@@ -123,6 +124,8 @@ public class JSONFieldSchema {
 				break;					
 			}
 			long fieldId = struct.growStruct(structId, fieldType, mapping.dimensions(), mapping.getName().getBytes());
+			
+			jsonIndexLoookup[i] = StructRegistry.FIELD_MASK&(int)fieldId;
 			Object assoc = mapping.getAssociatedObject();
 			if (null!=assoc) {
 				if (!struct.setAssociatedObject(fieldId, assoc)) {
@@ -130,6 +133,7 @@ public class JSONFieldSchema {
 				}
 			}
 		}
+		return jsonIndexLoookup;
 	}
 
 	public int[] indexTable(StructRegistry typeData, int structId) {
