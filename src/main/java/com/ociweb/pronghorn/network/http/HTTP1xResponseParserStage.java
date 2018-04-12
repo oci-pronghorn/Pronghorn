@@ -62,6 +62,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private TrieParser revisionMap;
 	
 	private TrieParserReader trieReader;
+	private TrieParser chunkEnd;
+	
 	private int[] positionMemoData;
 	private long[] payloadLengthData;
 	private long[] ccIdData;
@@ -137,7 +139,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\r\n", revs[x].ordinal());
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be last because we prefer to have it pick \r\n
 	      }
-
+	      
+	      chunkEnd = new TrieParser(256,true);
+	      chunkEnd.setUTF8Value("\r\n",1);
+	            
+	      
 	    }
 
 	int lastUser;
@@ -373,6 +379,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//We have no data on this pipe so go check the next one.
 						if (Pipe.contentRemaining(localInputPipe)>(localInputPipe.slabMask*.75)) {
 							logger.warn("Can not read content because old data has not been released.");
+							logger.warn("exited");
+							System.exit(-1);
 						}
 						continue;
 						
@@ -536,17 +544,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//stay here and read all the headers if possible
 						do {
 							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-													
-							//TODO: based on record/route ID look up the right header map
-
+					
 							headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
 						
 							assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
-							
-							//TODO: get the associated object with this field
-							//      remove the old constants for check
-							//      get map from the host pipe instance
-							// 
+		
+							int consumed = startingLength - trieReader.sourceLen;							
+							runningHeaderBytes[i] += consumed;
 									
 							if (headerToken != -1) {											
 								
@@ -558,7 +562,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								} else {
 									//logger.trace("end of headers");
 									state = endOfHeaderProcessing(i, stateIdx, writer);
-																											
+																									
 									//logger.trace("finished reading header now going to state {}",state);
 								
 									if (3==state) {
@@ -573,14 +577,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//logger.info("payload position {} {}  {}",Long.toBinaryString(cc.payloadToken),cc.payloadToken,writer.position());
 									//NOTE: payload index position is always zero 
 									DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
-									
-									
-								}								
-								
-								int consumed = startingLength - trieReader.sourceLen;							
-								runningHeaderBytes[i] += consumed;
-								
+																		
+								}
 							} 
+							
 						} while ((headerToken != -1) && state==1);
 						
 						if (headerToken == -1) {
@@ -748,27 +748,25 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//logger.info("reading a fresh chunk of size {}",chunkRemaining);
 									
 									if (0==chunkRemaining) {
-										
-										//TODO: Must add parse support for trailing headers!, 
-										//       this is a hack for now. needs its own case...
-										//TODO: remove this spin
+
+										boolean foundEnd = false;
 										do {
 											headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());
+											if (headerToken==HTTPSpecification.END_OF_HEADER_ID) {
+												foundEnd = true;
+											}
+										} while (-1 != headerToken);
 											
-										} while (HTTPSpecification.END_OF_HEADER_ID!=headerToken && -1!=headerToken);
-																				
-										
+										if (!foundEnd) {
+											System.err.println("EXIT xxxxxxxxxxxxxxxxxxxxxxxxx need new case");
+											System.exit(-1);
+										}
+											
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);											
 										int consumed = startingLength3 - trieReader.sourceLen;
 										
-										//TODO: not sure why chunk requires  extra bytes
-										//  we know that the trieReader is fully consumed since 
-										//  following message is read correctly.
-																				
 										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
-										int b = 2;//Pipe.releasePendingByteCount(localInputPipe);
-										//System.err.println("missing count"+b);
-										Pipe.releasePendingAsReadLock(localInputPipe, b);
+					
 										
 										DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
 										

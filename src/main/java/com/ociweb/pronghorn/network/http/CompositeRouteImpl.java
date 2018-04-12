@@ -35,10 +35,10 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	
 	private final int structId;
-    private final StructRegistry schema;	
-
+    private final StructRegistry schema;
 	
     private int[] activePathFieldIndexPosLookup;
+
     
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
