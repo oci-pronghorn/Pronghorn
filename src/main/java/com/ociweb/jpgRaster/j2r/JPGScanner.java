@@ -23,6 +23,7 @@ public class JPGScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -751,6 +752,7 @@ public class JPGScanner extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 			int vertical = header.colorComponents[0].verticalSamplingFactor;
@@ -849,7 +851,15 @@ public class JPGScanner extends PronghornStage {
 				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
 					System.err.println("Error - JPG file '" + file + "' invalid");
-					return;
+					if (inputFiles.size() > 0) {
+						return;
+					}
+					else if (verbose) 
+						System.out.println("All input files read.");
+					header = new Header();
+					header.width = 0;
+					header.height = 0;
+					header.valid = false;
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
@@ -860,6 +870,9 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401, (inputFiles.size() == 0 ? 1 : 0));
 					PipeWriter.publishWrites(output);
+					if (!header.valid) {
+						return;
+					}
 				}
 				else {
 					System.err.println("JPG Scanner requesting shutdown");
@@ -935,6 +948,7 @@ public class JPGScanner extends PronghornStage {
 					System.out.println("All input files read.");
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 	
 	/*public static void main(String[] args) {

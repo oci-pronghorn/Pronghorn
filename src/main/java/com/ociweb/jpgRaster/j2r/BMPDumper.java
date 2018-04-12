@@ -19,6 +19,9 @@ public class BMPDumper extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	boolean verbose;
+	boolean time;
+	public static long timer = 0;
+	long start;
 	
 	Header header;
 	int last = 0;
@@ -31,13 +34,15 @@ public class BMPDumper extends PronghornStage {
 	int numMCUs;
 	int pos;
 	
-	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose) {
+	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
+		this.time = time;
+		start = System.nanoTime();
 	}
 
-	public static void Dump(short[][] pixels, String filename) throws IOException {
+	private static void Dump(short[][] pixels, String filename) throws IOException {
 		int width = pixels[0].length / 3;
 		int height = pixels.length;
 		int paddingSize = (4 - (width * 3) % 4) % 4;
@@ -88,7 +93,7 @@ public class BMPDumper extends PronghornStage {
 		buffer.put((byte)((v >> 8) & 0xFF));
 	}
 	
-	public void copyPixels(int mcuNum) {
+	private void copyPixels(int mcuNum) {
 		int curPixelY = (mcuNum / mcuWidth) * 8;
 		int curPixelX = (mcuNum % mcuWidth) * 8;
 		for (int i = curPixelY; i < curPixelY + 8; ++i) {
@@ -104,7 +109,7 @@ public class BMPDumper extends PronghornStage {
 
 	@Override
 	public void run() {
-		
+		long s = System.nanoTime();
 		while (PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -117,6 +122,20 @@ public class BMPDumper extends PronghornStage {
 				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
 				last = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401);
 				PipeReader.releaseReadLock(input);
+				
+				if (last == 1 && header.height == 0 && header.width == 0) {
+					if (time) {
+						timer += (System.nanoTime() - s);
+						System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScanner.timer) / 1000000) + " ms");
+						System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizer.timer) / 1000000) + " ms");
+						System.out.println("Time for InverseDCT: " + ((double)(InverseDCT.timer) / 1000000) + " ms");
+						System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGB.timer) / 1000000) + " ms");
+						System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
+						System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
+					}
+					
+					System.exit(0);
+				}
 
 				pixels = new short[header.height][header.width * 3];
 				count = 0;
@@ -190,6 +209,16 @@ public class BMPDumper extends PronghornStage {
 						if (verbose) 
 							System.out.println("Done.");
 						if (last == 1) {
+							if (time) {
+								timer += (System.nanoTime() - s);
+								System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScanner.timer) / 1000000) + " ms");
+								System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizer.timer) / 1000000) + " ms");
+								System.out.println("Time for InverseDCT: " + ((double)(InverseDCT.timer) / 1000000) + " ms");
+								System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGB.timer) / 1000000) + " ms");
+								System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
+								System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
+							}
+							
 							System.exit(0);
 						}
 					}
@@ -203,6 +232,7 @@ public class BMPDumper extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		timer += (System.nanoTime() - s);
 	
 	}
 }

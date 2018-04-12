@@ -22,6 +22,7 @@ public class InverseDCT extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	Header header;
 	MCU mcu = new MCU();
@@ -91,6 +92,7 @@ public class InverseDCT extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -194,5 +196,6 @@ public class InverseDCT extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 }

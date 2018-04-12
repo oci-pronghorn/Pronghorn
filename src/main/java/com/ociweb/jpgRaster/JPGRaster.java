@@ -25,9 +25,10 @@ public class JPGRaster {
 	public static void main(String[] args) throws IOException {
 		
 		boolean verbose = hasArg("--verbose", "-v", args);
+		boolean time = hasArg("--time", "-t", args);
 		boolean encode = hasArg("--encode", "-e", args);
 		
-		String defaultFiles = "tests/*.jpg";
+		String defaultFiles = "";
 		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 
 		HashSet<String> inputFiles = new HashSet<String>();
@@ -75,10 +76,10 @@ public class JPGRaster {
 				}
 			}
 			catch (Exception e) {}
-			populateEncoderGraph(gm, inputFiles, verbose, quality);
+			populateEncoderGraph(gm, inputFiles, verbose, time, quality);
 		}
 		else {
-			populateDecoderGraph(gm, inputFiles, verbose);
+			populateDecoderGraph(gm, inputFiles, verbose, time);
 		}
 		
 		String defaultPort = "";
@@ -98,7 +99,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateDecoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose) {
+	private static void populateDecoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, boolean time) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -109,14 +110,14 @@ public class JPGRaster {
 		new InverseQuantizer(gm, pipe1, pipe2, verbose);
 		new InverseDCT(gm, pipe2, pipe3, verbose);
 		new YCbCrToRGB(gm, pipe3, pipe4, verbose);
-		new BMPDumper(gm, pipe4, verbose);
+		new BMPDumper(gm, pipe4, verbose, time);
 		
 		for (String file : inputFiles) {
 			scanner.queueFile(file);
 		}
 	}
 
-	private static void populateEncoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, int quality) {
+	private static void populateEncoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, boolean time, int quality) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -127,7 +128,7 @@ public class JPGRaster {
 		new RGBToYCbCr(gm, pipe1, pipe2, verbose);
 		new ForwardDCT(gm, pipe2, pipe3, verbose);
 		new Quantizer(gm, pipe3, pipe4, verbose, quality);
-		new HuffmanEncoder(gm, pipe4, verbose, quality);
+		new HuffmanEncoder(gm, pipe4, verbose, time, quality);
 		
 		for (String file : inputFiles) {
 			scanner.queueFile(file);

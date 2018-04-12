@@ -19,6 +19,7 @@ public class BMPScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -245,6 +246,7 @@ public class BMPScanner extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			fillMCU(numProcessed % mcuWidth);
 			//JPG.printMCU(mcu);
@@ -258,7 +260,13 @@ public class BMPScanner extends PronghornStage {
 				header = ReadBMP(file);
 				if (header == null || !header.valid) {
 					System.err.println("Error - BMP file '" + file + "' invalid");
-					return;
+					if (inputFiles.size() > 0) {
+						return;
+					}
+					header = new Header();
+					header.width = 0;
+					header.height = 0;
+					header.valid = false;
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
@@ -283,5 +291,6 @@ public class BMPScanner extends PronghornStage {
 					System.out.println("All input files read.");
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 }
