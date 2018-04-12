@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,9 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		this.typeData = graphManager.recordTypeData;
 		this.structId = structId;
 		
+		//modify the struct to add the JSON fields
+		indexPositions = extractor.getIndexPositions();
+		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
 	}
@@ -54,8 +59,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 
 		parser = new JSONStreamParser();
 		visitor = extractor.newJSONVisitor();
-		indexPositions = extractor.indexTable(typeData, structId);
-		
+			
 	}
 	
 	@Override
@@ -104,6 +108,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			inputStream.readFromEndInto(outputStream);
 		    			//parser is not "ready for data" and requires export to be called
 		    			//this expoert will populate the index positinos for the JSON fields
+
 		    			visitor.export(outputStream, indexPositions);		
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
 		    			
@@ -115,6 +120,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		} else {
 		    			//send404 code!
 		    			
+		    			logger.warn("Unable to parse JSON");
 		    			//parser wants more data or the data is not understood, eg broken
 		    			
 		    			//TODO: send 404
