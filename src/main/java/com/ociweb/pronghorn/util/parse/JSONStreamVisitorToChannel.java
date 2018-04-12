@@ -266,6 +266,8 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 			
 			/////////////////write data			
 			final int dims = mapping.dimensions(); 
+			JSONType type = schema.getMapping(i).type;
+		
 			if (dims>0) {
 				//write matrix data then 
 				int[] meta = indexData[i];
@@ -281,7 +283,6 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				}
 			}
 			
-			JSONType type = schema.getMapping(i).type;
 			if (JSONType.TypeString == type) {
 				//convert the write to packed values as we send
 				//when the data was collected the length was summed up. as a result
@@ -294,11 +295,17 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				for(int j = 0; j<c; j++) {
 					//NOTE: if we need to add support for 2G+ strings the change should be here
 					int len = (int)textLengths[i][j];
-					writer.writePackedInt(len);
 					
-					if (len>0) {
-						writer.write(source, pos, (int)len);
-						pos += (int)len;		
+					if (len<Short.MAX_VALUE) {
+						//normal Java approach to building strings.
+						writer.writeShort(len);					
+						if (len>0) {
+							writer.write(source, pos, (int)len);
+							pos += (int)len;		
+						}
+					} else {
+						//TODO: need new type for LONG text which does not use standard UTF
+						writer.writeShort(0);
 					}
 				}
 				
