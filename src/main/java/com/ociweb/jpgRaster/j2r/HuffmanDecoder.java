@@ -328,21 +328,21 @@ public class HuffmanDecoder {
 			}
 			previousYDC = mcu1.y[0];
 			
-			if (horizontal == 2) {
+			if (horizontal == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu2.y, previousYDC, header);
 				if (!success) {
 					return false;
 				}
 				previousYDC = mcu2.y[0];
 			}
-			if (vertical == 2) {
+			if (vertical == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu3.y, previousYDC, header);
 				if (!success) {
 					return false;
 				}
 				previousYDC = mcu3.y[0];
 			}
-			if (horizontal == 2 && vertical == 2) {
+			if (horizontal == 2 && vertical == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu4.y, previousYDC, header);
 				if (!success) {
 					return false;

@@ -59,7 +59,7 @@ public class JPGRaster {
 		}
 		
 		if (inputFiles.size() == 0 || hasArg("--help", "-h", args)) {
-			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
+			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -t ] [ -p port ]");
 			return;
 		}
 		

@@ -72,7 +72,6 @@ public class JPGScanner extends PronghornStage {
 		f.close();
 		b.flip();
 		
-		
 		// JPG file must begin with 0xFFD8
 		
 		short last = (short)(b.get() & 0xFF);
@@ -223,6 +222,9 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (header.valid) {
 			if (header.frameType.equals("Progressive")) {
+				while (mcus.size() < numMCUs) {
+					mcus.add(new MCU());
+				}
 				int numScans = 0;
 				current = (short)(b.get() & 0xFF);
 				while (true) {
@@ -350,100 +352,50 @@ public class JPGScanner extends PronghornStage {
 		MCU mcu4 = null;
 		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 		int vertical = header.colorComponents[0].verticalSamplingFactor;
-		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 		int numProcessed = 0;
 		while (numProcessed < numMCUs) {
-			if (mcus.size() < numMCUs) {
-				if (horizontal == 1 && vertical == 1) {
-					mcu1 = new MCU();
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-					mcu3 = new MCU();
-					mcu4 = new MCU();
-				}
+			int pos = numProcessed - (numProcessed % (mcuWidth * 2)) + (numProcessed % (mcuWidth * 2)) / 2;
+			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
+				mcu1 = mcus.get(numProcessed);
 			}
-			else {
-				if (horizontal == 1 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-					mcu3 = mcus.get(numProcessed + 2);
-					mcu4 = mcus.get(numProcessed + 3);
-				}
+			else if (horizontal == 2 && vertical == 1) {
+				mcu1 = mcus.get(numProcessed);
+				mcu2 = mcus.get(numProcessed + 1);
+			}
+			else if (horizontal == 1 && vertical == 2) {
+				mcu1 = mcus.get(pos);
+				mcu2 = mcus.get(pos + mcuWidth);
+			}
+			else if (horizontal == 2 && vertical == 2) {
+				mcu1 = mcus.get(pos);
+				mcu3 = mcus.get(pos + mcuWidth);
+				mcu2 = mcus.get(pos + 1);
+				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
-				System.err.println("Error during scan " + numScans);
-				// add blank mcus on error to avoid out of bounds errors later
-				while (mcus.size() < numMCUs + ((header.width + 7) / 8)) {
-					mcus.add(new MCU());
-				}
-				return false;
+				//System.err.println("Error during scan " + numScans);
+				//return false;
 			}
-			if (mcus.size() < numMCUs) {
-				if (horizontal == 1 && vertical == 1) {
-					mcus.add(mcu1);
-					numProcessed += 1;
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					mcus.add(mcu3);
-					mcus.add(mcu4);
-					numProcessed += 4;
-				}
+			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
+				mcus.set(numProcessed, mcu1);
+				numProcessed += 1;
 			}
-			else {
-				if (horizontal == 1 && vertical == 1) {
-					mcus.set(numProcessed, mcu1);
-					numProcessed += 1;
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					mcus.set(numProcessed + 2, mcu3);
-					mcus.set(numProcessed + 3, mcu4);
-					numProcessed += 4;
-				}
+			else if (horizontal == 2 && vertical == 1) {
+				mcus.set(numProcessed, mcu1);
+				mcus.set(numProcessed + 1, mcu2);
+				numProcessed += 2;
+			}
+			else if (horizontal == 1 && vertical == 2) {
+				mcus.set(pos, mcu1);
+				mcus.set(pos + mcuWidth, mcu2);
+				numProcessed += 2;
+			}
+			else if (horizontal == 2 && vertical == 2) {
+				mcus.set(pos, mcu1);
+				mcus.set(pos + mcuWidth, mcu3);
+				mcus.set(pos + 1, mcu2);
+				mcus.set(pos + mcuWidth + 1, mcu4);
+				numProcessed += 4;
 			}
 		}
 		header.imageData.clear();
@@ -525,6 +477,11 @@ public class JPGScanner extends PronghornStage {
 			header.valid = false;
 			return;
 		}
+		if (header.numComponents == 0) {
+			System.err.println("Error - Number of color components must not be zero");
+			header.valid = false;
+			return;
+		}
 		for (int i = 0; i < header.numComponents; ++i) {
 			ColorComponent component = new ColorComponent();
 			component.componentID = (short)(b.get() & 0xFF);
@@ -558,6 +515,20 @@ public class JPGScanner extends PronghornStage {
 			
 			header.colorComponents[component.componentID - 1] = component;
 		}
+
+		mcuWidth = (header.width + 7) / 8;
+		mcuHeight = (header.height + 7) / 8;
+		if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+			mcuWidth % 2 == 1) {
+			mcuWidth += 1;
+		}
+		if (header.colorComponents[0].verticalSamplingFactor == 2 &&
+			mcuHeight % 2 == 1) {
+			mcuHeight += 1;
+		}
+		numMCUs = mcuWidth * mcuHeight;
+		numProcessed = 0;
+		
 		if (length - 8 - (header.numComponents * 3) != 0) {
 			System.err.println("Error - SOF Invalid");
 			header.valid = false;
@@ -797,6 +768,7 @@ public class JPGScanner extends PronghornStage {
 			}
 			else {
 				if (header.frameType.equals("Progressive")) {
+					int pos = numProcessed - (numProcessed % (mcuWidth * 2)) + (numProcessed % (mcuWidth * 2)) / 2;
 					if (horizontal == 1 && vertical == 1) {
 						mcu1 = mcus.get(numProcessed);
 					}
@@ -805,14 +777,14 @@ public class JPGScanner extends PronghornStage {
 						mcu2 = mcus.get(numProcessed + 1);
 					}
 					else if (horizontal == 1 && vertical == 2) {
-						mcu1 = mcus.get(numProcessed);
-						mcu2 = mcus.get(numProcessed + 1);
+						mcu1 = mcus.get(pos);
+						mcu3 = mcus.get(pos + mcuWidth);
 					}
 					else if (horizontal == 2 && vertical == 2) {
-						mcu1 = mcus.get(numProcessed);
-						mcu2 = mcus.get(numProcessed + 1);
-						mcu3 = mcus.get(numProcessed + 2);
-						mcu4 = mcus.get(numProcessed + 3);
+						mcu1 = mcus.get(pos);
+						mcu2 = mcus.get(pos + 1);
+						mcu3 = mcus.get(pos + mcuWidth);
+						mcu4 = mcus.get(pos + mcuWidth + 1);
 					}
 				}
 				else {
@@ -942,18 +914,6 @@ public class JPGScanner extends PronghornStage {
 				if (header.frameType.equals("Baseline")) {
 					HuffmanDecoder.beginDecode(header);
 				}
-				mcuWidth = (header.width + 7) / 8;
-				mcuHeight = (header.height + 7) / 8;
-				if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
-					((header.width - 1) / 8 + 1) % 2 == 1) {
-					mcuWidth += 1;
-				}
-				if (header.colorComponents[0].verticalSamplingFactor == 2 &&
-					((header.height - 1) / 8 + 1) % 2 == 1) {
-					mcuHeight += 1;
-				}
-				numMCUs = mcuWidth * mcuHeight;
-				numProcessed = 0;
 			}
 			catch (IOException e) {
 				System.err.println("Error - Unknown error reading file '" + file + "'");
