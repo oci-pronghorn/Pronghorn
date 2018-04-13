@@ -19,9 +19,6 @@ public class YCbCrToRGB extends PronghornStage {
 	boolean verbose;
 	public static long timer = 0;
 	
-	int mcuWidth = 0;
-	int mcuHeight = 0;
-	int numProcessed = 0;
 	int aboutToSend = 0;
 	
 	Header header;
@@ -171,19 +168,6 @@ public class YCbCrToRGB extends PronghornStage {
 	}
 	
 	public void sendMCU(MCU emcu) {
-		if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
-			header.width % 8 == 0 && (header.width / 8) % 2 == 1 &&
-			numProcessed % mcuWidth == mcuWidth - 1) {
-			numProcessed += 1;
-			return;
-		}
-		if (header.colorComponents[0].verticalSamplingFactor == 2 &&
-			header.height % 8 == 0 && (header.height / 8) % 2 == 1 &&
-			numProcessed >= mcuWidth * (mcuHeight - 2) + 1 &&
-			numProcessed % 2 == 1) {
-			numProcessed += 1;
-			return;
-		}
 		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);
@@ -205,8 +189,6 @@ public class YCbCrToRGB extends PronghornStage {
 			DataOutputBlobWriter.closeHighLevelField(mcuWriter, JPGSchema.MSG_MCUMESSAGE_4_FIELD_CR_304);
 			
 			PipeWriter.publishWrites(output);
-
-			numProcessed += 1;
 		}
 		else {
 			System.err.println("YCbCrToRGB requesting shutdown");
@@ -273,10 +255,6 @@ public class YCbCrToRGB extends PronghornStage {
 					System.err.println("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
-				
-				mcuWidth = (header.width + 7) / 8;
-				mcuHeight = (header.height + 7) / 8;
-				numProcessed = 0;
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
 				// read color component data from pipe
@@ -302,15 +280,6 @@ public class YCbCrToRGB extends PronghornStage {
 				else {
 					System.err.println("YCbCrToRGB requesting shutdown");
 					requestShutdown();
-				}
-				
-				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
-					((header.width - 1) / 8 + 1) % 2 == 1) {
-					mcuWidth += 1;
-				}
-				if (component.componentID == 1 && component.verticalSamplingFactor == 2 &&
-					((header.height - 1) / 8 + 1) % 2 == 1) {
-					mcuHeight += 1;
 				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {

@@ -364,12 +364,12 @@ public class JPGScanner extends PronghornStage {
 			}
 			else if (horizontal == 1 && vertical == 2) {
 				mcu1 = mcus.get(pos);
-				mcu2 = mcus.get(pos + mcuWidth);
+				mcu3 = mcus.get(pos + mcuWidth);
 			}
 			else if (horizontal == 2 && vertical == 2) {
 				mcu1 = mcus.get(pos);
-				mcu3 = mcus.get(pos + mcuWidth);
 				mcu2 = mcus.get(pos + 1);
+				mcu3 = mcus.get(pos + mcuWidth);
 				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
@@ -387,13 +387,13 @@ public class JPGScanner extends PronghornStage {
 			}
 			else if (horizontal == 1 && vertical == 2) {
 				mcus.set(pos, mcu1);
-				mcus.set(pos + mcuWidth, mcu2);
+				mcus.set(pos + mcuWidth, mcu3);
 				numProcessed += 2;
 			}
 			else if (horizontal == 2 && vertical == 2) {
 				mcus.set(pos, mcu1);
-				mcus.set(pos + mcuWidth, mcu3);
 				mcus.set(pos + 1, mcu2);
+				mcus.set(pos + mcuWidth, mcu3);
 				mcus.set(pos + mcuWidth + 1, mcu4);
 				numProcessed += 4;
 			}

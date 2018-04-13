@@ -32,6 +32,9 @@ public class BMPDumper extends PronghornStage {
 	int mcuHeight;
 	int mcuWidth;
 	int numMCUs;
+	int mcuHeightReal;
+	int mcuWidthReal;
+	int numMCUsReal;
 	int pos;
 	
 	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time) {
@@ -139,9 +142,9 @@ public class BMPDumper extends PronghornStage {
 
 				pixels = new short[header.height][header.width * 3];
 				count = 0;
-				mcuHeight = (header.height + 7) / 8;
-				mcuWidth = (header.width + 7) / 8;
-				numMCUs = mcuHeight * mcuWidth;
+				mcuHeight = mcuHeightReal = (header.height + 7) / 8;
+				mcuWidth = mcuWidthReal = (header.width + 7) / 8;
+				numMCUs = numMCUsReal = mcuHeight * mcuWidth;
 				pos = 0;
 			}
 			else if (msgIdx == JPGSchema.MSG_COLORCOMPONENTMESSAGE_2) {
@@ -154,9 +157,16 @@ public class BMPDumper extends PronghornStage {
 				header.colorComponents[component.componentID - 1] = component;
 				header.numComponents += 1;
 				PipeReader.releaseReadLock(input);
-				if (component.componentID == 1 && component.horizontalSamplingFactor == 2 &&
-					((header.width - 1) / 8 + 1) % 2 == 1) {
-					mcuWidth += 1;
+				if (component.componentID == 1) {
+					if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+						mcuWidth % 2 == 1) {
+						mcuWidth += 1;
+					}
+					if (header.colorComponents[0].verticalSamplingFactor == 2 &&
+						mcuHeight % 2 == 1) {
+						mcuHeight += 1;
+					}
+					numMCUs = mcuHeight * mcuWidth;
 				}
 			}
 			else if (msgIdx == JPGSchema.MSG_MCUMESSAGE_4) {
@@ -174,7 +184,11 @@ public class BMPDumper extends PronghornStage {
 				}
 				PipeReader.releaseReadLock(input);
 
-				copyPixels(pos);
+				if (mcuHeightReal < mcuHeight && pos / mcuWidth == mcuHeightReal ||
+					mcuWidthReal < mcuWidth && pos % mcuWidth == mcuWidthReal) {}
+				else {
+					copyPixels(pos);
+				}
 				
 				count += 1;
 				
