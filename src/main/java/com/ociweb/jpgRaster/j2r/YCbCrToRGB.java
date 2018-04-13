@@ -17,6 +17,7 @@ public class YCbCrToRGB extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -215,6 +216,7 @@ public class YCbCrToRGB extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		if (PipeWriter.hasRoomForWrite(output) && aboutToSend != 0) {
 			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 			int vertical = header.colorComponents[0].verticalSamplingFactor;
@@ -444,5 +446,6 @@ public class YCbCrToRGB extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 }

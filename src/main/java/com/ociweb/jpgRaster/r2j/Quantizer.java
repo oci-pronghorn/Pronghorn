@@ -18,6 +18,7 @@ public class Quantizer extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	int quality;
 	
 	Header header;
@@ -58,6 +59,7 @@ public class Quantizer extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -136,5 +138,6 @@ public class Quantizer extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 }
