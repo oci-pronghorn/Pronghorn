@@ -50,7 +50,6 @@ public class JPGScanner extends PronghornStage {
 	public Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
 		header.filename = filename;
-//		DataInputStream f = new DataInputStream(new FileInputStream(filename));
 		
 		FileInputStream f = new FileInputStream(filename);
 		FileChannel file = f.getChannel();
@@ -67,8 +66,6 @@ public class JPGScanner extends PronghornStage {
 		
 		
 		// JPG file must begin with 0xFFD8
-//		short last = (short)f.readUnsignedByte();
-//		short current = (short)f.readUnsignedByte();
 		
 		short last = (short)(b.get() & 0xFF);
 		short current = (short)(b.get() & 0xFF);
