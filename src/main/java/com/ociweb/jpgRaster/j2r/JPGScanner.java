@@ -80,8 +80,8 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (verbose) 
 			System.out.println("Start of Image");
-		last = (short)b.get();
-		current = (short)b.get();
+		last = (short)(b.get() & 0xFF);
+		current = (short)(b.get() & 0xFF);
 		
 		while (header.valid) {
 			if (last != 0xFF) {
@@ -142,7 +142,7 @@ public class JPGScanner extends PronghornStage {
 				ReadComment(b, header);
 				break;
 			case 0xFF: // skip
-				current = (short)b.get();
+				current = (short)(b.get() & 0xFF);
 				break;
 			case JPGConstants.JPG0:
 			case JPGConstants.JPG1:
@@ -224,16 +224,16 @@ public class JPGScanner extends PronghornStage {
 				break;
 			}
 
-			last = (short)b.get();
-			current = (short)b.get();
+			last = (short)(b.get() & 0xFF);
+			current = (short)(b.get() & 0xFF);
 		}
 		if (header.valid) {
 			if (header.frameType.equals("Progressive")) {
 				int numScans = 0;
-				current = (short)b.get();
+				current = (short)(b.get() & 0xFF);
 				while (true) {
 					last = current;
-					current = (short)b.get();
+					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
 							if (verbose) 
@@ -243,7 +243,7 @@ public class JPGScanner extends PronghornStage {
 						else if (current == 0x00) {
 							header.imageData.add(last);
 							// advance by a byte, to drop 0x00
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current == JPGConstants.DHT) {
 							if (header.imageData.size() > 0) {
@@ -255,7 +255,7 @@ public class JPGScanner extends PronghornStage {
 							}
 							
 							ReadHuffmanTable(b, header);
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current == JPGConstants.SOS) {
 							if (header.imageData.size() > 0) {
@@ -267,11 +267,11 @@ public class JPGScanner extends PronghornStage {
 							}
 							
 							ReadStartOfScan(b, header);
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
 							ReadRSTN(b, header);
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
@@ -286,10 +286,10 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 			else { // if (header.frameType.equals("Baseline")) {
-				current = (short)b.get();
+				current = (short)(b.get() & 0xFF);
 				while (true) {
 					last = current;
-					current = (short)b.get();
+					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
 							if (verbose) 
@@ -299,11 +299,11 @@ public class JPGScanner extends PronghornStage {
 						else if (current == 0x00) {
 							header.imageData.add(last);
 							// advance by a byte, to drop 0x00
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
 							ReadRSTN(b, header);
-							current = (short)b.get();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
@@ -465,11 +465,11 @@ public class JPGScanner extends PronghornStage {
 	private void ReadQuantizationTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Quantization Tables");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
-			short info = (short)b.get();
+			short info = (short)(b.get() & 0xFF);
 			QuantizationTable table = new QuantizationTable();
 			table.tableID = (short)(info & 0x0F);
 			
@@ -487,12 +487,12 @@ public class JPGScanner extends PronghornStage {
 			}
 			if (table.precision == 2) {
 				for (int i = 0; i < 64; ++i) {
-					table.table[i] = b.get() << 8 + b.get();
+					table.table[i] = (b.get() & 0xFF) << 8 + (b.get() & 0xFF);
 				}
 			}
 			else {
 				for (int i = 0; i < 64; ++i) {
-					table.table[i] = b.get();
+					table.table[i] = (b.get() & 0xFF);
 				}
 			}
 			header.quantizationTables[table.tableID] = table;
@@ -512,9 +512,9 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (verbose) 
 			System.out.println("Reading Start of Frame");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
-		header.precision = (short)b.get();
+		header.precision = (short)(b.get() & 0xFF);
 		
 		if (header.precision != 8) {
 			System.err.println("Error - Invalid precision: " + header.precision);
@@ -522,8 +522,8 @@ public class JPGScanner extends PronghornStage {
 			return;
 		}
 		
-		header.height = (b.get() << 8) + b.get();
-		header.width = (b.get() << 8) + b.get();
+		header.height = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
+		header.width = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		if (header.height == 0 || header.width == 0) {
 			System.err.println("Error - Invalid dimensions");
@@ -531,7 +531,7 @@ public class JPGScanner extends PronghornStage {
 			return;
 		}
 		
-		header.numComponents = (short)b.get();
+		header.numComponents = (short)(b.get() & 0xFF);
 		if (header.numComponents == 4) {
 			System.err.println("Error - CMYK color mode not supported");
 			header.valid = false;
@@ -539,11 +539,11 @@ public class JPGScanner extends PronghornStage {
 		}
 		for (int i = 0; i < header.numComponents; ++i) {
 			ColorComponent component = new ColorComponent();
-			component.componentID = (short)b.get();
-			short samplingFactor = (short)b.get();
+			component.componentID = (short)(b.get() & 0xFF);
+			short samplingFactor = (short)(b.get() & 0xFF);
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
-			component.quantizationTableID = (short)b.get();
+			component.quantizationTableID = (short)(b.get() & 0xFF);
 			
 			if (component.componentID == 0) {
 				header.zeroBased = true;
@@ -579,12 +579,12 @@ public class JPGScanner extends PronghornStage {
 	private void ReadHuffmanTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Huffman Tables");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
 			HuffmanTable table = new HuffmanTable();
-			short info = (short)b.get();
+			short info = (short)(b.get() & 0xFF);
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
 			/*if (ACTable) {
@@ -603,7 +603,7 @@ public class JPGScanner extends PronghornStage {
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
 			for (int i = 0; i < 16; ++i) {
-				numSymbols[i] = (short)b.get();
+				numSymbols[i] = (short)(b.get() & 0xFF);
 				allSymbols += numSymbols[i];
 			}
 			
@@ -616,7 +616,7 @@ public class JPGScanner extends PronghornStage {
 			for (int i = 0; i < 16; ++i) {
 				table.symbols.add(new ArrayList<Short>());
 				for (int j = 0; j < numSymbols[i]; ++j) {
-					table.symbols.get(i).add((short)b.get());
+					table.symbols.get(i).add((short)(b.get() & 0xFF));
 				}
 			}
 			if (ACTable) {
@@ -641,17 +641,17 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (verbose) 
 			System.out.println("Reading Start of Scan");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		
 		for (int i = 0; i < header.numComponents; ++i) {
 			header.colorComponents[i].used = false;
 		}
 		
-		int numComponents = b.get();
+		int numComponents = (b.get() & 0xFF);
 		for (int i = 0; i < numComponents; ++i) {
-			short componentID = (short)b.get();
-			short huffmanTableID = (short)b.get();
+			short componentID = (short)(b.get() & 0xFF);
+			short huffmanTableID = (short)(b.get() & 0xFF);
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
 			//System.out.println("Component " + componentID);
@@ -675,9 +675,9 @@ public class JPGScanner extends PronghornStage {
 			header.colorComponents[componentID - 1].huffmanDCTableID = huffmanDCTableID;
 			header.colorComponents[componentID - 1].used = true;
 		}
-		header.startOfSelection = (short)b.get();
-		header.endOfSelection = (short)b.get();
-		short successiveApproximation = (short)b.get();
+		header.startOfSelection = (short)(b.get() & 0xFF);
+		header.endOfSelection = (short)(b.get() & 0xFF);
+		short successiveApproximation = (short)(b.get() & 0xFF);
 		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
 		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
 		//System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
@@ -701,9 +701,9 @@ public class JPGScanner extends PronghornStage {
 	private void ReadRestartInterval(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Restart Interval");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
-		header.restartInterval = (b.get() << 8) + b.get();
+		header.restartInterval = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
 			header.valid = false;
@@ -719,7 +719,7 @@ public class JPGScanner extends PronghornStage {
 	private void ReadAPPN(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading APPN");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		// all of APPN markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
@@ -730,7 +730,7 @@ public class JPGScanner extends PronghornStage {
 	private void ReadComment(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Comment");
-		int length = (b.get() << 8) + b.get();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		// all comment markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
