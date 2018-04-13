@@ -9,7 +9,6 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -49,20 +48,27 @@ public class BMPScanner extends PronghornStage {
 		FileChannel file = f.getChannel();
 		
 		int numBytes = (int)(new File(filename)).length();
+		
+		if (numBytes == 0) {
+			file.close();
+			f.close();
+			throw new IOException();
+		}
+		
 		ByteBuffer b = ByteBuffer.allocate(numBytes);
 		int bytesRead = 0;
 		
 		while(bytesRead < numBytes) {
 			bytesRead += file.read(b);
 		}
-		
+
+		file.close();
+		f.close();
 		b.flip();
 		
 		if ((b.get() & 0xFF) != 'B' || (b.get() & 0xFF) != 'M') {
 			System.err.println("Error - not a BMP file");
-			header.valid = false;
-			f.close();b.clear();
-			return header;
+			return null;
 		}
 		
 		int offset, dibSize, planes, depth, compr = 0;
@@ -146,31 +152,23 @@ public class BMPScanner extends PronghornStage {
 		}
 		else {
 			System.err.println("Error - DIB Header not supported");
-			header.valid = false;
-			f.close();b.clear();
 			return null;
 		}
 		
 		if (planes != 1) {
 			System.err.println("Error - Number of color planes must be 1");
-			header.valid = false;
-			f.close();b.clear();
 			return null;
 		}
 		if (depth != 24) {
 			System.err.println("Error - Only 24bpp color depth supported");
-			header.valid = false;
-			f.close();b.clear();
 			return null;
 		}
 		if (compr != 0) {
 			System.err.println("Error - BMP compression not supported");
-			f.close();b.clear();
 			return null;
 		}
 		if (offset < 0) {
 			System.err.println("Error - Invalid offset");
-			f.close();b.clear();
 			return null;
 		}
 		
@@ -195,7 +193,6 @@ public class BMPScanner extends PronghornStage {
 			readMCURow(b, 8, i * 8);
 		}
 		
-		f.close();b.clear();
 		return header;
 	}
 	

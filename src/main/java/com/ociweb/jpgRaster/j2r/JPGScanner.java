@@ -13,7 +13,6 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -55,6 +54,13 @@ public class JPGScanner extends PronghornStage {
 		FileChannel file = f.getChannel();
 		
 		int numBytes = (int)(new File(filename)).length();
+		
+		if (numBytes == 0) {
+			file.close();
+			f.close();
+			throw new IOException();
+		}
+		
 		ByteBuffer b = ByteBuffer.allocate(numBytes);
 		int bytesRead = 0;
 		
@@ -62,6 +68,8 @@ public class JPGScanner extends PronghornStage {
 			bytesRead += file.read(b);
 		}
 		
+		file.close();
+		f.close();
 		b.flip();
 		
 		
@@ -72,8 +80,6 @@ public class JPGScanner extends PronghornStage {
 		
 		if (last != 0xFF || current != JPGConstants.SOI) {
 			header.valid = false;
-			f.close();
-			b.clear();
 			return header;
 		}
 		if (verbose) 
@@ -85,7 +91,6 @@ public class JPGScanner extends PronghornStage {
 			if (last != 0xFF) {
 				System.err.println("Error - Expected a marker");
 				header.valid = false;
-				f.close();
 				return header;
 			}
 			switch (current) {
@@ -168,17 +173,14 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.SOI:
 				System.err.println("Error - This JPG contains an embedded JPG; THis is not supported");
 				header.valid = false;
-				f.close();
 				return header;
 			case JPGConstants.EOI:
 				System.err.println("Error - EOI detected before SOS");
 				header.valid = false;
-				f.close();
 				return header;
 			case JPGConstants.DAC:
 				System.err.println("Error - Arithmetic Table mode is not supported");
 				header.valid = false;
-				f.close();
 				return header;
 				// case JPGConstants.SOF4:
 			case JPGConstants.SOF5:
@@ -194,8 +196,6 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.SOF15:
 				System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
 				header.valid = false;
-				f.close();
-				b.clear();
 				return header;
 			case JPGConstants.RST0:
 			case JPGConstants.RST1:
@@ -207,14 +207,10 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.RST7:
 				System.err.println("Error - RSTN detected before SOS");
 				header.valid = false;
-				f.close();
-				b.clear();
 				return header;
 			default:
 				System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
 				header.valid = false;
-				f.close();
-				b.clear();
 				return header;
 			}
 			if (current == JPGConstants.SOS) {
@@ -246,7 +242,6 @@ public class JPGScanner extends PronghornStage {
 						else if (current == JPGConstants.DHT) {
 							if (header.imageData.size() > 0) {
 								if (!decodeScan(header, mcus, numScans)) {
-									f.close();
 									return header;
 								}
 								numScans += 1;
@@ -258,7 +253,6 @@ public class JPGScanner extends PronghornStage {
 						else if (current == JPGConstants.SOS) {
 							if (header.imageData.size() > 0) {
 								if (!decodeScan(header, mcus, numScans)) {
-									f.close();
 									return header;
 								}
 								numScans += 1;
@@ -274,7 +268,6 @@ public class JPGScanner extends PronghornStage {
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
-							f.close();
 							return header;
 						}
 					}
@@ -306,8 +299,6 @@ public class JPGScanner extends PronghornStage {
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
-							f.close();
-							b.clear();
 							return header;
 						}
 					}
@@ -317,7 +308,6 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 		}
-		f.close();
 		
 		if (header.numComponents != 1 && header.numComponents != 3) {
 			System.err.println("Error - " + header.numComponents + " color components given (1 or 3 required)");
@@ -980,7 +970,7 @@ public class JPGScanner extends PronghornStage {
 		Header header = null;
 		try {
 			ArrayList<MCU> mcus = new ArrayList<MCU>();
-			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus);
+			header = new JPGScanner(new GraphManager(), null, true).ReadJPG("test_jpgs/earth_progressive.jpg", mcus);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
@@ -1057,10 +1047,6 @@ public class JPGScanner extends PronghornStage {
 			else {
 				System.err.println("Error - Not a valid JPG file");
 			}
-		} catch(FileNotFoundException e) {
-			System.err.println("Error - JPG file not found");
-		} catch (EOFException e) {
-			System.err.println("Error - File ended early");
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}
