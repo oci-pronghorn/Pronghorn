@@ -134,9 +134,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 				}
 				
 				HTTPUtil.addHeader(schema, structId, headerParser, header);
-			
 			}
-		
+			
 		}
 		
 		if (!headerContentLength) {

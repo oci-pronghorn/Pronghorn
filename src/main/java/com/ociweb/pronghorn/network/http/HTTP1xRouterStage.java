@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.SSLConnection;
+import com.ociweb.pronghorn.network.BaseConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -616,7 +616,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;    			
     			
-    			SSLConnection con = coordinator.connectionForSessionId(channel);
+    			BaseConnection con = coordinator.connectionForSessionId(channel);
 				if (null!=con) {
 					con.clearPoolReservation();
 				}
@@ -734,7 +734,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;
     			
-    			SSLConnection con = coordinator.connectionForSessionId(channel);
+    			BaseConnection con = coordinator.connectionForSessionId(channel);
 				if (null!=con) {
 					con.clearPoolReservation();
 				}
@@ -894,7 +894,7 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 		////////////////
 		//this block is already done because sendError will close upon xmit
 		//it is doen here because the sendError failed
-		SSLConnection con = coordinator.connectionForSessionId(channel);
+		BaseConnection con = coordinator.connectionForSessionId(channel);
 		if (null!=con) {
 			con.clearPoolReservation();		
 			con.close();
@@ -946,7 +946,7 @@ private void sendRelease(long channel, final int idx) {
 }
 
 private void badClientError(long channel) {
-	SSLConnection con = coordinator.connectionForSessionId(channel);
+	BaseConnection con = coordinator.connectionForSessionId(channel);
 	if (null!=con) {
 		con.clearPoolReservation();		
 		con.close();

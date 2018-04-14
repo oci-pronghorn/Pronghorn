@@ -15,5 +15,5 @@ public abstract class SSLConnectionHolder {
 		}
 	}
 
-	public abstract SSLConnection connectionForSessionId(long hostId);
+	public abstract BaseConnection connectionForSessionId(long hostId);
 }

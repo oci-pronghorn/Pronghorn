@@ -6,6 +6,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -60,6 +61,15 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final String defaultPath;
     
 	public final boolean requireClientAuth;//clients must send their cert to connect
+	
+	//////////////////////////////////////
+	//fields to replicate headers back to the caller
+	//////////////////////////////////////
+	private HTTPHeader[] replicatedHeaders;
+	private int defaultInternalInFlightCount = 100;//TODO: add update method
+	private int defaultMaxHeaderPayloadSize = 80;//TODO: add update method
+	///////////////////////////////////////
+	
 	
 //	public static long acceptConnectionStart;
 //	public static long acceptConnectionRespond;
@@ -202,7 +212,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	@Override
-	public SSLConnection connectionForSessionId(long id) {
+	public BaseConnection connectionForSessionId(long id) {
 		return socketHolder.get(id);		
 	}
 
@@ -332,6 +342,21 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		return defaultPath;
 	}
 
+	
+	public void setReplicatedHeaders(HTTPHeader ... headers) {
+		replicatedHeaders = headers;
+	}
+	
+	public HTTPHeader[] getReplicatedHeaders() {
+		return replicatedHeaders;
+	}
 
+	public int connectionDataElements() {
+		return null==replicatedHeaders ? 0 : defaultInternalInFlightCount;
+	}
+
+	public int connectionDataElementSize() {
+		return null==replicatedHeaders ? 0 : replicatedHeaders.length*defaultMaxHeaderPayloadSize;
+	}
 
 }

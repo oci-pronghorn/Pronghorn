@@ -17,6 +17,7 @@ import javax.net.ssl.SSLEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -311,7 +312,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 							  
 							//  logger.info("new server connection attached for new id {} ",channelId);
 							  
-							  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
+	                          holder.setValue(channelId, 
+	                        		  new ServerConnection(sslEngine, 
+	                        				  channel, channelId,
+	                        				  coordinator));
+	                          
+	                         
 	                                                                                                                            
 	                         // logger.info("register new data to selector for pipe {}",targetPipeIdx);
 	                          Selector selector2 = ServerCoordinator.getSelector(coordinator);

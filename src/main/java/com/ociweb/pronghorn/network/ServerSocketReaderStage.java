@@ -197,7 +197,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 						
 		//logger.info("new request on connection {} ",channelId);
 		
-		SSLConnection cc = coordinator.connectionForSessionId(channelId);
+		BaseConnection cc = coordinator.connectionForSessionId(channelId);
 				
 		boolean processWork = true;
 		if (coordinator.isTLS) {
@@ -359,7 +359,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
 			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
-				SSLConnection conn = coordinator.connectionForSessionId(idToClear);
+				BaseConnection conn = coordinator.connectionForSessionId(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
 				}
@@ -394,7 +394,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private int r2; //needed by assert
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
-    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
+    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, BaseConnection cc, SelectionKey selection) {
 
         //keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
@@ -440,7 +440,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
 
-	private int disconnected(long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc,
+	private int disconnected(long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, BaseConnection cc,
 			SelectionKey selection, long len, ByteBuffer[] b) {
 		//logger.info("client disconnected, so release");
 		//client was disconnected so release all our resources to ensure they can be used by new connections.
@@ -462,7 +462,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		return true;
 	}
 
-	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, SSLConnection cc) {
+	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, BaseConnection cc) {
 		//logger.info("{} publish or abandon",System.currentTimeMillis());
 		if (len>0) {
 			
@@ -500,7 +500,7 @@ public class ServerSocketReaderStage extends PronghornStage {
              if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
-             	SSLConnection conn = coordinator.connectionForSessionId(channelId);
+             	BaseConnection conn = coordinator.connectionForSessionId(channelId);
              	if (null!=conn) {
              		conn.clearPoolReservation();
              	}
@@ -529,7 +529,7 @@ public class ServerSocketReaderStage extends PronghornStage {
           }
     }
 
-    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len, SSLConnection cc) {
+    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len, BaseConnection cc) {
 
     	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";
         

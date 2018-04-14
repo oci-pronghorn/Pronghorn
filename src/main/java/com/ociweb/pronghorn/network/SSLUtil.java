@@ -30,7 +30,7 @@ public class SSLUtil {
     public static final long HANDSHAKE_POS = -123;
     
 	
-	public static boolean handShakeWrapIfNeeded(SSLConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
+	public static boolean handShakeWrapIfNeeded(BaseConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
 						
 		 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 
@@ -70,7 +70,7 @@ public class SSLUtil {
 	 
 	}
 	
-	public static void handshakeWrapLogic(SSLConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
+	public static void handshakeWrapLogic(BaseConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
 	    
 		try {
 
@@ -109,7 +109,7 @@ public class SSLUtil {
 	    
 	}
 
-	static void manageException(SSLException sslex, SSLConnection cc, boolean isServer) {
+	static void manageException(SSLException sslex, BaseConnection cc, boolean isServer) {
 		try {
 			cc.close();
 		} catch (Throwable t) {
@@ -119,7 +119,7 @@ public class SSLUtil {
 	}
 
 	public static Status wrapResultStatusState(Pipe<NetPayloadSchema> target, ByteBuffer buffer,
-			final SSLConnection cc, ByteBuffer[] bbHolder, final ByteBuffer[] targetBuffers, boolean isServer, long arrivalTime) throws SSLException {
+			final BaseConnection cc, ByteBuffer[] bbHolder, final ByteBuffer[] targetBuffers, boolean isServer, long arrivalTime) throws SSLException {
 	
 		if (cc.getEngine().isOutboundDone()) {
 			
@@ -228,7 +228,7 @@ public class SSLUtil {
 		assert(!buffer.hasRemaining());
 	}
 
-	private static SSLEngineResult gatherPipeDataForUnwrap(int maxEncryptedContentLength, ByteBuffer rolling, SSLConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
+	private static SSLEngineResult gatherPipeDataForUnwrap(int maxEncryptedContentLength, ByteBuffer rolling, BaseConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
 		SSLEngineResult result=null;
 		
 		assert(rolling.limit()==rolling.capacity());
@@ -275,7 +275,7 @@ public class SSLUtil {
 		return result;
 	}
 
-	private static SSLEngineResult unwrap(int maxEncryptedContentLength, ByteBuffer sourceBuffer, final ByteBuffer[] targetBuffer, SSLConnection cc)
+	private static SSLEngineResult unwrap(int maxEncryptedContentLength, ByteBuffer sourceBuffer, final ByteBuffer[] targetBuffer, BaseConnection cc)
 			throws SSLException {
 		SSLEngineResult result;
 		int origLimit;
@@ -307,7 +307,7 @@ public class SSLUtil {
 	 * Consume rolling which must be positioned for reading from position up to limit.
 	 * Resturns rolling setup for appending new data so limit is at capacity and position is where we left off.		
 	 */
-	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, SSLConnection cc) throws SSLException {
+	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, BaseConnection cc) throws SSLException {
 		while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ||
 			   cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_TASK) {				
 															
@@ -363,7 +363,7 @@ public class SSLUtil {
 		return result;
 	}
 	
-	private static SSLEngineResult unwrapRollingNominal(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, SSLConnection cc) throws SSLException {
+	private static SSLEngineResult unwrapRollingNominal(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, BaseConnection cc) throws SSLException {
 		int x=0;
 		String rollingData = rolling.toString();
 		while (rolling.hasRemaining()) {
@@ -411,7 +411,7 @@ public class SSLUtil {
 	}
 	
 
-	public static int handShakeUnWrapIfNeeded(int maxEncryptedContentLength, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final SSLConnection cc) {
+	public static int handShakeUnWrapIfNeeded(int maxEncryptedContentLength, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final BaseConnection cc) {
 		
 		 assert(handshakePipe!=null);
 		 assert(source!=null);  
@@ -594,7 +594,7 @@ public class SSLUtil {
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
-			final SSLConnection cc = ccm.connectionForSessionId(Pipe.peekLong(source, 1));
+			final BaseConnection cc = ccm.connectionForSessionId(Pipe.peekLong(source, 1));
 						
 			if (null==cc || !cc.isValid) {
 				logger.info("connection has dropped and data with it");
@@ -705,7 +705,7 @@ public class SSLUtil {
 				return didWork;//try again later when there is room in the output
 			}			
 
-			SSLConnection cc = null;
+			BaseConnection cc = null;
 			long arrivalTime = 0;
 			if ( Pipe.peekMsg(source, NetPayloadSchema.MSG_ENCRYPTED_200)) { 	
 				
@@ -896,7 +896,7 @@ public class SSLUtil {
 		
 	}
 
-	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, SSLConnection cc, long arrivalTime) {
+	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, BaseConnection cc, long arrivalTime) {
 			
 		if(cc.localRunningBytesProduced>0) {
 			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
@@ -919,7 +919,7 @@ public class SSLUtil {
 	}
 
 	private static void shutdownUnwrapper(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
-										  ByteBuffer rolling, boolean isServer, int maxEncryptedContentLength, long arrivalTime, SSLConnection cc) {
+										  ByteBuffer rolling, boolean isServer, int maxEncryptedContentLength, long arrivalTime, BaseConnection cc) {
 		if (rolling.position()>0 && null!=cc) {
 			logger.info("shutdown of unwrap detected but we must procesing rolling data first {} isServer:{}",rolling,isServer);
 
@@ -964,13 +964,13 @@ public class SSLUtil {
 		Pipe.releaseReadLock(source);
 	}
 
-	private static void sendRelease(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, SSLConnection cc, boolean isServer) {
+	private static void sendRelease(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, BaseConnection cc, boolean isServer) {
 		Pipe.presumeRoomForWrite(release);
 		sendReleaseRec(source, release, cc, cc.getSequenceNo(), isServer);
 		
 	}
 
-	private static void sendReleaseRec(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, SSLConnection cc, int sequence, boolean isServer) {
+	private static void sendReleaseRec(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, BaseConnection cc, int sequence, boolean isServer) {
 		int s = Pipe.addMsgIdx(release, isServer? ReleaseSchema.MSG_RELEASEWITHSEQ_101 : ReleaseSchema.MSG_RELEASE_100);
 		Pipe.addLongValue(cc.id,release);			        		
 		Pipe.addLongValue(Pipe.tailPosition(source),release);
@@ -981,7 +981,7 @@ public class SSLUtil {
 		Pipe.publishWrites(release);
 	}
 
-	public static boolean handshakeProcessing(Pipe<NetPayloadSchema> pipe, SSLConnection con) {
+	public static boolean handshakeProcessing(Pipe<NetPayloadSchema> pipe, BaseConnection con) {
 		boolean result = true;
 		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
 		do {

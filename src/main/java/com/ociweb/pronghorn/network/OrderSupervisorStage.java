@@ -251,8 +251,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					
 			        if (sequenceNo >= expected) {
 			        } else {
-			        	logger.info("warning moved forward. *****************************",new Exception());
-			        	expected = rareMoveForward(sequenceNo, idx);
+			        	//we already moved past this point
+			        	//this sequence just read is < the expected value
+			        	BaseConnection con = socketHolder.get(channelId);
+			        	con.close();
+			        	logger.warn("Corrupt data detected, connection closed. Expected next sequence of {} but got {} which is too old. "
+			        				,expected ,sequenceNo);		
+			        	return true;
 			        } 
 			        
 			        if (expected == sequenceNo) {
@@ -349,20 +354,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private void finishHandshake(Pipe<NetPayloadSchema> outPipe, long channelId) {
-		SSLConnection con = socketHolder.get(channelId);			
+		BaseConnection con = socketHolder.get(channelId);			
 		if (!SSLUtil.handshakeProcessing(outPipe, con)) {
 			//TODO: we must wait until later...
 		}
-	}
-
-	private int rareMoveForward(int sequenceNo, int idx) {
-		int expected;
-		//moved up sequence number and continue
-		//rare case but we do not want to fail when it happens
-		//this is related to rapid requests from a client, like frequent 404s
-		expectedSquenceNos[idx] =  expected = sequenceNo;		
-		movedUpCount++;
-		return expected;
 	}
 
 	private void conClearLogic(long channelId, int idx) {

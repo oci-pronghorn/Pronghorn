@@ -22,7 +22,7 @@ import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.util.Appendables;
 
 
-public class ClientConnection extends SSLConnection implements SelectionKeyHashMappable {
+public class ClientConnection extends BaseConnection implements SelectionKeyHashMappable {
 
 	//TODO: limitations with client side calls
 	//      only supports 1 struct or 1 JSON parser or 1 set of headers per ClientSession
@@ -118,7 +118,7 @@ public class ClientConnection extends SSLConnection implements SelectionKeyHashM
 			                int pipeIdx, long conId, int structureId		                 
 			 			  ) throws IOException {
 
-		super(engine, SocketChannel.open(), conId);
+		super(engine, SocketChannel.open(), conId, 0, 0);
 		
 		
 		this.inFlightTimes = new long[maxInFlight];

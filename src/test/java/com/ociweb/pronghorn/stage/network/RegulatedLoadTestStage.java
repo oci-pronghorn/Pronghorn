@@ -2,14 +2,11 @@ package com.ociweb.pronghorn.stage.network;
 
 import java.util.Arrays;
 
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.SSLConnection;
-import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;

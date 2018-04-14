@@ -69,9 +69,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private long[] ccIdData;
 	
 	private int[] runningHeaderBytes;
-			
-	private int lastMessageType=-1;   //does not change
-	private long lastPayloadSize=-1;  //does not change
 	
 	public static boolean showData = false;
 	
@@ -197,13 +194,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						     trieReader.sourcePos,
 						     trieReader.sourceLen,
 						     Pipe.blobMask(localInputPipe));							
-
-//				TrieParserReader.parseSetup(
-//					     trieReader,
-//					     Pipe.blob(localInputPipe),
-//					     0,
-//					     0,
-//					     Pipe.blobMask(localInputPipe));	
+	
 				
 				HTTPClientConnection cc = null;
 					
@@ -1003,7 +994,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 					if (-1 != payloadLengthData[i]) {
 						payloadLengthData[i] = length;
-						lastPayloadSize = length;						
+												
 					}			
 					
 				} else if (HTTPHeaderDefaults.CONTENT_TYPE.ordinal()==header.ordinal()) {
@@ -1012,8 +1003,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, httpSpec.contentTypeTrieBuilder());
 	
 					//logger.trace("detected content type and set value to {} ",type);
-					
-					lastMessageType = type;			
+							
 					writer.writeShort((short)type);
 									
 				} else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal()==header.ordinal()) {

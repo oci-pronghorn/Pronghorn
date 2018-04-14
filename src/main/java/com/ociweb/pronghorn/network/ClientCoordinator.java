@@ -95,7 +95,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
-	public SSLConnection connectionForSessionId(long hostId) {
+	public BaseConnection connectionForSessionId(long hostId) {
 		ClientConnection response = connections.get(hostId);
 		
 		if (null != response) {			
@@ -114,7 +114,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return response;
 	}
 	
-	public SSLConnection connectionForSessionId(long hostId, boolean alsoReturnDisconnected) {
+	public BaseConnection connectionForSessionId(long hostId, boolean alsoReturnDisconnected) {
 		ClientConnection response = connections.get(hostId);
 		
 		if (null != response) {			

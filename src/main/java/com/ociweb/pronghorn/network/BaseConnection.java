@@ -9,9 +9,12 @@ import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SSLConnection {
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
+
+public abstract class BaseConnection {
 	
-	static final Logger logger = LoggerFactory.getLogger(SSLConnection.class);
+	static final Logger logger = LoggerFactory.getLogger(BaseConnection.class);
 
 	private SSLEngine engine;
 	protected final SocketChannel socketChannel;
@@ -25,11 +28,26 @@ public class SSLConnection {
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
 
+	protected final Pipe<RawDataSchema> connectionData;
 		
-	protected SSLConnection(SSLEngine engine, SocketChannel socketChannel, long id ) {
+	protected BaseConnection(SSLEngine engine, 
+			                 SocketChannel socketChannel,
+			                 long id,
+			                 int  connectionDataElements,
+			                 int  connectionDataElementSize
+				) {
+		
 		this.engine = engine;
 		this.socketChannel = socketChannel;
 		this.id = id;
+		
+		if (connectionDataElements<=0) {
+			this.connectionData = null;
+		} else {
+			this.connectionData = RawDataSchema.instance.newPipe(connectionDataElements, connectionDataElementSize);
+			this.connectionData.initBuffers();			
+		}
+		
 	}
 	
 	public SSLEngine getEngine() {
