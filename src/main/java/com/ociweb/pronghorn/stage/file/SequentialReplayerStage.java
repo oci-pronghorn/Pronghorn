@@ -721,7 +721,7 @@ public class SequentialReplayerStage extends PronghornStage {
 			int fullIndexSizeInBytes = data.structured().fullIndexSizeInBytes();
 			str.writePackedInt(fullIndexSizeInBytes);
 			if (fullIndexSizeInBytes>0) {
-				data.structured().fullIndexReadInto(str);
+				data.readFromEndInto(str);
 				str.writePackedInt(DataInputBlobReader.getStructType(data));
 			}			
 		} else {
