@@ -55,7 +55,7 @@ public final class StructuredReader {
 	//set to a position for general reading unless index position is not provided
 	public ChannelReader read(long fieldId) {
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader;
 		} else {
@@ -88,7 +88,7 @@ public final class StructuredReader {
 	public String readText(long fieldId) {
 	
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader.readUTF();
 		} else {
@@ -102,12 +102,12 @@ public final class StructuredReader {
 	}
 
 	public boolean isEqual(long fieldId, byte[] utf8EncodedBytes) {
-	
+
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			if (channelReader.available()>=2) {
-				int length = channelReader.readShort(); 
+				int length = channelReader.readShort(); 				
 				return utf8EncodedBytes.length==length && channelReader.equalBytes(utf8EncodedBytes);
 			} 
 		}
@@ -122,7 +122,7 @@ public final class StructuredReader {
 	public long readTextAsLong(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Text);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return DataInputBlobReader.readUTFAsLong(channelReader);
 		} else {
@@ -139,7 +139,7 @@ public final class StructuredReader {
 	public double readTextAsDouble(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return DataInputBlobReader.readUTFAsDecimal(channelReader);
 		} else {
@@ -156,7 +156,7 @@ public final class StructuredReader {
 	public <A extends Appendable> A readText(long fieldId, A target) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			channelReader.readUTF(target);
 		}
@@ -174,7 +174,7 @@ public final class StructuredReader {
 			   typeData.fieldType(fieldId) == StructTypes.Integer ||
 		   	   typeData.fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return Appendables.appendValue(target, channelReader.readPackedLong());
 		} else {
@@ -198,7 +198,7 @@ public final class StructuredReader {
 	public double readRationalAsDouble(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Rational);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader.readRationalAsDouble();
 		} else {
@@ -215,7 +215,7 @@ public final class StructuredReader {
 	public double readDecimalAsDouble(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader.readDecimalAsDouble();
 		} else {
@@ -232,7 +232,7 @@ public final class StructuredReader {
 	public long readDecimalMantissa(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 	    	final long m = channelReader.readPackedLong();
 	    	assert(channelReader.storeMostRecentPacked(m));    	
@@ -252,7 +252,7 @@ public final class StructuredReader {
 	public byte readDecimalExponent(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			final long m = channelReader.readPackedLong();
 	    	assert(channelReader.storeMostRecentPacked(m));
@@ -271,7 +271,7 @@ public final class StructuredReader {
 	public boolean readBoolean(long fieldId) {
 		assert(typeData.fieldType(fieldId) == StructTypes.Boolean);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader.readBoolean();
 		} else {
@@ -291,7 +291,7 @@ public final class StructuredReader {
 				   typeData.fieldType(fieldId) == StructTypes.Integer ||
 			   	   typeData.fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return (int)channelReader.readPackedLong();
 		} else {
@@ -310,7 +310,7 @@ public final class StructuredReader {
 				   typeData.fieldType(fieldId) == StructTypes.Integer ||
 			   	   typeData.fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
-		if (index>0) {
+		if (index>=0) {
 			channelReader.position(index);
 			return channelReader.readPackedLong();
 		} else {
@@ -338,7 +338,7 @@ public final class StructuredReader {
     	int instance = 0;
     	int totalCount = 1;
     	
-    	if (index>0) {
+    	if (index>=0) {
     		channelReader.position(index);    	
 			visitor.value(channelReader.readPackedInt(), false, instance, totalCount);    		
     	} else {
@@ -361,7 +361,7 @@ public final class StructuredReader {
     	int instance = 0;
     	int totalCount = 1;
     	
-    	if (index>0) {
+    	if (index>=0) {
     		channelReader.position(index);    	
     		visitor.value(channelReader.readPackedLong(), false, instance, totalCount);    		
     	} else {
@@ -384,7 +384,7 @@ public final class StructuredReader {
     	int totalCount = 1;
     	
     	
-    	if (index>0) {
+    	if (index>=0) {
     		channelReader.position(index);    	
     		visitor.value(channelReader.readPackedShort(), false, instance, totalCount);    		
     	} else {
