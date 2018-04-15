@@ -86,7 +86,7 @@ public final class StructuredReader {
 	
 	//returns null if absent
 	public String readText(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+	
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>0) {
 			channelReader.position(index);
@@ -102,7 +102,7 @@ public final class StructuredReader {
 	}
 
 	public boolean isEqual(long fieldId, byte[] utf8EncodedBytes) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+	
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>0) {
 			channelReader.position(index);
