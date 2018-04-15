@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.struct;
 
-public interface BStructLongListener {
+public interface StructLongListener {
 
 	void value(long value, boolean isNull, int instance, int totalCount);
 	

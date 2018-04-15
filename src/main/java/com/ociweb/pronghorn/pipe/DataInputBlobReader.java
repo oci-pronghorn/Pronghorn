@@ -164,7 +164,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
 				
-		final int copyLen = structuredReader.indexCopyLenInBytes(type)+4;//plus the type
+		final int copyLen = (structuredReader.typeData.totalSizeOfIndexes(type))*4+4;//plus the type
 		int start = end-copyLen;
 		
 		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);
@@ -303,10 +303,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     public static void position(DataInputBlobReader<?> reader, int byteIndexFromStart) {
-    	//assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
+    	assert(byteIndexFromStart>=0);
+    	assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
-    	reader.position = 
-    			reader.bytesLowBound+byteIndexFromStart;
+    	reader.position = reader.bytesLowBound+byteIndexFromStart;
     }
 
     @Override

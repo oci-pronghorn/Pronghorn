@@ -59,7 +59,9 @@ public class StructuredWriter {
 		while (--p>=0) {
 			DataOutputBlobWriter.setIntBackData(channelWriter,
 					positions[p],
-					typeData.lookupFieldIndex(associations[p], structId) & StructRegistry.FIELD_MASK);
+					StructRegistry.FIELD_MASK &
+					(int)typeData.fieldLookupByIdentity(
+							associations[p], structId) & StructRegistry.FIELD_MASK);
 		}
 	
 	}

@@ -502,7 +502,7 @@ public class StructRegistry { //prong struct store
 
 	public <T> boolean visit(DataInputBlobReader<?> reader, 
 			              Class<T> attachedInstanceOf, 
-			              BStructFieldVisitor<T> visitor) {
+			              StructFieldVisitor<T> visitor) {
 				
 		boolean result = false;
 		int structId = DataInputBlobReader.getStructType(reader);
@@ -528,11 +528,11 @@ public class StructRegistry { //prong struct store
 		return result;
 	}
 	
-	public <T> boolean identityVisit(DataInputBlobReader<?> reader, T attachedObject, BStructFieldVisitor<T> visitor) {
+	public <T> boolean identityVisit(DataInputBlobReader<?> reader, T attachedObject, StructFieldVisitor<T> visitor) {
 
 		int structId = DataInputBlobReader.getStructType(reader);
 		
-		int idx = lookupFieldIndex(attachedObject, structId);
+		int idx =  StructRegistry.FIELD_MASK & (int)fieldLookupByIdentity(attachedObject, structId);
 		if (idx>=0) {
 			DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
 			visitor.read((T)(fieldLocals[structId][idx]), reader);
@@ -542,22 +542,7 @@ public class StructRegistry { //prong struct store
 		}
 	}
 
-	public <T> int lookupFieldIndex(T attachedObject, int structId) {
-		int result = lookupFieldIndex(System.identityHashCode(attachedObject), this.fieldAttachedIndex[StructRegistry.STRUCT_MASK & structId]);
-		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&result] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&result];
-		return result;
-	}
 
-	private int lookupFieldIndex(final int identityHashCode, final IntHashTable table) {
-		int idx = IntHashTable.getItem(table, identityHashCode);
-		if (0==idx) {
-			if (!IntHashTable.hasItem(table, identityHashCode)) {
-				return -1;				
-			}
-		}
-		return idx;
-	}
-	
 	
 
 	public int totalSizeOfIndexes(int structId) {
