@@ -46,7 +46,8 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 		    			structureId,
 		    			HTTPHeaderDefaults.CONTENT_LENGTH,
 		    			HTTPHeaderDefaults.TRANSFER_ENCODING,
-		    			HTTPHeaderDefaults.CONTENT_TYPE
+		    			HTTPHeaderDefaults.CONTENT_TYPE,
+		    			HTTPHeaderDefaults.CONNECTION
 	    			);
 	    
 	    }		

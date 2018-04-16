@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -62,6 +64,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private boolean shutdownInProgress;
 	private ServiceObjectHolder<ServerConnection> socketHolder;
 
+	private AtomicBoolean newWork = new AtomicBoolean(true);
+	private final PipePublishListener newWorkListener = new PipePublishListener() {
+		@Override
+		public void published() {
+			newWork.set(true);
+		}
+	};
+	
+	
     public static OrderSupervisorStage newInstance(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
     	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator);
     }
@@ -120,6 +131,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
+        int j = inputPipes.length;
+        while (--j>=0) { 
+			inputPipes[j].addPubListener(inputPipes[j], newWorkListener);
+        }
+         
+         
     }
     
 
@@ -154,203 +171,258 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void run() {
 
-		if (shutdownInProgress) {
-			int i = outgoingPipes.length;
-			while (--i>=0) {
-				if (null!=outgoingPipes[i] && Pipe.isInit(outgoingPipes[i])) {
-					if (!Pipe.hasRoomForWrite(outgoingPipes[i], Pipe.EOF_SIZE)) {
-						return;
+		if (newWork.getAndSet(false)) {
+			if (shutdownInProgress) {
+				int i = outgoingPipes.length;
+				while (--i>=0) {
+					if (null!=outgoingPipes[i] && Pipe.isInit(outgoingPipes[i])) {
+						if (!Pipe.hasRoomForWrite(outgoingPipes[i], Pipe.EOF_SIZE)) {
+							return;
+						}
 					}
 				}
+				requestShutdown();
+				return;
 			}
-			requestShutdown();
-			return;
-		}
 		
-    	boolean haveWork;
-    	int maxIterations = 10_000;
-    	do {
-	    	haveWork = false;
-	        int c = dataToSend.length;
-
-	        
-	        while (--c >= 0) {
-
-	        	//Hold position pending, and write as data becomes available
-	        	//this lets us read deep into the pipe
-	        	
-	        	//OR
-	        	
-	        	//app/module must write to different pipes to balance the load, 
-	        	//this may happen due to complex logic but do we want to force this on all module makers?
-	        	
-	        	//NOTE: this is only a problem because the router takes all the messages from 1 connection before doing the next.
-	        	//      if we ensure it is balanced then this data will also get balanced.
-	        		        
-	        	
-	            haveWork |= processPipe(dataToSend[c], c);
-  
-	        }  
-	        
-	        
-    	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
-    			//|| (quietPeriodCounter<quietPeriod));
-    	
+	    	boolean haveWork;
+	    	int maxIterations = 10_000;
+	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
+	    	do {
+		    	haveWork = false;
+				int c = localPipes.length;
+				
+				//This can get very bad if the modules all support 404 errors,
+				//in that case this may need to check a long list of pipes
+				//to eliminate this we attach a listener to the pipes
+				
+				
+				//System.err.println(c);
+				int x = 0;
+		        while (--c >= 0) {
+	
+		        	//Hold position pending, and write as data becomes available
+		        	//this lets us read deep into the pipe
+		        	
+		        	//OR
+		        	
+		        	//app/module must write to different pipes to balance the load, 
+		        	//this may happen due to complex logic but do we want to force this on all module makers?
+		        	
+		        	//NOTE: this is only a problem because the router takes all the messages from 1 connection before doing the next.
+		        	//      if we ensure it is balanced then this data will also get balanced.
+		        		        
+		        	if (!Pipe.isEmpty(localPipes[c])) {	        	
+		        		haveWork |= processPipe(localPipes[c], c);
+		        	} else {
+		        		x++;
+		        	}
+	  
+		        }  
+		        if (x!=localPipes.length || shutdownInProgress ) {		        	
+		        	newWork.set(true);
+		        }
+		        
+	    	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
+	    			//|| (quietPeriodCounter<quietPeriod));
+		}
     }
 
 
 	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
-		//if (Pipe.contentRemaining(sourcePipe) >= sourcePipe.slabMask*.75) {
-			
-		//	System.err.println("this pipe is backed up "+sourcePipe);
-			
-		//}
-		
 		boolean didWork = false;
-		while (Pipe.contentRemaining(sourcePipe)>0) {
+		boolean keepWorking = true;
+		while (Pipe.contentRemaining(sourcePipe)>0 && keepWorking) {
 				
 			assert(Pipe.bytesReadBase(sourcePipe)>=0);
 			
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
-		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);
-		    Pipe<NetPayloadSchema> outPipe = null;
-		    int myPipeIdx = -1;
-		    int sequenceNo = 0;
-		    long channelId = -2;		        
+		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);		
+		    long channelId = -2;
+		    
 		    if (peekMsgId>=0 
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
 		    			  
 		    	//dataToSend.length
-		        myPipeIdx = (int)(channelId % poolMod);
-		        outPipe = outgoingPipes[myPipeIdx];
-		        
-		    	if (Pipe.hasRoomForWrite(outPipe, maxOuputSize)) {	
+		    	int myPipeIdx = (int)(channelId % poolMod);
+		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize)) {	
 				    	
 			    	//only after we know that we are doing something.
 					didWork = true;
 	
-			        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
-			    			        
-			        //read the next non-blocked pipe, sequenceNo is never reset to zero
-			        //every number is used even if there is an exception upon write.
-			      
-			        int idx = (int)(channelId & channelBitsMask);
-			        
-			        /////////////////////
-			        //clear when we discover a new connection
-			        ///////////////////
-			        if (expectedSquenceNosChannelId[idx] == channelId) {
-			        } else {
-			        	//logger.info("connection beginning **************");
-			        	conClearLogic(channelId, idx);
-			        }
-		
-					int expected = expectedSquenceNos[idx]; 
-					
-			        if (sequenceNo >= expected) {
-			        } else {
-			        	//we already moved past this point
-			        	//this sequence just read is < the expected value
-			        	BaseConnection con = socketHolder.get(channelId);
-			        	con.close();
-			        	logger.warn("Corrupt data detected, connection closed. Expected next sequence of {} but got {} which is too old. "
-			        				,expected ,sequenceNo);		
-			        	return true;
-			        } 
-			        
-			        if (expected == sequenceNo) {
-			        	//logger.trace("found expected sequence {}",sequenceNo);
-			        	final short expectedPipe = expectedSquenceNosPipeIdx[idx];
-						if (-1 == expectedPipe) {
-			        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
-			        	} else {
-			        		if (expectedPipe !=(short)pipeIdx) {
-	
-					        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-					        	if (shutdownInProgress) {
-					        		break;
-					        	}
-			        			//drop the data
-			        			//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
-			        			Pipe.skipNextFragment(sourcePipe);
-					        	continue;
-			        		}
-			        	}
-			        	failureIterations = -1;
-			        	
-			        } else {
-			        	
-			        	assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-			        	
-			            //larger value and not ready yet
-			        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
-			        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-			        				        	
-			        	logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
-			        	return didWork;//must check the other pipes this can not be processed yet.
-	
-			        }
-	
-			        assert(recordInputs(channelId, sequenceNo, pipeIdx));
-			        
-			        if (!isTLS) {
-			        } else {
-						finishHandshake(outPipe, channelId);
-					}	                    
-			         
-			        assert(Pipe.bytesReadBase(sourcePipe)>=0);
+			        keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
+									        		peekMsgId, outgoingPipes[myPipeIdx], myPipeIdx,
+													channelId);
 		    	} else {
-			        
 			        ///////////////////////////////
 			        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 			        ///////////////////////////////
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		    		keepWorking = false; //break out
 		    		//logger.info("no room to write out, try again later");
-		    		break;
+		    		//return didWork;
 		    	}
+
 		    } else {
 		    	didWork = true;
-		    	////////////////
-		    	//these consume data but do not write out to pipes
-		    	////////////////
-		    	int idx = Pipe.takeMsgIdx(sourcePipe);
-		    	
-		    	if (-1 != idx) {
-		    		
-		    		if (channelId!=-2) {
-		    			logger.warn("skipping channel data, id was {}",channelId);
-		    		}
-		    		
-		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		Pipe.skipNextFragment(sourcePipe, idx);
-		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		continue;
-		    	} else {	
-		    		
-		    		assert(-1 == idx) : "unexpected value";
-		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
-		        	Pipe.releaseReadLock(sourcePipe);
-		        	
-		        	if (--shutdownCount<=0) {
-		        		shutdownInProgress = true;
-		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        		break;
-		        	} else {
-		        		//logger.trace("dec shutdown count");
-		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        		continue;
-		        	}
-		    	}
+		    	skipData(sourcePipe, channelId);
 		    }
-		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
-			
-		    copyDataBlock(sourcePipe, peekMsgId, outPipe, myPipeIdx, sequenceNo, channelId);
-						
-		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}
 		return didWork;
+	}
+
+	private boolean processInputData(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
+			int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, long channelId) {
+		
+		int sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
+				        
+		//read the next non-blocked pipe, sequenceNo is never reset to zero
+		//every number is used even if there is an exception upon write.
+     
+		int idx = (int)(channelId & channelBitsMask);
+		
+		/////////////////////
+		//clear when we discover a new connection
+		///////////////////
+		if (expectedSquenceNosChannelId[idx] == channelId) {
+		} else {
+			//logger.info("connection beginning **************");
+			conClearLogic(channelId, idx);
+		}
+
+		return processInput(sourcePipe, pipeIdx, keepWorking, 
+				peekMsgId, outPipe, myPipeIdx, channelId,
+				sequenceNo, idx, expectedSquenceNos[idx]);
+	
+	}
+
+	private boolean processInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
+			int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, long channelId, int sequenceNo, int idx,
+			int expected) {
+		if (sequenceNo >= expected) {
+			if (expected == sequenceNo) {
+				keepWorking = processExpectedSequenceValue(sourcePipe, pipeIdx,
+						keepWorking, peekMsgId,
+						outPipe, myPipeIdx, sequenceNo, 
+						channelId, idx, expected);
+		    	
+			} else {
+				keepWorking = processUnexpectedSequenceValue(sourcePipe, pipeIdx, 
+						sequenceNo, channelId,
+						expected);
+			}
+		} else {
+			keepWorking = badSequenceNumberProcessing(channelId, sequenceNo, expected);
+		}
+		return keepWorking;
+	}
+
+	private boolean badSequenceNumberProcessing(long channelId, int sequenceNo, int expected) {
+		boolean keepWorking;
+		//we already moved past this point
+		//this sequence just read is < the expected value
+		BaseConnection con = socketHolder.get(channelId);
+		if (null!=con) {
+			con.close();
+		}
+		logger.warn("Corrupt data detected, connection closed. Expected next sequence of {} but got {} which is too old. "
+					,expected ,sequenceNo);
+		keepWorking = false; //break out
+		return keepWorking;
+	}
+
+	private boolean processUnexpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
+			int sequenceNo, long channelId, int expected) {
+		boolean keepWorking;
+		assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+		//larger value and not ready yet
+		assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
+		assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		//logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+		keepWorking = false; //break out
+		
+		//return didWork;//must check the other pipes this can not be processed yet.
+		return keepWorking;
+	}
+
+	private boolean processExpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
+			boolean keepWorking, int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, int sequenceNo,
+			long channelId, int idx, int expected) {
+		//logger.trace("found expected sequence {}",sequenceNo);
+		final short expectedPipe = expectedSquenceNosPipeIdx[idx];
+		if (-1 == expectedPipe) {
+			expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
+			copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
+					outPipe, myPipeIdx, sequenceNo,
+					channelId);
+		} else {			        			
+			if (expectedPipe ==(short)pipeIdx) {
+				copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
+						outPipe, myPipeIdx, sequenceNo,
+						channelId);
+			} else {
+				
+				if (shutdownInProgress) {
+					keepWorking = false; //break out
+				} else {
+					assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+					//drop the data
+					//logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
+					Pipe.skipNextFragment(sourcePipe);
+					//will drop out bottom and return to the top to continue;
+				}
+			}
+		}
+		return keepWorking;
+	}
+
+	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, int peekMsgId,
+			Pipe<NetPayloadSchema> outPipe, int myPipeIdx, int sequenceNo, long channelId) {
+		failureIterations = -1;			        		
+		assert(recordInputs(channelId, sequenceNo, pipeIdx));			        		
+		if (!isTLS) {
+		} else {
+			finishHandshake(outPipe, channelId);
+		}
+		assert(Pipe.bytesReadBase(sourcePipe)>=0);				
+		copyDataBlock(sourcePipe, peekMsgId, outPipe, myPipeIdx, sequenceNo, channelId);							
+		assert(Pipe.bytesReadBase(sourcePipe)>=0);
+	}
+
+	private void skipData(final Pipe<ServerResponseSchema> sourcePipe, long channelId) {
+		////////////////
+		//these consume data but do not write out to pipes
+		////////////////
+		int idx = Pipe.takeMsgIdx(sourcePipe);
+		
+		if (-1 != idx) {
+			
+			if (channelId!=-2) {
+				logger.warn("skipping channel data, id was {}",channelId);
+			}
+			
+			assert(Pipe.bytesReadBase(sourcePipe)>=0);
+			Pipe.skipNextFragment(sourcePipe, idx);
+			assert(Pipe.bytesReadBase(sourcePipe)>=0);
+			//at bottom will continue;
+		} else {	
+			
+			assert(-1 == idx) : "unexpected value";
+			Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+			Pipe.releaseReadLock(sourcePipe);
+			
+			if (--shutdownCount<=0) {
+				shutdownInProgress = true;
+				assert(Pipe.bytesReadBase(sourcePipe)>=0);
+				//no messages are on source pipe so will naturally break;
+			} else {
+				//logger.trace("dec shutdown count");
+				assert(Pipe.bytesReadBase(sourcePipe)>=0);
+				//at bottom will continue;
+			}
+		}
 	}
 
 	private void finishHandshake(Pipe<NetPayloadSchema> outPipe, long channelId) {

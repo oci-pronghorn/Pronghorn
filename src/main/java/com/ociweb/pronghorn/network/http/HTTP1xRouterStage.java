@@ -262,11 +262,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		didWork = 0;
 	   
     		int localIdx = idx;
-    		
+
     		int m = 100;//max iterations before taking a break
     		do {
+    	
 		        while (--localIdx>=0 && --m>=0) {
-		            int result = singlePipe(localIdx);
+
+		            int result = singlePipe(this, localIdx);
 		            
 		            if (result>=0) {
 		            	didWork+=result;		            	
@@ -297,35 +299,42 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     
     //return 0, 1 work, -1 shutdown.
-    public int singlePipe(final int idx) {
-        Pipe<NetPayloadSchema> selectedInput = inputs[idx];     
-
-        if (isOpen[idx]) {  
+    private static int singlePipe(HTTP1xRouterStage that, final int idx) {
+        if (that.isOpen[idx]) {  
 
         	//logger.info("accum off this pipe "+isOpen[idx]+"   "+inputChannels[idx]);
-        	final int start = inputLengths[idx];
-            if (accumRunningBytes(idx, selectedInput, Integer.MAX_VALUE, inputChannels[idx]) < 0) {//message idx
-            	//logger.trace("detected EOF for {}",idx);
-            	//accumulate these before shutdown?? also wait for all data to be consumed.
-                isOpen[idx] = false;
-                if (inputLengths[idx]<=0) {
+        	final int start = that.inputLengths[idx];
+            if (that.accumRunningBytes(idx, that.inputs[idx], Integer.MAX_VALUE, that.inputChannels[idx]) >=0) {//message idx            
+            	if (that.needsData[idx]) {
+            		if (that.inputLengths[idx]==start) {            			
+            			//we got no data so move on to the next
+            			return 0;
+            		} else {            			
+            			that.needsData[idx]=false;
+            		}
+            	}            
+            } else {
+            	//shutdown detected
+            	that.isOpen[idx] = false;
+                if (that.inputLengths[idx]<=0) {
                 	//closed so return
                 	return -1;
                 }
+                                
+                if (that.needsData[idx]) {
+            		if (that.inputLengths[idx]==start) {            			
+            			//we got no data so move on to the next
+            			return 0;
+            		} else {            			
+            			that.needsData[idx]=false;
+            		}
+            	}     
             }
             
-            if (needsData[idx]) {
-	            if (inputLengths[idx]==start) {
-	            	//we got no data so move on to the next
-	            	return 0;
-	            } else {
-	            	needsData[idx]=false;
-	            }
-            }            
         }       
         //the common case is -1 so that is first.
-        return ((activeChannel = inputChannels[idx]) < 0) ? 0 :
-	        	(parseAvail(idx, selectedInput, activeChannel) ? 1 : 0);
+        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
+	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
     }
 
 

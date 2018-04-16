@@ -171,9 +171,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	//add monitoring to each pipe
  
     		PronghornStage.addWorkMonitor(stages[k], didWorkMonitor);
-    		GraphManager.setPublishListener(graphManager, stages[k], didWorkMonitor);
-    		GraphManager.setReleaseListener(graphManager, stages[k], didWorkMonitor);
-       
+    		//NOTE: stages have "done work" if something was published to an output
+    		GraphManager.addPublishFromListener(graphManager, stages[k], didWorkMonitor);
         	
         	// Determine rates for each stage.
 			long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[k], GraphManager.SCHEDULE_RATE, defaultValue)));
@@ -383,8 +382,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //skip over the non producers
         while (idx < stages.length) {
 
-            if (null != GraphManager.getNota(graphManager, stages[idx].stageId, GraphManager.PRODUCER, null) ||
-                    (0 == GraphManager.getInputPipeCount(graphManager, stages[idx]))) {
+            PronghornStage pronghornStage = stages[idx];
+			if (isProducer(graphManager, pronghornStage)) {
                 int[] result = buildProducersList(count + 1, idx + 1, graphManager, stages);
                 result[count] = idx;
                 return result;
@@ -396,6 +395,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         return new int[count];
 
     }
+
+	private static boolean isProducer(final GraphManager graphManager, PronghornStage pronghornStage) {
+		return null != GraphManager.getNota(graphManager, pronghornStage.stageId, GraphManager.PRODUCER, null) ||
+		        (0 == GraphManager.getInputPipeCount(graphManager, pronghornStage));
+	}
 
     private static Pipe[] buildProducersPipes(int count, int indexesIdx, int outputIdx, final int[] indexes, final PronghornStage[] stages, final GraphManager graphManager) {
 
@@ -619,7 +623,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		        //play the script
 	   			int scheduleIdx = 0;
 				while (scheduleIdx < that.schedule.script.length) {	
-		
+						
 						waitBeforeRun(that, System.nanoTime());
 		
 						scheduleIdx = that.runBlock(scheduleIdx, that.schedule.script, that.stages, that.graphManager, that.recordTime);
@@ -854,67 +858,86 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			long start, final PronghornStage stage) {
 		
 		DidWorkMonitor.begin(localDidWork,start);
-		if (!GraphManager.isStageShuttingDown(stateArray, stage.stageId)) {
-				//////////these two are for hang detection
-				timeStartedRunningStage = start;
-				runningStage = stage;
+		shutDownRequestedHere = runStageImpl(this, gm, shutDownRequestedHere, start, stage);		
+		runStageCleanup(this, gm, recordTime, localDidWork, inProgressIdx, SLAStart, start, stage);
+		return shutDownRequestedHere;
+	}
 
-		        setCallerId(stage.boxedStageId);		        
-		        runStage(stage);		        
-		        clearCallerId();
+	private static void runStageCleanup(
+			ScriptedNonThreadScheduler that, 
+			GraphManager gm, final boolean recordTime, final DidWorkMonitor localDidWork,
+			int inProgressIdx, long SLAStart, long start, final PronghornStage stage) {
+		if (!DidWorkMonitor.didWork(localDidWork) 
+			|| 
+			GraphManager.hasNota(that.graphManager, stage.stageId, GraphManager.MONITOR)
+			) {		
+		} else {
+			that.recordRunResults(that, System.nanoTime(), gm, recordTime, 
+					         inProgressIdx, start, SLAStart, stage);
+		}
+	}
+
+	private static boolean runStageImpl(
+			ScriptedNonThreadScheduler that, 
+			GraphManager gm, boolean shutDownRequestedHere, long start,
+			final PronghornStage stage) {
+		if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
+				//////////these two are for hang detection
+				that.timeStartedRunningStage = start;
+				that.runningStage = stage;
+
+				that.setCallerId(stage.boxedStageId);		        
+		        try {
+					stage.run();
+				} catch (Exception e) {			
+					that.processException(stage, e);
+					
+				}		        
+		        that.clearCallerId();
 		        
-		        timeStartedRunningStage = 0;
+		        that.timeStartedRunningStage = 0;
 		} else {
 		    processShutdown(gm, stage);
 		    shutDownRequestedHere = true;
 		}
-		
-		if (!DidWorkMonitor.didWork(localDidWork)) {
-		} else {
-			recordRunResults(System.nanoTime(), gm, recordTime, 
-					         inProgressIdx, start, SLAStart, stage);
-		}
 		return shutDownRequestedHere;
 	}
 
-	private void recordRunResults(final long now, GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
+	private static void recordRunResults(
+			ScriptedNonThreadScheduler that, 
+			final long now, GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
 			long SLAStart, PronghornStage stage) {
 			        
 		long duration = now-start;
 		
-		if (duration <= sla[inProgressIdx]) {
+		if (duration <= that.sla[inProgressIdx]) {
 		} else {
-			reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
+			that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
 		}
 
 		if (recordTime) {		
 			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
-				if (shownLowLatencyWarning) {
+				if (that.shownLowLatencyWarning) {
 				} else {
-					shownLowLatencyWarning = true;
+					that.shownLowLatencyWarning = true;
 					logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
 				}
 			}
 		}
 	}
 
-	private final void runStage(PronghornStage stage) {
-		try {
-			stage.run();
-		} catch (Exception e) {			
-			recordTheException(stage, e, this);
-			//////////////////////
-			//check the output pipes to ensure no writes are in progress
-			/////////////////////
-			int c = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
-			for(int i=1; i<=c; i++) {		
-				if (Pipe.isInBlobFieldWrite((Pipe<?>) GraphManager.getOutputPipe(graphManager, stage.stageId, i))) {
-					//we can't recover from this exception because write was left open....
-					shutdown();	
-					break;
-				}
+	private void processException(PronghornStage stage, Exception e) {
+		recordTheException(stage, e, this);
+		//////////////////////
+		//check the output pipes to ensure no writes are in progress
+		/////////////////////
+		int c = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
+		for(int i=1; i<=c; i++) {		
+			if (Pipe.isInBlobFieldWrite((Pipe<?>) GraphManager.getOutputPipe(graphManager, stage.stageId, i))) {
+				//we can't recover from this exception because write was left open....
+				shutdown();	
+				break;
 			}
-			
 		}
 	}
 
@@ -1231,6 +1254,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				assert(localStages.length>0);
 			}
 
+			//clear old monitor before we build new ones.
+			int k = stages.length;
+			while (--k>=0) {
+				if (null!=stages[k]) {
+		    		GraphManager.removePublishFromListener(graphManager, stages[k], didWorkMonitor);
+				}
+			}
+			/////////////////////
+    		
 			result = new ScriptedNonThreadScheduler(graphManager, reverseOrder, resultStages);
 			buildSchedule(graphManager, localStages, reverseOrder);
 	        setupHousekeeping();

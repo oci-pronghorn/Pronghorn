@@ -33,8 +33,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
 	private static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
 	private static final byte[] EMPTY = new byte[0];
-	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
-	
+
 	public static boolean logDisconnects = false;
 	public static boolean logLatencyData = false;
 	
@@ -85,20 +84,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	protected final int structureId;
 	
 	private final int payloadSize;
-	
-	static {
-		
-		boolean testForExternalNetwork = false;
-		
-		if (testForExternalNetwork) {
-			try {
-				testAddr = InetAddress.getByName("www.google.com");
-			} catch (UnknownHostException e) {
-				logger.error("no network connection.");
-				System.exit(-1);
-			}		
-		}
-	}
+
 		
 	public void setLastUsedTime(long time) {
 		lastUsedTime = time;

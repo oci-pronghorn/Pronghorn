@@ -23,7 +23,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
-import com.ociweb.pronghorn.pipe.PipeReleaseListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
@@ -3009,21 +3008,21 @@ public class GraphManager {
 		
 	}
 
-	public static void setPublishListener(GraphManager graphManager, 
+	public static void addPublishFromListener(GraphManager graphManager, 
 			                              PronghornStage pronghornStage, 
 			                              PipePublishListener listener) {
 		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
 		for(int i=1; i<=c; i++) {
-			Pipe.setPubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
+			Pipe.addPubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
 		}
 	}
 
-	public static void setReleaseListener(GraphManager graphManager,
-			                              PronghornStage pronghornStage,
-			                              PipeReleaseListener listener) {
-		int c = getInputPipeCount(graphManager, pronghornStage.stageId);
+	public static void removePublishFromListener(GraphManager graphManager, 
+			PronghornStage pronghornStage,
+			PipePublishListener listener) {
+		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
 		for(int i=1; i<=c; i++) {
-			Pipe.setRelListener(getInputPipe(graphManager, pronghornStage.stageId), listener);
+			Pipe.removePubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
 		}
 	}
 	

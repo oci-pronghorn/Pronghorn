@@ -66,6 +66,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 	private int[] positionMemoData;
 	private long[] payloadLengthData;
+	private boolean[] closeRequested;
 	private long[] ccIdData;
 	
 	private int[] runningHeaderBytes;
@@ -107,6 +108,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	        		  
 		  positionMemoData = new int[input.length<<2];
 		  payloadLengthData = new long[input.length];
+		  closeRequested = new boolean[input.length];
 		  ccIdData = new long[input.length];
 		  inputPosition = new long[input.length];
 		  arrivalTimeAtPosition = new long[input.length];
@@ -332,14 +334,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					}
 					
 					assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
-					
 
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
-					//System.err.println(positionMemoData[lenIdx]+" vs "+pipe.byteMask);
-					
-				//	logger.info("reading in new data up to "+Pipe.getWorkingTailPosition(pipe)+" has "+positionMemoData[lenIdx]+" mask "+Pipe.blobMask(pipe));
-					
+
 					Pipe.confirmLowLevelRead(localInputPipe, Pipe.sizeOf(localInputPipe, msgIdx));   //release of read does not happen until the bytes are consumed...
 					
 					//WARNING: moving next without releasing lock prevents new data from arriving until after we have consumed everything.
@@ -412,7 +409,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								//blockedPosition[i] = 0;	
 								blockedOpenCount[i]++;
 							} else {
-								//System.err.println("zzz");
+							
 								continue;// do not parse again since nothing has changed	
 							}
 						} else {
@@ -470,8 +467,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId>=0) {
 													
-							payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
-														
+							clearConnectionStateData(i);
+							
 							//because we have started written the response we MUST do extra cleanup later.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
@@ -912,6 +909,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
+	private final void clearConnectionStateData(int i) {
+		payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
+		closeRequested[i] = false;
+	}
+
 
 
 	@Override
@@ -965,6 +967,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return state;
 	}
 
+	private static final byte[] CLOSE = "close".getBytes();
+	
 	private void headerProcessing(int i, 
 			                     DataOutputBlobWriter<NetResponseSchema> writer, 
 			                     long headerToken, HTTPClientConnection cc) {
@@ -1013,18 +1017,19 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					writer.writeBoolean(true); //true for chunked
 					payloadLengthData[i] = -1; //marked as chunking	
 				
+				} else if (HTTPHeaderDefaults.CONNECTION.ordinal()==header.ordinal()) {
+					assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
+					
+					//just checks for "close"
+					closeRequested[i] = TrieParserReader.capturedFieldBytesEquals(trieReader, 0, CLOSE, 0, Integer.MAX_VALUE);
+					
+					TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
 				} else {
 					//normal processing
 					TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
 				}
 				
-				
-				final long id1 = headerToken;
-				
-				//logger.info("aaa struct {} wrote position {} for header {} at location {} in pipe {}",
-				//		Integer.toHexString((int)(id1>>>BStructSchema.STRUCT_OFFSET)),
-				//		writePosition, header, BStructSchema.FIELD_MASK & (int)headerToken, writer.getPipe().id);
-				
+	
 				DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
 			}
 			
@@ -1073,7 +1078,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	}
 
 	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {
-		
 
 		assert(positionMemoData[stateIdx]>=5);
 		
@@ -1084,10 +1088,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 			foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
 			
-			//may return without setting ack because pipe is full.	
-			if (positionMemoData[stateIdx] != 0) {
-				logger.info("not finished {})",cc.id);
+			//the server requested a close and we are now done reading the body so we need to close.
+			if (closeRequested[i]) {
+				cc.close();
 			}
+			
+			assert(0 == positionMemoData[stateIdx]) : "Ack must be sent to release pipe, did not happen for "+cc.id;
+	
 
 		} else {
 			

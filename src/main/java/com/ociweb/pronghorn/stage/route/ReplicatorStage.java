@@ -176,8 +176,6 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 			ss.requestShutdown();
 		}
 
-		Pipe.notifyRelListener(ss.source);
-		
 	}
 
 

@@ -1,9 +1,8 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
 import com.ociweb.pronghorn.pipe.PipePublishListener;
-import com.ociweb.pronghorn.pipe.PipeReleaseListener;
 
-public class DidWorkMonitor implements PipePublishListener, PipeReleaseListener {
+public class DidWorkMonitor extends PipePublishListener {
 
 	private boolean didWork;
 	private long beginNS;
@@ -27,14 +26,9 @@ public class DidWorkMonitor implements PipePublishListener, PipeReleaseListener 
 		that.beginNS = nowNS;
 		that.runningThread = Thread.currentThread();
 	}
-	
-	@Override
-	public void released(long position) {
-		didWork = true;		
-	}
 
 	@Override
-	public void published(long position) {
+	public void published() {
 		didWork = true;
 	}
 

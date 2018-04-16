@@ -262,7 +262,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	        
 	        	    //we have no pipes to monitor so this must be done explicity
 	        	    if (null != this.didWorkMonitor) {
-	        	    	this.didWorkMonitor.published(Integer.MAX_VALUE);
+	        	    	this.didWorkMonitor.published();
 	        	    }
 	        	    
 	                Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
