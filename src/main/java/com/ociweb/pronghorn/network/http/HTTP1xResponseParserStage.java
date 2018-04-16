@@ -745,8 +745,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());
 											if (headerToken==HTTPSpecification.END_OF_HEADER_ID) {
 												foundEnd = true;
+												break;//MUST break here or we will read the headers of the folllowing message!!
 											}
-										} while (-1 != headerToken);
+										} while (-1!=headerToken);
 											
 										if (!foundEnd) {
 											System.err.println("EXIT xxxxxxxxxxxxxxxxxxxxxxxxx need new case");
