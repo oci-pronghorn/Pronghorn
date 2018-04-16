@@ -1200,7 +1200,6 @@ public class TrieParserReader {
 		final boolean templateLimited = (fixedLength>0 && fixedLength<=sourceLength);
 		sourceLength = templateLimited?fixedLength:sourceLength;
 		///////////////
-		
 		final short c1 = source[sourceMask & sourcePos];
 		if (escapeByte != c1) {
 			
@@ -1209,6 +1208,7 @@ public class TrieParserReader {
 					  |TrieParser.NUMERIC_FLAG_RATIONAL
 					  |TrieParser.NUMERIC_FLAG_SIGN)&numType) ) {
 								
+				
 				return parseNumericImpl(reader, source, sourcePos, sourceLength, 
 						sourceMask, numType, absentIsZero, templateLimited,
 						(byte) 1, (long) 0, (byte) 0, 0);
@@ -1219,15 +1219,18 @@ public class TrieParserReader {
 			}			
 			
 		} else {
-			//////////////////////////////////////////////////////////////
-			//This is for supporting %i as an actual value to match that pattern rather than a number
-
-			sourcePos++;
-			final int typeMask = TrieParser.buildNumberBits(source[sourceMask & sourcePos]);
-			sourcePos++;
-			return ((typeMask&numType)==typeMask) ? sourcePos : -1;	
-			
+			return lteralNumericPatternMatch(source, sourcePos, sourceMask, numType);
 		}
+	}
+
+	private static int lteralNumericPatternMatch(byte[] source, int sourcePos, int sourceMask, short numType) {
+		//////////////////////////////////////////////////////////////
+		//This is for supporting %i as an actual value to match that pattern rather than a number
+
+		sourcePos++;
+		final int typeMask = TrieParser.buildNumberBits(source[sourceMask & sourcePos]);
+		sourcePos++;
+		return ((typeMask&numType)==typeMask) ? sourcePos : -1;
 	}
 
 	private static int parseNumericSlow(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
@@ -1248,6 +1251,7 @@ public class TrieParserReader {
 			}
 			
 		} else if (0!= (TrieParser.NUMERIC_FLAG_RATIONAL&numType)) {
+			//logger.info("parse rational");
 			//support of rational
 			if ('/'!=c1) {
 				publish(reader, 1, 1, 1, 10, dot);
@@ -1261,6 +1265,7 @@ public class TrieParserReader {
 		
 		//NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
 		if (0!=(TrieParser.NUMERIC_FLAG_SIGN&numType)) {
+			//logger.info("parse signed");
 			//support for signed ints
 			if (c1=='-') { //NOTE: check ASCII table there may be a faster way to do this.
 				sign = -1;
@@ -1489,7 +1494,11 @@ public class TrieParserReader {
 		int l = reader.capturedValues[pos++];
 		int m = reader.capturedValues[pos++];
 
-		return Pipe.isEqual(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);
+		if (l<=target.length) {
+			return Pipe.isEqual(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);			
+		} else {
+			return false;
+		}
 
 	}
 

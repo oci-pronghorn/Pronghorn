@@ -72,20 +72,46 @@ public class Pipe<T extends MessageSchema<T>> {
     private static final AtomicInteger pipeCounter = new AtomicInteger(0);
     
     //package protected to be called by low and high level API
-    PipePublishListener pubListener = PipePublishListener.NO_OP;
-    PipeReleaseListener relListener = PipeReleaseListener.NO_OP;
+    PipePublishListener[] pubListeners = new PipePublishListener[0];
     
     private StructRegistry typeData;    
     
-    public static void setPubListener(Pipe p, PipePublishListener listener) {
-    	p.pubListener = listener;
+    public static void addPubListener(Pipe p, PipePublishListener listener) {
+    	p.pubListeners = grow(p.pubListeners, listener);
     }
-    
-    public static void setRelListener(Pipe p, PipeReleaseListener listener) {
-    	p.relListener = listener;
+ 
+	public static void removePubListener(Pipe p, PipePublishListener listener) {
+    	p.pubListeners = shrink(p.pubListeners, listener);
     }
+ 	   
+	
+	private static PipePublishListener[] grow(PipePublishListener[] source, PipePublishListener listener) {
+		PipePublishListener[] result = new PipePublishListener[source.length+1];
+		System.arraycopy(source, 0, result, 0, source.length);
+		result[source.length] = listener;
+		return result;
+	}
     
-    public static void typeData(Pipe p, StructRegistry recordTypeData) {
+    private static PipePublishListener[] shrink(PipePublishListener[] source, PipePublishListener listener) {
+    	int matches = 0;
+    	int i = source.length;
+    	while (--i>=0) {
+    		if (source[i]==listener) {
+    			matches++;
+    		}
+    	}
+    	PipePublishListener[] result = new PipePublishListener[source.length-matches];
+    	i=0;
+    	for(int j = 0; j<source.length; j++) {
+    		if (source[j]!=listener) {
+    			result[i++] = listener;
+    		}
+    	}
+    	return result;
+    }
+
+
+	public static void typeData(Pipe p, StructRegistry recordTypeData) {
     	assert(null!=recordTypeData) : "must not be null";
     	assert(null==p.typeData || recordTypeData==p.typeData) :
     		"can not modify type data after setting";
@@ -922,11 +948,6 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema> int totalPipes() {
         return pipeCounter.get();
-    }
-
-    @Deprecated
-    public static <S extends MessageSchema<S>> int totalRings() {
-        return totalPipes();
     }
 
 	public Pipe<T> initBuffers() {
@@ -3131,6 +3152,10 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(result>=0) : "content remaining must never be negative. problem in pipe "+pipe;
         return result;
     }
+    
+    public static <S extends MessageSchema<S>> boolean isEmpty(Pipe<S> pipe) {
+    	return pipe.slabRingHead.workingHeadPos.value == pipe.slabRingTail.workingTailPos.value;
+    }
 
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
      	  
@@ -3147,14 +3172,9 @@ public class Pipe<T extends MessageSchema<T>> {
         		              tail);
         assert(validateInsideData(pipe, pipe.blobReadBase));
         
-        pipe.relListener.released(tail);
-        
         return bytesConsumedByFragment;        
     }
 
-	public static <S extends MessageSchema<S>> void notifyRelListener(Pipe<S> pipe) {
-		pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
-	}
     
     public static <S extends MessageSchema<S>> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe); 
@@ -3180,7 +3200,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     static <S extends MessageSchema<S>> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
-    	pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
+
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
@@ -3262,7 +3282,12 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    	pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
+    	int i = pipe.pubListeners.length;
+
+    	while (--i>=0) {
+    		pipe.pubListeners[i].published();
+    	}    	
+    
     	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
@@ -3294,7 +3319,11 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 	public static <S extends MessageSchema<S>> void notifyPubListener(Pipe<S> pipe) {
-		pipe.pubListener.published(Pipe.workingHeadPosition(pipe));
+		int i = pipe.pubListeners.length;	
+    	while (--i>=0) {
+    		pipe.pubListeners[i].published();
+    	}
+	
 	}
     
     

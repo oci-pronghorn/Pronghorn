@@ -1202,7 +1202,7 @@ public class TrieParser implements Serializable {
         	case ESCAPE_CMD_OPTIONAL_SIGNED_INT:
         	    return (short)(TrieParser.NUMERIC_FLAG_SIGN | TrieParser.NUMERIC_FLAG_ABSENT_IS_ZERO);        
             case ESCAPE_CMD_SIGNED_INT:
-                return TrieParser.NUMERIC_FLAG_SIGN;
+            	return TrieParser.NUMERIC_FLAG_SIGN;
             case ESCAPE_CMD_UNSIGNED_INT:
                 return 0;
             case ESCAPE_CMD_SIGNED_HEX:

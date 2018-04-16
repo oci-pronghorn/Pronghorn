@@ -743,7 +743,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @return The total number of variable length field bytes consumed by this now released message.
      */
 	public static int releaseReadLock(Pipe pipe) {
-		pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
 		
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int consumed = collectConsumedCountOfBytes(pipe); 

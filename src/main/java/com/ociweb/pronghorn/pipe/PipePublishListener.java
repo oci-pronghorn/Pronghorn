@@ -1,13 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
-public interface PipePublishListener {
+public abstract class PipePublishListener {
 
-	public PipePublishListener NO_OP = new PipePublishListener(){
-		@Override
-		public void published(long position) {
-		}
-	};
-	
-	void published(long position);
+	public abstract void published();
 	
 }

@@ -89,7 +89,7 @@ public class PendingReleaseData {
 
 			pipe.slabRingTail.tailPos.lazySet(that.pendingSlabReleaseRing[idx]);
 			that.pendingReleaseCount = 0;
-			pipe.relListener.released(Pipe.getWorkingTailPosition(pipe));
+
 		}
 	}
     
