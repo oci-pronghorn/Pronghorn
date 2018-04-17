@@ -3282,13 +3282,8 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    	int i = pipe.pubListeners.length;
-
-    	while (--i>=0) {
-    		pipe.pubListeners[i].published();
-    	}    	
-    
-    	
+    	notifyPubListener(pipe);
+       	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
