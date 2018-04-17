@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -26,6 +27,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	
 	private final Pipe<HTTPRequestSchema> input;
 	private final Pipe<HTTPRequestSchema> output;
+	private final Pipe<ServerResponseSchema> err;
+	
 		
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
@@ -38,12 +41,14 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 
 											JSONExtractorCompleted extractor,  int structId,
 											Pipe<HTTPRequestSchema> input,
-											Pipe<HTTPRequestSchema> output) {
+											Pipe<HTTPRequestSchema> output,
+											Pipe<ServerResponseSchema> err) {
 		
-		super(graphManager, input, output);
+		super(graphManager, input, join(output, err));
 		this.extractor = extractor;
 		this.input = input;
 		this.output = output;
+		this.err = err;
 		this.typeData = graphManager.recordTypeData;
 		this.structId = structId;
 		
@@ -61,6 +66,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		visitor = extractor.newJSONVisitor();
 			
 	}
+	
+
 	
 	@Override
 	public void run() {
@@ -118,16 +125,11 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			Pipe.confirmLowLevelWrite(localOutput,size);
 		    			Pipe.publishWrites(localOutput);
 		    		} else {
-		    			//send404 code!
 		    			
-		    			logger.warn("Unable to parse JSON");
-		    			//parser wants more data or the data is not understood, eg broken
-		    			
-		    			//TODO: send 404
-		    			//DataOutputBlobWriter.closeLowLevelField(outputStream);
-		    			localOutput.closeBlobFieldWrite();
-		    			
-		    			
+		    			HTTPUtil.publishStatus(channelId, sequenceNum, 404, err);
+		    			//logger.warn("Unable to parse JSON");		    			
+		    			localOutput.closeBlobFieldWrite();	    			
+		    			visitor.clear();//rest for next JSON
 		    		}
 		        }	
 				break;

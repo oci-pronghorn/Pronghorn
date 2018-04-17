@@ -264,21 +264,6 @@ public class NetGraphBuilder {
         
 	}
 
-//	public static GraphManager buildSimpleServerGraph(final GraphManager graphManager,
-//			final ServerCoordinator coordinator, 
-//			boolean isLarge, boolean isTLS,
-//			ServerFactory factory) {
-//		
-//		return buildServerGraph(graphManager, coordinator,
-//				                new ServerPipesConfig(isTLS, 
-//								   isLarge ? 20 : 12, 
-//								   isLarge? 8 : (isLarge ? (isTLS?4:8) : 2),
-//								   isLarge ? 2 : 1, isLarge ? 2 : 1,
-//								   isLarge ? 2 : 1, isLarge ? 2 : 1, 8, 1<<8),
-//				                   factory);
-//		
-//	}
-	
 	public static GraphManager buildServerGraph(final GraphManager graphManager,
 													final ServerCoordinator coordinator, 
 													final ServerPipesConfig serverConfig,
@@ -337,28 +322,93 @@ public class NetGraphBuilder {
         		receivedFromNet, fromModule, toModules, routerConfig,
 				config, false);
         
+        
+        
+        
         //logger.info("build http ordering supervisors");
-        buildOrderingSupers(graphManager, coordinator, coordinator.moduleParallelism(), 
-        		            fromModule, sendingToNet);
+        buildOrderingSupers(graphManager, coordinator, 
+        		            coordinator.moduleParallelism(), 
+        		            fromModule, 
+        		            sendingToNet);
         
 	}
 
-	private static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
+	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
 			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
 			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPRequestSchema>[][] toModules,
 			final HTTP1xRouterStageConfig routerConfig, PipeConfig<ServerResponseSchema> config,
 			boolean captureAll) {
 		
-
-        Pipe<ServerResponseSchema>[] errorResponsePipes1 = new Pipe[coordinator.moduleParallelism()];
-		int r = coordinator.moduleParallelism();
-		while (--r>=0) {
-					errorResponsePipes1[r] = new Pipe<ServerResponseSchema>(config);        	
-					fromModule[r] = PronghornStage.join(errorResponsePipes1[r], fromModule[r]);
-		}
+		/////////////////////
+		//create the routers
+		/////////////////////
+		//split up the unencrypted pipes across all the routers
+		Pipe[][] plainSplit = Pipe.splitPipes(toModules.length, receivedFromNet);
+		int acksBase = releaseAfterParse.length-1;
+		int parallelTrack = toModules.length; 
+		while (--parallelTrack>=0) { 
+									
+			//////////////////////
+			//as needed we inject the JSON Extractor
+			//////////////////////
+			
+			Pipe<HTTPRequestSchema> prev = null;
+			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
+			int routeId = fromRouter.length;
+			while (--routeId>=0) {
+				
+				Pipe<HTTPRequestSchema> pipe = fromRouter[routeId];
+				if (pipe==prev){
+					//already done since we have multiple paths per route.
+					fromRouter[routeId] = fromRouter[routeId+1];
+					continue;
+				}
+				prev = fromRouter[routeId];
+				
+				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
+				if (null != extractor) {
+					
+					////grow from module pipes to have one more error pipe
+					Pipe<ServerResponseSchema> json404Pipe = new Pipe<ServerResponseSchema>(config);
+					fromModule[parallelTrack] = PronghornStage.join(json404Pipe, fromModule[parallelTrack]);
+			        ////////////
+					
+					Pipe<HTTPRequestSchema> newFromJSON = 
+							new Pipe<HTTPRequestSchema>( pipe.config() );
 		
-		buildRouters(graphManager, receivedFromNet, releaseAfterParse, 
-        		     toModules, errorResponsePipes1, routerConfig, coordinator, captureAll);
+					new HTTPRequestJSONExtractionStage(
+							 	graphManager, 
+							 	extractor, 
+							 	routerConfig.getStructIdForRouteId(routeId),
+							 	newFromJSON,
+							 	fromRouter[routeId],
+							 	json404Pipe
+							);
+					
+					fromRouter[routeId] = newFromJSON;
+									
+				}
+			}	
+			////////////////////////////////////
+			////////////////////////////////////
+			
+		    ////grow from module pipes to have one more error pipe
+			Pipe<ServerResponseSchema> router404Pipe = new Pipe<ServerResponseSchema>(config);
+			fromModule[parallelTrack] = PronghornStage.join(router404Pipe, fromModule[parallelTrack]);
+			//////////////////
+			
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
+					graphManager, 
+					parallelTrack, 
+					plainSplit[parallelTrack], 
+					fromRouter, 
+					router404Pipe, 
+					releaseAfterParse[acksBase-parallelTrack], routerConfig,
+					coordinator,captureAll);        
+			
+			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
+			coordinator.processNota(graphManager, router);
+		}
 	}
 
 	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(GraphManager graphManager, ServerCoordinator coordinator, final int routerCount,
@@ -502,81 +552,6 @@ public class NetGraphBuilder {
 		    GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", writerStage);
 		   	coordinator.processNota(graphManager, writerStage);
 		}
-	}
-
-	public static void buildRouters(GraphManager graphManager, 
-			                        Pipe[] planIncomingGroup,
-			                        Pipe[] acks,
-									Pipe<HTTPRequestSchema>[][] toModules, 
-									Pipe<ServerResponseSchema>[] errorResponsePipes, 
-									final HTTP1xRouterStageConfig routerConfig,
-									ServerCoordinator coordinator, 
-									boolean catchAll) {
-
-		
-		int a;
-		/////////////////////
-		//create the routers
-		/////////////////////
-		//split up the unencrypted pipes across all the routers
-		Pipe[][] plainSplit = Pipe.splitPipes(toModules.length, planIncomingGroup);
-		int acksBase = acks.length-1;
-		int parallelTrack = toModules.length; 
-		while (--parallelTrack>=0) { 
-									
-			//////////////////////
-			//as needed we inject the JSON Extractor
-			//////////////////////
-			
-			Pipe<HTTPRequestSchema> prev = null;
-			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
-			int routeId = fromRouter.length;
-			while (--routeId>=0) {
-				
-				Pipe<HTTPRequestSchema> pipe = fromRouter[routeId];
-				if (pipe==prev){
-					//already done since we have multiple paths per route.
-					fromRouter[routeId] = fromRouter[routeId+1];
-					continue;
-				}
-				prev = fromRouter[routeId];
-				
-				//this lookup is not right we are mixing route and route..
-				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
-				if (null != extractor) {
-
-					Pipe<HTTPRequestSchema> newFromJSON = 
-							new Pipe<HTTPRequestSchema>( pipe.config() );
-
-					new HTTPRequestJSONExtractionStage(
-							 	graphManager, 
-							 	extractor, 
-							 	routerConfig.getStructIdForRouteId(routeId),
-							 	newFromJSON,
-							 	fromRouter[routeId]
-							);
-					
-					fromRouter[routeId] = newFromJSON;
-									
-				}
-			}	
-			////////////////////////////////////
-			////////////////////////////////////
-			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
-					graphManager, 
-					parallelTrack, 
-					plainSplit[parallelTrack], 
-					fromRouter, 
-					errorResponsePipes[parallelTrack], 
-					acks[acksBase-parallelTrack], routerConfig,
-					coordinator,catchAll);        
-			
-			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
-			coordinator.processNota(graphManager, router);
-		}
-		
-		
 	}
 
 	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
