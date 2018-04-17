@@ -3013,7 +3013,7 @@ public class GraphManager {
 			                              PipePublishListener listener) {
 		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
 		for(int i=1; i<=c; i++) {
-			Pipe.addPubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
+			Pipe.addPubListener(getOutputPipe(graphManager, pronghornStage.stageId, i), listener);
 		}
 	}
 
@@ -3022,7 +3022,7 @@ public class GraphManager {
 			PipePublishListener listener) {
 		int c = getOutputPipeCount(graphManager, pronghornStage.stageId);
 		for(int i=1; i<=c; i++) {
-			Pipe.removePubListener(getOutputPipe(graphManager, pronghornStage.stageId), listener);
+			Pipe.removePubListener(getOutputPipe(graphManager, pronghornStage.stageId, i), listener);
 		}
 	}
 	

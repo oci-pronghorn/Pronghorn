@@ -27,6 +27,8 @@ public abstract class BaseConnection {
 
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
+	  
+    private long lastUsedTime;
 
 	protected final Pipe<RawDataSchema> connectionData;
 		
@@ -48,6 +50,15 @@ public abstract class BaseConnection {
 			this.connectionData.initBuffers();			
 		}
 		
+	}
+	
+
+	public void setLastUsedTime(long timeMS) {
+		lastUsedTime = timeMS;
+	}
+	
+	public long getLastUsedTime() {
+		return lastUsedTime;//MS
 	}
 	
 	public SSLEngine getEngine() {

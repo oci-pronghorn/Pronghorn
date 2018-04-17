@@ -1,8 +1,6 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
-import java.net.StandardSocketOptions;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
@@ -19,7 +17,6 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -535,7 +532,9 @@ public class ServerSocketReaderStage extends PronghornStage {
         
         int size = Pipe.addMsgIdx(targetPipe, messageType);               
         Pipe.addLongValue(channelId, targetPipe);  
-        Pipe.addLongValue(System.currentTimeMillis(), targetPipe);
+        long now = System.currentTimeMillis();
+        cc.setLastUsedTime(now);
+		Pipe.addLongValue(now, targetPipe);
         
         if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
         	Pipe.addLongValue(-1, targetPipe);

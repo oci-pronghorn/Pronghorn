@@ -56,8 +56,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	public final int port;
 	public final int hostId;
 		  
-	private long lastUsedTime;
-	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 	private ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
@@ -84,15 +82,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	protected final int structureId;
 	
 	private final int payloadSize;
-
-		
-	public void setLastUsedTime(long time) {
-		lastUsedTime = time;
-	}
-	
-	public long getLastUsedTime() {
-		return lastUsedTime;
-	}
 
 	public int getStructureId() {
 		return structureId;

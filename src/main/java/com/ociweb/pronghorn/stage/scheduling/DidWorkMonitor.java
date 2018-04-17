@@ -10,7 +10,7 @@ public class DidWorkMonitor extends PipePublishListener {
 	
 	public static boolean didWork(DidWorkMonitor that) {
 		//note has side effect of clearing the timer
-		that.beginNS=0;
+		that.beginNS = 0;
 		that.runningThread = null;
 		return that.didWork;
 	}

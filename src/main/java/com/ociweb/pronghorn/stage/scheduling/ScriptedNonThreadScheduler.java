@@ -173,7 +173,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		PronghornStage.addWorkMonitor(stages[k], didWorkMonitor);
     		//NOTE: stages have "done work" if something was published to an output
     		GraphManager.addPublishFromListener(graphManager, stages[k], didWorkMonitor);
-        	
+   		
+    		
         	// Determine rates for each stage.
 			long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[k], GraphManager.SCHEDULE_RATE, defaultValue)));
             rates[k] = scheduleRate;
@@ -734,18 +735,20 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
 		if (noWorkCounter<1000 || deepSleepCycleLimt<=0) {//do it since we have had recent work
 			
-			long nowMS = System.nanoTime()/1_000_000l;
+			long now = System.nanoTime();
+			long nowMS = now/1_000_000l;
 			
 			if (0!=(nowMS&7)) {// 1/8 of the time every 1 ms we take a break for task manager
-
+				long loopTop = -1;
 				while (totalRequiredSleep>400) {
-					long now = System.nanoTime();
+					loopTop = now;
 					if (totalRequiredSleep>500_000) {
 						LockSupport.parkNanos(totalRequiredSleep);
 					} else {
 						Thread.yield();
 					}
-					long duration = System.nanoTime()-now;
+					now = System.nanoTime();
+					long duration = now-loopTop;
 					if (duration<0) {
 						duration = 1;
 					}
@@ -753,7 +756,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				}
 			} else {
 				//let the task manager know we are not doing work.
-				long now = System.nanoTime();
 				LockSupport.parkNanos(totalRequiredSleep);
 				long duration = System.nanoTime()-now;
 				//System.err.println(totalRequiredSleep+" vs "+duration);
@@ -857,24 +859,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			int inProgressIdx, long SLAStart,
 			long start, final PronghornStage stage) {
 		
-		DidWorkMonitor.begin(localDidWork,start);
+		DidWorkMonitor.begin(localDidWork, start);		
 		shutDownRequestedHere = runStageImpl(this, gm, shutDownRequestedHere, start, stage);		
-		runStageCleanup(this, gm, recordTime, localDidWork, inProgressIdx, SLAStart, start, stage);
-		return shutDownRequestedHere;
-	}
-
-	private static void runStageCleanup(
-			ScriptedNonThreadScheduler that, 
-			GraphManager gm, final boolean recordTime, final DidWorkMonitor localDidWork,
-			int inProgressIdx, long SLAStart, long start, final PronghornStage stage) {
-		if (!DidWorkMonitor.didWork(localDidWork) 
-			|| 
-			GraphManager.hasNota(that.graphManager, stage.stageId, GraphManager.MONITOR)
-			) {		
+		if (!DidWorkMonitor.didWork(localDidWork)) {		
 		} else {
-			that.recordRunResults(that, System.nanoTime(), gm, recordTime, 
+			ScriptedNonThreadScheduler.recordRunResults(
+					         this, gm, recordTime, 
 					         inProgressIdx, start, SLAStart, stage);
 		}
+		return shutDownRequestedHere;
 	}
 
 	private static boolean runStageImpl(
@@ -905,17 +898,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private static void recordRunResults(
 			ScriptedNonThreadScheduler that, 
-			final long now, GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
+			GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
 			long SLAStart, PronghornStage stage) {
 			        
-		long duration = now-start;
-		
-		if (duration <= that.sla[inProgressIdx]) {
-		} else {
-			that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
-		}
-
 		if (recordTime) {		
+			long now = System.nanoTime(); //this takes time, avoid if possible
+			long duration = now-start;
+			
+			if (duration <= that.sla[inProgressIdx]) {
+			} else {
+				that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
+			}
+
 			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
 				if (that.shownLowLatencyWarning) {
 				} else {

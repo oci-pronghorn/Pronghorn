@@ -166,23 +166,26 @@ public class ServerSocketWriterStage extends PronghornStage {
     public void run() {
        
     	boolean didWork = false;
+    	boolean doingWork = false;
     	do {
-    		didWork = false;
+    		doingWork = false;
 	    	int x = input.length;
 	    	while (--x>=0) {
-	    		Pipe<NetPayloadSchema> localInput = input[x];
 	    		
 	    		if (null == writeToChannel[x]) {	    			
-	    			if (!Pipe.hasContentToRead(localInput)) {    				
+	    			if (Pipe.isEmpty(input[x])) { //!Pipe.hasContentToRead(localInput)) {    				
 	    				//no content to read on the pipe
 	    				//all the old data has been written so the writeChannel remains null	    		
 	    			} else {
-		            	int activeMessageId = Pipe.takeMsgIdx(localInput);		            			            	
+	    	
+		            	int activeMessageId = Pipe.takeMsgIdx(input[x]);		            			            	
 		            	processMessage(activeMessageId, x);
-		            	didWork |= (activeMessageId < 0);
+		            	doingWork |= (activeMessageId < 0);
 	    			}
 	    			
 	    		} else {
+	    			Pipe<NetPayloadSchema> localInput = input[x];
+	 
 	    			//logger.info("write the channel");
 	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
 	    			
@@ -193,7 +196,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				|| !Pipe.hasContentToRead(localInput) //myPipeHasNoData so fire now
 	    				) {
 	    				writeToChannelMsg[x] = -1;
-		    			if (!(didWork = writeDataToChannel(x))) {
+		    			if (!(doingWork = writeDataToChannel(x))) {
 		    				break;//network blocked so try again later 
 		    			}; 
 		   		    			
@@ -226,8 +229,13 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		}    		
 	    		
 	    	}
-	    	
-    	} while (didWork);
+	    	didWork |= doingWork;
+    	} while (doingWork);
+    	
+		//we have no pipes to monitor so this must be done explicitly
+	    if (didWork && (null != this.didWorkMonitor)) {
+	    	this.didWorkMonitor.published();
+	    }
 
     }
     
@@ -238,7 +246,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		activeMessageIds[idx] = activeMessageId;
 		
 		//logger.info("sever to write {}",activeMessageId);
-				
+		
+						
 		if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
 		     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
 			            		

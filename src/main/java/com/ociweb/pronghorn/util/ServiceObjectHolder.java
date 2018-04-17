@@ -183,7 +183,7 @@ public class ServiceObjectHolder<T> {
             }
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
-        } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
+        } while (keepLooking(data.serviceObjectValues[modIdx]));
         
         sequenceCounter = localSequenceCount;//where we left off
         
@@ -230,8 +230,7 @@ public class ServiceObjectHolder<T> {
             }
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
-        } while (null != data.serviceObjectValues[modIdx] 
-        		&& validator.isValid(data.serviceObjectValues[modIdx]));
+        } while (keepLooking(data.serviceObjectValues[modIdx]));
     
         
         sequenceCounter = localSequenceCount;//where we left off
@@ -241,6 +240,10 @@ public class ServiceObjectHolder<T> {
         //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }
+
+	private final boolean keepLooking(T obj) {
+		return (null!=obj) && validator.isValid(obj);
+	}
     
     /*
      * Only used with the above lookupInsertPosition for setting the object, this allows for the late construction when the object is needed.

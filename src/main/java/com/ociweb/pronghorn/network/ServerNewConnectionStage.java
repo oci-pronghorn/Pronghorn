@@ -47,6 +47,8 @@ public class ServerNewConnectionStage extends PronghornStage{
     private final long startupTimeNS;
     
     static final int connectMessageSize = ServerConnectionSchema.FROM.fragScriptSize[ServerConnectionSchema.MSG_SERVERCONNECTION_100];
+
+	private static final long CONNECTION_TTL_MS = 4_000; //may shut off any connections unused for 4 sec
     private ServerCoordinator coordinator;
     private Pipe<ServerConnectionSchema> newClientConnections;
     private final String label;
@@ -133,20 +135,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
-            //trim of local domain name when present.
-            host = endPoint.toString();
-
-            int hidx = host.indexOf('/');
-            if (hidx==0) {
-            	host = host.substring(hidx+1,host.length());
-            } else if (hidx>0) {
-            	int colidx = host.indexOf(':');
-            	if (colidx<0) {
-            		host = host.substring(0,hidx);
-            	} else {
-            		host = host.substring(0,hidx)+host.substring(colidx,host.length());
-            	}
-            }
+            extractHostString(endPoint);
             needsToNotifyStartup=true;          
             
         } catch (SocketException se) {
@@ -175,6 +164,23 @@ public class ServerNewConnectionStage extends PronghornStage{
         }
         
     }
+
+	private void extractHostString(SocketAddress endPoint) {
+		//trim of local domain name when present.
+		host = endPoint.toString();
+
+		int hidx = host.indexOf('/');
+		if (hidx==0) {
+			host = host.substring(hidx+1,host.length());
+		} else if (hidx>0) {
+			int colidx = host.indexOf(':');
+			if (colidx<0) {
+				host = host.substring(0,hidx);
+			} else {
+				host = host.substring(0,hidx)+host.substring(colidx,host.length());
+			}
+		}
+	}
 
 	private void reportServerIsRunning(String host) {
 		//ensure reporting is done together
@@ -282,9 +288,26 @@ public class ServerNewConnectionStage extends PronghornStage{
 	
 	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 	                                            
-	                      final long channelId = holder.lookupInsertPosition();
+	                      long channelId = holder.lookupInsertPosition();
 	                      if (channelId<0) {
-	                    	  return;//try again later if the client is still waiting.
+	                    	  
+	                    	  long leastUsedConnectionId = (-channelId);
+	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
+	                    	  long now = System.currentTimeMillis();
+	                    	  if ( (tempConnection!=null)
+	                    		  && (tempConnection.isValid)
+	                    		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
+	                    			  ) {
+	                    		  //We have no connections we can replace so do not accept this
+	                    		  return;//try again later if the client is still waiting.	                    		  
+	                    	  } else {
+	                    		  if (null!=tempConnection) {
+	                    			  tempConnection.close();
+	                    		  }
+	                    		  
+	                    		  //reuse old index for this new connection
+	                    		  channelId = leastUsedConnectionId;	                    		  
+	                    	  }
 	                      }
 	                      
 	                      int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly

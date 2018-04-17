@@ -39,6 +39,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	//do not modify without sync on domainRegistry which is final
 	public static int totalKnownDomains = 0;
 	public static final TrieParser domainRegistry = new TrieParser(64, 2, false, false, true);
+
+	private static final long EXPIRE_LIMIT_MS = 200;//if not used in MS then eligible to be closed.
 	public static LongLongHashTable[] conTables = new LongLongHashTable[4];
 	///////////////////////////////////////////////
 
@@ -332,6 +334,19 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					//NOTE: using direct lookup get since un finished connections may not be valid.
 										
 					connectionId = ccm.lookupInsertPosition();
+					
+					if (connectionId<0) {
+						long leastUsedId = (-connectionId);
+						//take the least used connection but only
+						//if it is not currently in use.
+						ClientConnection tempCC = ccm.connections.get(leastUsedId);
+						long now = System.currentTimeMillis();
+						if ((tempCC==null) 
+							|| ((now-tempCC.getLastUsedTime())>EXPIRE_LIMIT_MS)	
+							|| (!tempCC.isValid())) {							
+							connectionId = leastUsedId;
+						}						
+					}
 					
 					int pipeIdx = -1;
 					if (connectionId<0
