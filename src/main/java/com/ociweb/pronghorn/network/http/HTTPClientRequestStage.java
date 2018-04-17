@@ -112,6 +112,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				while (--i>=0) {
 					Pipe<ClientHTTPRequestSchema> requestPipe = input[i];						  
 					if (Pipe.hasContentToRead(requestPipe)) {
+						
 						if (buildClientRequest(now, requestPipe)) {
 							hasWork = true;
 						} else {
@@ -167,8 +168,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 		       	//Need peek to know if this will block.
 		    		        	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
-		    
-		   // logger.info("send for active pipe {} with msg {}",requestPipe.id,msgIdx);
+		    		    
+		    //logger.info("send for active pipe {} with msg {}",requestPipe.id,msgIdx);
 		    
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 		    	activeConnection.setLastUsedTime(now);
@@ -263,7 +264,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			connectionId = ccm.lookup(hostId, port, userId);
  		}
 		
- 		if (null!=activeConnection && activeConnection.getId()==connectionId) {
+ 		if (null!=activeConnection && activeConnection.getId()==connectionId && activeConnection.isValid()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
  			if (0==port) {
@@ -276,14 +277,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  			}
- 		
  			
-
- 			
-			//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
-			//int structureId = 
-			
-					
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 

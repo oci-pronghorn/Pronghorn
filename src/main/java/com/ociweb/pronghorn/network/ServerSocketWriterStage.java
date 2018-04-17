@@ -22,7 +22,7 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
-    private final static boolean showAllContentSent = false;
+    public static boolean showWrites = false;
     
 	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
 	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
@@ -320,11 +320,11 @@ public class ServerSocketWriterStage extends PronghornStage {
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
-        if (showAllContentSent) {
-        	System.out.println("////////////////////");
+        if (showWrites) {
         	int pos = Pipe.convertToPosition(meta, pipe);
-        	Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
-        	System.out.println("////////////////////");
+        	logger.info("////////////////////\n"+
+        	Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
+        	+"\n////////////////////");
         }
         
         

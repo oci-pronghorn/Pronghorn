@@ -322,11 +322,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId, TrieParserReader reader, AbstractClientConnectionFactory ccf) {
-		
+				
 		        ClientConnection cc = null;
 
 				if (-1 == connectionId || 
-					null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { 
+					null == (cc = (ClientConnection) ccm.connections.get(connectionId)) ||
+					!cc.isValid()
+						) { 
 					//NOTE: using direct lookup get since un finished connections may not be valid.
 										
 					connectionId = ccm.lookupInsertPosition();
@@ -344,7 +346,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						//recycle from old one if it is found/given		        
 						int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
 						int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
-						
+
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
 													pipeIdx, 

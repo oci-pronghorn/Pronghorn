@@ -35,6 +35,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private ElapsedTimeRecorder[] latencyRecordings;
 	
 	private int shutCountDown;
+	
+	public static boolean showWrites = false;
 
 	
 	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
@@ -127,6 +129,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	}
 
 	private boolean writeAll(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
+		
 		if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {							
 			didWork = writePlain(didWork, i, pipe, msgIdx);
 		} else if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {											
@@ -211,11 +214,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 		int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 		int len  = Pipe.takeRingByteLen(pipe);
 
-		final boolean showWrittenData = false;
-		if (showWrittenData) {
-			int pos = Pipe.bytePosition(meta, pipe, len);	
-			System.out.println("pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId);
-			Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
+		if (showWrites) {
+			int pos = Pipe.bytePosition(meta, pipe, len);
+			logger.info("////////pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId+
+					"\n"+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe)));
+			
 		}
 		
 		//no wrap is required so we have finished the TLS handshake and may continue
@@ -223,7 +226,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			if (null!=cc) {									
 				didWork = rollUpPlainsToSingleWrite(didWork, i, 
 						pipe, msgIdx, channelId, cc, meta,
-						len, showWrittenData);
+						len, showWrites);
 			} else {								
 				//can not send this connection was lost, consume and drop the data to get it off the pipe
 				Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
