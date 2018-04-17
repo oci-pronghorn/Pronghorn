@@ -110,7 +110,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
 		releaseResponsePipeLineIdx(hostId);
 		connections.resetUsageCount(hostId);
-		
+	
 		return response;
 	}
 	
@@ -332,23 +332,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					connectionId = ccm.lookupInsertPosition();
 					
 					int pipeIdx = -1;
-					if (connectionId<0 || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
-						
-						if (Integer.numberOfLeadingZeros(ccm.clientConnectionsErrorCounter)
-							!=	Integer.numberOfLeadingZeros(++ccm.clientConnectionsErrorCounter)
-								) {
-							
-							if (connectionId<0) {
-								logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());								
-							} else {
-								logger.warn("No Free Data Pipes Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
-							}							
-							
-						}
-						
-						
-						//do not open instead we should attempt to close this one to provide room.
-						return null;
+					if (connectionId<0
+					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
+						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
 						
 					try {
@@ -356,7 +342,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				    	//create new connection because one was not found or the old one was closed
 				
 						//recycle from old one if it is found/given		        
-						int hostId = null!=cc? cc.hostId : lookupHostId(host, reader);						
+						int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
 						int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
 						
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
@@ -397,6 +383,25 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				//not registered
 				return doRegister(ccm, outputs, cc);
 
+	}
+
+
+	private static ClientConnection reportNoNewConnectionsAvail(ClientCoordinator ccm, long connectionId) {
+		if (Integer.numberOfLeadingZeros(ccm.clientConnectionsErrorCounter)
+			!=	Integer.numberOfLeadingZeros(++ccm.clientConnectionsErrorCounter)
+				) {
+			
+			if (connectionId<0) {
+				logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());								
+			} else {
+				logger.warn("No Free Data Pipes Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+			}							
+			
+		}
+		
+		
+		//do not open instead we should attempt to close this one to provide room.
+		return null;
 	}
 
 

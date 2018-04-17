@@ -382,7 +382,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-							//System.err.println("yyy");
+					
 							continue;
 						}
 						
