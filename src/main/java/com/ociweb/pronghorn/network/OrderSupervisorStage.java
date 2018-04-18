@@ -286,7 +286,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		/////////////////////
 		//clear when we discover a new connection
 		///////////////////
-		if (expectedSquenceNosChannelId[idx] == channelId) {
+		if (expectedSquenceNosChannelId[idx] == channelId && (sequenceNo!=0)) {
 		} else {
 			//logger.info("connection beginning **************");
 			conClearLogic(channelId, idx);

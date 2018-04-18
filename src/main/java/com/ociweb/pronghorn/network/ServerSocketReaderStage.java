@@ -359,9 +359,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 				BaseConnection conn = coordinator.connectionForSessionId(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
-				}
-				conn.clearPoolReservation();
-				
+					conn.clearPoolReservation();
+				}				
 			} 
 		}
 	}

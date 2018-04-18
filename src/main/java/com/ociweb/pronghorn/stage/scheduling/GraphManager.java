@@ -47,7 +47,7 @@ public class GraphManager {
 	private static final byte[] ELAP = " Elap:".getBytes();
 	private static final byte[] CLOSEBRACKET_NEWLINE = "]\n".getBytes();
 	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
-	private static final byte[] LABEL_MSG_SEC = "Mps".getBytes();
+	private static final byte[] LABEL_TPS = "tps".getBytes();
 	private static final byte[] WHITE_SPACE_NL = " \n".getBytes();
 	private static final byte[] WHITE_SPACE = " ".getBytes();
 	
@@ -250,8 +250,7 @@ public class GraphManager {
 		pipeFullValues = new byte[k][];
 		while (--k>=0) {
 			builder.setLength(0);
-			Appendables.appendFixedDecimalDigits(builder.append(" \nFull:"), k, k<=99?10:100).append("% ");
-		
+			Appendables.appendFixedDecimalDigits(builder.append("Full:"), k, k<=99?10:100).append("%");
 			pipeFullValues[k] = builder.toString().getBytes();
 		}
 		
@@ -1968,7 +1967,9 @@ public class GraphManager {
 				                target.append(m.pipeDOTSchemaNames[pipe.id]);
 				                		                
 				                if (null!=pipePercentileFullValues) {
+				                	target.append(" \n");
 				                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
+				                	target.append(" ");
 				                }
 				              
 				                if (null!=pipeTraffic) {
@@ -1978,7 +1979,7 @@ public class GraphManager {
 				               			                
 				                if (null!=msgPerSec) {
 				                	target.append(WHITE_SPACE);
-				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_MSG_SEC);
+				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_TPS);
 				                	target.append(WHITE_SPACE);
 				                }
 				                	                    
@@ -2136,12 +2137,23 @@ public class GraphManager {
 		Appendables.appendValue(target, count);
 		target.append(" Pipes\n");
 		
+		if (null!=pipePercentileFullValues) {		                	
+			int pctFull = (int)(sumPctFull/width);
+			target.append(pipeFullValues[pctFull]);
+			target.append("\n");			
+		}
+		//right here.
+		//Full:00% //need Full:00.00% for aggrigate on its own line.
+		
+		//Appendables.appendFixedDecimalDigits(target.append("Full:"), k, k<=99?10:100).append("%\n");
+		
+		
 		if (null!=pipeTraffic) {
 			appendVolume(target, sumTraffic);
 			target.append(WHITE_SPACE_NL);
 		} 
 		if (null!=msgPerSec) {
-			fixedSpaceValue(target, sumMsgPerSec, LABEL_MSG_SEC);
+			fixedSpaceValue(target, sumMsgPerSec, LABEL_TPS);
 		}
 		
 		target.append(AQUOTE);

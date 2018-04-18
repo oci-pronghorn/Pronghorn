@@ -70,7 +70,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, 
 			                 TLSCertificates tlsCertificates, StructRegistry typeData) {
 		super(tlsCertificates);
-		
+	
 		/////////////////////////////////////////////////////////////////////////////////////
 		//The trust manager MUST be established before any TLS connection work begins
 		//If this is not done there can be race conditions as to which certs are trusted...
@@ -339,13 +339,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						long leastUsedId = (-connectionId);
 						//take the least used connection but only
 						//if it is not currently in use.
-						ClientConnection tempCC = ccm.connections.get(leastUsedId);
+						ClientConnection tempCC = ccm.connections.getValid(leastUsedId);
 						long now = System.currentTimeMillis();
 						if ((tempCC==null) 
 							|| ((now-tempCC.getLastUsedTime())>EXPIRE_LIMIT_MS)	
-							|| (!tempCC.isValid())) {							
+						   ) {							
 							connectionId = leastUsedId;
-						}						
+						}
 					}
 					
 					int pipeIdx = -1;

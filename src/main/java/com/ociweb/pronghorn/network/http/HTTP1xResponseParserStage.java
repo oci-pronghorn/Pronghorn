@@ -273,20 +273,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						logger.trace("closed connection detected");
 						if (null != cc) {
 							//publish closed to notify those down stream
-							targetPipe = output[(int)cc.readDestinationRouteId()];
-							
-							Pipe.presumeRoomForWrite(targetPipe);
-							int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
-							Pipe.addUTF8(cc.host, targetPipe);
-							Pipe.addIntValue(cc.port, targetPipe);
-							Pipe.confirmLowLevelWrite(targetPipe, size);
-							Pipe.publishWrites(targetPipe);
+							publishCloseMessage(cc);
 							
 							//data from the closed message...
 							//TODO: need to refactor and push this message down stream to callers..
-							StringBuilder closedMessage = new StringBuilder();
-							Appendables.appendUTF8(closedMessage, backing, pos, len, mask);
-							logger.error("closed response:\n{}\n<END OF ERROR>",closedMessage);
+							//StringBuilder closedMessage = new StringBuilder();
+							//Appendables.appendUTF8(closedMessage, backing, pos, len, mask);
+							//logger.error("closed response:\n{}\n<END OF ERROR>",closedMessage);
 							
 						}
 
@@ -909,6 +902,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
+	private void publishCloseMessage(ClientConnection cc) {
+		Pipe<NetResponseSchema> targetPipe = output[(int)cc.readDestinationRouteId()];
+		
+		Pipe.presumeRoomForWrite(targetPipe);
+		int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
+		Pipe.addUTF8(cc.host, targetPipe);
+		Pipe.addIntValue(cc.port, targetPipe);
+		Pipe.confirmLowLevelWrite(targetPipe, size);
+		Pipe.publishWrites(targetPipe);
+	}
+
 	private final void clearConnectionStateData(int i) {
 		payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
 		closeRequested[i] = false;
@@ -1090,6 +1094,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 			//the server requested a close and we are now done reading the body so we need to close.
 			if (closeRequested[i]) {
+				//publish closed to notify those down stream
+				publishCloseMessage(cc);
 				cc.close();
 			}
 			

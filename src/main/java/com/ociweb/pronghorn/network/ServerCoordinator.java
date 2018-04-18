@@ -324,7 +324,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
     
     public static ConnectionContext selectorKeyContext(ServerCoordinator that, long channelId) {
         ConnectionContext context = that.connectionContext[(int)(that.channelBitsMask & channelId)];
-        context.setChannelId(channelId);        
+        context.setChannelId(channelId);
+        context.skPosition(-1);//clear in case this is reused.
         return context;
     }
 

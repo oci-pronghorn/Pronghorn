@@ -196,8 +196,12 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			new Exception("we have host: "+host+" and port: "+port).printStackTrace();
 			return;
 		} else {
-			//TODO: note GC issue with toString on getAddress adress...
+			
 			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
+			
+			//if you see BindException: Can't assign requested address then something is
+			//up with your local network and this machine no longer has access to that address and port.
+			
 		}
 
 		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
