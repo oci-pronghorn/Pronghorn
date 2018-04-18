@@ -110,6 +110,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				response = null;
 			}
 		}
+		
 		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
 		releaseResponsePipeLineIdx(hostId);
 		connections.resetUsageCount(hostId);
@@ -358,15 +359,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
+
+					//recycle from old one if it is found/given		        
+					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
+					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
 						
 					try {
 
 				    	//create new connection because one was not found or the old one was closed
-				
-						//recycle from old one if it is found/given		        
-						int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
-						int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
-
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
 													pipeIdx, 

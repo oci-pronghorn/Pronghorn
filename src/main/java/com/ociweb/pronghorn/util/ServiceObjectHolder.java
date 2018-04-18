@@ -247,10 +247,10 @@ public class ServiceObjectHolder<T> {
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
         
-            if (index==hardStop) {
+            if (index==hardStop && keepLooking(data.serviceObjectValues[modIdx])) {
             	assert(-1!=maxPeriodIdx);
                  	
-            	sequenceCounter = localSequenceCount;//where we left off
+            	sequenceCounter = maxPeriodIdx;//where we left off
             	//do not grow instead return the negative value of the least used object
             	return -maxPeriodIdx;
             }
@@ -306,13 +306,11 @@ public class ServiceObjectHolder<T> {
     
     public void visitValid(ServerObjectHolderVisitor<T> v) {
     	ServiceObjectData<T> localData = data;
-    	int i = localData.serviceObjectKeys.length;
+    	int i = localData.serviceObjectValues.length;
     	while (--i>=0) {
     		final T t = localData.serviceObjectValues[i];
     		if ((null!=t) && validator.isValid(t)) {
     			v.visit(t);
-    		} else {
-    			localData.serviceObjectValues[i]=null;
     		}
     	}
     }

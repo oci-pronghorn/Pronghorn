@@ -117,7 +117,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 				if (localConnections[i]==null) {
 					Pipe<NetPayloadSchema> pipe = localInput[i];
 					if (Pipe.hasContentToRead(pipe)) {	
-						didWork = writeAll(didWork, i, pipe, Pipe.takeMsgIdx(pipe));
+						didWork = writeAll(didWork, i, pipe, Pipe.peekInt(pipe));
 					}
 				} else {
 					//we have multiple connections so one blocking does not impact others.
@@ -131,39 +131,46 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean writeAll(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
 		
 		if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {							
-			didWork = writePlain(didWork, i, pipe, msgIdx);
+			didWork = writePlain(didWork, i, pipe);
 		} else if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {											
-			didWork = writeEncrypted(didWork, i, pipe, msgIdx);
+			didWork = writeEncrypted(didWork, i, pipe);
 		} else if (NetPayloadSchema.MSG_UPGRADE_307 == msgIdx) {							
 			throw new UnsupportedOperationException("Connection upgrade is not yet supported.");
 		} else if (NetPayloadSchema.MSG_BEGIN_208 == msgIdx) {							
 			writeBegin(pipe);														
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == msgIdx) {							
-			writeDisconnect(pipe, msgIdx);							
+			didWork = writeDisconnect(pipe);							
 		} else {
-			didWork = writeShutdown(didWork, pipe, msgIdx);		
+			didWork = writeShutdown(didWork, pipe);		
 		}
 		return didWork;
 	}
 
 	private void writeBegin(Pipe<NetPayloadSchema> pipe) {
+		int msgIdx = Pipe.takeMsgIdx(pipe);
 		int seq = Pipe.takeInt(pipe);
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, NetPayloadSchema.MSG_BEGIN_208));
 		Pipe.releaseReadLock(pipe);
 	}
 
-	private void writeDisconnect(Pipe<NetPayloadSchema> pipe, int msgIdx) {
-		long channelId = Pipe.takeLong(pipe);
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
-		if (null!=cc) {
-			cc.close();
+	private boolean writeDisconnect(Pipe<NetPayloadSchema> pipe) {
+		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		if (null==cc || !cc.isValid()) {
+			return false;//do not consume, do this later.
 		}
-		
+				
+		int msgIdx = Pipe.takeMsgIdx(pipe);
+		long channelId = Pipe.takeLong(pipe);
+		assert(chnl==channelId);
+		cc.close();
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 		Pipe.releaseReadLock(pipe);
+		return true;
 	}
 
-	private boolean writeShutdown(boolean didWork, Pipe<NetPayloadSchema> pipe, int msgIdx) {
+	private boolean writeShutdown(boolean didWork, Pipe<NetPayloadSchema> pipe) {
+		int msgIdx = Pipe.takeMsgIdx(pipe);
 		if (msgIdx==-1) {
 			Pipe.confirmLowLevelRead(pipe, Pipe.EOF_SIZE);								
 		} else {
@@ -179,35 +186,38 @@ public class ClientSocketWriterStage extends PronghornStage {
 		return didWork;
 	}
 
-	private boolean writeEncrypted(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
+	private boolean writeEncrypted(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
+		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
+		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		if (null==cc || !cc.isValid()) {
+			return false;//do not consume, do this later.
+		}
+				
+		final int msgIdx = Pipe.takeMsgIdx(pipe);
 		final long channelId = Pipe.takeLong(pipe);
+		assert(chnl==channelId);
 		final long arrivalTime = Pipe.takeLong(pipe);
 		int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 		int len = Pipe.takeRingByteLen(pipe);							
 		
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
-
-		if (null!=cc) {
-		    
-			didWork = wraupUpEncryptedToSingleWrite(didWork, i, 
-					pipe, msgIdx, channelId, meta, len,
-					cc);
-
-		} else {
-			//clean shutdown of this connections resources
-			buffers[i].clear();
-			connections[i]=null;
-			Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-			Pipe.releaseReadLock(pipe);
-			//will continue from bottom
-		}
+		didWork = wraupUpEncryptedToSingleWrite(didWork, i, 
+				pipe, msgIdx, channelId, meta, len,
+				cc);
+	
 		return didWork;
 	}
 
-	private boolean writePlain(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
+	private boolean writePlain(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
+		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
+		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		if (null==cc || !cc.isValid()) {
+			return false;//do not consume, do this later.
+		}
+		
+		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);
+		assert(channelId == chnl);
 		long arrivalTime = Pipe.takeLong(pipe);
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
 		
 		long workingTailPosition = Pipe.takeLong(pipe);
 					
@@ -223,16 +233,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		//no wrap is required so we have finished the TLS handshake and may continue
 		if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {	 						
-			if (null!=cc) {									
 				didWork = rollUpPlainsToSingleWrite(didWork, i, 
 						pipe, msgIdx, channelId, cc, meta,
 						len, showWrites);
-			} else {								
-				//can not send this connection was lost, consume and drop the data to get it off the pipe
-				Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-				Pipe.releaseReadLock(pipe);
-				//will continue from bottom
-			}
+	
 		} else {
 			logger.error("Hanshake not supported here, this message should not have arrived");
 			throw new UnsupportedOperationException("Check configuration, TLS handshake was not expected but requested. Check coordinator.");
@@ -304,8 +308,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	private boolean rollUpPlainsToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx, long channelId,
 			ClientConnection cc, int meta, int len, boolean showWrittenData) {
-		long workingTailPosition;
-;
+
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
 		checkBuffers(i, pipe, cc.socketChannel);
@@ -345,7 +348,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        	long aTime = Pipe.takeLong(pipe);
 		        	
 		        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-		        	workingTailPosition=Pipe.takeLong(pipe);
+		        	long workingTailPosition=Pipe.takeLong(pipe);
 		        											            
 		            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 		            int len2 = Pipe.takeRingByteLen(pipe);

@@ -289,18 +289,21 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
 	                      long channelId = holder.lookupInsertPosition();
+	              
 	                      if (channelId<0) {
 	                    	  long leastUsedConnectionId = (-channelId);
-	                    	  ServerConnection tempConnection = holder.getValid(leastUsedConnectionId);
+	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
 	                    	  long now = System.currentTimeMillis();
 	                    	  if ( (tempConnection!=null)
-	                    		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
+	                    //		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
 	                    			  ) {	  //                  		
-	                    		  logger.info("server can not accept new connections");
+	                    		  //logger.info("server can not accept new connections");
+	                    		 // server.accept().close();
 	                    		  //We have no connections we can replace so do not accept this
 	                    		  return;//try again later if the client is still waiting.	                    		  
 	                    	  } else {
-	                    		  logger.info("server will reuse old connection {}",leastUsedConnectionId);
+	                    		  //only use if its been removed.
+	             //       		  logger.info("server will reuse old connection {}",leastUsedConnectionId);
 	                    		  //reuse old index for this new connection
 	                    		  channelId = leastUsedConnectionId;	                    		  
 	                    	  }

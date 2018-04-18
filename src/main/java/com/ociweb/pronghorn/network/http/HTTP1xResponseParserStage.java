@@ -47,8 +47,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private final Pipe<ReleaseSchema> releasePipe;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
 	
-	private static final boolean showTossedData = false;
-	
 	private ClientCoordinator ccm;
 	
 		
@@ -214,7 +212,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//ensure that it can be consumed 
 					///////////////
 					ccId = Pipe.peekLong(localInputPipe, 1);
-					cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId, true);
+					boolean alsoReturnDisconnected = true;
+					cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId, alsoReturnDisconnected);
 				
 					if (null != cc) {
 						//do not process if an active write for a different pipe is in process
@@ -226,128 +225,108 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						outputOwner[(int)cc.readDestinationRouteId()] = i;
 					}
 
-					boolean isClosed = ((null==cc) || (!cc.isValid()));
-					if (isClosed) {	
-						//this connection has been closed but before the
-						//message is consumed we must make sure there is room
-						//to write the close message.
-						
-						if (null!=cc && !Pipe.hasRoomForWrite(output[(int)cc.readDestinationRouteId()])) {
-							continue;///can not process this close right now, no room.							
-						}
-					}
-
-					
 					//////////////////////////////
 					//we have new data to consume
 					//////////////////////////////		
-					int msgIdx = Pipe.takeMsgIdx(localInputPipe);
-					if (msgIdx<0) {
-						throw new UnsupportedOperationException("no support for shutdown");
-					}
+					final int msgIdx = Pipe.takeMsgIdx(localInputPipe);
+					final int sizeOf = Pipe.sizeOf(localInputPipe, msgIdx);
+					if (msgIdx>=0) {//does not read the body if this is a shutdown request.
+											
+						//is closed
+						if (((null==cc) || (!cc.isValid()))) {	
 					
-					//TODO how many ccID connections are from this pipe?
-					//     we must have N outgoing pipes from response or we can have a hang!!
-					//     URGENT design change required...
+							logger.info("closed {} connection detected ",cc);
+							if (null != cc) {
+								
+								//publish closed to notify those down stream
+								publishCloseMessage((int)cc.readDestinationRouteId()
+										, cc.host
+										, cc.port);
+							}
+							positionMemoData[lenIdx] = 0;//wipe out existing data
+							positionMemoData[stateIdx] = 0;
+							
+							Pipe.skipNextFragment(localInputPipe, msgIdx);							
+							continue;
+						}
+										
+						boolean ok = ccId == Pipe.takeLong(localInputPipe);
+						assert(ok) : "Internal error";
+						
+						long arrivalTime = Pipe.takeLong(localInputPipe);
+						//if already set do not set again, we want the leading edge of the data arrival.
+						if (arrivalTimeAtPosition[i]<=0) {
+							arrivalTimeAtPosition[i] = arrivalTime;
+						}
+						
+						inputPosition[i] = Pipe.takeLong(localInputPipe);										
+						ccIdData[i] = ccId;
+			
 					
-					boolean ok = ccId == Pipe.takeLong(localInputPipe);
-					assert(ok) : "Internal error";
-					
-					long arrivalTime = Pipe.takeLong(localInputPipe);
-					//if already set do not set again, we want the leading edge of the data arrival.
-					if (arrivalTimeAtPosition[i]<=0) {
-						arrivalTimeAtPosition[i] = arrivalTime;
-					}
-					
-					inputPosition[i] = Pipe.takeLong(localInputPipe);										
-					ccIdData[i] = ccId;
+						targetPipe = output[(int)cc.readDestinationRouteId()];					
 		
-					if (isClosed) {				
-						
+						//append the new data
 						int meta = Pipe.takeRingByteMetaData(localInputPipe);
-						int len  = Pipe.takeRingByteLen(localInputPipe);
-						int mask = blobMask(localInputPipe);	
-						int pos = bytePosition(meta, localInputPipe, len)&mask;     		
-						byte[] backing = byteBackingArray(meta, localInputPipe);
+						int len = Math.max(0, Pipe.takeRingByteLen(localInputPipe));
+						int pos = Pipe.bytePosition(meta, localInputPipe, len);
+						int mask = Pipe.blobMask(localInputPipe);
 						
-						logger.trace("closed connection detected");
-						if (null != cc) {
-							//publish closed to notify those down stream
-							publishCloseMessage(cc);
-							
-							//data from the closed message...
-							//TODO: need to refactor and push this message down stream to callers..
-							//StringBuilder closedMessage = new StringBuilder();
-							//Appendables.appendUTF8(closedMessage, backing, pos, len, mask);
-							//logger.error("closed response:\n{}\n<END OF ERROR>",closedMessage);
-							
-						}
-
-						if (showTossedData) {
-							
-							StringBuilder builder = new StringBuilder();
-							Appendables.appendUTF8(builder, backing, pos, len, mask);
-							
-							logger.warn("server closed connection and returned\n{}",builder);
-							
-						}
-						Pipe.confirmLowLevelRead(localInputPipe, Pipe.sizeOf(localInputPipe, msgIdx)); 		
-						Pipe.releaseReadLock(localInputPipe);
-						positionMemoData[memoIdx+1] = 0;//wipe out existing data
+						///////////////////////////////////
+						//logger.info("parse new data of {} for connection {}",len,cc.getId());
+						//////////////////////////////////
 						
-						//drain all the data on this input pipe
-						Pipe.publishBlobWorkingTailPosition(localInputPipe, Pipe.getWorkingBlobHeadPosition(localInputPipe));
-						Pipe.publishWorkingTailPosition(localInputPipe, Pipe.workingHeadPosition(localInputPipe));
-						continue;
-					}
-				
-					targetPipe = output[(int)cc.readDestinationRouteId()];					
+						if (showData) {
+							Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(localInputPipe), pos, len, mask);
+						}
+						///////////////////////////////////////////
+						/////////////////////////////////////////
+						
+						if (positionMemoData[lenIdx]==0) {
+							positionMemoData[posIdx] = pos;						
+							positionMemoData[lenIdx] = len;
+							
+							if (len>0) {
+								//we have new data plus we know that we have no old data
+								//because of this we know the first letter must be an H for HTTP.
+								boolean isValid = localInputPipe.blobRing[localInputPipe.blobMask&trieReader.sourcePos]=='H';
+								if (!isValid) {
+									logger.warn("invalid HTTP request from server should start with H");
+									if (null!=cc) {
+										badServerSoCloseConnection(memoIdx, cc);
+										//publish closed to notify those down stream
+										publishCloseMessage((int)cc.readDestinationRouteId(), cc.host, cc.port);
+									}
+								}
+							}
+							
+						} else {				
+							positionMemoData[lenIdx] += len;
+						}
+						
+						assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
 	
-					//append the new data
-					int meta = Pipe.takeRingByteMetaData(localInputPipe);
-					int len = Pipe.takeRingByteLen(localInputPipe);
-					int pos = Pipe.bytePosition(meta, localInputPipe, len);
-					int mask = Pipe.blobMask(localInputPipe);
-					
-					///////////////////////////////////
-					//logger.info("parse new data of {} for connection {}",len,cc.getId());
-					//////////////////////////////////
-					
-					if (showData) {
-						Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(localInputPipe), pos, len, mask);
-					}
-					///////////////////////////////////////////
-					/////////////////////////////////////////
-					
-					if (positionMemoData[lenIdx]==0) {
-						positionMemoData[posIdx] = pos;						
-						positionMemoData[lenIdx] = len;
-					} else {				
-						positionMemoData[lenIdx] += len;
+						TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+	
+						
 					}
 					
-					assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
-
-					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-
-					Pipe.confirmLowLevelRead(localInputPipe, Pipe.sizeOf(localInputPipe, msgIdx));   //release of read does not happen until the bytes are consumed...
+					
+					
+					//done consuming this message.
+					
+					Pipe.confirmLowLevelRead(localInputPipe, sizeOf);   //release of read does not happen until the bytes are consumed...
 					
 					//WARNING: moving next without releasing lock prevents new data from arriving until after we have consumed everything.
 					//  
 					Pipe.readNextWithoutReleasingReadLock(localInputPipe);	
-							
+														
+					
 					if (-1==inputPosition[i]) {
 						//this may or may not be the end of a complete message, must hold it just in case it is.
 						inputPosition[i] = Pipe.getWorkingTailPosition(localInputPipe);//working tail is the right tested value
 					}
 					assert(inputPosition[i]!=-1);
-					
-					if 	(positionMemoData[lenIdx] >= Pipe.blobMask(localInputPipe) ) {
-						logger.info("NEW CORRUPT DATA ERROR, response is not keeping up with the data "+positionMemoData[lenIdx]+" added "+len+" which should be < "+localInputPipe.maxVarLen);
-						cc.close();
-						return;
-					}
-					
+					assert(positionMemoData[lenIdx]<=Pipe.blobMask(localInputPipe));			
 					
 				} else {
 		
@@ -418,14 +397,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				////////////
 				////////////
 				//do not process if an active write is in process
-				if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
-				    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
-					//multiple connections write to the same pipe, this keeps them organized.
-					//move to the next one because this one is blocked
-					//System.err.println("qqq");
-					continue;
+				if (null!=cc) {
+					if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
+					    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
+						//multiple connections write to the same pipe, this keeps them organized.
+						//move to the next one because this one is blocked
+						//System.err.println("qqq");
+						continue;
+					}
+					outputOwner[(int)cc.readDestinationRouteId()] = i;
 				}
-				outputOwner[(int)cc.readDestinationRouteId()] = i;
 				////////////
 				////////////
 				
@@ -492,15 +473,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								reportCorruptStream("HTTP revision",cc);
 
-								///////////////////////////////////
-								//server is behaving badly so shut the connection
-								//////////////////////////////////
-								cc.close();		
-								cc.clearPoolReservation();
-								ccm.releaseResponsePipeLineIdx(cc.id);
-								
-								TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
-								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+								badServerSoCloseConnection(memoIdx, cc);
 																
 							}
 		
@@ -651,15 +624,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									assert(runningHeaderBytes[i]>0);
 									runningHeaderBytes[i] += consumed;		
 									
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); //TODO = save position is wrong if we continue???
+									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
 								}
 								payloadLengthData[i] = lengthRemaining;
 								
 								if (0 == lengthRemaining) {
 		//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
 									
+										
 									Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
-					
+														
 									DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
 																	
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
@@ -679,9 +653,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									outputOwner[(int)cc.readDestinationRouteId()] = -1; 
 									long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
-									//expecting H to be the next valid char 
-	//								assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
-									
+												
 									
 									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
@@ -689,7 +661,23 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									state = positionMemoData[stateIdx];
 																
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-																		
+			
+									/////////////////////////////////////////////////////
+									/////////////////////////////////////////////////////
+									
+									//expecting H to be the next valid char in the buffer 
+									boolean isPipeValid = trieReader.sourceLen<=0 
+										|| input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H';
+									
+									//server has sent data which is not HTTP request
+									//directly after this request
+									if (!isPipeValid) {
+										logger.warn("server has sent unparsable data '{}' after a complete message.",
+												(char)input[i].blobRing[input[i].blobMask&trieReader.sourcePos]);
+										//close this bad server...
+										badServerSoCloseConnection(memoIdx, cc);
+									}
+									
 									break;
 								} else {
 									
@@ -730,18 +718,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									if (0==chunkRemaining) {
 
-										boolean foundEnd = false;
-										do {
-											headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());
-											if (headerToken==HTTPSpecification.END_OF_HEADER_ID) {
-												foundEnd = true;
-												break;//MUST break here or we will read the headers of the folllowing message!!
-											}
-										} while (-1!=headerToken);
-											
+										boolean foundEnd = consumeTralingHeaders(cc);										
 										if (!foundEnd) {
-											System.err.println("EXIT xxxxxxxxxxxxxxxxxxxxxxxxx need new case");
-											System.exit(-1);
+											logger.warn("unable to find end of message");
 										}
 											
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);											
@@ -902,13 +881,38 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
-	private void publishCloseMessage(ClientConnection cc) {
-		Pipe<NetResponseSchema> targetPipe = output[(int)cc.readDestinationRouteId()];
+	private void badServerSoCloseConnection(final int memoIdx, HTTPClientConnection cc) {
+		///////////////////////////////////
+		//server is behaving badly so shut the connection
+		//////////////////////////////////
+		cc.close();		
+		cc.clearPoolReservation();
+		ccm.releaseResponsePipeLineIdx(cc.id);
+		
+		TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
+		TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+	}
+
+	private boolean consumeTralingHeaders(HTTPClientConnection cc) {
+		long headerToken;
+		boolean foundEnd = false;
+		do {
+			headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());
+			if (headerToken==HTTPSpecification.END_OF_HEADER_ID) {
+				foundEnd = true;
+				break;//MUST break here or we will read the headers of the folllowing message!!
+			}
+		} while (-1!=headerToken);
+		return foundEnd;
+	}
+
+	private void publishCloseMessage(int destRouteId, CharSequence host, int port) {
+		Pipe<NetResponseSchema> targetPipe = output[destRouteId];
 		
 		Pipe.presumeRoomForWrite(targetPipe);
 		int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
-		Pipe.addUTF8(cc.host, targetPipe);
-		Pipe.addIntValue(cc.port, targetPipe);
+		Pipe.addUTF8(host, targetPipe);
+		Pipe.addIntValue(port, targetPipe);
 		Pipe.confirmLowLevelWrite(targetPipe, size);
 		Pipe.publishWrites(targetPipe);
 	}
@@ -1095,7 +1099,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			//the server requested a close and we are now done reading the body so we need to close.
 			if (closeRequested[i]) {
 				//publish closed to notify those down stream
-				publishCloseMessage(cc);
+				publishCloseMessage((int)cc.readDestinationRouteId(), cc.host, cc.port);
 				cc.close();
 			}
 			
