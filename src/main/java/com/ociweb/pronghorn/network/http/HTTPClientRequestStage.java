@@ -27,9 +27,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] output;
 	private final ClientCoordinator ccm;
 
-	private final long disconnectTimeoutMS = 10_000;  //TODO: set with param
-	private long nextUnusedCheck = 0;
-				
 	static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 	
 	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
@@ -121,43 +118,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 						}
 					}
 				}
-				
-				//check if some connections have not been used and can be closed.
-				if (now>nextUnusedCheck) {
-					//TODO: URGENT, this is killing of valid connections, but why? debug
-					//	closeUnusedConnections();
-					nextUnusedCheck = now+disconnectTimeoutMS;
-				}
 		
 			} while (hasWork);
 			
 	}
 
-
-	private void closeUnusedConnections() {
-		long now;
-		ClientConnection con = ccm.nextValidConnection();
-		final ClientConnection firstCon = con;					
-		while (null!=con) {
-			con = ccm.nextValidConnection();
-			
-			long unused = now = con.getLastUsedTime();
-			
-			if (unused>disconnectTimeoutMS) {
-				
-				Pipe<NetPayloadSchema> pipe = output[con.requestPipeLineIdx()];
-				if (Pipe.hasRoomForWrite(pipe)) {
-					//close the least used connection
-					HTTPClientUtil.cleanCloseConnection(con, pipe);				
-				}
-				
-			}
-			
-			if (firstCon==con) {
-				break;
-			}
-		}
-	}
 	
 	private boolean buildClientRequest(long now, Pipe<ClientHTTPRequestSchema> requestPipe) {
 		boolean didWork = false;
@@ -192,7 +157,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 			Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
 			Pipe.releaseReadLock(requestPipe);	
      
-		} 
+		} else {
+			logger.info("not sending HTTP request due to no connection");
+		}
 		
 		return didWork;
 	}
@@ -283,7 +250,6 @@ public class HTTPClientRequestStage extends PronghornStage {
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
  					 port, userId, output, connectionId, reader, ccf);
  	
- 			
  		}
  		
 		if (null != activeConnection) {

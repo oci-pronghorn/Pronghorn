@@ -450,8 +450,25 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = time;		
 	}
 
+	//important method to determine if the network was dropped while call was outstanding
+	public long outstandingCallTime(long time) {
+		if (inFlightRoutesRespPos == inFlightTimeSentPos) {
+			return -1;
+		} else {			
+			long sentTime = inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask];
+			if (sentTime>0) {		
+				return time - sentTime;
+			} else {
+				return -1;//we read the value while it was being sent so discard
+			}
+		}
+	}	
+	
 	//returns latency
 	public long recordArrivalTime(long time) {
+		
+		assert(inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask]>0);		
+		
 		long value = time - inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
 			
 		if (value>=0 && value<MAX_HIST_VALUE) {

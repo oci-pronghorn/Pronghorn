@@ -28,7 +28,7 @@ public abstract class BaseConnection {
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
 	  
-    private long lastUsedTime;
+    private long lastUsedTime = System.currentTimeMillis();
 
 	protected final Pipe<RawDataSchema> connectionData;
 		

@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.util;
 
 import java.lang.reflect.Array;
-import java.util.Arrays;
 
 /**
  * Small footprint manager/holder of service objects. 
@@ -44,7 +43,8 @@ public class ServiceObjectHolder<T> {
         public final long[] serviceObjectKeys;
         public final T[] serviceObjectValues;
         public final long[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
-
+        public final long[] addTimeMS;
+        
         public final Class<T> clazz; 
 
         @SuppressWarnings("unchecked")
@@ -60,6 +60,7 @@ public class ServiceObjectHolder<T> {
             
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
             this.serviceObjectLookupCounts = new long[size];
+            this.addTimeMS = new long[size];
          }
 
         @SuppressWarnings("unchecked")
@@ -71,6 +72,7 @@ public class ServiceObjectHolder<T> {
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
             this.serviceObjectLookupCounts = new long[size];
+            this.addTimeMS = new long[size];
             
             int index = data.size;
             int mask = this.mask;
@@ -147,17 +149,25 @@ public class ServiceObjectHolder<T> {
         long localSequenceCount = sequenceCounter;
         long hardStop = localSequenceCount + data.size;
         
-        long minCount = Long.MAX_VALUE;
-        long  minCountIndex = -1;
-
+        long maxPeriod = 0;
+        long maxPeriodIdx = -1;
+        long now = System.currentTimeMillis();
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
-                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
-				if (lookupCounts<minCount) {
-                    minCount = lookupCounts;
-                    minCountIndex = index;
-                }
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];                
+                long liveTime = now - data.addTimeMS[modIdx];
+                long callPeriod = liveTime/(lookupCounts+1);
+                //we want to pick the one with the largest call period
+                //and with a live time > 1
+                //this gives us the one least frequently used over time
+                
+            
+                	if (liveTime > maxPeriod) {
+                		maxPeriod = liveTime;
+                		maxPeriodIdx = index;
+                	}                	
+              
             }
             
             index = ++localSequenceCount;
@@ -174,9 +184,10 @@ public class ServiceObjectHolder<T> {
                    //copy and grow the data space, done locally then it is all replaced at once to not break concurrent callers
                     data = new ServiceObjectData<T>(data, 2);   
                 } else {
+                	sequenceCounter = localSequenceCount;//where we left off
                     //do not grow instead replace the least used member                    
-                    index = minCountIndex;
-                    modIdx = data.mask & (int)minCountIndex;
+                    index = maxPeriodIdx;
+                    modIdx = data.mask & (int)maxPeriodIdx;
                     validator.dispose(data.serviceObjectValues[modIdx]);
                     break;
                 }
@@ -187,6 +198,7 @@ public class ServiceObjectHolder<T> {
         
         sequenceCounter = localSequenceCount;//where we left off
         
+        data.addTimeMS[modIdx] = System.currentTimeMillis();
         data.serviceObjectKeys[modIdx] = index;
         data.serviceObjectValues[modIdx] = serviceObject;
         //Never resets the usage count, that field is use case specific and should not always be cleared.
@@ -206,27 +218,41 @@ public class ServiceObjectHolder<T> {
         long localSequenceCount = sequenceCounter;
         long hardStop = localSequenceCount + data.size;
         
-        long minCount = Long.MAX_VALUE;
-        long  minCountIndex = -1;
+        //System.err.println("scanning from "+localSequenceCount+" "+hardStop);
+        
+        
+        long maxPeriod = 0;
+        long maxPeriodIdx = -1;
 
+        final long now = System.currentTimeMillis();
         do {
         	
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
-                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
-				if (lookupCounts<minCount) {
-                    minCount = lookupCounts;
-                    minCountIndex = index;
-                }
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];                
+                long liveTime = now-data.addTimeMS[modIdx];
+                long callPeriod = liveTime/(lookupCounts+1);
+                //we want to pick the one with the largest call period
+                //and with a live time > 1
+                //this gives us the one least frequently used over time
+                
+                
+                	if (liveTime >= maxPeriod) {
+                		maxPeriod = liveTime;
+                		maxPeriodIdx = index;
+                	}                	
+               
             }
             
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
         
             if (index==hardStop) {
+            	assert(-1!=maxPeriodIdx);
+                 	
+            	sequenceCounter = localSequenceCount;//where we left off
             	//do not grow instead return the negative value of the least used object
-            	return -minCountIndex;
-               
+            	return -maxPeriodIdx;
             }
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
@@ -252,6 +278,7 @@ public class ServiceObjectHolder<T> {
      */
     public void setValue(long index, T object) {
     	int modIdx = data.mask & (int)index;
+    	data.addTimeMS[modIdx] = System.currentTimeMillis();
     	data.serviceObjectKeys[modIdx] = index;//must be stored to make this a valid object
     	data.serviceObjectValues[modIdx] = (T)object;    	
     	
@@ -275,6 +302,19 @@ public class ServiceObjectHolder<T> {
             return localData.serviceObjectValues[modIdx];
         }
         return null;        
+    }
+    
+    public void visitValid(ServerObjectHolderVisitor<T> v) {
+    	ServiceObjectData<T> localData = data;
+    	int i = localData.serviceObjectKeys.length;
+    	while (--i>=0) {
+    		final T t = localData.serviceObjectValues[i];
+    		if ((null!=t) && validator.isValid(t)) {
+    			v.visit(t);
+    		} else {
+    			localData.serviceObjectValues[i]=null;
+    		}
+    	}
     }
     
     public void resetUsageCount(final long index) {
@@ -332,6 +372,7 @@ public class ServiceObjectHolder<T> {
      * Loop forever around all valid objects.
      * Only returns null when there are no valid items to loop over.
      */
+    @Deprecated
     public T next() {
         
         ServiceObjectData<T> localData = data;

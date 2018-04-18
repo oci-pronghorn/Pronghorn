@@ -38,7 +38,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private long totalBytes=0;
 
 	private final static int KNOWN_BLOCK_ENDING = -1;
-
+	private int iteration;
 	
 	public ClientSocketReaderStage(GraphManager graphManager,
 			                       ClientCoordinator coordinator, 
@@ -147,6 +147,38 @@ public class ClientSocketReaderStage extends PronghornStage {
 		   }
 		   
         }
+        
+        /////////////////////////////////////////////
+        //scan for abandoned connections periodically
+        /////////////////////////////////////////////
+        if ((++iteration&0x3FF)==0) {
+        	//only run when we have no data waiting
+        	if (maxIterations>0) {
+        	        	long now = System.nanoTime();
+        	        	ClientConnection abandonded = coordinator.scanForAbandonedConnection();
+        	        	if (null!=abandonded) {
+        	        		//formal close process
+        	        		int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
+							Pipe<NetPayloadSchema> pipe = output[pipeIdx];
+        	        	
+							abandonded.beginDisconnect();
+							abandonded.close();
+							
+							Pipe.presumeRoomForWrite(pipe);
+							int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
+							Pipe.addLongValue(abandonded.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
+							Pipe.confirmLowLevelWrite(pipe, size);
+							Pipe.publishWrites(pipe);        	        		
+        	        		coordinator.releaseResponsePipeLineIdx(abandonded.getId());        	        	
+        	        	}
+        	        	
+        	        	long duration = System.nanoTime()-now;
+        	        	if (duration>10_000_000) {
+        	        		Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
+        	        	}
+        	}
+        }
+        
    	}
 
 	boolean hasRoomForMore = true;
@@ -227,20 +259,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (coordinator.isTLS) {
 			
 			HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-			//if (cc.isValid()) {
-			//	logger.info("has handshakeStatus data for {} {}",cc,handshakeStatus);
-			//}
-			
 			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 			
 		            Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.
 		            while ((task = cc.getEngine().getDelegatedTask()) != null) {
 		            	task.run();
 		            }
-		            //TODO: delete we are done with task. or confrim the new status? as finished..
-		            //handshakeStatus = cc.getEngine().getHandshakeStatus();
-			 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
-		
+			 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {		
 				 consumeRelease();
 				 doRead = false;
 				 //one of the other pipes can do work

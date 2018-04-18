@@ -5,8 +5,6 @@ import java.net.StandardSocketOptions;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-import javax.net.ssl.SSLEngine;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +14,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
-import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.PoolIdx;
@@ -28,6 +25,10 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
 	private final ServiceObjectHolder<ClientConnection> connections;
+	
+	//outstandingCallTime must be called on every object in the holder..
+	//find the timeouts and mark them closed..
+	//
 	
 	private final PoolIdx responsePipeLinePool;
 	private Selector selector;
@@ -320,6 +321,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	private int clientConnectionsErrorCounter = 0;
+
+	private ClientCoordinatorAbandonScanner abandonScanner = new ClientCoordinatorAbandonScanner();
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
@@ -345,6 +348,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 							|| ((now-tempCC.getLastUsedTime())>EXPIRE_LIMIT_MS)	
 						   ) {							
 							connectionId = leastUsedId;
+							logger.info("client will reuse connection id {} ",leastUsedId);
 						}
 					}
 					
@@ -439,6 +443,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			throw new RuntimeException(e);
 		}
 		return cc;
+	}
+
+
+	public ClientConnection scanForAbandonedConnection() {
+		abandonScanner.reset();
+		connections.visitValid(abandonScanner);
+		return abandonScanner.leadingCandidate();
 	}
 
 

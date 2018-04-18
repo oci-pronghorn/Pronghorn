@@ -283,28 +283,24 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                	  //ServerCoordinator.acceptConnectionStart = now;
 	                	  
 	                      if (null!=newClientConnections && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
-	                          return;
+	                    	  return;
 	                      }
 	
 	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
-	                                            
+
 	                      long channelId = holder.lookupInsertPosition();
 	                      if (channelId<0) {
-	                    	  
 	                    	  long leastUsedConnectionId = (-channelId);
-	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
+	                    	  ServerConnection tempConnection = holder.getValid(leastUsedConnectionId);
 	                    	  long now = System.currentTimeMillis();
 	                    	  if ( (tempConnection!=null)
-	                    		  && (tempConnection.isValid)
 	                    		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
-	                    			  ) {
+	                    			  ) {	  //                  		
+	                    		  logger.info("server can not accept new connections");
 	                    		  //We have no connections we can replace so do not accept this
 	                    		  return;//try again later if the client is still waiting.	                    		  
 	                    	  } else {
-	                    		  if (null!=tempConnection) {
-	                    			  tempConnection.close();
-	                    		  }
-	                    		  
+	                    		  logger.info("server will reuse old connection {}",leastUsedConnectionId);
 	                    		  //reuse old index for this new connection
 	                    		  channelId = leastUsedConnectionId;	                    		  
 	                    	  }
@@ -331,9 +327,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 								  
 								  sslEngine.beginHandshake();
 	                          }
-							  
-							  
-							//  logger.info("new server connection attached for new id {} ",channelId);
+							  							  
+							  //logger.info("{} new server connection attached for new id {} ",ok,channelId);
 							  
 	                          holder.setValue(channelId, 
 	                        		  new ServerConnection(sslEngine, 
@@ -346,8 +341,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                          Selector selector2 = ServerCoordinator.getSelector(coordinator);
 							  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, channelId));
 	    						
-							  if (null!=newClientConnections) {
-								  
+							  if (null!=newClientConnections) {								  
 		                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
 							  }
 							  

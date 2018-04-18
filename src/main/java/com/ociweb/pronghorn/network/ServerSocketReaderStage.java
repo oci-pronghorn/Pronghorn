@@ -123,6 +123,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void run() {
 
+    //	long now = System.currentTimeMillis();
+    	
     	 if(shutdownInProgress) {
 	    	 int i = output.length;
 	         while (--i >= 0) {
@@ -142,10 +144,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 
         while (hasNewDataToRead()) { //single & to ensure we check has new data to read.
         	
-        	//logger.info("found new data to read on "+groupIdx);
            
            Set<SelectionKey> selectedKeys = selector.selectedKeys();
             
+           //logger.info("found new data to read "+selectedKeys.size());
            assert(selectedKeys.size()>0);	            
 
            doneSelectors.clear();
@@ -161,9 +163,16 @@ public class ServerSocketReaderStage extends PronghornStage {
            
            removeDoneKeys(selectedKeys);
            if (!hasRoomForMore) {
-        	   return;//try again later.
+        	   break;
            }    	 
-        }	        
+        }	   
+        
+        
+//        long duration = System.currentTimeMillis()-now;
+//        if (duration>1) {
+//        	System.err.println("duration "+duration);
+//        }
+ //       System.err.println("exit2");
     	
     }
 

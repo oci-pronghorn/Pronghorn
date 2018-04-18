@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.net.StandardSocketOptions;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -484,6 +484,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 					logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
 					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
 				}
+				bufferChecked[i] = true;
+			} catch (ClosedChannelException cce) {
 				bufferChecked[i] = true;
 			} catch (IOException e) {
 				throw new RuntimeException(e);

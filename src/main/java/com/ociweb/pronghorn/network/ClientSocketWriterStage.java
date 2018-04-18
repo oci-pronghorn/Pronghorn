@@ -403,10 +403,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 		try {
 			
 			if (!debugWithSlowWrites) {
-				assert(mappedByteBuffer.isDirect());	
+				assert(mappedByteBuffer.isDirect());
+				
 				while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
 					//keep writing the output buffer may be small
 				}
+								
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
@@ -444,7 +446,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
 			connections[i].close();
 			connections[i]=null;
-			mappedByteBuffer.clear();
+			((Buffer)mappedByteBuffer).clear();
 			return true;
 		}
 		if (!mappedByteBuffer.hasRemaining()) {

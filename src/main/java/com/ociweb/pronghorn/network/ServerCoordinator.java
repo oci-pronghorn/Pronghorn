@@ -145,7 +145,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	//  0 0 0 0 1 1 1 1 
     	// 	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
-        this.socketHolder = new ServiceObjectHolder<ServerConnection>(channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
+        this.socketHolder = new ServiceObjectHolder<ServerConnection>(
+        		channelBits, 
+        		ServerConnection.class, 
+        		new SocketValidator(), false/*Do not grow*/);
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {

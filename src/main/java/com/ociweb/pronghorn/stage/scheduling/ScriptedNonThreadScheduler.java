@@ -668,7 +668,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		that.nextLongRunningCheck = System.nanoTime() + that.longRunningCheckFreqNS;
     		
     		long duration = System.nanoTime()-now;
-    		logger.info("Thread:{} checking for long runs, took {}",that.name,duration);
+    		logger.info("Thread:{} checking for long runs, took {}",that.name,
+    				Appendables.appendNearestTimeUnit(new StringBuilder(), duration)
+    				);
     		
     	}
 	}
