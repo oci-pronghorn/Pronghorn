@@ -91,7 +91,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		
 		activeFileIdx = -1;//default
 		
-		if (verb != HTTPVerbDefaults.GET) {
+		if ((verb != HTTPVerbDefaults.GET) && (verb != HTTPVerbDefaults.POST)) {
 			logger.warn("unsupported verb {} when requesting a resource, this should be GET", verb);
 			definePayload();
 			return null;
