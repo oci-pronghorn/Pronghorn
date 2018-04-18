@@ -232,7 +232,8 @@ public class JPGScanner extends PronghornStage {
 					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
-							if (verbose) 
+							decodeScan(header, mcus, numScans);
+							if (verbose)
 								System.out.println("End of Image");
 							break;
 						}
@@ -243,9 +244,7 @@ public class JPGScanner extends PronghornStage {
 						}
 						else if (current == JPGConstants.DHT) {
 							if (header.imageData.size() > 0) {
-								if (!decodeScan(header, mcus, numScans)) {
-									return header;
-								}
+								decodeScan(header, mcus, numScans);
 								numScans += 1;
 							}
 							
@@ -254,9 +253,7 @@ public class JPGScanner extends PronghornStage {
 						}
 						else if (current == JPGConstants.SOS) {
 							if (header.imageData.size() > 0) {
-								if (!decodeScan(header, mcus, numScans)) {
-									return header;
-								}
+								decodeScan(header, mcus, numScans);
 								numScans += 1;
 							}
 							
@@ -373,8 +370,8 @@ public class JPGScanner extends PronghornStage {
 				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
-				//System.err.println("Error during scan " + numScans);
-				//return false;
+				System.err.println("Error during scan " + numScans);
+				return false;
 			}
 			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
 				mcus.set(numProcessed, mcu1);
