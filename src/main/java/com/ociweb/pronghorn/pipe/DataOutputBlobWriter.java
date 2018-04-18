@@ -114,9 +114,14 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
     
     public void debugAsUTF8() {
-    	Appendables.appendUTF8(System.out, backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+    	Appendable target = System.out;
+    	debugAsUTF8(target);
         System.out.println();
     }
+
+	public void debugAsUTF8(Appendable target) {
+		Appendables.appendUTF8(target, backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+	}
     
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
