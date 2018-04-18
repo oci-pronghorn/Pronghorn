@@ -198,6 +198,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	 * 
 	 * @return next valid open connection, or null of there are none.
 	 */
+	@Deprecated
 	public ClientConnection nextValidConnection() {
 		return connections.next();
 	}
@@ -343,12 +344,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						//take the least used connection but only
 						//if it is not currently in use.
 						ClientConnection tempCC = ccm.connections.getValid(leastUsedId);
-						long now = System.currentTimeMillis();
+						
 						if ((tempCC==null) 
-							|| ((now-tempCC.getLastUsedTime())>EXPIRE_LIMIT_MS)	
+						//future feature	|| ((System.currentTimeMillis()System.currentTimeMillis()-tempCC.getLastUsedTime())>EXPIRE_LIMIT_MS)	
 						   ) {							
 							connectionId = leastUsedId;
-							logger.info("client will reuse connection id {} ",leastUsedId);
+							//logger.trace("client will reuse connection id {} ",leastUsedId);
 						}
 					}
 					
