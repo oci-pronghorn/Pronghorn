@@ -130,7 +130,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (isConnectionReadyForUse(requestPipe) ){
 			didWork = true;	        
 			
-		       	//Need peek to know if this will block.
+		    //we have already checked for connection so now send the request
 		    		        	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 		    		    
@@ -157,10 +157,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
 			Pipe.releaseReadLock(requestPipe);	
      
-		} else {
-			logger.info("not sending HTTP request due to no connection");
 		}
-		
 		return didWork;
 	}
 
@@ -195,8 +192,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
 
-		int msgIdx = Pipe.peekInt(requestPipe);
-		
 		if (Pipe.peekMsg(requestPipe, -1)) {
 			return hasRoomForEOF(output);
 		}
@@ -274,21 +269,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 			return Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
 			
 		} else {
-			//this happens often when the profiler is running due to contention for sockets.
-			
-			//"Has no room" for the new connection so we request that the oldest connection is closed.
-			
-			//instead of doing this (which does not work) we will just wait by returning false.
-//			ClientConnection connectionToKill = (ClientConnection)ccm.get( -connectionId, 0);
-//			if (null!=connectionToKill) {
-//				Pipe<NetPayloadSchema> pipe = output[connectionToKill.requestPipeLineIdx()];
-//				if (PipeWriter.hasRoomForWrite(pipe)) {
-//					//close the least used connection
-//					cleanCloseConnection(connectionToKill, pipe);				
-//				}
-//			}
-		
-			//logger.info("no connection");
+			//try again later
+			//logger.info("no connection available");
 			return false;
 		}
 		
