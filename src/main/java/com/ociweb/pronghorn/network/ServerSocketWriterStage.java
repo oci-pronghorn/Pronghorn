@@ -32,21 +32,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private final ServerCoordinator coordinator;
 
-
-    public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
- 
-    public final static int UPGRADE_CONNECTION_SHIFT     = 31;    
-    public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
-    
-    public final static int CLOSE_CONNECTION_SHIFT       = 30;
-    public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
-    
-    public final static int END_RESPONSE_SHIFT           = 29;//for multi message send this high bit marks the end
-    public final static int END_RESPONSE_MASK            = 1<<END_RESPONSE_SHIFT;
-    
-    public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
-    public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
-    
+  
     
     private ByteBuffer    workingBuffers[];
     private boolean       bufferChecked[];
@@ -198,8 +184,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				writeToChannelMsg[x] = -1;
 		    			if (!(doingWork = writeDataToChannel(x))) {
 		    				break;//network blocked so try again later 
-		    			}; 
-		   		    			
+		    			}	
 	    			} else {
 	    				
 	    				//unflip
@@ -266,6 +251,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    if (null!=socketHolder) {
 		    	//we are disconnecting so we will remove the connection from the holder.
 		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
+		        assert(null!=serverConnection);
 		        if (null!=serverConnection) {
 		        	serverConnection.close();
 		        }

@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -93,12 +94,13 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			                int pipeIdx, long conId, int structureId		                 
 			 			  ) throws IOException {
 
-		super(engine, SocketChannel.open(), conId, 0, 0);
-		
-		
+		super(engine, SocketChannel.open(), conId);
+
 		this.inFlightTimes = new long[maxInFlight];
 		this.inFlightRoutes = new int[maxInFlight];
 		
+		//TODO: add support to hold data to be returned to client responder.
+		this.connectionDataWriter = null;
 		
 		this.structureId = structureId;
 		
@@ -217,11 +219,12 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		requestsSent++;		
 	}
 	
-//	public void waitForMatch() {
-//		while (responsesReceived<requestsSent) {
-//			Thread.yield();
-//		}
-//	}
+//   public boolean close() {
+//	   new Exception().printStackTrace();
+//	   return super.close();
+//   }
+	
+	
 	
 	public boolean incResponsesReceived() {
 		assert(1+responsesReceived<=requestsSent) : "received more responses than requests were sent";

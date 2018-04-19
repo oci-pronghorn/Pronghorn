@@ -135,6 +135,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	private boolean writeAll(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
 		
+		//For the close test we must be sending a plain then a disconnect NOT two plains!!
+        //Any sequential Plain or Encrypted values will be rolled together at times on the same connection.
+		
 		if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {							
 			didWork = writePlain(didWork, i, pipe);
 		} else if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {											
@@ -168,7 +171,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);
 		assert(chnl==channelId);
-		cc.close();
+		cc.beginDisconnect();//do not close or we will not get any response
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 		Pipe.releaseReadLock(pipe);
 		return true;
@@ -231,7 +234,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 		if (showWrites) {
 			int pos = Pipe.bytePosition(meta, pipe, len);
-			logger.info("////////pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId+
+			logger.info("/////\n///pos "+pos+" has connection "+((cc!=null)&&cc.isValid())+" channelId "+channelId+
 					"\n"+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe)));
 			
 		}
@@ -311,6 +314,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		return didWork;
 	}
 
+	//NOTE: if closed we can not "roll up" an can on use same cc instance!!
+	
 	private boolean rollUpPlainsToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx, long channelId,
 			ClientConnection cc, int meta, int len, boolean showWrittenData) {
 

@@ -161,7 +161,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
 		    	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
 		    } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
-		    	HTTPClientUtil.cleanCloseConnection(activeConnection, output[activeConnection.requestPipeLineIdx()]);
+		    	HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
 		    } else  if (-1 == msgIdx) {
 		    	//logger.info("Received shutdown message");								
 				processShutdownLogic(requestPipe);
@@ -187,7 +187,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			//must send handshake request down this pipe
 			int pipeId = connectionToKill.requestPipeLineIdx();
 			
-			HTTPClientUtil.cleanCloseConnection(connectionToKill, output[pipeId]);
+			HTTPClientUtil.cleanCloseConnection(null, connectionToKill, output[pipeId]);
 												
 			if (firstToKill == connectionToKill) {
 				break;//done
@@ -221,18 +221,27 @@ public class HTTPClientRequestStage extends PronghornStage {
  		int hostMask=0;
  		
  		long connectionId;
-
+ 		//System.err.println("xxxxxxxxxxxx reading msg "+Pipe.peekInt(requestPipe));
+ 		
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
  			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
  			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
  			assert(-1 != connectionId);
  		} else {
- 			
- 			int routeId = Pipe.peekInt(requestPipe, 1);
- 			userId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
- 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
- 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
- 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
+ 
+ 			if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_CLOSE_104) ) {
+ 	 			
+ 				userId = Pipe.peekInt(requestPipe,      1); //user id always after the msg idx
+ 	 			port = Pipe.peekInt(requestPipe,        2); //port is always after the userId; 
+ 	 			hostMeta = Pipe.peekInt(requestPipe,    3); //host is always after port
+ 	 	 		hostLen  = Pipe.peekInt(requestPipe,    4); //host is always after port
+ 			} else {
+ 				
+ 	 			userId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
+ 	 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
+ 	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
+ 	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
+ 			}
  	 		
  	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);

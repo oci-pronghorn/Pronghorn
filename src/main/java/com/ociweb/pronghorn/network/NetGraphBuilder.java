@@ -695,7 +695,8 @@ public class NetGraphBuilder {
 				 
 		 //This must be large enough for both partials and new handshakes.
 	
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, 
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
 				   serverConfig.maxConnectionBitsOnServer, 
 				   serverConfig.maxConcurrentInputs, 
 				   serverConfig.maxConcurrentOutputs,
@@ -744,8 +745,8 @@ public class NetGraphBuilder {
 				 		
 		//This must be large enough for both partials and new handshakes.
 		serverConfig.ensureServerCanWrite(1<<20);//1MB out
-		
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port,
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,								
 				                                              serverConfig.maxConnectionBitsOnServer, 
 				                                              serverConfig.maxConcurrentInputs, 
 				                                              serverConfig.maxConcurrentOutputs, 

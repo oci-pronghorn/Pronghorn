@@ -191,7 +191,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	}
 
 	private boolean processSelection(SelectionKey selection) {
-		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
+		assert isRead(selection) : "only expected read"; 
 		SocketChannel socketChannel = (SocketChannel)selection.channel();
          
 		//logger.info("is blocking {} open {} ", selection.channel().isBlocking(),socketChannel.isOpen());
@@ -296,6 +296,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 		}
 		return hasOutputRoom;
+	}
+
+	private boolean isRead(SelectionKey selection) {
+		try {
+			return 0 != (SelectionKey.OP_READ & selection.readyOps());
+		} catch (Exception e) {
+			return true;//this is not relevant to the check.
+		}
 	}
 
 	private void removeSelection(SelectionKey selection) {
@@ -554,7 +562,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 //ONLY VALID FOR UTF8
 
         if (showRequests) {
-        	logger.info("//////////////////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",channelId, originalBlobPosition, len, 
+        	logger.info("/////////////\n/////Server read for channel {} has connection {} bPos{} len {} \n{}\n/////////////////////",channelId, 
+        			cc.isValid, originalBlobPosition, len, 
         			
         			//TODO: the len here is wrong and must be  both the header size plus the payload size....
         			

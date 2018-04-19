@@ -8,7 +8,15 @@ import com.ociweb.pronghorn.pipe.Pipe;
 
 public class HTTPClientUtil {
 
-	public static void cleanCloseConnection(ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
+	public static void cleanCloseConnection(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
+	
+		if (null!=requestPipe) {
+			//required to move the position forward.
+			Pipe.takeInt(requestPipe);//session
+			Pipe.takeInt(requestPipe);//port
+			Pipe.takeInt(requestPipe);//host
+			Pipe.takeInt(requestPipe);//host
+		}
 		
 		//do not close that will be done by last stage
 		//must be done first before we send the message

@@ -7,23 +7,19 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.ClientSocketReaderStage;
-import com.ociweb.pronghorn.network.ClientSocketWriterStage;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerPipesConfig;
-import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
@@ -254,7 +250,8 @@ public class HTTPSRoundTripTest {
 				 
 		ServerPipesConfig serverConfig = NetGraphBuilder.simpleServerPipesConfig(tlsCertificates, processors);
 		
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, 
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
 				   serverConfig.maxConnectionBitsOnServer, 
 				   serverConfig.maxConcurrentInputs, 
 				   serverConfig.maxConcurrentOutputs,

@@ -344,7 +344,9 @@ public class ServiceObjectHolder<T> {
         
         if (key == localData.serviceObjectKeys[modIdx]) {
         	T result = localData.serviceObjectValues[modIdx];
+        	localData.serviceObjectKeys[modIdx] = 0;
         	localData.serviceObjectValues[modIdx] = null; //wipe out old value
+        	//System.err.println("now cleared "+key+" at buckedt "+modIdx);
         	return result;
         } else {
         	return null;

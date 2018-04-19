@@ -9,8 +9,8 @@ import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.ChannelReaderController;
+import com.ociweb.pronghorn.pipe.ChannelWriterController;
 
 public abstract class BaseConnection {
 	
@@ -30,29 +30,28 @@ public abstract class BaseConnection {
 	  
     private long lastUsedTime = System.currentTimeMillis();
 
-	protected final Pipe<RawDataSchema> connectionData;
-		
+	protected ChannelWriterController connectionDataWriter;
+	protected ChannelReaderController connectionDataReader;	
+	
 	protected BaseConnection(SSLEngine engine, 
 			                 SocketChannel socketChannel,
-			                 long id,
-			                 int  connectionDataElements,
-			                 int  connectionDataElementSize
+			                 long id
 				) {
 		
 		this.engine = engine;
 		this.socketChannel = socketChannel;
 		this.id = id;
 		
-		if (connectionDataElements<=0) {
-			this.connectionData = null;
-		} else {
-			this.connectionData = RawDataSchema.instance.newPipe(connectionDataElements, connectionDataElementSize);
-			this.connectionData.initBuffers();			
-		}
+	}
 		
+	public ChannelWriterController connectionDataWriter() {		
+		return connectionDataWriter;
 	}
 	
-
+	public ChannelReaderController connectionDataReader() {		
+		return connectionDataReader;
+	}
+	
 	public void setLastUsedTime(long timeMS) {
 		lastUsedTime = timeMS;
 	}

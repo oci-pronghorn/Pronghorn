@@ -47,17 +47,21 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 	StringBuilder workspace = new StringBuilder();
 	
 	public ClientConnection leadingCandidate() {
-		if (null!=candidate && (RunningStdDev.sampleCount(stdDev)>1)) {			
-			int stdDevs = 3;
-			long limit = (long)((stdDevs*RunningStdDev.stdDeviation(stdDev))+RunningStdDev.mean(stdDev));
-			if (maxOutstandingCallTime > limit) {
-				workspace.setLength(0);
-				logger.info("{} waiting connection to {} has been assumed abandonded and now marked as closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
-				
-				//this is the worst offender at this time
-				return candidate;
-			}
-		}
+		
+		///turn back on after we see that the server is stable
+		//server is not clearing calls 
+		
+//		if (null!=candidate && (RunningStdDev.sampleCount(stdDev)>1)) {			
+//			int stdDevs = 3;
+//			long limit = (long)((stdDevs*RunningStdDev.stdDeviation(stdDev))+RunningStdDev.mean(stdDev));
+//			if (maxOutstandingCallTime > limit) {
+//				workspace.setLength(0);
+//				logger.info("{} waiting connection to {} has been assumed abandonded and now marked as closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
+//				
+//				//this is the worst offender at this time
+//				return candidate;
+//			}
+//		}
 		return null;
 	}
 

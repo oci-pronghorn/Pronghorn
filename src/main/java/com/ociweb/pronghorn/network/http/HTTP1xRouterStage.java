@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.BaseConnection;
+import com.ociweb.pronghorn.network.ServerConnection;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
+import com.ociweb.pronghorn.network.ServerConnectionStruct.connectionFields;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -18,6 +21,8 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
+import com.ociweb.pronghorn.pipe.ChannelWriterController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -32,7 +37,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                                H extends Enum<H> & HTTPHeader
                              > extends PronghornStage {
 
-    //TODO: double check that this all works iwth ipv6.
+    //TODO: double check that this all works with ipv6.
     
 	private static final int SIZE_OF_BEGIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
@@ -758,8 +763,11 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
   
         //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
         
+
+        ServerConnection serverConnection = coordinator.connectionForSessionId(channel);
+    	
 	//	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, 
+		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverConnection, 
 												httpRevisionId, config,
 												errorReporter);  // Write 2   10 //if header is presen
        
@@ -807,64 +815,82 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
 
 private static int parseHeaderFields(TrieParserReader trieReader, 
-		final int pathId, final TrieParser headerMap,
-		DataOutputBlobWriter<HTTPRequestSchema> writer, int httpRevisionId,
+		final int pathId, final TrieParser headerMap, 
+		DataOutputBlobWriter<HTTPRequestSchema> writer, 
+		ServerConnection serverConnection, int httpRevisionId,
 		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2) {
 	
-	
-	//final int indexOffsetCount = countOfAllPreviousFields;
-	int requestContext = keepAliveOrNotContext(httpRevisionId);
-
+	if (null == serverConnection) {
+		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+	}
+	ChannelWriterController cwc = serverConnection.connectionDataWriter();
+	ChannelWriter cw = cwc.beginWrite();
+	if (null!=cw) {//try again later if this connection is overloaded
 		
-	long postLength = -2;
-	
-	int iteration = 0;
-	int remainingLen;
-	while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
-	
-		long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
+		int requestContext = keepAliveOrNotContext(httpRevisionId);
+			
+		long postLength = -2;
 		
-	    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-	        return endOfHeadersLogic(writer, errorReporter2, 
-	        		requestContext, trieReader,
-					postLength, iteration);
-	    } else if (-1 == headerToken) {            	
-	    	if (remainingLen>MAX_HEADER) {   
-	    		//client has sent very bad data.
-	    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-	    	}
-	        //nothing valid was found so this is incomplete.
-	        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
-	    }
+		int iteration = 0;
+		int remainingLen;
+		while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
 		
-	    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
-		    HTTPHeader header = config.getAssociatedObject(headerToken);
-		    int writePosition = writer.position();
-		    
-		    if (null!=header) {
-			    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
-			    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
-		
-			    	postLength = TrieParserReader.capturedLongField(trieReader, 0);
-			    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == header.ordinal()) {
-			    	assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
-		
-			    	postLength = -1;
-			    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
-			    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
-			    	
-			    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
-			    }			                
-
-			    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
-			    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
-	
+			long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
+			
+		    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
+		    	
+				if (iteration!=0) {
+					
+					return endOfHeadersLogic(writer, cwc, cw, 
+							serverConnection.scs.connectionStructId,
+							errorReporter2, requestContext, 
+							trieReader, postLength);
+					
+				} else {	          
+					//needs more data 
+					cwc.abandonWrite();
+					return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
+				}
+		    } else if (-1 == headerToken) {            	
+		    	if (remainingLen>MAX_HEADER) {   
+		    		//client has sent very bad data.
+		    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+		    	}
+		        //nothing valid was found so this is incomplete.
+		    	cwc.abandonWrite();
+		        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
 		    }
-	    } else {
-	    	//assert that important headers are not skipped..
-	    	assert(confirmCoreHeadersSupported(trieReader));	    	
-	    }
-	    iteration++;
+			
+		    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
+			    HTTPHeader header = config.getAssociatedObject(headerToken);
+			    int writePosition = writer.position();
+			    
+			    if (null!=header) {
+				    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
+				    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
+			
+				    	postLength = TrieParserReader.capturedLongField(trieReader, 0);
+				    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == header.ordinal()) {
+				    	assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
+			
+				    	postLength = -1;
+				    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
+				    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
+				    	
+				    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
+				    }			                
+	
+				    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
+				    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
+		
+			    }
+		    } else {
+		    	//assert that important headers are not skipped..
+		    	assert(confirmCoreHeadersSupported(trieReader));	    	
+		    }
+		    iteration++;
+		}
+		cwc.abandonWrite();
 	}
 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 }
@@ -1117,49 +1143,48 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 	    return Pipe.peekInt(selectedInput)<0;
 	}
 	
-	
-
-    private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer, ErrorReporter errorReporter,
-			int requestContext, final TrieParserReader trieReader, long postLength,
-			int iteration) {
-    
-		if (iteration==0) {
-			//needs more data 
-			requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
-		} else {	          
-			//logger.trace("end of request found");
-			//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
-			//ALL OTHERS MUST RETURN INCOMPLETE
+    private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer,
+    		ChannelWriterController cwc, ChannelWriter cw, int connectionStructId, ErrorReporter errorReporter,
+			int requestContext, final TrieParserReader trieReader, long postLength) {
+		//logger.trace("end of request found");
+		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
+		//ALL OTHERS MUST RETURN INCOMPLETE
+		
+		if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<writer.position()) {
+				
+			logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
+			requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+		} else if (postLength>0) {
+			//full length is done here as a single call, the pipe must be large enough to hold the entire payload
 			
-			if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<writer.position()) {
-					
-				logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
+			assert(postLength<Integer.MAX_VALUE);
+			
+			//read data directly
+			final int writePosition = writer.position();  
+			
+			if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<(writePosition+postLength)) {
+				logger.warn("unable to take large post at this time");	
 				requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-			} else if (postLength>0) {
-		   		//full length is done here as a single call, the pipe must be large enough to hold the entire payload
-		   		
-		   		assert(postLength<Integer.MAX_VALUE);
-		   		
-		   		//read data directly
-				final int writePosition = writer.position();  
+			}
+			
+			int cpyLen = TrieParserReader.parseCopy(trieReader, postLength, writer);
+			if (cpyLen<postLength) {
+			   //needs more data 
+				cwc.abandonWrite();
+				return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+			} else {	
 				
-				if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<(writePosition+postLength)) {
-					logger.warn("unable to take large post at this time");	
-					requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-				}
-				
-				int cpyLen = TrieParserReader.parseCopy(trieReader, postLength, writer);
-				if (cpyLen<postLength) {
-				   //needs more data 
-					requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-				} else {	
-					
-					//NOTE: payload index is always found at position 0 since it is the first field.
-					DataOutputBlobWriter.setIntBackData(writer, writePosition, 0);
-	
-				}
-		   	}     
+				//NOTE: payload index is always found at position 0 since it is the first field.
+				DataOutputBlobWriter.setIntBackData(writer, writePosition, 0);
+
+			}
 		}
+	
+		connectionFields context = ServerConnectionStruct.connectionFields.context;
+		cw.structured().writeInt(context, requestContext);
+		cw.structured().selectStruct(connectionStructId);
+		
+		cwc.commitWrite();
 		return requestContext;
 	}
 
@@ -1177,10 +1202,11 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 		
 		int len = TrieParserReader.capturedFieldByte(trieReader, 0, 1);
 		
-		//logger.warn("Connection: {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
+		
 		
 		switch(len) {
 		    case 'l': //close
+		    	logger.warn("Connection: {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
 		        requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;                        
 		        break;
 		    case 'e': //keep-alive

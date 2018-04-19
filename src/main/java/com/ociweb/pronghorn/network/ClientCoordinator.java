@@ -289,11 +289,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	
 	public static int lookupHostId(CharSequence host, TrieParserReader reader) {
+		assert(host.toString().trim().length()>0) : "ghost host";
 		int result = (int)TrieParserReader.query(reader, domainRegistry, host);
 		if (result>=0) {
 			return result;
 		} else {
-			throw new UnsupportedOperationException("Before using domain at runtime you must call ClientCoordinator.registerDomain(\"127.0.0.1\");");
+			throw new UnsupportedOperationException("Before using domain at runtime you must call ClientCoordinator.registerDomain(\""+host+"\");");
 		}
 	}
 
@@ -365,7 +366,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
 						
 					try {
-
 				    	//create new connection because one was not found or the old one was closed
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
@@ -394,12 +394,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				if (cc.isDisconnecting()) {
 					return cc;
 				}
-				
 				if (cc.isRegistered()) {
 					//logger.info("is registered {}",cc);
 					return cc;
 				}
-				
 				//not yet done so ensure it is marked.
 				//cc.isFinishedConnection = false;
 				//not registered
@@ -431,14 +429,16 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private static ClientConnection doRegister(ClientCoordinator ccm,
 			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
 			                                   ClientConnection cc) {
+		
+		//logger.info("doRegister");
 		try {
 			if (!cc.isFinishConnect()) {				
-				//	logger.trace("unable to finish connect, must try again later {}",cc);	
+				//	logger.info("unable to finish connect, must try again later {}",cc);	
 				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
-				//logger.info("new connection established to {}",cc);
+				//logger.info("XXXXXXXXX new connection established to {}",cc);
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);

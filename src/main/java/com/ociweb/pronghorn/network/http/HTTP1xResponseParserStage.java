@@ -1097,7 +1097,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
 			
 			//the server requested a close and we are now done reading the body so we need to close.
-			if (closeRequested[i]) {
+			if (closeRequested[i]  //server side sent us "close"
+			    || cc.isDisconnecting() //we sent server "close" and now have response
+			    ) {
 				//publish closed to notify those down stream
 				publishCloseMessage((int)cc.readDestinationRouteId(), cc.host, cc.port);
 				cc.close();

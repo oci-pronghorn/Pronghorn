@@ -61,51 +61,35 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final String defaultPath;
     
 	public final boolean requireClientAuth;//clients must send their cert to connect
+	private final ServerConnectionStruct scs; //may be null;
 	
 	//////////////////////////////////////
 	//fields to replicate headers back to the caller
 	//////////////////////////////////////
 	private HTTPHeader[] replicatedHeaders;
-	private int defaultInternalInFlightCount = 100;//TODO: add update method
-	private int defaultMaxHeaderPayloadSize = 80;//TODO: add update method
+	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
+	private int minInternalInFlightPayloadSize = 16;//must be at least 16 //TODO: add update method
 	///////////////////////////////////////
-	
-	
+		
 //	public static long acceptConnectionStart;
 //	public static long acceptConnectionRespond;
 //	
 //	public static long orderSuperStart;
 //	public static long newDotRequestStart;
-
 	
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port, 
-			                 ServerPipesConfig serverConfig, boolean requireClientAuth){
-		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
-		   serverConfig.moduleParallelism,
-		   requireClientAuth,
-		   "Server", "");
-	}
-	
 	public ServerCoordinator(TLSCertificates tlsCertificates, 
-			                String bindHost, int port, ServerPipesConfig serverConfig, 
-			                String defaultPath, boolean requireClientAuth){
-		this(tlsCertificates,bindHost,port, serverConfig.maxConnectionBitsOnServer,
-		   serverConfig.maxConcurrentInputs, serverConfig.maxConcurrentOutputs, 
-		   serverConfig.moduleParallelism,
-		   requireClientAuth,
-		   "Server", defaultPath);
-	}
-	
-	public ServerCoordinator(TLSCertificates tlsCertificates, String bindHost, int port,
-            int maxConnectionsBits, 
+			String bindHost, int port,
+            ServerConnectionStruct scs,
+			int maxConnectionsBits, 
             int maxConcurrentInputs, int maxConcurrentOutputs,
             int moduleParallelism, boolean requireClientAuth){
 		
-		this(tlsCertificates,bindHost,port,maxConnectionsBits, 
+		this(tlsCertificates,bindHost,port,
+				scs,
+				maxConnectionsBits, 
 				maxConcurrentInputs, maxConcurrentOutputs,
 				moduleParallelism,
 				requireClientAuth,
@@ -114,7 +98,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
     public ServerCoordinator(TLSCertificates tlsCertificates,
     		                 String bindHost, int port,
-							 int maxConnectionsBits, 
+    		                 ServerConnectionStruct scs,
+    		                 int maxConnectionsBits, 
 							 int maxConcurrentInputs,
 							 int maxConcurrentOutputs,
 							 int moduleParallelism,
@@ -125,7 +110,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		super(tlsCertificates);
 		
 		this.requireClientAuth = requireClientAuth;
-		
+		this.scs = scs;
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
@@ -215,8 +200,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	@Override
-	public BaseConnection connectionForSessionId(long id) {
-		return socketHolder.get(id);		
+	public <B extends BaseConnection> B connectionForSessionId(long id) {
+		return (B)socketHolder.get(id);		
 	}
 
     public int port() {
@@ -345,10 +330,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public String defaultPath() {
 		return defaultPath;
 	}
-
 	
 	public void setReplicatedHeaders(HTTPHeader ... headers) {
+		assert(replicatedHeaders==null) : "can only be set once";
 		replicatedHeaders = headers;
+		int maxHeaderSize = 80; //TODO: must have a way to set this..
+		minInternalInFlightPayloadSize += (headers.length*maxHeaderSize );
 	}
 	
 	public HTTPHeader[] getReplicatedHeaders() {
@@ -356,11 +343,15 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	public int connectionDataElements() {
-		return null==replicatedHeaders ? 0 : defaultInternalInFlightCount;
+		return minInternalInFlightCount;
 	}
 
 	public int connectionDataElementSize() {
-		return null==replicatedHeaders ? 0 : replicatedHeaders.length*defaultMaxHeaderPayloadSize;
+		return minInternalInFlightPayloadSize;
+	}
+
+	public ServerConnectionStruct connectionStruct() {
+		return scs;
 	}
 
 }

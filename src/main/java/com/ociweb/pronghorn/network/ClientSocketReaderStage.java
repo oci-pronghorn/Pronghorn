@@ -184,8 +184,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 	boolean hasRoomForMore = true;
 	private void processSelection(SelectionKey selection) {
 		assert isReadOpsOnly(selection) : "only expected read"; 
-		
+				
 		ClientConnection cc = (ClientConnection)selection.attachment();
+
 		assert(cc.getSelectionKey() == selection);
 		assert(cc.getSocketChannel() == (SocketChannel)selection.channel());
 		
@@ -274,6 +275,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		}
 
 		if (doRead) {
+			
 			//holds the pipe until we gather all the data and got the end of the parse.
 			int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
 			if (pipeIdx>=0) {
@@ -357,9 +359,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		////////////////////////////////////////////////////////////
 		
 		if (showResponse) {
-					    System.err.println("//////////////////////");
-			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-			   			System.err.println("//////////////////////");
+				logger.info("\n///ClientSocketReader////////\n"+
+			   			Appendables.appendUTF8(new StringBuilder(), target.blobRing, originalBlobPosition, readCount, target.blobMask)+
+			   			"\n//////////////////////");
 		}
 
 		
