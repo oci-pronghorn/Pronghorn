@@ -1869,9 +1869,7 @@ public class GraphManager {
 	            if (null!=pipe) {
 	                
 	                int producer = getRingProducerId(m, j);
-	                assert(producer>=0) : "no producer found";
 	                int consumer = getRingConsumerId(m, j);
-	                assert(consumer>=0) : "no consumer found";
 	                
 	                //skip all pipes that are gathering monitor data
 	                if (consumer<0  ||
@@ -1907,7 +1905,7 @@ public class GraphManager {
 		                boolean fanOutGrouping = false;
 		                boolean fanInGrouping = false;
 		                
-		                if (combineCommonEdges) {
+		                if (combineCommonEdges && producer>=0 && consumer>=0) {
 		                	//if this producer writes to many pipes
 		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
 							if (outputPipeCount >= 4) {
