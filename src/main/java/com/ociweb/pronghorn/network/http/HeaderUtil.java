@@ -18,14 +18,6 @@ public class HeaderUtil {
 
 	public static void writeHeaderEnding(DataOutputBlobWriter<NetPayloadSchema> writer, boolean keepOpen, long length) {
 
-		if (keepOpen) {
-			DataOutputBlobWriter.write(writer, HeaderUtil.CONNECTION_KEEP_ALIVE, 0, HeaderUtil.CONNECTION_KEEP_ALIVE.length);
-			//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nConnection: keep-alive\r\n\r\n"); //double \r\b marks the end of the header
-		} else {
-			DataOutputBlobWriter.write(writer, HeaderUtil.CONNECTION_CLOSE, 0, HeaderUtil.CONNECTION_CLOSE.length, Integer.MAX_VALUE);
-			//DataOutputBlobWriter.write(writer, LINE_END, 0, LINE_END.length, Integer.MAX_VALUE);
-		}
-		
 		if (length>0) {
 			DataOutputBlobWriter.write(writer, HeaderUtil.CONTENT_LENGTH, 0, HeaderUtil.CONTENT_LENGTH.length);
 			Appendables.appendValue(writer, length);
@@ -46,8 +38,6 @@ public class HeaderUtil {
 	final static byte[] LINE_END = "\r\n".getBytes();
 	final static byte[] CONTENT_CHUNKED = "Transfer-Encoding: chunked".getBytes();
 	final static byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
-	final static byte[] CONNECTION_CLOSE = "Connection: close\r\n".getBytes();
-	final static byte[] CONNECTION_KEEP_ALIVE = "Connection: keep-alive\r\n".getBytes();
 	final static byte[] LINE_AND_USER_AGENT = "\r\nUser-Agent: Pronghorn/".getBytes();
 	final static byte[] REV11_AND_HOST = " HTTP/1.1\r\nHost: ".getBytes();
 

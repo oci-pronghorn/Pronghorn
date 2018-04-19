@@ -1,16 +1,18 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -27,6 +29,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] output;
 	private final ClientCoordinator ccm;
 
+	private AtomicBoolean newWork = new AtomicBoolean(true);
+	private final PipePublishListener newWorkListener = new PipePublishListener() {
+		@Override
+		public void published() {
+			newWork.set(true);
+		}
+	};
+	
 	static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 	
 	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
@@ -51,8 +61,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 		this.output = output;
 		this.ccm = ccm;
 		
-		//TODO: we have a bug here detecting EOF so this allows us to shutdown until its found.
-		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+		int i = input.length;
+		while (--i>=0) {
+			Pipe.addPubListener(input[i], newWorkListener);
+		}
+
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		
 		recordTypeData = graphManager.recordTypeData;
@@ -84,8 +97,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-
-
+		if (newWork.getAndSet(false)) {			
 		   	 if(shutdownInProgress) {
 		    	 int i = output.length;
 		         while (--i >= 0) {
@@ -101,16 +113,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			boolean hasWork;
 			
-			final long now = System.currentTimeMillis();
-	
 			do {
 				hasWork = false;
-				int i = input.length;
+				int i = input.length; //TODO: monitor these pipes..
 				while (--i>=0) {
 					Pipe<ClientHTTPRequestSchema> requestPipe = input[i];						  
-					if (Pipe.hasContentToRead(requestPipe)) {
-						
-						if (buildClientRequest(now, requestPipe)) {
+					if (Pipe.hasContentToRead(requestPipe)) {						
+						newWork.set(true);
+						if (buildClientRequest(requestPipe)) {
 							hasWork = true;
 						} else {
 							//try again later
@@ -119,25 +129,31 @@ public class HTTPClientRequestStage extends PronghornStage {
 					}
 				}
 		
+		        if (shutdownInProgress ) {		        	
+		        	newWork.set(true);
+		        }
+		        
 			} while (hasWork);
-			
+		}
 	}
 
 	
-	private boolean buildClientRequest(long now, Pipe<ClientHTTPRequestSchema> requestPipe) {
+	private boolean buildClientRequest(Pipe<ClientHTTPRequestSchema> requestPipe) {
 		boolean didWork = false;
 		//This check is required when TLS is in use.
 		if (isConnectionReadyForUse(requestPipe) ){
 			didWork = true;	        
 			
 		    //we have already checked for connection so now send the request
-		    		        	
+
+			final long now = System.currentTimeMillis();
+			activeConnection.setLastUsedTime(now);
+	       	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 		    		    
 		    //logger.info("send for active pipe {} with msg {}",requestPipe.id,msgIdx);
 		    
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
-		    	activeConnection.setLastUsedTime(now);
 				HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
 		    } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
 		    	//logger.info("Warning slower call for HTTP GET detected, clean up lazy init.");

@@ -398,7 +398,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     }
 
 	private static boolean isProducer(final GraphManager graphManager, PronghornStage pronghornStage) {
-		return null != GraphManager.getNota(graphManager, pronghornStage.stageId, GraphManager.PRODUCER, null) ||
+		return GraphManager.hasNota(graphManager, pronghornStage.stageId, GraphManager.PRODUCER) ||
 		        (0 == GraphManager.getInputPipeCount(graphManager, pronghornStage));
 	}
 
@@ -730,7 +730,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		}
 		
 		accumulateWorkHistory();
-			
+					
 		//if we have over 1000 cycles of non work found then
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
@@ -768,7 +768,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		} else {
 			//this is to support deep sleep when it has been a very long time without work.
 			
-			while ((noWorkCounter > deepSleepCycleLimt)) {
+			//System.out.println("zzz...");
+						
+			while (noWorkCounter > deepSleepCycleLimt) {
 				try {
 					Thread.sleep(humanLimitNS/1_000_000);
 				} catch (InterruptedException e) {
@@ -802,7 +804,14 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			}
 			return true; //we had something to count
 		} else {
-			noWorkCounter = 0;
+			
+			//these two are consuming all the cyles.
+			//no sleep for 6:SNewConnection  0  1 //this works alone on server
+			//no sleep for 13:CSocketR  1  1
+			//server socket reader as well.
+			//System.err.println("no sleep for "+name()+"  "+p+"  "+producersIdx.length);
+			
+			noWorkCounter = 0;//need a sleep mode for producers??
 			return false; //this stage has no inputs and must always be run.
 		}
 	}

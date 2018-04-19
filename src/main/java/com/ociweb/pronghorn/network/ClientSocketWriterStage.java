@@ -58,7 +58,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.ccm = ccm;
 		this.input = input;
 		this.shutCountDown = input.length;
-				
+
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 	}
 
@@ -107,25 +107,30 @@ public class ClientSocketWriterStage extends PronghornStage {
 		Pipe<NetPayloadSchema>[] localInput = input;
 		ClientConnection[] localConnections = connections;
 		
-		boolean didWork;
-		
+		boolean doingWork;
+		boolean didWork = false;
 		do {
-			didWork = false;	
+			doingWork = false;	
 			
 			int i = localInput.length;
 			while (--i>=0) {
 				if (localConnections[i]==null) {
 					Pipe<NetPayloadSchema> pipe = localInput[i];
 					if (Pipe.hasContentToRead(pipe)) {	
-						didWork = writeAll(didWork, i, pipe, Pipe.peekInt(pipe));
+						doingWork = writeAll(doingWork, i, pipe, Pipe.peekInt(pipe));
 					}
 				} else {
 					//we have multiple connections so one blocking does not impact others.
-					didWork |= tryWrite(i);					
+					doingWork |= tryWrite(i);					
 				}
 			}
-		} while (didWork);
+			didWork |= doingWork;
+		} while (doingWork);
 		
+//		//we have no pipes to monitor so this must be done explicitly
+	    if (didWork && (null != this.didWorkMonitor)) {
+	    	this.didWorkMonitor.published();
+	    }
 	}
 
 	private boolean writeAll(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {

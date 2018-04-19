@@ -238,9 +238,7 @@ public class HTTPClientUtil {
 		Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
 		
 		HeaderUtil.writeHeaderBeginning(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), activeWriter);
-		
 		HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
-		activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe), headersPos, headersLen, Pipe.blobMask(requestPipe));
 		Pipe.readBytes(requestPipe, activeWriter, headersMeta, headersLen);
 		
 		HeaderUtil.writeHeaderEnding(activeWriter, true, (long) 0);  
