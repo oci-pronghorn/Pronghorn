@@ -13,31 +13,29 @@ public final class StructuredReader {
 
 	public static final int PAYLOAD_INDEX_LOCATION = 0;
 	private final DataInputBlobReader<?> channelReader; 
-	final StructRegistry typeData;
 	
-	public StructuredReader(DataInputBlobReader<?> reader, StructRegistry typeData) {
-		this.channelReader = reader;
-		this.typeData = typeData;
+	public StructuredReader(DataInputBlobReader<?> reader) {
+		this.channelReader = reader;		
 	}
 
 	public <T> void visit(Class<T> attachedInstanceOf, StructFieldVisitor<T> visitor) {		
-		typeData.visit(channelReader, attachedInstanceOf, visitor);
+		Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).visit(channelReader, attachedInstanceOf, visitor);
 	}
 	
 	public <T,B extends T> boolean identityVisit(B attachedInstance, StructFieldVisitor<T> visitor) {		
-		return typeData.identityVisit(channelReader, attachedInstance, visitor);
+		return Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).identityVisit(channelReader, attachedInstance, visitor);
 	}
 	
 
 	private final boolean matchOneOfTypes(Object attachedInstance, StructTypes ... assoc) {
-		long fieldId = typeData.fieldLookupByIdentity(attachedInstance, 
+		long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(attachedInstance, 
 				DataInputBlobReader.getStructType(channelReader));	
 		return matchOneOfTypes(fieldId, assoc);
 	}
 
 	private final boolean matchOneOfTypes(long fieldId, StructTypes... assoc) {
 		boolean ok = false;
-		StructTypes fieldType = typeData.fieldType(fieldId);
+		StructTypes fieldType = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId);
 		int i=assoc.length;
 		while (--i>=0) {
 			if (assoc[i]==fieldType) {
@@ -49,7 +47,7 @@ public final class StructuredReader {
 	
 	
 	public final int fullIndexSizeInBytes() {
-		return 4*typeData.totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader));
+		return 4*Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader));
 	}
 	
 	//set to a position for general reading unless index position is not provided
@@ -73,15 +71,15 @@ public final class StructuredReader {
 	
 	//set to a position for general reading
 	public ChannelReader read(Object association) {
-		return read(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return read(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	public boolean isNull(Object association) {
-		return isNull(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return isNull(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	public boolean hasValue(Object association) {
-		return hasValue(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return hasValue(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	//returns null if absent
@@ -98,7 +96,7 @@ public final class StructuredReader {
 	
 	//returns null if absent
 	public String readText(Object association) {
-		return readText(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readText(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
 	public boolean isEqual(long fieldId, byte[] utf8EncodedBytes) {
@@ -115,12 +113,12 @@ public final class StructuredReader {
 	}
 
 	public boolean isEqual(Object association, byte[] utf8EncodedBytes) {
-		return isEqual(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), utf8EncodedBytes);
+		return isEqual(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), utf8EncodedBytes);
 	}
 	
 	//returns -1 when absent
 	public long readTextAsLong(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -132,12 +130,12 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readTextAsLong(Object association) {
-		return readTextAsLong(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readTextAsLong(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	//returns -1 when absent
 	public double readTextAsDouble(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -149,12 +147,12 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public double readTextAsDouble(Object association) {
-		return readTextAsDouble(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readTextAsDouble(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readText(long fieldId, A target) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -165,14 +163,14 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readText(Object association, A target) {
-		return readText(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), target);
+		return readText(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), target);
 	}
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readIntAsText(long fieldId, A target) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-			   typeData.fieldType(fieldId) == StructTypes.Integer ||
-		   	   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -184,7 +182,7 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readIntAsText(Object association, A target) {
-		return readIntAsText(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), target);
+		return readIntAsText(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)), target);
 	}
 	
 
@@ -196,7 +194,7 @@ public final class StructuredReader {
 	
 	//return NaN when field is absent
 	public double readRationalAsDouble(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Rational);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Rational);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -208,12 +206,12 @@ public final class StructuredReader {
 
 	//return NaN when field is absent
 	public double readRationalAsDouble(Object association) {
-		return readRationalAsDouble(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readRationalAsDouble(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 		
 	//return NaN when field is absent
 	public double readDecimalAsDouble(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -225,12 +223,12 @@ public final class StructuredReader {
 	
 	//return NaN when field is absent
 	public double readDecimalAsDouble(Object association) {
-		return readDecimalAsDouble(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readDecimalAsDouble(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	//returns -1 when absent
 	public long readDecimalMantissa(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -244,13 +242,13 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readDecimalMantissa(Object association) {
-		return readDecimalMantissa(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readDecimalMantissa(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 		
 	//returns 0 when absent
 	public byte readDecimalExponent(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -264,12 +262,12 @@ public final class StructuredReader {
 	
 	//returns 0 when absent
 	public byte readDecimalExponent(Object association) {
-		return readDecimalExponent(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readDecimalExponent(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 		
 	//returns false when absent
 	public boolean readBoolean(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Boolean);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Boolean);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -281,15 +279,15 @@ public final class StructuredReader {
 	
 	//returns false when absent
 	public boolean readBoolean(Object association) {
-		return readBoolean(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readBoolean(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}	
 	
 	
 	//returns -1 when absent
 	public int readInt(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-				   typeData.fieldType(fieldId) == StructTypes.Integer ||
-			   	   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -301,14 +299,14 @@ public final class StructuredReader {
 		
 	//returns -1 when absent
 	public int readInt(Object association) {
-		return readInt(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readInt(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
 	//returns -1 when absent
 	public long readLong(long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-				   typeData.fieldType(fieldId) == StructTypes.Integer ||
-			   	   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -320,7 +318,7 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readLong(Object association) {
-		return readLong(typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readLong(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	///////////////////////////
@@ -329,9 +327,9 @@ public final class StructuredReader {
 
     //null values are also visited
 	public void visitInt(StructIntListener visitor, long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-			   typeData.fieldType(fieldId) == StructTypes.Integer ||
-			   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -347,13 +345,13 @@ public final class StructuredReader {
 	}
 	
 	public void visitInt(StructIntListener visitor, Object association) {
-		visitInt(visitor, typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		visitInt(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
 	public void visitLong(StructLongListener visitor, long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-			   typeData.fieldType(fieldId) == StructTypes.Integer ||
-			   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -370,13 +368,13 @@ public final class StructuredReader {
 	}
 	
 	public void visitLong(StructLongListener visitor, Object association) {
-		visitLong(visitor, typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		visitLong(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	public void visitShort(StructShortListener visitor, long fieldId) {
-		assert(typeData.fieldType(fieldId) == StructTypes.Short ||
-			   typeData.fieldType(fieldId) == StructTypes.Integer ||
-			   typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -393,7 +391,7 @@ public final class StructuredReader {
 	}
 	
 	public void visitShort(StructShortListener visitor, Object association) {
-		visitShort(visitor, typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		visitShort(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	////////////////////
@@ -403,8 +401,8 @@ public final class StructuredReader {
 	
 	public void visitDimInt(BStructDimIntListener visitor, long fieldId) {
 		
-		int dims = typeData.dims(fieldId);
-		int dinstance = DataInputBlobReader.reserveDimArray(channelReader, dims, typeData.maxDim());		
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+		int dinstance = DataInputBlobReader.reserveDimArray(channelReader, dims, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).maxDim());		
 		int[] dimPos = DataInputBlobReader.lookupDimArray(channelReader, dims, dinstance);
 	
 		assert(DataInputBlobReader.structTypeValidation((DataInputBlobReader<?>)channelReader, StructRegistry.FIELD_MASK&(int)fieldId)); //set value or check match.
@@ -424,7 +422,7 @@ public final class StructuredReader {
 	}
 	
 	public void visitDimInt(BStructDimIntListener visitor, Object association) {
-		visitDimInt(visitor,typeData.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader))  );
+		visitDimInt(visitor,Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader))  );
 	}
 
 	
@@ -435,7 +433,7 @@ public final class StructuredReader {
 		this.channelReader.position(
 		this.channelReader.readFromEndLastInt(
 				StructRegistry.FIELD_MASK &
-				(int)this.typeData.fieldLookupByIdentity(attachedInstance, 
+				(int)Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(attachedInstance, 
 						DataInputBlobReader.getStructType(this.channelReader))));
 		
 		long m = channelReader.readPackedLong();

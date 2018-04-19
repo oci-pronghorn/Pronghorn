@@ -6,12 +6,9 @@ import com.ociweb.pronghorn.struct.StructTypes;
 public class StructuredWriter {
 
 	private final DataOutputBlobWriter<?> channelWriter;
-	private final StructRegistry typeData;
 	
-	public StructuredWriter(DataOutputBlobWriter<?> channelWriter,
-			                StructRegistry typeData) {
+	public StructuredWriter(DataOutputBlobWriter<?> channelWriter) {
 		this.channelWriter = channelWriter;
-		this.typeData = typeData;
 	}
 	
 	//////////////////////////
@@ -53,14 +50,15 @@ public class StructuredWriter {
 	}
 	
 	public void selectStruct(int structId) {
+		
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
-		DataOutputBlobWriter.setStructType(channelWriter, structId);
+		DataOutputBlobWriter.commitBackData(channelWriter, structId);		
 		int p = pos;
 		while (--p>=0) {
 			DataOutputBlobWriter.setIntBackData(channelWriter,
 					positions[p],
 					StructRegistry.FIELD_MASK &
-					(int)typeData.fieldLookupByIdentity(
+					(int)Pipe.structRegistry(channelWriter.backingPipe).fieldLookupByIdentity(
 							associations[p], structId) & StructRegistry.FIELD_MASK);
 		}
 	
@@ -110,7 +108,7 @@ public class StructuredWriter {
 
 	public ChannelWriter writeBlob(long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Blob);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Blob);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -125,7 +123,7 @@ public class StructuredWriter {
 	
 	public Appendable writeText(long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Text);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -140,7 +138,7 @@ public class StructuredWriter {
 	
 	public void writeBoolean(boolean value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Boolean);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Boolean);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -155,7 +153,7 @@ public class StructuredWriter {
 	
 	public void writeLong(long value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Long);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -170,7 +168,7 @@ public class StructuredWriter {
 	
 	public void writeInt(int value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Integer);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Integer);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -185,7 +183,7 @@ public class StructuredWriter {
 	
 	public void writeShort(short value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Short);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Short);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -201,7 +199,7 @@ public class StructuredWriter {
 	
 	public void writeByte(int value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Byte);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Byte);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -216,7 +214,7 @@ public class StructuredWriter {
 	
 	public void writeDouble(double value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Double);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Double);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -231,7 +229,7 @@ public class StructuredWriter {
 	
 	public void writeFloat(float value, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Float);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Float);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -246,7 +244,7 @@ public class StructuredWriter {
 	
 	public void writeRational(long numerator, long denominator, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Rational);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Rational);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
@@ -261,7 +259,7 @@ public class StructuredWriter {
 	
 	public void writeDecimal(long m, byte e, long fieldId) {
 		
-		assert(typeData.fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Decimal);
 		
 		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		

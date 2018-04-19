@@ -67,7 +67,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         this.workspace = new StringBuilder(64);
         assert(this.backing!=null) : "The pipe must be init before use.";
         
-        structuredReader = null!=Pipe.typeData(pipe) ? new StructuredReader(this, Pipe.typeData(pipe)) : null; 
+        structuredReader = new StructuredReader(this);
     }
         
 	public void debug() {
@@ -163,8 +163,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
-				
-		final int copyLen = (structuredReader.typeData.totalSizeOfIndexes(type))*4+4;//plus the type
+		
+		final int copyLen = (Pipe.structRegistry(getBackingPipe(this)).totalSizeOfIndexes(type))*4+4;//plus the type
 		int start = end-copyLen;
 		
 		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);

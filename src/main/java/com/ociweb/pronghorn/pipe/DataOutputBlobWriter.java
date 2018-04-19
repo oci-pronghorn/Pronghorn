@@ -39,8 +39,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);  
         assert(this.byteMask!=0): "mask is "+p.blobMask+" size of blob is "+p.sizeOfBlobRing;
-        
-        structuredWriter = null!=Pipe.typeData(p) ? new StructuredWriter(this,Pipe.typeData(p)) : null;
+        this.structuredWriter = new StructuredWriter(this);
     }
     
     public void openField() {
@@ -151,6 +150,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         
     	if (value!=old) {
     		if (old<=0) {
+    			writer.structuredWithIndexData = true;    			
     			int base2 = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
     			write32(writer.byteBuffer, writer.byteMask, base2, value);
     		} else {
@@ -957,6 +957,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 
 	@Override
 	public StructuredWriter structured() {
+		assert(structuredWriter!=null) : 
+			"this pipe was not initialized to support structures, call Pipe.typeData(pipe, registry); first";
 		return structuredWriter;
 	}
 

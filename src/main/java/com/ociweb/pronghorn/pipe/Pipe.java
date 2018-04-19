@@ -111,14 +111,14 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 
-	public static void typeData(Pipe p, StructRegistry recordTypeData) {
+	public static void structRegistry(Pipe p, StructRegistry recordTypeData) {
     	assert(null!=recordTypeData) : "must not be null";
     	assert(null==p.typeData || recordTypeData==p.typeData) :
     		"can not modify type data after setting";
     	p.typeData = recordTypeData;
     }
     
-    public static StructRegistry typeData(Pipe p) {
+    public static StructRegistry structRegistry(Pipe p) {
     	return p.typeData;
     }
     

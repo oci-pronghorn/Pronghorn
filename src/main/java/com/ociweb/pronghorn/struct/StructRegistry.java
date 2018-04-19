@@ -431,7 +431,7 @@ public class StructRegistry { //prong struct store
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
-		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in";
+		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 		int identityHashCode = System.identityHashCode(attachedObject);
 		int idx = IntHashTable.getItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
 		if (0==idx) {
