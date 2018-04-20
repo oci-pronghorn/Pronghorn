@@ -285,7 +285,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							positionMemoData[posIdx] = pos;						
 							positionMemoData[lenIdx] = len;
 							
-							if (len>0) {
+							//we may hit zero in the middle of a payload so this check 
+							//is only valid for the 0 state.
+							if (len>0 && positionMemoData[stateIdx]==0) {
 								//we have new data plus we know that we have no old data
 								//because of this we know the first letter must be an H for HTTP.
 								boolean isValid = localInputPipe.blobRing[localInputPipe.blobMask&trieReader.sourcePos]=='H';
