@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -401,7 +400,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		isValid = true;
 		//logger.info("is now valid");
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
-
+		
 	}
 
 	public boolean isValid() {

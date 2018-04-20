@@ -95,6 +95,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	private boolean catchAll;
     private final int parallelId;
 
+    private final long contextFieldId;
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
@@ -155,8 +156,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 
 			                 Pipe<HTTPRequestSchema>[] outputs,
-			                 Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
-                             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
+			                 Pipe<ServerResponseSchema> errorResponsePipe, 
+			                 Pipe<ReleaseSchema> ackStop,
+                             HTTP1xRouterStageConfig<T,R,V,H> config, 
+                             ServerCoordinator coordinator, 
+                             boolean catchAll) {
 		
         super(gm,input,join(outputs,ackStop,errorResponsePipe));
         
@@ -180,6 +184,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
+        ServerConnectionStruct conStruct = coordinator.connectionStruct();
+        
+        contextFieldId = conStruct.registry.fieldLookupByIdentity(
+        		                                 ServerConnectionStruct.connectionFields.context,
+        		                                 conStruct.connectionStructId);
+        
+        
+        
     }    
 	
     
@@ -769,7 +781,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	//	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
 		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverConnection, 
 												httpRevisionId, config,
-												errorReporter);  // Write 2   10 //if header is presen
+												errorReporter, contextFieldId);  // Write 2   10 //if header is presen
        
         
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {  
@@ -818,7 +830,8 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		final int pathId, final TrieParser headerMap, 
 		DataOutputBlobWriter<HTTPRequestSchema> writer, 
 		ServerConnection serverConnection, int httpRevisionId,
-		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2) {
+		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2,
+		long contextFieldId) {
 	
 	if (null == serverConnection) {
 		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
@@ -842,7 +855,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				if (iteration!=0) {
 					
 					return endOfHeadersLogic(writer, cwc, cw, 
-							serverConnection.scs.connectionStructId,
+							contextFieldId,
 							errorReporter2, requestContext, 
 							trieReader, postLength);
 					
@@ -1144,7 +1157,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 	}
 	
     private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer,
-    		ChannelWriterController cwc, ChannelWriter cw, int connectionStructId, ErrorReporter errorReporter,
+    		ChannelWriterController cwc, ChannelWriter cw, long contextFieldId, ErrorReporter errorReporter,
 			int requestContext, final TrieParserReader trieReader, long postLength) {
 		//logger.trace("end of request found");
 		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
@@ -1180,9 +1193,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 			}
 		}
 	
-		connectionFields context = ServerConnectionStruct.connectionFields.context;
-		cw.structured().writeInt(context, requestContext);
-		cw.structured().selectStruct(connectionStructId);
+		cw.structured().writeInt(requestContext, contextFieldId);
 		
 		cwc.commitWrite();
 		return requestContext;

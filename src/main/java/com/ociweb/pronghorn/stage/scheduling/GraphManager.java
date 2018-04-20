@@ -2960,20 +2960,7 @@ public class GraphManager {
 
     public static void shutdownStage(GraphManager gm, PronghornStage stage) {
     	stage.shutdown();
-    	
-//    	int c = GraphManager.getOutputPipeCount(gm, stage.stageId);
-//    	while (--c>=0) {
-//    		Pipe<?> out = GraphManager.getOutputPipe(gm, stage.stageId, c);    	
-//    		assert(report(out));
-//    	}
     }
-
-//	private static boolean report(Pipe<?> out) {
-//		if (null!=Pipe.outputStream(out)) {
-//			assert(Pipe.outputStream(out).reportObjectSizes(System.out));
-//		}
-//		return true;
-//	}
     
     public static void monitorPipe(GraphManager gm, int pipeId, Appendable target) {
     	    	    	

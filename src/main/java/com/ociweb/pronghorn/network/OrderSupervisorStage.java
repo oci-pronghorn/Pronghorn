@@ -44,7 +44,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private final int channelBitsMask;
     private final boolean isTLS;
     
-
+    private final long contextFieldId;
     
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
  
@@ -102,8 +102,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.isTLS = coordinator.isTLS;
         this.socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         
+        ServerConnectionStruct conStruct = coordinator.connectionStruct();
         
-        
+        contextFieldId = null==conStruct? -1 :
+        		 			conStruct.registry.fieldLookupByIdentity(
+        		                                 ServerConnectionStruct.connectionFields.context,
+        		                                 conStruct.connectionStructId);
+                
         this.dataToSend = inputPipes;
         assert(outgoingPipes.length>0);
         
@@ -564,9 +569,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 
 			 connectionDataReader = con.connectionDataReader;
 			 ChannelReader reader = connectionDataReader.beginRead();
-			 if (null!=reader) {
+			 if (null!=reader && contextFieldId>=0) {
 				 assert(reader.isStructured()) : "connection data reader must hold structured data";
-				 int origCon = reader.structured().readInt(ServerConnectionStruct.connectionFields.context);
+				 int origCon = reader.structured().readInt(contextFieldId);
 				 requestContext |= origCon;
 				 
 				 //for HTTP echoing headers we know that the headers block comes first

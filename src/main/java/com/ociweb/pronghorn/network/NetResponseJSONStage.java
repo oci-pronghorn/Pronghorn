@@ -94,7 +94,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 			switch (id) {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
-						logger.info("reading response");
+						//logger.info("reading response");
 						
 						long connection = Pipe.takeLong(input);
 						int flags = Pipe.takeInt(input);
@@ -166,7 +166,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					
 				case NetResponseSchema.MSG_CLOSED_10:
 				
-					logger.info("connection closed");
+					//logger.info("connection closed");
 					
 					int meta = Pipe.takeRingByteMetaData(input); //host
 					int len  = Pipe.takeRingByteLen(input); //host
@@ -182,7 +182,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					break;
 				case -1:
 				
-					logger.info("shutdown detected");
+					//logger.info("shutdown detected");
 					
 					Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(input);

@@ -66,9 +66,10 @@ public abstract class BaseConnection {
 	
 	public String toString() {
 		if (null==getEngine()) {
-			return socketChannel.toString()+" id:"+id;
+			return null==socketChannel? "Connection" : socketChannel.toString()+" id:"+id;
 		} else {		
-			return getEngine().getSession().toString()+" "+socketChannel.toString()+" id:"+id;
+			return getEngine().getSession().toString()+" "
+					+ ((null==socketChannel) ? "Connection" : (socketChannel.toString()+" id:"+id));
 		}
 	}
 	
@@ -78,14 +79,16 @@ public abstract class BaseConnection {
 		if (isValid) {
 			isValid = false;
 			try {
-					getSocketChannel().close();
-				} catch (Throwable e) {					
-			    }			
+				 //this call to close will also de-register the selector key
+				 socketChannel.close();
+			
+			} catch (Throwable e) {					
+			}			
 			return true;
 		} 		
 		return false;
 	}
-	
+
 	protected HandshakeStatus closeInboundCloseOutbound(SSLEngine engine) {
 		
 		try {

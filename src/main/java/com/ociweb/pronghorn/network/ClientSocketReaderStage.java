@@ -188,7 +188,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		ClientConnection cc = (ClientConnection)selection.attachment();
 
 		assert(cc.getSelectionKey() == selection);
-		assert(cc.getSocketChannel() == (SocketChannel)selection.channel());
+		assert(cc.getSocketChannel() == (SocketChannel)selection.channel()) : "No match "+cc.getSocketChannel();
 		
 		boolean didWork = false;
 		didWork = processConnection(didWork, cc);

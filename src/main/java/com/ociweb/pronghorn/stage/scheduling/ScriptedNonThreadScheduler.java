@@ -844,7 +844,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					didWorkMonitor, 
 			        shutDownRequestedHere,
 			        inProgressIdx, SLAStart, start,
-			        stages[inProgressIdx]);			
+			        stages[inProgressIdx]);		
+			
 		}
 
 		//given how long this took to run set up the next run cycle.
@@ -885,6 +886,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			ScriptedNonThreadScheduler that, 
 			GraphManager gm, boolean shutDownRequestedHere, long start,
 			final PronghornStage stage) {
+		
 		if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
 				//////////these two are for hang detection
 				that.timeStartedRunningStage = start;
@@ -990,9 +992,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     @Override
     public void shutdown() {
     	
-    	
         if (null!=stages && shutdownRequested.compareAndSet(false, true)) {
-
+        	
         	synchronized(key) {
         		
         		if (null!=sleepETL) {        			
@@ -1018,16 +1019,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         	        }
                 }
             }
-        	
-        	
-        	
+        	        	
             int s = stages.length;
-            while (--s >= 0) {
-                //ensure every non terminated stage gets shutdown called.
-                if (null != stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {
-                    GraphManager.shutdownStage(graphManager, stages[s]);
-                    GraphManager.setStateToShutdown(graphManager, stages[s].stageId);
+            while (--s >= 0) {            
+            	 if (null != stages[s]) {
+            		 //ensure every non terminated stage gets shutdown called.
+            		 if (!GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {
+            			 GraphManager.shutdownStage(graphManager, stages[s]);
+            			 GraphManager.setStateToShutdown(graphManager, stages[s].stageId);
                     //System.err.println("terminated "+stages[s]+"  "+GraphManager.isStageTerminated(graphManager, stages[s].stageId));
+            		 }
                 }
             }
 

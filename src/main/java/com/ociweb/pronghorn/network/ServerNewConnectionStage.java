@@ -67,12 +67,8 @@ public class ServerNewConnectionStage extends PronghornStage{
         this.newClientConnections = newClientConnections;
         
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-        
- //       GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-        //much larger limit since nothing needs this thread back.
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
-        
-        
+
     }
     
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, boolean isTLS) {
@@ -290,6 +286,20 @@ public class ServerNewConnectionStage extends PronghornStage{
 
 	                      long channelId = holder.lookupInsertPosition();
 	              
+	                      if (channelId<0) {
+	                      System.err.println("begin watching..........");
+	                      while (channelId<0) {
+	                    	  try {
+	                    		  Thread.sleep(1);
+	                    	  } catch (InterruptedException e) {
+	                    		  // TODO Auto-generated catch block
+	                    		  e.printStackTrace();
+	                    	  }
+	                    	  channelId = holder.lookupInsertPosition();
+	                      }
+	                      System.err.println("found new connection........");
+	                      }
+	                      
 	                      if (channelId<0) {
 	                    	  long leastUsedConnectionId = (-channelId);
 	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
