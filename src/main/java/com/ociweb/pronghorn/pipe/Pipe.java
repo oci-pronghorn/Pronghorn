@@ -3149,7 +3149,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> int contentRemaining(Pipe<S> pipe) {
         int result = (int)(pipe.slabRingHead.headPos.get() - pipe.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
-        assert(result>=0) : "content remaining must never be negative. problem in pipe "+pipe;
+        assert(result>=0) : "content remaining must never be negative. problem in "+schemaName(pipe)+" pipe "; //do not add pipe.toString since it will be recursive.
         return result;
     }
     

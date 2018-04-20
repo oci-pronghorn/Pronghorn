@@ -170,7 +170,10 @@ public class StructuredWriter {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Integer);
 		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+	
+		//TODO: remove this broken method?
+		//old: DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
