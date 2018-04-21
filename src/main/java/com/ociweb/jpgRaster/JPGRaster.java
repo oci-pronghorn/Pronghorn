@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.nio.file.Files;
-import java.util.HashSet;
+import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.j2r.BMPDumper;
 import com.ociweb.jpgRaster.j2r.InverseDCT;
@@ -31,24 +31,33 @@ public class JPGRaster {
 		String defaultFiles = "";
 		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 
-		HashSet<String> inputFiles = new HashSet<String>();
+		ArrayList<String> inputFiles = new ArrayList<String>();
 		for (String file : inputFilePaths.split(" ")) {
 			if (file.startsWith("./")) {
 				file = file.substring(2);
+				while (file.startsWith("/")) {
+					file = file.substring(1);
+				}
 			}
-			String dir = System.getProperty("user.dir");
-			if (file.startsWith("/")) {
-				dir = file.substring(0, file.lastIndexOf("/"));
+			String userdir = System.getProperty("user.dir");
+			if (!file.startsWith("/")) {
+				file = userdir + "/" + file;
 			}
-			else {
-				dir += "/" + file.substring(0, file.lastIndexOf("/"));
+			String dir = file;
+			while (dir.contains("*") || dir.contains("?")) {
+				dir = dir.substring(0, dir.lastIndexOf("/"));
 			}
-			String glob = "glob:**/" + file;
+			String glob = "glob:" + file;
 			FileMatcher filematcher = new FileMatcher(glob);
 			Files.walkFileTree(Paths.get(dir), filematcher);
 			for (String inputFile : filematcher.files) {
 				if (!inputFile.equals("")) {
-					inputFiles.add(inputFile);
+					if (inputFile.startsWith(userdir)) {
+						inputFiles.add(inputFile.substring(userdir.length() + 1));
+					}
+					else {
+						inputFiles.add(inputFile);
+					}
 				}
 			}
 		}
@@ -109,7 +118,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateDecoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, boolean time) {
+	private static void populateDecoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, boolean time) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -127,7 +136,7 @@ public class JPGRaster {
 		}
 	}
 
-	private static void populateEncoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, boolean time, int quality) {
+	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, boolean time, int quality) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
