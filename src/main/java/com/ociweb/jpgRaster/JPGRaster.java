@@ -29,10 +29,10 @@ public class JPGRaster {
 		boolean encode = hasArg("--encode", "-e", args);
 		
 		String defaultFiles = "";
-		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
+		ArrayList<String> inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 
 		ArrayList<String> inputFiles = new ArrayList<String>();
-		for (String file : inputFilePaths.split(" ")) {
+		for (String file : inputFilePaths) {
 			if (file.startsWith("./")) {
 				file = file.substring(2);
 				while (file.startsWith("/")) {
@@ -44,7 +44,8 @@ public class JPGRaster {
 				file = userdir + "/" + file;
 			}
 			String dir = file;
-			while (dir.contains("*") || dir.contains("?")) {
+			while (dir.contains("*") || dir.contains("?") ||
+				   dir.contains("{") || dir.contains("[")) {
 				dir = dir.substring(0, dir.lastIndexOf("/"));
 			}
 			String glob = "glob:" + file;
@@ -169,9 +170,9 @@ public class JPGRaster {
         return defaultValue;
     }
 	
-	public static String getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
+	public static ArrayList<String> getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
         
-		String tokens = "";
+		ArrayList<String> tokens = new ArrayList<String>();
         for (int i = 0; i < args.length; ++i) {
         	String token = args[i];
             if (longName.equals(token) || shortName.equals(token)) {
@@ -180,12 +181,14 @@ public class JPGRaster {
 	            	if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
 	                    return tokens;
 	                }
-	            	tokens += " " + token.trim();
+	            	tokens.add(token.trim());
             	}
                 return tokens;
             }
         }
-        return defaultValue;
+        tokens.clear();
+        tokens.add(defaultValue);
+        return tokens;
     }
     
 
