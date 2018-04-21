@@ -371,6 +371,7 @@ public class JPGScanner extends PronghornStage {
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
 				System.err.println("Error during scan " + numScans);
+				header.imageData.clear();
 				return false;
 			}
 			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
@@ -834,6 +835,7 @@ public class JPGScanner extends PronghornStage {
 				mcus = new ArrayList<MCU>();
 				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
+					numMCUs = 0;
 					System.err.println("Error - JPG file '" + file + "' invalid");
 					if (inputFiles.size() > 0) {
 						return;
