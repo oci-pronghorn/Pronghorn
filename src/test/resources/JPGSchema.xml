@@ -5,6 +5,7 @@
 		<int32 name="height" id="101"/>
 		<int32 name="width" id="201"/>
 		<string name="filename" id="301"/>
+		<int32 name="final" id="401"/>
 	</template>
 	
 	<template name="ColorComponentMessage" id="2">

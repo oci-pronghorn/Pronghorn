@@ -65,6 +65,7 @@ public class HuffmanDecoder {
 	}
 	
 	static Header header;
+	static boolean progressive;
 	static BitReader b;
 	static ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes;
 	static ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes;
@@ -99,6 +100,20 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
+	private static short getNextSymbol(ArrayList<ArrayList<Integer>> codes,
+									   ArrayList<ArrayList<Short>> symbols) {
+		int currentCode = b.nextBit();
+		for (int i = 0; i < 16; ++i) {
+			for (int j = 0; j < codes.get(i).size(); ++j) {
+				if (currentCode == codes.get(i).get(j)) {
+					return symbols.get(i).get(j);
+				}
+			}
+			currentCode = (currentCode << 1) | b.nextBit();
+		}
+		return -1;
+	}
+	
 	private static boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
 											  ArrayList<ArrayList<Integer>> ACTableCodes,
 											  HuffmanTable DCTable,
@@ -106,200 +121,249 @@ public class HuffmanDecoder {
 											  short[] component,
 											  short previousDC,
 											  Header header) {
-		short large = (short) (1 << header.successiveApproximationLow);
-		short small = (short) ((-1) << header.successiveApproximationLow);
-		
-		int k = header.startOfSelection;
-		
-		if (skips > 0 && (header.successiveApproximationHigh == 0 || k == 0)) {
-			skips -= 1;
-			return true;
-		}
-		
-		// get the DC value for this MCU
-		if (k == 0) {
-			int currentCode = b.nextBit();
-			if (header.successiveApproximationHigh != 0) {
-				component[0] |= currentCode << header.successiveApproximationLow;
+		if (progressive) {
+			int componentsInUse = 0;
+			if (header.colorComponents[0].used) ++componentsInUse;
+			if (header.numComponents > 1) {
+				if (header.colorComponents[1].used) ++componentsInUse;
+				if (header.colorComponents[2].used) ++componentsInUse;
 			}
-			else {
-				boolean found = false;
-				for (int i = 0; i < 16; ++i) {
-					for (int j = 0; j < DCTableCodes.get(i).size(); ++j) {
-						if (currentCode == DCTableCodes.get(i).get(j)) {
-							int length = DCTable.symbols.get(i).get(j);
-							short coeff = (short)b.nextBits(length);
-							if (coeff < (1 << (length - 1))) {
-								coeff -= (1 << length) - 1;
-							}
-							if (header.frameType.equals("Progressive")) {
-								component[0] |= coeff << header.successiveApproximationLow;
-								//component[0] = (short) (coeff << header.successiveApproximationLow);
-							}
-							else {
-								component[0] = coeff;
-							}
-							component[0] += previousDC; // ???
-							//System.out.println("DC Value: " + component[0]);
-							found = true;
-							break;
-						}
-					}
-					if (found) {
-						break;
-					}
-					currentCode = (currentCode << 1) | b.nextBit();
-				}
-				if (!found ) {
+			
+			if (header.startOfSelection > header.endOfSelection) {
+				System.err.println("Error - Bad spectral selection (start greater than end)");
+			}
+			if (header.endOfSelection > 63) {
+				System.err.println("Error - Bad spectral selection (end greater than 63)");
+			}
+			if (header.startOfSelection == 0 && header.endOfSelection != 0) {
+				System.err.println("Error - Bad spectral selection (contains DC and AC)");
+			}
+			if (header.startOfSelection != 0 && componentsInUse != 1) {
+				System.err.println("Error - Bad spectral selection (AC scan contains multiple components)");
+			}
+			if (header.successiveApproximationHigh != 0 &&
+				header.successiveApproximationLow != header.successiveApproximationHigh - 1) {
+				System.err.println("Error - Bad successive approximation");
+			}
+			
+			if (header.startOfSelection == 0 && header.successiveApproximationHigh == 0) {
+				// DC first visit
+				short length = getNextSymbol(DCTableCodes, DCTable.symbols);
+				if (length == -1) {
 					System.err.println("Error - Invalid DC Value");
 					return false;
 				}
+				short coeff = (short)b.nextBits(length);
+				if (coeff == -1) return true;
+				if (length != 0 && coeff < (1 << (length - 1))) {
+					coeff -= (1 << length) - 1;
+				}
+				coeff += previousDC;
+				component[0] = (short) (coeff << header.successiveApproximationLow);
 			}
-			k += 1;
-		}
-		
-		boolean progressive = header.frameType.equals("Progressive");
-		// get the AC values for this MCU
-		boolean tripleBreak = false;
-		for (; k <= header.endOfSelection; ++k) {
-			boolean found = false;
-			int currentCode = b.nextBit();
-			for (int i = 0; i < 16; ++i) {
-				for (int j = 0; j < ACTableCodes.get(i).size(); ++j) {
-					if (currentCode == ACTableCodes.get(i).get(j)) {
-						short decoderValue = ACTable.symbols.get(i).get(j);
-						if (!progressive && decoderValue == 0) {
-							for (; k <= header.endOfSelection; ++k) {
+			else if (header.startOfSelection == 0 && header.successiveApproximationHigh != 0) {
+				// DC refinement
+				component[0] |= b.nextBit() << header.successiveApproximationLow;
+			}
+			else if (header.startOfSelection != 0 && header.successiveApproximationHigh == 0) {
+				// AC first visit
+				if (skips > 0) {
+					--skips;
+					return true;
+				}
+				for (int k = header.startOfSelection; k <= header.endOfSelection; ++k) {
+					short symbol = getNextSymbol(ACTableCodes, ACTable.symbols);
+
+					short numZeroes = (short)((symbol & 0xF0) >> 4);
+					short coeffLength = (short)(symbol & 0x0F);
+
+					if (coeffLength != 0) {
+						for (int l = 0; l < numZeroes && k <= 63; ++l, ++k) {
+							component[JPG.zigZagMap[k]] = 0;
+						}
+						if (!b.hasBits()) {
+							return true;
+						}
+						if (coeffLength > 11) {
+							System.out.println("Error - coeffLength > 11");
+							// try proceeding anyway
+						}
+					
+						if (k == 64) {
+							System.err.println("Error - Zero run-length exceeded MCU");
+							return false;
+						}
+						
+						short coeff = (short)b.nextBits(coeffLength);
+						if (coeff == -1) return true;
+						if (coeff < (1 << (coeffLength - 1))) {
+							coeff -= (1 << coeffLength) - 1;
+						}
+						component[JPG.zigZagMap[k]] = (short) (coeff << header.successiveApproximationLow);
+					}
+					else {
+						if (numZeroes == 15) {
+							for (int l = 0; l < numZeroes && k <= 63; ++l, ++k) {
 								component[JPG.zigZagMap[k]] = 0;
 							}
-							return true; // not really necessary
+							if (k == 64) {
+								System.err.println("Error - Zero run-length exceeded MCU");
+								return false;
+							}
 						}
 						else {
-							short numZeroes = (short)((decoderValue & 0xF0) >> 4);
-							short coeffLength = (short)(decoderValue & 0x0F);
-							short coeff = 0;
-
-							if (progressive && header.successiveApproximationHigh != 0) {
-								if (coeffLength > 0) {
-									if (coeffLength != 1) {
-										System.err.println("Error - Refinement coeffLength not 1");
-									}
-									if (b.nextBit() == 1) {
-										coeff = large;
-									}
-									else {
-										coeff = small;
-									}
-								}
-								else {
-									if (numZeroes != 15) {
-										skips = (1 << numZeroes) - 1;
-										skips += b.nextBits(numZeroes);
-										tripleBreak = true;
-										break;
-									}
-								}
-								for (; k <= header.endOfSelection; ++k) {
-									if (component[JPG.zigZagMap[k]] != 0) {
-										if (b.nextBit() == 1 && (component[JPG.zigZagMap[k]] & large) == 0) {
-											if (component[JPG.zigZagMap[k]] > 0) {
-												component[JPG.zigZagMap[k]] += large;
-											}
-											else {
-												component[JPG.zigZagMap[k]] += small;
-											}
-										}
-									}
-									else {
-										numZeroes -= 1;
-										if (numZeroes < 0) {
-											if (coeff != 0 && k < 64) {
-												component[JPG.zigZagMap[k]] = coeff;
-											}
-											tripleBreak = true;
-											break;
-										}
-									}
-								}
+							skips = (1 << numZeroes) - 1;
+							skips += b.nextBits(numZeroes);
+							break;
+						}
+					}
+				}
+			}
+			else if (header.startOfSelection != 0 && header.successiveApproximationHigh != 0) {
+				// AC refinement
+				final short large = (short) (1 << header.successiveApproximationLow);
+				final short small = (short) ((-1) << header.successiveApproximationLow);
+				int k = header.startOfSelection;
+				if (skips == 0) {
+					for (; k <= header.endOfSelection; ++k) {
+						short symbol = getNextSymbol(ACTableCodes, ACTable.symbols);
+						if (symbol == -1) {
+							System.err.println("Error - Invalid AC Value");
+							return false;
+						}
+						short numZeroes = (short)((symbol & 0xF0) >> 4);
+						short coeffLength = (short)(symbol & 0x0F);
+						short coeff = 0;
+						
+						if (coeffLength != 0) {
+							if (coeffLength != 1) {
+								System.err.println("Error - Invalid AC Value");
+								return false;
 							}
-							else if (progressive && header.successiveApproximationHigh == 0 && coeffLength == 0) {
-								if (numZeroes == 15) {
-									k += 15;
-								}
-								else {
-									skips = (1 << numZeroes) - 1;
-									skips += b.nextBits(numZeroes);
+							switch(b.nextBit()) {
+							case 1:
+								coeff = large;
+								break;
+							case 0:
+								coeff = small;
+								break;
+							default: // -1, data stream is empty
+								return true;
+							}
+						}
+						else {
+							if (numZeroes != 15) {
+								skips = 1 << numZeroes;
+								skips += b.nextBits(numZeroes);
+								break;
+							}
+						}
+						
+						do {
+							if (component[JPG.zigZagMap[k]] != 0) {
+								switch(b.nextBit()) {
+								case 1:
+									if ((component[JPG.zigZagMap[k]] & large) == 0) {
+										if (component[JPG.zigZagMap[k]] >= 0) {
+											component[JPG.zigZagMap[k]] += large;
+										}
+										else {
+											component[JPG.zigZagMap[k]] += small;
+										}
+									}
+									break;
+								case 0:
+									// do nothing
+									break;
+								default: // -1, data stream is empty
 									return true;
 								}
 							}
 							else {
-								for (int l = 0; l < numZeroes; ++l) {
-									component[JPG.zigZagMap[k]] = 0;
-									k += 1;
-								}
-								//k += numZeroes;
-								if (coeffLength > 11){
-									System.out.println("Error - coeffLength > 11");
-								}
-								
-								if (coeffLength != 0) {
-									coeff = (short)b.nextBits(coeffLength);
-									
-									if (coeff < (1 << (coeffLength - 1))) {
-										coeff -= (1 << coeffLength) - 1;
-									}
-									if (header.frameType.equals("Progressive")) {
-										component[JPG.zigZagMap[k]] |= coeff << header.successiveApproximationLow;
-										//component[JPG.zigZagMap[k]] = (short) (coeff << header.successiveApproximationLow);
-									}
-									else {
-										component[JPG.zigZagMap[k]] = coeff;
-									}
+								--numZeroes;
+								if (numZeroes < 0) {
+									break;
 								}
 							}
+							
+							++k;
+						} while (k <= header.endOfSelection);
+						
+						if (k < 64) {
+							component[JPG.zigZagMap[k]] = coeff;
 						}
-						found = true;
-						break;
 					}
 				}
-				if (tripleBreak) {
-					break;
-				}
-				if (found) {
-					break;
-				}
-				currentCode = (currentCode << 1) | b.nextBit();
 			}
-			if (tripleBreak) {
-				break;
-			}
-			if (!found ) {
-				System.err.println("Error - Invalid AC Value: " + currentCode);
+		}
+		else {
+			// baseline decoding
+			// get the DC value for this MCU
+			short length = getNextSymbol(DCTableCodes, DCTable.symbols);
+			if (length == -1) {
+				System.err.println("Error - Invalid DC Value");
 				return false;
 			}
-		}
-		
-		if (skips > 0 && (header.successiveApproximationHigh != 0 && k > 0)) {
-			for (; k <= header.endOfSelection; ++k) {
-				if (component[JPG.zigZagMap[k]] != 0 && b.nextBit() == 1 && (component[JPG.zigZagMap[k]] & large) == 0) {
-					if (component[JPG.zigZagMap[k]] > 0) {
-						component[JPG.zigZagMap[k]] += large;
+			short coeff = (short)b.nextBits(length);
+			if (coeff == -1) return true;
+			if (length != 0 && coeff < (1 << (length - 1))) {
+				coeff -= (1 << length) - 1;
+			}
+			component[0] = coeff;
+			component[0] += previousDC;
+			//System.out.println("DC Value: " + component[0]);
+			
+			// get the AC values for this MCU
+			for (int k = 1; k <= 63; ++k) {
+				short symbol = getNextSymbol(ACTableCodes, ACTable.symbols);
+				if (symbol == -1) {
+					System.err.println("Error - Invalid AC Value");
+					return false;
+				}
+				
+				if (symbol == 0) {
+					for (; k <= 63; ++k) {
+						component[JPG.zigZagMap[k]] = 0;
 					}
-					else {
-						component[JPG.zigZagMap[k]] += small;
+					return true; // not really necessary
+				}
+				else {
+					short numZeroes = (short)((symbol & 0xF0) >> 4);
+					short coeffLength = (short)(symbol & 0x0F);
+					coeff = 0;
+
+					for (int l = 0; l < numZeroes && k <= 63; ++l, ++k) {
+						component[JPG.zigZagMap[k]] = 0;
+					}
+					if (!b.hasBits()) {
+						return true;
+					}
+					if (coeffLength > 11) {
+						System.out.println("Error - coeffLength > 11");
+						// try proceeding anyway
+					}
+					
+					if (coeffLength != 0) {
+						if (k == 64) {
+							System.err.println("Error - Zero run-length exceeded MCU");
+							return false;
+						}
+						
+						coeff = (short)b.nextBits(coeffLength);
+						if (coeff == -1) return true;
+						if (coeff < (1 << (coeffLength - 1))) {
+							coeff -= (1 << coeffLength) - 1;
+						}
+						component[JPG.zigZagMap[k]] = coeff;
 					}
 				}
 			}
-			
-			skips -= 1;
-			return true;
 		}
-		
 		return true;
 	}
 	
 	public static boolean decodeHuffmanData(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
-		if (!b.hasBits()) return false;
+		if (!b.hasBits()) return true;
 		
 		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 		int vertical = header.colorComponents[0].verticalSamplingFactor;
@@ -326,28 +390,28 @@ public class HuffmanDecoder {
 			if (!success) {
 				return false;
 			}
-			previousYDC = mcu1.y[0];
+			previousYDC = (short) (mcu1.y[0] >> header.successiveApproximationLow);
 			
-			if (horizontal == 2) {
+			if (horizontal == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu2.y, previousYDC, header);
 				if (!success) {
 					return false;
 				}
-				previousYDC = mcu2.y[0];
+				previousYDC = (short) (mcu2.y[0] >> header.successiveApproximationLow);
 			}
-			if (vertical == 2) {
+			if (vertical == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu3.y, previousYDC, header);
 				if (!success) {
 					return false;
 				}
-				previousYDC = mcu3.y[0];
+				previousYDC = (short) (mcu3.y[0] >> header.successiveApproximationLow);
 			}
-			if (horizontal == 2 && vertical == 2) {
+			if (horizontal == 2 && vertical == 2 && (header.colorComponents[1].used || header.colorComponents[2].used)) {
 				success = decodeMCUComponent(dcTableCodes, acTableCodes, dcTable, acTable, mcu4.y, previousYDC, header);
 				if (!success) {
 					return false;
 				}
-				previousYDC = mcu4.y[0];
+				previousYDC = (short) (mcu4.y[0] >> header.successiveApproximationLow);
 			}
 		}
 
@@ -368,7 +432,7 @@ public class HuffmanDecoder {
 				if (!success) {
 					return false;
 				}
-				previousCbDC = mcu1.cb[0];
+				previousCbDC = (short) (mcu1.cb[0] >> header.successiveApproximationLow);
 			}
 
 			if (header.colorComponents[2].used) {
@@ -387,7 +451,7 @@ public class HuffmanDecoder {
 				if (!success) {
 					return false;
 				}
-				previousCrDC = mcu1.cr[0];
+				previousCrDC = (short) (mcu1.cr[0] >> header.successiveApproximationLow);
 			}
 		}
 
@@ -396,6 +460,7 @@ public class HuffmanDecoder {
 	
 	public static void beginDecode(Header h) {
 		header = h;
+		progressive = header.frameType.equals("Progressive");
 		b = new BitReader(header.imageData);
 		
 		DCTableCodes = new ArrayList<ArrayList<ArrayList<Integer>>>(2);

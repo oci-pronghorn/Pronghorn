@@ -16,6 +16,7 @@ public class RGBToYCbCr extends PronghornStage {
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	Header header;
 	MCU mcu = new MCU();
@@ -46,6 +47,7 @@ public class RGBToYCbCr extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && PipeReader.tryReadFragment(input)) {
 			
 			int msgIdx = PipeReader.getMsgIdx(input);
@@ -56,6 +58,7 @@ public class RGBToYCbCr extends PronghornStage {
 				header.height = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101);
 				header.width = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201);
 				header.filename = PipeReader.readASCII(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, new StringBuilder()).toString();
+				int last = PipeReader.readInt(input, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401);
 				PipeReader.releaseReadLock(input);
 
 				// write header to pipe
@@ -65,6 +68,7 @@ public class RGBToYCbCr extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401, last);
 					PipeWriter.publishWrites(output);
 				}
 				else {
@@ -122,5 +126,6 @@ public class RGBToYCbCr extends PronghornStage {
 				requestShutdown();
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 }

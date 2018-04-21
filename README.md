@@ -19,7 +19,9 @@ The encoding process is exactly the same as the decoding process but in reverse.
 J2R uses Pronghorn-Pipes for multi-threading and dataflow management to speed up (de)compression and to process many files at once. The decoding/encoding process is split into the 5 major stages and each stage is a separate thread. Data is passed in small chunks from thread to thread, being transformed at every stage.
 
 ## How to use it?
-From the command line, you can specify an input JPG file (or a list of many files) with the `-f` option.
+A runnable JAR file can be downloaded from the Releases tab, or you can compile the source yourself.
+
+From the command line, you can specify an input JPG file (or a space-separated list of many files) with the `-f` option.*
 You can also specify a directory with the `-d` option to process all files in a directory.
 Then it will produce a `.bmp` file with the same name after decompressing the JPG file.
 If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.
@@ -33,6 +35,21 @@ Additionally, you can use the `-q` option to specify the output JPG file quality
 75 is some loss of detail.
 100 is no loss of detail.
 
-## Known Bugs
-Some progressive images (especially progressive images that also use chroma subsampling) can produce wrong output. This will be fixed soon.
+*The `-f` option supports file globbing, such as the following:
+```
+pictures/*.jpg             // all JPGs in pictures/
+pictures/*/*.jpg           // all JPGs in all direct sub-folders of pictures/
+pictures/**/*.jpg          // all JPGs in all sub-folders of pictures/ (recursive)
+pictures/cat*.jpg          // all JPGs in pictures/ beginning with cat
+picutres/cat?.jpg          // all JPGs in pictures/ beginning with cat followed by exactly one more character
+pictures/cat[1-5].jpg      // cat1.jpg, cat2.jpg ... cat5.jpg
+pictures/*.jp{e,}g         // all JPGs in pictures/ ending in .jpg or .jpeg
+{first,second}Folder/*.jpg // all JPGs in firstFolder/ and secondFolder/
 
+```
+Globbing syntax can be used on the filename itself, or any folder along the filepath, or both.
+Filepaths can be absolute or relative.
+Any filepaths that contain spaces must be wrapped in quotes.
+
+## Known Bugs
+Some rarely used JPG metadata options, such as the ICC_PROFILE, are ignored, which can cause the output BMP's color to look slightly wrong.

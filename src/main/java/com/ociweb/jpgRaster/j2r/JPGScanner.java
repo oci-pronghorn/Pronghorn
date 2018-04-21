@@ -13,9 +13,11 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-import java.io.DataInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
 public class JPGScanner extends PronghornStage {
@@ -23,6 +25,7 @@ public class JPGScanner extends PronghornStage {
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
+	public static long timer = 0;
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -46,57 +49,78 @@ public class JPGScanner extends PronghornStage {
 	public Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
 		header.filename = filename;
-		DataInputStream f = new DataInputStream(new FileInputStream(filename));
+		
+		FileInputStream f = new FileInputStream(filename);
+		FileChannel file = f.getChannel();
+		
+		int numBytes = (int)(new File(filename)).length();
+		
+		if (numBytes == 0) {
+			file.close();
+			f.close();
+			throw new IOException();
+		}
+		
+		ByteBuffer b = ByteBuffer.allocate(numBytes);
+		int bytesRead = 0;
+		
+		while(bytesRead < numBytes) {
+			bytesRead += file.read(b);
+		}
+		
+		file.close();
+		f.close();
+		b.flip();
 		
 		// JPG file must begin with 0xFFD8
-		short last = (short)f.readUnsignedByte();
-		short current = (short)f.readUnsignedByte();
+		
+		short last = (short)(b.get() & 0xFF);
+		short current = (short)(b.get() & 0xFF);
+		
 		if (last != 0xFF || current != JPGConstants.SOI) {
 			header.valid = false;
-			f.close();
 			return header;
 		}
 		if (verbose) 
 			System.out.println("Start of Image");
-		last = (short)f.readUnsignedByte();
-		current = (short)f.readUnsignedByte();
+		last = (short)(b.get() & 0xFF);
+		current = (short)(b.get() & 0xFF);
 		
 		while (header.valid) {
 			if (last != 0xFF) {
 				System.err.println("Error - Expected a marker");
 				header.valid = false;
-				f.close();
 				return header;
 			}
 			switch (current) {
 			case JPGConstants.DQT:
-				ReadQuantizationTable(f, header);
+				ReadQuantizationTable(b, header);
 				break;
 			case JPGConstants.SOF0:
 				header.frameType = "Baseline";
-				ReadStartOfFrame(f, header);
+				ReadStartOfFrame(b, header);
 				break;
 			case JPGConstants.SOF1:
 				header.frameType = "Extended Sequential";
-				ReadStartOfFrame(f, header);
+				ReadStartOfFrame(b, header);
 				break;
 			case JPGConstants.SOF2:
 				header.frameType = "Progressive";
-				ReadStartOfFrame(f, header);
+				ReadStartOfFrame(b, header);
 				break;
 			case JPGConstants.SOF3:
 				header.frameType = "Lossless";
-				ReadStartOfFrame(f, header);
+				ReadStartOfFrame(b, header);
 				break;
 			case JPGConstants.DHT:
-				ReadHuffmanTable(f, header);
+				ReadHuffmanTable(b, header);
 				break;
 			case JPGConstants.SOS:
-				ReadStartOfScan(f, header);
+				ReadStartOfScan(b, header);
 				// break out of while loop
 				break;
 			case JPGConstants.DRI:
-				ReadRestartInterval(f, header);
+				ReadRestartInterval(b, header);
 				break;
 			case JPGConstants.APP0:
 			case JPGConstants.APP1:
@@ -114,13 +138,13 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.APP13:
 			case JPGConstants.APP14:
 			case JPGConstants.APP15:
-				ReadAPPN(f, header);
+				ReadAPPN(b, header);
 				break;
 			case JPGConstants.COM:
-				ReadComment(f, header);
+				ReadComment(b, header);
 				break;
 			case 0xFF: // skip
-				current = (short)f.readUnsignedByte();
+				current = (short)(b.get() & 0xFF);
 				break;
 			case JPGConstants.JPG0:
 			case JPGConstants.JPG1:
@@ -140,7 +164,7 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.DHP:
 			case JPGConstants.EXP:
 				// unsupported segments that can be skipped
-				ReadComment(f, header);
+				ReadComment(b, header);
 				break;
 			case JPGConstants.TEM:
 				// unsupported segment with no size
@@ -148,17 +172,14 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.SOI:
 				System.err.println("Error - This JPG contains an embedded JPG; THis is not supported");
 				header.valid = false;
-				f.close();
 				return header;
 			case JPGConstants.EOI:
 				System.err.println("Error - EOI detected before SOS");
 				header.valid = false;
-				f.close();
 				return header;
 			case JPGConstants.DAC:
 				System.err.println("Error - Arithmetic Table mode is not supported");
 				header.valid = false;
-				f.close();
 				return header;
 				// case JPGConstants.SOF4:
 			case JPGConstants.SOF5:
@@ -174,7 +195,6 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.SOF15:
 				System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
 				header.valid = false;
-				f.close();
 				return header;
 			case JPGConstants.RST0:
 			case JPGConstants.RST1:
@@ -186,12 +206,10 @@ public class JPGScanner extends PronghornStage {
 			case JPGConstants.RST7:
 				System.err.println("Error - RSTN detected before SOS");
 				header.valid = false;
-				f.close();
 				return header;
 			default:
 				System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
 				header.valid = false;
-				f.close();
 				return header;
 			}
 			if (current == JPGConstants.SOS) {
@@ -199,57 +217,56 @@ public class JPGScanner extends PronghornStage {
 				break;
 			}
 
-			last = (short)f.readUnsignedByte();
-			current = (short)f.readUnsignedByte();
+			last = (short)(b.get() & 0xFF);
+			current = (short)(b.get() & 0xFF);
 		}
 		if (header.valid) {
 			if (header.frameType.equals("Progressive")) {
+				while (mcus.size() < numMCUs) {
+					mcus.add(new MCU());
+				}
 				int numScans = 0;
-				current = (short)f.readUnsignedByte();
+				current = (short)(b.get() & 0xFF);
 				while (true) {
 					last = current;
-					current = (short)f.readUnsignedByte();
+					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
-							if (verbose) 
+							decodeScan(header, mcus, numScans);
+							if (verbose)
 								System.out.println("End of Image");
 							break;
 						}
 						else if (current == 0x00) {
 							header.imageData.add(last);
 							// advance by a byte, to drop 0x00
-							current = (short)f.readUnsignedByte();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current == JPGConstants.DHT) {
 							if (header.imageData.size() > 0) {
-								if (!decodeScan(header, mcus, numScans)) {
-									return header;
-								}
+								decodeScan(header, mcus, numScans);
 								numScans += 1;
 							}
 							
-							ReadHuffmanTable(f, header);
-							current = (short)f.readUnsignedByte();
+							ReadHuffmanTable(b, header);
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current == JPGConstants.SOS) {
 							if (header.imageData.size() > 0) {
-								if (!decodeScan(header, mcus, numScans)) {
-									return header;
-								}
+								decodeScan(header, mcus, numScans);
 								numScans += 1;
 							}
 							
-							ReadStartOfScan(f, header);
-							current = (short)f.readUnsignedByte();
+							ReadStartOfScan(b, header);
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-							ReadRSTN(f, header);
-							current = (short)f.readUnsignedByte();
+							ReadRSTN(b, header);
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
-							f.close();
 							return header;
 						}
 					}
@@ -259,10 +276,10 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 			else { // if (header.frameType.equals("Baseline")) {
-				current = (short)f.readUnsignedByte();
+				current = (short)(b.get() & 0xFF);
 				while (true) {
 					last = current;
-					current = (short)f.readUnsignedByte();
+					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
 							if (verbose) 
@@ -272,16 +289,15 @@ public class JPGScanner extends PronghornStage {
 						else if (current == 0x00) {
 							header.imageData.add(last);
 							// advance by a byte, to drop 0x00
-							current = (short)f.readUnsignedByte();
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current >= JPGConstants.RST0 && current <= JPGConstants.RST7) {
-							ReadRSTN(f, header);
-							current = (short)f.readUnsignedByte();
+							ReadRSTN(b, header);
+							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
 							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
-							f.close();
 							return header;
 						}
 					}
@@ -291,7 +307,6 @@ public class JPGScanner extends PronghornStage {
 				}
 			}
 		}
-		f.close();
 		
 		if (header.numComponents != 1 && header.numComponents != 3) {
 			System.err.println("Error - " + header.numComponents + " color components given (1 or 3 required)");
@@ -334,114 +349,65 @@ public class JPGScanner extends PronghornStage {
 		MCU mcu4 = null;
 		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 		int vertical = header.colorComponents[0].verticalSamplingFactor;
-		int numMCUs = ((header.width + 7) / 8) * ((header.height + 7) / 8);
 		int numProcessed = 0;
 		while (numProcessed < numMCUs) {
-			if (mcus.size() < numMCUs) {
-				if (horizontal == 1 && vertical == 1) {
-					mcu1 = new MCU();
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcu1 = new MCU();
-					mcu2 = new MCU();
-					mcu3 = new MCU();
-					mcu4 = new MCU();
-				}
+			int pos = numProcessed - (numProcessed % (mcuWidth * 2)) + (numProcessed % (mcuWidth * 2)) / 2;
+			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
+				mcu1 = mcus.get(numProcessed);
 			}
-			else {
-				if (horizontal == 1 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcu1 = mcus.get(numProcessed);
-					mcu2 = mcus.get(numProcessed + 1);
-					mcu3 = mcus.get(numProcessed + 2);
-					mcu4 = mcus.get(numProcessed + 3);
-				}
+			else if (horizontal == 2 && vertical == 1) {
+				mcu1 = mcus.get(numProcessed);
+				mcu2 = mcus.get(numProcessed + 1);
+			}
+			else if (horizontal == 1 && vertical == 2) {
+				mcu1 = mcus.get(pos);
+				mcu3 = mcus.get(pos + mcuWidth);
+			}
+			else if (horizontal == 2 && vertical == 2) {
+				mcu1 = mcus.get(pos);
+				mcu2 = mcus.get(pos + 1);
+				mcu3 = mcus.get(pos + mcuWidth);
+				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
 			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
 				System.err.println("Error during scan " + numScans);
-				// add blank mcus on error to avoid out of bounds errors later
-				while (mcus.size() < numMCUs + ((header.width + 7) / 8)) {
-					mcus.add(new MCU());
-				}
+				header.imageData.clear();
 				return false;
 			}
-			if (mcus.size() < numMCUs) {
-				if (horizontal == 1 && vertical == 1) {
-					mcus.add(mcu1);
-					numProcessed += 1;
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcus.add(mcu1);
-					mcus.add(mcu2);
-					mcus.add(mcu3);
-					mcus.add(mcu4);
-					numProcessed += 4;
-				}
+			if (horizontal == 1 && vertical == 1 || (!header.colorComponents[1].used && !header.colorComponents[2].used)) {
+				mcus.set(numProcessed, mcu1);
+				numProcessed += 1;
 			}
-			else {
-				if (horizontal == 1 && vertical == 1) {
-					mcus.set(numProcessed, mcu1);
-					numProcessed += 1;
-				}
-				else if (horizontal == 2 && vertical == 1) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 1 && vertical == 2) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					numProcessed += 2;
-				}
-				else if (horizontal == 2 && vertical == 2) {
-					mcus.set(numProcessed, mcu1);
-					mcus.set(numProcessed + 1, mcu2);
-					mcus.set(numProcessed + 2, mcu3);
-					mcus.set(numProcessed + 3, mcu4);
-					numProcessed += 4;
-				}
+			else if (horizontal == 2 && vertical == 1) {
+				mcus.set(numProcessed, mcu1);
+				mcus.set(numProcessed + 1, mcu2);
+				numProcessed += 2;
+			}
+			else if (horizontal == 1 && vertical == 2) {
+				mcus.set(pos, mcu1);
+				mcus.set(pos + mcuWidth, mcu3);
+				numProcessed += 2;
+			}
+			else if (horizontal == 2 && vertical == 2) {
+				mcus.set(pos, mcu1);
+				mcus.set(pos + 1, mcu2);
+				mcus.set(pos + mcuWidth, mcu3);
+				mcus.set(pos + mcuWidth + 1, mcu4);
+				numProcessed += 4;
 			}
 		}
 		header.imageData.clear();
 		return true;
 	}
 	
-	private void ReadQuantizationTable(DataInputStream f, Header header) throws IOException {
+	private void ReadQuantizationTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Quantization Tables");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
-			short info = (short)f.readUnsignedByte();
+			short info = (short)(b.get() & 0xFF);
 			QuantizationTable table = new QuantizationTable();
 			table.tableID = (short)(info & 0x0F);
 			
@@ -459,12 +425,12 @@ public class JPGScanner extends PronghornStage {
 			}
 			if (table.precision == 2) {
 				for (int i = 0; i < 64; ++i) {
-					table.table[i] = f.readUnsignedByte() << 8 + f.readUnsignedByte();
+					table.table[i] = (b.get() & 0xFF) << 8 + (b.get() & 0xFF);
 				}
 			}
 			else {
 				for (int i = 0; i < 64; ++i) {
-					table.table[i] = f.readUnsignedByte();
+					table.table[i] = (b.get() & 0xFF);
 				}
 			}
 			header.quantizationTables[table.tableID] = table;
@@ -476,7 +442,7 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private void ReadStartOfFrame(DataInputStream f, Header header) throws IOException {
+	private void ReadStartOfFrame(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents != 0) {
 			System.err.println("Error - Multiple SOFs detected");
 			header.valid = false;
@@ -484,9 +450,9 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (verbose) 
 			System.out.println("Reading Start of Frame");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
-		header.precision = (short)f.readUnsignedByte();
+		header.precision = (short)(b.get() & 0xFF);
 		
 		if (header.precision != 8) {
 			System.err.println("Error - Invalid precision: " + header.precision);
@@ -494,8 +460,8 @@ public class JPGScanner extends PronghornStage {
 			return;
 		}
 		
-		header.height = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
-		header.width = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		header.height = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
+		header.width = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		if (header.height == 0 || header.width == 0) {
 			System.err.println("Error - Invalid dimensions");
@@ -503,19 +469,24 @@ public class JPGScanner extends PronghornStage {
 			return;
 		}
 		
-		header.numComponents = (short)f.readUnsignedByte();
+		header.numComponents = (short)(b.get() & 0xFF);
 		if (header.numComponents == 4) {
 			System.err.println("Error - CMYK color mode not supported");
 			header.valid = false;
 			return;
 		}
+		if (header.numComponents == 0) {
+			System.err.println("Error - Number of color components must not be zero");
+			header.valid = false;
+			return;
+		}
 		for (int i = 0; i < header.numComponents; ++i) {
 			ColorComponent component = new ColorComponent();
-			component.componentID = (short)f.readUnsignedByte();
-			short samplingFactor = (short)f.readUnsignedByte();
+			component.componentID = (short)(b.get() & 0xFF);
+			short samplingFactor = (short)(b.get() & 0xFF);
 			component.horizontalSamplingFactor = (short)((samplingFactor & 0xF0) >> 4);
 			component.verticalSamplingFactor = (short)(samplingFactor & 0x0F);
-			component.quantizationTableID = (short)f.readUnsignedByte();
+			component.quantizationTableID = (short)(b.get() & 0xFF);
 			
 			if (component.componentID == 0) {
 				header.zeroBased = true;
@@ -542,21 +513,35 @@ public class JPGScanner extends PronghornStage {
 			
 			header.colorComponents[component.componentID - 1] = component;
 		}
+
+		mcuWidth = (header.width + 7) / 8;
+		mcuHeight = (header.height + 7) / 8;
+		if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
+			mcuWidth % 2 == 1) {
+			mcuWidth += 1;
+		}
+		if (header.colorComponents[0].verticalSamplingFactor == 2 &&
+			mcuHeight % 2 == 1) {
+			mcuHeight += 1;
+		}
+		numMCUs = mcuWidth * mcuHeight;
+		numProcessed = 0;
+		
 		if (length - 8 - (header.numComponents * 3) != 0) {
 			System.err.println("Error - SOF Invalid");
 			header.valid = false;
 		}
 	}
 	
-	private void ReadHuffmanTable(DataInputStream f, Header header) throws IOException {
+	private void ReadHuffmanTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Huffman Tables");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		length -= 2;
 		while (length > 0) {
 			HuffmanTable table = new HuffmanTable();
-			short info = (short)f.readUnsignedByte();
+			short info = (short)(b.get() & 0xFF);
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
 			/*if (ACTable) {
@@ -575,7 +560,7 @@ public class JPGScanner extends PronghornStage {
 			int allSymbols = 0;
 			short[] numSymbols = new short[16];
 			for (int i = 0; i < 16; ++i) {
-				numSymbols[i] = (short)f.readUnsignedByte();
+				numSymbols[i] = (short)(b.get() & 0xFF);
 				allSymbols += numSymbols[i];
 			}
 			
@@ -588,7 +573,7 @@ public class JPGScanner extends PronghornStage {
 			for (int i = 0; i < 16; ++i) {
 				table.symbols.add(new ArrayList<Short>());
 				for (int j = 0; j < numSymbols[i]; ++j) {
-					table.symbols.get(i).add((short)f.readUnsignedByte());
+					table.symbols.get(i).add((short)(b.get() & 0xFF));
 				}
 			}
 			if (ACTable) {
@@ -605,7 +590,7 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private void ReadStartOfScan(DataInputStream f, Header header) throws IOException {
+	private void ReadStartOfScan(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents == 0) {
 			System.err.println("Error - SOS detected before SOF");
 			header.valid = false;
@@ -613,17 +598,17 @@ public class JPGScanner extends PronghornStage {
 		}
 		if (verbose) 
 			System.out.println("Reading Start of Scan");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		
 		for (int i = 0; i < header.numComponents; ++i) {
 			header.colorComponents[i].used = false;
 		}
 		
-		int numComponents = f.readUnsignedByte();
+		int numComponents = (b.get() & 0xFF);
 		for (int i = 0; i < numComponents; ++i) {
-			short componentID = (short)f.readUnsignedByte();
-			short huffmanTableID = (short)f.readUnsignedByte();
+			short componentID = (short)(b.get() & 0xFF);
+			short huffmanTableID = (short)(b.get() & 0xFF);
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
 			//System.out.println("Component " + componentID);
@@ -647,9 +632,9 @@ public class JPGScanner extends PronghornStage {
 			header.colorComponents[componentID - 1].huffmanDCTableID = huffmanDCTableID;
 			header.colorComponents[componentID - 1].used = true;
 		}
-		header.startOfSelection = (short)f.readUnsignedByte();
-		header.endOfSelection = (short)f.readUnsignedByte();
-		short successiveApproximation = (short)f.readUnsignedByte();
+		header.startOfSelection = (short)(b.get() & 0xFF);
+		header.endOfSelection = (short)(b.get() & 0xFF);
+		short successiveApproximation = (short)(b.get() & 0xFF);
 		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
 		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
 		//System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
@@ -670,43 +655,43 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	private void ReadRestartInterval(DataInputStream f, Header header) throws IOException {
+	private void ReadRestartInterval(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Restart Interval");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
-		header.restartInterval = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		header.restartInterval = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
 			header.valid = false;
 		}
 	}
 	
-	private void ReadRSTN(DataInputStream f, Header header) throws IOException {
+	private void ReadRSTN(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading RSTN");
 		// RSTN has no length
 	}
 	
-	private void ReadAPPN(DataInputStream f, Header header) throws IOException {
+	private void ReadAPPN(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading APPN");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		// all of APPN markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
-			f.readUnsignedByte();
+			b.get();
 		}
 	}
 	
-	private void ReadComment(DataInputStream f, Header header) throws IOException {
+	private void ReadComment(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Comment");
-		int length = (f.readUnsignedByte() << 8) + f.readUnsignedByte();
+		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		//System.out.println("Length: " + (length + 2));
 		// all comment markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
-			f.readUnsignedByte();
+			b.get();
 		}
 	}
 	
@@ -751,6 +736,7 @@ public class JPGScanner extends PronghornStage {
 
 	@Override
 	public void run() {
+		long s = System.nanoTime();
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 			int vertical = header.colorComponents[0].verticalSamplingFactor;
@@ -780,6 +766,7 @@ public class JPGScanner extends PronghornStage {
 			}
 			else {
 				if (header.frameType.equals("Progressive")) {
+					int pos = numProcessed - (numProcessed % (mcuWidth * 2)) + (numProcessed % (mcuWidth * 2)) / 2;
 					if (horizontal == 1 && vertical == 1) {
 						mcu1 = mcus.get(numProcessed);
 					}
@@ -788,14 +775,14 @@ public class JPGScanner extends PronghornStage {
 						mcu2 = mcus.get(numProcessed + 1);
 					}
 					else if (horizontal == 1 && vertical == 2) {
-						mcu1 = mcus.get(numProcessed);
-						mcu2 = mcus.get(numProcessed + 1);
+						mcu1 = mcus.get(pos);
+						mcu3 = mcus.get(pos + mcuWidth);
 					}
 					else if (horizontal == 2 && vertical == 2) {
-						mcu1 = mcus.get(numProcessed);
-						mcu2 = mcus.get(numProcessed + 1);
-						mcu3 = mcus.get(numProcessed + 2);
-						mcu4 = mcus.get(numProcessed + 3);
+						mcu1 = mcus.get(pos);
+						mcu2 = mcus.get(pos + 1);
+						mcu3 = mcus.get(pos + mcuWidth);
+						mcu4 = mcus.get(pos + mcuWidth + 1);
 					}
 				}
 				else {
@@ -848,8 +835,17 @@ public class JPGScanner extends PronghornStage {
 				mcus = new ArrayList<MCU>();
 				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
+					numMCUs = 0;
 					System.err.println("Error - JPG file '" + file + "' invalid");
-					return;
+					if (inputFiles.size() > 0) {
+						return;
+					}
+					else if (verbose) 
+						System.out.println("All input files read.");
+					header = new Header();
+					header.width = 0;
+					header.height = 0;
+					header.valid = false;
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
@@ -858,7 +854,11 @@ public class JPGScanner extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401, (inputFiles.size() == 0 ? 1 : 0));
 					PipeWriter.publishWrites(output);
+					if (!header.valid) {
+						return;
+					}
 				}
 				else {
 					System.err.println("JPG Scanner requesting shutdown");
@@ -913,18 +913,6 @@ public class JPGScanner extends PronghornStage {
 				if (header.frameType.equals("Baseline")) {
 					HuffmanDecoder.beginDecode(header);
 				}
-				mcuWidth = (header.width + 7) / 8;
-				mcuHeight = (header.height + 7) / 8;
-				if (header.colorComponents[0].horizontalSamplingFactor == 2 &&
-					((header.width - 1) / 8 + 1) % 2 == 1) {
-					mcuWidth += 1;
-				}
-				if (header.colorComponents[0].verticalSamplingFactor == 2 &&
-					((header.height - 1) / 8 + 1) % 2 == 1) {
-					mcuHeight += 1;
-				}
-				numMCUs = mcuWidth * mcuHeight;
-				numProcessed = 0;
 			}
 			catch (IOException e) {
 				System.err.println("Error - Unknown error reading file '" + file + "'");
@@ -934,13 +922,14 @@ public class JPGScanner extends PronghornStage {
 					System.out.println("All input files read.");
 			}
 		}
+		timer += (System.nanoTime() - s);
 	}
 	
 	/*public static void main(String[] args) {
 		Header header = null;
 		try {
 			ArrayList<MCU> mcus = new ArrayList<MCU>();
-			header = ReadJPG("test_jpgs/earth_progressive.jpg", mcus);
+			header = new JPGScanner(new GraphManager(), null, true).ReadJPG("test_jpgs/earth_progressive.jpg", mcus);
 			if (header != null && header.valid) {
 				System.out.println("DQT============");
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
@@ -1017,10 +1006,6 @@ public class JPGScanner extends PronghornStage {
 			else {
 				System.err.println("Error - Not a valid JPG file");
 			}
-		} catch(FileNotFoundException e) {
-			System.err.println("Error - JPG file not found");
-		} catch (EOFException e) {
-			System.err.println("Error - File ended early");
 		} catch(IOException e) {
 			System.err.println("Error - Unknown error reading JPG file");
 		}

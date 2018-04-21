@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.nio.file.Files;
-import java.util.HashSet;
+import java.util.ArrayList;
 
 import com.ociweb.jpgRaster.j2r.BMPDumper;
 import com.ociweb.jpgRaster.j2r.InverseDCT;
@@ -25,19 +25,40 @@ public class JPGRaster {
 	public static void main(String[] args) throws IOException {
 		
 		boolean verbose = hasArg("--verbose", "-v", args);
+		boolean time = hasArg("--time", "-t", args);
 		boolean encode = hasArg("--encode", "-e", args);
 		
 		String defaultFiles = "";
-		String inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
+		ArrayList<String> inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
 
-		HashSet<String> inputFiles = new HashSet<String>();
-		for (String file : inputFilePaths.split(" ")) {
-			String glob = "glob:**/" + file;
+		ArrayList<String> inputFiles = new ArrayList<String>();
+		for (String file : inputFilePaths) {
+			if (file.startsWith("./")) {
+				file = file.substring(2);
+				while (file.startsWith("/")) {
+					file = file.substring(1);
+				}
+			}
+			String userdir = System.getProperty("user.dir");
+			if (!file.startsWith("/")) {
+				file = userdir + "/" + file;
+			}
+			String dir = file;
+			while (dir.contains("*") || dir.contains("?") ||
+				   dir.contains("{") || dir.contains("[")) {
+				dir = dir.substring(0, dir.lastIndexOf("/"));
+			}
+			String glob = "glob:" + file;
 			FileMatcher filematcher = new FileMatcher(glob);
-			Files.walkFileTree(Paths.get(System.getProperty("user.dir")), filematcher);
+			Files.walkFileTree(Paths.get(dir), filematcher);
 			for (String inputFile : filematcher.files) {
 				if (!inputFile.equals("")) {
-					inputFiles.add(inputFile);
+					if (inputFile.startsWith(userdir)) {
+						inputFiles.add(inputFile.substring(userdir.length() + 1));
+					}
+					else {
+						inputFiles.add(inputFile);
+					}
 				}
 			}
 		}
@@ -58,7 +79,7 @@ public class JPGRaster {
 		}
 		
 		if (inputFiles.size() == 0 || hasArg("--help", "-h", args)) {
-			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -p port ]");
+			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -t ] [ -p port ]");
 			return;
 		}
 		
@@ -75,10 +96,10 @@ public class JPGRaster {
 				}
 			}
 			catch (Exception e) {}
-			populateEncoderGraph(gm, inputFiles, verbose, quality);
+			populateEncoderGraph(gm, inputFiles, verbose, time, quality);
 		}
 		else {
-			populateDecoderGraph(gm, inputFiles, verbose);
+			populateDecoderGraph(gm, inputFiles, verbose, time);
 		}
 		
 		String defaultPort = "";
@@ -98,7 +119,7 @@ public class JPGRaster {
 	}
 
 
-	private static void populateDecoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose) {
+	private static void populateDecoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, boolean time) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -109,14 +130,14 @@ public class JPGRaster {
 		new InverseQuantizer(gm, pipe1, pipe2, verbose);
 		new InverseDCT(gm, pipe2, pipe3, verbose);
 		new YCbCrToRGB(gm, pipe3, pipe4, verbose);
-		new BMPDumper(gm, pipe4, verbose);
+		new BMPDumper(gm, pipe4, verbose, time);
 		
 		for (String file : inputFiles) {
 			scanner.queueFile(file);
 		}
 	}
 
-	private static void populateEncoderGraph(GraphManager gm, HashSet<String> inputFiles, boolean verbose, int quality) {
+	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, boolean time, int quality) {
 		
 		Pipe<JPGSchema> pipe1 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe2 = JPGSchema.instance.newPipe(500, 200);
@@ -127,7 +148,7 @@ public class JPGRaster {
 		new RGBToYCbCr(gm, pipe1, pipe2, verbose);
 		new ForwardDCT(gm, pipe2, pipe3, verbose);
 		new Quantizer(gm, pipe3, pipe4, verbose, quality);
-		new HuffmanEncoder(gm, pipe4, verbose, quality);
+		new HuffmanEncoder(gm, pipe4, verbose, time, quality);
 		
 		for (String file : inputFiles) {
 			scanner.queueFile(file);
@@ -149,9 +170,9 @@ public class JPGRaster {
         return defaultValue;
     }
 	
-	public static String getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
+	public static ArrayList<String> getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
         
-		String tokens = "";
+		ArrayList<String> tokens = new ArrayList<String>();
         for (int i = 0; i < args.length; ++i) {
         	String token = args[i];
             if (longName.equals(token) || shortName.equals(token)) {
@@ -160,12 +181,14 @@ public class JPGRaster {
 	            	if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
 	                    return tokens;
 	                }
-	            	tokens += " " + token.trim();
+	            	tokens.add(token.trim());
             	}
                 return tokens;
             }
         }
-        return defaultValue;
+        tokens.clear();
+        tokens.add(defaultValue);
+        return tokens;
     }
     
 
