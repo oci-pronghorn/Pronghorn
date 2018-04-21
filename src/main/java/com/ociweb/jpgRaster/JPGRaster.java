@@ -33,9 +33,19 @@ public class JPGRaster {
 
 		HashSet<String> inputFiles = new HashSet<String>();
 		for (String file : inputFilePaths.split(" ")) {
+			if (file.startsWith("./")) {
+				file = file.substring(2);
+			}
+			String dir = System.getProperty("user.dir");
+			if (file.startsWith("/")) {
+				dir = file.substring(0, file.lastIndexOf("/"));
+			}
+			else {
+				dir += "/" + file.substring(0, file.lastIndexOf("/"));
+			}
 			String glob = "glob:**/" + file;
 			FileMatcher filematcher = new FileMatcher(glob);
-			Files.walkFileTree(Paths.get(System.getProperty("user.dir")), filematcher);
+			Files.walkFileTree(Paths.get(dir), filematcher);
 			for (String inputFile : filematcher.files) {
 				if (!inputFile.equals("")) {
 					inputFiles.add(inputFile);
