@@ -210,6 +210,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 				hasRoomForMore = false;//if any one is blocked go work elsewhere.
 			}
 		} else {
+			pendingSelections--;
 			doneSelectors.add(selection);//if null socket this was decomposed already
 		}
 		
@@ -258,7 +259,8 @@ public class ClientSocketReaderStage extends PronghornStage {
         	////////////        	
             pendingSelections = selector.selectNow();
 
-        //    logger.info("pending new selections {} ",pendingSelections);
+            ///logger.info("pending new selections {} keys {}",pendingSelections,selector.keys().size());
+        
             return pendingSelections > 0;
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
