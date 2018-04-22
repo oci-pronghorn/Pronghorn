@@ -252,13 +252,10 @@ public class HTTPClientUtil {
 		HeaderUtil.writeHeaderEnding(activeWriter, true, (long) 0);  
 		
 		int msgLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-	
 		
 		Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		Pipe.publishWrites(outputPipe);
-		
-		
-	
+
 	}
 
 }

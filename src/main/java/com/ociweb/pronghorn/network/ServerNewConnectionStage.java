@@ -278,7 +278,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                     
 	                	  //ServerCoordinator.acceptConnectionStart = now;
 	                	  
-	                      if (null!=newClientConnections && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+	                      if (null!=newClientConnections 
+	                    	  && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
 	                    	  return;
 	                      }
 	
@@ -287,17 +288,19 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                      long channelId = holder.lookupInsertPosition();
 	              
 	                      if (channelId<0) {
-	                      System.err.println("begin watching..........");
-	                      while (channelId<0) {
-	                    	  try {
-	                    		  Thread.sleep(1);
-	                    	  } catch (InterruptedException e) {
-	                    		  // TODO Auto-generated catch block
-	                    		  e.printStackTrace();
-	                    	  }
-	                    	  channelId = holder.lookupInsertPosition();
-	                      }
-	                      System.err.println("found new connection........");
+		                  //    System.err.println("begin watching..........");
+		                      while (channelId<0) {
+		                    	  try {
+		                    		  Thread.sleep(1);
+		                    	  } catch (InterruptedException e) {
+		                    		  // TODO Auto-generated catch block
+		                    		  e.printStackTrace();
+		                    	  }
+		                    	  channelId = holder.lookupInsertPosition();
+		                      }
+		                  //    System.err.println("found new connection........");
+	                      } else {
+	                    	//  System.err.println("found new postion.....");
 	                      }
 	                      
 	                      if (channelId<0) {
@@ -341,7 +344,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 								  sslEngine.beginHandshake();
 	                          }
 							  							  
-							  //logger.info("{} new server connection attached for new id {} ",ok,channelId);
+							 // logger.info("new server connection attached for new id {} ",channelId);
 							  
 	                          holder.setValue(channelId, 
 	                        		  new ServerConnection(sslEngine, 

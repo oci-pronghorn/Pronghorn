@@ -172,7 +172,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		} else {
 	    			Pipe<NetPayloadSchema> localInput = input[x];
 	 
-	    			//logger.info("write the channel");
 	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
 	    			
 	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
@@ -239,7 +238,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 			loadPayloadForXmit(activeMessageId, idx);
 
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
+			
 			//logger.info("server side disconnecting");		
+			
 			final long channelId = Pipe.takeLong(input[idx]);
 
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
@@ -254,6 +255,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        assert(null!=serverConnection);
 		        if (null!=serverConnection) {
 		        	serverConnection.close();
+		        	serverConnection.decompose();
 		        }
 		    }	                    
 		    

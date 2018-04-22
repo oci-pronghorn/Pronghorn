@@ -98,6 +98,15 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
+	public void removeConnection(long id) {
+		releaseResponsePipeLineIdx(id);
+		ClientConnection oldConnection = connections.remove(id);
+		if (null != oldConnection) {
+			//only decompose after removal.
+			oldConnection.decompose();
+		}
+	}
+	
 	public BaseConnection connectionForSessionId(long hostId) {
 		ClientConnection response = connections.get(hostId);
 		
@@ -398,6 +407,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					//logger.info("is registered {}",cc);
 					return cc;
 				}
+				//logger.info("doing register");
+				
 				//not yet done so ensure it is marked.
 				//cc.isFinishedConnection = false;
 				//not registered
@@ -433,7 +444,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		//logger.info("doRegister");
 		try {
 			if (!cc.isFinishConnect()) {				
-				//	logger.info("unable to finish connect, must try again later {}",cc);	
+				//logger.info("unable to finish connect, must try again later {}",cc);	
 				
 				cc = null; //try again later
 			} else {

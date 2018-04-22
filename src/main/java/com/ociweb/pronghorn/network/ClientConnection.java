@@ -405,7 +405,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 	public boolean isValid() {
 
-		if (!getSocketChannel().isConnected()) {
+		SocketChannel socketChannel = getSocketChannel();
+		if (!socketChannel.isConnected()) {
 			if (logDisconnects) {
 				logger.info("{}:{} session {} is no longer connected. It was opened {} ago.",
 						host,port,sessionId,

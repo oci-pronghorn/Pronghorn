@@ -164,14 +164,23 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean writeDisconnect(Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
 		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
-		if (null==cc || !cc.isValid()) {
-			return false;//do not consume, do this later.
-		}
 				
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);
 		assert(chnl==channelId);
-		cc.beginDisconnect();//do not close or we will not get any response
+		if (cc!=null) {
+			if (cc.isValid()) {
+				//only begin disconnect if not already disconnected
+				cc.beginDisconnect();//do not close or we will not get any response
+			} else {
+				//already closed so remove value
+				ccm.removeConnection(channelId);
+			}
+		} else {
+			//already closed so remove value
+			ccm.removeConnection(channelId);//already closed so remove if possible
+		}
+		
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 		Pipe.releaseReadLock(pipe);
 		return true;
@@ -217,6 +226,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	private boolean writePlain(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
+		
 		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
 		if (null==cc || !cc.isValid()) {
 			return false;//do not consume, do this later.
@@ -257,7 +267,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 
-		checkBuffers(i, pipe, cc.socketChannel);
+		checkBuffers(i, pipe, cc.getSocketChannel());
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
@@ -321,7 +331,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
-		checkBuffers(i, pipe, cc.socketChannel);
+		checkBuffers(i, pipe, cc.getSocketChannel());
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel

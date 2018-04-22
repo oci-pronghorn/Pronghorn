@@ -224,9 +224,11 @@ public class ServiceObjectHolder<T> {
         long maxPeriod = 0;
         long maxPeriodIdx = -1;
 
+       // System.err.println("service holder mask "+data.mask+" from "+localSequenceCount+" to "+hardStop);
+        
         final long now = System.currentTimeMillis();
         do {
-        	
+
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
                 long lookupCounts = data.serviceObjectLookupCounts[modIdx];                
@@ -235,29 +237,28 @@ public class ServiceObjectHolder<T> {
                 //we want to pick the one with the largest call period
                 //and with a live time > 1
                 //this gives us the one least frequently used over time
-                
-                
-                	if (liveTime >= maxPeriod) {
-                		maxPeriod = liveTime;
-                		maxPeriodIdx = index;
-                	}                	
-               
+                                
+            	if (liveTime >= maxPeriod) {
+            		maxPeriod = liveTime;
+            		maxPeriodIdx = index;
+            	}
             }
             
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
+          //  System.err.println("checking "+modIdx+"  "+index+"  "+data.serviceObjectValues[modIdx]);
         
             if (index==hardStop && keepLooking(data.serviceObjectValues[modIdx])) {
             	assert(-1!=maxPeriodIdx);
-                 	
+            	
             	sequenceCounter = maxPeriodIdx;//where we left off
             	//do not grow instead return the negative value of the least used object
             	return -maxPeriodIdx;
             }
             
+            
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (keepLooking(data.serviceObjectValues[modIdx]));
-    
         
         sequenceCounter = localSequenceCount;//where we left off
 

@@ -125,33 +125,37 @@ public class ClientSocketReaderStage extends PronghornStage {
     	
         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
 
+        	
            Set<SelectionKey> selectedKeys = selector.selectedKeys();
-
-           assert(selectedKeys.size()>0);	            
-           
-           doneSelectors.clear();
-	
-           hasRoomForMore = true;
-           
-           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-           if (null!=keyMap) {
-        	   keyMap.forEach(keyVisitor);
-           } else {
-        	   selectedKeys.forEach(selectionKeyAction);
+           if (selectedKeys.size()>0) {
+	           //logger.info("reading data from the selector "+selectedKeys.size());
+	           
+	           doneSelectors.clear();
+		
+	           hasRoomForMore = true;
+	           
+	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	           if (null!=keyMap) {
+	        	   keyMap.forEach(keyVisitor);
+	           } else {
+	        	   selectedKeys.forEach(selectionKeyAction);
+	           }
+	           
+			   removeDoneKeys(selectedKeys);
+			      
+			   if (!hasRoomForMore) {
+				   return;
+			   }
+			   
            }
-           
-		   removeDoneKeys(selectedKeys);
-		      
-		   if (!hasRoomForMore) {
-			   return;
-		   }
 		   
         }
         
         /////////////////////////////////////////////
         //scan for abandoned connections periodically
         /////////////////////////////////////////////
-        if ((++iteration&0x3FF)==0) {
+        //This code still not working??
+        if (false && (++iteration&0x3FF)==0) {
         	//only run when we have no data waiting
         	if (maxIterations>0) {
         	        	long now = System.nanoTime();
@@ -168,8 +172,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 							int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
 							Pipe.addLongValue(abandonded.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
 							Pipe.confirmLowLevelWrite(pipe, size);
-							Pipe.publishWrites(pipe);        	        		
-        	        		coordinator.releaseResponsePipeLineIdx(abandonded.getId());        	        	
+							Pipe.publishWrites(pipe);    
+							
+							coordinator.removeConnection(abandonded.getId());
+        	        		        	        		
         	        	}
         	        	
         	        	long duration = System.nanoTime()-now;
@@ -184,19 +190,27 @@ public class ClientSocketReaderStage extends PronghornStage {
 	boolean hasRoomForMore = true;
 	private void processSelection(SelectionKey selection) {
 		assert isReadOpsOnly(selection) : "only expected read"; 
-				
+			
+		//System.err.println("processSelection");
+		
 		ClientConnection cc = (ClientConnection)selection.attachment();
 
 		assert(cc.getSelectionKey() == selection);
-		assert(cc.getSocketChannel() == (SocketChannel)selection.channel()) : "No match "+cc.getSocketChannel();
 		
-		boolean didWork = false;
-		didWork = processConnection(didWork, cc);
-		if (didWork) {
-			pendingSelections--;
-			doneSelectors.add(selection);
+		if (null!=cc.getSocketChannel()) {
+			assert(cc.getSocketChannel() == (SocketChannel)selection.channel()) : "No match "+cc.getSocketChannel();
+			
+			boolean didWork = false;
+			didWork = processConnection(didWork, cc);
+			if (didWork) {
+				pendingSelections--;
+				doneSelectors.add(selection);
+			} else {
+				//System.err.println("skipped");
+				hasRoomForMore = false;//if any one is blocked go work elsewhere.
+			}
 		} else {
-			hasRoomForMore = false;//if any one is blocked go work elsewhere.
+			doneSelectors.add(selection);//if null socket this was decomposed already
 		}
 		
 	}
@@ -259,7 +273,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		boolean doRead = true;
 		if (coordinator.isTLS) {
 			
-			HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
+			 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 			
 		            Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.

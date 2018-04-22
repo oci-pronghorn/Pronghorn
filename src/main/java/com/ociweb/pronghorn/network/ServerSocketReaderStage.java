@@ -193,10 +193,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	private boolean processSelection(SelectionKey selection) {
 		assert isRead(selection) : "only expected read"; 
 		SocketChannel socketChannel = (SocketChannel)selection.channel();
-         
-		//logger.info("is blocking {} open {} ", selection.channel().isBlocking(),socketChannel.isOpen());
-		
-		
+    
 		//get the context object so we know what the channel identifier is
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();

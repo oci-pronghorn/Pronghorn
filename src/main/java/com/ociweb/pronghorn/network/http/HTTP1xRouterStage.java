@@ -1217,7 +1217,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 		
 		switch(len) {
 		    case 'l': //close
-		    	logger.warn("Connection: {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
+		    	//logger.warn("Server got connection: {} from client.",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
 		        requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;                        
 		        break;
 		    case 'e': //keep-alive

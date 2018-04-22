@@ -239,9 +239,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							if (null != cc) {
 								
 								//publish closed to notify those down stream
-								publishCloseMessage((int)cc.readDestinationRouteId()
-										, cc.host
-										, cc.port);
+								Pipe<NetResponseSchema> targetPipe1 = output[(int)cc.readDestinationRouteId()];
+								
+								publishCloseMessage(cc.host, cc.port, targetPipe1);
 							}
 							positionMemoData[lenIdx] = 0;//wipe out existing data
 							positionMemoData[stateIdx] = 0;
@@ -296,7 +296,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									if (null!=cc) {
 										badServerSoCloseConnection(memoIdx, cc);
 										//publish closed to notify those down stream
-										publishCloseMessage((int)cc.readDestinationRouteId(), cc.host, cc.port);
+										Pipe<NetResponseSchema> targetPipe1 = output[(int)cc.readDestinationRouteId()];
+										
+										publishCloseMessage(cc.host, cc.port, targetPipe1);
 									}
 								}
 							}
@@ -659,7 +661,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
-									foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
+									foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
 									state = positionMemoData[stateIdx];
 																
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -753,7 +755,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										
 										assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
-				                    	foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
+				                    	foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
 										
 										break;
 									} else {
@@ -869,7 +871,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											
 						assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
-					    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0);
+					    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe);
 				
 					    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
 					    
@@ -908,9 +910,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return foundEnd;
 	}
 
-	private void publishCloseMessage(int destRouteId, CharSequence host, int port) {
-		Pipe<NetResponseSchema> targetPipe = output[destRouteId];
-		
+	private void publishCloseMessage(CharSequence host, int port, Pipe<NetResponseSchema> targetPipe) {
 		Pipe.presumeRoomForWrite(targetPipe);
 		int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
 		Pipe.addUTF8(host, targetPipe);
@@ -1087,7 +1087,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return true;
 	}
 
-	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {
+	private int finishAndRelease(int i, final int stateIdx, 
+			                     Pipe<NetPayloadSchema> pipe, 
+			                     ClientConnection cc, int nextState,
+			                     Pipe<NetResponseSchema> targetPipe) {
 
 		assert(positionMemoData[stateIdx]>=5);
 		
@@ -1097,16 +1100,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		    Pipe.contentRemaining(pipe)==0) {	//added second rule to minimize release messages.
 			
 			foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
-			
-			//the server requested a close and we are now done reading the body so we need to close.
-			if (closeRequested[i]  //server side sent us "close"
-			    || cc.isDisconnecting() //we sent server "close" and now have response
-			    ) {
-				//publish closed to notify those down stream
-				publishCloseMessage((int)cc.readDestinationRouteId(), cc.host, cc.port);
-				cc.close();
-			}
-			
+						
 			assert(0 == positionMemoData[stateIdx]) : "Ack must be sent to release pipe, did not happen for "+cc.id;
 	
 
@@ -1121,6 +1115,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			cc.recordArrivalTime(temp);
 			arrivalTimeAtPosition[i] = 0;
 		}
+				
+		//the server requested a close and we are now done reading the body so we need to close.
+		if (closeRequested[i]  //server side sent us "close"
+		   //DO NOT look at cc for the state since we have multiple messages in flight
+		    ) {
+			logger.info("Client got close request so do it and push down stream");				
+			publishCloseMessage(cc.host, cc.port, targetPipe);
+			//close this connection but do not remove it yet.		
+			cc.close();			
+		}		
+		
 		
 		return foundWork;
 	}

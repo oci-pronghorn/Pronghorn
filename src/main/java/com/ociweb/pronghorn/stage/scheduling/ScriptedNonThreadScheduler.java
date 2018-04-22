@@ -769,8 +769,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			//this is to support deep sleep when it has been a very long time without work.
 			
 			//System.out.println("zzz...");
-						
-			while (noWorkCounter > deepSleepCycleLimt) {
+				
+			int maxIterations = 20;//this is limited or we may be sleeping during shutdown request.
+			while (--maxIterations>=0 && (noWorkCounter > deepSleepCycleLimt)) {
 				try {
 					Thread.sleep(humanLimitNS/1_000_000);
 				} catch (InterruptedException e) {
@@ -778,10 +779,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					break;
 				}
 				//we stay in this loop until we find real work needs to be done
+				//but not too long or we will not be able to shutdown.
 				if (!accumulateWorkHistory()) {
 					break;
-				}
+				}	
 			}	
+			
 		}
 	}
 

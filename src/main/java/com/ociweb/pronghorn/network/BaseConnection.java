@@ -17,7 +17,7 @@ public abstract class BaseConnection {
 	static final Logger logger = LoggerFactory.getLogger(BaseConnection.class);
 
 	private SSLEngine engine;
-	protected final SocketChannel socketChannel;
+	private SocketChannel socketChannel;
 	public final long id;
 	protected boolean isValid = true;
 
@@ -42,6 +42,19 @@ public abstract class BaseConnection {
 		this.socketChannel = socketChannel;
 		this.id = id;
 		
+	}
+	
+	/**
+	 * Only called upon release. 
+	 * This helps GC faster and eliminates the loop caused by this Connection held by 
+	 * the Selector.
+	 */
+	public void decompose() {
+		//new Exception("decompose connection").printStackTrace();
+		socketChannel = null;
+		engine = null;
+		connectionDataWriter = null;
+		connectionDataReader = null;
 	}
 		
 	public ChannelWriterController connectionDataWriter() {		
@@ -116,8 +129,6 @@ public abstract class BaseConnection {
 	public long getId() {
 		return this.id;
 	}
-	
-
 
 	public SocketChannel getSocketChannel() {
 		return socketChannel;

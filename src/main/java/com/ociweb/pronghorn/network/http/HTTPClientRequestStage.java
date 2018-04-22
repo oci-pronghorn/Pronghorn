@@ -141,6 +141,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private boolean buildClientRequest(Pipe<ClientHTTPRequestSchema> requestPipe) {
 		boolean didWork = false;
 		//This check is required when TLS is in use.
+		//also must ensure connection is open before taking messages.
 		if (isConnectionReadyForUse(requestPipe) ){
 			didWork = true;	        
 			
@@ -254,6 +255,14 @@ public class HTTPClientRequestStage extends PronghornStage {
  		if (null!=activeConnection && activeConnection.getId()==connectionId && activeConnection.isValid()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
+ 			
+ 			if (null!=activeConnection) {
+ 				//this is the only point where we can decompose since 
+ 				//we are creating a new active connection 				
+ 				ccm.removeConnection(activeConnection.id);
+ 			}
+ 			
+ 			
  			if (0==port) {
  				int routeId = Pipe.peekInt(requestPipe, 1);
  	 			userId   = Pipe.peekInt(requestPipe,    2); //user id always after the msg idx
@@ -275,9 +284,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (null != activeConnection) {
 			
 			if (activeConnection.isBusy()) {
+				//logger.info("waiting for server to respond to connection");
 				return false;//must try again later when the server has responded.
 			}
 			
+			
+			//logger.info("finish new connect {} ",activeConnection.isFinishConnect());
 			
 			assert(activeConnection.isFinishConnect());
 			
