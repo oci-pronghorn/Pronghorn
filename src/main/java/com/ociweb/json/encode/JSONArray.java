@@ -141,8 +141,7 @@ public abstract class JSONArray<R, T, P, N> {
         builder.addBuilder(iterator, renderer.builder, accessor);
         return this.childCompleted();
     }
-
-/* TODO: Does this make sense?
+/*
     public P recurseRoot(IterMemberFunction<T, R> accessor) {
         builder.recurseRoot(iterator, accessor);
         return this.childCompleted();

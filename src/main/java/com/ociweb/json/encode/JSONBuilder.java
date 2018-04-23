@@ -9,19 +9,25 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.Appendables;
 
 // TODO: support rational, decimal
-// TODO: implement the primitive type converters, including enums
+// TODO: implement the primitive type converters, or refactor to use lambdas, or delete methods
 // TODO: refactor for duplicate code
+// TODO: determine use case for recursive array and either uncomment/test or delete methods
+// TODO: implement select as an array element
 
-// Maintain no dependencies the public API classes (i.e. JSONObject)
+// Maintain no dependencies to the public API classes (i.e. JSONObject)
 
 class JSONBuilder<R, T> implements StringTemplateScript<T> {
     // Do not store mutable state used during render.
+    // Use ThreadLocal if required.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
     private /*final*/ JSONBuilder<R, R> root;
 
+    // Stored between declaration calls and consumed on use in declaration
     private byte[] declaredMemberName;
+
+    // In order to support tryCase, we need a render state for objects.
     private ThreadLocal<ObjectRenderState> ors;
 
     JSONBuilder() {
@@ -209,7 +215,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-/* TODO: does this make sense?
+/*
     <N> void recurseRoot(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, R> accessor) {
         addBuilder(iterator, root, accessor);
     }
@@ -226,7 +232,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     JSONBuilder<R, T> tryCase() {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = this.declaredMemberName; // Do not consume for other try
         JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
         builder.declaredMemberName = declaredMemberName;
         builder.ors = ors;
@@ -255,7 +261,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void endSelect(IteratorFunction<T, N> iterator, int count, final IterBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
-        // TODO
     }
 
     // Object
