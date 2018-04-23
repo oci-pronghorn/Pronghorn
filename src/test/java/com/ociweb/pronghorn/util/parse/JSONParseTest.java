@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Ignore;
-
-import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Test;
 
 import com.ociweb.json.JSONExtractor;
@@ -16,6 +14,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.util.StringBuilderWriter;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class JSONParseTest {

@@ -1,6 +1,6 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.ByteWriter;
+import com.ociweb.pronghorn.util.ByteWriter;
 
 public class JSONKeywords {
     private static final byte[] True = "true".getBytes();

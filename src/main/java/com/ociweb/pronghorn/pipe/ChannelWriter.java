@@ -4,7 +4,7 @@ import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.OutputStream;
 
-import com.ociweb.json.appendable.AppendableByteWriter;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.ByteConsumer;
 
 public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, AppendableByteWriter {

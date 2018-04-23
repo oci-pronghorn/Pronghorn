@@ -46,8 +46,7 @@ public class PendingReleaseData {
     	}
     	return total;
     }
-    
-    
+
     public static <S extends MessageSchema<S>> void releasePendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
         if (that.pendingReleaseCount>0) {
             int idx = that.pendingReleaseMask & that.pendingReleaseTail++;

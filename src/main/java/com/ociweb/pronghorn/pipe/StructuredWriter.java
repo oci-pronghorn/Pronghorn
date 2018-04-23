@@ -109,9 +109,7 @@ public class StructuredWriter {
 	public ChannelWriter writeBlob(long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Blob);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -124,9 +122,7 @@ public class StructuredWriter {
 	public Appendable writeText(long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Text);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -139,9 +135,7 @@ public class StructuredWriter {
 	public void writeBoolean(boolean value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Boolean);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -149,13 +143,13 @@ public class StructuredWriter {
 		
 		channelWriter.writeBoolean(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeLong(long value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Long);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
@@ -164,16 +158,13 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedLong(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeInt(int value, long fieldId) {
 		
-		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Integer);
-		
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Integer);		
 		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
-	
-		//TODO: remove this broken method?
-		//old: DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
 		
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
@@ -182,14 +173,20 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedInt(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+	}
+
+	//TODO: this is fine for asserts but we need to check this before it happens like the old pub sub struct did.
+	
+	private boolean confirmDataDoesNotWriteOverIndex(long fieldId) {
+		return channelWriter.position()< (Pipe.blobIndexBasePosition(channelWriter.backingPipe)-(4*Pipe.structRegistry(channelWriter.backingPipe)
+				.totalSizeOfIndexes((int)(fieldId>>StructRegistry.STRUCT_OFFSET))));
 	}	
 	
 	public void writeShort(short value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Short);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -197,15 +194,14 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedShort(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}	
 	
 	
 	public void writeByte(int value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Byte);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -213,14 +209,13 @@ public class StructuredWriter {
 		
 		channelWriter.writeByte(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}	
 	
 	public void writeDouble(double value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Double);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -228,14 +223,13 @@ public class StructuredWriter {
 		
 		channelWriter.writeDouble(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeFloat(float value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Float);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -243,14 +237,13 @@ public class StructuredWriter {
 		
 		channelWriter.writeFloat(value);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeRational(long numerator, long denominator, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Rational);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -258,14 +251,13 @@ public class StructuredWriter {
 		
 		channelWriter.writeRational(numerator, denominator);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeDecimal(long m, byte e, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Decimal);
-		
-		DataOutputBlobWriter.structTypeValidation(channelWriter, StructRegistry.extractStructId(fieldId));
-		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 
 				channelWriter.position(), 
@@ -273,6 +265,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeDecimal(m, e);
 		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 
 	public void fullIndexWriteFrom(int indexSizeInBytes, DataInputBlobReader<RawDataSchema> reader) {

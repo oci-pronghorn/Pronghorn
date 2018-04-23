@@ -2802,11 +2802,14 @@ public class Pipe<T extends MessageSchema<T>> {
     	addByteArray(source,0,source.length,pipe);
     }
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> pipe) {
+    	addByteArray(source,sourceIdx,sourceLen, Integer.MAX_VALUE, pipe);
+    }
+    public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, int sourceMask, Pipe<S> pipe) {
 
     	assert(sourceLen>=0);
     	validateVarLength(pipe, sourceLen);
 
-    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, pipe.blobRing, pipe.blobRingHead.byteWorkingHeadPos.value, pipe.blobMask, sourceLen);
+    	copyBytesFromToRing(source, sourceIdx, sourceMask, pipe.blobRing, pipe.blobRingHead.byteWorkingHeadPos.value, pipe.blobMask, sourceLen);
 
     	addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, sourceLen);
         pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value + sourceLen);
@@ -3165,7 +3168,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
-        assert(Pipe.contentRemaining(pipe)>=0); 
+        assert(Pipe.contentRemaining(pipe)>=0) : "value "+Pipe.contentRemaining(pipe); 
         long tail = pipe.slabRingTail.workingTailPos.value;
 		batchedReleasePublish(pipe, 
         		              pipe.blobRingTail.byteWorkingTailPos.value = pipe.blobReadBase, 

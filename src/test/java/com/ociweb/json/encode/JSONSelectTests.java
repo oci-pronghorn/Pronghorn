@@ -1,9 +1,10 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.StringBuilderWriter;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import com.ociweb.pronghorn.util.StringBuilderWriter;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;

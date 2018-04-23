@@ -47,7 +47,7 @@ public final class StructuredReader {
 	
 	
 	public final int fullIndexSizeInBytes() {
-		return 4*Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader));
+		return 4+(4*Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader)));
 	}
 	
 	//set to a position for general reading unless index position is not provided
@@ -306,7 +306,7 @@ public final class StructuredReader {
 	public long readLong(long fieldId) {
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);

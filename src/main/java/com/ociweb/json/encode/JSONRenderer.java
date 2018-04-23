@@ -1,6 +1,6 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.AppendableByteWriter;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
     private boolean locked = false;
