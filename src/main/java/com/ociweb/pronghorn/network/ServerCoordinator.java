@@ -68,7 +68,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//////////////////////////////////////
 	private HTTPHeader[] replicatedHeaders;
 	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
-	private int minInternalInFlightPayloadSize = 16;//must be at least 16 //TODO: add update method
+	private int minInternalInFlightPayloadSize = 32;//TODO: add update method
 	///////////////////////////////////////
 		
 //	public static long acceptConnectionStart;

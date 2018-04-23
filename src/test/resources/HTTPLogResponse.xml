@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    
+     <template name="Response" id="1">
+   		<uInt64 name="Time" id="11"/>   		
+        <uInt64 name="ChannelId"   id="12">
+            <delta/>
+        </uInt64>        
+        <int32 name="Sequence" id="13">
+        </int32>
+        <string name="Head" id="14" charset="unicode"/>
+        <uInt64 name="Duration" id="15"/>
+   		
+   </template>
+
+</templates>

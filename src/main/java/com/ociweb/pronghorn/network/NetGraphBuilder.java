@@ -28,6 +28,8 @@ import com.ociweb.pronghorn.network.module.DotModuleStage;
 import com.ociweb.pronghorn.network.module.ResourceModuleStage;
 import com.ociweb.pronghorn.network.module.SummaryModuleStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.HTTPLogRequestSchema;
+import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -298,7 +300,9 @@ public class NetGraphBuilder {
 	private static void buildHTTPStages(GraphManager graphManager, ServerCoordinator coordinator, ModuleConfig modules,
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet) {
-
+        
+		assert(sendingToNet.length >= coordinator.moduleParallelism()) : "reduce track count since we only have "+sendingToNet.length+" pipes";
+		
 //		logger.info("buildHTTPStages");
 		//logger.info("build http stages");
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
@@ -318,32 +322,46 @@ public class NetGraphBuilder {
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         
-        buildRouters(graphManager, coordinator, releaseAfterParse, 
-        		receivedFromNet, fromModule, toModules, routerConfig,
-				config, false);
-        
-        
-        
-        
-        //logger.info("build http ordering supervisors");
-        buildOrderingSupers(graphManager, coordinator, 
-        		            coordinator.moduleParallelism(), 
-        		            fromModule, 
-        		            sendingToNet);
+		Pipe<HTTPLogRequestSchema>[][] log = new Pipe[coordinator.moduleParallelism()][0];
+		Pipe<HTTPLogResponseSchema>[][] log2 = new Pipe[coordinator.moduleParallelism()][0];
+		
+		Pipe<NetPayloadSchema>[][] perTrackFromNet 
+			= Pipe.splitPipes(coordinator.moduleParallelism(), receivedFromNet);
+		
+		Pipe<NetPayloadSchema>[][] perTrackFromSuper 
+			= Pipe.splitPipes(coordinator.moduleParallelism(), sendingToNet);
+		
+		buildLogging(coordinator,log,log2,perTrackFromNet,perTrackFromSuper);
+				
+		buildRouters(graphManager, coordinator, releaseAfterParse,
+				fromModule, toModules, routerConfig, config,
+				false, log, perTrackFromNet);
+		
+		//logger.info("build http ordering supervisors");
+		buildOrderingSupers(graphManager, coordinator, fromModule, log2, perTrackFromSuper);
         
 	}
 
-	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
-			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
-			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPRequestSchema>[][] toModules,
-			final HTTP1xRouterStageConfig routerConfig, PipeConfig<ServerResponseSchema> config,
-			boolean captureAll) {
+	public static void buildLogging(ServerCoordinator coordinator, 
+			                        Pipe<HTTPLogRequestSchema>[][] log,
+			                        Pipe<HTTPLogResponseSchema>[][] log2, 
+			                        Pipe<NetPayloadSchema>[][] perTrackFromNet, 
+			                        Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
+		// TODO Auto-generated method stub
 		
+		//If logging is on then create the pipes to the matching lenghth and pass into  LogUnification
+		//   log unifcation also needs a target stage.
+		
+	}
+
+	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
+			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<ServerResponseSchema>[][] fromModule,
+			Pipe<HTTPRequestSchema>[][] toModules, final HTTP1xRouterStageConfig routerConfig,
+			PipeConfig<ServerResponseSchema> config, boolean captureAll, Pipe<HTTPLogRequestSchema>[][] log,
+			Pipe[][] perTrackFromNet) {
 		/////////////////////
 		//create the routers
 		/////////////////////
-		//split up the unencrypted pipes across all the routers
-		Pipe[][] plainSplit = Pipe.splitPipes(toModules.length, receivedFromNet);
 		int acksBase = releaseAfterParse.length-1;
 		int parallelTrack = toModules.length; 
 		while (--parallelTrack>=0) { 
@@ -397,13 +415,16 @@ public class NetGraphBuilder {
 			fromModule[parallelTrack] = PronghornStage.join(router404Pipe, fromModule[parallelTrack]);
 			//////////////////
 			
+			 
 			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
 					graphManager, 
 					parallelTrack, 
-					plainSplit[parallelTrack], 
+					perTrackFromNet[parallelTrack], 
 					fromRouter, 
 					router404Pipe, 
-					releaseAfterParse[acksBase-parallelTrack], routerConfig,
+					log[parallelTrack],
+					releaseAfterParse[acksBase-parallelTrack],
+					routerConfig,
 					coordinator,captureAll);        
 			
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
@@ -512,24 +533,17 @@ public class NetGraphBuilder {
 		return toWiterPipes;
 	}
 
-	public static void buildOrderingSupers(GraphManager graphManager, 
-			                               ServerCoordinator coordinator, final int routerCount,
-			                               Pipe<ServerResponseSchema>[][] fromModule, 
-			                               Pipe<NetPayloadSchema>[] fromSupers) {
-		///////////////////
-		//we always have a super to ensure order regardless of TLS
-		//a single supervisor will group all the modules responses together.
-		///////////////////
-		//logger.info("build ordering supervisors");
-		assert(fromSupers.length >= routerCount) : "reduce router count since we only have "+fromSupers.length+" pipes";
-		assert(routerCount>0);
+	public static void buildOrderingSupers(GraphManager graphManager, ServerCoordinator coordinator,
+			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPLogResponseSchema>[][] log, Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
 		
-		Pipe<NetPayloadSchema>[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers);
-		int k = routerCount;
-		while (--k>=0) {
+		int track = fromModule.length;
+		while (--track>=0) {
 						
 			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, 
-					                    fromModule[k], orderedOutput[k], coordinator);//ensure order   
+					                    fromModule[track], 
+					                    log[track],
+					                    perTrackFromSuper[track], 
+					                    coordinator);//ensure order   
 	
 			coordinator.processNota(graphManager, wrapSuper);
 		

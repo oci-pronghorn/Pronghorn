@@ -706,7 +706,7 @@ public class SequentialReplayerStage extends PronghornStage {
 			if (data.isStructured()) {
 				realDataSize += data.structured().fullIndexSizeInBytes();
 			}
-			System.err.println("full producer size: "+str.getPipe().maxVarLen);
+			//System.err.println("full producer size: "+str.getPipe().maxVarLen);
 			//we now have the size so build the noise.			
 			//NOTE: also writes leading backed int for size
 			noiseProducer.writeNoise(str, blockId, str.getPipe().maxVarLen-realDataSize);			

@@ -17,7 +17,7 @@ public class HTTPRequestSchema extends MessageSchema<HTTPRequestSchema> {
 		    null,"WebSocketFrame","ChannelId","Sequence","FinOpp","Mask","BinaryPayload",null},
 		    new long[]{300, 21, 26, 23, 32, 24, 25, 0, 100, 21, 26, 11, 10, 12, 0},
 		    new String[]{"global",null,null,null,null,null,null,null,"global",null,null,null,null,null,null},
-		    "httpRequest.xml",
+		    "HTTPRequest.xml",
 		    new long[]{2, 2, 0},
 		    new int[]{2, 2, 0});
 

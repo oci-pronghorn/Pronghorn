@@ -541,42 +541,43 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len, BaseConnection cc) {
 
-    	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";
-        
-        int size = Pipe.addMsgIdx(targetPipe, messageType);               
-        Pipe.addLongValue(channelId, targetPipe);  
-        long now = System.currentTimeMillis();
-        cc.setLastUsedTime(now);
-		Pipe.addLongValue(now, targetPipe);
-        
-        if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
-        	Pipe.addLongValue(-1, targetPipe);
-        }
-        
-        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
+    	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";        
 
-        
-//ONLY VALID FOR UTF8
-
-        if (showRequests) {
-        	logger.info("/////////////\n/////Server read for channel {} has connection {} bPos{} len {} \n{}\n/////////////////////",channelId, 
-        			cc.isValid, originalBlobPosition, len, 
-        			
-        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
-        			
-        			Appendables.appendUTF8(new StringBuilder(), 
-        					targetPipe.blobRing, 
-        					originalBlobPosition, 
-        					(int)len, targetPipe.blobMask));               
+        final int size = Pipe.addMsgIdx(targetPipe, messageType);               
+        if (messageType>=0) {
+	        Pipe.addLongValue(channelId, targetPipe);  
+	        long now = System.currentTimeMillis();
+	        cc.setLastUsedTime(now);//needed to know when this connection can be disposed
+			Pipe.addLongValue(now, targetPipe);
+	        
+	        if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
+	        	Pipe.addLongValue(-1, targetPipe);
+	        }
+	        
+	        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
+	
+	        
+	//ONLY VALID FOR UTF8
+	
+	        if (showRequests) {
+	        	logger.info("/////////////\n/////Server read for channel {} has connection {} bPos{} len {} \n{}\n/////////////////////",channelId, 
+	        			cc.isValid, originalBlobPosition, len, 
+	        			
+	        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
+	        			
+	        			Appendables.appendUTF8(new StringBuilder(), 
+	        					targetPipe.blobRing, 
+	        					originalBlobPosition, 
+	        					(int)len, targetPipe.blobMask));               
+	        }
+	        
+	        
+	        Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, targetPipe);  
+	        
+	        //all breaks are detected by the router not here
+	        //(section 4.1 of RFC 2616) end of header is \r\n\r\n but some may only send \n\n
+	        //
         }
-        
-        
-        Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, targetPipe);  
-        
-        //all breaks are detected by the router not here
-        //(section 4.1 of RFC 2616) end of header is \r\n\r\n but some may only send \n\n
-        //
-   
         Pipe.confirmLowLevelWrite(targetPipe, size);
         Pipe.publishWrites(targetPipe);
         //logger.info("done with publish pipe is now "+targetPipe);

@@ -19,7 +19,7 @@ public class ServerConnection extends BaseConnection {
 		super(engine, socketChannel, id);
 		
 		assert(coordinator.connectionDataElements()>0) : "must hold some elements";
-		assert(coordinator.connectionDataElementSize()>=16) : "minimum size required for close flags";
+		assert(coordinator.connectionDataElementSize()>=32) : "minimum size required for close flags";
 		this.scs  = coordinator.connectionStruct();
 		assert(coordinator.connectionStruct() != null) : "server side connections require struct";
 				

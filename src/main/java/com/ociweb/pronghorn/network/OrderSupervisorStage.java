@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelReader;
@@ -32,6 +33,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private static Logger logger = LoggerFactory.getLogger(OrderSupervisorStage.class);
 
     private final Pipe<ServerResponseSchema>[] dataToSend;
+    private final Pipe<HTTPLogResponseSchema>[] log;
+    
     private final Pipe<NetPayloadSchema>[] outgoingPipes;
         
     private final boolean showUTF8Sent = false;
@@ -44,7 +47,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private final int channelBitsMask;
     private final boolean isTLS;
     
-    private final long contextFieldId;
     
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
  
@@ -66,6 +68,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private int shutdownCount;
     private boolean shutdownInProgress;
 	private ServiceObjectHolder<ServerConnection> socketHolder;
+	private ServerConnectionStruct conStruct;
 
 	private AtomicBoolean newWork = new AtomicBoolean(true);
 	private final PipePublishListener newWorkListener = new PipePublishListener() {
@@ -76,8 +79,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	};
 	
 	
-    public static OrderSupervisorStage newInstance(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
-    	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator);
+    public static OrderSupervisorStage newInstance(GraphManager graphManager, 
+    		Pipe<ServerResponseSchema>[] inputPipes, 
+    		 Pipe<HTTPLogResponseSchema>[] log,
+    		Pipe<NetPayloadSchema>[] outgoingPipes, 
+    		ServerCoordinator coordinator, boolean isTLS) {
+    	return new OrderSupervisorStage(graphManager, inputPipes, log, outgoingPipes, coordinator);
     }
     
     /**
@@ -90,11 +97,19 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
      * @param inputPipes
      * @param coordinator
      */
-    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[][] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
-    	this(graphManager,join(inputPipes), outgoingPipes, coordinator);
+    public OrderSupervisorStage(GraphManager graphManager, 
+    		                     Pipe<ServerResponseSchema>[][] inputPipes, 
+    		                     Pipe<HTTPLogResponseSchema>[] log,
+    		                     Pipe<NetPayloadSchema>[] outgoingPipes,
+    		                     ServerCoordinator coordinator, boolean isTLS) {
+    	this(graphManager, join(inputPipes), log, outgoingPipes, coordinator);
     }
     
-    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator) {
+    public OrderSupervisorStage(GraphManager graphManager, 
+    		Pipe<ServerResponseSchema>[] inputPipes, 
+    		Pipe<HTTPLogResponseSchema>[] log,
+    		Pipe<NetPayloadSchema>[] outgoingPipes, 
+    		ServerCoordinator coordinator) {
         super(graphManager, inputPipes, outgoingPipes);      
         
         this.channelBitsMask = coordinator.channelBitsMask;
@@ -102,14 +117,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.isTLS = coordinator.isTLS;
         this.socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         
-        ServerConnectionStruct conStruct = coordinator.connectionStruct();
-        
-        contextFieldId = null==conStruct? -1 :
-        		 			conStruct.registry.fieldLookupByIdentity(
-        		                                 ServerConnectionStruct.connectionFields.context,
-        		                                 conStruct.connectionStructId);
+        this.conStruct = coordinator.connectionStruct();
                 
         this.dataToSend = inputPipes;
+        this.log = log;
+        assert(log.length==0 || inputPipes.length==log.length);
+        
         assert(outgoingPipes.length>0);
         
         assert(dataToSend.length<=Short.MAX_VALUE) : "can not support more pipes at this time. This code will need to be modified";
@@ -241,7 +254,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					didWork = true;
 	
 			        keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
-									        		peekMsgId, outgoingPipes[myPipeIdx], myPipeIdx,
+									        		peekMsgId, myPipeIdx,
 													channelId);
 		    	} else {
 			        ///////////////////////////////
@@ -262,7 +275,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean processInputData(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
-			int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, long channelId) {
+			int peekMsgId, int myPipeIdx, long channelId) {
+		
 		
 		int sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
 				        
@@ -280,20 +294,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		}
 
 		return processInput(sourcePipe, pipeIdx, keepWorking, 
-				peekMsgId, outPipe, myPipeIdx, channelId,
+				peekMsgId, myPipeIdx, channelId,
 				sequenceNo, idx, expectedSquenceNos[idx]);
 	
 	}
 
 	private boolean processInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
-			int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, long channelId, int sequenceNo, int idx,
+			int peekMsgId, int myPipeIdx, long channelId, int sequenceNo, int idx,
 			int expected) {
-		
+	
 		if ((0==sequenceNo) || (sequenceNo >= expected)) {
 			if ((0==sequenceNo) || (expected == sequenceNo)) {
 				keepWorking = processExpectedSequenceValue(sourcePipe, pipeIdx,
 						keepWorking, peekMsgId,
-						outPipe, myPipeIdx, sequenceNo, 
+						myPipeIdx, sequenceNo, 
 						channelId, idx, expected);
 		    	
 			} else {
@@ -336,21 +350,23 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return keepWorking;
 	}
 
-	private boolean processExpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
-			boolean keepWorking, int peekMsgId, Pipe<NetPayloadSchema> outPipe, int myPipeIdx, int sequenceNo,
+	private boolean processExpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe,
+			int pipeIdx,
+			boolean keepWorking, int peekMsgId, int myPipeIdx, int sequenceNo,
 			long channelId, int idx, int expected) {
 		
+
 		//logger.trace("found expected sequence {}",sequenceNo);
 		final short expectedPipe = expectedSquenceNosPipeIdx[idx];
 		if (-1 == expectedPipe) {
 			expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 			copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
-					outPipe, myPipeIdx, sequenceNo,
+					myPipeIdx, sequenceNo,
 					channelId);
 		} else {			        			
 			if (expectedPipe ==(short)pipeIdx) {
 				copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
-						outPipe, myPipeIdx, sequenceNo,
+						myPipeIdx, sequenceNo,
 						channelId);
 			} else {
 				
@@ -370,9 +386,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, int peekMsgId,
-			Pipe<NetPayloadSchema> outPipe, int myPipeIdx, int sequenceNo, long channelId) {
+			int myPipeIdx, int sequenceNo, long channelId) {
 		
 		failureIterations = -1;//clears the flag to let hang detector know we are ok.			        		
+
+		Pipe<NetPayloadSchema> outPipe = outgoingPipes[myPipeIdx];
 		
 		assert(recordInputs(channelId, sequenceNo, pipeIdx));			        		
 		if (!isTLS) {
@@ -380,7 +398,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			finishHandshake(outPipe, channelId);
 		}
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);				
-		copyDataBlock(sourcePipe, peekMsgId, outPipe, myPipeIdx, sequenceNo, channelId);							
+		copyDataBlock(sourcePipe, peekMsgId, myPipeIdx, sequenceNo, channelId);							
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 	}
 
@@ -500,11 +518,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
-							   final Pipe<NetPayloadSchema> output, int myPipeIdx,
+							   int myPipeIdx,
 							   int sequenceNo, long channelId) {
 		 
 		assert(Pipe.bytesReadBase(input)>=0);
-		 
+	
+		
+		
 		////////////////////////////////////////////////////
 		//we now know that this work should be done and
 		//that there is room to put it out on the pipe
@@ -524,7 +544,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	    //most common case by far so we put it first
 	    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
 	    	 	    	
-	    	 publishDataBlock(input, output, myPipeIdx, sequenceNo, channelId2);
+	    	 publishDataBlock(input, myPipeIdx, sequenceNo, channelId2);
 	    	
 	    } else {
 	    	
@@ -537,10 +557,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, 
+	private void publishDataBlock(final Pipe<ServerResponseSchema> input,
 			                      int myPipeIdx, int sequenceNo, long channelId) {
+				 
 		
-
+		 Pipe<NetPayloadSchema> output = outgoingPipes[myPipeIdx];
+			
 		 //////////////////////////
 		 //output pipe is accumulating this data before it has even stared the message to be sent
 		 //this is required in order to "skip over" the extra tags used eg "hidden" between messages by some modules.
@@ -561,17 +583,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 final int blobMask = Pipe.blobMask(input);
 		 byte[] blob = Pipe.byteBackingArray(meta, input);
-		 int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
+		 final int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
 		
 		 BaseConnection con = socketHolder.get(channelId);
 		 ChannelReaderController connectionDataReader = null;
+		 long arrivalTime = -1;
 		 if (null!=con) {
 			 
 			 connectionDataReader = con.connectionDataReader;
 			 ChannelReader reader = connectionDataReader.beginRead();
-			 if (null!=reader && contextFieldId>=0) {
+			 if (null!=reader && conStruct!=null) {
 				 assert(reader.isStructured()) : "connection data reader must hold structured data";
-				 int origCon = reader.structured().readInt(contextFieldId);
+				 arrivalTime = reader.structured().readLong(conStruct.arrivalTimeFieldId);
+				 int origCon = reader.structured().readInt(conStruct.contextFieldId);
+				 				 
 				 requestContext |= origCon;
 				 
 				 //for HTTP echoing headers we know that the headers block comes first
@@ -589,14 +614,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 		 
 		 
 		 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
-		 
-		 
-		 //view in the console what we just wrote out to the next stage.
-		 //System.out.println("id "+myPipeIdx);
-		 boolean debug = false;
-		 if (debug){
-			 Appendables.appendUTF8(System.err, blob, bytePosition, len, blobMask);
-		 }
+
 		 
 		 int temp = Pipe.bytesReadBase(input);
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
@@ -650,11 +668,41 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 } else {
 			 connectionDataReader.rollback();
 		 }
+
+		 writeToNextStage(output, myPipeIdx, 
+				          channelId, len, requestContext,
+				          blobMask, blob, bytePosition); 
 		 
-		 final long time = 0;//System.nanoTime();//field not used by server...
-	
-		 writeToNextStage(output, channelId, len, requestContext,
-				          blobMask, blob, bytePosition, time); 
+		 //if we have a log pipe then log these events
+		 if (myPipeIdx < log.length) {
+			 
+			 //is this ok, check performance run..
+			//this can not and does not include TLS encryption time on xmit
+			//this also does not include any latency due to waiting for network resources
+			long durationFloor = arrivalTime-System.currentTimeMillis();
+			///NOTE: this duration is in MS, this is probably not good enough..
+			
+			Pipe<HTTPLogResponseSchema> outLog = log[myPipeIdx];
+
+			
+			if (Pipe.hasRoomForWrite(outLog)) {
+				int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
+				Pipe.addLongValue(System.currentTimeMillis(), outLog);
+				Pipe.addLongValue(channelId, outLog);
+				Pipe.addIntValue(expSeq, outLog);
+				Pipe.addByteArray(blob, bytePosition, len, blobMask, outLog);
+				Pipe.addLongValue(durationFloor, outLog);
+				Pipe.confirmLowLevelWrite(outLog, size);
+				Pipe.publishWrites(outLog);
+			} else {
+				//TODO: needs exponential back off
+				logger.info("Unable to log");
+			}
+			
+			
+		 }
+		 
+		 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 assert(0==Pipe.releasePendingByteCount(input));
@@ -662,9 +710,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	}
 
-	private void writeToNextStage(Pipe<NetPayloadSchema> output, 
+	private void writeToNextStage(Pipe<NetPayloadSchema> output, int myPipeIdx,
 			final long channelId, int len, int requestContext,
-			int blobMask, final byte[] blob, final int bytePosition, long time) {
+			int blobMask, final byte[] blob, final int bytePosition) {
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
@@ -686,18 +734,19 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 /////////////
 		 //write out the content
 		 /////////////
-		 
-		 
+
 		 //logger.trace("write content from super to wrapper size {} for {}",len,channelId);
 		 
 		 int plainSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_PLAIN_210);
 		 Pipe.addLongValue(channelId, output);
-		 Pipe.addLongValue(time, output);
+		 Pipe.addLongValue(0, output); //TODO: is this time field needed to be sent? no....
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
 
 		 if (showUTF8Sent) {
 			 Pipe.outputStream(output).debugAsUTF8();
 		 }
+		 
+
 		 
 		 int lenWritten = DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output));
 		 

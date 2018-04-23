@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.BaseConnection;
 import com.ociweb.pronghorn.network.ServerConnection;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
-import com.ociweb.pronghorn.network.ServerConnectionStruct.connectionFields;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -17,6 +16,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.schema.HTTPLogRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
@@ -25,6 +25,7 @@ import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.ChannelWriterController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
@@ -63,6 +64,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
      
     
     private final Pipe<NetPayloadSchema>[] inputs;
+    private final Pipe<HTTPLogRequestSchema>[] log;
+    
     private       long[]                   inputChannels;
     private       int[]                    inputBlobPos;
     private       int[]                    inputBlobPosLimit;
@@ -95,7 +98,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	private boolean catchAll;
     private final int parallelId;
 
-    private final long contextFieldId;
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
@@ -110,11 +112,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		                               Pipe<NetPayloadSchema>[] input, 
     		                               Pipe<HTTPRequestSchema>[][] outputs, 
     		                               Pipe<ServerResponseSchema> errorResponsePipe,
+    		                               Pipe<HTTPLogRequestSchema>[] log,
     		                               Pipe<ReleaseSchema> ackStop,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, 
                                            ServerCoordinator coordinator, boolean catchAll) {
         
-       return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, log, ackStop, config, coordinator, catchAll); 
     }
   
     
@@ -127,21 +130,24 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 								   int parallelId,
 		                           Pipe<NetPayloadSchema>[] input, 
 		                           Pipe<HTTPRequestSchema>[] outputs,
-		                           Pipe<ServerResponseSchema> errorResponsePipe, 
+		                           Pipe<ServerResponseSchema> errorResponsePipe,
+		                           Pipe<HTTPLogRequestSchema>[] log,
 		                           Pipe<ReleaseSchema> ackStop,
 		                           HTTP1xRouterStageConfig<T,R,V,H> config, 
 		                           ServerCoordinator coordinator, boolean catchAll) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, log, ackStop, config, coordinator, catchAll); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
 			int parallelId,
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
-            Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
+            Pipe<ServerResponseSchema> errorResponsePipe, 
+            Pipe<HTTPLogRequestSchema>[] log,
+            Pipe<ReleaseSchema> ackStop,
             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
-		this(gm, parallelId, input, join(outputs), errorResponsePipe, ackStop, config, coordinator, catchAll);
+		this(gm, parallelId, input, join(outputs), errorResponsePipe, log, ackStop, config, coordinator, catchAll);
 		
 		int inMaxVar = PronghornStage.maxVarLength(input);		
 		int outMaxVar =  PronghornStage.minVarLength(outputs);
@@ -152,17 +158,19 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
 	}
+	
 	public HTTP1xRouterStage(GraphManager gm, 
 			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 
 			                 Pipe<HTTPRequestSchema>[] outputs,
 			                 Pipe<ServerResponseSchema> errorResponsePipe, 
+			                 Pipe<HTTPLogRequestSchema>[] log,
 			                 Pipe<ReleaseSchema> ackStop,
                              HTTP1xRouterStageConfig<T,R,V,H> config, 
                              ServerCoordinator coordinator, 
                              boolean catchAll) {
 		
-        super(gm,input,join(outputs,ackStop,errorResponsePipe));
+        super(gm,input,join(join(outputs,ackStop,errorResponsePipe),log));
         
         this.parallelId = parallelId;
         
@@ -171,6 +179,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         this.config = config;
         this.inputs = input;
+        this.log = log;
+        assert(log.length==0 || input.length==log.length);
+        
         this.releasePipe = ackStop;        
         this.outputs = outputs;
         this.coordinator = coordinator;
@@ -183,15 +194,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		
-        ServerConnectionStruct conStruct = coordinator.connectionStruct();
-        
-        contextFieldId = conStruct.registry.fieldLookupByIdentity(
-        		                                 ServerConnectionStruct.connectionFields.context,
-        		                                 conStruct.connectionStructId);
-        
-        
-        
+		        
     }    
 	
     
@@ -369,10 +372,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             final int pipeIdx = ServerCoordinator.getWebSocketPipeIdx(coordinator, channel);
             final Pipe<HTTPRequestSchema> outputPipe = outputs[pipeIdx];
             if (!Pipe.hasRoomForWrite(outputPipe) ) {
-             	return markBlockConsumed(this, idx, selectedInput, channel, 
-		                   inputBlobPos[idx], 
-		                   totalAvail, -pipeIdx, //negative pipeIdx indicates the output is backed up. 
-		                   0, totalAvail);
+             	final int result = -pipeIdx;
+             	//TRY AGAIN AFTER PIPE CLEARS
+             	this.waitForOutputOn = (-result);
+             	return false;//exit to take a break while pipe is full.
             }
 			
 			final byte[] backing = Pipe.blob(selectedInput);
@@ -422,15 +425,15 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            			outputPipe, backing, mask, pos, finOpp,
 	            			headerSize, msk, length);
 	            } else {       
-		            return markBlockConsumed(this, idx, selectedInput, channel, 
-		            		inputBlobPos[idx], 
-		            		totalAvail, NEED_MORE_DATA, 0, totalAvail);
+	            	this.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+	            	return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 	            }
             } else {
             	//not even 2 so jump out now
-            	return markBlockConsumed(this, idx, selectedInput, channel, 
-		                   inputBlobPos[idx], 
-		                   totalAvail, NEED_MORE_DATA, 0, totalAvail);
+            	
+            	this.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+            	return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
+
             }
 		}
 				
@@ -479,16 +482,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		Pipe.publishWrites(outputPipe);
 		
 		int totalConsumed = (int)(length+headerSize);
-		return markBlockConsumed( this, idx, selectedInput, channel, 
-				                   inputBlobPos[idx], 
-				                   totalAvail, 
-				                   NEED_MORE_DATA, 
-				                   totalConsumed, 
-				                   totalAvail-totalConsumed); // remaining bytes
+		this.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+		return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 	}
 
 
-	private static boolean parseHTTPAvail(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel,
+	private static boolean parseHTTPAvail(HTTP1xRouterStage that, 
+			final int idx, Pipe<NetPayloadSchema> selectedInput, 
+			final long channel,
 			boolean didWork) {
 		boolean result;
 		//NOTE: we start at the same position until this gets consumed
@@ -506,12 +507,50 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+totalAvail;
 			            
 			if (toParseLength>0) {
-				
-				int state = that.parseHTTP(that.trieReader, channel, idx);				
+
+		        long arrivalTime = captureArrivalTime(selectedInput);
+		        int seqForLogging = that.sequences[idx];
+		        int posForLogging = that.trieReader.sourcePos;
+		        
+				int state = that.parseHTTP(that.trieReader, channel, idx, arrivalTime);				
 				int totalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(that.trieReader));           
 				int remainingBytes = that.trieReader.sourceLen;
 				
-				result = markBlockConsumed(that, idx, selectedInput, channel, that.inputBlobPos[idx], totalAvail, state, totalConsumed, remainingBytes);
+				if (SUCCESS == state) {
+										
+					if (idx < that.log.length) {
+						//this logs every input at this point
+						Pipe<HTTPLogRequestSchema> logOut = that.log[idx];
+						if (Pipe.hasRoomForWrite(logOut)) {
+							
+							int size = Pipe.addMsgIdx(logOut, HTTPLogRequestSchema.MSG_REQUEST_1);
+							Pipe.addLongValue(arrivalTime, logOut);
+							Pipe.addLongValue(channel, logOut);
+							Pipe.addIntValue(seqForLogging, logOut);
+							Pipe.addByteArray(Pipe.blob(selectedInput), posForLogging, totalConsumed, that.trieReader.sourceMask, logOut);
+							Pipe.confirmLowLevelWrite(logOut, size);
+							Pipe.publishWrites(logOut);
+							
+						} else {
+							//TODO; needs back off
+							logger.info("unable to log");
+						}
+						
+					}
+					
+					result = consumeBlock(that, idx, selectedInput, channel,
+							              that.inputBlobPos[idx], 
+							              totalAvail, totalConsumed, 
+							              remainingBytes, arrivalTime);
+				 } else if (NEED_MORE_DATA == state) {				
+					that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+					result = false;   
+				 } else {
+				    //TRY AGAIN AFTER PIPE CLEARS
+				    that.waitForOutputOn = (-state);
+				    result = false;
+				 }
+				
 				didWork|=result;
 			} else {
 			
@@ -526,49 +565,74 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 
 
-	private static boolean markBlockConsumed(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p,
-			int totalAvail, final int result, int totalConsumed, int remainingBytes) {
-		if (SUCCESS == result) {
-			
-		    p += totalConsumed;
-		    totalAvail -= totalConsumed;
+	private static boolean consumeBlock(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput,
+			final long channel, int p, int totalAvail, 
+			int totalConsumed, int remainingBytes, long arrivalTime) {
+		assert(totalConsumed>0);
+				
+		p += totalConsumed;
+		totalAvail -= totalConsumed;
 
-		    Pipe.releasePendingAsReadLock(selectedInput, totalConsumed);
+		Pipe.releasePendingAsReadLock(selectedInput, totalConsumed);
 
-		    assert(totalAvail == remainingBytes);
-		    that.inputBlobPos[idx] = p;
+		assert(totalAvail == remainingBytes);
+		that.inputBlobPos[idx] = p;
 
-		    assert(that.boundsCheck(idx, totalAvail));
-		    
-		    that.inputLengths[idx] = totalAvail;	                
-		                
-		    //the release pending above should keep them in algnment and the ounstanding should match
-		    assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, that.inputBlobPos[idx], that.inputLengths[idx]));
-		    
-		    if (totalAvail==0) {
-		    	that.inputChannels[idx] = -1;//must clear since we are at a safe release point
-		    	                        //next read will start with new postion.
-		    		//send release if appropriate
-       
-		    		if ((remainingBytes<=0) 
-		    			&& consumedAllOfActiveFragment(selectedInput, p)) { 
-		    	
-		    				assert(0==Pipe.releasePendingByteCount(selectedInput));
-		    				that.sendRelease(channel, idx);
-		    														
-					}
-		    }
-		    return totalConsumed>0;
-         } else if (NEED_MORE_DATA == result) {
+		assert(that.boundsCheck(idx, totalAvail));
 		
-        	 that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
-		   return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
-		   
-         } else {
-		   //TRY AGAIN AFTER PIPE CLEARS
-        	 that.waitForOutputOn = (-result);
-		   return false;//exit to take a break while pipe is full.
-         }
+		that.inputLengths[idx] = totalAvail;	                
+		            
+		//the release pending above should keep them in algnment and the ounstanding should match
+		assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, that.inputBlobPos[idx], that.inputLengths[idx]));
+		
+		if (totalAvail==0) {
+			that.inputChannels[idx] = -1;//must clear since we are at a safe release point
+			                        //next read will start with new postion.
+				//send release if appropriate
+      
+				if ((remainingBytes<=0) 
+					&& consumedAllOfActiveFragment(selectedInput, p)) { 
+			
+						assert(0==Pipe.releasePendingByteCount(selectedInput));
+						that.sendRelease(channel, idx);
+																
+				}
+		}
+		return totalConsumed>0;
+	}
+
+
+	private static long captureArrivalTime(Pipe<NetPayloadSchema> selectedInput) {
+		long arrivalTime = -1;
+		
+		long pos = Pipe.tailPosition(selectedInput);
+		long head = Pipe.headPosition(selectedInput);
+		
+		int id = Pipe.readInt(Pipe.slab(selectedInput), 
+			         		  Pipe.slabMask(selectedInput),
+			         		  pos);
+		
+		//skip over messages which do not contain any arival time.
+		while (id!=NetPayloadSchema.MSG_PLAIN_210 
+		     && id!=NetPayloadSchema.MSG_ENCRYPTED_200 
+		     && pos<head) {
+			
+			pos += Pipe.sizeOf(NetPayloadSchema.instance, id);	
+			id = Pipe.readInt(Pipe.slab(selectedInput), 
+	         		  Pipe.slabMask(selectedInput),
+	         		  pos);
+			
+		}
+		
+		
+		if (pos<head) {
+			arrivalTime = Pipe.readLong(Pipe.slab(selectedInput), 
+											 Pipe.slabMask(selectedInput),
+											 pos + 3);	
+		} else {
+			logger.info("unable to capture arrival time for {}",id);
+		}
+		return arrivalTime;
 	}
 
 	private boolean boundsCheck(final int idx, int l) {
@@ -599,7 +663,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 // <=0 for wating on this output pipe to have room (the pipe idx is negative)
  
  
-private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx) {    
+private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime) {    
 
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+" pos:"+trieReader.sourcePos+"///////////////////");
@@ -777,11 +841,12 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         
 
         ServerConnection serverConnection = coordinator.connectionForSessionId(channel);
-    	
+      	
+        
 	//	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
 		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverConnection, 
 												httpRevisionId, config,
-												errorReporter, contextFieldId);  // Write 2   10 //if header is presen
+												errorReporter, arrivalTime);  // Write 2   10 //if header is presen
        
         
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {  
@@ -791,19 +856,16 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
             return NEED_MORE_DATA;
         } 
         
-   
-        ////////TODO: URGENT: re-think this as we still need to add the chunked post payload??
-        
     	DataOutputBlobWriter.commitBackData(writer,structId);
     	DataOutputBlobWriter.closeLowLevelField(writer);
-        
-        
+                
 		//not an error we just looked past the end and need more data
 	    if (trieReader.sourceLen<0) {
 	    	Pipe.resetHead(outputPipe);
 		    return NEED_MORE_DATA;
 		} 
-
+	    
+	    
         //NOTE: we must close the writer for the params field before we write the parallelId and  revision 
 	    Pipe.addIntValue((parallelId << HTTPRevision.BITS) | (httpRevisionId & HTTPRevision.MASK), outputPipe);// Revision Id          // Write 1 
         Pipe.addIntValue(requestContext, outputPipe); // request context      // Write 1 
@@ -830,8 +892,8 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		final int pathId, final TrieParser headerMap, 
 		DataOutputBlobWriter<HTTPRequestSchema> writer, 
 		ServerConnection serverConnection, int httpRevisionId,
-		HTTP1xRouterStageConfig<?, ?, ?, ?> config, ErrorReporter errorReporter2,
-		long contextFieldId) {
+		HTTP1xRouterStageConfig<?, ?, ?, ?> config,
+		ErrorReporter errorReporter2, long arrivalTime) {
 	
 	if (null == serverConnection) {
 		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
@@ -855,9 +917,9 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				if (iteration!=0) {
 					
 					return endOfHeadersLogic(writer, cwc, cw, 
-							contextFieldId,
+							serverConnection.scs,
 							errorReporter2, requestContext, 
-							trieReader, postLength);
+							trieReader, postLength, arrivalTime);
 					
 				} else {	          
 					//needs more data 
@@ -1043,6 +1105,9 @@ private int accumRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInpu
 
 private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
 	final long channel = Pipe.takeLong(selectedInput);
+	
+	//instead of using arrival time here, we pull it just before release after each 
+	//block gets parsed, this provides the accurate time of arrival.
 	final long arrivalTime = Pipe.takeLong(selectedInput);
 	
 	long slabPos;
@@ -1157,8 +1222,10 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 	}
 	
     private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer,
-    		ChannelWriterController cwc, ChannelWriter cw, long contextFieldId, ErrorReporter errorReporter,
-			int requestContext, final TrieParserReader trieReader, long postLength) {
+    		ChannelWriterController cwc, ChannelWriter cw,
+    		ServerConnectionStruct scs, ErrorReporter errorReporter,
+			int requestContext, final TrieParserReader trieReader,
+			long postLength, long arrivalTime) {
 		//logger.trace("end of request found");
 		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
 		//ALL OTHERS MUST RETURN INCOMPLETE
@@ -1193,8 +1260,9 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 			}
 		}
 	
-		cw.structured().writeInt(requestContext, contextFieldId);
-		
+		cw.structured().writeLong(arrivalTime, scs.arrivalTimeFieldId);
+		cw.structured().writeInt(requestContext, scs.contextFieldId); 
+				
 		cwc.commitWrite();
 		return requestContext;
 	}

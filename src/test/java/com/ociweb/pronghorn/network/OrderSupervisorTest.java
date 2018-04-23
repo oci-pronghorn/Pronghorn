@@ -81,7 +81,7 @@ public class OrderSupervisorTest {
 		Pipe.publishEOF(output);
 		
 		OrderSupervisorStage.newInstance(gm, 
-				inputPipes, 
+				inputPipes, new Pipe[0],
 				outgoingPipes, 
 				coordinator, 
 				isTLS);
@@ -149,7 +149,7 @@ public class OrderSupervisorTest {
 		Pipe.publishEOF(output);
 		
 		OrderSupervisorStage.newInstance(gm, 
-				inputPipes, 
+				inputPipes, new Pipe[0],
 				outgoingPipes, 
 				coordinator, 
 				isTLS);

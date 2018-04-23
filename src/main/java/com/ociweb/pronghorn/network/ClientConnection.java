@@ -398,7 +398,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 						
 		}
 		isValid = true;
-		//logger.info("is now valid");
+		//logger.info("is now valid connection {} ",this.id);
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
 		
 	}

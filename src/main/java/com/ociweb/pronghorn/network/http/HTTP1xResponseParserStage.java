@@ -1120,7 +1120,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		if (closeRequested[i]  //server side sent us "close"
 		   //DO NOT look at cc for the state since we have multiple messages in flight
 		    ) {
-			logger.info("Client got close request so do it and push down stream");				
+			//logger.info("Client got close request so do it and push down stream");				
 			publishCloseMessage(cc.host, cc.port, targetPipe);
 			//close this connection but do not remove it yet.		
 			cc.close();			

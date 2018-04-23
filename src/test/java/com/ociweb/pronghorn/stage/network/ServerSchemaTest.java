@@ -4,6 +4,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.schema.HTTPLogRequestSchema;
+import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -25,7 +27,18 @@ public class ServerSchemaTest {
 
     @Test
     public void testHTTPRequestFROMMatchesXML() {
-        assertTrue(FROMValidation.checkSchema("/httpRequest.xml", HTTPRequestSchema.class));
+        assertTrue(FROMValidation.checkSchema("/HTTPRequest.xml", HTTPRequestSchema.class));
     }
+
+    @Test
+    public void testHTTPLogRequestFROMMatchesXML() {
+        assertTrue(FROMValidation.checkSchema("/HTTPLogRequest.xml", HTTPLogRequestSchema.class));
+    }   
+    
+    @Test
+    public void testHTTPLogResponseFROMMatchesXML() {
+        assertTrue(FROMValidation.checkSchema("/HTTPLogResponse.xml", HTTPLogResponseSchema.class));
+    }
+    
     
 }
