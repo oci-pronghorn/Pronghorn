@@ -3,7 +3,8 @@ package com.ociweb.pronghorn.pipe;
 public class ChannelWriterController {
 
 	protected final Pipe<RawDataSchema> pipe;
-			
+	private boolean isWriting = false;		
+	
 	public ChannelWriterController(Pipe<RawDataSchema> pipe) {
 		this.pipe = pipe;
 	}
@@ -24,6 +25,7 @@ public class ChannelWriterController {
 		if (Pipe.hasRoomForWrite(pipe)) {
 			Pipe.markHead(pipe);
 			Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+			isWriting = true;
 			return Pipe.openOutputStream(pipe);
 		}
 		return null;
@@ -34,8 +36,12 @@ public class ChannelWriterController {
 	 * beginWrite() was called.
 	 */
 	public void abandonWrite() {
-		DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));
-		Pipe.resetHead(pipe);		
+		if (isWriting) {
+			DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));
+			Pipe.resetHead(pipe);
+		} else {
+			isWriting=false;
+		}
 	}
 	
 	/**
@@ -43,10 +49,14 @@ public class ChannelWriterController {
 	 * consumed later.
 	 */
 	public void commitWrite() {
-		DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));		
-		
-		Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
-		Pipe.publishWrites(pipe);
+		if (isWriting) {
+			DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));		
+			
+			Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
+			Pipe.publishWrites(pipe);
+		} else {
+			isWriting = false;
+		}
 	}
 
 }

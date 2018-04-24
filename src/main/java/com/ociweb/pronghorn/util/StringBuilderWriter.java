@@ -1,7 +1,4 @@
-package com.ociweb.json.appendable;
-
-
-import com.ociweb.pronghorn.util.Appendables;
+package com.ociweb.pronghorn.util;
 
 public class StringBuilderWriter implements AppendableByteWriter {
     private final StringBuilder builder = new StringBuilder();

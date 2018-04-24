@@ -1,7 +1,8 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.StringBuilderWriter;
 import com.ociweb.json.encode.function.IterMemberFunction;
+import com.ociweb.pronghorn.util.StringBuilderWriter;
+
 import org.junit.Before;
 import org.junit.Test;
 

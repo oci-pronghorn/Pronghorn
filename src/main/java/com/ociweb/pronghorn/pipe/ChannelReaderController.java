@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.pipe;
 public class ChannelReaderController {
 
 	protected final Pipe<RawDataSchema> pipe;
+	protected boolean isReading = false;
 			
 	public ChannelReaderController(Pipe<RawDataSchema> pipe) {
 		this.pipe = pipe;
@@ -24,7 +25,8 @@ public class ChannelReaderController {
 		if (Pipe.hasContentToRead(pipe)) {
 			Pipe.markTail(pipe);
 			int msg = Pipe.takeMsgIdx(pipe);
-			if (msg>=0) {
+			if (msg >= 0) {
+				isReading = true;
 				return Pipe.openInputStream(pipe);
 			} 
 		}
@@ -36,15 +38,21 @@ public class ChannelReaderController {
 	 * beginRead() must be called again for another read.
 	 */
 	public void rollback() {
-		Pipe.resetTail(pipe);		
+		if (isReading) {
+			Pipe.resetTail(pipe);
+		}
+		isReading = false;
 	}
 	
 	/**
 	 * Move position forward.  ChanelReader is invalid and beginRead() must be called again.
 	 */
 	public void commitRead() {
-		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
-		Pipe.releaseReadLock(pipe);
+		if (isReading) {
+			Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
+			Pipe.releaseReadLock(pipe);
+		}
+		isReading = false;
 	}
 
 }

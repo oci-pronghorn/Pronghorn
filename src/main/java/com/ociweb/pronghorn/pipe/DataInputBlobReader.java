@@ -110,7 +110,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     public int readFromEndLastInt(int negativeIntOffset) {
     	assert(readFromLastInt(this, negativeIntOffset)<this.length) :
-    		 "index position is out of bounds int pipe "+this.getBackingPipe(this).id+" at idx "+negativeIntOffset;
+    		  "index position is out of bounds in pipe "+this.getBackingPipe(this).id
+    		 +" at idx "+negativeIntOffset
+    		 +" bad pos "+readFromLastInt(this, negativeIntOffset)
+    		 +" full length "+this.length;
+    	
+    	
     	return readFromLastInt(this, negativeIntOffset);
     }
 
@@ -164,7 +169,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		//warning this must copy all the way to the very end with maxVarLen
 		final int end = (bytesLowBound + pipe.maxVarLen);
 		
-		final int copyLen = (Pipe.structRegistry(getBackingPipe(this)).totalSizeOfIndexes(type))*4+4;//plus the type
+		final int copyLen = ((Pipe.structRegistry(getBackingPipe(this)).totalSizeOfIndexes(type))*4)+4;//plus the type
 		int start = end-copyLen;
 		
 		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);

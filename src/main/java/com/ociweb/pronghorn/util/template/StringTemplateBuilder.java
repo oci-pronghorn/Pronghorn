@@ -1,7 +1,7 @@
-package com.ociweb.json.template;
+package com.ociweb.pronghorn.util.template;
 
-import com.ociweb.json.appendable.AppendableByteWriter;
-import com.ociweb.json.appendable.ByteWriter;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
+import com.ociweb.pronghorn.util.ByteWriter;
 
 public class StringTemplateBuilder<T> implements ByteWriter {
 	private StringTemplateScript<T>[] script;

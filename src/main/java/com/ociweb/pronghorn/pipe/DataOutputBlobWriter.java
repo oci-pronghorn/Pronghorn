@@ -124,7 +124,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
-    	int bytes = (1+intCount)*4;//one for the schema index
+    	int bytes = (2+intCount)*4;//one for the schema index
     	
     	Pipe.validateVarLength(writer.getPipe(), bytes);
     	
@@ -935,7 +935,6 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
                 that.byteMask, 
                 copyLen);
 
-	   //records the struct id	
        that.structuredWithIndexData = true; //no need to set struct since we copied it over
 
 //		Appendables.appendArray(System.out.append("  After copy"),  

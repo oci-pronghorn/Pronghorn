@@ -1,12 +1,15 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.appendable.ByteWriter;
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.template.*;
-import com.ociweb.json.appendable.AppendableByteWriter;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ByteWriter;
+import com.ociweb.pronghorn.util.template.StringTemplateBranching;
+import com.ociweb.pronghorn.util.template.StringTemplateBuilder;
+import com.ociweb.pronghorn.util.template.StringTemplateIterScript;
+import com.ociweb.pronghorn.util.template.StringTemplateScript;
 
 // TODO: support rational, decimal
 // TODO: implement the primitive type converters, or refactor to use lambdas, or delete methods

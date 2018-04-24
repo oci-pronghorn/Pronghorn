@@ -1,6 +1,6 @@
-package com.ociweb.json.template;
+package com.ociweb.pronghorn.util.template;
 
-import com.ociweb.json.appendable.AppendableByteWriter;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 public interface StringTemplateIterScript<T, N> {
 	N render(AppendableByteWriter appendable, T source, int i, N node);
