@@ -122,6 +122,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		Appendables.appendUTF8(target, backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
 	}
     
+	/**
+	 * Data written so far is directly copied to the destination writer.
+	 * @param writer
+	 */
+	public void replicate(DataOutputBlobWriter<?> writer) {
+		writer.write(backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+	}
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
     	int bytes = (2+intCount)*4;//one for the schema index
