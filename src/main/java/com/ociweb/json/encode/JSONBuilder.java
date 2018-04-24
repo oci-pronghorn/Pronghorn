@@ -632,7 +632,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     // Enum
 
-    <E extends Enum<E>> void addEnumName(ToEnumFunction<T, E> func) {
+    <E extends Enum<E>> void addEnumName(final ToEnumFunction<T, E> func) {
         addString(true, new ToStringFunction<T>() {
             @Override
             public CharSequence applyAsString(T value) {
@@ -659,7 +659,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-    <E extends Enum<E>> void addEnumOrdinal(ToEnumFunction<T, E> func) {
+    <E extends Enum<E>> void addEnumOrdinal(final ToEnumFunction<T, E> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
         scripts.add(new StringTemplateScript<T>() {
             @Override
