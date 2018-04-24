@@ -46,6 +46,12 @@ public class JPGScanner extends PronghornStage {
 		this.verbose = verbose;
 	}
 	
+	/**
+	 * Reads JPG File into an ArrayList of MCUs.
+	 * 
+	 * @param filename name of file to be read
+	 * @param mcus ArrayList of MCUs to be populated during the decoding process
+	 */
 	public Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
 		header.filename = filename;
@@ -400,11 +406,17 @@ public class JPGScanner extends PronghornStage {
 		return true;
 	}
 	
+	/**
+	 * Populates JPG header with Quantization Table data.
+	 * 
+	 * @param	f stream of byte data being read
+	 * @param	header object representation of JPG header
+	 */
 	private void ReadQuantizationTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Quantization Tables");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		length -= 2;
 		while (length > 0) {
 			short info = (short)(b.get() & 0xFF);
@@ -442,6 +454,13 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
+	/**
+	 * Populates JPG header with SOF data. Start of frame determines the image
+	 * dimensions, color modes, and subsampling used to compress the image.
+	 * 
+	 * @param	f stream of byte data being read
+	 * @param	header object representation of JPG header
+	 */
 	private void ReadStartOfFrame(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents != 0) {
 			System.err.println("Error - Multiple SOFs detected");
@@ -451,7 +470,7 @@ public class JPGScanner extends PronghornStage {
 		if (verbose) 
 			System.out.println("Reading Start of Frame");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		header.precision = (short)(b.get() & 0xFF);
 		
 		if (header.precision != 8) {
@@ -533,23 +552,23 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
+	/**
+	 * Populates JPG header with Huffman Table data.
+	 * 
+	 * @param	f stream of byte data being read
+	 * @param	header object representation of JPG header
+	 */
 	private void ReadHuffmanTable(ByteBuffer b, Header header) throws IOException {
 		if (verbose) 
 			System.out.println("Reading Huffman Tables");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		length -= 2;
 		while (length > 0) {
 			HuffmanTable table = new HuffmanTable();
 			short info = (short)(b.get() & 0xFF);
 			table.tableID = (short)(info & 0x0F);
 			boolean ACTable = (info & 0xF0) != 0;
-			/*if (ACTable) {
-				System.out.println("AC Table " + table.tableID);
-			}
-			else {
-				System.out.println("DC Table " + table.tableID);
-			}*/
 			
 			if (table.tableID > 3) {
 				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
@@ -590,6 +609,13 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
+	/**
+	 * Populates JPG header with SOS data. Determines the color component IDs and
+	 * Huffman table IDs used during compression.
+	 * 
+	 * @param	f stream of byte data being read
+	 * @param	header object representation of JPG header
+	 */
 	private void ReadStartOfScan(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents == 0) {
 			System.err.println("Error - SOS detected before SOF");
@@ -599,7 +625,6 @@ public class JPGScanner extends PronghornStage {
 		if (verbose) 
 			System.out.println("Reading Start of Scan");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
 		
 		for (int i = 0; i < header.numComponents; ++i) {
 			header.colorComponents[i].used = false;
@@ -611,7 +636,6 @@ public class JPGScanner extends PronghornStage {
 			short huffmanTableID = (short)(b.get() & 0xFF);
 			short huffmanACTableID = (short)(huffmanTableID & 0x0F);
 			short huffmanDCTableID = (short)((huffmanTableID & 0xF0) >> 4);
-			//System.out.println("Component " + componentID);
 			
 			if (header.zeroBased) {
 				componentID += 1;
@@ -637,7 +661,6 @@ public class JPGScanner extends PronghornStage {
 		short successiveApproximation = (short)(b.get() & 0xFF);
 		header.successiveApproximationLow = (short)(successiveApproximation & 0x0F);
 		header.successiveApproximationHigh = (short)((successiveApproximation & 0xF0) >> 4);
-		//System.out.println("Ss " + header.startOfSelection + ", Se " + header.endOfSelection + ", Ah " + header.successiveApproximationHigh + ", Al " + header.successiveApproximationLow);
 		
 		if (header.frameType.equals("Baseline") &&
 			(header.startOfSelection != 0 ||
@@ -659,7 +682,7 @@ public class JPGScanner extends PronghornStage {
 		if (verbose) 
 			System.out.println("Reading Restart Interval");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		header.restartInterval = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		if (length - 4 != 0) {
 			System.err.println("Error - DRI Invalid");
@@ -677,7 +700,7 @@ public class JPGScanner extends PronghornStage {
 		if (verbose) 
 			System.out.println("Reading APPN");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		// all of APPN markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
 			b.get();
@@ -688,7 +711,7 @@ public class JPGScanner extends PronghornStage {
 		if (verbose) 
 			System.out.println("Reading Comment");
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
-		//System.out.println("Length: " + (length + 2));
+		
 		// all comment markers can be ignored
 		for (int i = 0; i < length - 2; ++i) {
 			b.get();
@@ -698,6 +721,7 @@ public class JPGScanner extends PronghornStage {
 	public void queueFile(String inFile) {
 		inputFiles.add(inFile);
 	}
+	
 	
 	public void sendMCU(MCU emcu) {
 		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
