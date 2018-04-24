@@ -3,6 +3,8 @@ package com.ociweb.json.encode;
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 public abstract class JSONRoot<R, T, P> {
@@ -71,6 +73,15 @@ public abstract class JSONRoot<R, T, P> {
 
     public <N> JSONArray<R, N[], P, N[]> basicArray(ToMemberFunction<T, N[]> accessor) {
         return JSONArray.createBasicArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
+            @Override
+            public P end() {
+                return childCompleted();
+            }
+        });
+    }
+
+    public <M extends Collection<N>, N> JSONArray<R, Iterator<N>, P, Iterator<N>> iterArray(ToMemberFunction<T, M> accessor) {
+        return JSONArray.createCollectionArray(builder, accessor, new JSONArray.ArrayCompletion<P>() {
             @Override
             public P end() {
                 return childCompleted();

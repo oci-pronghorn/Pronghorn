@@ -1,11 +1,15 @@
 package com.ociweb.json.encode;
 
+import com.ociweb.json.encode.function.IterLongFunction;
+import com.ociweb.json.encode.function.IterMemberFunction;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.util.StringBuilderWriter;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
@@ -101,11 +105,22 @@ public class JSONArrayCompoundTests {
     }
 
     @Test
-    public void testArrayArray_FromList_Null() {
+    public void testArrayArray_FromList1_Null() {
         JSONRenderer<List<List<Integer>>> json = new JSONRenderer<List<List<Integer>>>()
                 .listArray(o->o)
                 .listArray(List::get)
                 .integer(List::get);
+        assertTrue(json.isLocked());
+        json.render(out, Arrays.asList(Arrays.asList(1, 2, 3), null, Arrays.asList(4, 5, 6)));
+        assertEquals("[[1,2,3],null,[4,5,6]]", out.toString());
+    }
+
+    @Test
+    public void testArrayArray_FromList2_Null() {
+        JSONRenderer<List<List<Integer>>> json = new JSONRenderer<List<List<Integer>>>()
+                .listArray(o->o)
+                .iterArray(List::get)
+                .integer((o, i) -> o.next());
         assertTrue(json.isLocked());
         json.render(out, Arrays.asList(Arrays.asList(1, 2, 3), null, Arrays.asList(4, 5, 6)));
         assertEquals("[[1,2,3],null,[4,5,6]]", out.toString());
