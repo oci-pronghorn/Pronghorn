@@ -1,12 +1,12 @@
 package com.ociweb.json.encode;
 
+import com.ociweb.json.encode.function.IterLongFunction;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.util.StringBuilderWriter;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -80,6 +80,24 @@ public class JSONArrayTests {
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
+    }
+
+    @Test
+    public void testArray_FromCollection() {
+        JSONRenderer<Set<Integer>> json = new JSONRenderer<Set<Integer>>()
+                .iterArray(o->o).integer((o, i) -> o.next());
+        assertTrue(json.isLocked());
+        json.render(out, new HashSet<>(Arrays.asList(9, 8, 7, 6, 5, 4, 3, 2, 1)));
+        assertEquals("[1,2,3,4,5,6,7,8,9]", out.toString());
+    }
+
+    @Test
+    public void testArray_FromCollectionNull() {
+        JSONRenderer<Set<Integer>> json = new JSONRenderer<Set<Integer>>()
+                .iterArray(o->o).integer((o, i) -> o.next());
+        assertTrue(json.isLocked());
+        json.render(out, null);
+        assertEquals("null", out.toString());
     }
 
     @Test

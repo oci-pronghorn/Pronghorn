@@ -3,8 +3,18 @@ package com.ociweb.json.encode;
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
+/**
+ *
+ * @param <R> Root of renderer
+ * @param <T> Data source type
+ * @param <P> Builder return type
+ * @param <N> Iterating node
+ */
 public abstract class JSONArray<R, T, P, N> {
     final JSONBuilder<R, T> builder;
     private final IteratorFunction<T, N> iterator;
@@ -74,6 +84,31 @@ public abstract class JSONArray<R, T, P, N> {
         };
     }
 
+    static <R, T, P, M extends Collection<N>, N> JSONArray<R, Iterator<N>, P, Iterator<N>> createCollectionArray(
+            JSONBuilder<R, T> builder,
+            final ToMemberFunction<T, M> accessor,
+            final ArrayCompletion<P> ending) {
+        return new JSONArray<R, Iterator<N>, P, Iterator<N>>(
+                builder.beginArray(new ToMemberFunction<T, Iterator<N>>() {
+                    @Override
+                    public Iterator<N> get(T o) {
+                        Collection<N> collection = accessor.get(o);
+                        return collection != null ? collection.iterator() : null;
+                    }
+                }),
+                new IteratorFunction<Iterator<N>, Iterator<N>>() {
+                    @Override
+                    public Iterator<N> get(Iterator<N> o, int i, Iterator<N> node) {
+                        return o.hasNext() ? o : null;
+                    }
+                }) {
+            @Override
+            P arrayEnded() {
+                return ending.end();
+            }
+        };
+    }
+
     private P childCompleted() {
         builder.endArray();
         return arrayEnded();
@@ -126,6 +161,28 @@ public abstract class JSONArray<R, T, P, N> {
                     @Override
                     public N2[] get(N2[] obj, int i, N2[] node) {
                         return i < obj.length ? obj : null;
+                    }
+                }) {
+            @Override
+            P arrayEnded() {
+                return childCompleted();
+            }
+        };
+    }
+
+    public <M extends Collection<N2>, N2> JSONArray<R, Iterator<N2>, P, Iterator<N2>> iterArray(IterMemberFunction<T, M> accessor) {
+        return new JSONArray<R, Iterator<N2>, P, Iterator<N2>>(
+                builder.beginArray(this.iterator, new IterMemberFunction<T, Iterator<N2>>() {
+                    @Override
+                    public Iterator<N2> get(T o, int i) {
+                        Collection<N2> m = accessor.get(o, i);
+                        return m != null ? m.iterator() : null;
+                    }
+                }),
+                new IteratorFunction<Iterator<N2>, Iterator<N2>>() {
+                    @Override
+                    public Iterator<N2> get(Iterator<N2> obj, int i, Iterator<N2> node) {
+                        return obj.hasNext() ? obj : null;
                     }
                 }) {
             @Override
