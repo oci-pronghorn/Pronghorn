@@ -79,7 +79,7 @@ public class JSONSelectTests {
 
     @Test
     @Ignore
-    public void testCases_Array() {
+    public void testCases_ArrayElementSelect() {
         JSONRenderer<Boolean[]> json = new JSONRenderer<Boolean[]>()
                 .basicArray(o->o)
                     .beginSelect()

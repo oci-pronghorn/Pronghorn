@@ -12,19 +12,25 @@ import com.ociweb.pronghorn.util.template.StringTemplateIterScript;
 import com.ociweb.pronghorn.util.template.StringTemplateScript;
 
 // TODO: support rational, decimal
-// TODO: implement the primitive type converters, including enums
+// TODO: implement the primitive type converters, or refactor to use lambdas, or delete methods
 // TODO: refactor for duplicate code
+// TODO: determine use case for recursive array and either uncomment/test or delete methods
+// TODO: implement select as an array element
 
-// Maintain no dependencies the public API classes (i.e. JSONObject)
+// Maintain no dependencies to the public API classes (i.e. JSONObject)
 
 class JSONBuilder<R, T> implements StringTemplateScript<T> {
     // Do not store mutable state used during render.
+    // Use ThreadLocal if required.
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
     private /*final*/ JSONBuilder<R, R> root;
 
+    // Stored between declaration calls and consumed on use in declaration
     private byte[] declaredMemberName;
+
+    // In order to support tryCase, we need a render state for objects.
     private ThreadLocal<ObjectRenderState> ors;
 
     JSONBuilder() {
@@ -212,7 +218,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-/* TODO: does this make sense?
+/*
     <N> void recurseRoot(final IteratorFunction<T, N> iterator, final IterMemberFunction<T, R> accessor) {
         addBuilder(iterator, root, accessor);
     }
@@ -229,7 +235,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     JSONBuilder<R, T> tryCase() {
-        final byte[] declaredMemberName = this.declaredMemberName;
+        final byte[] declaredMemberName = this.declaredMemberName; // Do not consume for other try
         JSONBuilder<R, T> builder = new JSONBuilder<R, T>(new StringTemplateBuilder<T>(), kw, depth, root);
         builder.declaredMemberName = declaredMemberName;
         builder.ors = ors;
@@ -258,7 +264,6 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     <N> void endSelect(IteratorFunction<T, N> iterator, int count, final IterBoolFunction<T>[] branches, final JSONBuilder<?, T>[] cases) {
-        // TODO
     }
 
     // Object
@@ -623,5 +628,65 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
             case TypeBoolean:
                 break;
         }
+    }
+
+    // Enum
+
+    <E extends Enum<E>> void addEnumName(final ToEnumFunction<T, E> func) {
+        addString(true, new ToStringFunction<T>() {
+            @Override
+            public CharSequence applyAsString(T value) {
+                E v = func.applyAsEnum(value);
+                return (v != null ? v.name() : null);
+            }
+        });
+    }
+
+    <N, E extends Enum<E>> void addEnumName(final IteratorFunction<T, N> iterator, final IterEnumFunction<T, E> func) {
+        iterate(iterator, true, new IterMemberFunction<T, CharSequence>() {
+            @Override
+            public CharSequence get(T o, int i) {
+                E v = func.applyAsEnum(o, i);
+                return (v != null ? v.name() : null);
+            }
+        }, new RenderIteration<CharSequence, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, CharSequence member, int i, N node) {
+                kw.Quote(writer);
+                writer.append(member);
+                kw.Quote(writer);
+            }
+        });
+    }
+
+    <E extends Enum<E>> void addEnumOrdinal(final ToEnumFunction<T, E> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                E v = func.applyAsEnum(source);
+                if (v == null) {
+                    kw.Null(writer);
+                }
+                else {
+                    Appendables.appendValue(writer, v.ordinal());
+                }
+            }
+        });
+    }
+
+    <N, E extends Enum<E>> void addEnumOrdinal(final IteratorFunction<T, N> iterator, final IterEnumFunction<T, E> func) {
+        iterate(iterator, true, new IterMemberFunction<T, Enum>() {
+            @Override
+            public Enum get(T o, int i) {
+                return func.applyAsEnum(o, i);
+            }
+        }, new RenderIteration<Enum, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, Enum member, int i, N node) {
+                Appendables.appendValue(writer, member.ordinal());
+            }
+        });
     }
 }

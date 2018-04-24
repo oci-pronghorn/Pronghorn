@@ -141,8 +141,7 @@ public abstract class JSONArray<R, T, P, N> {
         builder.addBuilder(iterator, renderer.builder, accessor);
         return this.childCompleted();
     }
-
-/* TODO: Does this make sense?
+/*
     public P recurseRoot(IterMemberFunction<T, R> accessor) {
         builder.recurseRoot(iterator, accessor);
         return this.childCompleted();
@@ -253,6 +252,18 @@ public abstract class JSONArray<R, T, P, N> {
 
     public P nullableString(IterStringFunction<T> func, JSONType encode) {
         builder.addString(iterator, true, func, encode);
+        return this.childCompleted();
+    }
+
+    // Enum
+
+    public <E extends Enum<E>> P enumName(IterEnumFunction<T, E> func) {
+        builder.addEnumName(iterator, func);
+        return this.childCompleted();
+    }
+
+    public <E extends Enum<E>> P enumOrdinal(IterEnumFunction<T, E> func) {
+        builder.addEnumOrdinal(iterator, func);
         return this.childCompleted();
     }
 }
