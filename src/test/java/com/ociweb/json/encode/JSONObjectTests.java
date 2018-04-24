@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.util.StringBuilderWriter;
 
+import java.time.DayOfWeek;
 import java.util.Arrays;
 
 import static junit.framework.TestCase.assertEquals;
@@ -90,10 +91,12 @@ public class JSONObjectTests {
                     .beginObject("m")
                         .empty()
                     .endObject()
+                    .enumName("en", o->DayOfWeek.TUESDAY)
+                    .enumOrdinal("eo", o->DayOfWeek.WEDNESDAY)
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj(new BasicObj()));
-        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"empty\":[],\"m\":{}}", out.toString());
+        assertEquals("{\"b\":true,\"i\":9,\"d\":123.40,\"s\":\"fum\",\"empty\":[],\"m\":{},\"en\":\"TUESDAY\",\"eo\":2}", out.toString());
     }
 
     @Test
@@ -107,10 +110,12 @@ public class JSONObjectTests {
                     .beginObject("m", o->o.m)
                     .endObject()
                     .constantNull("always")
+                .enumName("en", o->null)
+                .enumOrdinal("eo", o->null)
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
-        assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null,\"always\":null}", out.toString());
+        assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null,\"always\":null,\"en\":null,\"eo\":null}", out.toString());
     }
 
     @Test

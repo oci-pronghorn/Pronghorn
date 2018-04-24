@@ -197,4 +197,16 @@ public abstract class JSONRoot<R, T, P> {
         builder.addString(true, func, encode);
         return this.childCompleted();
     }
+
+    // Enum
+
+    public <E extends Enum<E>> P enumName(ToEnumFunction<T, E> func) {
+        builder.addEnumName(func);
+        return this.childCompleted();
+    }
+
+    public <E extends Enum<E>> P enumOrdinal(ToEnumFunction<T, E> func) {
+        builder.addEnumOrdinal(func);
+        return this.childCompleted();
+    }
 }

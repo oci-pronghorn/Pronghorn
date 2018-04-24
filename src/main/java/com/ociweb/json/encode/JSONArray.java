@@ -254,4 +254,16 @@ public abstract class JSONArray<R, T, P, N> {
         builder.addString(iterator, true, func, encode);
         return this.childCompleted();
     }
+
+    // Enum
+
+    public <E extends Enum<E>> P enumName(IterEnumFunction<T, E> func) {
+        builder.addEnumName(iterator, func);
+        return this.childCompleted();
+    }
+
+    public <E extends Enum<E>> P enumOrdinal(IterEnumFunction<T, E> func) {
+        builder.addEnumOrdinal(iterator, func);
+        return this.childCompleted();
+    }
 }

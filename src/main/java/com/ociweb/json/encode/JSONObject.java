@@ -216,4 +216,18 @@ public abstract class JSONObject<R, T, P> {
         builder.addFieldPrefix(name).addString(true, func, encode);
         return this;
     }
+
+    // Enum
+
+    public <E extends Enum<E>> JSONObject<R, T, P> enumName(String name, ToEnumFunction<T, E> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addEnumName(func);
+        return this;
+    }
+
+    public <E extends Enum<E>> JSONObject<R, T, P> enumOrdinal(String name, ToEnumFunction<T, E> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(name).addEnumOrdinal(func);
+        return this;
+    }
 }

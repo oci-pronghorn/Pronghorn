@@ -629,4 +629,64 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                 break;
         }
     }
+
+    // Enum
+
+    <E extends Enum<E>> void addEnumName(ToEnumFunction<T, E> func) {
+        addString(true, new ToStringFunction<T>() {
+            @Override
+            public CharSequence applyAsString(T value) {
+                E v = func.applyAsEnum(value);
+                return (v != null ? v.name() : null);
+            }
+        });
+    }
+
+    <N, E extends Enum<E>> void addEnumName(final IteratorFunction<T, N> iterator, final IterEnumFunction<T, E> func) {
+        iterate(iterator, true, new IterMemberFunction<T, CharSequence>() {
+            @Override
+            public CharSequence get(T o, int i) {
+                E v = func.applyAsEnum(o, i);
+                return (v != null ? v.name() : null);
+            }
+        }, new RenderIteration<CharSequence, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, CharSequence member, int i, N node) {
+                kw.Quote(writer);
+                writer.append(member);
+                kw.Quote(writer);
+            }
+        });
+    }
+
+    <E extends Enum<E>> void addEnumOrdinal(ToEnumFunction<T, E> func) {
+        final byte[] declaredMemberName = consumeDeclaredMemberName();
+        scripts.add(new StringTemplateScript<T>() {
+            @Override
+            public void render(AppendableByteWriter writer, T source) {
+                prefixObjectMemberName(declaredMemberName, depth, writer);
+                E v = func.applyAsEnum(source);
+                if (v == null) {
+                    kw.Null(writer);
+                }
+                else {
+                    Appendables.appendValue(writer, v.ordinal());
+                }
+            }
+        });
+    }
+
+    <N, E extends Enum<E>> void addEnumOrdinal(final IteratorFunction<T, N> iterator, final IterEnumFunction<T, E> func) {
+        iterate(iterator, true, new IterMemberFunction<T, Enum>() {
+            @Override
+            public Enum get(T o, int i) {
+                return func.applyAsEnum(o, i);
+            }
+        }, new RenderIteration<Enum, N>() {
+            @Override
+            public void render(AppendableByteWriter writer, Enum member, int i, N node) {
+                Appendables.appendValue(writer, member.ordinal());
+            }
+        });
+    }
 }

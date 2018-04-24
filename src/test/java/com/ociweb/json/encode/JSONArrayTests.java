@@ -153,4 +153,22 @@ public class JSONArrayTests {
         json.render(out, new String[] {"hello", null});
         assertEquals("[\"hello\",null]", out.toString());
     }
+
+    @Test
+    public void testArrayEnum_name() {
+        JSONRenderer<StackEnum[]> json = new JSONRenderer<StackEnum[]>()
+                .basicArray(o->o).enumName((o, i) -> o[i]);
+        assertTrue(json.isLocked());
+        json.render(out, new StackEnum[]{null, StackEnum.pronghornPipes, null, StackEnum.greenlightning});
+        assertEquals("[null,\"pronghornPipes\",null,\"greenlightning\"]", out.toString());
+    }
+
+    @Test
+    public void testArrayEnum_ordinal() {
+        JSONRenderer<StackEnum[]> json = new JSONRenderer<StackEnum[]>()
+                .basicArray(o->o).enumOrdinal((o, i) -> o[i]);
+        assertTrue(json.isLocked());
+        json.render(out, new StackEnum[]{null, StackEnum.pronghornPipes, null, StackEnum.greenlightning});
+        assertEquals("[null,1,null,3]", out.toString());
+    }
 }
