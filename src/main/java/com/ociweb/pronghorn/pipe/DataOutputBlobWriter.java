@@ -130,6 +130,14 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writer.write(backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
 	}
     
+	public void replicate(Appendable target) {
+		if (target instanceof DataOutputBlobWriter) {
+			replicate((DataOutputBlobWriter<?>)target);
+		} else {
+			Appendables.appendUTF8(target, backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+		}
+	}
+	
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
     	int bytes = (2+intCount)*4;//one for the schema index
     	
@@ -973,6 +981,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writeByte(e);
 		writePackedLong(m);	
 	}
+
 
 
     

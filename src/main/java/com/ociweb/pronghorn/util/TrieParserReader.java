@@ -747,10 +747,10 @@ public class TrieParserReader {
 	}
 
 	private static int scanBytes(byte[] source, 
-			final int run, final int srcMask, 
+			int r, final int srcMask, 
 			final byte caseMask, final int t1,
 			final int t2, final short[] data) {
-		int r = run;
+		
 		while (
 				((caseMask&data[t1-r]) == (caseMask&source[srcMask & (t2-r)]))
 				&& (--r > 0) 

@@ -322,10 +322,19 @@ public class Appendables {
 	        int orAll = 0; //this is to remove the leading zeros
 	        
 	        long temp = Math.abs(value);
-		    if (temp<tens_small_limit) {		        	
-	        	decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);		        	
+		    if (temp<tens_small_limit) {	
+		    	//TODO: move this instance of to the top??
+		    	if (target instanceof ChannelWriter) {
+		    		decimalValueCollecting((ChannelWriter)target, digits_small, tens_small, g, nextValue, orAll);
+		    	} else {
+		    		decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);
+		    	}
 	        } else {
-	        	decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
+	        	if (target instanceof ChannelWriter) {
+	        		decimalValueCollecting((ChannelWriter)target, digits, tens, g, nextValue, orAll);
+	        	} else {
+	        		decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
+	        	}	
 	        }
 	       
 	        
@@ -383,6 +392,35 @@ public class Appendables {
 		    
 		}
 		target.append(dv[(int)nextValue]);//(char)('0'+nextValue));
+	}
+	
+	private static <A extends Appendable> void decimalValueCollecting(ChannelWriter writer, int digits, long tens, int g,
+			long nextValue, int orAll) throws IOException {
+
+		boolean isFirst = true;
+		while (tens > 1) {
+
+			int digit = (int) (nextValue / tens);
+			nextValue = nextValue % tens;
+			orAll |= digit;
+			if (0 != orAll || digits < g) {
+				writer.writeByte(dv[digit]);// (char)('0'+digit));
+				isFirst = false;
+			}
+
+			if (digits == g) {
+				if (isFirst) {
+					writer.writeByte('0');// leading zero
+				}
+				writer.writeByte('.');
+				isFirst = false;
+			}
+
+			tens /= 10;
+			digits--;
+
+		}
+		writer.writeByte(dv[(int) nextValue]);// (char)('0'+nextValue));
 	}
     
     public static <A extends Appendable> A appendValue(A target, int value) {

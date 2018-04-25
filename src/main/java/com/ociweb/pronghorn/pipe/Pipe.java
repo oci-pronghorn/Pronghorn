@@ -3285,7 +3285,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    	notifyPubListener(pipe);
+    	notifyPubListener(pipe.pubListeners);
        	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
@@ -3302,7 +3302,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
-    	notifyPubListener(pipe);
+    	notifyPubListener(pipe.pubListeners);
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//add a few extra bytes on the end of the blob so we can "hide" information between fragments.
     	assert(optionalHiddenTrailingBytes>=0) : "only zero or positive values supported";
@@ -3317,11 +3317,15 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 	public static <S extends MessageSchema<S>> void notifyPubListener(Pipe<S> pipe) {
-		int i = pipe.pubListeners.length;	
-    	while (--i>=0) {
-    		pipe.pubListeners[i].published();
-    	}
+		notifyPubListener(pipe.pubListeners);
 	
+	}
+
+	private static void notifyPubListener(PipePublishListener[] listeners) {
+		int i = listeners.length;	
+    	while (--i>=0) {
+    		listeners[i].published();
+    	}
 	}
     
     
@@ -3659,7 +3663,9 @@ public class Pipe<T extends MessageSchema<T>> {
 	//This is an important performance feature of the low level API and should not be modified.
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe, int size) {
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
-        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+size);
+ 
+        long temp = pipe.llRead.llwConfirmedPosition+size;
+		return roomToLowLevelWrite(pipe, temp);
     }
     
     public static <S extends MessageSchema<S>> void presumeRoomForWrite(Pipe<S> pipe) {
@@ -3675,7 +3681,9 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         assert(null != pipe.llRead) : "Expected pipe to be setup for low level use.";
         assert(Pipe.singleThreadPerPipeWrite(pipe.id));
-        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
+       
+        long temp = pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));
+		return roomToLowLevelWrite(pipe, temp);
     }    
     
 	private static <S extends MessageSchema<S>> boolean roomToLowLevelWrite(Pipe<S> pipe, long target) {
