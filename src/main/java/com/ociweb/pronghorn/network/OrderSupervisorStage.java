@@ -666,7 +666,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
-			 connectionDataReader.commitRead();
+			 if (null!=connectionDataReader) {
+				 connectionDataReader.commitRead();
+			 }
 			 
 			 //if we have a log pipe then log these events
 			 if (null != log) {
@@ -697,7 +699,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 }			 
 			 
 		 } else {
-			 connectionDataReader.rollback();
+			 if (null!=connectionDataReader) {
+				 connectionDataReader.rollback();
+			 }
 		 }
 
          
