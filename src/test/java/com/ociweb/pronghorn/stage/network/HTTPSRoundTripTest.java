@@ -255,7 +255,7 @@ public class HTTPSRoundTripTest {
 				   serverConfig.maxConnectionBitsOnServer, 
 				   serverConfig.maxConcurrentInputs, 
 				   serverConfig.maxConcurrentOutputs,
-				   serverConfig.moduleParallelism, true);
+				   serverConfig.moduleParallelism, true, "Server", "", serverConfig.logFile);
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		

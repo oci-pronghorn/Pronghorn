@@ -63,7 +63,7 @@ public class GraphManager {
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
 	//set to false when we see telemetry missing edges. 
-	//TODO; still debugging for neural net, this not working when switched on.
+	//TODO; still debugging this not working when there are unrelated groups. switched on.
 	public static boolean combineCommonEdges = true; 
 	
 	//turn off to minimize memory and remove from profiler.
@@ -283,7 +283,7 @@ public class GraphManager {
 	private Object lock = new Object();	
 	
 	private boolean enableMutation = true;
-	final String name;
+	public final String name;
 	
 	public GraphManager() {
 		this(null);
@@ -2772,16 +2772,10 @@ public class GraphManager {
 	public static boolean accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
 
 		if (duration>0) {
-			//Does not track this data if it will no be used by telemetry
-			//this saves CPU cycles
-			if (isTelemetryEnabled(graphManager)) {
-				accumPositiveTime(graphManager, stageId, duration, now);			
-			}
+			accumPositiveTime(graphManager, stageId, duration, now);
 			return true;
 		} else {
-			if (isTelemetryEnabled(graphManager)) {
-				accumWhenZero(graphManager, stageId, duration);
-			}
+			accumWhenZero(graphManager, stageId, duration);
 			return false;
 		}
 	}

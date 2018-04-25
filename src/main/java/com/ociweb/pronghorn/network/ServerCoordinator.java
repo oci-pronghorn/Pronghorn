@@ -27,7 +27,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private int[]                                 upgradePipeLookup;
     private ConnectionContext[]                   connectionContext; //NOTE: ObjectArrays would work very well here!!
 
-    
     public final int                                  channelBits;
     public final int                                  channelBitsSize;
     public final int                                  channelBitsMask;
@@ -60,6 +59,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final String serviceName;
     private final String defaultPath;
     
+    private final LogFileConfig logFile; //generate a set of files to rotate..
+
+    
+    
 	public final boolean requireClientAuth;//clients must send their cert to connect
 	private final ServerConnectionStruct scs; //may be null;
 	
@@ -68,7 +71,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//////////////////////////////////////
 	private HTTPHeader[] replicatedHeaders;
 	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
-	private int minInternalInFlightPayloadSize = 32;//TODO: add update method
+	private int minInternalInFlightPayloadSize = 48;//TODO: add update method
 	///////////////////////////////////////
 		
 //	public static long acceptConnectionStart;
@@ -80,21 +83,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
-	public ServerCoordinator(TLSCertificates tlsCertificates, 
-			String bindHost, int port,
-            ServerConnectionStruct scs,
-			int maxConnectionsBits, 
-            int maxConcurrentInputs, int maxConcurrentOutputs,
-            int moduleParallelism, boolean requireClientAuth){
-		
-		this(tlsCertificates,bindHost,port,
-				scs,
-				maxConnectionsBits, 
-				maxConcurrentInputs, maxConcurrentOutputs,
-				moduleParallelism,
-				requireClientAuth,
-				"Server", "");
-	}
 	
     public ServerCoordinator(TLSCertificates tlsCertificates,
     		                 String bindHost, int port,
@@ -105,7 +93,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 							 int moduleParallelism,
 							 boolean requireClientAuth,
 							 String serviceName, 
-							 String defaultPath){
+							 String defaultPath, 
+							 LogFileConfig log){
 
 		super(tlsCertificates);
 		
@@ -116,7 +105,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
         this.bindHost          = bindHost;
-
+        this.logFile           = log;
+          
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
     	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs, moduleParallelism); 
@@ -158,7 +148,15 @@ public class ServerCoordinator extends SSLConnectionHolder {
     //	logger.trace("Server pipe pool:\n {}",responsePipeLinePool);
     	    	
     }
-
+    
+    public boolean isLogFilesEnabled() {
+    	return null!=logFile;
+    }
+    
+    public LogFileConfig getLogFilesConfig() {
+    	return logFile;
+    }
+    
 	public void setStart(PronghornStage startStage) {
 		this.firstStage = startStage;
 	}

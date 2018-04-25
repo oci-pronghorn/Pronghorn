@@ -26,7 +26,7 @@ public class OrderSupervisorTest {
 			12,
 			4,4,
 			1,
-			false);
+			false, "Server", "", null);
 	private final boolean isTLS = false;
 	private final PipeConfig<ServerResponseSchema> resConfig = ServerResponseSchema.instance.newPipeConfig(6,100);
 	private final PipeConfig<NetPayloadSchema> netConfig = NetPayloadSchema.instance.newPipeConfig(6,100);
@@ -81,7 +81,7 @@ public class OrderSupervisorTest {
 		Pipe.publishEOF(output);
 		
 		OrderSupervisorStage.newInstance(gm, 
-				inputPipes, new Pipe[0],
+				inputPipes, null,
 				outgoingPipes, 
 				coordinator, 
 				isTLS);
@@ -149,7 +149,7 @@ public class OrderSupervisorTest {
 		Pipe.publishEOF(output);
 		
 		OrderSupervisorStage.newInstance(gm, 
-				inputPipes, new Pipe[0],
+				inputPipes, null,
 				outgoingPipes, 
 				coordinator, 
 				isTLS);

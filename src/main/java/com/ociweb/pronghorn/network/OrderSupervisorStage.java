@@ -33,7 +33,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private static Logger logger = LoggerFactory.getLogger(OrderSupervisorStage.class);
 
     private final Pipe<ServerResponseSchema>[] dataToSend;
-    private final Pipe<HTTPLogResponseSchema>[] log;
+    private final Pipe<HTTPLogResponseSchema> log;
     
     private final Pipe<NetPayloadSchema>[] outgoingPipes;
         
@@ -81,7 +81,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	
     public static OrderSupervisorStage newInstance(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
-    		 Pipe<HTTPLogResponseSchema>[] log,
+    		 Pipe<HTTPLogResponseSchema> log,
     		Pipe<NetPayloadSchema>[] outgoingPipes, 
     		ServerCoordinator coordinator, boolean isTLS) {
     	return new OrderSupervisorStage(graphManager, inputPipes, log, outgoingPipes, coordinator);
@@ -99,7 +99,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
      */
     public OrderSupervisorStage(GraphManager graphManager, 
     		                     Pipe<ServerResponseSchema>[][] inputPipes, 
-    		                     Pipe<HTTPLogResponseSchema>[] log,
+    		                     Pipe<HTTPLogResponseSchema> log,
     		                     Pipe<NetPayloadSchema>[] outgoingPipes,
     		                     ServerCoordinator coordinator, boolean isTLS) {
     	this(graphManager, join(inputPipes), log, outgoingPipes, coordinator);
@@ -107,10 +107,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     
     public OrderSupervisorStage(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
-    		Pipe<HTTPLogResponseSchema>[] log,
+    		Pipe<HTTPLogResponseSchema> log,
     		Pipe<NetPayloadSchema>[] outgoingPipes, 
     		ServerCoordinator coordinator) {
-        super(graphManager, inputPipes, outgoingPipes);      
+        super(graphManager, inputPipes, join(outgoingPipes,log));      
         
         this.channelBitsMask = coordinator.channelBitsMask;
         this.channelBitsSize = coordinator.channelBitsSize;
@@ -121,7 +121,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
                 
         this.dataToSend = inputPipes;
         this.log = log;
-        assert(log.length==0 || inputPipes.length==log.length);
         
         assert(outgoingPipes.length>0);
         
@@ -248,7 +247,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    			  
 		    	//dataToSend.length
 		    	int myPipeIdx = (int)(channelId % poolMod);
-		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize)) {	
+		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) &&
+		            (log==null || Pipe.hasRoomForWrite(log))) {	
 				    	
 			    	//only after we know that we are doing something.
 					didWork = true;
@@ -588,6 +588,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 BaseConnection con = socketHolder.get(channelId);
 		 ChannelReaderController connectionDataReader = null;
 		 long arrivalTime = -1;
+		 long businessTime = -1;
 		 if (null!=con) {
 			 
 			 connectionDataReader = con.connectionDataReader;
@@ -595,6 +596,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 if (null!=reader && conStruct!=null) {
 				 assert(reader.isStructured()) : "connection data reader must hold structured data";
 				 arrivalTime = reader.structured().readLong(conStruct.arrivalTimeFieldId);
+				 businessTime = reader.structured().readLong(conStruct.businessStartTime);
 				 int origCon = reader.structured().readInt(conStruct.contextFieldId);
 				 				 
 				 requestContext |= origCon;
@@ -665,44 +667,46 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
 			 connectionDataReader.commitRead();
+			 
+			 //if we have a log pipe then log these events
+			 if (null != log) {
+				 
+				 //is this ok, check performance run..
+				 //this can not and does not include TLS encryption time on xmit
+				 //this also does not include any latency due to waiting for network resources
+				 long now = System.nanoTime();
+				 long durationFloorNS = now-businessTime;
+				 
+				 Pipe<HTTPLogResponseSchema> outLog = log;
+				 
+				 Pipe.presumeRoomForWrite(outLog);
+				 
+				 int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
+				 Pipe.addLongValue(now, outLog);
+				 Pipe.addLongValue(channelId, outLog);
+				 Pipe.addIntValue(expSeq, outLog);
+				 
+				 DataOutputBlobWriter<?> logStr = Pipe.openOutputStream(outLog);				 
+				 Pipe.outputStream(output).replicate(logStr);
+				 DataOutputBlobWriter.closeLowLevelField(logStr);
+				 
+				 Pipe.addLongValue(durationFloorNS, outLog);
+				 Pipe.confirmLowLevelWrite(outLog, size);
+				 Pipe.publishWrites(outLog);
+				 
+			 }			 
+			 
 		 } else {
 			 connectionDataReader.rollback();
 		 }
 
-		 writeToNextStage(output, myPipeIdx, 
-				          channelId, len, requestContext,
-				          blobMask, blob, bytePosition); 
-		 
-		 //if we have a log pipe then log these events
-		 if (myPipeIdx < log.length) {
-			 
-			 //is this ok, check performance run..
-			//this can not and does not include TLS encryption time on xmit
-			//this also does not include any latency due to waiting for network resources
-			long durationFloor = arrivalTime-System.currentTimeMillis();
-			///NOTE: this duration is in MS, this is probably not good enough..
-			
-			Pipe<HTTPLogResponseSchema> outLog = log[myPipeIdx];
-
-			
-			if (Pipe.hasRoomForWrite(outLog)) {
-				int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
-				Pipe.addLongValue(System.currentTimeMillis(), outLog);
-				Pipe.addLongValue(channelId, outLog);
-				Pipe.addIntValue(expSeq, outLog);
-				Pipe.addByteArray(blob, bytePosition, len, blobMask, outLog);
-				Pipe.addLongValue(durationFloor, outLog);
-				Pipe.confirmLowLevelWrite(outLog, size);
-				Pipe.publishWrites(outLog);
-			} else {
-				//TODO: needs exponential back off
-				logger.info("Unable to log");
-			}
-			
-			
+         
+		 if (showUTF8Sent) {
+			 Pipe.outputStream(output).debugAsUTF8();
 		 }
 		 
-		 
+		 writeToNextStage(output, myPipeIdx, channelId, requestContext); 
+		 	 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 assert(0==Pipe.releasePendingByteCount(input));
@@ -710,9 +714,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	}
 
-	private void writeToNextStage(Pipe<NetPayloadSchema> output, int myPipeIdx,
-			final long channelId, int len, int requestContext,
-			int blobMask, final byte[] blob, final int bytePosition) {
+	private int writeToNextStage(Pipe<NetPayloadSchema> output, int myPipeIdx,
+			final long channelId, int requestContext) {
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
@@ -730,7 +733,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 Pipe.publishWrites(output);
 			 
 		 }
-		                	
+	
 		 /////////////
 		 //write out the content
 		 /////////////
@@ -742,12 +745,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.addLongValue(0, output); //TODO: is this time field needed to be sent? no....
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
 
-		 if (showUTF8Sent) {
-			 Pipe.outputStream(output).debugAsUTF8();
-		 }
-		 
-
-		 
+	 
 		 int lenWritten = DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output));
 		 
 		 
@@ -782,6 +780,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 Pipe.publishWrites(output);
 			
 		 }
+		 return lenWritten;
 	}
     
 }

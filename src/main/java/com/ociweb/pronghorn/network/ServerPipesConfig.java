@@ -7,7 +7,6 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ServerPipesConfig {
 	
@@ -16,7 +15,7 @@ public class ServerPipesConfig {
 	public final int serverResponseWrapUnitsAndOutputs;
 	public final int serverPipesPerOutputEngine;
 	public final int serverSocketWriters;
-	
+	public final LogFileConfig logFile;
 	public final int serverOutputMsg;
 	
 	public final int fromRouterToModuleCount;
@@ -48,7 +47,9 @@ public class ServerPipesConfig {
 	
 	public int writeBufferMultiplier;
   
-	public ServerPipesConfig(boolean isTLS, 
+	public ServerPipesConfig(
+			LogFileConfig logFile,
+			 boolean isTLS, 
 			 int maxConnectionBits,
 			 int tracks,
 			 int encryptUnitsPerTrack,
@@ -56,13 +57,13 @@ public class ServerPipesConfig {
 			 int decryptUnitsPerTrack,
 			 int concurrentChannelsPerDecryptUnit
 			 ) {
-		this(isTLS, maxConnectionBits, tracks,
+		this(logFile, isTLS, maxConnectionBits, tracks,
 				encryptUnitsPerTrack, concurrentChannelsPerEncryptUnit,
 				decryptUnitsPerTrack, concurrentChannelsPerDecryptUnit,
 				4,512);
 	}
 	
-	public ServerPipesConfig(boolean isTLS, 
+	public ServerPipesConfig(LogFileConfig logFile, boolean isTLS, 
 							 int maxConnectionBits,
 							 int tracks,
 							 int encryptUnitsPerTrack,
@@ -78,17 +79,17 @@ public class ServerPipesConfig {
 		}
 
 		//these may need to be exposed.. they can impact performance
-	    fromRouterToModuleCount   = 4; //count of messages from router to module	    
-	    serverOutputMsg           = 16; //count of outgoing responses to writer
+		this.fromRouterToModuleCount   = 4; //count of messages from router to module	    
+		this.serverOutputMsg           = 16; //count of outgoing responses to writer
 	    //largest file to be cached in file server
    
+	    this.logFile = logFile;
+	    this.moduleParallelism = tracks;
+	    this.maxConnectionBitsOnServer = maxConnectionBits;
 		
-		moduleParallelism = tracks;
-		maxConnectionBitsOnServer = maxConnectionBits;
-		
-		serverResponseWrapUnitsAndOutputs = encryptUnitsPerTrack*moduleParallelism;
-		serverPipesPerOutputEngine = concurrentChannelsPerEncryptUnit;	
-		maxConcurrentOutputs = serverPipesPerOutputEngine*serverResponseWrapUnitsAndOutputs;
+	    this.serverResponseWrapUnitsAndOutputs = encryptUnitsPerTrack*moduleParallelism;
+	    this.serverPipesPerOutputEngine = concurrentChannelsPerEncryptUnit;	
+	    this.maxConcurrentOutputs = serverPipesPerOutputEngine*serverResponseWrapUnitsAndOutputs;
 		
 		/////////		
 		//Note how each value builds on the next.		
@@ -100,33 +101,33 @@ public class ServerPipesConfig {
 		
 		////////
 		//Note the unwrap input behaves the same as the above wrapped output
-		serverRequestUnwrapUnits = decryptUnitsPerTrack*moduleParallelism;
-		maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
+	    this.serverRequestUnwrapUnits = decryptUnitsPerTrack*moduleParallelism;
+	    this.maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
 		////////
 		
 		// do not need multiple writers until we have giant load
-		serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
+	    this.serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
 
 
 		//defaults which are updated by method calls
-		fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
-		serverBlobToWrite               = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
+	    this.serverBlobToWrite               = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		int targetServerWriteBufferSize = 1<<23;
-		writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
+		this.writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
 		
-		releaseMsg                      = 2048;
+		this.releaseMsg                      = 2048;
 				
-	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
+		this.releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
 	    
-	    newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 100);
+		this.newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 100);
 	    
 
 	    //byte buffer must remain small because we will have a lot of these for all the partial messages
-	    incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
+		this.incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 	    								partialPartsIn, 
 	    								maxRequestSize);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
 
-	    handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
+		this.handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
 	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake
 	    	    
 	}

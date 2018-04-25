@@ -25,7 +25,6 @@ import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.ChannelWriterController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
@@ -64,7 +63,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
      
     
     private final Pipe<NetPayloadSchema>[] inputs;
-    private final Pipe<HTTPLogRequestSchema>[] log;
+    private final Pipe<HTTPLogRequestSchema> log;
     
     private       long[]                   inputChannels;
     private       int[]                    inputBlobPos;
@@ -112,7 +111,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		                               Pipe<NetPayloadSchema>[] input, 
     		                               Pipe<HTTPRequestSchema>[][] outputs, 
     		                               Pipe<ServerResponseSchema> errorResponsePipe,
-    		                               Pipe<HTTPLogRequestSchema>[] log,
+    		                               Pipe<HTTPLogRequestSchema> log,
     		                               Pipe<ReleaseSchema> ackStop,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, 
                                            ServerCoordinator coordinator, boolean catchAll) {
@@ -131,19 +130,21 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		                           Pipe<NetPayloadSchema>[] input, 
 		                           Pipe<HTTPRequestSchema>[] outputs,
 		                           Pipe<ServerResponseSchema> errorResponsePipe,
-		                           Pipe<HTTPLogRequestSchema>[] log,
+		                           Pipe<HTTPLogRequestSchema> log,
 		                           Pipe<ReleaseSchema> ackStop,
 		                           HTTP1xRouterStageConfig<T,R,V,H> config, 
 		                           ServerCoordinator coordinator, boolean catchAll) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, log, ackStop, config, coordinator, catchAll); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,
+				input,outputs, errorResponsePipe, log, 
+				ackStop, config, coordinator, catchAll); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
 			int parallelId,
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
             Pipe<ServerResponseSchema> errorResponsePipe, 
-            Pipe<HTTPLogRequestSchema>[] log,
+            Pipe<HTTPLogRequestSchema> log,
             Pipe<ReleaseSchema> ackStop,
             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
@@ -164,7 +165,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			                 Pipe<NetPayloadSchema>[] input, 
 			                 Pipe<HTTPRequestSchema>[] outputs,
 			                 Pipe<ServerResponseSchema> errorResponsePipe, 
-			                 Pipe<HTTPLogRequestSchema>[] log,
+			                 Pipe<HTTPLogRequestSchema> log,
 			                 Pipe<ReleaseSchema> ackStop,
                              HTTP1xRouterStageConfig<T,R,V,H> config, 
                              ServerCoordinator coordinator, 
@@ -180,7 +181,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.config = config;
         this.inputs = input;
         this.log = log;
-        assert(log.length==0 || input.length==log.length);
         
         this.releasePipe = ackStop;        
         this.outputs = outputs;
@@ -194,6 +194,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		       
 		        
     }    
 	
@@ -288,6 +289,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     	
 		        while (--localIdx>=0 && --m>=0) {
 
+		            if (null != log && !Pipe.hasRoomForWrite(log)) {
+		            	return;//try later after log pipe is cleared
+		            }
+		            
 		            int result = singlePipe(this, localIdx);
 		            
 		            if (result>=0) {
@@ -351,7 +356,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             	}     
             }
             
-        }       
+        }      
+        
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
 	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
@@ -506,7 +512,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			final long toParseLength = TrieParserReader.parseHasContentLength(that.trieReader);
 			assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+totalAvail;
 			            
-			if (toParseLength>0) {
+			if (toParseLength>0 && (null==that.log || Pipe.hasRoomForWrite(that.log))) {
 
 		        long arrivalTime = captureArrivalTime(selectedInput);
 		        int seqForLogging = that.sequences[idx];
@@ -518,23 +524,23 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				
 				if (SUCCESS == state) {
 										
-					if (idx < that.log.length) {
+					if (null != that.log) {
 						//this logs every input at this point
-						Pipe<HTTPLogRequestSchema> logOut = that.log[idx];
-						if (Pipe.hasRoomForWrite(logOut)) {
-							
-							int size = Pipe.addMsgIdx(logOut, HTTPLogRequestSchema.MSG_REQUEST_1);
-							Pipe.addLongValue(arrivalTime, logOut);
-							Pipe.addLongValue(channel, logOut);
-							Pipe.addIntValue(seqForLogging, logOut);
-							Pipe.addByteArray(Pipe.blob(selectedInput), posForLogging, totalConsumed, that.trieReader.sourceMask, logOut);
-							Pipe.confirmLowLevelWrite(logOut, size);
-							Pipe.publishWrites(logOut);
-							
-						} else {
-							//TODO; needs back off
-							logger.info("unable to log");
-						}
+						Pipe<HTTPLogRequestSchema> logOut = that.log;
+					
+						Pipe.presumeRoomForWrite(logOut);//checked above					
+						int size = Pipe.addMsgIdx(logOut, HTTPLogRequestSchema.MSG_REQUEST_1);
+						Pipe.addLongValue(arrivalTime, logOut);
+						Pipe.addLongValue(channel, logOut);
+						Pipe.addIntValue(seqForLogging, logOut);
+				
+						Pipe.addByteArray(Pipe.blob(selectedInput),
+								          posForLogging, 
+								          totalConsumed,  
+								          that.trieReader.sourceMask, logOut);
+						
+						Pipe.confirmLowLevelWrite(logOut, size);
+						Pipe.publishWrites(logOut);					
 						
 					}
 					
@@ -628,7 +634,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		if (pos<head) {
 			arrivalTime = Pipe.readLong(Pipe.slab(selectedInput), 
 											 Pipe.slabMask(selectedInput),
-											 pos + 3);	
+											 pos + 3);
+
 		} else {
 			logger.info("unable to capture arrival time for {}",id);
 		}
@@ -1141,7 +1148,8 @@ private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, l
 }
 
 
-private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput, long channel, int length) {
+private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput,
+		                long channel, int length) {
 	//confirm match
 	assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
 	
@@ -1260,6 +1268,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 			}
 		}
 	
+		cw.structured().writeLong(System.nanoTime(), scs.businessStartTime);
 		cw.structured().writeLong(arrivalTime, scs.arrivalTimeFieldId);
 		cw.structured().writeInt(requestContext, scs.contextFieldId); 
 				

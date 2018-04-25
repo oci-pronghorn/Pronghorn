@@ -28,7 +28,7 @@ public abstract class BaseConnection {
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
 	  
-    private long lastUsedTime = System.currentTimeMillis();
+    private long lastUsedTimeNS = System.currentTimeMillis();
 
 	protected ChannelWriterController connectionDataWriter;
 	protected ChannelReaderController connectionDataReader;	
@@ -65,12 +65,12 @@ public abstract class BaseConnection {
 		return connectionDataReader;
 	}
 	
-	public void setLastUsedTime(long timeMS) {
-		lastUsedTime = timeMS;
+	public void setLastUsedTime(long timeNS) {
+		lastUsedTimeNS = timeNS;
 	}
 	
 	public long getLastUsedTime() {
-		return lastUsedTime;//MS
+		return lastUsedTimeNS;
 	}
 	
 	public SSLEngine getEngine() {

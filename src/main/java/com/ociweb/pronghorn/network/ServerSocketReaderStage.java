@@ -546,10 +546,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         final int size = Pipe.addMsgIdx(targetPipe, messageType);               
         if (messageType>=0) {
 	        Pipe.addLongValue(channelId, targetPipe);  
-	        long now = System.currentTimeMillis();
-	        cc.setLastUsedTime(now);//needed to know when this connection can be disposed
-			Pipe.addLongValue(now, targetPipe);
-	        
+	        long nowNS = System.nanoTime();
+	        cc.setLastUsedTime(nowNS);//needed to know when this connection can be disposed
+			Pipe.addLongValue(nowNS, targetPipe);
+			
 	        if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
 	        	Pipe.addLongValue(-1, targetPipe);
 	        }

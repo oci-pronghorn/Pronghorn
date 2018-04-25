@@ -927,13 +927,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			}
 
 			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
-				if (that.shownLowLatencyWarning) {
-				} else {
-					that.shownLowLatencyWarning = true;
-					logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
-				}
+				assert(reportLowAccuracyClock(that));
 			}
 		}
+	}
+
+	private static boolean reportLowAccuracyClock(ScriptedNonThreadScheduler that) {
+		if (that.shownLowLatencyWarning) {
+		} else {
+			that.shownLowLatencyWarning = true;
+			logger.warn("\nThis platform is unable to measure ns time slices due to OS or hardware limitations.\n Work was done by an actor but zero time was reported.\n");
+		}
+		return true;
 	}
 
 	private void processException(PronghornStage stage, Exception e) {

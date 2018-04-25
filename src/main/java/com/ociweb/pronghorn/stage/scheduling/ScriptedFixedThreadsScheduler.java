@@ -19,6 +19,7 @@ import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
+import com.ociweb.pronghorn.network.http.HTTPLogUnificationStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -44,40 +45,52 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		@Override
 		public void visit(PronghornStage stage) {
 
-			if (seen[stage.stageId]==0) {
-				seen[stage.stageId]=1;	//will only report this once per run.
-
-				//linear search, will only happen once.
-				int i = ntsArray.length;
-				while (--i>=0) {
-					int idx = -1;
-					final ScriptedNonThreadScheduler localNTS = ntsArray[i];
-					if ((idx=localNTS.indexOfStage(stage))>=0) {
-						assert(idx<localNTS.stages.length);
-
-						//found it and we have work to do
-						//if already at beginning there is nothing else to do
-						if (localNTS.stages.length>1 
-							&& (idx>0) //not beginning or end
-							&& (idx<localNTS.stages.length-1)) {
-							logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
-							
-						    //adding one more thread to executer service
-							ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
-							ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
-							System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
-							newArray[newArray.length-1] = splitOn;
-							ntsArray = newArray;
-							executorService.execute(buildRunnable(splitOn));
-						} else {
-							//logger.trace("stage was already scheduled for the optimum time "+stage);
-						}
-						
-						return;
-					}
-				}
-				throw new UnsupportedOperationException("Internal error, expected to find stage "+stage+" in one of the schedulers.");
-			}
+			///////////////////////
+			//Code disabled 4/24
+			//when it splits the part cut off is sometimes missing the last stage or stage after cut on 2?
+			//TODO: do not enable feature until this bug is found
+			//TODO: this is also a little slow on the thread where it runs..
+			//////////////////////
+			
+//			
+//			
+//			if (seen[stage.stageId]==0) {
+//				seen[stage.stageId]=1;	//will only report this once per run.
+//
+//				//linear search, will only happen once.
+//				int i = ntsArray.length;
+//				while (--i>=0) {
+//					int idx = -1;
+//					final ScriptedNonThreadScheduler localNTS = ntsArray[i];
+//					if ((idx=localNTS.indexOfStage(stage))>=0) {
+//						assert(idx<localNTS.stages.length);
+//
+//						//found it and we have work to do
+//						//if already at beginning there is nothing else to do
+//						if (localNTS.stages.length>1 
+//							&& (idx>0) //not beginning or end
+//							&& (idx<localNTS.stages.length-1)) {
+//							logger.warn("New thread started; This stage has been detected to be blocking and/or long running: {}  Please review the code and break this work into multiple smaller units.", stage.toString());
+//							
+//						    //adding one more thread to executer service
+//							ScriptedNonThreadScheduler splitOn = localNTS.splitOn(idx);
+//							ScriptedNonThreadScheduler[] newArray = new ScriptedNonThreadScheduler[ntsArray.length+1];
+//							System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
+//							newArray[newArray.length-1] = splitOn;
+//							ntsArray = newArray;
+//							executorService.execute(buildRunnable(splitOn));
+//						} else {
+//							//logger.trace("stage was already scheduled for the optimum time "+stage);
+//						}
+//						
+//						return;
+//					}
+//				}
+//				throw new UnsupportedOperationException("Internal error, expected to find stage "+stage+" in one of the schedulers.");
+//			}
+			
+			
+			
 		}
 	};
 	
@@ -589,6 +602,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			}		
 		}
 			
+		if (consumerStage instanceof HTTPLogUnificationStage) {
+			return false;//never combine log info producer with the log unification stage
+		}
 		
 		if (consumerStage instanceof MonitorConsoleStage ) {
 			return false;

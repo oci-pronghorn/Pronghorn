@@ -21,6 +21,7 @@ import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.http.HTTPLogUnificationStage;
 import com.ociweb.pronghorn.network.http.HTTPRequestJSONExtractionStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
@@ -42,8 +43,10 @@ import com.ociweb.pronghorn.network.twitter.RequestTwitterUserStreamStage;
 import com.ociweb.pronghorn.network.twitter.TwitterJSONToTwitterEventsStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.file.FileBlobWriteStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.IPv4Tools;
@@ -300,7 +303,7 @@ public class NetGraphBuilder {
 	private static void buildHTTPStages(GraphManager graphManager, ServerCoordinator coordinator, ModuleConfig modules,
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet) {
-        
+  		
 		assert(sendingToNet.length >= coordinator.moduleParallelism()) : "reduce track count since we only have "+sendingToNet.length+" pipes";
 		
 //		logger.info("buildHTTPStages");
@@ -322,8 +325,8 @@ public class NetGraphBuilder {
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         
-		Pipe<HTTPLogRequestSchema>[][] log = new Pipe[coordinator.moduleParallelism()][0];
-		Pipe<HTTPLogResponseSchema>[][] log2 = new Pipe[coordinator.moduleParallelism()][0];
+		Pipe<HTTPLogRequestSchema>[] log = new Pipe[coordinator.moduleParallelism()];
+		Pipe<HTTPLogResponseSchema>[] log2 = new Pipe[coordinator.moduleParallelism()];
 		
 		Pipe<NetPayloadSchema>[][] perTrackFromNet 
 			= Pipe.splitPipes(coordinator.moduleParallelism(), receivedFromNet);
@@ -331,8 +334,8 @@ public class NetGraphBuilder {
 		Pipe<NetPayloadSchema>[][] perTrackFromSuper 
 			= Pipe.splitPipes(coordinator.moduleParallelism(), sendingToNet);
 		
-		buildLogging(coordinator,log,log2,perTrackFromNet,perTrackFromSuper);
-				
+		buildLogging(graphManager, coordinator, log, log2);
+		
 		buildRouters(graphManager, coordinator, releaseAfterParse,
 				fromModule, toModules, routerConfig, config,
 				false, log, perTrackFromNet);
@@ -342,22 +345,59 @@ public class NetGraphBuilder {
         
 	}
 
-	public static void buildLogging(ServerCoordinator coordinator, 
-			                        Pipe<HTTPLogRequestSchema>[][] log,
-			                        Pipe<HTTPLogResponseSchema>[][] log2, 
-			                        Pipe<NetPayloadSchema>[][] perTrackFromNet, 
-			                        Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
-		// TODO Auto-generated method stub
+	public static void buildLogging(GraphManager graphManager,
+			                        ServerCoordinator coordinator, 
+			                        Pipe<HTTPLogRequestSchema>[] logReq,
+			                        Pipe<HTTPLogResponseSchema>[] logRes) {
 		
-		//If logging is on then create the pipes to the matching lenghth and pass into  LogUnification
-		//   log unifcation also needs a target stage.
+		if (coordinator.isLogFilesEnabled()) {
+			
+			//walk the matching pipes and create monitor pipes
+			int i = logReq.length;
+			while (--i>=0) {
+				logReq[i] = HTTPLogRequestSchema.instance.newPipe(32, 1<<12);	
+			}
+			
+			int resTotal = 0;
+			i = logRes.length;
+			while (--i>=0) {	
+				logRes[i] = HTTPLogResponseSchema.instance.newPipe(32, 1<<12);
+			}
 		
+			//write large blocks out to the file, logger unification will fill each message
+			//NOTE: the file writer should do this however we do not know if the real destination
+			//do not set smaller than 1<<19 1/4 meg or volume is impacted
+			Pipe<RawDataSchema> out = RawDataSchema.instance.newPipe(8, 1<<20);
+			
+			//ConsoleJSONDumpStage.newInstance(graphManager, reqIn);
+			//ConsoleJSONDumpStage.newInstance(graphManager, resIn);
+			
+			//PipeCleanerStage.newInstance(graphManager, reqIn);
+			//PipeCleanerStage.newInstance(graphManager, resIn);
+			
+			new HTTPLogUnificationStage(graphManager, logReq, logRes, out);
+			
+			LogFileConfig logFileConfig = coordinator.getLogFilesConfig();
+			
+			boolean append = false;
+			new FileBlobWriteStage(graphManager, out, 
+								   logFileConfig.maxFileSize()
+					               ,append, 
+					               logFileConfig.base(),
+					               logFileConfig.countOfFiles()
+					);
+			
+			//PipeCleanerStage.newInstance(graphManager, out);
+			//ConsoleJSONDumpStage.newInstance(graphManager, out);			
+			//ConsoleSummaryStage.newInstance(graphManager, out);
+			
+		}
 	}
 
 	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
 			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules, final HTTP1xRouterStageConfig routerConfig,
-			PipeConfig<ServerResponseSchema> config, boolean captureAll, Pipe<HTTPLogRequestSchema>[][] log,
+			PipeConfig<ServerResponseSchema> config, boolean captureAll, Pipe<HTTPLogRequestSchema>[] log,
 			Pipe[][] perTrackFromNet) {
 		/////////////////////
 		//create the routers
@@ -415,7 +455,6 @@ public class NetGraphBuilder {
 			fromModule[parallelTrack] = PronghornStage.join(router404Pipe, fromModule[parallelTrack]);
 			//////////////////
 			
-			 
 			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
 					graphManager, 
 					parallelTrack, 
@@ -534,11 +573,11 @@ public class NetGraphBuilder {
 	}
 
 	public static void buildOrderingSupers(GraphManager graphManager, ServerCoordinator coordinator,
-			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPLogResponseSchema>[][] log, Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
+			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPLogResponseSchema>[] log, Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
 		
 		int track = fromModule.length;
 		while (--track>=0) {
-						
+		
 			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, 
 					                    fromModule[track], 
 					                    log[track],
@@ -714,7 +753,7 @@ public class NetGraphBuilder {
 				   serverConfig.maxConnectionBitsOnServer, 
 				   serverConfig.maxConcurrentInputs, 
 				   serverConfig.maxConcurrentOutputs,
-				   serverConfig.moduleParallelism, false);
+				   serverConfig.moduleParallelism, false, "Server", "", serverConfig.logFile);
 		
 		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
 		
@@ -722,7 +761,7 @@ public class NetGraphBuilder {
 	}
 
 	public static ServerPipesConfig simpleServerPipesConfig(TLSCertificates tlsCertificates, int processors) {
-		ServerPipesConfig serverConfig = new ServerPipesConfig(tlsCertificates != null, 
+		ServerPipesConfig serverConfig = new ServerPipesConfig(null, tlsCertificates != null, 
 		  (processors >= 4) ? 20 : 12, 
 		   processors > 0? processors : ((processors >= 4) ? (tlsCertificates != null?4:8) : 2),
 		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
@@ -750,7 +789,7 @@ public class NetGraphBuilder {
 		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
 		
 		
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isTLS, 
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(null, isTLS, 
 				maxConnectionBits, tracks, 
 				2, concurrentChannelsPerEncryptUnit, 
 				1, concurrentChannelsPerDecryptUnit, 8, 1<<8);
@@ -765,7 +804,8 @@ public class NetGraphBuilder {
 				                                              serverConfig.maxConcurrentInputs, 
 				                                              serverConfig.maxConcurrentOutputs, 
 				                                              serverConfig.moduleParallelism, false, 
-				                                              "Telemetry Server","");
+				                                              "Telemetry Server","", serverConfig.logFile);
+
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system
@@ -816,13 +856,14 @@ public class NetGraphBuilder {
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
 		});
-
+		
 		final ServerFactory factory = new ServerFactory() {
 
 			@Override
 			public void buildServer(GraphManager gm, ServerCoordinator coordinator,
 					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
 					Pipe<NetPayloadSchema>[] sendingToNet) {
+	
 				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet);
 			}			
 		};

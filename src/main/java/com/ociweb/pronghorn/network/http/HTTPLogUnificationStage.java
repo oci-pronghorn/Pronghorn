@@ -11,16 +11,27 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+
 public class HTTPLogUnificationStage extends PronghornStage {
 
-	private long activeTime = 0;
+	private static final byte[] BYTES_RESPONSE = "OUT ".getBytes();
+	private static final byte[] BYTES_REQUEST = "IN ".getBytes();
+	private static final byte[] BYTES_EOL = "\r\n".getBytes();
+	private static final byte[] BYTES_C = "] ".getBytes();
+	private static final byte[] BYTES_BUSINESS = "BusinessLatency:".getBytes();
+	private static final byte[] BYTES_B = ":".getBytes();
+	private static final byte[] BYTES_A = " [".getBytes();
 	private final Pipe<HTTPLogRequestSchema>[] requestInputs;
 	private final Pipe<HTTPLogResponseSchema>[] responseInputs;			                          
 	private final Pipe<RawDataSchema> output;
 		
 	private ISOTimeFormatterLowGC formatter;
+
+	private boolean messageOpen = false;
+	private int cyclesOfNoWork = 0;
 	
-	protected HTTPLogUnificationStage(GraphManager graphManager, 
+	
+	public HTTPLogUnificationStage(GraphManager graphManager, 
 			                          Pipe<HTTPLogRequestSchema>[] requestInputs,
 			                          Pipe<HTTPLogResponseSchema>[] responseInputs,			                          
 			                          Pipe<RawDataSchema> output) {
@@ -29,120 +40,132 @@ public class HTTPLogUnificationStage extends PronghornStage {
 		this.requestInputs = requestInputs;
 		this.responseInputs = responseInputs;
 		this.output = output;
-		
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	@Override
 	public void startup() {
 		formatter = new ISOTimeFormatterLowGC();
-
 	}
 
 	@Override
 	public void run() {
 		boolean hasWork = false;
-		
+		boolean didWork = false;
 		do {
-			//consume the messages off the input pipes but we want them in time order
-			long lowestFoundTime = Long.MAX_VALUE;
 			hasWork = false;
 			//all events older or equal to the activeTime are sent
 			int i = requestInputs.length;
-			while (--i>=0) {
-				Pipe<HTTPLogRequestSchema> p = requestInputs[i];
-				if (Pipe.peekMsg(p,HTTPLogRequestSchema.MSG_REQUEST_1)) {				
-					long time = Pipe.peekLong(p, 0xFF&HTTPLogRequestSchema.MSG_REQUEST_1_FIELD_TIME_11);
-					if (time<=activeTime) {
-						if (Pipe.hasRoomForWrite(output)) {
-							logRequestNow(p,output);
-						} else {
-							return;//try again later
-						}
-					} else {
+			while (--i >= 0) {
+				if (Pipe.hasRoomForWrite(output)) {
+					if (Pipe.peekMsg(requestInputs[i],HTTPLogRequestSchema.MSG_REQUEST_1)) {
 						hasWork = true;
-						if (time<=lowestFoundTime) {
-							//keep this for the next pass
-							lowestFoundTime = time;
-						}
-					}
-				} 
-			}
-			int j = responseInputs.length;
-			while (--j>=0) {
-				Pipe<HTTPLogResponseSchema> p = responseInputs[j];
-				if (Pipe.peekMsg(p,HTTPLogResponseSchema.MSG_RESPONSE_1)) {
-					long time = Pipe.peekLong(p, 0xFF&HTTPLogResponseSchema.MSG_RESPONSE_1_FIELD_TIME_11);
-					if (time<=activeTime) {
-						if (Pipe.hasRoomForWrite(output)) {
-							logResponseNow(p,output);
-						} else {
-							return;//try again later
-						}
-					} else {
-						hasWork = true;
-						if (time<=lowestFoundTime) {
-							//keep this for the next pass
-							lowestFoundTime = time;
-						}
-					}
+						didWork = true;
+						logRequestNow(requestInputs[i],output);
+					} 
+				} else {
+					return;//try again later
 				}
 			}
-			//at the end of the loop activeTime is set to lowestFoundTime
-			activeTime = lowestFoundTime;
 			
+			int j = responseInputs.length;
+			while (--j>=0) {
+				if (Pipe.hasRoomForWrite(output)) {
+					if (Pipe.peekMsg(responseInputs[j],HTTPLogResponseSchema.MSG_RESPONSE_1)) {
+						hasWork = true;
+						didWork = true;
+						logResponseNow(responseInputs[j],output);
+					}
+				} else {
+					return;//try again later
+				}
+			}			
 		} while (hasWork);
+				
+		if (didWork) {			
+			if (this.didWorkMonitor != null) {
+				didWorkMonitor.published(); //did work but we are batching.
+			}
+			cyclesOfNoWork = 0;
+		} else {
+			//we have nothing else to log to get these out the door.
+			if (++cyclesOfNoWork>1000 && messageOpen) {
+				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output)); 
+				Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+				Pipe.publishWrites(output);	
+				messageOpen=false;
+			}
+		}
 		
 		checkForShutdown();
 		
 	}
 
+	int iteration = 0;
 	private void checkForShutdown() {
-		///////we have no work and we are not blocked.
-		//must check for shutdown case
-		int i = requestInputs.length;
-		while (--i>=0) {
-			Pipe<HTTPLogRequestSchema> p = requestInputs[i];
-			if (!Pipe.peekMsg(p,-1)) {
-				return;//this one was not shut down yet
-			}			
-		}
-		int j = responseInputs.length;
-		while (--j>=0) {
-			Pipe<HTTPLogResponseSchema> p = responseInputs[j];
-			if (!Pipe.peekMsg(p,-1)) {
-				return;//this one was not shut down yet
-			}			
-		}
-		//all the pipes have now requested shutdown
-		if (Pipe.hasRoomForWrite(output)) {
-			Pipe.publishEOF(output); //tell downstream to shutdown
-			requestShutdown(); //shutdown myself			
-		} else {
-			return;//try again later
+		//don't check for shutdown on every pass it 
+		if (0==(0xFFF&iteration++)) {
+			///////we have no work and we are not blocked.
+			//must check for shutdown case
+			int i = requestInputs.length;
+			while (--i>=0) {
+				Pipe<HTTPLogRequestSchema> p = requestInputs[i];
+				if (!Pipe.peekMsg(p,-1)) {
+					return;//this one was not shut down yet
+				}			
+			}
+			int j = responseInputs.length;
+			while (--j>=0) {
+				Pipe<HTTPLogResponseSchema> p = responseInputs[j];
+				if (!Pipe.peekMsg(p,-1)) {
+					return;//this one was not shut down yet
+				}			
+			}
+			//all the pipes have now requested shutdown
+			if (Pipe.hasRoomForWrite(output)) {
+				Pipe.publishEOF(output); //tell downstream to shutdown
+				requestShutdown(); //shutdown myself			
+			} else {
+				return;//try again later
+			}
 		}
 	}
 
+	@Override
+	public void shutdown() {
+		//finish last write if needed.
+		if (messageOpen) {
+			DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output)); 
+			Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+			Pipe.publishWrites(output);	
+			messageOpen=false;
+		}
+	}
+	
 	private void logResponseNow(Pipe<HTTPLogResponseSchema> p, Pipe<RawDataSchema> output) {
 
 		int msgId = Pipe.takeMsgIdx(p);
 		assert(msgId == HTTPLogResponseSchema.MSG_RESPONSE_1);
 		
-		long time = Pipe.takeLong(p); //time
+		long timeNS = Pipe.takeLong(p); //time		
 		long chnl = Pipe.takeLong(p); //channelId
 		int seq = Pipe.takeInt(p);  //sequenceId
 		DataInputBlobReader<HTTPLogResponseSchema> header = Pipe.openInputStream(p); //head
+		long durationNS = Pipe.takeLong(p);
 		
-		int size = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-		DataOutputBlobWriter<?> writer = Pipe.openOutputStream(output);
-						
-		publishLogMessage(time, chnl, seq, "Request", header, writer);
+
+			//batch the writes..
+			int esitmate = 100+header.available();
+			batchMessages(output, esitmate);
+							
+			publishLogMessage(timeNS, chnl, seq, durationNS, BYTES_RESPONSE, header, Pipe.outputStream(output));
+			
+
 		
-		DataOutputBlobWriter.closeLowLevelField((DataOutputBlobWriter<?>) writer); //TODO: odd signature
-		Pipe.confirmLowLevelWrite(output, size);
-		Pipe.publishWrites(output);
 		
-		//will be needed for the payload support later
-		Pipe.takeInt(p); //contentType
+		Pipe.confirmLowLevelRead(p, Pipe.sizeOf(p, HTTPLogResponseSchema.MSG_RESPONSE_1));
+		Pipe.releaseReadLock(p);
 
 	}
 
@@ -151,44 +174,71 @@ public class HTTPLogUnificationStage extends PronghornStage {
 		int msgId = Pipe.takeMsgIdx(p);
 		assert(msgId == HTTPLogRequestSchema.MSG_REQUEST_1);
 		
-		long time = Pipe.takeLong(p); //time
+		long timeNS = Pipe.takeLong(p); //time
 		long chnl = Pipe.takeLong(p); //channelId
 		int seq = Pipe.takeInt(p);  //sequenceId
 		DataInputBlobReader<HTTPLogRequestSchema> header = Pipe.openInputStream(p); //head
 		
-		int size = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-		DataOutputBlobWriter<?> writer = Pipe.openOutputStream(output);
+			//batch the writes..
+			int esitmate = 100+header.available();
+			batchMessages(output, esitmate);
+			
+			publishLogMessage(timeNS, chnl, seq, -1, BYTES_REQUEST, header, Pipe.outputStream(output));
+			
+
 		
-		publishLogMessage(time, chnl, seq, "Response", header, writer);
-		
-		DataOutputBlobWriter.closeLowLevelField((DataOutputBlobWriter<?>) writer); //TODO: odd signature
-		Pipe.confirmLowLevelWrite(output, size);
-		Pipe.publishWrites(output);
-		
-		//will be needed for the payload support later
-		Pipe.takeInt(p); //contentType
+		Pipe.confirmLowLevelRead(p, Pipe.sizeOf(p, HTTPLogRequestSchema.MSG_REQUEST_1));
+		Pipe.releaseReadLock(p);
 			
 	}
-	
-	private void publishLogMessage(long time, long chnl, int seq, CharSequence state,
-			                       DataInputBlobReader<?> header, DataOutputBlobWriter<?> writer) {
 
-		formatter.write(time, writer);
-		writer.write(" [0x".getBytes());
-		Appendables.appendHexDigitsRaw(writer, chnl);
-		writer.write(":0x".getBytes());
-		Appendables.appendHexDigitsRaw(writer, seq);
-		writer.write("] ".getBytes());
-		writer.append(state);
-		writer.write("\r\n".getBytes());
-				
-		//use read as UTF and fully convert to ensure that the data is readable.
-		try {
-			DataInputBlobReader.readUTF(header, header.available(), writer);
-		} catch (Exception e) {
-			//The header was not proper UTF8 so mark this in the log file at that point
-			writer.write("<NOT-UTF8>\r\n\r\n".getBytes());
+	private void batchMessages(Pipe<RawDataSchema> output, int esitmate) {
+		if ((!messageOpen) || (Pipe.outputStream(output).remaining() < esitmate) ) {
+			if (messageOpen) {
+				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output)); 
+				Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+				Pipe.publishWrites(output);
+				messageOpen=false;
+			}
+			Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+			Pipe.openOutputStream(output);
+			messageOpen=true;
 		}
+	}
+	
+	private void publishLogMessage(long timeNS, long chnl, int seq, long duration, 
+								   byte[] state,
+			                       DataInputBlobReader<?> header,
+			                       DataOutputBlobWriter<?> writer) {
+
+		writer.write(state);
+		
+		writer.write(BYTES_A);
+		Appendables.appendHexDigits(writer, chnl); //MAY BE BETTER AS HEX
+		writer.write(BYTES_B);
+		Appendables.appendHexDigits(writer, seq);  //MAY BE BETTER AS HEX
+		writer.write(BYTES_C);
+
+		if (duration>=0) {
+			writer.write(BYTES_BUSINESS);
+			Appendables.appendNearestTimeUnit(writer, duration);
+		}
+		writer.write(BYTES_EOL);
+		
+		
+		//reconstruct arrival time using the NS time provided
+		long arrivalTimeMS = System.currentTimeMillis() - ((System.nanoTime()-timeNS)/1_000_000L);
+		
+		formatter.write(arrivalTimeMS, writer);
+		writer.write(BYTES_EOL);
+					
+		//This is very fast but the data is not validated,
+		//the log file will contain the exact bytes but it may not be
+		//readable by normal text editors. This is needed for maximum volume
+		header.readInto(writer, header.available());
+		writer.write(BYTES_EOL);
+		writer.write(BYTES_EOL);
+
 		
 	}
 	

@@ -147,7 +147,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 		    //we have already checked for connection so now send the request
 
-			final long now = System.currentTimeMillis();
+			final long now = System.nanoTime();
 			activeConnection.setLastUsedTime(now);
 	       	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);

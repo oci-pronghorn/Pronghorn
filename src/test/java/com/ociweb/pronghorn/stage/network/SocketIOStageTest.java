@@ -56,7 +56,7 @@ public class SocketIOStageTest {
 
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, scs, maxConnBits, 
-        		maxConcurrentInputs, maxConcurrentOutputs, routerCount, false);
+        		maxConcurrentInputs, maxConcurrentOutputs, routerCount, false, "Server", "", null);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null,gm.recordTypeData);
 
 		
@@ -150,7 +150,7 @@ public class SocketIOStageTest {
 		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, scs, maxConnBits, 
 				maxConcurrentInputs, 
 				maxConcurrentOutputs, 
-				routerCount, false);
+				routerCount, false, "Server", "", null);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null,gm.recordTypeData);
 					
 		///
