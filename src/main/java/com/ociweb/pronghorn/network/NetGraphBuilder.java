@@ -789,10 +789,11 @@ public class NetGraphBuilder {
 		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
 		
 		
+		int maxRequestSize = 1<<16; //for cookies sent in
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(null, isTLS, 
 				maxConnectionBits, tracks, 
 				2, concurrentChannelsPerEncryptUnit, 
-				1, concurrentChannelsPerDecryptUnit, 8, 1<<8);
+				1, concurrentChannelsPerDecryptUnit, 8, maxRequestSize);
 		
 		serverConfig.ensureServerCanRead(1<<16);
 				 		
