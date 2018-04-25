@@ -170,7 +170,7 @@ public abstract class JSONArray<R, T, P, N> {
         };
     }
 
-    public <M extends Collection<N2>, N2> JSONArray<R, Iterator<N2>, P, Iterator<N2>> iterArray(IterMemberFunction<T, M> accessor) {
+    public <M extends Collection<N2>, N2> JSONArray<R, Iterator<N2>, P, Iterator<N2>> iterArray(final IterMemberFunction<T, M> accessor) {
         return new JSONArray<R, Iterator<N2>, P, Iterator<N2>>(
                 builder.beginArray(this.iterator, new IterMemberFunction<T, Iterator<N2>>() {
                     @Override
