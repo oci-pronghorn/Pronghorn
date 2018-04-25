@@ -47,21 +47,21 @@ public class ServerPipesConfig {
 	
 	public int writeBufferMultiplier;
   
-	public ServerPipesConfig(
-			LogFileConfig logFile,
-			 boolean isTLS, 
-			 int maxConnectionBits,
-			 int tracks,
-			 int encryptUnitsPerTrack,
-			 int concurrentChannelsPerEncryptUnit,
-			 int decryptUnitsPerTrack,
-			 int concurrentChannelsPerDecryptUnit
-			 ) {
-		this(logFile, isTLS, maxConnectionBits, tracks,
-				encryptUnitsPerTrack, concurrentChannelsPerEncryptUnit,
-				decryptUnitsPerTrack, concurrentChannelsPerDecryptUnit,
-				4,512);
-	}
+//	public ServerPipesConfig(
+//			LogFileConfig logFile,
+//			 boolean isTLS, 
+//			 int maxConnectionBits,
+//			 int tracks,
+//			 int encryptUnitsPerTrack,
+//			 int concurrentChannelsPerEncryptUnit,
+//			 int decryptUnitsPerTrack,
+//			 int concurrentChannelsPerDecryptUnit
+//			 ) {
+//		this(logFile, isTLS, maxConnectionBits, tracks,
+//				encryptUnitsPerTrack, concurrentChannelsPerEncryptUnit,
+//				decryptUnitsPerTrack, concurrentChannelsPerDecryptUnit,
+//				4,512);
+//	}
 	
 	public ServerPipesConfig(LogFileConfig logFile, boolean isTLS, 
 							 int maxConnectionBits,

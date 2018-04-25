@@ -370,6 +370,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
 
+	
 					//recycle from old one if it is found/given		        
 					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
 					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
@@ -383,7 +384,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 													structureId);
 						
 					} catch (IOException ex) {
-						logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
+						logger.warn("Unable to open connection to {}:{}",host,port);				
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}

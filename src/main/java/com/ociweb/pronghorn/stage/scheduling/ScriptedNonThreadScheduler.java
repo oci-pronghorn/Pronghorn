@@ -639,9 +639,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
 
 		if (Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
-			if (wait>200) {
-				Thread.yield();
-			}
+			boolean isNormalCase = that.accumulateWorkHistory();
+			if (that.noWorkCounter > 100_000) { //TODO: base on time passing...
+				//System.err.println("zzzz.. "+that.noWorkCounter);
+				//System.err.println("no work for "+Thread.currentThread().toString());
+				that.deepSleep(isNormalCase); //TODO: investigate later
+				that.noWorkCounter=0;
+			}	
 		} else {
 			if (wait > 0) {
 				assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
@@ -702,7 +706,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//using many small yields usage of this is minimized.
 		//////////////////////////////
 		totalRequiredSleep = local;
-		if (local<1_000_000) {
+		if (local<2_000_000) {//sleep is not that accurate so we do this.
 			automaticLoadSwitchingDelay();
 		} else {
 		
@@ -725,17 +729,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	private void automaticLoadSwitchingDelay() {
-		if (totalRequiredSleep<200) {//in ns 
-			return;//nothing to do;
-		}
+
+		boolean isNormalCase = accumulateWorkHistory();
+						
+		int cyclesOfNoWorkBeforeSleep = 1000;
 		
-		accumulateWorkHistory();
-					
-		//if we have over 1000 cycles of non work found then
+		//if we have over X cycles of non work found then
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
-		if (noWorkCounter<1000 || deepSleepCycleLimt<=0) {//do it since we have had recent work
+		if ((noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
 			
 			long now = System.nanoTime();
 			long nowMS = now/1_000_000l;
@@ -766,10 +769,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				}
 			}
 		} else {
-			//this is to support deep sleep when it has been a very long time without work.
-			
-			//System.out.println("zzz...");
 				
+			deepSleep(isNormalCase);
+		}
+	}
+
+	private void deepSleep(boolean isNormalCase) {
+		if (isNormalCase) {
 			int maxIterations = 20;//this is limited or we may be sleeping during shutdown request.
 			while (--maxIterations>=0 && (noWorkCounter > deepSleepCycleLimt)) {
 				try {
@@ -784,16 +790,24 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					break;
 				}	
 			}	
-			
+		} else {
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	private boolean accumulateWorkHistory() {
-		boolean hasData=false;
 		int p = inputPipes.length;
-		//if we have any producers we must not do this!!!
-		if (p>0 && producersIdx.length==0) {			
+		if (p==0) {
+			noWorkCounter = 0;
+			return false;
+		} else {
+		
+			boolean hasData=false;
 			while (--p>=0) {			
 				if (Pipe.contentRemaining(inputPipes[p])>0) {
 					hasData=true;
@@ -805,18 +819,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			} else {			
 				noWorkCounter++;
 			}
-			return true; //we had something to count
-		} else {
-			
-			//these two are consuming all the cyles.
-			//no sleep for 6:SNewConnection  0  1 //this works alone on server
-			//no sleep for 13:CSocketR  1  1
-			//server socket reader as well.
-			//System.err.println("no sleep for "+name()+"  "+p+"  "+producersIdx.length);
-			
-			noWorkCounter = 0;//need a sleep mode for producers??
-			return false; //this stage has no inputs and must always be run.
+			return producersIdx.length==0;
 		}
+		
 	}
 	
 	private int runBlock(int scheduleIdx, int[] script, 
