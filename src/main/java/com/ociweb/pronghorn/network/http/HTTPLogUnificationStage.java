@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.ISOTimeFormatterLowGC;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
@@ -26,6 +27,7 @@ public class HTTPLogUnificationStage extends PronghornStage {
 	private final Pipe<RawDataSchema> output;
 		
 	private ISOTimeFormatterLowGC formatter;
+	private ElapsedTimeRecorder etr;
 
 	private boolean messageOpen = false;
 	private int cyclesOfNoWork = 0;
@@ -46,6 +48,7 @@ public class HTTPLogUnificationStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
+		etr = new ElapsedTimeRecorder();
 		formatter = new ISOTimeFormatterLowGC();
 	}
 
@@ -193,8 +196,14 @@ public class HTTPLogUnificationStage extends PronghornStage {
 	}
 
 	private void batchMessages(Pipe<RawDataSchema> output, int esitmate) {
-		if ((!messageOpen) || (Pipe.outputStream(output).remaining() < esitmate) ) {
+		if ((!messageOpen) || (Pipe.outputStream(output).remaining() < (esitmate+(1<<12))) ) {
 			if (messageOpen) {
+				//add to end of each file, when there is room.
+				if (Pipe.outputStream(output).remaining()>(1<<12)) {
+					Pipe.outputStream(output).append("\n");
+					etr.report(Pipe.outputStream(output));
+				}
+				
 				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output)); 
 				Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, RawDataSchema.MSG_CHUNKEDSTREAM_1));
 				Pipe.publishWrites(output);
@@ -205,6 +214,8 @@ public class HTTPLogUnificationStage extends PronghornStage {
 			messageOpen=true;
 		}
 	}
+	
+	private int etlCounter = 0;
 	
 	private void publishLogMessage(long timeNS, long chnl, int seq, long duration, 
 								   byte[] state,
@@ -220,8 +231,17 @@ public class HTTPLogUnificationStage extends PronghornStage {
 		writer.write(BYTES_C);
 
 		if (duration>=0) {
+			ElapsedTimeRecorder.record(etr, duration);
 			writer.write(BYTES_BUSINESS);
 			Appendables.appendNearestTimeUnit(writer, duration);
+			
+			//done every 4K cycles, not need to go faster since we must gather data
+			if (((++etlCounter&0xFFF) == 0) && writer.remaining()>(1<<12)) {
+				writer.append("\n");
+				etr.report(writer);
+				//System.err.println(etr);
+			}
+			
 		}
 		writer.write(BYTES_EOL);
 		

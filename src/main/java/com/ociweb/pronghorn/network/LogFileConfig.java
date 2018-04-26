@@ -26,7 +26,10 @@ public class LogFileConfig {
 			return tempPath();
 		} else {
 			try {
-				return File.createTempFile("green", "", new File(home)).getAbsolutePath();
+				File createTempFile = File.createTempFile("green", "", new File(home));
+				String absolutePath = createTempFile.getAbsolutePath();
+				createTempFile.delete();
+				return absolutePath;
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -34,13 +37,15 @@ public class LogFileConfig {
 	}
 	
 	public static String tempPath() {
-		String basePath = "";
+
 		try {
-			basePath = File.createTempFile("green", "").getAbsolutePath();
+			File createTempFile = File.createTempFile("green", "");
+			String absolutePath = createTempFile.getAbsolutePath();
+			createTempFile.delete();
+			return absolutePath;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		return basePath;
 	}
 	
 	public LogFileConfig(String baseFileName) {

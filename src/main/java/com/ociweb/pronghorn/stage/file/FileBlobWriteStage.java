@@ -1,21 +1,16 @@
 package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.OpenOption;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +20,6 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.ISOTimeFormatterLowGC;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 //TODO: should roll up writes when possible.
 //TODO: update to use byteBuffer array...
@@ -206,11 +200,14 @@ public class FileBlobWriteStage extends PronghornStage{
 					
 					
 				} catch (IOException e) {
-					throw new RuntimeException(e);
+					
+					//do not report closed when we are shutting down
+					if (!(e instanceof ClosedChannelException)) {
+						throw new RuntimeException(e);
+					}
+					
 				}
             }
-            
-            
             
             
             if (Pipe.hasContentToRead(input)) {
