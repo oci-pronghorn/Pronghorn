@@ -2511,7 +2511,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
 	    }
 	    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-	       log.error("Invalid encoding, low byte must have bits of 10xxxxxx but we find {}. conclusion: this data was not UTF8 encoded.",Integer.toBinaryString(source[mask&sourcePos]) );//,new Exception("Check for pipe corruption"));
+	       log.error("Invalid encoding, low byte must have bits of 10xxxxxx but we find {}. conclusion: this data was not UTF8 encoded.",Integer.toBinaryString(source[mask&sourcePos]),new Exception("Check for pipe corruption or unprintable data"));
 	       sourcePos += 1;
 	       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
 	    }
