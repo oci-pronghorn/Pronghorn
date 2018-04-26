@@ -146,6 +146,12 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
+	public void writeBoolean(Object assoc, boolean value) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writeBoolean(value);
+	}
+	
 	public void writeLong(long value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Long);
@@ -159,6 +165,12 @@ public class StructuredWriter {
 		channelWriter.writePackedLong(value);
 		
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+	}
+	
+	public void writeLong(Object assoc, long value) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedLong(value);
 	}
 	
 	public void writeInt(int value, long fieldId) {
