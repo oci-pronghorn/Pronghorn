@@ -106,7 +106,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		int t = times.length;
 		while (--t>=0) {
 			long duration = now - times[t];
-			if (duration>timeoutNS) {
+			if (duration>timeoutNS && Pipe.hasRoomForWrite(timeout)) {
 				threads[t].interrupt();
 			}		
 		}	
@@ -114,7 +114,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		//finish any complete jobs
 		int j = needsWorkWaiting.length;
 		while (--j>0) {
-			if (needsWorkWaiting[j]) {
+			if (needsWorkWaiting[j] && Pipe.hasRoomForWrite(output)) {
 				Blockable<T,P,Q> b = blockables[j];
 				synchronized(b) {
 					b.finish(output);
