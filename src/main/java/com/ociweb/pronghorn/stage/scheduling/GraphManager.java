@@ -2670,7 +2670,7 @@ public class GraphManager {
     private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
     
     public String enableTelemetry(String host, int port) {
-    	telemetryHost = host;
+    	telemetryHost = NetGraphBuilder.bindHost(host);
     	telemetryPort = port;
     	return host;
 	}
