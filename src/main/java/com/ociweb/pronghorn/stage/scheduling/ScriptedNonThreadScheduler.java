@@ -663,7 +663,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	private static void checkForLongRun(ScriptedNonThreadScheduler that) {
 		//this must NOT be inside the lock because this visit can cause a modification
 		//to this same scheduler which will require the lock.
-    	if (null!=that.checksForLongRuns && System.nanoTime()>that.nextLongRunningCheck) {
+    	//TODO: disable until we fix slowness
+		if (false && null!=that.checksForLongRuns && System.nanoTime()>that.nextLongRunningCheck) {
     		
     		long now = System.nanoTime();
     		//NOTE: this is only called by 1 of the nonThreadSchedulers and not often
