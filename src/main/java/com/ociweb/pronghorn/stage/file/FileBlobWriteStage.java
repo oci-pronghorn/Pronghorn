@@ -261,6 +261,9 @@ public class FileBlobWriteStage extends PronghornStage{
         		}
                 
             } catch (IOException e) {
+            	
+            	//TODO: must revisit on shutdown so we dont write when file is closed...
+            	
                 throw new RuntimeException(e);
             }
         }

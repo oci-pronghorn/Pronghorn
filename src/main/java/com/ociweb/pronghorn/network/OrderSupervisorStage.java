@@ -212,11 +212,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	haveWork = false;
 				int c = localPipes.length;
 				int x = 0;
-		        while (--c >= 0) {
-		        	if (!Pipe.isEmpty(localPipes[c])) {	        	
-		        		haveWork |= processPipe(localPipes[c], c);
+		        while (--c >= 0) {		        	
+		        	if (Pipe.isEmpty(localPipes[c]) || !Pipe.hasContentToRead(localPipes[c])) {
+		        		x++;		        		
 		        	} else {
-		        		x++;
+		        		//has full message
+		        		haveWork |= processPipe(localPipes[c], c);		        		
 		        	}
 		        }  
 		        if (x!=localPipes.length || shutdownInProgress ) {		        	
@@ -751,11 +752,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	 
 		 int lenWritten = DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output));
-		 
-		 
-		 
-		 //logger.trace("real len written {} ",lenWritten);
-		 
+		 assert(lenWritten>0) : "Do not send messages which contain no data, this is a waste";
+		 		 
 		 Pipe.confirmLowLevelWrite(output, plainSize);
 		 Pipe.publishWrites(output);
 		 

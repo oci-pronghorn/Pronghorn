@@ -53,10 +53,6 @@ public class ServerConnectionStruct {
         businessStartTime = registry.fieldLookupByIdentity(
                 connectionFields.businessStartTime, connectionStructId);
 		
-        
-        System.err.println("total size of indexes "+registry.totalSizeOfIndexes(connectionStructId));
-        
-        
 	}	
 	
 }

@@ -117,9 +117,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue());  	
     	
     	int c = input.length;
-    	if (c > (1<<12)) {
-    		System.err.println("warning, server socket writer allocated n long arrays of length"+c);
-    	}
+
     	writeToChannel = new SocketChannel[c];
     	writeToChannelId = new long[c];
     	writeToChannelMsg = new int[c];
@@ -158,8 +156,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	int x = input.length;
 	    	while (--x>=0) {
 	    		
-	    		if (null == writeToChannel[x]) {	    			
-	    			if (Pipe.isEmpty(input[x])) { //!Pipe.hasContentToRead(localInput)) {    				
+	    		if (null == writeToChannel[x]) {	
+	    			//second check for full content is critical or the data gets copied too soon
+	    			if (Pipe.isEmpty(input[x]) || !Pipe.hasContentToRead(input[x])) {    				
 	    				//no content to read on the pipe
 	    				//all the old data has been written so the writeChannel remains null	    		
 	    			} else {
@@ -301,7 +300,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
     	final boolean takeTail = NetPayloadSchema.MSG_PLAIN_210 == msgIdx;
-    	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
+     	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
     	
         Pipe<NetPayloadSchema> pipe = input[idx];
         final long channelId = Pipe.takeLong(pipe);
@@ -311,18 +310,17 @@ public class ServerSocketWriterStage extends PronghornStage {
         if (takeTail) {
         	activeTails[idx] =  Pipe.takeLong(pipe);
         } else {
+        	assert(msgIdx == NetPayloadSchema.MSG_ENCRYPTED_200);
         	activeTails[idx] = -1;
         }
         //byteVector is payload
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
+                
+        assert(len>0) : "All socket writes must be of zero length or they should not be requested";
         
-        if (showWrites) {
-        	int pos = Pipe.convertToPosition(meta, pipe);
-        	logger.info("////////////////////\n"+
-        	Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
-        	+"\n////////////////////");
-        }
+        //this len is often too short??
+        
         
         
         //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
@@ -335,17 +333,17 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        //only write if this connection is still valid
 	        if (null != serverConnection) {        
 					    
-	        	//System.err.println("new conection attached");
+	        	if (showWrites) {
+	        		int pos = Pipe.convertToPosition(meta, pipe);
+	        		logger.info("/////////len{}///////////\n"+
+	        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
+	        		+"\n////////////////////",len);
+	        	}
 	        	
 	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
 	        	writeToChannelBatchCountDown[idx] = maxBatchCount;
-	        	
-	        	
-		        //logger.debug("write {} to socket for id {}",len,channelId);
-		        
-	        	
 	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
@@ -365,7 +363,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 						new RuntimeException(e);
 					}
 		        }
-		        
 		        
 		        ((Buffer)workingBuffers[idx]).clear();
 		        workingBuffers[idx].put(writeBuffs[0]);
@@ -401,7 +398,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        
 		        ((Buffer)workingBuffers[idx]).flip();
 	        } else {
-	        	//logger.info("no server connection found for id:{}",channelId);
+	        	//logger.info("\nno server connection found for id:{} droped bytes",channelId);
 		        
 		        Pipe.confirmLowLevelRead(pipe, msgSize);
 		        Pipe.releaseReadLock(pipe);
