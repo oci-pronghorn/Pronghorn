@@ -33,6 +33,8 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		this.chooser = chooser;
 		this.blockables = blockables;
 		this.timeoutNS = timeoutNS;
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lightcoral", this);
 	}
 
 	@Override
@@ -65,7 +67,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 							needsWorkWaiting[instance] = true;
 							//System.err.println("---------------- "+instance+" waiting for work");
 							b.wait();
-							needsWorkWaiting[instance] = false;
+
 						} catch (InterruptedException e) {
 						} finally {
 							if (isShuttingDown.get()) {
@@ -77,14 +79,14 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 						try {					
 							//needed for external timeout checking
 							times[instance] = System.nanoTime();
-							logger.info("\n---running start {}",instance);
+							//logger.info("\n---running start {}",instance);
 							b.run();
-							logger.info("\n---running stop {}",instance);
+							//logger.info("\n---running stop {}",instance);
 							times[instance] = 0;//clear
 							
 							completedWorkWaiting[instance] = true;
 							b.wait();
-							completedWorkWaiting[instance] = false;
+							
 							
 						} catch (InterruptedException ie) {
 							ie.printStackTrace();
@@ -104,12 +106,13 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		while (Pipe.hasContentToRead(input)) {
 			int choice = chooser.choose(input);
 			if (choice>=0 && needsWorkWaiting[choice]) {
-				logger.info("\n---selected choice {}",choice);
+				//logger.info("\n---selected choice {}",choice);
 				
 				Blockable<T,P,Q> b = blockables[choice];
 				synchronized(b) {
 					if (needsWorkWaiting[choice]) {
-						logger.info("\n---begin {}",choice);
+						//logger.info("\n---begin {}",choice);
+						needsWorkWaiting[choice] = false;
 						b.begin(input);
 						b.notify();					
 					}
@@ -123,10 +126,14 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		long now = System.nanoTime();
 		int t = times.length;
 		while (--t>=0) {
-			long duration = now - times[t];
-			if (duration>timeoutNS && Pipe.hasRoomForWrite(timeout)) {
-		//		threads[t].interrupt(); TODO: fires too often and causing issues.
-			}		
+			long localTime = times[t];
+			if (0!=localTime) {
+				long duration = now - localTime;
+				if (duration>timeoutNS && Pipe.hasRoomForWrite(timeout)) {
+					logger.info("timeout task {}ns",duration);
+					threads[t].interrupt(); 
+				}		
+			}
 		}	
 		
 		//finish any complete jobs
@@ -136,8 +143,9 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 				Blockable<T,P,Q> b = blockables[j];
 				synchronized(b) {
 					if (completedWorkWaiting[j]) {
-						logger.info("\n---finish {}",j);
+						//logger.info("\n---finish {}",j);
 						b.finish(output);
+						completedWorkWaiting[j] = false;
 						b.notify();
 					}
 				}
