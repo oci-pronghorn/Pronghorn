@@ -3389,7 +3389,8 @@ public class Pipe<T extends MessageSchema<T>> {
     		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llrConfirmedPosition) :
     			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llrConfirmedPosition+"\n"+
     		       "OR the XML field types may not match the accessor methods in use.";
-    	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
+    	//TODO: not sure this works with structs now..
+    	//assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
 	    //TODO: need way to test if publish was called on an input ? 
     	//      may be much easer to detect missing publish. or extra release.
@@ -3727,15 +3728,17 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 	
 	private static <S extends MessageSchema<S>> boolean verifySize(Pipe<S> output, int size) {
-		try {
-			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : 
-				"Did not write the same size fragment as expected, double check message. expected:"
-					+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])
-					+" but was passed "+size+" for schema "+Pipe.schemaName(output)
-					+" and assumed MsgId of "+output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition];
-		} catch (ArrayIndexOutOfBoundsException aiex) {
-			//ignore, caused by some poor unit tests which need to be re-written.
-		}
+		
+//		//TODO: not sure, this may not work with structured fields
+//		try {
+//			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : 
+//				"Did not write the same size fragment as expected, double check message. expected:"
+//					+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])
+//					+" but was passed "+size+" for schema "+Pipe.schemaName(output)
+//					+" and assumed MsgId of "+output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition];
+//		} catch (ArrayIndexOutOfBoundsException aiex) {
+//			//ignore, caused by some poor unit tests which need to be re-written.
+//		}
 		return true;
 	}
 

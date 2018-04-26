@@ -94,6 +94,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         writer.backPosition = writer.startPosition + Pipe.blobIndexBasePosition(writer.backingPipe);
         //this is turned on when callers begin to add index data
         writer.structuredWithIndexData = false;
+        DataOutputBlobWriter.setStructType(writer, -1);//clear any previous type
+        
         return writer;
 	}
     
