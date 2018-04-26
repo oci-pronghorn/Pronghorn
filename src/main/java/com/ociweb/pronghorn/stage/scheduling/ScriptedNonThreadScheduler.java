@@ -808,8 +808,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		} else {
 		
 			boolean hasData=false;
-			while (--p>=0) {			
-				if (Pipe.contentRemaining(inputPipes[p])>0) {
+			while (--p>=0) {		
+				//this does dirty checks so we must be sure no asserts are used
+				if (!Pipe.isEmpty(inputPipes[p])) {
 					hasData=true;
 					break;
 				}
