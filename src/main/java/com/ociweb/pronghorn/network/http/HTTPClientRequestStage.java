@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.http;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
@@ -12,7 +10,6 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -28,14 +25,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private final Pipe<ClientHTTPRequestSchema>[] input;
 	private final Pipe<NetPayloadSchema>[] output;
 	private final ClientCoordinator ccm;
-
-	private AtomicBoolean newWork = new AtomicBoolean(true);
-	private final PipePublishListener newWorkListener = new PipePublishListener() {
-		@Override
-		public void published() {
-			newWork.set(true);
-		}
-	};
 	
 	static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 	
@@ -60,12 +49,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		this.ccm = ccm;
-		
-		int i = input.length;
-		while (--i>=0) {
-			Pipe.addPubListener(input[i], newWorkListener);
-		}
-
+	
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		
 		recordTypeData = graphManager.recordTypeData;
@@ -97,10 +81,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		if (newWork.getAndSet(false)) {			
+				
 		   	 if(shutdownInProgress) {
 		    	 int i = output.length;
-		         while (--i >= 0) {
+		    	
+		    	 while (--i >= 0) {
 		         	if (null!=output[i] && Pipe.isInit(output[i])) {
 		         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
 		         			return;
@@ -119,7 +104,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				while (--i>=0) {
 					Pipe<ClientHTTPRequestSchema> requestPipe = input[i];						  
 					if (Pipe.hasContentToRead(requestPipe)) {						
-						newWork.set(true);
+						
 						if (buildClientRequest(requestPipe)) {
 							hasWork = true;
 						} else {
@@ -129,12 +114,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 					}
 				}
 		
-		        if (shutdownInProgress ) {		        	
-		        	newWork.set(true);
-		        }
-		        
 			} while (hasWork);
-		}
+			
 	}
 
 	
