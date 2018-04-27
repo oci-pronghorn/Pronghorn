@@ -431,6 +431,14 @@ public class StructRegistry { //prong struct store
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
+		if (attachedObject instanceof FieldIdxHolder) {
+			FieldIdxHolder h = (FieldIdxHolder)attachedObject;
+			if (h.fieldIdx()!=0) {
+				return h.fieldIdx();
+			}
+			
+		}
+		
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 		int identityHashCode = System.identityHashCode(attachedObject);
 		int idx = IntHashTable.getItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
@@ -440,6 +448,12 @@ public class StructRegistry { //prong struct store
 			}
 		}
 		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx];
+		
+		if (attachedObject instanceof FieldIdxHolder) {
+			FieldIdxHolder h = (FieldIdxHolder)attachedObject;
+			h.fieldIdx(((long)structId)<<STRUCT_OFFSET | (long)idx);
+		}
+		
 		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
 		
 	}
