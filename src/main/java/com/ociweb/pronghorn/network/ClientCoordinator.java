@@ -99,6 +99,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 		
 	public void removeConnection(long id) {
+		//logger.info("\n ****** remove this connection "+id,new Exception());
+		
 		releaseResponsePipeLineIdx(id);
 		ClientConnection oldConnection = connections.remove(id);
 		if (null != oldConnection) {
@@ -107,22 +109,25 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
-	public BaseConnection connectionForSessionId(long hostId) {
-		ClientConnection response = connections.get(hostId);
+	public BaseConnection connectionForSessionId(long id) {
+		ClientConnection response = connections.get(id);
 		
 		if (null != response) {			
 			if (response.isValid()) {
-				connections.incUsageCount(hostId);
+				connections.incUsageCount(id);
 				return response;
 			} else {
+				//logger.info("connection was disconnected {}",id);
 				//the connection has been disconnected
 				response = null;
 			}
+		} else {
+			//logger.info("got null lookup {}",id);
 		}
 		
 		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-		releaseResponsePipeLineIdx(hostId);
-		connections.resetUsageCount(hostId);
+		releaseResponsePipeLineIdx(id);
+		connections.resetUsageCount(id);
 	
 		return response;
 	}
@@ -442,15 +447,19 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
 			                                   ClientConnection cc) {
 		
-		//logger.info("doRegister");
+		//logger.info("\n ^^^ doRegister {}",cc.id);
 		try {
 			if (!cc.isFinishConnect()) {				
-				//logger.info("unable to finish connect, must try again later {}",cc);	
+				//logger.info("\n ^^^^ unable to finish connect, must try again later {}",cc);	
 				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
-				//logger.info("XXXXXXXXX new connection established to {}",cc);
+				//logger.info("\n ^^^^ new connection established to {}",cc);
+				
+				BaseConnection con = ccm.connectionForSessionId(cc.id);
+				assert(con==cc) : "unable to lookup connection";
+				
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);

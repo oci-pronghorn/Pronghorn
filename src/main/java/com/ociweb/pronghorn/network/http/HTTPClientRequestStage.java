@@ -123,7 +123,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		boolean didWork = false;
 		//This check is required when TLS is in use.
 		//also must ensure connection is open before taking messages.
-		if (isConnectionReadyForUse(requestPipe) ){
+		if (isConnectionReadyForUse(requestPipe) ) {
 			didWork = true;	        
 			
 		    //we have already checked for connection so now send the request
@@ -133,7 +133,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	       	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 		    		    
-		    //logger.info("send for active pipe {} with msg {}",requestPipe.id,msgIdx);
+		    //logger.info("\n ^^^^ send for active pipe {} with msg {} connection {}",requestPipe.id,msgIdx,activeConnection.id);
 		    
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 				HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
@@ -191,6 +191,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
 
 		if (Pipe.peekMsg(requestPipe, -1)) {
+			//logger.info("\n ^^^ end of file shutdown message");
 			return hasRoomForEOF(output);
 		}
 		
@@ -233,11 +234,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 			connectionId = ccm.lookup(hostId, port, userId);
  		}
 		
- 		if (null!=activeConnection && activeConnection.getId()==connectionId && activeConnection.isValid()) {
+ 		if (null!=activeConnection
+ 			&& activeConnection.getId()==connectionId 
+ 			&& activeConnection.isValid()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
  			
- 			if (null!=activeConnection) {
+ 			if (null!=activeConnection && activeConnection.id==connectionId) {
  				//this is the only point where we can decompose since 
  				//we are creating a new active connection 				
  				ccm.removeConnection(activeConnection.id);
@@ -265,7 +268,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (null != activeConnection) {
 			
 			if (activeConnection.isBusy()) {
-				//logger.info("waiting for server to respond to connection");
+				//logger.info("\n ^^^ waiting for server to respond to connection");
 				return false;//must try again later when the server has responded.
 			}
 			
@@ -279,16 +282,20 @@ public class HTTPClientRequestStage extends PronghornStage {
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
 				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus 
 						/* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
-					//logger.info("doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
+					//logger.info("\n ^^^ doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
 					activeConnection = null;	
 					return false;
 				}
 			}
-			return Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
+			boolean result = Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
+			if (!result) {
+				//logger.info("\n ^^^ unable to use connection {} no room.",activeConnection.id);
+			}
 			
+			return result;
 		} else {
 			//try again later
-			//logger.info("no connection available");
+			//.info("\n ^^^^ no connection available");
 			return false;
 		}
 		

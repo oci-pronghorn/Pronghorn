@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketWriterStage extends PronghornStage {
 	
-	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
+	//TODO: by adding access method and clearing the bufferChecked can make this grow at runtime if needed.
 	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
 
 	private static final Logger logger = LoggerFactory.getLogger(ClientSocketWriterStage.class);
@@ -224,11 +224,19 @@ public class ClientSocketWriterStage extends PronghornStage {
 		return didWork;
 	}
 
+	int x = 0;
 	private boolean writePlain(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
 		
 		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
 		if (null==cc || !cc.isValid()) {
+//			
+//			logger.info("skipped write for connection: {} {}",chnl,cc);
+//			
+//			if (++x>10) {
+//			System.err.println("exit now");
+//			System.exit(-1);
+//			}
 			return false;//do not consume, do this later.
 		}
 		
@@ -352,7 +360,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 //										System.err.println(enableWriteBatching+" && "+
 //								                 Pipe.hasContentToRead(pipe)+" && "+
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+//					            		         (buffers[i].remaining()>pipe.maxVarLen)+" && "+ 
 //					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
 		 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 		            Pipe.peekInt(pipe)==msgIdx && 
@@ -473,7 +481,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			return true;
 		}
 		if (!mappedByteBuffer.hasRemaining()) {
-			
+		
 			//logger.info("write clear {}",i);
 			((Buffer)mappedByteBuffer).clear();
 			connections[i]=null;
@@ -488,28 +496,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			return false;
 		}
 	}
-	private int countOfUnableToFullyWrite = 0;
-	
- //   private int totalB;
-    
-//	private int startsWith(StringBuilder stringBuilder, String expected2) {
-//		
-//		int count = 0;
-//		int rem = stringBuilder.length();
-//		int base = 0;
-//		while(rem>=expected2.length()) {
-//			int i = expected2.length();
-//			while (--i>=0) {
-//				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-//					return count;
-//				}
-//			}
-//			base+=expected2.length();
-//			rem-=expected2.length();
-//			count++;
-//		}
-//		return count;
-//	}
+
 	
 
 }

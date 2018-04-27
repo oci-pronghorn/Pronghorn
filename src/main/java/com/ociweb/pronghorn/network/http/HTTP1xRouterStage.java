@@ -327,7 +327,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private static int singlePipe(HTTP1xRouterStage that, final int idx) {
         if (that.isOpen[idx]) {  
 
-        	//logger.info("accum off this pipe "+isOpen[idx]+"   "+inputChannels[idx]);
         	final int start = that.inputLengths[idx];
             if (that.accumRunningBytes(idx, that.inputs[idx], Integer.MAX_VALUE, that.inputChannels[idx]) >=0) {//message idx            
             	if (that.needsData[idx]) {
@@ -356,8 +355,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             	}     
             }
             
-        }      
-        
+        }
+                
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
 	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
@@ -521,10 +520,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				int state = that.parseHTTP(that.trieReader, channel, idx, arrivalTime);				
 				int totalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(that.trieReader));           
 				int remainingBytes = that.trieReader.sourceLen;
-				
+						
 				if (SUCCESS == state) {
-										
-					if (null != that.log) {
+									
+					
+					boolean logTrafficEnabled = null != that.log;
+					
+					if (logTrafficEnabled) {
+						
 						//this logs every input at this point
 						Pipe<HTTPLogRequestSchema> logOut = that.log;
 					

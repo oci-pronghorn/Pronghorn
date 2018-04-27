@@ -249,13 +249,17 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    coordinator.releaseResponsePipeLineIdx(channelId);//upon disconnect let go of pipe reservation
 		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
 		    if (null!=socketHolder) {
-		    	//we are disconnecting so we will remove the connection from the holder.
-		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
-		        assert(null!=serverConnection);
-		        if (null!=serverConnection) {
-		        	serverConnection.close();
-		        	serverConnection.decompose();
-		        }
+		    	
+		    	//TODO: this is happening too early, just at times so disabled for now.
+		   	
+		    	
+//		    	//we are disconnecting so we will remove the connection from the holder.
+//		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
+//		        assert(null!=serverConnection);
+//		        if (null!=serverConnection) {
+//		        	serverConnection.close();
+//		        	serverConnection.decompose();
+//		        }
 		    }	                    
 		    
 		   // logger.info("finished the disconnect");

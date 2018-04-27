@@ -198,7 +198,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();
 						
-		//logger.info("new request on connection {} ",channelId);
+		//logger.info("\nnew request on connection {} ",channelId);
 		
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
 				
@@ -257,9 +257,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					if (responsePipeLineIdx >= 0) {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
-					
-					//logger.info("new beginning {}",responsePipeLineIdx);
-				
+			
 //					logger.info("begin channel id {} pipe line idx {} out of {} ",
 //							channelId, 
 //							responsePipeLineIdx,
@@ -272,7 +270,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 				if (responsePipeLineIdx >= 0) {
 					
-			//		System.err.println(responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
+					//System.err.println(responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
 					
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, output[responsePipeLineIdx], newBeginning, cc, selection); 
 		            					

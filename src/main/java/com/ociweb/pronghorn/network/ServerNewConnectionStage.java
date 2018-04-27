@@ -286,24 +286,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
 	                      long channelId = holder.lookupInsertPosition();
-	              
-	                      if (channelId<0) {
-		                  //    System.err.println("begin watching..........");
-		                      while (channelId<0) {
-		                    	  try {
-		                    		  Thread.sleep(1);
-		                    	  } catch (InterruptedException e) {
-		                    		  // TODO Auto-generated catch block
-		                    		  e.printStackTrace();
-		                    	  }
-		                    	  channelId = holder.lookupInsertPosition();
-		                      }
-		                  //    System.err.println("found new connection........");
-	                      } else {
-	                    	//  System.err.println("found new postion.....");
-	                      }
-	                      
-	                      if (channelId<0) {
+	                  
+	                      if (channelId<0) {	                    	
 	                    	  long leastUsedConnectionId = (-channelId);
 	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
 	                    	  long now = System.currentTimeMillis();
@@ -344,7 +328,6 @@ public class ServerNewConnectionStage extends PronghornStage{
 								  sslEngine.beginHandshake();
 	                          }
 							  							  
-							 // logger.info("new server connection attached for new id {} ",channelId);
 							  
 	                          holder.setValue(channelId, 
 	                        		  new ServerConnection(sslEngine, 
@@ -355,8 +338,11 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                                                                                                                            
 	                         // logger.info("register new data to selector for pipe {}",targetPipeIdx);
 	                          Selector selector2 = ServerCoordinator.getSelector(coordinator);
-							  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, channelId));
+							  channel.register(selector2, 
+									           SelectionKey.OP_READ, 
+									           ServerCoordinator.selectorKeyContext(coordinator, channelId));
 	    						
+							  //logger.info("new server connection attached for new id {} ",channelId);
 							  if (null!=newClientConnections) {								  
 		                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
 							  }

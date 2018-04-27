@@ -70,14 +70,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private ServiceObjectHolder<ServerConnection> socketHolder;
 	private ServerConnectionStruct conStruct;
 
-	private AtomicBoolean newWork = new AtomicBoolean(true);
-	private final PipePublishListener newWorkListener = new PipePublishListener() {
-		@Override
-		public void published() {
-			newWork.set(true);
-		}
-	};
-	
 	
     public static OrderSupervisorStage newInstance(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
@@ -151,11 +143,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
-        int j = inputPipes.length;
-        while (--j>=0) { 
-			inputPipes[j].addPubListener(inputPipes[j], newWorkListener);
-        }
-         
+
          
     }
     
@@ -191,7 +179,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void run() {
 
-		if (newWork.getAndSet(false)) {
 			if (shutdownInProgress) {
 				int i = outgoingPipes.length;
 				while (--i>=0) {
@@ -220,13 +207,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		haveWork |= processPipe(localPipes[c], c);		        		
 		        	}
 		        }  
-		        if (x!=localPipes.length || shutdownInProgress ) {		        	
-		        	newWork.set(true);
-		        }
+		   
 		        
 	    	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
-	    			
-		}
+	    	
     }
 
 
@@ -334,8 +318,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		logger.warn("Corrupt data detected, connection closed. Expected next sequence of {} but got {} which is too old. "
 					,expected ,sequenceNo);
 		keepWorking = false; //break out
+		//assert(quit());
 		return keepWorking;
 	}
+
+//	private boolean quit() {
+//		System.exit(-1);
+//		System.err.println("exit now.");
+//		return true;
+//	}
 
 	private boolean processUnexpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
 			int sequenceNo, long channelId, int expected) {
