@@ -650,7 +650,7 @@ public class TrieParserReader {
 			int sourceMask, final long unfoundResult,
 			boolean hasSafePoint, int t) {
 
-		while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
+		while (reader.normalExit && (t=reader.type) != TrieParser.TYPE_END ) {  
 
 			if (TrieParser.TYPE_BRANCH_VALUE == t) {   
 				processBinaryBranch(reader, trie, source, sourceLength, sourceMask, unfoundResult);				
@@ -675,7 +675,6 @@ public class TrieParserReader {
 							}
 						}
 					}
-					
 				}
 			}
 		}
@@ -765,24 +764,27 @@ public class TrieParserReader {
 			TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, final long unfoundResult) {
 		
-		if (reader.runLength<sourceLength) {
-			final short sourceShort = (short) source[sourceMask & reader.localSourcePos];
-			int p = reader.pos;
-			int t = 0;
-			short[] localData = trie.data;
-			do {
-				p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
-					? p+3 
-					: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
-					
-			} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
-			reader.type = t;
-			reader.pos = p;
+		if (reader.runLength < sourceLength) {
+			processMultipleBinBranches(reader, (short) source[sourceMask & reader.localSourcePos], reader.pos, trie.data);
 		} else {
 			reader.normalExit = false;
 			reader.result = unfoundResult;
 		}
 		
+	}
+
+	private static void processMultipleBinBranches(TrieParserReader reader,
+			final short sourceShort, int p,
+			final short[] localData) {
+		int t;
+		do {
+			p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
+				? p+3 
+				: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
+				
+		} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
+		reader.type = t;
+		reader.pos = p;
 	}
 
 

@@ -2195,8 +2195,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
 			final int tStop, int length) {
-		if (length>0) {
-			assert(length>=0) : "length "+length;
+		if (length > 0) {
 			if (tStop > tStart) {
 				//do not accept the equals case because this can not work with data the same length as as the buffer
 				doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);
