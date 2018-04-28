@@ -156,7 +156,7 @@ public class HTTPClientUtil {
 			}
 			
 			//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
-			Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3, activeWriter);
+			Pipe.readBytes(requestPipe, activeWriter, meta, len);
 			
 			int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER 7
 			int headersLen  = Pipe.takeRingByteLen(requestPipe);

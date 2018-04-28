@@ -156,6 +156,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	int x = input.length;
 	    	while (--x>=0) {
 	    		
+	    		//ensure all writes are complete
 	    		if (null == writeToChannel[x]) {	
 	    			//second check for full content is critical or the data gets copied too soon
 	    			if (Pipe.isEmpty(input[x]) || !Pipe.hasContentToRead(input[x])) {    				
@@ -252,6 +253,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    	
 		    	//TODO: this is happening too early, just at times so disabled for now.
 		   	
+		    	//Urgent research.
 		    	
 //		    	//we are disconnecting so we will remove the connection from the holder.
 //		        ServerConnection serverConnection = socketHolder.remove(channelId);	          

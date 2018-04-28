@@ -8,18 +8,15 @@ import org.slf4j.LoggerFactory;
 
 public class LogFileConfig {
 
-    private static final long DEFAULT_SIZE = 1L<<28;//256M
-    private static final int DEFAULT_COUNT = 20;
+    public static final long DEFAULT_SIZE = 1L<<28;//256M
+    public static final int DEFAULT_COUNT = 20;
 	private static Logger logger = LoggerFactory.getLogger(LogFileConfig.class);
     
 	private final String baseFileName;
 	private final long maxFileSize;
 	private final int countOfFiles;
+	private boolean logResponse;
 		
-	public LogFileConfig() {
-		this(defaultPath());
-	}
-
 	public static String defaultPath() {
 		String home = System.getenv().get("HOME");
 		if (null==home) {
@@ -47,18 +44,18 @@ public class LogFileConfig {
 			throw new RuntimeException(e);
 		}
 	}
-	
-	public LogFileConfig(String baseFileName) {
-		this(baseFileName, DEFAULT_COUNT, DEFAULT_SIZE);
-	}
-	
+
 	public LogFileConfig(String baseFileName, 
 			             int countOfFiles, 
-			             long maxFileSize) {
+			             long maxFileSize,
+			             boolean logResponse) {
+		
 		this.baseFileName = baseFileName;
 		this.maxFileSize = maxFileSize;		
 		this.countOfFiles = countOfFiles;
+		this.logResponse = logResponse;
 		logger.info("base logging file location:\n{}",baseFileName);
+		
 	}
 	
 	public String base() {
@@ -73,5 +70,8 @@ public class LogFileConfig {
 		return maxFileSize;
 	}
 
+	public boolean logResponses() {
+		return logResponse;
+	}
 	
 }

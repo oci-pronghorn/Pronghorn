@@ -325,8 +325,9 @@ public class NetGraphBuilder {
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         
-		Pipe<HTTPLogRequestSchema>[] log = new Pipe[coordinator.moduleParallelism()];
-		Pipe<HTTPLogResponseSchema>[] log2 = new Pipe[coordinator.moduleParallelism()];
+		Pipe<HTTPLogRequestSchema>[] reqLog = new Pipe[coordinator.moduleParallelism()];
+		
+		Pipe<HTTPLogResponseSchema>[] resLog = new Pipe[coordinator.moduleParallelism()];
 		
 		Pipe<NetPayloadSchema>[][] perTrackFromNet 
 			= Pipe.splitPipes(coordinator.moduleParallelism(), receivedFromNet);
@@ -334,14 +335,14 @@ public class NetGraphBuilder {
 		Pipe<NetPayloadSchema>[][] perTrackFromSuper 
 			= Pipe.splitPipes(coordinator.moduleParallelism(), sendingToNet);
 		
-		buildLogging(graphManager, coordinator, log, log2);
+		buildLogging(graphManager, coordinator, reqLog, resLog);
 		
 		buildRouters(graphManager, coordinator, releaseAfterParse,
 				fromModule, toModules, routerConfig, config,
-				false, log, perTrackFromNet);
+				false, reqLog, perTrackFromNet);
 		
 		//logger.info("build http ordering supervisors");
-		buildOrderingSupers(graphManager, coordinator, fromModule, log2, perTrackFromSuper);
+		buildOrderingSupers(graphManager, coordinator, fromModule, resLog, perTrackFromSuper);
         
 	}
 
@@ -351,6 +352,8 @@ public class NetGraphBuilder {
 			                        Pipe<HTTPLogResponseSchema>[] logRes) {
 		
 		if (coordinator.isLogFilesEnabled()) {
+
+			LogFileConfig logFileConfig = coordinator.getLogFilesConfig();
 			
 			//walk the matching pipes and create monitor pipes
 			int i = logReq.length;
@@ -358,10 +361,15 @@ public class NetGraphBuilder {
 				logReq[i] = HTTPLogRequestSchema.instance.newPipe(32, 1<<12);	
 			}
 			
-			int resTotal = 0;
-			i = logRes.length;
-			while (--i>=0) {	
-				logRes[i] = HTTPLogResponseSchema.instance.newPipe(32, 1<<12);
+			if (logFileConfig.logResponses()) {
+				int resTotal = 0;
+				i = logRes.length;
+				while (--i>=0) {	
+					logRes[i] = HTTPLogResponseSchema.instance.newPipe(32, 1<<12);
+				}		
+			} else {
+				//collector should not look for any of these
+				logRes = new Pipe[0];
 			}
 		
 			//write large blocks out to the file, logger unification will fill each message
@@ -376,9 +384,7 @@ public class NetGraphBuilder {
 			//PipeCleanerStage.newInstance(graphManager, resIn);
 			
 			new HTTPLogUnificationStage(graphManager, logReq, logRes, out);
-			
-			LogFileConfig logFileConfig = coordinator.getLogFilesConfig();
-			
+						
 			boolean append = false;
 			new FileBlobWriteStage(graphManager, out, 
 								   logFileConfig.maxFileSize()

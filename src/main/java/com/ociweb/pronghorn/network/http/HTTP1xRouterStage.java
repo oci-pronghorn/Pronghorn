@@ -71,7 +71,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private       int[]                    inputLengths;
     private       boolean[]                needsData;
-    private       boolean[]                isOpen;
         
     private final Pipe<ReleaseSchema> releasePipe;
     
@@ -214,8 +213,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         inputBlobPosLimit = new int[inputs.length];
         inputLengths = new int[inputs.length];
         needsData = new boolean[inputs.length];
-        isOpen = new boolean[inputs.length];
-        Arrays.fill(isOpen, true);
         
         inputSlabPos = new long[inputs.length];
         sequences = new int[inputs.length];
@@ -324,37 +321,35 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     
     //return 0, 1 work, -1 shutdown.
-    private static int singlePipe(HTTP1xRouterStage that, final int idx) {
-        if (that.isOpen[idx]) {  
+    private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
 
-        	final int start = that.inputLengths[idx];
-            if (that.accumRunningBytes(idx, that.inputs[idx], Integer.MAX_VALUE, that.inputChannels[idx]) >=0) {//message idx            
-            	if (that.needsData[idx]) {
-            		if (that.inputLengths[idx]==start) {            			
-            			//we got no data so move on to the next
-            			return 0;
-            		} else {            			
-            			that.needsData[idx]=false;
-            		}
-            	}            
+    	final int start = that.inputLengths[idx];
+        if (accumRunningBytes(  that,
+        		                     idx, 
+				            		 that.inputs[idx],
+				            		 that.inputChannels[idx]) >=0) {//message idx            
+        	if (that.needsData[idx]) {
+        		if (that.inputLengths[idx]==start) {            			
+        			//we got no data so move on to the next
+        			return 0;
+        		} else {            			
+        			that.needsData[idx]=false;
+        		}
+        	}            
+        } else {
+
+            if (that.inputLengths[idx] <= 0) {
+            	//closed so return
+            	return -1;
             } else {
-            	//shutdown detected
-            	that.isOpen[idx] = false;
-                if (that.inputLengths[idx]<=0) {
-                	//closed so return
-                	return -1;
-                }
-                                
-                if (that.needsData[idx]) {
-            		if (that.inputLengths[idx]==start) {            			
-            			//we got no data so move on to the next
-            			return 0;
-            		} else {            			
-            			that.needsData[idx]=false;
-            		}
-            	}     
-            }
-            
+            	//process remaining data if all the data is here
+            }             
+
+            if (that.needsData[idx]) {
+            	//got no data but we need more data
+            	logger.warn("Shutting down while doing partial consume of data");
+            	return -1;
+        	}
         }
                 
         //the common case is -1 so that is first.
@@ -1074,7 +1069,11 @@ private void badClientError(long channel) {
 }
 
 
-private int accumRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInput, int messageIdx, long inChnl) {
+private static int accumRunningBytes(
+						 HTTP1xRouterStage<?, ?, ?, ?> that,
+						 final int idx, 
+		                 Pipe<NetPayloadSchema> selectedInput,
+		                 long inChnl) {
 	//    boolean debug = true;
 	//    if (debug) {
 	//		logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
@@ -1083,26 +1082,28 @@ private int accumRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInpu
 	//	    		     hasReachedEndOfStream(selectedInput), 
 	//	    		     hasContinuedData(selectedInput, inChnl) );
 	//    }
+	    int messageIdx = Integer.MAX_VALUE;
 	
 	    while ( //NOTE has content to read looks at slab position between last read and new head.
 	   
 	    		Pipe.hasContentToRead(selectedInput) && (    //content checked first to ensure asserts pass		
-	    				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
-	    				hasContinuedData(selectedInput, inChnl) ||
-	    				hasReachedEndOfStream(selectedInput) 
-	    				//if we have reached the end of the stream       
-	            )
+		    				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
+		    				hasContinuedData(selectedInput, inChnl) ||
+		    				hasReachedEndOfStream(selectedInput) 
+		    				//if we have reached the end of the stream       
+		            )
+	    		
 	          ) {
 	
-	        messageIdx = Pipe.takeMsgIdx(selectedInput);
+	    	messageIdx = Pipe.takeMsgIdx(selectedInput);
 	        
 	        //logger.info("seen message id of {}",messageIdx);
 	        
 	        if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
-	            inChnl = processPlain(idx, selectedInput, inChnl);
+	            inChnl = processPlain(that, idx, selectedInput, inChnl);
 	        } else {
 	        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {        		
-	        		processBegin(idx, selectedInput);        		
+	        		processBegin(that, idx, selectedInput);        		
 	        	} else {
 		            return processShutdown(selectedInput, messageIdx);
 	        	}
@@ -1113,7 +1114,9 @@ private int accumRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInpu
 }
 
 
-private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+private static long processPlain(
+		HTTP1xRouterStage that,
+		final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
 	final long channel = Pipe.takeLong(selectedInput);
 	
 	//instead of using arrival time here, we pull it just before release after each 
@@ -1121,7 +1124,7 @@ private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, l
 	final long arrivalTime = Pipe.takeLong(selectedInput);
 	
 	long slabPos;
-	this.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
+	that.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
         
 	final int meta       = Pipe.takeRingByteMetaData(selectedInput);
 	final int length     = Pipe.takeRingByteLen(selectedInput);
@@ -1129,24 +1132,24 @@ private long processPlain(final int idx, Pipe<NetPayloadSchema> selectedInput, l
 	
 	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
 	assert(length<=selectedInput.maxVarLen);
-	assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
+	assert(that.inputBlobPos[idx]<=that.inputBlobPosLimit[idx]) : "position is out of bounds.";
 	
 	if (-1 != inChnl) {
-		plainMatch(idx, selectedInput, channel, length);
+		that.plainMatch(idx, selectedInput, channel, length);
 	} else {
-		inChnl = plainFreshStart(idx, selectedInput, channel, length, pos);		
+		inChnl = that.plainFreshStart(idx, selectedInput, channel, length, pos);		
 	}
 
-	assert(inputLengths[idx]>=0) : "error negative length not supported";
+	assert(that.inputLengths[idx]>=0) : "error negative length not supported";
 
 	//if we do not move this forward we will keep reading the same spot up to the new head
 	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
-	Pipe.readNextWithoutReleasingReadLock(selectedInput); 
-		
+	Pipe.readNextWithoutReleasingReadLock(selectedInput);
+
 	if (-1 == slabPos) {
-		inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
+		that.inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
 	}
-	assert(inputSlabPos[idx]!=-1);
+	assert(that.inputSlabPos[idx]!=-1);
 	return inChnl;
 }
 
@@ -1187,7 +1190,7 @@ private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 }
 
 
-private int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx) {
+private static int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx) {
 	assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
 	if (-1 != messageIdx) {
 		throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
@@ -1199,8 +1202,10 @@ private int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx
 }
 
 
-private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
-	assert(hasNoActiveChannel(inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
+private static void processBegin(
+		HTTP1xRouterStage< ?, ?, ?, ?> that, 
+		final int idx, Pipe<NetPayloadSchema> selectedInput) {
+	assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
 	assert(0==Pipe.releasePendingByteCount(selectedInput));
 		     
 	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
@@ -1208,7 +1213,7 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
      	  
 	//logger.info("accumulate begin");
 	//keep this as the base for our counting of sequence
-	sequences[idx] = Pipe.takeInt(selectedInput);
+	that.sequences[idx] = Pipe.takeInt(selectedInput);
 	
 	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
 	//Pipe.releaseReadLock(selectedInput);
@@ -1218,12 +1223,12 @@ private void processBegin(final int idx, Pipe<NetPayloadSchema> selectedInput) {
 
 
     // Warning Pipe.hasContentToRead(selectedInput) must be called first.
-	private boolean hasNoActiveChannel(long inChnl) {
+	private static boolean hasNoActiveChannel(long inChnl) {
 		return -1 == inChnl;
 	}
 
 	// Warning Pipe.hasContentToRead(selectedInput) must be called first.
-	private boolean hasContinuedData(Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+	private static boolean hasContinuedData(Pipe<NetPayloadSchema> selectedInput, long inChnl) {
 		return Pipe.peekLong(selectedInput, 1)==inChnl;
 	}
 	

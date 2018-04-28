@@ -758,21 +758,22 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 	
 		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);
 		 	
+
 		 } 
 		                     
-		 
-		 //////////////
-		 //if needed write out the close connection message
-		 //////////////
-		 
-		 if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
-			 //logger.info("sending disconnect to the ServerSocketWriter");
-			 int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
-			 Pipe.addLongValue(channelId, output);
-			 Pipe.confirmLowLevelWrite(output, disSize);
-			 Pipe.publishWrites(output);
-			
-		 }
+	 	//////////////
+	 	//if needed write out the close connection message
+	 	//can only be done when we are at the end of the message
+	 	//////////////
+	 	if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
+	 		//logger.info("sending disconnect to the ServerSocketWriter");
+	 		int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
+	 		Pipe.addLongValue(channelId, output);
+	 		Pipe.confirmLowLevelWrite(output, disSize);
+	 		Pipe.publishWrites(output);
+	 		
+	 	}
+	 	
 		 return lenWritten;
 	}
     
