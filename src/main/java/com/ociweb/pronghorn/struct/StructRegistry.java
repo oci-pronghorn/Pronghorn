@@ -359,17 +359,17 @@ public class StructRegistry { //prong struct store
 					);
 		}
 		
-		int identityHashCode = System.identityHashCode(localObject);
-		assert(0!=identityHashCode) : "can not insert null";
-		assert(!IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], identityHashCode)) : "These objects are too similar or was attached twice, System.identityHash must be unique. Choose different objects";
-		if (IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], identityHashCode)) {
-			logger.warn("Unable to add object {} as an association, Another object with an identical System.identityHash is already held. Try a different object.", localObject);		
+		int hashCode = localObject.hashCode();
+		assert(0!=hashCode) : "can not insert null";
+		assert(!IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], hashCode)) : "These objects are too similar or was attached twice, Hash must be unique. Choose different objects";
+		if (IntHashTable.hasItem(this.fieldAttachedIndex[structIdx], hashCode)) {
+			logger.warn("Unable to add object {} as an association, Another object with an identical Hash is already held. Try a different object.", localObject);		
 			return false;
 		} else {
-			if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], identityHashCode, fieldIdx)) {
+			if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], hashCode, fieldIdx)) {
 				//we are out of space
 				this.fieldAttachedIndex[structIdx] = IntHashTable.doubleSize(this.fieldAttachedIndex[structIdx]);
-				if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], identityHashCode, fieldIdx)) {
+				if (!IntHashTable.setItem(this.fieldAttachedIndex[structIdx], hashCode, fieldIdx)) {
 					throw new RuntimeException("internal error");
 				}
 				
@@ -377,7 +377,7 @@ public class StructRegistry { //prong struct store
 				//logger.info("{} set object {} to index {}",structIdx, localObject, fieldIdx);
 			}
 		
-			assert(fieldIdx == IntHashTable.getItem(this.fieldAttachedIndex[structIdx], identityHashCode));
+			assert(fieldIdx == IntHashTable.getItem(this.fieldAttachedIndex[structIdx], hashCode));
 
 			return true;
 		}
@@ -433,7 +433,7 @@ public class StructRegistry { //prong struct store
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
 				
-		int idx = lookupIndexOffset(this, attachedObject, structId, System.identityHashCode(attachedObject));
+		int idx = lookupIndexOffset(this, attachedObject, structId, attachedObject.hashCode());
 		return buildFieldId(attachedObject, structId, idx);
 		
 	}
@@ -444,12 +444,12 @@ public class StructRegistry { //prong struct store
 		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
 	}
 
-	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId, int identityHashCode) {
+	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId, int hash) {
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 		
-		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
+		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash);
 		if (0==idx) {
-			if (!IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode)) {
+			if (!IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash)) {
 				throw new UnsupportedOperationException("Object not found: "+attachedObject);			
 			}
 		}
