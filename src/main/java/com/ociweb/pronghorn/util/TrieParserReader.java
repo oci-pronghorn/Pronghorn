@@ -1284,87 +1284,107 @@ public class TrieParserReader {
 			int sourceMask, short numType, final boolean absentIsZero, final boolean templateLimited, byte sign,
 			long intValue, byte intLength, int dot) {
 		
-		byte base;
-		boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+0]) || ('x'!=source[sourceMask & sourcePos+1]);
-		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
-			//just to keep it from spinning on values that are way out of bounds
-			sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLength); //never scan over 32
-
-			base = 10;
-			short c = 0;
+		if ((  ('x'!=source[sourceMask & sourcePos+1]) 
+			|| ('0'!=source[sourceMask & sourcePos+0])) 
+			&& 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
+			return parseBaseTenImpl(reader, source, 
+					sourcePos, sourceLength, sourceMask, absentIsZero, templateLimited,
+					sign, intValue, intLength, dot);
 			
-			do {
-				c = source[sourceMask & sourcePos++];        
-
-				if (intLength<sourceLength) {
-
-					if ((c>='0') && (c<='9') ) {
-						intValue = (intValue * 10)+(c-'0');
-						intLength++;
-						continue;
-					} else {
-						break;//next char is not valid.
-						
-					}
-				} else {
-					if (reader.alwaysCompletePayloads || templateLimited) {
-						break;
-						
-					} else {
-						return -1; //we are waiting for more digits in the feed. 
-					}
-				}
-
-			}  while (true);
-
 		} else {
-			//just to keep it from spinning on values that are way out of bounds
-			sourceLength = Math.min(LONGEST_LONG_HEX_DIGITS+1, sourceLength); //never scan over 32
-
-			base = 16;
-			if (!hasNo0xPrefix) {
-				sourcePos+=2;//skipping over the 0x checked above
-			}
-			short c = 0;
-			do {
-				c = source[sourceMask & sourcePos++];
-
-				if (intLength<sourceLength) {
-
-					if ((c>='0') && (c<='9') ) {
-						intValue = (intValue<<4)+(c-'0');
-						intLength++;
-						continue;
-					} else  {
-						c = (short)(c | 0x20);//to lower case
-						if ((c>='a') && (c<='f') ) {
-							intValue = (intValue<<4)+(10+(c-'a'));
-							intLength++;
-							continue;
-						} else {
-							//this is not a valid char so we reached the end of the number
-							break;
-						}
-					}
-				} else {
-					if (reader.alwaysCompletePayloads || templateLimited) {
-						//do not reset the length;
-					} else {
-						//we are waiting for more digits in the feed. 
-						// intLength>=sourceLength
-						intLength=0;
-					}
-					break;
-				}
-			}  while (true);
+			return parseBaseHexImpl(reader, source, sourcePos, sourceLength, sourceMask, absentIsZero, templateLimited,
+					sign, intValue, intLength, dot, ('0'!=source[sourceMask & sourcePos+0]) || ('x'!=source[sourceMask & sourcePos+1]));
 		}
 
+
+	}
+
+	private static int parseBaseHexImpl(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
+			int sourceMask, final boolean absentIsZero, final boolean templateLimited, byte sign, long intValue,
+			byte intLength, int dot, boolean hasNo0xPrefix) {
+		byte base;
+		//just to keep it from spinning on values that are way out of bounds
+		sourceLength = Math.min(LONGEST_LONG_HEX_DIGITS+1, sourceLength); //never scan over 32
+
+		base = 16;
+		if (!hasNo0xPrefix) {
+			sourcePos+=2;//skipping over the 0x checked above
+		}
+		short c = 0;
+		do {
+			c = source[sourceMask & sourcePos++];
+
+			if (intLength<sourceLength) {
+
+				if ((c>='0') && (c<='9') ) {
+					intValue = (intValue<<4)+(c-'0');
+					intLength++;
+					continue;
+				} else  {
+					c = (short)(c | 0x20);//to lower case
+					if ((c>='a') && (c<='f') ) {
+						intValue = (intValue<<4)+(10+(c-'a'));
+						intLength++;
+						continue;
+					} else {
+						//this is not a valid char so we reached the end of the number
+						break;
+					}
+				}
+			} else {
+				if (reader.alwaysCompletePayloads || templateLimited) {
+					//do not reset the length;
+				} else {
+					//we are waiting for more digits in the feed. 
+					// intLength>=sourceLength
+					intLength=0;
+				}
+				break;
+			}
+		}  while (true);
 		if (intLength==0 && !absentIsZero) {
 			return -1;
 		}
-		
 		publish(reader, sign, intValue, intLength, base, dot);
+		return sourcePos-1;
+	}
 
+	private static int parseBaseTenImpl(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
+			int sourceMask, final boolean absentIsZero, final boolean templateLimited, byte sign, long intValue,
+			byte intLength, int dot) {
+		//just to keep it from spinning on values that are way out of bounds
+		sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLength); //never scan over 32
+
+		byte base = 10;
+		short c = 0;
+		
+		do {
+			c = source[sourceMask & sourcePos++];        
+
+			if (intLength<sourceLength) {
+
+				if ((c>='0') && (c<='9') ) {
+					intValue = (intValue * 10)+(c-'0');
+					intLength++;
+					continue;
+				} else {
+					break;//next char is not valid.
+					
+				}
+			} else {
+				if (reader.alwaysCompletePayloads || templateLimited) {
+					break;
+					
+				} else {
+					return -1; //we are waiting for more digits in the feed. 
+				}
+			}
+
+		}  while (true);
+		if (intLength==0 && !absentIsZero) {
+			return -1;
+		}
+		publish(reader, sign, intValue, intLength, base, dot);
 		return sourcePos-1;
 	}
 
