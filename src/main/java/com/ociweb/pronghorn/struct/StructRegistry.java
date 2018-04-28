@@ -209,7 +209,8 @@ public class StructRegistry { //prong struct store
 		this.fieldTypes[structIdx] = fieldTypes;
 		this.fieldDims[structIdx] = null==fieldDim?new int[fieldTypes.length]:fieldDim;
 		this.fieldLocals[structIdx] = new Object[fieldNames.length];
-		this.fieldAttachedIndex[structIdx] = new IntHashTable(IntHashTable.computeBits(Math.max(fieldNames.length,8)*3));
+		//added lots of extra space since many hash values are the same at the low digits
+		this.fieldAttachedIndex[structIdx] = new IntHashTable(5+IntHashTable.computeBits(Math.max(fieldNames.length,8)));
 				
 		if (null!=fieldAssoc) {
 			int j = fieldAssoc.length;
@@ -431,31 +432,28 @@ public class StructRegistry { //prong struct store
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
-		if (attachedObject instanceof FieldIdxHolder) {
-			FieldIdxHolder h = (FieldIdxHolder)attachedObject;
-			if (h.fieldIdx()!=0) {
-				return h.fieldIdx();
-			}
-			
-		}
+				
+		int idx = lookupIndexOffset(this, attachedObject, structId, System.identityHashCode(attachedObject));
+		return buildFieldId(attachedObject, structId, idx);
 		
+	}
+
+	private <T> long buildFieldId(T attachedObject, int structId, int idx) {
+		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx];
+
+		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
+	}
+
+	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId, int identityHashCode) {
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
-		int identityHashCode = System.identityHashCode(attachedObject);
-		int idx = IntHashTable.getItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
+		
+		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode);
 		if (0==idx) {
-			if (!IntHashTable.hasItem(this.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode)) {
+			if (!IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], identityHashCode)) {
 				throw new UnsupportedOperationException("Object not found: "+attachedObject);			
 			}
 		}
-		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx];
-		
-		if (attachedObject instanceof FieldIdxHolder) {
-			FieldIdxHolder h = (FieldIdxHolder)attachedObject;
-			h.fieldIdx(((long)structId)<<STRUCT_OFFSET | (long)idx);
-		}
-		
-		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
-		
+		return idx;
 	}
 	
 	

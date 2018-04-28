@@ -51,18 +51,23 @@ public class StructuredWriter {
 	
 	public void selectStruct(int structId) {
 		
+		StructRegistry structRegistry = Pipe.structRegistry(channelWriter.backingPipe);
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
 		DataOutputBlobWriter.commitBackData(channelWriter, structId);		
 		int p = pos;
 		while (--p>=0) {
+			
 			DataOutputBlobWriter.setIntBackData(channelWriter,
-					positions[p],
-					StructRegistry.FIELD_MASK &
-					(int)Pipe.structRegistry(channelWriter.backingPipe).fieldLookupByIdentity(
-							associations[p], structId) & StructRegistry.FIELD_MASK);
+								positions[p],
+								StructRegistry.lookupIndexOffset(structRegistry,
+										              associations[p], structId, 
+										              associations[p].hashCode()) & StructRegistry.FIELD_MASK					
+							);
 		}
-	
+		pos = 0;//cleared for next time;
 	}
+
+	
 	
 	///////////////////////
 
@@ -71,7 +76,7 @@ public class StructuredWriter {
 			throw new NullPointerException("associated object must not be null");
 		}
 		grow(pos);
-		
+
 		int positionToKeep = channelWriter.position();
 		//keep object
 		positions[pos]=positionToKeep;
