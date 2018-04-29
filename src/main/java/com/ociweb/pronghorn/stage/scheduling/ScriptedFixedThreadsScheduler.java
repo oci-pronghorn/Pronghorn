@@ -1461,6 +1461,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	@Override
 	public void awaitTermination(long timeout, TimeUnit unit, Runnable clean, Runnable dirty) {
+		
 		if (awaitTermination(timeout, unit)) {
 			clean.run();
 		} else {
@@ -1470,7 +1471,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	
 	@Override
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
-		
+
 		int i = ntsArray.length;
 		boolean cleanExit = true;
 
@@ -1497,6 +1498,9 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	@Override
 	public boolean TerminateNow() {
+		
+		new Exception().printStackTrace();
+		
 		shutdown();
 		try {
 			//give the stages 1 full second to shut down cleanly
