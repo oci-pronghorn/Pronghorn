@@ -54,7 +54,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
-    private static final long humanLimitNS = 10_000_000;
+    private static final long humanLimitNS = 20_000_000;
     
 
     private int[] producersIdx;
@@ -707,21 +707,15 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//using many small yields usage of this is minimized.
 		//////////////////////////////
 		totalRequiredSleep = local;
-		if (local<2_000_000) {//sleep is not that accurate so we do this.
+		if (local<2_000_000) {
 			automaticLoadSwitchingDelay();
-		} else {
-		
-			long a = (totalRequiredSleep/1_000_000L);
-			long b = (totalRequiredSleep%1_000_000L);
-			
-			//logger.info("waiting {} ns and the clock rate is {} added wait {} ",totalRequiredSleep,schedule.commonClock,wait);
-			
+		} else {		
 			long now = System.nanoTime();
 			Thread.yield();
-			Thread.sleep(a,(int)b);
+			LockSupport.parkNanos(totalRequiredSleep);
 			long duration = System.nanoTime()-now;
-			totalRequiredSleep -= (duration>0?duration:(a*1_000_000));
-		
+			totalRequiredSleep -= (duration>0?duration:1);
+			
 			//////////////////////////////
 			//////////////////////////////
 					
@@ -739,7 +733,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
-		if ((noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
+		if ( (noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
 			
 			long now = System.nanoTime();
 			long nowMS = now/1_000_000l;
@@ -776,20 +770,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	private void deepSleep(boolean isNormalCase) {
-		
-		//TODO: These sleep values are causing disruption in the 99.99 time
-		//TODO: instead of polling we must block until ready..
-		
-		
+
 		if (isNormalCase) {
 			int maxIterations = 20;//this is limited or we may be sleeping during shutdown request.
 			while (--maxIterations>=0 && (noWorkCounter > deepSleepCycleLimt)) {
-				try {
-					Thread.sleep(humanLimitNS/1_000_000);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					break;
-				}
+				LockSupport.parkNanos(humanLimitNS);
 				//we stay in this loop until we find real work needs to be done
 				//but not too long or we will not be able to shutdown.
 				if (!accumulateWorkHistory()) {
@@ -797,11 +782,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				}	
 			}	
 		} else {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
+			Thread.yield();
 		}
 	}
 
