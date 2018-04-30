@@ -140,7 +140,14 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {							
 			didWork = writePlain(didWork, i, pipe);
-		} else if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {											
+		} else {
+			didWork = writeAllLessCommon(didWork, i, pipe, msgIdx);
+		}
+		return didWork;
+	}
+
+	private boolean writeAllLessCommon(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
+		if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {											
 			didWork = writeEncrypted(didWork, i, pipe);
 		} else if (NetPayloadSchema.MSG_UPGRADE_307 == msgIdx) {							
 			throw new UnsupportedOperationException("Connection upgrade is not yet supported.");

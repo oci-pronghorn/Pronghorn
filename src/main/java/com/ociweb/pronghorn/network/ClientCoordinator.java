@@ -21,6 +21,7 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
@@ -312,8 +313,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 
+	public static int lookupHostId(byte[] hostBytes) {
+		return lookupHostId(hostBytes, 0, hostBytes.length, Integer.MAX_VALUE);
+	}
+	
 	public static int lookupHostId(byte[] hostBytes, int pos, int length, int mask) {
-		return (int)TrieParserReader.query(new TrieParserReader(true), domainRegistry,
+		return (int)TrieParserReader.query(TrieParserReaderLocal.get(), domainRegistry,
 					hostBytes, pos, length, mask);
 
 	}
@@ -343,7 +348,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
-			long connectionId, TrieParserReader reader, AbstractClientConnectionFactory ccf) {
+			long connectionId, AbstractClientConnectionFactory ccf) {
 				
 		        ClientConnection cc = null;
 
@@ -377,7 +382,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	
 					//recycle from old one if it is found/given		        
-					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, reader);						
+					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, TrieParserReaderLocal.get());						
 					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
 						
 					try {

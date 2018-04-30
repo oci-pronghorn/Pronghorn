@@ -7,11 +7,11 @@ import com.ociweb.pronghorn.util.Appendables;
 public class HeaderUtil {
 
 	public static void writeHeaderMiddle(DataOutputBlobWriter<NetPayloadSchema> writer, CharSequence implementationVersion) {
-		boolean reportAgent = false;
-		if (reportAgent) {
-			DataOutputBlobWriter.write(writer, HeaderUtil.LINE_AND_USER_AGENT, 0, HeaderUtil.LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
-			DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
-		}
+//		boolean reportAgent = false;
+//		if (reportAgent) {
+//			DataOutputBlobWriter.write(writer, HeaderUtil.LINE_AND_USER_AGENT, 0, HeaderUtil.LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
+//			DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
+//		}
 		
 		DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
 	}

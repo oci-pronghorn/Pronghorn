@@ -339,7 +339,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		long lookup = null!=old? old.id : ccm.lookup(hostId, hostPort, uniqueConnectionId);
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
-				                         toBroker, lookup, READER,
+				                         toBroker, lookup, 
 				                         BasicClientConnectionFactory.instance); 
 
 		if (null!=activeConnection) {		

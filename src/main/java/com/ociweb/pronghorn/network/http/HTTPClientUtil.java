@@ -8,6 +8,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 
 public class HTTPClientUtil {
 
+	private static final byte[] WHITE_BYTES = " ".getBytes();
+	private static final byte[] SLASH_BYTES = " /".getBytes();
+	private static final byte[] POST_BYTES = "POST".getBytes();
+
 	public static void cleanCloseConnection(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
 	
 		if (null!=requestPipe) {
@@ -110,8 +114,10 @@ public class HTTPClientUtil {
 			Pipe.publishWrites(outputPipe);
 	}
 
-	public static void processPostLogic(long now, Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
+	public static void processPostLogic(long now, Pipe<ClientHTTPRequestSchema> requestPipe, 
+			ClientConnection clientConnection,
 			Pipe<NetPayloadSchema> outputPipe, int stageId) {
+		
 		clientConnection.setLastUsedTime(now);
 		clientConnection.incRequestsSent();//count of messages can only be done here.
 	
@@ -125,8 +131,8 @@ public class HTTPClientUtil {
 			
 			DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 			DataOutputBlobWriter.openField(activeWriter);
-					                
-			DataOutputBlobWriter.encodeAsUTF8(activeWriter,"POST");
+					   
+			activeWriter.write(POST_BYTES);
 			
 			int routeId = Pipe.takeInt(requestPipe);
 			int userId = Pipe.takeInt(requestPipe);
@@ -150,9 +156,9 @@ public class HTTPClientUtil {
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
 	
 			if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
-				DataOutputBlobWriter.encodeAsUTF8(activeWriter," /");
+				activeWriter.write(SLASH_BYTES);
 			} else {
-				DataOutputBlobWriter.encodeAsUTF8(activeWriter," ");
+				activeWriter.write(WHITE_BYTES);
 			}
 			
 			//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
@@ -189,10 +195,10 @@ public class HTTPClientUtil {
 			
 			int postLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 				
-			boolean showSentPayload = false;
-			if (showSentPayload) {
-				System.out.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
-			}
+//			boolean showSentPayload = false;
+//			if (showSentPayload) {
+//				System.out.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+//			}
 			
 			Pipe.confirmLowLevelWrite(outputPipe,pSize);
 			Pipe.publishWrites(outputPipe);

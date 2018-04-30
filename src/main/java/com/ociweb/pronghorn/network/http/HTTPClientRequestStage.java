@@ -229,9 +229,8 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
- 			
-     		int hostId = ClientCoordinator.lookupHostId(mCharSequence.setToField(requestPipe, hostMeta, hostLen), READER);
-			connectionId = ccm.lookup(hostId, port, userId);
+ 						
+     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, userId);
  		}
 		
  		if (null!=activeConnection
@@ -261,7 +260,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
- 					 port, userId, output, connectionId, reader, ccf);
+ 					 port, userId, output, connectionId, ccf);
  	
  		}
  		

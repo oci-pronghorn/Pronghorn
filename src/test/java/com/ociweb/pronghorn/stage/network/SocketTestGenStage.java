@@ -63,8 +63,8 @@ public class SocketTestGenStage extends PronghornStage {
 			int hostMask = Integer.MAX_VALUE;
 			ClientConnection connection = ClientCoordinator.openConnection(
 					clientCoordinator, host, port, userIdx, pipe,	
-			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(host, READER),
-			        port, userIdx), READER, BasicClientConnectionFactory.instance);			
+			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(hostBytes),
+			        port, userIdx), BasicClientConnectionFactory.instance);			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
 				return;//try again later
 			}

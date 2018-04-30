@@ -253,7 +253,11 @@ public class ClientSocketReaderStage extends PronghornStage {
     		return true;
     	}
     		
-        try {        	        	
+        return hasNewDataToReadImpl(selector);
+    }
+
+	private boolean hasNewDataToReadImpl(Selector selector) {
+		try {        	        	
         	////////////
         	//CAUTION - select now clears previous count and only returns the additional I/O operation counts which have become avail since the last time SelectNow was called
         	////////////        	
@@ -267,7 +271,7 @@ public class ClientSocketReaderStage extends PronghornStage {
             shutdownInProgress = true;
             return false;
         }
-    }
+	}
 	
 
 	private boolean processConnection(boolean didWork, ClientConnection cc) {
