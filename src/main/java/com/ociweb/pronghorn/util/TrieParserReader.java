@@ -745,13 +745,18 @@ public class TrieParserReader {
 				
 	}
 
-	private static int scanBytes(byte[] source, 
-			int r, final int srcMask, 
-			final byte caseMask, final int t1,
-			final int t2, final short[] data) {
+	private static int scanBytes(final byte[] source, 
+								int r, final int srcMask, 
+								final byte caseMask, int t1,
+								int t2, final short[] data) {
+					
+		t1-=r;
+		t2-=r;
 		
 		while (
-				((caseMask&data[t1-r]) == (caseMask&source[srcMask & (t2-r)]))
+				(          (caseMask & data[t1++])
+						== (caseMask & source[srcMask & (t2++)])
+				)
 				&& (--r > 0) 
 			 ) {
 		}
@@ -776,13 +781,15 @@ public class TrieParserReader {
 	private static void processMultipleBinBranches(TrieParserReader reader,
 			final short sourceShort, int p,
 			final short[] localData) {
+		
 		int t;
-		do {
+		do {		
 			p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
 				? p+3 
 				: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
 				
 		} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
+				
 		reader.type = t;
 		reader.pos = p;
 	}
@@ -1164,9 +1171,17 @@ public class TrieParserReader {
 	}
 
 	private static int indexOfMatchInArray(short value, short[] data, int i) {
-		//System.err.println("searhing run of "+count); checked and found it 1
+		if (1==i) {
+			Branchless.ifEquals(value, data[0], 0, -1);
+			//return (value==data[0]) ? 0 : -1;
+		}
+		return indexOfMatchInArrayScan(value, data, i);
+	}
+
+	private static int indexOfMatchInArrayScan(short value, short[] data, int i) {
 		while (--i>=0) {
 			if (value == data[i]) {
+				System.err.println("found inddex at "+i);
 				return i;
 			}
 		}
