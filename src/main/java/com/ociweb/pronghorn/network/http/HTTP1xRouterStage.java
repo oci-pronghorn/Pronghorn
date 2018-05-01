@@ -689,7 +689,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
     	
-    	
     		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
@@ -904,73 +903,87 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 	}
 	ChannelWriterController cwc = serverConnection.connectionDataWriter();
-	ChannelWriter cw = cwc.beginWrite();
-	if (null!=cw) {//try again later if this connection is overloaded
-		
-		int requestContext = keepAliveOrNotContext(httpRevisionId);
+	if (null != cwc) {
+		ChannelWriter cw = cwc.beginWrite();
+		if (null != cw) {//try again later if this connection is overloaded
 			
-		long postLength = -2;
-		
-		int iteration = 0;
-		int remainingLen;
-		while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
-		
-			long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
+			int requestContext = keepAliveOrNotContext(httpRevisionId);
+				
+			long postLength = -2;
 			
-		    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-		    	
-				if (iteration!=0) {
-					
-					return endOfHeadersLogic(writer, cwc, cw, 
-							serverConnection.scs,
-							errorReporter2, requestContext, 
-							trieReader, postLength, arrivalTime);
-					
-				} else {	          
-					//needs more data 
-					cwc.abandonWrite();
-					return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
-				}
-		    } else if (-1 == headerToken) {            	
-		    	if (remainingLen>MAX_HEADER) {   
-		    		//client has sent very bad data.
-		    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-		    	}
-		        //nothing valid was found so this is incomplete.
-		    	cwc.abandonWrite();
-		        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
-		    }
+			int iteration = 0;
+			int remainingLen;
+			while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
 			
-		    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
-			    HTTPHeader header = config.getAssociatedObject(headerToken);
-			    int writePosition = writer.position();
-			    
-			    if (null!=header) {
-				    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
-				    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
-			
-				    	postLength = TrieParserReader.capturedLongField(trieReader, 0);
-				    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == header.ordinal()) {
-				    	assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
-			
-				    	postLength = -1;
-				    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
-				    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
-				    	
-				    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
-				    }			                
-	
-				    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
-				    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
-		
+				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
+				
+			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
+			    	
+					if (iteration!=0) {
+						
+						return endOfHeadersLogic(writer, cwc, cw, 
+								serverConnection.scs,
+								errorReporter2, requestContext, 
+								trieReader, postLength, arrivalTime);
+						
+					} else {	          
+						//needs more data 
+						cwc.abandonWrite();
+						return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
+					}
+			    } else if (-1 == headerToken) {            	
+			    	if (remainingLen>MAX_HEADER) {   
+			    		//client has sent very bad data.
+			    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+			    	}
+			        //nothing valid was found so this is incomplete.
+			    	cwc.abandonWrite();
+			        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
 			    }
-		    } else {
-		    	//assert that important headers are not skipped..
-		    	assert(confirmCoreHeadersSupported(trieReader));	    	
-		    }
-		    iteration++;
+				
+			    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
+				    HTTPHeader header = config.getAssociatedObject(headerToken);
+				    int writePosition = writer.position();
+				    
+				    if (null!=header) {
+				    	
+				    	//config.get associted object needs to be populated for echo.
+				    	//TODO: is this header to be echoed then write it?
+				    	
+//				    	if (serverConnection.scs.isEchoHeader(headerToken) ) {
+//				    		//write this to be echoed when responding.
+//				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
+//				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
+//				    		TrieParserReader.writeCapturedValuesToDataOutput(trieReader, (DataOutputBlobWriter<?>)cw);
+//				    		
+//				    	}
+				    	
+					    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
+					    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
+				
+					    	postLength = TrieParserReader.capturedLongField(trieReader, 0);
+					    } else if (HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal() == header.ordinal()) {
+					    	assert(Arrays.equals(HTTPHeaderDefaults.TRANSFER_ENCODING.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, TRANSFER_ENCODING does not match";
+				
+					    	postLength = -1;
+					    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
+					    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
+					    	
+					    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
+					    }			                
+		
+					    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
+					    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
+			
+				    }
+			    } else {
+			    	//assert that important headers are not skipped..
+			    	assert(confirmCoreHeadersSupported(trieReader));	    	
+			    }
+			    iteration++;
+			}
+			cwc.abandonWrite();
 		}
-		cwc.abandonWrite();
 	}
 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 }
@@ -1238,7 +1251,8 @@ private static void processBegin(
 	}
 	
     private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer,
-    		ChannelWriterController cwc, ChannelWriter cw,
+    		ChannelWriterController cwc,
+    		ChannelWriter cw,
     		ServerConnectionStruct scs, ErrorReporter errorReporter,
 			int requestContext, final TrieParserReader trieReader,
 			long postLength, long arrivalTime) {

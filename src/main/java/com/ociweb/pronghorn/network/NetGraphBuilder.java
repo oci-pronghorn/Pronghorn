@@ -300,14 +300,13 @@ public class NetGraphBuilder {
         return graphManager;
 	}
 
-	private static void buildHTTPStages(GraphManager graphManager, ServerCoordinator coordinator, ModuleConfig modules,
+	private static void buildHTTPStages(GraphManager graphManager,
+			ServerCoordinator coordinator, ModuleConfig modules,
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet) {
   		
 		assert(sendingToNet.length >= coordinator.moduleParallelism()) : "reduce track count since we only have "+sendingToNet.length+" pipes";
-		
-//		logger.info("buildHTTPStages");
-		//logger.info("build http stages");
+
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
@@ -318,8 +317,14 @@ public class NetGraphBuilder {
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[coordinator.moduleParallelism()][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[coordinator.moduleParallelism()][];
         
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromRouterToModuleCount, serverConfig.fromRouterToModuleBlob);///if payload is smaller than average file size will be slower
-        final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, coordinator.moduleParallelism(), httpSpec, routerToModuleConfig, fromModule, toModules);
+        final int maxSize = serverConfig.fromRouterToModuleBlob 
+        		          + coordinator.connectionStruct().inFlightPayloadSize();
+        
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(
+        		HTTPRequestSchema.instance, 
+        		serverConfig.fromRouterToModuleCount, maxSize);///if payload is smaller than average file size will be slower
+
+        final HTTP1xRouterStageConfig routerConfig = buildModules(coordinator, graphManager, modules, httpSpec, routerToModuleConfig, fromModule, toModules);
         
         
         //logger.info("build http stages 3");
@@ -613,15 +618,14 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
-			final int routerCount,
+	public static HTTP1xRouterStageConfig buildModules(ServerCoordinator coordinator, GraphManager graphManager, ModuleConfig modules,
 			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec,
 			PipeConfig<HTTPRequestSchema> routerToModuleConfig, Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
 		
-		
-		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec, graphManager.recordTypeData); 
-		//create the modules
+		final int routerCount = coordinator.moduleParallelism();
+
+		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec, coordinator.connectionStruct()); 
 
 		for(int r=0; r<routerCount; r++) {
 			toModules[r] = new Pipe[modules.moduleCount()];
@@ -793,15 +797,14 @@ public class NetGraphBuilder {
 		
 		int concurrentChannelsPerDecryptUnit = 8; //need large number for new requests
 		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
-		
-		
+				
 		int maxRequestSize = 1<<16; //for cookies sent in
+		
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(null, isTLS, 
 				maxConnectionBits, tracks, 
 				2, concurrentChannelsPerEncryptUnit, 
 				1, concurrentChannelsPerDecryptUnit, 8, maxRequestSize);
 		
-		serverConfig.ensureServerCanRead(1<<16);
 				 		
 		//This must be large enough for both partials and new handshakes.
 		serverConfig.ensureServerCanWrite(1<<20);//1MB out

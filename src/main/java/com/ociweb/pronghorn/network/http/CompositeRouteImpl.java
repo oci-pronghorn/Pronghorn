@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
@@ -35,7 +36,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	
 	private final int structId;
-    private final StructRegistry schema;
+    private final ServerConnectionStruct scs;
 	
     private int[] activePathFieldIndexPosLookup;
 
@@ -63,7 +64,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
 			}
 						
-			long fieldId = schema.modifyStruct(structId, pattern, 0, length, type, 0);
+			long fieldId = scs.registry.modifyStruct(structId, pattern, 0, length, type, 0);
 	
 			//must build a list of fieldId ref in the order that these are disovered
 			//at postion inURL must store fieldId for use later... where is this held?
@@ -74,7 +75,7 @@ public class CompositeRouteImpl implements CompositeRoute {
     };
 
     
-	public CompositeRouteImpl(StructRegistry schema,
+	public CompositeRouteImpl(ServerConnectionStruct scs,
 			                  HTTP1xRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
 			                  URLTemplateParser parser, 
@@ -93,11 +94,11 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		this.routeId = routeId;
 		this.pathCounter = pathCounter;
-		this.schema = schema;
+		this.scs = scs;
 	    
-		this.structId = HTTPUtil.newHTTPStruct(schema);	
+		this.structId = HTTPUtil.newHTTPStruct(scs.registry);	
 		if (null != this.extractor) {
-			this.extractor.addToStruct(schema, structId);
+			this.extractor.addToStruct(scs.registry, structId);
 		}
 		/////////////////////////
 		//add the headers to the struct
@@ -115,7 +116,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		if (null!=headers) {			
 			int h = headers.length;
-			while (--h>=0) {
+			while (--h >= 0) {
 				HTTPHeader header = headers[h];
 				
 				//if not already asked for (this is the server)
@@ -133,20 +134,31 @@ public class CompositeRouteImpl implements CompositeRoute {
 					headerConnection = true;
 				}
 				
-				HTTPUtil.addHeader(schema, structId, headerParser, header);
+				HTTPUtil.addHeader(scs.registry, structId, headerParser, header);
 			}
 			
 		}
 		
 		if (!headerContentLength) {
-			HTTPUtil.addHeader(schema, structId, headerParser, HTTPHeaderDefaults.CONTENT_LENGTH);
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.CONTENT_LENGTH);
 		}
 		if (!headerTransferEncodeing) {
-			HTTPUtil.addHeader(schema, structId, headerParser, HTTPHeaderDefaults.TRANSFER_ENCODING);
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.TRANSFER_ENCODING);
 		}
 		if (!headerConnection) {
-			HTTPUtil.addHeader(schema, structId, headerParser, HTTPHeaderDefaults.CONNECTION);
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.CONNECTION);
 		}
+				
+		HTTPHeader[] toEcho = scs.headersToEcho();
+		if (null != toEcho) {
+			int h = toEcho.length;
+			while (--h >= 0) {
+				HTTPUtil.addHeader(scs.registry, structId, headerParser, toEcho[h]);
+			}
+		}
+		
+		
+		
 		HTTPUtil.addHeader(headerParser,HTTPSpecification.UNKNOWN_HEADER_ID,"%b: %b");
 
 		config.storeRouteHeaders(routeId, headerParser);	
@@ -155,7 +167,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 
 	@Override
 	public int routeId(Object associatedObject) {		
-		schema.registerStructAssociation(structId, associatedObject);
+		scs.registry.registerStructAssociation(structId, associatedObject);
 		config.registerRouteAssociation(routeId, associatedObject);
 		return routeId;
 	}
@@ -192,7 +204,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Long, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Long, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -205,7 +217,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultText(String key, String value) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Text, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Text, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -218,7 +230,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Decimal, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Decimal, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -231,7 +243,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
 		byte[] keyBytes = key.getBytes();
-		schema.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Rational, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Rational, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -243,7 +255,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 
 	@Override
 	public CompositeRouteFinish associatedObject(String key, Object object) {		
-		schema.setAssociatedObject(schema.fieldLookup(key, structId), object);
+		scs.registry.setAssociatedObject(scs.registry.fieldLookup(key, structId), object);
 		return this;
 	}
 

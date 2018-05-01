@@ -60,18 +60,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final String defaultPath;
     
     private final LogFileConfig logFile; //generate a set of files to rotate..
-
-    
-    
+   
 	public final boolean requireClientAuth;//clients must send their cert to connect
-	private final ServerConnectionStruct scs; //may be null;
-	
-	//////////////////////////////////////
-	//fields to replicate headers back to the caller
-	//////////////////////////////////////
-	private HTTPHeader[] replicatedHeaders;
-	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
-	private int minInternalInFlightPayloadSize = 48;//TODO: add update method
+	private final ServerConnectionStruct scs; 
+
 	///////////////////////////////////////
 		
 //	public static long acceptConnectionStart;
@@ -328,25 +320,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	public String defaultPath() {
 		return defaultPath;
-	}
-	
-	public void setReplicatedHeaders(HTTPHeader ... headers) {
-		assert(replicatedHeaders==null) : "can only be set once";
-		replicatedHeaders = headers;
-		int maxHeaderSize = 80; //TODO: must have a way to set this..
-		minInternalInFlightPayloadSize += (headers.length*maxHeaderSize );
-	}
-	
-	public HTTPHeader[] getReplicatedHeaders() {
-		return replicatedHeaders;
-	}
-
-	public int connectionDataElements() {
-		return minInternalInFlightCount;
-	}
-
-	public int connectionDataElementSize() {
-		return minInternalInFlightPayloadSize;
 	}
 
 	public ServerConnectionStruct connectionStruct() {

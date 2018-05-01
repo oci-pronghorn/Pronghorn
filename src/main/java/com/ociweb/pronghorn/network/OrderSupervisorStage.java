@@ -2,11 +2,11 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
@@ -14,7 +14,6 @@ import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelReaderController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -593,10 +592,29 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 				 
 				 requestContext |= origCon;
 				 
+				 //TODO: need to detect if this is the beginning, we have new seq number?
+				 //TODO: then reduce the length to cut off last \r\n 
+				 
+				 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
+				 if (null!=headersToEcho) {
+					 for(int i=0; i<headersToEcho.length; i++) {
+						 HTTPHeader header = headersToEcho[i];						 
+						 
+						 
+						 //TODO: find other places where we write..
+						 //Appendable target;
+						 //header.writeValue(target, httpSpec, reader.structured().read(header));
+						 
+						 
+						 
+					 }
+					 
+					 
+				 }
+				 
 				 //for HTTP echoing headers we know that the headers block comes first
 				 
-				 //TODO: need to detect if this is the beginning
-				 //TODO: then reduce the length to cut off last \r\n 
+			
 				 //TODO: confirm works with chunked and not
 				 //TODO: then write echo headers
 				 //TODO: pipe must be large enough for old headers plus echos.	 

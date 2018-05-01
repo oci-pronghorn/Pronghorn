@@ -111,6 +111,7 @@ public class ServerPipesConfig {
 
 		//defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
+
 	    this.serverBlobToWrite               = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		int targetServerWriteBufferSize = 1<<23;
 		this.writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
@@ -130,10 +131,6 @@ public class ServerPipesConfig {
 		this.handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
 	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake
 	    	    
-	}
-
-	public void ensureServerCanRead(int length) {
-		fromRouterToModuleBlob =  Math.max(fromRouterToModuleBlob, length);
 	}
 	
 	public void ensureServerCanWrite(int length) {

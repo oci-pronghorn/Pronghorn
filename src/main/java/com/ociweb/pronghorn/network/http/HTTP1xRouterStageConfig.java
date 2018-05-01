@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
@@ -54,22 +55,23 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	
     
     private URLTemplateParser routeParser;
-    private final StructRegistry userStructs;
+    private final ServerConnectionStruct conStruct;
 	
 	private final TrieParserReader localReader = new TrieParserReader(2, true);
 
 
 	public int totalSizeOfIndexes(int structId) {
-		return userStructs.totalSizeOfIndexes(structId);
+		return conStruct.registry.totalSizeOfIndexes(structId);
 	}
 	
 	public <T extends Object> T getAssociatedObject(long field) {
-		return userStructs.getAssociatedObject(field);
+		return conStruct.registry.getAssociatedObject(field);
 	}
 	
-	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, StructRegistry userStructs) {
+	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, 
+									ServerConnectionStruct conStruct) {
 		this.httpSpec = httpSpec;
-		this.userStructs = userStructs;
+		this.conStruct = conStruct;
         this.revisionMap = new TrieParser(256,true); //avoid deep check        
         //Load the supported HTTP revisions
         R[] revs = (R[])httpSpec.supportedHTTPRevisions.getEnumConstants();
@@ -103,8 +105,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		int routeId = UNMAPPED_ROUTE;//routeCount can not be inc due to our using it to know if there are valid routes.
 		int pathId = UNMAPPED_ROUTE;
 				
-		int structId = HTTPUtil.newHTTPStruct(userStructs);
-		unmappedPathField = userStructs.growStruct(structId,StructTypes.Text,0,"path".getBytes());				
+		int structId = HTTPUtil.newHTTPStruct(conStruct.registry);
+		unmappedPathField = conStruct.registry.growStruct(structId,StructTypes.Text,0,"path".getBytes());				
 		
 		unmappedIndexPos = new int[] {StructRegistry.FIELD_MASK&(int)unmappedPathField};
 		
@@ -112,7 +114,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		UNMAPPED_STRUCT = structId;
 		
 		unmappedHeaders = HTTPUtil.buildHeaderParser(
-				userStructs, 
+				conStruct.registry, 
     			structId,
     			HTTPHeaderDefaults.CONTENT_LENGTH,
     			HTTPHeaderDefaults.TRANSFER_ENCODING,
@@ -237,13 +239,13 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public CompositeRoute registerCompositeRoute(HTTPHeader ... headers) {
 
-		return new CompositeRouteImpl(userStructs, this, null, routeParser(), headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(conStruct, this, null, routeParser(), headers, routeCount++, pathCount);
 	}
 
 
 	public CompositeRoute registerCompositeRoute(JSONExtractorCompleted extractor, HTTPHeader ... headers) {
 
-		return new CompositeRouteImpl(userStructs, this, extractor, routeParser(), headers, routeCount++, pathCount);
+		return new CompositeRouteImpl(conStruct, this, extractor, routeParser(), headers, routeCount++, pathCount);
 	}
 
 	public boolean appendPipeIdMappingForAllGroupIds(
