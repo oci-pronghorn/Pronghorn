@@ -19,10 +19,22 @@ public class StructuredWriter {
 	private int[] positions = new int[4];
 	private Object[] associations = new Object[4];	
 	
+	public void writeInt(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedNull();
+	}
+	
 	public void writeInt(Object assoc, int value) {
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
 		storeAssocAndPosition(assoc);
 		channelWriter.writePackedInt(value);
+	}
+	
+	public void writeShort(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedNull();
 	}
 	
 	public void writeShort(Object assoc, short value) {
@@ -156,10 +168,39 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
+	public void writeBooleanNull(long fieldId) {
+		
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Boolean);
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+		DataOutputBlobWriter.setIntBackData(
+				channelWriter, 
+				channelWriter.position(), 
+				StructRegistry.extractFieldPosition(fieldId));
+		
+		channelWriter.writeBooleanNull();
+		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+	}
+	
 	public void writeBoolean(Object assoc, boolean value) {
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
 		storeAssocAndPosition(assoc);
 		channelWriter.writeBoolean(value);
+	}
+	
+	public void writeLongNull(long fieldId) {
+		
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Long);
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+		
+		DataOutputBlobWriter.setIntBackData(
+				channelWriter, 
+				channelWriter.position(), 
+				StructRegistry.extractFieldPosition(fieldId));
+		
+		channelWriter.writePackedNull();
+		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeLong(long value, long fieldId) {
@@ -181,6 +222,27 @@ public class StructuredWriter {
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
 		storeAssocAndPosition(assoc);
 		channelWriter.writePackedLong(value);
+	}
+	
+	public void writeLongNull(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writePackedNull();
+	}
+	
+	public void writeIntNull(long fieldId) {
+		
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Integer);		
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+		
+		DataOutputBlobWriter.setIntBackData(
+				channelWriter, 
+				channelWriter.position(), 
+				StructRegistry.extractFieldPosition(fieldId));
+		
+		channelWriter.writePackedNull();
+		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
 	public void writeInt(int value, long fieldId) {
@@ -205,6 +267,41 @@ public class StructuredWriter {
 				.totalSizeOfIndexes((int)(fieldId>>StructRegistry.STRUCT_OFFSET))));
 	}	
 	
+	public void writeNull(Object assocObject) {
+		if (null==assocObject) {
+			throw new NullPointerException("associated object must not be null");
+		}
+		grow(pos);
+
+		int positionToKeep = -1;
+		//keep object
+		positions[pos]=positionToKeep;
+		associations[pos]=assocObject;
+		pos++;
+	}
+	
+	public void writeNull(long fieldId) {
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+		DataOutputBlobWriter.setIntBackData(
+				channelWriter, 
+				-1, 
+				StructRegistry.extractFieldPosition(fieldId));
+	}
+	
+	public void writeShortNull(long fieldId) {
+		
+		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Short);
+		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
+		DataOutputBlobWriter.setIntBackData(
+				channelWriter, 
+				channelWriter.position(), 
+				StructRegistry.extractFieldPosition(fieldId));
+		
+		channelWriter.writePackedNull();
+		
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+	}
+	
 	public void writeShort(short value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Short);
@@ -219,7 +316,7 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}	
 	
-	
+	//no support for writing null since this is a literal byte
 	public void writeByte(int value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Byte);
@@ -234,6 +331,7 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}	
 	
+	//for null use NaN, for all fields not written null is read..
 	public void writeDouble(double value, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructTypes.Double);
