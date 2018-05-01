@@ -707,7 +707,10 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//using many small yields usage of this is minimized.
 		//////////////////////////////
 		totalRequiredSleep = local;
-		if (local<2_000_000) {
+		//if the sleep rate is less than this the server will
+		//show CPU consumed while it waits for more work. Above this
+		//value however the server should not consume significant resources.
+		if (local<100_000) {//ns timer only accurate above this
 			automaticLoadSwitchingDelay();
 		} else {		
 			long now = System.nanoTime();
@@ -754,7 +757,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					}
 					totalRequiredSleep-=duration;
 				}
-			} else {
+			} else {	
 				//let the task manager know we are not doing work.
 				LockSupport.parkNanos(totalRequiredSleep);
 				long duration = System.nanoTime()-now;
@@ -765,6 +768,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			}
 		} else {
 				
+			//TODO: for deep sleep of producers we need..
+			//      1. the producer stage split from trailing tasks
+			//      2. pipe listener from the producer to wake down stream..
+			//NOTE: what we have here is fine but later we will improve it.			
+			
 			deepSleep(isNormalCase);
 		}
 	}

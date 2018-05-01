@@ -154,22 +154,9 @@ public class CompositeRouteImpl implements CompositeRoute {
 	}
 
 	@Override
-	public int routeId(boolean debug) {
-		
-		if (debug) {
-			parser.debugRouterMap("debugRoute");
-			
-			int i = defs.size();
-			while (--i>=0) {
-				try {
-					defs.get(i).getRuntimeParser().toDOTFile(File.createTempFile("defs"+i,".dot"));
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				}			
-			}
-			
-		}
-		
+	public int routeId(Object associatedObject) {		
+		schema.registerStructAssociation(structId, associatedObject);
+		config.registerRouteAssociation(routeId, associatedObject);
 		return routeId;
 	}
 

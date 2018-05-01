@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructTypes;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -48,7 +49,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     final TrieParser unmappedHeaders;
     public final long unmappedPathField;
     public int[] unmappedIndexPos;
-    
+
+	private IntHashTable routeIdTable = new IntHashTable(3);
+	
     
     private URLTemplateParser routeParser;
     private final StructRegistry userStructs;
@@ -321,6 +324,35 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public int totalRoutesCount() {
 		return routeCount;
+	}
+
+	public int lookupRouteIdByIdentity(Object associatedObject) {
+		
+		final int hash = associatedObject.hashCode();
+		final int idx = IntHashTable.getItem(routeIdTable, hash);
+		if (0==idx) {
+			if (!IntHashTable.hasItem(routeIdTable, hash)) {
+				throw new UnsupportedOperationException("Object not found: "+associatedObject);			
+			}
+		}
+		return idx;
+	}
+
+	public void registerRouteAssociation(int routeId, Object associatedObject) {
+
+		int key = associatedObject.hashCode();
+	
+		assert(!IntHashTable.hasItem(routeIdTable, key)) : "These objects are too similar or was attached twice, Hash must be unique. Choose different objects";
+		if (IntHashTable.hasItem(routeIdTable, key)) {
+			logger.warn("Unable to add object {} as an association, Another object with an identical Hash is already held. Try a different object.", associatedObject);		
+			return;
+		}
+		if (!IntHashTable.setItem(routeIdTable, key, routeId)) {
+			routeIdTable = IntHashTable.doubleSize(routeIdTable);			
+			if (!IntHashTable.setItem(routeIdTable, key, routeId)) {
+				throw new RuntimeException("internal error");
+			};
+		}		
 	}
 
 }
