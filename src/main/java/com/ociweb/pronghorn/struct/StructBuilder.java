@@ -137,9 +137,19 @@ public class StructBuilder {
 		return result;
 	}
 
-	//returns schemaId for this specfic struct.
 	public int register() {
 		return typeData.addStruct(
+				null,
+				Arrays.copyOfRange(fieldNames, 0, fieldCount), 
+				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
+				Arrays.copyOfRange(fieldDims, 0, fieldCount),
+				Arrays.copyOfRange(fieldAssoc, 0, fieldCount)
+				);		
+	}
+	
+	public int register(Object associated) {
+		return typeData.addStruct(
+				associated,
 				Arrays.copyOfRange(fieldNames, 0, fieldCount), 
 				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),

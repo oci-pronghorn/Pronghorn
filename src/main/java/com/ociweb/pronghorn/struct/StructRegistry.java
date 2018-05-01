@@ -30,6 +30,9 @@ public class StructRegistry { //prong struct store
 	private Object[][]       fieldLocals        = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
 	
+	private IntHashTable structTable = new IntHashTable(3);
+	
+	
 	//TODO: future feature
 	//private Class<Enum<?>>[][] fieldOptionalEnum = new Class[4][]; //TODO: add method to set this on a field.
 
@@ -46,6 +49,23 @@ public class StructRegistry { //prong struct store
 	private static final int FIELD_MAX     = 1<<FIELD_BITS;
 	public static final int FIELD_MASK    = FIELD_MAX-1;
 		
+	
+	public void registerStructAssociation(int structId, Object associatedObject) {
+
+		int key = associatedObject.hashCode();
+	
+		assert(!IntHashTable.hasItem(structTable, key)) : "These objects are too similar or was attached twice, Hash must be unique. Choose different objects";
+		if (IntHashTable.hasItem(structTable, key)) {
+			logger.warn("Unable to add object {} as an association, Another object with an identical Hash is already held. Try a different object.", associatedObject);		
+			return;
+		}
+		if (!IntHashTable.setItem(structTable, key, structId)) {
+			structTable = IntHashTable.doubleSize(structTable);			
+			if (!IntHashTable.setItem(structTable, key, structId)) {
+				throw new RuntimeException("internal error");
+			};
+		}		
+	}
 	
 	
 	public StructRegistry merge(StructRegistry source) {
@@ -172,14 +192,25 @@ public class StructRegistry { //prong struct store
 		return addStruct(fieldNames, fieldTypes, fieldDims, null);
 	}
 	
+	public int addStruct(
+            byte[][] fieldNames, 
+            StructTypes[] fieldTypes, //all fields are precede by array count byte
+            int[] fieldDim, //Dimensionality, should be 0 for simple objects.
+            Object[] fieldAssoc
+			) {
+		return addStruct(null,fieldNames,fieldTypes,fieldDim,fieldAssoc);
+	}
+	
 	/**
 	 * Add new Structure to the schema
+	 * @param associatedObject - reference object
 	 * @param fieldNames - name for each field
 	 * @param fieldTypes - type for each field
 	 * @param fieldDim - dominations for this field, should be 0 for most cases of simple data
 	 * @return the array of field identifiers in the same order as defined
 	 */
-	public int addStruct(byte[][] fieldNames, 
+	public int addStruct(Object associatedObject,
+			             byte[][] fieldNames, 
 			             StructTypes[] fieldTypes, //all fields are precede by array count byte
 			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
 			             Object[] fieldAssoc
@@ -221,7 +252,13 @@ public class StructRegistry { //prong struct store
 			}
 		}
 		
-		return structIdx|IS_STRUCT_BIT;
+		int resultStructId = structIdx|IS_STRUCT_BIT;
+		
+		if (null!=associatedObject) {
+			registerStructAssociation(resultStructId, associatedObject);
+		}
+		
+		return resultStructId;
 	}
 		
 	
@@ -287,9 +324,7 @@ public class StructRegistry { //prong struct store
 		return fieldIdx;
 		
 	}
-			 
-	
-	
+			 		
 
 	private int[] grow(int[] source, int newValue) {
 		int[] results = new int[source.length+1];
@@ -391,7 +426,6 @@ public class StructRegistry { //prong struct store
 		return FIELD_MASK&(int)fieldId;
 	}
 	
-	
 	public <T extends Object> T getAssociatedObject(long fieldId) {
 		assert(fieldId>=0) : "bad fieldId";
 		return (T) this.fieldLocals[extractStructId(fieldId)][extractFieldPosition(fieldId)];
@@ -404,8 +438,6 @@ public class StructRegistry { //prong struct store
 				maxDims = fieldDims[x];
 			}	
 		}
-		
-		
 	}
 
 	public int dims(long id) {
@@ -432,10 +464,19 @@ public class StructRegistry { //prong struct store
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
-				
 		int idx = lookupIndexOffset(this, attachedObject, structId, attachedObject.hashCode());
 		return buildFieldId(attachedObject, structId, idx);
-		
+	}
+	
+	public int structLookupByIdentity(Object assoc) {
+		final int hash = assoc.hashCode();
+		final int idx = IntHashTable.getItem(structTable, hash);
+		if (0==idx) {
+			if (!IntHashTable.hasItem(structTable, hash)) {
+				throw new UnsupportedOperationException("Object not found: "+assoc);			
+			}
+		}
+		return idx;
 	}
 
 	private <T> long buildFieldId(T attachedObject, int structId, int idx) {
@@ -554,13 +595,11 @@ public class StructRegistry { //prong struct store
 		}
 	}
 
-
-	
-
 	public int totalSizeOfIndexes(int structId) {
 		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
 		assert (structId>=0) : "Bad Struct ID "+structId;
 		return fieldTypes[STRUCT_MASK & structId].length;
 	}
+
 	
 }

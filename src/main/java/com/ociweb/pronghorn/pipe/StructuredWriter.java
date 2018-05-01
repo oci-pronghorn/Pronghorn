@@ -49,6 +49,11 @@ public class StructuredWriter {
 		return (A)channelWriter;
 	}
 	
+
+	public void selectStruct(Object assoc) {
+		selectStruct(Pipe.structRegistry(channelWriter.backingPipe).structLookupByIdentity(assoc));
+	}
+	
 	public void selectStruct(int structId) {
 		
 		StructRegistry structRegistry = Pipe.structRegistry(channelWriter.backingPipe);
@@ -288,5 +293,6 @@ public class StructuredWriter {
 	public void fullIndexWriteFrom(int indexSizeInBytes, DataInputBlobReader<RawDataSchema> reader) {
 		DataOutputBlobWriter.writeToEndFrom(channelWriter,indexSizeInBytes,reader);
 	}
+
 	
 }

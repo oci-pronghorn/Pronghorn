@@ -369,7 +369,7 @@ public class PipeTest {
 
 		byte arr2[] = new byte[15];
 
-		String value = new String(arr1);
+		String value = new String(arr1, Charset.forName("UTF-8"));
 		String expected = new String(source);
 
 		assertEquals(value.trim(), expected.trim());
