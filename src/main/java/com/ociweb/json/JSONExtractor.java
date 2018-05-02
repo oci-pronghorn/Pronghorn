@@ -110,7 +110,12 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		schema.addMappings(activeMapping);
 		return this;
 	}
-	
+
+	@Override
+	public <T extends Enum<T>> JSONExtractorCompleted completePath(T pathObject) {
+		return completePath(pathObject.name(), pathObject);
+	}
+
 	@Override
 	public JSONExtractorCompleted completePath(String pathName, Object optionalAssociation) {
 		
