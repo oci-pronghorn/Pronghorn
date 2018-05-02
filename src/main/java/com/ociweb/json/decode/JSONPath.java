@@ -38,5 +38,4 @@ public abstract class JSONPath<P> {
     }
 
     abstract P pathEnded();
-
 }
