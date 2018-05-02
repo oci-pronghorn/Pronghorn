@@ -91,6 +91,14 @@ public class StructBuilder {
             Object assoc) {
 		return addField(fieldName, fieldType, 0, assoc);
 	}
+
+	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructTypes fieldType) {
+		return addField(fieldObject.name(), fieldType, 0, fieldObject);
+	}
+
+	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructTypes fieldType, int fieldDim) {
+		return addField(fieldObject.name(), fieldType, fieldDim, fieldObject);
+	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
 			                 StructTypes fieldType, 

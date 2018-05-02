@@ -110,7 +110,7 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		schema.addMappings(activeMapping);
 		return this;
 	}
-	
+
 	@Override
 	public JSONExtractorCompleted completePath(String pathName, Object optionalAssociation) {
 		
