@@ -78,7 +78,7 @@ public final class StructuredReader {
 		return isNull(
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
 				    .fieldLookupByIdentity(association, 
-				    		(StructRegistry.IS_STRUCT_BIT | DataInputBlobReader.getStructType(channelReader))  ));
+				    		DataInputBlobReader.getStructType(channelReader) ));
 	}
 	
 	public boolean hasValue(Object association) {
