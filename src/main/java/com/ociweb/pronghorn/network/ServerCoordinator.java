@@ -6,7 +6,11 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -64,6 +68,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final boolean requireClientAuth;//clients must send their cert to connect
 	private final ServerConnectionStruct scs; 
 
+	//Need to inject this?
+	public final HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> spec = HTTPSpecification.defaultSpec();
+	
 	///////////////////////////////////////
 		
 //	public static long acceptConnectionStart;

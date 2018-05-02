@@ -157,8 +157,6 @@ public class CompositeRouteImpl implements CompositeRoute {
 			}
 		}
 		
-		
-		
 		HTTPUtil.addHeader(headerParser,HTTPSpecification.UNKNOWN_HEADER_ID,"%b: %b");
 
 		config.storeRouteHeaders(routeId, headerParser);	

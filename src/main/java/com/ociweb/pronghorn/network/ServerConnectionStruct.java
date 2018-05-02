@@ -31,18 +31,13 @@ public class ServerConnectionStruct {
 	}
 	
 	public int inFlightPayloadSize() {
-		
-		//TODO: the payload will requrie this header space as well for clients.. must integrate..
-		
-		
 		return minInternalInFlightPayloadSize;
 	}
 	
 	public ServerConnectionStruct(StructRegistry recordTypeData) {
 		this.registry = recordTypeData;
-		
-		int fieldsCount = 3 + (null == headersToEcho ? 0 : headersToEcho.length);
-		
+	
+		int fieldsCount = 3;		
 		byte[][] fieldNames = new byte[fieldsCount][];
 		StructTypes[] structTypes = new StructTypes[fieldsCount];
 		int [] fieldDims = new int[fieldsCount];//all zeros, no dim supported
@@ -59,15 +54,7 @@ public class ServerConnectionStruct {
 		fieldNames[2] = "context".getBytes();
 		structTypes[2] = StructTypes.Integer;
 		fieldAssoc[2] = connectionFields.context;
-				
-		int e = 0;
-		for(int r = 3; r<fieldsCount; r++) {
-			HTTPHeader header = headersToEcho[e++];
-			fieldNames[r] = header.rootBytes();
-			structTypes[r] = StructTypes.Blob;
-			fieldAssoc[r] = header;
-		}
-	
+		
 		//keeps the requestContext, header echos and arrival time for use upon response.
 		this.connectionStructId = recordTypeData.addStruct(
 				fieldNames,
@@ -94,10 +81,28 @@ public class ServerConnectionStruct {
 	public void headersToEcho(int maxSingleHeaderSize, HTTPHeader ... headers) {
 		minInternalInFlightPayloadSize += (headers.length*maxSingleHeaderSize);
 		headersToEcho = headers;
+		
+		for(int h = 0; h<headers.length; h++) {
+			long id = registry.growStruct(connectionStructId, StructTypes.Blob, 0, headers[h].rootBytes());
+			registry.setAssociatedObject(id, headers[h]);
+		}
 	}
 	
 	public HTTPHeader[] headersToEcho() {
 		return headersToEcho;
+	}
+
+	public boolean isEchoHeader(HTTPHeader header) {
+		if (null!=headersToEcho) {
+			//NOTE: may be a better way to do this if we have a long list...
+			int h = headersToEcho.length;
+			while (--h>=0) {
+				if (header == headersToEcho.clone()[h]) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}	
 	
 }

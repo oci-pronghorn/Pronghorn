@@ -521,7 +521,8 @@ public class NetGraphBuilder {
 	private static Pipe<NetPayloadSchema>[] buildSSLWrapersAsNeeded(final GraphManager graphManager,
 			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup,
-			Pipe<NetPayloadSchema>[] fromOrderedContent, PipeConfig<NetPayloadSchema> fromOrderedConfig) {
+			Pipe<NetPayloadSchema>[] fromOrderedContent,
+			PipeConfig<NetPayloadSchema> fromOrderedConfig) {
 		
 		
 		int requestUnwrapUnits = serverConfig.serverRequestUnwrapUnits;		
@@ -584,16 +585,17 @@ public class NetGraphBuilder {
 	}
 
 	public static void buildOrderingSupers(GraphManager graphManager, ServerCoordinator coordinator,
-			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPLogResponseSchema>[] log, Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
+			Pipe<ServerResponseSchema>[][] fromModule, Pipe<HTTPLogResponseSchema>[] log,
+			Pipe<NetPayloadSchema>[][] perTrackFromSuper) {
 		
 		int track = fromModule.length;
 		while (--track>=0) {
 		
 			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, 
-					                    fromModule[track], 
-					                    log[track],
-					                    perTrackFromSuper[track], 
-					                    coordinator);//ensure order   
+									                    fromModule[track], 
+									                    log[track],
+									                    perTrackFromSuper[track], 
+									                    coordinator);//ensure order   
 	
 			coordinator.processNota(graphManager, wrapSuper);
 		

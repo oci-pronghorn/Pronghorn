@@ -6,7 +6,12 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
@@ -25,7 +30,8 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 //TODO: should add feature of subscriptions here due to it being before the encryption stage.
 public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
-    private static final int PAYLOAD_LENGTH_IDX = 5;
+    private static final byte[] BYTES_NEWLINE = "\r\n".getBytes();
+	private static final int PAYLOAD_LENGTH_IDX = 5;
 	private static final int SIZE_OF_TO_CHNL = Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100);
     public static final byte[] EMPTY = new byte[0];
     
@@ -36,7 +42,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     
     private final Pipe<NetPayloadSchema>[] outgoingPipes;
         
-    private final boolean showUTF8Sent = false;
+    private boolean showUTF8Sent = false;
         
     private int[]            expectedSquenceNos;
     private short[]          expectedSquenceNosPipeIdx;
@@ -68,11 +74,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private boolean shutdownInProgress;
 	private ServiceObjectHolder<ServerConnection> socketHolder;
 	private ServerConnectionStruct conStruct;
+	private HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec;
 
 	
     public static OrderSupervisorStage newInstance(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
-    		 Pipe<HTTPLogResponseSchema> log,
+    		Pipe<HTTPLogResponseSchema> log,
     		Pipe<NetPayloadSchema>[] outgoingPipes, 
     		ServerCoordinator coordinator, boolean isTLS) {
     	return new OrderSupervisorStage(graphManager, inputPipes, log, outgoingPipes, coordinator);
@@ -109,6 +116,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         
         this.conStruct = coordinator.connectionStruct();
+        this.spec = coordinator.spec;
+                
                 
         this.dataToSend = inputPipes;
         this.log = log;
@@ -149,7 +158,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	@Override
-    public void startup() {      
+    public void startup() {
 		
 		//Due to N Order Supervisors in place this array is far too large.
 		int totalChannels = channelBitsSize; //WARNING: this can be large eg 4 million
@@ -353,12 +362,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 			copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
 					myPipeIdx, sequenceNo,
-					channelId);
+					channelId, true);
 		} else {			        			
 			if (expectedPipe ==(short)pipeIdx) {
 				copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
 						myPipeIdx, sequenceNo,
-						channelId);
+						channelId, false);
 			} else {
 				
 				if (shutdownInProgress) {
@@ -377,7 +386,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, int peekMsgId,
-			int myPipeIdx, int sequenceNo, long channelId) {
+			int myPipeIdx, int sequenceNo, long channelId, boolean beginningOfResponse) {
 		
 		failureIterations = -1;//clears the flag to let hang detector know we are ok.			        		
 
@@ -389,7 +398,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			finishHandshake(outPipe, channelId);
 		}
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);				
-		copyDataBlock(sourcePipe, peekMsgId, myPipeIdx, sequenceNo, channelId);							
+		copyDataBlock(sourcePipe, peekMsgId, myPipeIdx, sequenceNo, channelId, beginningOfResponse);							
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 	}
 
@@ -510,10 +519,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
 							   int myPipeIdx,
-							   int sequenceNo, long channelId) {
+							   int sequenceNo, long channelId, boolean beginningOfResponse) {
 		 
 		assert(Pipe.bytesReadBase(input)>=0);
-	
 		
 		
 		////////////////////////////////////////////////////
@@ -530,12 +538,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		final long oldChannelId = channelId;		    
 		long channelId2 = Pipe.takeLong(input);		    
 		assert(oldChannelId == channelId2) : ("channel mismatch "+oldChannelId+" "+channelId2);
-		    
 		
 	    //most common case by far so we put it first
 	    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
 	    	 	    	
-	    	 publishDataBlock(input, myPipeIdx, sequenceNo, channelId2);
+	    	 publishDataBlock(input, myPipeIdx, sequenceNo, channelId2, beginningOfResponse);
 	    	
 	    } else {
 	    	
@@ -549,7 +556,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void publishDataBlock(final Pipe<ServerResponseSchema> input,
-			                      int myPipeIdx, int sequenceNo, long channelId) {
+			                      int myPipeIdx, 
+			                      int sequenceNo,
+			                      long channelId, 
+			                      boolean beginningOfResponse) {
 				 
 		
 		 Pipe<NetPayloadSchema> output = outgoingPipes[myPipeIdx];
@@ -592,40 +602,43 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 				 
 				 requestContext |= origCon;
 				 
-				 //TODO: need to detect if this is the beginning, we have new seq number?
-				 //TODO: then reduce the length to cut off last \r\n 
+
 				 
-				 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
-				 if (null!=headersToEcho) {
-					 for(int i=0; i<headersToEcho.length; i++) {
-						 HTTPHeader header = headersToEcho[i];						 
-						 
-						 
-						 //TODO: find other places where we write..
-						 //Appendable target;
-						 //header.writeValue(target, httpSpec, reader.structured().read(header));
-						 
-						 
-						 
+				 if (beginningOfResponse) {
+					 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
+					 if (null!=headersToEcho) {
+
+						 int newLinePos = (bytePosition+len-2);
+						 assert(blob[newLinePos&blobMask]=='\r');
+						 assert(blob[(1+newLinePos)&blobMask]=='\n');						 
+						 if (blob[newLinePos&blobMask]=='\r') {
+							 len-=2;//confirm it is \r\n? add assert!
+							 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+							 len = 0;//so the following write will not write a second time.
+		
+							 for(int i=0; i<headersToEcho.length; i++) {
+								 HTTPHeader header = headersToEcho[i];
+							
+								 if (!reader.structured().isNull(header)) {	
+									 System.err.println("echo header "+header);
+									 spec.writeHeader(outputStream, header, reader.structured().read(header));
+								 }
+								 //TODO: confirm works with chunked and not
+								 
+							 }
+							 outputStream.write(BYTES_NEWLINE);
+						 }
 					 }
-					 
-					 
 				 }
-				 
-				 //for HTTP echoing headers we know that the headers block comes first
-				 
-			
-				 //TODO: confirm works with chunked and not
-				 //TODO: then write echo headers
-				 //TODO: pipe must be large enough for old headers plus echos.	 
 			 } else {
-				 //warning this is an odd case which happens in telmetry.
+				 //warning this is an odd case which happens in telemetry.
 				 //why is there no context stored.
 			 }
+		 } else {			 
 		 }
-		 		 
-		 
-		 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+		 if (len>0) {
+			 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+		 }
 
 		 
 		 int temp = Pipe.bytesReadBase(input);

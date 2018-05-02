@@ -918,7 +918,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 				
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-			    	
+			    				    	
 					if (iteration!=0) {
 						
 						return endOfHeadersLogic(writer, cwc, cw, 
@@ -946,17 +946,13 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				    int writePosition = writer.position();
 				    
 				    if (null!=header) {
-				    	
-				    	//config.get associted object needs to be populated for echo.
-				    	//TODO: is this header to be echoed then write it?
-				    	
-//				    	if (serverConnection.scs.isEchoHeader(headerToken) ) {
-//				    		//write this to be echoed when responding.
-//				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
-//				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
-//				    		TrieParserReader.writeCapturedValuesToDataOutput(trieReader, (DataOutputBlobWriter<?>)cw);
-//				    		
-//				    	}
+				    	if (serverConnection.scs.isEchoHeader(header) ) {
+				    		System.err.println("saved header "+header);
+				    		//write this to be echoed when responding.
+				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
+				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
+				    		TrieParserReader.writeCapturedValuesToDataOutput(trieReader, (DataOutputBlobWriter<?>)cw);
+				    	}
 				    	
 					    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
 					    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
