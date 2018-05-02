@@ -143,7 +143,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		//valid data beyond the body of this payload. so we can not fetch the value.
 		return (!reader.isStructured) 
 				? -1 
-			    : bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe)), reader.byteMask, reader.backing);
+			    : StructRegistry.IS_STRUCT_BIT | bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe)), reader.byteMask, reader.backing);
 		
 	}
 	

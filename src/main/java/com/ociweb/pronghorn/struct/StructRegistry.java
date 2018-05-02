@@ -486,6 +486,7 @@ public class StructRegistry { //prong struct store
 	}
 
 	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId, int hash) {
+				
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 		
 		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash);
