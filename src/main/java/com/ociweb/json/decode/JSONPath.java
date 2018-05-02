@@ -2,19 +2,19 @@ package com.ociweb.json.decode;
 
 import com.ociweb.json.JSONExtractorActive;
 
-public abstract class JSONPath <P> {
+public abstract class JSONPath<P> {
     private JSONExtractorActive extractor;
 
     JSONPath(JSONExtractorActive extractor) {
         this.extractor = extractor;
     }
 
-    public JSONPath key(String key) {
+    public JSONPath<P> key(String key) {
         extractor = extractor.key(key);
         return this;
     }
 
-    public JSONPath array() {
+    public JSONPath<P> array() {
         extractor = extractor.array();
         return this;
     }

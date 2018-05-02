@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util.parse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.ociweb.json.decode.JSONDecoder;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -20,9 +21,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class JSONParseTest {
 	
 	//TODO: 1 build GL example 2 use twitter feed for unit tests. (urgent in API)
-	
-	
-	
+
 	//TODO: add first, last and collect all flags test (do later)
 	
 	String simple2DArrayEmptyExample = "{root: [[ "		
@@ -32,33 +31,36 @@ public class JSONParseTest {
 			+ ", {\"keya\":7, \"keyb\":\"seven\"}  "	
 			+ "]"
 			+ "}";
-	
-	
-	
-	//accepts nulls and does not align the data.
-	private final JSONExtractorCompleted simpleExtractor = new JSONExtractor()
-			.newPath(JSONType.TypeString, false)//set flags for first, last, all, ordered...
-			.key("root").key("keyb")
-			.completePath("b")
-			.newPath(JSONType.TypeInteger, false)
-			.key("root").key("keya")
-			.completePath("a");
 
-	private final JSONExtractorCompleted simpleArrayExtractor = new JSONExtractor()
-			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-			.key("root").key("[]").key("keyb")
-			.completePath("b")
-			.newPath(JSONType.TypeInteger, true)
-			.key("root").key("[]").key("keya")
-			.completePath("a");
-	
-	private final JSONExtractorCompleted simple2DArrayExtractor = new JSONExtractor(false)
-			.newPath(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-			.key("root").key("[]").key("[]").key("keyb")
-			.completePath("b")
-			.newPath(JSONType.TypeInteger, true)
-			.key("root").key("[]").key("[]").key("keya")
-			.completePath("a");
+	private final JSONDecoder simpleExtractor = new JSONDecoder()
+			.begin()
+				.element(JSONType.TypeString, false)//set flags for first, last, all, ordered...
+					.key("root").key("keyb")
+					.asField("b")
+				.element(JSONType.TypeInteger, false)
+					.key("root").key("keya")
+					.asField("a")
+			.finish();
+
+	private final JSONDecoder simpleArrayExtractor = new JSONDecoder()
+			.begin()
+				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
+					.key("root").key("[]").key("keyb")
+					.asField("b")
+				.element(JSONType.TypeInteger, true)
+					.key("root").key("[]").key("keya")
+					.asField("a")
+			.finish();
+
+	private final JSONDecoder simple2DArrayExtractor = new JSONDecoder(false)
+			.begin()
+				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
+					.key("root").key("[]").key("[]").key("keyb")
+					.asField("b")
+				.element(JSONType.TypeInteger, true)
+					.key("root").key("[]").key("[]").key("keya")
+					.asField("a")
+			.finish();
 
 	@Test
 	public void testEncodeThenDecode() {
@@ -454,7 +456,7 @@ public class JSONParseTest {
 
 
 
-	private Pipe<RawDataSchema> parseJSON(String sourceData, JSONExtractorCompleted extractor) {
+	private Pipe<RawDataSchema> parseJSON(String sourceData, JSONDecoder extractor) {
 		/////////////////
 		//source test data.
 		PipeConfig<RawDataSchema> testInputDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
@@ -508,7 +510,7 @@ public class JSONParseTest {
 	
 	private void parseJSONLoad(int i,
 			                   String sourceData,
-			                   JSONExtractorCompleted extractor) {
+							   JSONDecoder extractor) {
 
 		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
