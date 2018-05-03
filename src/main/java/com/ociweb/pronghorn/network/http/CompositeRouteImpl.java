@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.struct.StructTypes;
+import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
@@ -46,19 +46,19 @@ public class CompositeRouteImpl implements CompositeRoute {
 		public void visit(byte[] pattern, int length, long value) {
 			int inURLOrder = (int)value&0xFFFF;
 			
-			StructTypes type = null;
+			StructType type = null;
 			switch((int)(value>>16)) {
 				case TrieParser.ESCAPE_CMD_SIGNED_INT:
-					type = StructTypes.Long;
+					type = StructType.Long;
 					break;			
 				case TrieParser.ESCAPE_CMD_RATIONAL:
-					type = StructTypes.Rational;
+					type = StructType.Rational;
 					break;
 				case TrieParser.ESCAPE_CMD_DECIMAL:
-					type = StructTypes.Decimal;
+					type = StructType.Decimal;
 					break;
 				case TrieParser.ESCAPE_CMD_BYTES:
-					type = StructTypes.Blob;
+					type = StructType.Blob;
 					break;
 				default:
 					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
@@ -202,7 +202,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
 		byte[] keyBytes = key.getBytes();
-		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Long, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Long, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -215,7 +215,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultText(String key, String value) {
 		byte[] keyBytes = key.getBytes();
-		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Text, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Text, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -228,7 +228,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultDecimal(String key, long m, byte e) {
 		byte[] keyBytes = key.getBytes();
-		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Decimal, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Decimal, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
@@ -241,7 +241,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultRational(String key, long numerator, long denominator) {
 		byte[] keyBytes = key.getBytes();
-		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructTypes.Rational, 0);
+		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Rational, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();

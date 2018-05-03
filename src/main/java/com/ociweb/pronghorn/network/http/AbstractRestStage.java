@@ -138,6 +138,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         return bytesLength;
     }
     
+    public static boolean developerModeCacheDisable = false;
+    
     //TODO: build better constants for these values needed.
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext,
     		                       byte[] etagBytes, byte[] typeBytes, 
@@ -145,16 +147,16 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
     		                       DataOutputBlobWriter<ServerResponseSchema> writer, int conStateIdx) {
 
-    	//TODO: expose this for web developers...
-        boolean developerMode = false;
+    	//TODO: refactor and join these if possible...
     	
             //line one
-            writer.write(revisionBytes);
-            if (200==status) {
-                writer.write(OK_200);
+    	    DataOutputBlobWriter.write(writer, revisionBytes, 0, revisionBytes.length);
+                	    
+    	    if (200==status) {
+    	    	DataOutputBlobWriter.write(writer, OK_200, 0, OK_200.length);
             } else {
             	if (404==status) {
-            		writer.write(Not_Found_404);
+            		DataOutputBlobWriter.write(writer, Not_Found_404, 0, Not_Found_404.length);
             	} else if (101==status) {
             		writer.write(Switching_Protocols_101);            		
             	} else if (400==status) {
@@ -187,7 +189,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //turns off all client caching, enable for development mode
-            if (developerMode) {
+            if (developerModeCacheDisable) {
             	writer.write(CACHE_CONTROL_NO_CACHE);
             	writer.write(PRAGMA_NO_CACHE);
             	writer.write(EXPIRES_ZERO);
@@ -212,7 +214,6 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             
             //line five            
             writer.write(CONNECTION[conStateIdx]);
-           // writer.write(EXTRA_STUFF);
             writer.write(RETURN_NEWLINE);
             //now ready for content
             

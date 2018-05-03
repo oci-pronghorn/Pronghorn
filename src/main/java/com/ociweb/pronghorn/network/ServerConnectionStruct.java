@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.struct.StructTypes;
+import com.ociweb.pronghorn.struct.StructType;
 
 public class ServerConnectionStruct {
 
@@ -39,20 +39,20 @@ public class ServerConnectionStruct {
 	
 		int fieldsCount = 3;		
 		byte[][] fieldNames = new byte[fieldsCount][];
-		StructTypes[] structTypes = new StructTypes[fieldsCount];
+		StructType[] structTypes = new StructType[fieldsCount];
 		int [] fieldDims = new int[fieldsCount];//all zeros, no dim supported
 		Object[] fieldAssoc = new Object[fieldsCount];
 				
 		fieldNames[0] = "arrival".getBytes();
-		structTypes[0] = StructTypes.Long;
+		structTypes[0] = StructType.Long;
 		fieldAssoc[0] = connectionFields.arrivalTime;
 		
 		fieldNames[1] = "business".getBytes();
-		structTypes[1] = StructTypes.Long;
+		structTypes[1] = StructType.Long;
 		fieldAssoc[1] = connectionFields.businessStartTime;
 				
 		fieldNames[2] = "context".getBytes();
-		structTypes[2] = StructTypes.Integer;
+		structTypes[2] = StructType.Integer;
 		fieldAssoc[2] = connectionFields.context;
 		
 		//keeps the requestContext, header echos and arrival time for use upon response.
@@ -83,7 +83,7 @@ public class ServerConnectionStruct {
 		headersToEcho = headers;
 		
 		for(int h = 0; h<headers.length; h++) {
-			long id = registry.growStruct(connectionStructId, StructTypes.Blob, 0, headers[h].rootBytes());
+			long id = registry.growStruct(connectionStructId, StructType.Blob, 0, headers[h].rootBytes());
 			registry.setAssociatedObject(id, headers[h]);
 		}
 	}

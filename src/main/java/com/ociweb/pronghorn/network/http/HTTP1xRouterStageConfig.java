@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.struct.StructTypes;
+import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -106,7 +106,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		int pathId = UNMAPPED_ROUTE;
 				
 		int structId = HTTPUtil.newHTTPStruct(conStruct.registry);
-		unmappedPathField = conStruct.registry.growStruct(structId,StructTypes.Text,0,"path".getBytes());				
+		unmappedPathField = conStruct.registry.growStruct(structId,StructType.Text,0,"path".getBytes());				
 		
 		unmappedIndexPos = new int[] {StructRegistry.FIELD_MASK&(int)unmappedPathField};
 		
