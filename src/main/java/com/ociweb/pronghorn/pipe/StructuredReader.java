@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.pipe;
 import com.ociweb.pronghorn.struct.BStructDimIntListener;
 import com.ociweb.pronghorn.struct.StructShortListener;
 import com.ociweb.pronghorn.struct.StructLongListener;
+import com.ociweb.pronghorn.struct.StructRationalListener;
 import com.ociweb.pronghorn.struct.StructFieldVisitor;
 import com.ociweb.pronghorn.struct.StructIntListener;
 import com.ociweb.pronghorn.struct.StructRegistry;
@@ -193,8 +194,7 @@ public final class StructuredReader {
 	private double nullReadOfDouble() {
 		return Double.NaN;
 	}
-	
-	
+		
 	//return NaN when field is absent
 	public double readRationalAsDouble(long fieldId) {
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational);
@@ -327,7 +327,30 @@ public final class StructuredReader {
 	///////////////////////////
 	//TODO these visits need support for dim added ,, int long and short
 	/////////
-
+	
+	public void visitRational(StructRationalListener visitor, Object association) {
+		visitRational(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+	public void visitRational(StructRationalListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational );
+			
+		
+    	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+    	
+    	int instance = 0;
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		visitor.value(channelReader.readPackedLong(), channelReader.readPackedLong(), false, instance, totalCount);  		
+    	} else {
+    		visitor.value(0, 1, true, instance, totalCount);
+    	}    	
+	}
+	
+	
     //null values are also visited
 	public void visitInt(StructIntListener visitor, long fieldId) {
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
@@ -425,7 +448,9 @@ public final class StructuredReader {
 	}
 	
 	public void visitDimInt(BStructDimIntListener visitor, Object association) {
-		visitDimInt(visitor,Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader))  );
+		visitDimInt(visitor,
+				   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
+				       .fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader))  );
 	}
 
 	
