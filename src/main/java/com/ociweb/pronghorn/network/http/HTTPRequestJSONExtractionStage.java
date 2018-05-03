@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.http;
 
-import java.util.Arrays;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +114,9 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			//parser is not "ready for data" and requires export to be called
 		    			//this expoert will populate the index positinos for the JSON fields
 
-		    			visitor.export(outputStream, indexPositions);		
+		    			visitor.export(outputStream, indexPositions);
+		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
+		    			
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
 		    			
 		    			Pipe.addIntValue(Pipe.takeInt(localInput), localOutput); //revision
@@ -171,6 +171,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		
 		    		//TODO: may need multiple of these for streaming..
 		    		visitor.export(outputStream, indexPositions);		
+		    		DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
+	    			
 		    		
 		    		//moves the index data as is
 		        	inputStream.readFromEndInto(outputStream); //TODO: only needed on first block
