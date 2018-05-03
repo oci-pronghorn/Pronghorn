@@ -1,8 +1,7 @@
-package com.ociweb.pronghorn.util.parse;
+package com.ociweb.json.parse;
 
-import com.ociweb.json.JSONExtractor;
-import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.json.JSONType;
+import com.ociweb.json.decode.JSONDecoder;
 import com.ociweb.json.encode.JSONRenderer;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
@@ -22,12 +21,22 @@ public class JSONResponse {
     public enum Fields {
     	Status, Message, Body;
     }    
-    
-    public static final JSONExtractorCompleted jsonExtractor = new JSONExtractor()
-            .newPath(JSONType.TypeInteger).key("status").completePath("status", Fields.Status)
-            .newPath(JSONType.TypeString).key("message").completePath("message", Fields.Message)
-            .newPath(JSONType.TypeString).key("body").completePath("body", Fields.Body);
 
+	private final JSONDecoder jsonExtractor = new JSONDecoder()
+			.begin()
+				.element(JSONType.TypeInteger, true)
+				.key("status")
+				.asField(Fields.Status)
+				
+				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
+				.key("message")
+				.asField(Fields.Message)
+				
+				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
+				.key("body")
+				.asField(Fields.Body)
+			.finish();
+    
     public void reset() {
         status = 0;
         message.setLength(0);

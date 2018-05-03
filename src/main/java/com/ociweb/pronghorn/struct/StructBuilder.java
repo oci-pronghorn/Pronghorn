@@ -14,7 +14,7 @@ public class StructBuilder {
 	private int fieldCount = 0;
 	
 	private byte[][] fieldNames;
-	private StructTypes[] fieldTypes;
+	private StructType[] fieldTypes;
 	private int[] fieldDims;
 	private Object[] fieldAssoc;
 	
@@ -23,7 +23,7 @@ public class StructBuilder {
 		this.typeData = typeData;
 		
 		this.fieldNames = new byte[INIT_SIZE][];
-		this.fieldTypes = new StructTypes[INIT_SIZE];
+		this.fieldTypes = new StructType[INIT_SIZE];
 		this.fieldDims  = new int[INIT_SIZE];
 		this.fieldAssoc  = new Object[INIT_SIZE];
 		
@@ -76,32 +76,32 @@ public class StructBuilder {
 	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
-								  StructTypes fieldType) {
+								  StructType fieldType) {
 		return addField(fieldName, fieldType, 0, null);
 	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
-            StructTypes fieldType, 
+            StructType fieldType, 
             int fieldDim) {
 		return addField(fieldName,fieldType,fieldDim, null);
 	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
-            StructTypes fieldType, 
+            StructType fieldType, 
             Object assoc) {
 		return addField(fieldName, fieldType, 0, assoc);
 	}
 
-	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructTypes fieldType) {
+	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructType fieldType) {
 		return addField(fieldObject.name(), fieldType, 0, fieldObject);
 	}
 
-	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructTypes fieldType, int fieldDim) {
+	public <T extends Enum<T>> StructBuilder addField(T fieldObject, StructType fieldType, int fieldDim) {
 		return addField(fieldObject.name(), fieldType, fieldDim, fieldObject);
 	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
-			                 StructTypes fieldType, 
+			                 StructType fieldType, 
 			                 int fieldDim, 
 			                 Object assoc) {
 		
@@ -133,8 +133,8 @@ public class StructBuilder {
 		return result;
 	}
 
-	private StructTypes[] grow(StructTypes[] source) {
-		StructTypes[] result = new StructTypes[source.length*2];
+	private StructType[] grow(StructType[] source) {
+		StructType[] result = new StructType[source.length*2];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}

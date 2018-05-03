@@ -25,7 +25,7 @@ public class StructRegistry { //prong struct store
 	private TrieParser[]     fields             = new TrieParser[4]; //grow as needed for fields
 	private byte[][][]       fieldNames         = new byte[4][][];
 	//type of the field data, its dims and how it can be parsed.
-	private StructTypes[][] fieldTypes         = new StructTypes[4][];
+	private StructType[][] fieldTypes         = new StructType[4][];
 	private int[][]          fieldDims          = new int[4][];
 	private Object[][]       fieldLocals        = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
@@ -103,7 +103,7 @@ public class StructRegistry { //prong struct store
 					&& parameterTypes[0].getComponentType().isArray()
 					&& parameterTypes[0].getComponentType() == String.class
 					&& parameterTypes[1].getComponentType().isArray()
-					&& parameterTypes[1].getComponentType() == StructTypes.class
+					&& parameterTypes[1].getComponentType() == StructType.class
 					&& parameterTypes[2].getComponentType().isArray()
 					&& parameterTypes[2].getComponentType() == Integer.TYPE
 				 ) {					
@@ -125,15 +125,15 @@ public class StructRegistry { //prong struct store
 					Appendables.appendUTF8(target, names[n], 0, names[n].length, Integer.MAX_VALUE);
 					target.append("\"");					
 				}
-				target.append("}, new ").append(StructTypes.class.getName()).append("[]{");
+				target.append("}, new ").append(StructType.class.getName()).append("[]{");
 				
 				
-				StructTypes[] type = fieldTypes[j];				
+				StructType[] type = fieldTypes[j];				
 				for(int t=1; t<type.length; t++) {					
 					if (t!=0) {
 						target.append(",");
 					}
-					target.append(StructTypes.class.getName()).append('.');
+					target.append(StructType.class.getName()).append('.');
 					target.append(type[t].name());			
 				}
 				target.append("}, new int[]{");
@@ -175,18 +175,18 @@ public class StructRegistry { //prong struct store
 	
 	
 	public int addStruct() {
-		return addStruct(new byte[][] {}, new StructTypes[] {}, new int[] {});
+		return addStruct(new byte[][] {}, new StructType[] {}, new int[] {});
 	}
 	
 	public int addStruct(byte[][] fieldNames, 
-            StructTypes[] fieldTypes //all fields are precede by array count byte
+            StructType[] fieldTypes //all fields are precede by array count byte
             
 			) {
 		return addStruct(fieldNames, fieldTypes, null, null);
 	}
 	
 	public int addStruct(byte[][] fieldNames, 
-            StructTypes[] fieldTypes, //all fields are precede by array count byte
+            StructType[] fieldTypes, //all fields are precede by array count byte
             int[] fieldDims //Dimensionality, should be 0 for simple objects.
 			) {
 		return addStruct(fieldNames, fieldTypes, fieldDims, null);
@@ -194,7 +194,7 @@ public class StructRegistry { //prong struct store
 	
 	public int addStruct(
             byte[][] fieldNames, 
-            StructTypes[] fieldTypes, //all fields are precede by array count byte
+            StructType[] fieldTypes, //all fields are precede by array count byte
             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
             Object[] fieldAssoc
 			) {
@@ -211,7 +211,7 @@ public class StructRegistry { //prong struct store
 	 */
 	public int addStruct(Object associatedObject,
 			             byte[][] fieldNames, 
-			             StructTypes[] fieldTypes, //all fields are precede by array count byte
+			             StructType[] fieldTypes, //all fields are precede by array count byte
 			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
 			             Object[] fieldAssoc
 			) {
@@ -278,7 +278,7 @@ public class StructRegistry { //prong struct store
 	}
 
 	public long growStruct(int structId,
-						   StructTypes fieldType,
+						   StructType fieldType,
 						   int fieldDim,
 						   byte[] name) {
 		//grow all the arrays with new value
@@ -303,7 +303,7 @@ public class StructRegistry { //prong struct store
 	
 	public long modifyStruct(int structId,
 						   byte[] fieldName, int fieldPos, int fieldLen,
-						   StructTypes fieldType,
+						   StructType fieldType,
 						   int fieldDim) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
@@ -333,8 +333,8 @@ public class StructRegistry { //prong struct store
 		return results;
 	}
 
-	private StructTypes[] grow(StructTypes[] source, StructTypes newValue) {
-		StructTypes[] results = new StructTypes[source.length+1];
+	private StructType[] grow(StructType[] source, StructType newValue) {
+		StructType[] results = new StructType[source.length+1];
 		System.arraycopy(source, 0, results, 0, source.length);
 		results[source.length] = newValue;
 		return results;
@@ -444,7 +444,7 @@ public class StructRegistry { //prong struct store
 		return fieldDims[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
-	public StructTypes fieldType(long id) {
+	public StructType fieldType(long id) {
 		return fieldTypes[extractStructId(id)][extractFieldPosition(id)];
 	}
 	
@@ -519,8 +519,8 @@ public class StructRegistry { //prong struct store
 		return result;
 	}
 
-	private static StructTypes[][] grow(int newSize, StructTypes[][] source) {
-		StructTypes[][] result = new StructTypes[newSize][];
+	private static StructType[][] grow(int newSize, StructType[][] source) {
+		StructType[][] result = new StructType[newSize][];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}

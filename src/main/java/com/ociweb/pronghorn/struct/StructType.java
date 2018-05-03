@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.struct;
 
-public enum StructTypes {
+public enum StructType {
 	////////////////////////////////////////////////////
 	//do not modify this order since the ordinal values may be saved
 	////////////////////////////////////////////////////

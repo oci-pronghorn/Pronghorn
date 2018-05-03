@@ -1,19 +1,15 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.encode.function.IterLongFunction;
-import com.ociweb.json.encode.function.IterMemberFunction;
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.util.StringBuilderWriter;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class JSONArrayCompoundTests {
     private StringBuilderWriter out;

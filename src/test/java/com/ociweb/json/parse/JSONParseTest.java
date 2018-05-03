@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.util.parse;
+package com.ociweb.json.parse;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -13,13 +13,17 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.StructuredReader;
+import com.ociweb.pronghorn.struct.BStructDimIntListener;
 import com.ociweb.pronghorn.util.StringBuilderWriter;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.parse.JSONStreamParser;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
 public class JSONParseTest {
-	
-	//TODO: 1 build GL example 2 use twitter feed for unit tests. (urgent in API)
 
+	enum Field {a, b};
+	
 	//TODO: add first, last and collect all flags test (do later)
 	
 	String simple2DArrayEmptyExample = "{root: [[ "		
@@ -34,34 +38,34 @@ public class JSONParseTest {
 			.begin()
 				.element(JSONType.TypeString, false)//set flags for first, last, all, ordered...
 					.key("root").key("keyb")
-					.asField("b")
+					.asField(Field.b)
 				.element(JSONType.TypeInteger, false)
 					.key("root").key("keya")
-					.asField("a")
+					.asField(Field.a)
 			.finish();
 
 	private final JSONDecoder simpleArrayExtractor = new JSONDecoder()
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 					.key("root").array().key("keyb")
-					.asField("b")
+					.asField(Field.b)
 				.element(JSONType.TypeInteger, true)
 					.key("root").key("[]").key("keya")
-					.asField("a")
+					.asField(Field.a)
 			.finish();
 
 	private final JSONDecoder simple2DArrayExtractor = new JSONDecoder(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 					.key("root").array().key("[]").key("keyb")
-					.asField("b")
+					.asField(Field.b)
 				.element(JSONType.TypeInteger, true)
 					.key("root").key("[]").key("[]").key("keya")
-					.asField("a")
+					.asField(Field.a)
 			.finish();
 
 	@Test
-	public void testEncodeThenDecode() {
+	public void simpleTest() {
 		JSONResponse obj = new JSONResponse();
 		obj.setStatusMessage(JSONResponse.StatusMessages.SUCCESS);
 		StringBuilderWriter out = new StringBuilderWriter();
@@ -69,26 +73,23 @@ public class JSONParseTest {
 
 		String json = out.toString();
 		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
-/*
-		Pipe<RawDataSchema> targetData = parseJSON(json, JSONResponse.jsonExtractor);
-		Pipe.takeMsgIdx(targetData);
-		ChannelReader dataStream = Pipe.openInputStream(targetData);
-		JSONReader reader = JSONResponse.createReader();
-		obj.reset();
-		obj.readFromJSON(reader, dataStream);
-
-		assertEquals(JSONResponse.StatusMessages.SUCCESS.getStatusCode(), obj.getStatus());
-		assertEquals(JSONResponse.StatusMessages.SUCCESS.getStatusMessage(), obj.getMessage());*/
 	}
 	
-	@Ignore
-	@Test //can do 150K per second
+	@Test //can do 150K per second but < 10K per second is an error
 	public void loadFor2D() {
-		parseJSONLoad(150_000, simple2DArrayExample, simple2DArrayExtractor);
+		int iterations = 150_000;
+		long now = System.nanoTime();
+		parseJSONLoad(iterations, simple2DArrayExample, simple2DArrayExtractor);
+		long duration = System.nanoTime()-now;
+		
+		long perSecond = (1_000_000_000L*iterations)/duration;
+		
+		assertTrue("expected 10K or better but found "+perSecond, perSecond>=10_000);
+				
 		assert(true);
 	}
 	
-	String simple2DArrayExample = "{root: [[ "
+	private final String simple2DArrayExample = "{root: [[ "
 			+ "{\"keya\":1, \"keyb\":\"one\"}  "
 			+ ", {\"keya\":2, \"keyb\":\"two\"}  "
 			+ ", {\"keya\":3, \"keyb\":\"three\"}  "
@@ -99,6 +100,7 @@ public class JSONParseTest {
 			+ ", {\"keya\":7, \"keyb\":\"seven\"}  "	
 			+ "]]"
 			+ "}";
+	
 	@Test
 	public void simple2DArrayParseTest() {
 
@@ -135,9 +137,7 @@ public class JSONParseTest {
 		assertEquals(5, dataStream.readPackedLong());
 		assertEquals(6, dataStream.readPackedLong());
 		assertEquals(7, dataStream.readPackedLong());
-		
-
-		
+				
 		assertEquals(0,dataStream.available());
 
 	}
@@ -158,6 +158,7 @@ public class JSONParseTest {
 			+ ", {\"keya\":4, \"keyb\":\"four\"}  "
 			+ ", {\"keya\":5, \"keyb\":\"five\"}  "			
 			+ "]}";
+	
 	@Test	
 	public void simpleMultipleParseTest() {
 
@@ -196,10 +197,6 @@ public class JSONParseTest {
 		assertEquals(0, Pipe.contentRemaining(targetData));
 				
 	}
-
-	
-	
-	
 	
 	private final String simpleArrayMissingExample = "{root: [ "
 			+ "{\"keya\":1, \"keyb\":\"one\"}  "
@@ -208,6 +205,7 @@ public class JSONParseTest {
 			+ ", {\"keya\":4, \"keyb\":\"four\"}  "
 			+ ", {\"keya\":5, \"keyb\":\"five\"}  "			
 			+ "]}";
+	
 	@Test	
 	public void simpleArrayMissingParseTest() {
 
@@ -572,4 +570,74 @@ public class JSONParseTest {
 			RawDataSchema.consume(targetData);
 		}
 	}
+	
+	//////////////////////////////////////
+	//////////////////////////////////////
+	//new tests for reading JSON with arrays using structures
+	//////////////////////////////////////
+	
+	
+	@Test
+	public void structured2DArrayParseTest() {
+
+		Pipe<RawDataSchema> targetData = parseJSON(simple2DArrayExample, simple2DArrayExtractor);
+		
+		//confirm data on the pipe is good...
+		Pipe.takeMsgIdx(targetData);
+		ChannelReader dataStream = (ChannelReader)Pipe.openInputStream(targetData);
+
+		StructuredReader reader = dataStream.structured();
+		
+//		BStructDimIntListener visitor = new BStructDimIntListener() {
+//
+//			@Override
+//			public void value(int value, boolean isNull, int[] position, int instance, int totalCount) {
+//				// TODO Auto-generated method stub
+//				System.err.println(isNull+"  "+value);
+//			}
+//			
+//		};
+//		reader.visitDimInt(visitor , Field.a);
+		
+		
+		
+		
+		
+//		long header = dataStream.readPackedLong();		
+//		assertEquals(0,header);
+//		
+//		assertEquals(2,      dataStream.readPackedInt());
+//		assertEquals(5,      dataStream.readPackedInt());
+//		assertEquals(2,      dataStream.readPackedInt());	
+//		
+//		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("three",   dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("six", dataStream.readUTFOfLength(dataStream.readShort()));
+//		assertEquals("seven", dataStream.readUTFOfLength(dataStream.readShort()));
+//		
+//		
+//		assertEquals(2, dataStream.readPackedInt());
+//		assertEquals(5, dataStream.readPackedInt());
+//		assertEquals(2, dataStream.readPackedInt());
+//		
+//		assertEquals(1, dataStream.readPackedLong());
+//		assertEquals(2, dataStream.readPackedLong());
+//		assertEquals(3, dataStream.readPackedLong());
+//		assertEquals(4, dataStream.readPackedLong());
+//		assertEquals(5, dataStream.readPackedLong());
+//		assertEquals(6, dataStream.readPackedLong());
+//		assertEquals(7, dataStream.readPackedLong());
+//				
+//		assertEquals(0,dataStream.available());
+
+	}
+	
+	
+	
+	
+	
+	
 }

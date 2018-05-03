@@ -7,7 +7,7 @@ import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.struct.StructTypes;
+import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
@@ -108,19 +108,19 @@ public class JSONFieldSchema {
 		int i = length;
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
-			StructTypes fieldType = null;
+			StructType fieldType = null;
 			switch(mapping.type) {
 				case TypeString:
-					fieldType = StructTypes.Text;
+					fieldType = StructType.Text;
 				break;
 				case TypeInteger:
-					fieldType = StructTypes.Long;
+					fieldType = StructType.Long;
 				break;
 				case TypeDecimal:
-					fieldType = StructTypes.Decimal;
+					fieldType = StructType.Decimal;
 				break;
 				case TypeBoolean:
-					fieldType = StructTypes.Boolean;
+					fieldType = StructType.Boolean;
 				break;					
 			}
 			long fieldId = struct.growStruct(structId, fieldType, mapping.dimensions(), mapping.getName().getBytes());

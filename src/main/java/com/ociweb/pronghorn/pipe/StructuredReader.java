@@ -6,7 +6,7 @@ import com.ociweb.pronghorn.struct.StructLongListener;
 import com.ociweb.pronghorn.struct.StructFieldVisitor;
 import com.ociweb.pronghorn.struct.StructIntListener;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.struct.StructTypes;
+import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.Appendables;
 
 public final class StructuredReader {
@@ -27,15 +27,15 @@ public final class StructuredReader {
 	}
 	
 
-	private final boolean matchOneOfTypes(Object attachedInstance, StructTypes ... assoc) {
+	private final boolean matchOneOfTypes(Object attachedInstance, StructType ... assoc) {
 		long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(attachedInstance, 
 				DataInputBlobReader.getStructType(channelReader));	
 		return matchOneOfTypes(fieldId, assoc);
 	}
 
-	private final boolean matchOneOfTypes(long fieldId, StructTypes... assoc) {
+	private final boolean matchOneOfTypes(long fieldId, StructType... assoc) {
 		boolean ok = false;
-		StructTypes fieldType = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId);
+		StructType fieldType = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId);
 		int i=assoc.length;
 		while (--i>=0) {
 			if (assoc[i]==fieldType) {
@@ -121,7 +121,7 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readTextAsLong(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -138,7 +138,7 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public double readTextAsDouble(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -155,7 +155,7 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readText(long fieldId, A target) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Text);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -171,9 +171,9 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readIntAsText(long fieldId, A target) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -197,7 +197,7 @@ public final class StructuredReader {
 	
 	//return NaN when field is absent
 	public double readRationalAsDouble(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Rational);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -214,7 +214,7 @@ public final class StructuredReader {
 		
 	//return NaN when field is absent
 	public double readDecimalAsDouble(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -231,7 +231,7 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readDecimalMantissa(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -251,7 +251,7 @@ public final class StructuredReader {
 		
 	//returns 0 when absent
 	public byte readDecimalExponent(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Decimal);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -270,7 +270,7 @@ public final class StructuredReader {
 		
 	//returns false when absent
 	public boolean readBoolean(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Boolean);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Boolean);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -288,9 +288,9 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public int readInt(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -307,9 +307,9 @@ public final class StructuredReader {
 
 	//returns -1 when absent
 	public long readLong(long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -330,9 +330,9 @@ public final class StructuredReader {
 
     //null values are also visited
 	public void visitInt(StructIntListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -352,9 +352,9 @@ public final class StructuredReader {
 	}
 
 	public void visitLong(StructLongListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -375,9 +375,9 @@ public final class StructuredReader {
 	}
 	
 	public void visitShort(StructShortListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructTypes.Long);
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
@@ -431,7 +431,7 @@ public final class StructuredReader {
 	
 	public <A extends Appendable> A readDecimalAsText(Object attachedInstance, A target) {
 		
-		assert(matchOneOfTypes(attachedInstance, StructTypes.Decimal));
+		assert(matchOneOfTypes(attachedInstance, StructType.Decimal));
 		
 		this.channelReader.position(
 		this.channelReader.readFromEndLastInt(
