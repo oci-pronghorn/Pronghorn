@@ -360,6 +360,12 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
+	public void writeRational(Object assoc, long numerator, long denominator) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writeRational(numerator, denominator);
+	}
+	
 	public void writeRational(long numerator, long denominator, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructType.Rational);
