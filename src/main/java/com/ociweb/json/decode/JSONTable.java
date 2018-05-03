@@ -12,6 +12,10 @@ public abstract class JSONTable<P> {
         this.extractor = extractor;
     }
 
+    public JSONPath<JSONTable<P>> element(JSONType type) {
+        return element(type, false, null);
+    }
+
     public JSONPath<JSONTable<P>> element(JSONType type, boolean isAligned) {
         return element(type, isAligned, null);
     }

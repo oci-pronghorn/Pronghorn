@@ -7,8 +7,6 @@ import com.ociweb.json.decode.JSONDecoder;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.json.JSONExtractor;
-import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -45,7 +43,7 @@ public class JSONParseTest {
 	private final JSONDecoder simpleArrayExtractor = new JSONDecoder()
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.key("root").key("[]").key("keyb")
+					.key("root").array().key("keyb")
 					.asField("b")
 				.element(JSONType.TypeInteger, true)
 					.key("root").key("[]").key("keya")
@@ -55,7 +53,7 @@ public class JSONParseTest {
 	private final JSONDecoder simple2DArrayExtractor = new JSONDecoder(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.key("root").key("[]").key("[]").key("keyb")
+					.key("root").array().key("[]").key("keyb")
 					.asField("b")
 				.element(JSONType.TypeInteger, true)
 					.key("root").key("[]").key("[]").key("keya")

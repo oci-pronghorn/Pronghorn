@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
 
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
-public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActive {
+public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
 
 	private final JSONFieldSchema schema;
 	private JSONFieldMapping activeMapping;
@@ -103,7 +103,7 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 		return this;
 	}
 	
-	public JSONExtractorCompleted completePath(String pathName) { //can only call newPath next
+	public JSONExtractorUber completePath(String pathName) { //can only call newPath next
 		
 		activeMapping.setName(pathName);
 		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	
@@ -112,7 +112,7 @@ public class JSONExtractor implements JSONExtractorCompleted, JSONExtractorActiv
 	}
 
 	@Override
-	public JSONExtractorCompleted completePath(String pathName, Object optionalAssociation) {
+	public JSONExtractorUber completePath(String pathName, Object optionalAssociation) {
 		
 		activeMapping.setName(pathName);
 		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	

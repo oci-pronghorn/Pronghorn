@@ -4,7 +4,7 @@ public interface JSONExtractorActive {
 
 	JSONExtractorActive array();
 	JSONExtractorActive key(String name);
-	JSONExtractorCompleted completePath(String pathName);
-	JSONExtractorCompleted completePath(String pathName, Object association);
+	JSONExtractorUber completePath(String pathName);
+	JSONExtractorUber completePath(String pathName, Object association);
 		
 }
