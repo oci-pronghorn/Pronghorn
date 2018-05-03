@@ -1,20 +1,23 @@
 package com.ociweb.json.parse;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.ociweb.json.decode.JSONDecoder;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.json.JSONAccumRule;
 import com.ociweb.json.JSONType;
+import com.ociweb.json.decode.JSONDecoder;
 import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.StructuredReader;
-import com.ociweb.pronghorn.struct.BStructDimIntListener;
+import com.ociweb.pronghorn.struct.StructIntListener;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.StringBuilderWriter;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
@@ -453,11 +456,17 @@ public class JSONParseTest {
 
 
 	private Pipe<RawDataSchema> parseJSON(String sourceData, JSONDecoder extractor) {
+		
+		StructRegistry reg = new StructRegistry();
+		int structId = reg.addStruct();		
+		extractor.addToStruct(reg, structId);
+		
 		/////////////////
 		//source test data.
 		PipeConfig<RawDataSchema> testInputDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
 		Pipe<RawDataSchema> testInputData = new Pipe<RawDataSchema>(testInputDataConfig);
 		testInputData.initBuffers();
+		Pipe.structRegistry(testInputData, reg);
 		
 		int size = Pipe.addMsgIdx(testInputData, 0);
 		Pipe.addUTF8(sourceData, testInputData);
@@ -475,6 +484,7 @@ public class JSONParseTest {
 		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
 		targetData.initBuffers();
+		Pipe.structRegistry(targetData, reg);
 
 		Pipe.confirmLowLevelRead(testInputData, Pipe.sizeOf(testInputData, msgIdx));
 		Pipe.releaseReadLock(testInputData);
@@ -492,7 +502,10 @@ public class JSONParseTest {
 			Pipe.presumeRoomForWrite(targetData);
 			int writeSize = Pipe.addMsgIdx(targetData, 0);
 			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
-			visitor.export(stream,null);		
+						
+			visitor.export(stream, extractor.getIndexPositions());
+			DataOutputBlobWriter.commitBackData(stream, extractor.getStructId());
+			
 			stream.closeLowLevelField();
 			Pipe.confirmLowLevelWrite(targetData, writeSize);
 			Pipe.publishWrites(targetData);
@@ -502,12 +515,15 @@ public class JSONParseTest {
 		
 		return targetData;
 	}
-
 	
 	private void parseJSONLoad(int i,
 			                   String sourceData,
 							   JSONDecoder extractor) {
 
+		StructRegistry reg = new StructRegistry();
+		int structId = reg.addStruct();		
+		extractor.addToStruct(reg, structId);
+		
 		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
 		targetData.initBuffers();
@@ -557,7 +573,10 @@ public class JSONParseTest {
 			/////write the captured data into the pipe
 			int writeSize = Pipe.addMsgIdx(targetData, 0);
 			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
-			visitor.export(stream,null);
+
+			visitor.export(stream, extractor.getIndexPositions());
+			DataOutputBlobWriter.commitBackData(stream, extractor.getStructId());
+			
 			stream.closeLowLevelField();
 			Pipe.confirmLowLevelWrite(targetData, writeSize);
 			Pipe.publishWrites(targetData);
@@ -575,29 +594,42 @@ public class JSONParseTest {
 	//////////////////////////////////////
 	//new tests for reading JSON with arrays using structures
 	//////////////////////////////////////
-	
+	private final JSONDecoder column2DArrayExtractor = new JSONDecoder(false)
+			.begin()
+				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
+					.key("root").array().key("[]").key("keyb")
+					.asField(Field.b)
+				.element(JSONType.TypeInteger, true, JSONAccumRule.Collect)
+					.key("root").key("[]").key("[]").key("keya")
+					.asField(Field.a)
+			.finish();
 	
 	@Test
 	public void structured2DArrayParseTest() {
 
-		Pipe<RawDataSchema> targetData = parseJSON(simple2DArrayExample, simple2DArrayExtractor);
+		Pipe<RawDataSchema> targetData = parseJSON(simple2DArrayExample,
+													column2DArrayExtractor);
 		
 		//confirm data on the pipe is good...
 		Pipe.takeMsgIdx(targetData);
 		ChannelReader dataStream = (ChannelReader)Pipe.openInputStream(targetData);
 
+		assertNotNull(Pipe.structRegistry(DataInputBlobReader.getBackingPipe((DataInputBlobReader<?>) dataStream)));
+		
+		
 		StructuredReader reader = dataStream.structured();
 		
-//		BStructDimIntListener visitor = new BStructDimIntListener() {
-//
-//			@Override
-//			public void value(int value, boolean isNull, int[] position, int instance, int totalCount) {
-//				// TODO Auto-generated method stub
-//				System.err.println(isNull+"  "+value);
-//			}
-//			
-//		};
-//		reader.visitDimInt(visitor , Field.a);
+		StructIntListener visitor = new StructIntListener() {
+
+			@Override
+			public void value(int value, boolean isNull, int instance, int totalCount) {
+				// TODO Auto-generated method stub
+				System.err.println(isNull+"  "+value+" "+instance+" "+totalCount);
+				
+			}
+			
+		};
+		reader.visitInt(visitor , Field.a);
 		
 		
 		

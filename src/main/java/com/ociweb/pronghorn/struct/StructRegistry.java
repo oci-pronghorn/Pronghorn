@@ -464,6 +464,9 @@ public class StructRegistry { //prong struct store
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
+		
+		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+
 		int idx = lookupIndexOffset(this, attachedObject, structId, attachedObject.hashCode());
 		return buildFieldId(attachedObject, structId, idx);
 	}

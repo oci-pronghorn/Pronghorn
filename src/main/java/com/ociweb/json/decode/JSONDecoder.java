@@ -51,4 +51,9 @@ public class JSONDecoder implements JSONExtractorCompleted {
     public int[] getIndexPositions() {
         return extractor.getIndexPositions();
     }
+    
+    @Override
+    public int getStructId() {
+    	return extractor.getStructId();
+    }
 }

@@ -504,32 +504,31 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 	
-//        //alternate implementation
-//        DataInputBlobReader src = PipeReader.inputStream(sourcePipe, sourceLOC);
-//        DataOutputBlobWriter tgt = PipeWriter.outputStream(targetPipe);
-//        DataOutputBlobWriter.openField(tgt);
-//        int len = src.available();
-//        tgt.writeStream(src, len);
-//        DataOutputBlobWriter.closeHighLevelField(tgt, targetLOC);
-//        return len;
+        //alternate implementation
+        DataInputBlobReader src = PipeReader.inputStream(sourcePipe, sourceLOC);
+        DataOutputBlobWriter tgt = PipeWriter.outputStream(targetPipe);
+        DataOutputBlobWriter.openField(tgt);
+        int len = src.available();
+        tgt.writeStream(src, len);
         
-		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask w
-		return copyBytes(targetPipe, targetLOC, 
-				         readBytes(sourcePipe, sourceLOC, Pipe.blob(targetPipe),  Pipe.getWorkingBlobHeadPosition(targetPipe), targetPipe.blobMask));
-		
-		
-		
+        if (src.isStructured) {
+        	src.readFromEndInto(tgt);
+        }
+        
+        DataOutputBlobWriter.closeHighLevelField(tgt, targetLOC);
+        return len;
 	}
 
 	private static int copyBytes(final Pipe targetPipe, int targetLOC, int length) {
 	    assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 
-
 	    int byteWrkHdPos = Pipe.getWorkingBlobHeadPosition(targetPipe);
 	    
 		Pipe.validateVarLength(targetPipe, length);	
-		Pipe.setBytePosAndLen(Pipe.slab(targetPipe), targetPipe.slabMask, 
-				targetPipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), byteWrkHdPos, length, Pipe.bytesWriteBase(targetPipe)); 
+		Pipe.setBytePosAndLen(Pipe.slab(targetPipe),
+				targetPipe.slabMask, 
+				targetPipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), 
+				byteWrkHdPos, length, Pipe.bytesWriteBase(targetPipe)); 
 	
 		Pipe.addAndGetBytesWorkingHeadPosition(targetPipe, length);
 		return length;

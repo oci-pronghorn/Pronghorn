@@ -8,6 +8,9 @@ public interface JSONExtractorCompleted {
 	TrieParser trieParser();
 	JSONStreamVisitorToChannel newJSONVisitor();
 	void addToStruct(StructRegistry schema, int structId);
+	
 	int[] getIndexPositions();
+	int getStructId();
+	
 }
 

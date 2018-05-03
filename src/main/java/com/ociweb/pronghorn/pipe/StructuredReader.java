@@ -356,7 +356,8 @@ public final class StructuredReader {
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
 						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
-    	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    	
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
     	int instance = 0;
@@ -371,7 +372,8 @@ public final class StructuredReader {
 	}
 	
 	public void visitInt(StructIntListener visitor, Object association) {
-		visitInt(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		visitInt(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
 	public void visitLong(StructLongListener visitor, long fieldId) {
@@ -448,9 +450,12 @@ public final class StructuredReader {
 	}
 	
 	public void visitDimInt(BStructDimIntListener visitor, Object association) {
+		int structId = DataInputBlobReader.getStructType(channelReader);
+		assert ((StructRegistry.IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+		
 		visitDimInt(visitor,
 				   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
-				       .fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader))  );
+				       .fieldLookupByIdentity(association, structId)  );
 	}
 
 	

@@ -18,6 +18,10 @@ public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
 	private List<String> path;
 	private boolean writeDot;
 	
+	private int structId;
+	private int[] indexLookup;
+	
+	
 	public JSONExtractor() {
 		schema = new JSONFieldSchema(0);//can we set the position here for the null block???=
 		writeDot = false;
@@ -122,19 +126,24 @@ public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
 		return this;
 	}
 
-	private int[] indexLookup;
 	
 	@Override
 	public void addToStruct(StructRegistry typeData, int structId) {
-		indexLookup = schema.addToStruct(typeData, structId);
+		assert(null==indexLookup) : "can only be called once";
+		this.indexLookup = schema.addToStruct(typeData, structId);
+		this.structId = structId;
 	}
 
 	@Override
 	public int[] getIndexPositions() {
-		assert(null!=indexLookup);
+		assert(null!=indexLookup) : "expected there to be some fields to be extracted, non found";
 		return indexLookup;
 	}
 
-
+    @Override
+    public int getStructId() {
+    	return structId;
+    }
+    
 	
 }
