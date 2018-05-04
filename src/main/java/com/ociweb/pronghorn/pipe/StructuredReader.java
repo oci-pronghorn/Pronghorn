@@ -1,6 +1,11 @@
 package com.ociweb.pronghorn.pipe;
 
-import com.ociweb.pronghorn.struct.BStructDimIntListener;
+import com.ociweb.pronghorn.struct.StructDoubleListener;
+import com.ociweb.pronghorn.struct.StructFloatListener;
+import com.ociweb.pronghorn.struct.StructDecimalListener;
+import com.ociweb.pronghorn.struct.StructBooleanListener;
+import com.ociweb.pronghorn.struct.StructByteListener;
+import com.ociweb.pronghorn.struct.StructDimIntListener;
 import com.ociweb.pronghorn.struct.StructShortListener;
 import com.ociweb.pronghorn.struct.StructLongListener;
 import com.ociweb.pronghorn.struct.StructRationalListener;
@@ -9,6 +14,7 @@ import com.ociweb.pronghorn.struct.StructIntListener;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.math.Decimal;
 
 public final class StructuredReader {
 
@@ -88,7 +94,9 @@ public final class StructuredReader {
 	
 	//returns null if absent
 	public String readText(long fieldId) {
-	
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -104,7 +112,9 @@ public final class StructuredReader {
 	}
 
 	public boolean isEqual(long fieldId, byte[] utf8EncodedBytes) {
-
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
@@ -122,6 +132,9 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readTextAsLong(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -139,6 +152,9 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public double readTextAsDouble(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -156,6 +172,9 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readText(long fieldId, A target) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -172,6 +191,9 @@ public final class StructuredReader {
 	
 	//appends nothing when absent
 	public <A extends Appendable> A readIntAsText(long fieldId, A target) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
 			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
 			   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
@@ -197,6 +219,9 @@ public final class StructuredReader {
 		
 	//return NaN when field is absent
 	public double readRationalAsDouble(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -214,6 +239,9 @@ public final class StructuredReader {
 		
 	//return NaN when field is absent
 	public double readDecimalAsDouble(long fieldId) {
+				
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -231,6 +259,9 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public long readDecimalMantissa(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -251,6 +282,9 @@ public final class StructuredReader {
 		
 	//returns 0 when absent
 	public byte readDecimalExponent(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -270,6 +304,9 @@ public final class StructuredReader {
 		
 	//returns false when absent
 	public boolean readBoolean(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Boolean);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -288,6 +325,9 @@ public final class StructuredReader {
 	
 	//returns -1 when absent
 	public int readInt(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
 						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
@@ -307,6 +347,9 @@ public final class StructuredReader {
 
 	//returns -1 when absent
 	public long readLong(long fieldId) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
@@ -325,8 +368,8 @@ public final class StructuredReader {
 	}
 	
 	///////////////////////////
-	//TODO these visits need support for dim added ,, int long and short
-	/////////
+	//support for fields with dimension
+	///////////////////////////
 	
 	public void visitRational(StructRationalListener visitor, Object association) {
 		visitRational(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
@@ -339,82 +382,155 @@ public final class StructuredReader {
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
-    	int instance = 0;
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
     	int totalCount = 1;
     	
     	if (index>=0) {
     		channelReader.position(index);  
-    		visitor.value(channelReader.readPackedLong(), channelReader.readPackedLong(), false, instance, totalCount);  		
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				long numerator   = channelReader.readPackedLong();
+				long denominator = channelReader.readPackedLong();
+				
+				
+				boolean isNull = false;
+				if (0==numerator) {
+					isNull = channelReader.wasPackedNull();
+				}
+				visitor.value(numerator, denominator, isNull, c, totalCount);
+    		}  
     	} else {
-    		visitor.value(0, 1, true, instance, totalCount);
+    		visitor.value(0, 1, true, 0, 0);
     	}    	
 	}
 	
-	
-    //null values are also visited
-	public void visitInt(StructIntListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
-    	
-		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
-    									StructRegistry.FIELD_MASK&(int)fieldId);
-    	
-    	int instance = 0;
-    	int totalCount = 1;
-    	
-    	if (index>=0) {
-    		channelReader.position(index);    	
-			visitor.value(channelReader.readPackedInt(), false, instance, totalCount);    		
-    	} else {
-    		visitor.value(0, true, instance, totalCount);
-    	}    	
-	}
 	
 	public void visitInt(StructIntListener visitor, Object association) {
 		visitInt(visitor, 
 				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
-
-	public void visitLong(StructLongListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
-    	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+	
+    //null values are also visited
+	public void visitInt(StructIntListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
     	
-    	
-    	int instance = 0;
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index);    	
-    		visitor.value(channelReader.readPackedLong(), false, instance, totalCount);    		
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				int readPackedInt = channelReader.readPackedInt();
+				boolean isNull = false;
+				if (0==readPackedInt) {
+					isNull = channelReader.wasPackedNull();
+				}
+				visitor.value(readPackedInt, isNull, c, totalCount);
+    		}
+			
     	} else {
-    		visitor.value(0, true, instance, totalCount);
+    		visitor.value(0, true, 0, 0);
     	}    	
 	}
+	
+	private int consumeDimData(int count, int dim, DataInputBlobReader<?> reader) {
+		if (dim>0) {
+			dim--;			
+			int c = reader.readPackedInt(); //2  1     5 0  2 0
+			if (dim>0) {			
+				while (--c>=0) {			
+					count = consumeDimData(count, dim, reader);
+				}
+			} else {
+				return count+c;
+			}
+		}	
+		return count;
+	}
+
 	
 	public void visitLong(StructLongListener visitor, Object association) {
 		visitLong(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
-	
-	public void visitShort(StructShortListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
-				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
-						Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+
+	public void visitLong(StructLongListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
-    	int instance = 0;
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index); 
+    		
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				long readPackedLong = channelReader.readPackedLong();
+				boolean isNull = false;
+				if (0==readPackedLong) {
+					isNull = channelReader.wasPackedNull();
+				}
+				visitor.value(readPackedLong, isNull, c, totalCount);
+    		}
+			    		
+    	} else {
+    		visitor.value(0, true, 0, 0);
+    	}    	
+	}
+
+	
+	public void visitShort(StructShortListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short);
+    	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+    	
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
     	int totalCount = 1;
     	
     	
     	if (index>=0) {
-    		channelReader.position(index);    	
-    		visitor.value(channelReader.readPackedShort(), false, instance, totalCount);    		
+    		channelReader.position(index);
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				short readPackedShort = channelReader.readPackedShort();
+				boolean isNull = false;
+				if (0==readPackedShort) {
+					isNull = channelReader.wasPackedNull();
+				}
+				visitor.value(readPackedShort, isNull, c, totalCount);
+    		}    		
     	} else {
-    		visitor.value((short)0, true, instance, totalCount);
+    		visitor.value((short)0, true, 0, 0);
     	}    	
 	}
 	
@@ -422,12 +538,199 @@ public final class StructuredReader {
 		visitShort(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
+	
+	public void visitByte(StructByteListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Byte);
+    	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+    	
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	
+    	if (index>=0) {
+    		channelReader.position(index);
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				byte value = channelReader.readByte();
+				visitor.value(value, false, c, totalCount);
+    		}    		
+    	} else {
+    		visitor.value((byte)0, true, 0, 0);
+    	}    	
+	}
+	
+	public void visitByte(StructByteListener visitor, Object association) {
+		visitByte(visitor, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+	
+	public void visitFloat(StructFloatListener visitor, Object association) {
+		visitFloat(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+ 	public void visitFloat(StructFloatListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Float);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {    			
+    			float value = Float.intBitsToFloat(channelReader.readPackedInt());    			
+				visitor.value(value, Float.isNaN(value), c, totalCount);
+    		}
+			
+    	} else {
+    		visitor.value(0, true, 0, 0);
+    	}    	
+	}
+	
+	public void visitDouble(StructDoubleListener visitor, Object association) {
+		visitDouble(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+ 	public void visitDouble(StructDoubleListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Double);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {    			
+    			double value = Double.longBitsToDouble(channelReader.readPackedLong());    			
+				visitor.value(value, Double.isNaN(value), c, totalCount);
+    		}
+			
+    	} else {
+    		visitor.value(0, true, 0, 0);
+    	}    	
+	}
+	
+	public void visitBoolean(StructBooleanListener visitor, Object association) {
+		visitBoolean(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+ 	public void visitBoolean(StructBooleanListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Double);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {  
+    			boolean value = channelReader.readBoolean();
+    			boolean isNull = false;
+    			if (!value) {
+    				isNull = channelReader.wasBooleanNull();
+    			}   			
+				visitor.value(value, isNull, c, totalCount);
+    		}
+			
+    	} else {
+    		visitor.value(false, true, 0, 0);
+    	}    	
+	}
+ 	
+ 	
+	public void visitDecimal(StructDecimalListener visitor, Object association) {
+		visitDecimal(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
+ 	public void visitDecimal(StructDecimalListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Double);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {    			
+    			long m = channelReader.readPackedLong();
+    	    	assert(channelReader.storeMostRecentPacked(m));
+    	    	if (0!=m) {
+    	    		visitor.value(channelReader.readByte(), m, false, c, totalCount);
+    	    	} else {
+    	    		if (!channelReader.wasPackedNull()) {
+    	    			visitor.value(channelReader.readByte(), m, false, c, totalCount);
+    	    		} else {
+    	    			visitor.value((byte)0, 0, true, 0, 0);
+    	    			channelReader.readByte();
+    	    		}
+    	    	}
+    		}
+			
+    	} else {
+    		visitor.value((byte)0, 0, true, 0, 0);
+    	}    	
+	}
+ 	
+	////////////////////////
+	///////////////////////
+	//////////////////////
 	////////////////////
 	//////////////////
 	////////////////
 
 	
-	public void visitDimInt(BStructDimIntListener visitor, long fieldId) {
+	public void visitDimInt(StructDimIntListener visitor, long fieldId) {
 		
 		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
 		int dinstance = DataInputBlobReader.reserveDimArray(channelReader, dims, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).maxDim());		
@@ -436,6 +739,7 @@ public final class StructuredReader {
 		assert(DataInputBlobReader.structTypeValidation((DataInputBlobReader<?>)channelReader, StructRegistry.FIELD_MASK&(int)fieldId)); //set value or check match.
 		//assert fieldId is part of StructId
     	int pos = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader, StructRegistry.FIELD_MASK&(int)fieldId);
+    	//TODO: this pos is where the data is not the dim data..
     	
     	int instance = 0;
     	int totalCount = 1;    	
@@ -449,7 +753,7 @@ public final class StructuredReader {
     	
 	}
 	
-	public void visitDimInt(BStructDimIntListener visitor, Object association) {
+	public void visitDimInt(StructDimIntListener visitor, Object association) {
 		int structId = DataInputBlobReader.getStructType(channelReader);
 		assert ((StructRegistry.IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 		

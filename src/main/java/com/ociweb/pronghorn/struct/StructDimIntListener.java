@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.struct;
 
-public interface BStructDimIntListener {
+public interface StructDimIntListener {
 
 	void value(int value, boolean isNull, int[] position, int instance, int totalCount);
 	

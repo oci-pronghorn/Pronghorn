@@ -1,8 +1,11 @@
 package com.ociweb.json.parse;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -616,57 +619,21 @@ public class JSONParseTest {
 
 		assertNotNull(Pipe.structRegistry(DataInputBlobReader.getBackingPipe((DataInputBlobReader<?>) dataStream)));
 		
-		
 		StructuredReader reader = dataStream.structured();
 		
+		final AtomicInteger expectedVal = new AtomicInteger(0);
+		
 		StructIntListener visitor = new StructIntListener() {
-
 			@Override
 			public void value(int value, boolean isNull, int instance, int totalCount) {
-				// TODO Auto-generated method stub
-				System.err.println(isNull+"  "+value+" "+instance+" "+totalCount);
-				
+				assertFalse(isNull);
+				assertEquals(expectedVal.getAndIncrement(),instance);
+				assertEquals(7, totalCount);
 			}
-			
 		};
 		reader.visitInt(visitor , Field.a);
 		
-		
-		
-		
-		
-//		long header = dataStream.readPackedLong();		
-//		assertEquals(0,header);
-//		
-//		assertEquals(2,      dataStream.readPackedInt());
-//		assertEquals(5,      dataStream.readPackedInt());
-//		assertEquals(2,      dataStream.readPackedInt());	
-//		
-//		assertEquals("one",  dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("two",  dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("three",   dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("four", dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("five", dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("six", dataStream.readUTFOfLength(dataStream.readShort()));
-//		assertEquals("seven", dataStream.readUTFOfLength(dataStream.readShort()));
-//		
-//		
-//		assertEquals(2, dataStream.readPackedInt());
-//		assertEquals(5, dataStream.readPackedInt());
-//		assertEquals(2, dataStream.readPackedInt());
-//		
-//		assertEquals(1, dataStream.readPackedLong());
-//		assertEquals(2, dataStream.readPackedLong());
-//		assertEquals(3, dataStream.readPackedLong());
-//		assertEquals(4, dataStream.readPackedLong());
-//		assertEquals(5, dataStream.readPackedLong());
-//		assertEquals(6, dataStream.readPackedLong());
-//		assertEquals(7, dataStream.readPackedLong());
-//				
-//		assertEquals(0,dataStream.available());
-
 	}
-	
 	
 	
 	
