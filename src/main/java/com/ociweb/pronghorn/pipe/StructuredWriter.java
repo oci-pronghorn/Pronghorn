@@ -54,13 +54,7 @@ public class StructuredWriter {
 		storeAssocAndPosition(assoc);
 		channelWriter.writeUTF(text);
 	}
-	
-	public <A extends Appendable> A writeText(Object assoc) {
-		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
-		storeAssocAndPosition(assoc);
-		return (A)channelWriter;
-	}
-	
+
 
 	public void selectStruct(Object assoc) {
 		selectStruct(Pipe.structRegistry(channelWriter.backingPipe).structLookupByIdentity(assoc));
@@ -127,6 +121,11 @@ public class StructuredWriter {
 		return result;
 	}
 
+	public ChannelWriter writeBlob(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		return channelWriter;
+	}
 
 	public ChannelWriter writeBlob(long fieldId) {
 		
@@ -380,6 +379,12 @@ public class StructuredWriter {
 		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
 	}
 	
+	public void writeDecimal(Object assoc, long m, byte e) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		channelWriter.writeDecimal(m, e);
+	}
+	
 	public void writeDecimal(long m, byte e, long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructType.Decimal);
@@ -397,6 +402,5 @@ public class StructuredWriter {
 	public void fullIndexWriteFrom(int indexSizeInBytes, DataInputBlobReader<RawDataSchema> reader) {
 		DataOutputBlobWriter.writeToEndFrom(channelWriter,indexSizeInBytes,reader);
 	}
-
 	
 }

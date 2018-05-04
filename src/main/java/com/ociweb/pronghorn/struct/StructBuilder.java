@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.struct;
 
 import java.util.Arrays;
 
+import com.ociweb.json.decode.JSONDecoder;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8Local;
 
@@ -163,6 +164,11 @@ public class StructBuilder {
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),
 				Arrays.copyOfRange(fieldAssoc, 0, fieldCount)
 				);		
+	}
+
+	public StructBuilder add(JSONDecoder jsonDecoder) {
+		jsonDecoder.addToStruct(typeData, this);
+		return this;
 	}
 	
 }

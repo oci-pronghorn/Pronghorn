@@ -2,6 +2,7 @@ package com.ociweb.json.decode;
 
 import com.ociweb.json.JSONExtractor;
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.pronghorn.struct.StructBuilder;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
@@ -47,6 +48,10 @@ public class JSONDecoder implements JSONExtractorCompleted {
         extractor.addToStruct(schema, structId);
     }
 
+    public void addToStruct(StructRegistry schema, StructBuilder structBuilder) {
+    	extractor.addToStruct(schema, structBuilder);
+    }
+
     @Override
     public int[] getIndexPositions() {
         return extractor.getIndexPositions();
@@ -56,4 +61,5 @@ public class JSONDecoder implements JSONExtractorCompleted {
     public int getStructId() {
     	return extractor.getStructId();
     }
+
 }

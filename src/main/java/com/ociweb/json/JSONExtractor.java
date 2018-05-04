@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ociweb.pronghorn.struct.StructBuilder;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONFieldMapping;
@@ -144,6 +145,10 @@ public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
     public int getStructId() {
     	return structId;
     }
+
+	public void addToStruct(StructRegistry typeData, StructBuilder structBuilder) {
+		schema.addToStruct(typeData, structBuilder);
+	}
     
 	
 }

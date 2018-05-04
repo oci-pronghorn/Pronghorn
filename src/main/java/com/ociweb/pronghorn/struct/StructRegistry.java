@@ -25,7 +25,7 @@ public class StructRegistry { //prong struct store
 	private TrieParser[]     fields             = new TrieParser[4]; //grow as needed for fields
 	private byte[][][]       fieldNames         = new byte[4][][];
 	//type of the field data, its dims and how it can be parsed.
-	private StructType[][] fieldTypes         = new StructType[4][];
+	private StructType[][] fieldTypes           = new StructType[4][];
 	private int[][]          fieldDims          = new int[4][];
 	private Object[][]       fieldLocals        = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
@@ -383,7 +383,7 @@ public class StructRegistry { //prong struct store
 		
 		return setAssoc(localObject, structIdx, fieldIdx);
 	}
-
+	
 	private boolean setAssoc(Object localObject, int structIdx, int fieldIdx) {
 		assert(this.fieldLocals[structIdx][fieldIdx]==null) : "associated object may only be set once. Already set to: "+this.fieldLocals[structIdx][fieldIdx];
 		this.fieldLocals[structIdx][fieldIdx] = localObject;
@@ -499,6 +499,23 @@ public class StructRegistry { //prong struct store
 			}
 		}
 		return idx;
+	}
+	
+	
+	public void visitAssociatedObject(int structId, AssocVisitor visitor) {
+		int structIdx = StructRegistry.STRUCT_MASK&structId;
+				
+		Object[]   objects = fieldLocals[structIdx];
+		int[]         dims = fieldDims[structIdx];
+		StructType[] types = fieldTypes[structIdx];
+						
+		for(int i=0; i<objects.length; i++) {
+			
+			if (null != objects[i]) {					
+				visitor.visit(objects[i],dims[i],types[i]);
+			}
+		
+		}
 	}
 	
 	

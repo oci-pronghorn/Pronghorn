@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.struct.StructBuilder;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -108,22 +109,7 @@ public class JSONFieldSchema {
 		int i = length;
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
-			StructType fieldType = null;
-			switch(mapping.type) {
-				case TypeString:
-					fieldType = StructType.Text;
-				break;
-				case TypeInteger:
-					fieldType = StructType.Long;
-				break;
-				case TypeDecimal:
-					fieldType = StructType.Decimal;
-				break;
-				case TypeBoolean:
-					fieldType = StructType.Boolean;
-				break;					
-			}
-			long fieldId = struct.growStruct(structId, fieldType, mapping.dimensions(), mapping.getName().getBytes());
+			long fieldId = struct.growStruct(structId, mapTypes(mapping), mapping.dimensions(), mapping.getName().getBytes());
 			
 			jsonIndexLoookup[i] = StructRegistry.FIELD_MASK&(int)fieldId;
 			Object assoc = mapping.getAssociatedObject();
@@ -151,6 +137,39 @@ public class JSONFieldSchema {
 		}
 		return table;
 
+	}
+
+
+	public void addToStruct(StructRegistry typeData, StructBuilder structBuilder) {
+		int length = mappings.length;
+		int[] jsonIndexLoookup = new int[length];
+						
+		int i = length;
+		while (--i>=0) {
+			JSONFieldMapping mapping = mappings[i];		
+			structBuilder.addField(mapping.getName(), mapTypes(mapping),  mapping.dimensions(), mapping.getAssociatedObject());
+			
+		}
+	}
+
+
+	private StructType mapTypes(JSONFieldMapping mapping) {
+		StructType fieldType = null;
+		switch(mapping.type) {
+			case TypeString:
+				fieldType = StructType.Text;
+			break;
+			case TypeInteger:
+				fieldType = StructType.Long;
+			break;
+			case TypeDecimal:
+				fieldType = StructType.Decimal;
+			break;
+			case TypeBoolean:
+				fieldType = StructType.Boolean;
+			break;					
+		}
+		return fieldType;
 	}
 	 
 	 

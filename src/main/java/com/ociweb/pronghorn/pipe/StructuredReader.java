@@ -1,17 +1,17 @@
 package com.ociweb.pronghorn.pipe;
 
-import com.ociweb.pronghorn.struct.StructDoubleListener;
-import com.ociweb.pronghorn.struct.StructFloatListener;
-import com.ociweb.pronghorn.struct.StructDecimalListener;
 import com.ociweb.pronghorn.struct.StructBooleanListener;
 import com.ociweb.pronghorn.struct.StructByteListener;
+import com.ociweb.pronghorn.struct.StructDecimalListener;
 import com.ociweb.pronghorn.struct.StructDimIntListener;
-import com.ociweb.pronghorn.struct.StructShortListener;
+import com.ociweb.pronghorn.struct.StructDoubleListener;
+import com.ociweb.pronghorn.struct.StructFieldVisitor;
+import com.ociweb.pronghorn.struct.StructFloatListener;
+import com.ociweb.pronghorn.struct.StructIntListener;
 import com.ociweb.pronghorn.struct.StructLongListener;
 import com.ociweb.pronghorn.struct.StructRationalListener;
-import com.ociweb.pronghorn.struct.StructFieldVisitor;
-import com.ociweb.pronghorn.struct.StructIntListener;
 import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.struct.StructShortListener;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.math.Decimal;
@@ -80,7 +80,7 @@ public final class StructuredReader {
 	public ChannelReader read(Object association) {
 		return read(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
-	
+		
 	public boolean isNull(Object association) {
 		return isNull(
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
@@ -677,6 +677,9 @@ public final class StructuredReader {
     	}    	
 	}
  	
+ 	public static int structType(StructuredReader that) {
+ 		return DataInputBlobReader.getStructType(that.channelReader); 
+ 	}
  	
 	public void visitDecimal(StructDecimalListener visitor, Object association) {
 		visitDecimal(visitor, 
@@ -721,6 +724,8 @@ public final class StructuredReader {
     		visitor.value((byte)0, 0, true, 0, 0);
     	}    	
 	}
+ 	//TODO: add visit of text...
+ 	
  	
 	////////////////////////
 	///////////////////////
@@ -729,37 +734,44 @@ public final class StructuredReader {
 	//////////////////
 	////////////////
 
-	
-	public void visitDimInt(StructDimIntListener visitor, long fieldId) {
-		
-		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
-		int dinstance = DataInputBlobReader.reserveDimArray(channelReader, dims, Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).maxDim());		
-		int[] dimPos = DataInputBlobReader.lookupDimArray(channelReader, dims, dinstance);
-	
-		assert(DataInputBlobReader.structTypeValidation((DataInputBlobReader<?>)channelReader, StructRegistry.FIELD_MASK&(int)fieldId)); //set value or check match.
-		//assert fieldId is part of StructId
-    	int pos = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader, StructRegistry.FIELD_MASK&(int)fieldId);
-    	//TODO: this pos is where the data is not the dim data..
-    	
-    	int instance = 0;
-    	int totalCount = 1;    	
-    	
-    	if (pos>=0) {
-    		channelReader.position(pos);    	
-    		visitor.value(channelReader.readPackedInt(), false, dimPos, instance, totalCount);    		
-    	} else {
-    		visitor.value(channelReader.readPackedInt(), true, dimPos, instance, totalCount);
-    	}
-    	
+
+	public void visitIntByDim(StructDimIntListener visitor, Object association) {
+		visitIntByDim(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
-	public void visitDimInt(StructDimIntListener visitor, Object association) {
-		int structId = DataInputBlobReader.getStructType(channelReader);
-		assert ((StructRegistry.IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+    //null values are also visited
+	public void visitIntByDim(StructDimIntListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+    	
 		
-		visitDimInt(visitor,
-				   Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
-				       .fieldLookupByIdentity(association, structId)  );
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    		}
+    		
+    		for(int c=0; c<totalCount; c++) {
+				int readPackedInt = channelReader.readPackedInt();
+				boolean isNull = false;
+				if (0==readPackedInt) {
+					isNull = channelReader.wasPackedNull();
+				}
+			//	visitor.value(readPackedInt, isNull, c, totalCount);
+    		}
+			
+    	} else {
+    	//	visitor.value(0, true, 0, 0);
+    	}    	
 	}
 
 	
@@ -780,6 +792,130 @@ public final class StructuredReader {
     											channelReader.readByte());
 	}
 
+	public boolean readLong(Object association, StructuredWriter output) {
+				
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			//TODO: new method copyPackedLong which moves bytes until end is found
+			output.writeLong(association, channelReader.readPackedLong());
+			return true;
+		}
+		return false;
+		
+	}
 
+	public boolean readInt(Object association, StructuredWriter output) {
+		
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			//TODO: new method copyPackedLong which moves bytes until end is found
+			output.writeInt(association, channelReader.readPackedInt());
+			return true;
+		}
+		return false;
+		
+	}
+	
+	public boolean readShort(Object association, StructuredWriter output) {
+		
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Integer ||
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			//TODO: new method copyPackedLong which moves bytes until end is found
+			output.writeShort(association, channelReader.readPackedShort());
+			return true;
+		}
+		return false;
+		
+	}
+	
+	public boolean readBoolean(Object association, StructuredWriter output) {
+		
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Boolean);
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			//TODO: new method copyPackedLong which moves bytes until end is found
+			output.writeBoolean(association, channelReader.readBoolean());
+			return true;
+		}
+		return false;
+		
+	}
+
+	public boolean readText(Object association, StructuredWriter output) {
+		
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			int length = channelReader.readShort();//length of text			
+			ChannelWriter out = output.writeBlob(association);
+			out.writeShort(length);
+			channelReader.readInto(out, length);
+			
+			return true;
+		}
+		return false;
+		
+	}
+
+	public boolean readDecimal(Object association, StructuredWriter output) {
+		
+		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+		
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Decimal);
+		
+		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			long m = channelReader.readPackedLong();
+	    	assert(channelReader.storeMostRecentPacked(m));
+	    	if (0==m && channelReader.wasPackedNull()) {
+	    		channelReader.readByte();
+	    		return false;
+	    	} else {
+	    		byte e = channelReader.readByte();
+	    		output.writeDecimal(association, m, e);
+	    	}
+			return true;
+		}
+		return false;
+		
+	}
+	
 
 }
