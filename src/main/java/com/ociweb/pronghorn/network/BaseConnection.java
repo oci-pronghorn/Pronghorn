@@ -181,6 +181,9 @@ public abstract class BaseConnection {
 		poolReservation = -1;
 	}
 
-
+	@Override
+	protected void finalize() throws Throwable {
+		close();
+	}
 	
 }
