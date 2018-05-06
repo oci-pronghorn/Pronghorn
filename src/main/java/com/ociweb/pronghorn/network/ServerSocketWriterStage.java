@@ -31,8 +31,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     private final Pipe<ReleaseSchema> releasePipe;
     
     private final ServerCoordinator coordinator;
-
-  
     
     private ByteBuffer    workingBuffers[];
     private boolean       bufferChecked[];
@@ -238,33 +236,27 @@ public class ServerSocketWriterStage extends PronghornStage {
 			loadPayloadForXmit(activeMessageId, idx);
 
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
-			
-			//logger.info("server side disconnecting");		
-			
-			final long channelId = Pipe.takeLong(input[idx]);
 
+			final long channelId = Pipe.takeLong(input[idx]);
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
 		    Pipe.releaseReadLock(input[idx]);
 		    assert(Pipe.contentRemaining(input[idx])>=0);
-		    
+		 
 		    coordinator.releaseResponsePipeLineIdx(channelId);//upon disconnect let go of pipe reservation
 		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
+    
 		    if (null!=socketHolder) {
-		    	
-		    	//TODO: this is happening too early, just at times so disabled for now.
-		   	
-		    	//Urgent research.
-		    	
-//		    	//we are disconnecting so we will remove the connection from the holder.
-//		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
-//		        assert(null!=serverConnection);
-//		        if (null!=serverConnection) {
-//		        	serverConnection.close();
-//		        	serverConnection.decompose();
-//		        }
-		    }	                    
+
+		    	//we are disconnecting so we will remove the connection from the holder.
+		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
+		        assert(null != serverConnection);
+		        if (null != serverConnection) {
+		        	//do not close since it is still known to sequence.
+		        	serverConnection.decompose();
+		        }
+		    }	     
+	   
 		    
-		   // logger.info("finished the disconnect");
 		    
 		} else if (NetPayloadSchema.MSG_UPGRADE_307 == activeMessageId) {
 			
@@ -277,7 +269,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    		pipeIdx); //pipe idx
 		    
 		    //switch to new reserved connection?? after upgrade no need to use http router
-		    //perhaps? coordinator.releaseResponsePipeLineIdx(channelId);
+		    //perhaps? 	coordinator.releaseResponsePipeLineIdx(channelId);
 		    //	 connection   setPoolReservation
 		    //or...
 			
@@ -311,6 +303,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         Pipe<NetPayloadSchema> pipe = input[idx];
         final long channelId = Pipe.takeLong(pipe);
         final long arrivalTime = Pipe.takeLong(pipe);        
+        
         
         activeIds[idx] = channelId;
         if (takeTail) {
