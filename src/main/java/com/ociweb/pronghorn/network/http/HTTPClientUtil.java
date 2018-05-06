@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -11,6 +14,11 @@ public class HTTPClientUtil {
 	private static final byte[] WHITE_BYTES = " ".getBytes();
 	private static final byte[] SLASH_BYTES = " /".getBytes();
 	private static final byte[] POST_BYTES = "POST".getBytes();
+
+	public static boolean showRequest = false;
+	
+	public static boolean showSentPayload = false;
+	private final static Logger logger = LoggerFactory.getLogger(HTTPClientUtil.class);
 
 	public static void cleanCloseConnection(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
 	
@@ -25,7 +33,7 @@ public class HTTPClientUtil {
 		//do not close that will be done by last stage
 		//must be done first before we send the message
 		connectionToKill.beginDisconnect();
-	
+
 		Pipe.presumeRoomForWrite(pipe);
 		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
 		Pipe.addLongValue(connectionToKill.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
@@ -105,9 +113,8 @@ public class HTTPClientUtil {
 							                	
 			DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 	
-			boolean showRequest = false;
-			if (showRequest) {			
-				System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+			if (showRequest) {	
+				logger.info("\n"+new String(activeWriter.toByteArray())+"\n");
 			}
 			
 			Pipe.confirmLowLevelWrite(outputPipe,pSize);
@@ -194,11 +201,10 @@ public class HTTPClientUtil {
 			Pipe.readBytes(requestPipe, activeWriter, payloadMeta, payloadLen); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
 			
 			int postLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-				
-//			boolean showSentPayload = false;
-//			if (showSentPayload) {
-//				System.out.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
-//			}
+	
+			if (showSentPayload) {
+				logger.info("\n"+new String(activeWriter.toByteArray())+"\n");
+			}
 			
 			Pipe.confirmLowLevelWrite(outputPipe,pSize);
 			Pipe.publishWrites(outputPipe);
