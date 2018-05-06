@@ -329,12 +329,14 @@ public class ServiceObjectHolder<T> {
      * 
      * @param key
      */
-    public T get(final long key) {  
+    public T get(final long key) {
         //must ensure we use the same instance for the work
         ServiceObjectData<T> localData = data;
         
         int modIdx = localData.mask & (int)key;
-        return (key != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx]);
+        
+        return key != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx];
+
     }
     
     public T remove(final long key) {  
