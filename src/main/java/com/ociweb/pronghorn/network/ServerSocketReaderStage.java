@@ -36,8 +36,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     private final ServerCoordinator coordinator;
 
     private Selector selector;
-
-    private int pendingSelections = 0;
+    
+	private Set<SelectionKey> selectedKeys;	
     
     public static boolean showRequests = false;
     
@@ -118,8 +118,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			selectionKeyAction.accept((SelectionKey)k);
 		}
 	};
-    
-    
+
     @Override
     public void run() {
 
@@ -141,14 +140,11 @@ public class ServerSocketReaderStage extends PronghornStage {
         ////////////////////////////////////////
         ///Read from socket
         ////////////////////////////////////////
-
-        while (hasNewDataToRead()) { //single & to ensure we check has new data to read.
-        	
-           
-           Set<SelectionKey> selectedKeys = selector.selectedKeys();
-            
-           //logger.info("found new data to read "+selectedKeys.size());
-           assert(selectedKeys.size()>0);	            
+    	int maxIterations = 1000;//TODO: test, also how are things unconsumed??
+    	 
+        while (--maxIterations>=0 &&
+        		
+        		hasNewDataToRead()) { //single & to ensure we check has new data to read.
 
            doneSelectors.clear();
            hasRoomForMore = true; //set this up before we visit
@@ -165,18 +161,9 @@ public class ServerSocketReaderStage extends PronghornStage {
            if (!hasRoomForMore) {
         	   break;
            }    	 
-        }	   
-        
-        
-//        long duration = System.currentTimeMillis()-now;
-//        if (duration>1) {
-//        	System.err.println("duration "+duration);
-//        }
- //       System.err.println("exit2");
-    	
+        }
     }
-
-    
+  
 
 
 	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
@@ -198,10 +185,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();
 						
-		//logger.info("\nnew request on connection {} ",channelId);
 		
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
-				
+		if (null==cc) {
+			//if this selection was closed then remove it from the selections
+			removeSelection(selection);
+			return true;
+		}
+
+		
+		
 		boolean processWork = true;
 		if (coordinator.isTLS) {
 				
@@ -232,7 +225,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				int responsePipeLineIdx = cc.getPoolReservation();
 
 				final boolean newBeginning = (responsePipeLineIdx<0);
-						
+
 				if (newBeginning) {
 	
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
@@ -247,9 +240,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 							
 							//TODO: check timeout and if its over find the
 							//      slowest connection and kill it off..
-							
-							
-							logger.trace("too many concurrent requests, back off load or increase concurrent inputs");
+														
+							logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs");
 						}
 						
 					}
@@ -304,7 +296,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	private void removeSelection(SelectionKey selection) {
 
 		doneSelectors.add(selection);//add to list for removal
-		pendingSelections--;
+
 	}
 
 	private int rMask = 0;
@@ -379,18 +371,22 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private boolean hasNewDataToRead() {
     	
-    	if (pendingSelections>0) {
+    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
     		return true;
     	}
     		
-        try {        	        	
+        try {
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
-            pendingSelections = selector.selectNow();
+            if (selector.selectNow() > 0) {
+            	selectedKeys = selector.selectedKeys();
+            	return true;
+            } else {
+            	return false;
+            }
 
-        //    logger.info("pending new selections {} ",pendingSelections);
-            return pendingSelections > 0;
+            //    logger.info("pending new selections {} ",pendingSelections);
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
             shutdownInProgress = true;

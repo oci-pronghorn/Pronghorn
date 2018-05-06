@@ -76,8 +76,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 	int maxWarningCount = 10;
 	
 	
-	private int pendingSelections;
-
 	private boolean shutdownInProgress;
 	private final ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
     private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
@@ -95,6 +93,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		}
 	};
 	
+	private Set<SelectionKey> selectedKeys;
 	
 	@Override
 	public void run() { //TODO: this method is the new hot spot in the profiler.
@@ -125,11 +124,6 @@ public class ClientSocketReaderStage extends PronghornStage {
     	
         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
 
-        	
-           Set<SelectionKey> selectedKeys = selector.selectedKeys();
-           if (selectedKeys.size()>0) {
-	           //logger.info("reading data from the selector "+selectedKeys.size());
-	           
 	           doneSelectors.clear();
 		
 	           hasRoomForMore = true;
@@ -146,9 +140,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			   if (!hasRoomForMore) {
 				   return;
 			   }
-			   
-           }
-		   
+		
         }
         
         /////////////////////////////////////////////
@@ -203,14 +195,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 			boolean didWork = false;
 			didWork = processConnection(didWork, cc);
 			if (didWork) {
-				pendingSelections--;
 				doneSelectors.add(selection);
 			} else {
 				//System.err.println("skipped");
 				hasRoomForMore = false;//if any one is blocked go work elsewhere.
 			}
 		} else {
-			pendingSelections--;
 			doneSelectors.add(selection);//if null socket this was decomposed already
 		}
 		
@@ -248,31 +238,31 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 	
     private boolean hasNewDataToRead(Selector selector) {
-    	
-    	if (pendingSelections>0) {
+    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
     		return true;
     	}
     		
-        return hasNewDataToReadImpl(selector);
-    }
-
-	private boolean hasNewDataToReadImpl(Selector selector) {
-		try {        	        	
+        try {
         	////////////
-        	//CAUTION - select now clears previous count and only returns the additional I/O operation counts which have become avail since the last time SelectNow was called
+        	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
-            pendingSelections = selector.selectNow();
+            if (selector.selectNow() > 0) {
+            	selectedKeys = selector.selectedKeys();
+            	return true;
+            } else {
+            	return false;
+            }
 
-            ///logger.info("pending new selections {} keys {}",pendingSelections,selector.keys().size());
-        
-            return pendingSelections > 0;
+            //    logger.info("pending new selections {} ",pendingSelections);
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
             shutdownInProgress = true;
             return false;
         }
-	}
-	
+        
+    }
+
+
 
 	private boolean processConnection(boolean didWork, ClientConnection cc) {
 		//process handshake before reserving one of the pipes
