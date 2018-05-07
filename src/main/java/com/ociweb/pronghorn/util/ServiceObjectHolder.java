@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.util;
 
 import java.lang.reflect.Array;
+import java.util.Arrays;
 
 /**
  * Small footprint manager/holder of service objects. 
@@ -98,6 +99,10 @@ public class ServiceObjectHolder<T> {
     
     private final boolean shouldGrow;
     
+    public String toString() {
+    	return Arrays.toString(data.serviceObjectKeys)+" "+Arrays.toString(data.serviceObjectValues);
+    	
+    }
     
     /**
      * Do not use this constructor unless you want to start out with internal arrays more near the desired size.
@@ -332,9 +337,7 @@ public class ServiceObjectHolder<T> {
     public T get(final long key) {
         //must ensure we use the same instance for the work
         ServiceObjectData<T> localData = data;
-        
         int modIdx = localData.mask & (int)key;
-        
         return key != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx];
 
     }
