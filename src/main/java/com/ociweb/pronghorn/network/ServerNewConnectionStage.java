@@ -10,14 +10,15 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Set;
 
 import javax.net.ssl.SSLEngine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -40,8 +41,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
     
+    private Set<SelectionKey> selectedKeys;	
+    private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
+	
     private Selector selector;
-    private int selectionKeysAllowedToWait = 0;//NOTE: should test what happens when we make this bigger.
     private ServerSocketChannel server;
     private String host;
     private final long startupTimeNS;
@@ -252,6 +255,30 @@ public class ServerNewConnectionStage extends PronghornStage{
 		return endPoint;
 	}
 
+    private boolean hasNewDataToRead() {
+    	
+    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
+    		return true;
+    	}
+    		
+        try {
+        	////////////
+        	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
+        	////////////        	
+            if (selector.selectNow() > 0) {
+            	selectedKeys = selector.selectedKeys();
+            	return true;
+            } else {
+            	return false;
+            }
+
+            //    logger.info("pending new selections {} ",pendingSelections);
+        } catch (IOException e) {
+        	logger.warn("new connections",e);
+            return false;
+        }
+    }
+    
     @Override
     public void run() {
   
@@ -259,7 +286,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	    	//long now = System.nanoTime();
 	    	
 	        try {//selector may be null if shutdown was called on startup.
-	           if (null!=selector && selector.selectNow() > selectionKeysAllowedToWait) {
+	           if (hasNewDataToRead()) {
 	                //we know that there is an interesting (non zero positive) number of keys waiting.
 	        
 	        	    //we have no pipes to monitor so this must be done explicity
@@ -267,11 +294,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 	        	    	this.didWorkMonitor.published();
 	        	    }
 	        	    
-	                Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
+	        	    //TODO: switch to visitor pattern like others...
+	        	    Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+	        	    
 	                while (keyIterator.hasNext()) {
 	                
 	                  SelectionKey key = keyIterator.next();
-	                  keyIterator.remove();
 	                  int readyOps = key.readyOps();
 	                                    
 	                  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
@@ -285,25 +313,27 @@ public class ServerNewConnectionStage extends PronghornStage{
 	
 	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
-	                      long channelId = holder.lookupInsertPosition();
-	                  
+	                      long channelId = holder.lookupInsertPosition();	        
+	                     // logger.info("\nnew connection {}",channelId);
+	                      	                      
 	                      if (channelId<0) {	                    	
-	                    	  long leastUsedConnectionId = (-channelId);
-	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);
-	                    	  long now = System.currentTimeMillis();
-	                    	  if ( (tempConnection!=null)
-	                    //		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
-	                    			  ) {	  //                  		
-	                    		  //logger.info("server can not accept new connections");
-	                    		 // server.accept().close();
-	                    		  //We have no connections we can replace so do not accept this
-	                    		  return;//try again later if the client is still waiting.	                    		  
-	                    	  } else {
-	                    		  //only use if its been removed.
-	             //       		  logger.info("server will reuse old connection {}",leastUsedConnectionId);
-	                    		  //reuse old index for this new connection
-	                    		  channelId = leastUsedConnectionId;	                    		  
-	                    	  }
+//	                    	  long leastUsedConnectionId = (-channelId);
+//	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);	     
+//	                    	  if ( (tempConnection!=null)
+//	                    //		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
+//	                    			  ) {	  //                  		
+//	                    		  logger.info("\n*******************8 server can not accept new connections");
+//	                    		 // server.accept().close();
+//	                    		  //We have no connections we can replace so do not accept this
+//	                    		  return;//try again later if the client is still waiting.	                    		  
+//	                    	  } else {
+//	                    		  //TODO: must close and dispose of old connection before use...
+//	                    		  //only use if its been removed.
+//	                    		  logger.info("\n###################3  server will reuse old connection position {}",leastUsedConnectionId);
+//	                    		  //reuse old index for this new connection
+//	                    		  channelId = leastUsedConnectionId;	                    		  
+//	                    	  }
+	                    	  return;//must wait for the old value to no longer be used
 	                      }
 	                      
 	                      int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
@@ -334,7 +364,9 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                        				  channel, channelId,
 	                        				  coordinator));
 	                          
+	                        // System.err.println("new connection:"+channelId+" AAAA "+holder);
 	                         
+	                          
 	                                                                                                                            
 	                         // logger.info("register new data to selector for pipe {}",targetPipeIdx);
 	                          Selector selector2 = ServerCoordinator.getSelector(coordinator);
@@ -342,7 +374,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 									           SelectionKey.OP_READ, 
 									           ServerCoordinator.selectorKeyContext(coordinator, channelId));
 	    						
-							  //logger.info("new server connection attached for new id {} ",channelId);
+							  //logger.info("\nnew server connection attached for new id {} ",channelId);
 							  if (null!=newClientConnections) {								  
 		                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
 							  }
@@ -357,8 +389,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 	                      assert(0 != (SelectionKey.OP_CONNECT & readyOps)) : "only expected connect";
 	                      ((SocketChannel)key.channel()).finishConnect(); //TODO: if this does not scale we should move it to the IOStage.
 	                  }
+
+	                  //only remove if we consumed this.
+	                  keyIterator.remove();
 	                                   
 	                }
+	                
+	                
 	            }
 	        } catch (IOException e) {
 	        	logger.trace("Unable to open new incoming connection",e);
