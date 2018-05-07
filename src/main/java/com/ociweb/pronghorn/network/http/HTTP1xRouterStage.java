@@ -907,7 +907,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		ChannelWriter cw = cwc.beginWrite();
 		if (null != cw) {//try again later if this connection is overloaded
 			
-			int requestContext = keepAliveOrNotContext(httpRevisionId);
+			int requestContext = keepAliveOrNotContext(httpRevisionId, serverConnection.id);
 				
 			long postLength = -2;
 			
@@ -934,6 +934,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    } else if (-1 == headerToken) {            	
 			    	if (remainingLen>MAX_HEADER) {   
 			    		//client has sent very bad data.
+			    		logger.info("client has sent bad data connection {} was closed",serverConnection.id);
 			    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 			    	}
 			        //nothing valid was found so this is incomplete.
@@ -965,7 +966,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 					    } else if (HTTPHeaderDefaults.CONNECTION.ordinal() == header.ordinal()) {            	
 					    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
 					    	
-					    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader);                
+					    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader, serverConnection.id);                
 					    }			                
 		
 					    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
@@ -1199,36 +1200,36 @@ private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 }
 
 
-private static int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx) {
-	assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
-	if (-1 != messageIdx) {
-		throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
+	private static int processShutdown(Pipe<NetPayloadSchema> selectedInput, int messageIdx) {
+		assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
+		if (-1 != messageIdx) {
+			throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
+		}
+		
+		Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
+		Pipe.readNextWithoutReleasingReadLock(selectedInput);
+		return messageIdx;//do not loop again just exit now
 	}
-	
-	Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
-	Pipe.readNextWithoutReleasingReadLock(selectedInput);
-	return messageIdx;//do not loop again just exit now
-}
 
 
-private static void processBegin(
-		HTTP1xRouterStage< ?, ?, ?, ?> that, 
-		final int idx, Pipe<NetPayloadSchema> selectedInput) {
-	assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
-	assert(0==Pipe.releasePendingByteCount(selectedInput));
-		     
-	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
-       // 	  ServerCoordinator.start = System.nanoTime();
-     	  
-	//logger.info("accumulate begin");
-	//keep this as the base for our counting of sequence
-	that.sequences[idx] = Pipe.takeInt(selectedInput);
-	
-	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
-	//Pipe.releaseReadLock(selectedInput);
-	Pipe.readNextWithoutReleasingReadLock(selectedInput);
-	//do not return, we will go back arround the while again. 
-}
+	private static void processBegin(
+			HTTP1xRouterStage< ?, ?, ?, ?> that, 
+			final int idx, Pipe<NetPayloadSchema> selectedInput) {
+		assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
+		assert(0==Pipe.releasePendingByteCount(selectedInput));
+			     
+		     //  	  ServerCoordinator.inServerCount.incrementAndGet();
+	       // 	  ServerCoordinator.start = System.nanoTime();
+	     	  
+		//logger.info("accumulate begin");
+		//keep this as the base for our counting of sequence
+		that.sequences[idx] = Pipe.takeInt(selectedInput);
+		
+		Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
+		//Pipe.releaseReadLock(selectedInput);
+		Pipe.readNextWithoutReleasingReadLock(selectedInput);
+		//do not return, we will go back arround the while again. 
+	}
 
 
     // Warning Pipe.hasContentToRead(selectedInput) must be called first.
@@ -1295,7 +1296,9 @@ private static void processBegin(
 	}
 
 
-	private static int applyKeepAliveOrCloseToContext(int requestContext, TrieParserReader trieReader) {
+	private static int applyKeepAliveOrCloseToContext(int requestContext, 
+			                                          TrieParserReader trieReader,
+			                                          long connectionId) {
 		//LOOK FOR ONE OF THE FOLLOWING, GRAB SECOND CHAR
 		//close            SET CLOSE FOR ALL
 		//keep-alive       CLEAR CLOSE FOR ALL
@@ -1312,11 +1315,12 @@ private static void processBegin(
 		
 		switch(len) {
 		    case 'l': //close
-		    	//logger.warn("Server got connection: {} from client.",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
-		        requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;                        
+		    	requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK; 
+		    	//System.err.println("close detected in header so connection "+connectionId+" was closed");
 		        break;
 		    case 'e': //keep-alive
-		        requestContext &= (~ServerCoordinator.CLOSE_CONNECTION_MASK);                        
+		        requestContext &= (~ServerCoordinator.CLOSE_CONNECTION_MASK);
+		        assert(0==(requestContext&ServerCoordinator.CLOSE_CONNECTION_MASK));
 		        break;
 		    case 'p': //Upgrade
 		        requestContext |= ServerCoordinator.UPGRADE_MASK;                        
@@ -1332,7 +1336,7 @@ private static void processBegin(
 	}
 
 
-	private static int keepAliveOrNotContext(int revisionId) {
+	private static int keepAliveOrNotContext(int revisionId, long id) {
 		int requestContext = 0; //by default this is keep alive, eg zero.
         
         if(
@@ -1340,6 +1344,7 @@ private static void processBegin(
            (HTTPRevisionDefaults.HTTP_1_0.ordinal() == revisionId)
           ) {
             requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;
+            System.err.println("due to old HTTP in use the connection was closed for "+id);
         }
 		return requestContext;
 	}

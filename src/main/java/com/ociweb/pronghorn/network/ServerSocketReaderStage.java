@@ -37,13 +37,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private Selector selector;
     
-	private Set<SelectionKey> selectedKeys;	
     
     public static boolean showRequests = false;
     
-    private StringBuilder[] accumulators;
     private boolean shutdownInProgress;
     private final String label;
+
+    private Set<SelectionKey> selectedKeys;	
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
     
@@ -177,21 +177,31 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	}
 
+	
 	private boolean processSelection(SelectionKey selection) {
 		assert isRead(selection) : "only expected read"; 
-		SocketChannel socketChannel = (SocketChannel)selection.channel();
+		final SocketChannel socketChannel = (SocketChannel)selection.channel();
     
 		//get the context object so we know what the channel identifier is
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();
-						
-		
+		assert(channelId>=0);
+
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
-		if (null==cc) {
+		
+		if (null!=cc) {
+			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
+		} else {
+			assert(validateClose(socketChannel, channelId));
+			try {
+				socketChannel.close();
+			} catch (IOException e) {				
+			}
 			//if this selection was closed then remove it from the selections
 			removeSelection(selection);
 			return true;
 		}
+		assert(cc.id == channelId);
 
 		
 		
@@ -264,10 +274,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					//System.err.println(responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
 					
-					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, output[responsePipeLineIdx], newBeginning, cc, selection); 
+					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, 
+															cc.getSequenceNo(),
+							                                output[responsePipeLineIdx], 
+							                                newBeginning, 
+							                                cc, selection); 
 		            					
 					if (pumpState > 0) { 
-		            	//logger.info("remove this selection");
+		            	//logger.info("remove this selection "+channelId);
 		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
 		            	removeSelection(selection);
 		            } else {	
@@ -283,6 +297,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 		}
 		return hasOutputRoom;
+	}
+
+	private boolean validateClose(final SocketChannel socketChannel, final long channelId) {
+
+		try {
+			int len = socketChannel.read(ByteBuffer.allocate(3));
+			if (len>0) {
+				logger.warn("client connection is sending addional data after closing connection: {}",socketChannel);
+			}
+		} catch (IOException e) {
+			//ignore
+		}		
+		return true;
 	}
 
 	private boolean isRead(SelectionKey selection) {
@@ -398,9 +425,11 @@ public class ServerSocketReaderStage extends PronghornStage {
     private int r2; //needed by assert
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
-    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, BaseConnection cc, SelectionKey selection) {
+    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, 
+    		long channelId, int sequenceNo, Pipe<NetPayloadSchema> targetPipe, 
+    		boolean newBeginning, BaseConnection cc, SelectionKey selection) {
 
-        //keep appending messages until the channel is empty or the pipe is full
+    	//keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
     	ByteBuffer[] b = null;
     	long temp = 0;
@@ -419,13 +448,20 @@ public class ServerSocketReaderStage extends PronghornStage {
             	if (temp>0){
             		len+=temp;
             	}            
-                 
+
                 assert(readCountMatchesLength(len, b));
                 
                 if (temp>=0) {
-                	return publishOrAbandon(channelId, targetPipe, len, b, true, newBeginning, cc);
+                	return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
                 } else {
-                	return disconnected(channelId, targetPipe, newBeginning, cc, selection, len, b);                	
+                	if (null!=cc) {
+                		cc.clearPoolReservation();
+                	}
+                	int result = disconnected(channelId, sequenceNo, targetPipe, newBeginning, selection, len, b);                	
+                	if (null!=cc) {
+                		cc.close();
+                	}
+                	return result;
                 }
 
             } catch (IOException e) {
@@ -436,7 +472,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 	            	coordinator.releaseResponsePipeLineIdx(cc.id);    
 					cc.clearPoolReservation();
             	
-					return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
+					int result = publishOrAbandon(channelId, cc.getSequenceNo(), targetPipe, len, b, temp>=0, newBeginning);
+					if (temp<0) {
+						cc.close();
+					}
+					
+					return result;
             }
         } else {
         	//logger.info("try again later, unable to launch do to lack of room in {} ",targetPipe);
@@ -444,14 +485,14 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
 
-	private int disconnected(long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, BaseConnection cc,
+	private int disconnected(long channelId, int sequenceNo, 
+			Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, 
 			SelectionKey selection, long len, ByteBuffer[] b) {
 		//logger.info("client disconnected, so release");
 		//client was disconnected so release all our resources to ensure they can be used by new connections.
 		selection.cancel();                	
-		coordinator.releaseResponsePipeLineIdx(cc.id);    
-		cc.clearPoolReservation();
-		return publishOrAbandon(channelId, targetPipe, len, b, false, newBeginning, cc);
+		coordinator.releaseResponsePipeLineIdx(channelId);
+		return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, false, newBeginning);
 	}
 
 	private boolean collectRemainingCount(ByteBuffer[] b) {
@@ -466,7 +507,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		return true;
 	}
 
-	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, BaseConnection cc) {
+	private int publishOrAbandon(long channelId, int sequenceNo, Pipe<NetPayloadSchema> targetPipe, long len, 
+			                     ByteBuffer[] b, boolean isOpen, boolean newBeginning) {
 		//logger.info("{} publish or abandon",System.currentTimeMillis());
 		if (len>0) {
 			
@@ -475,22 +517,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 				Pipe.presumeRoomForWrite(targetPipe);
 				
 				int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
-				Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
+				Pipe.addIntValue(sequenceNo, targetPipe);						
 				Pipe.confirmLowLevelWrite(targetPipe, size);
 				Pipe.publishWrites(targetPipe);
 				
 			}				
+
 			
-		//	logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
-			assert(cc.id == channelId);			
-	
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 	
 			
-			publishData(targetPipe, channelId, len, cc);                  	 
+			publishData(targetPipe, channelId, len);                  	 
 			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len,targetPipe,((fullTarget&&isOpen) ? 0 : 1));
-			
-			
 			
 			return (fullTarget && isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 			
@@ -501,7 +539,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 
-             if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
+             if (isOpen && newBeginning) {
+            	 //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
              	BaseConnection conn = coordinator.connectionForSessionId(channelId);
@@ -510,10 +549,7 @@ public class ServerSocketReaderStage extends PronghornStage {
              	}
              //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
              }
-             
-             if (!isOpen) {
-            	 cc.close();
-             }
+
 			 
 			 return 1;//yes we are done
 		}
@@ -533,29 +569,27 @@ public class ServerSocketReaderStage extends PronghornStage {
           }
     }
 
-    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len, BaseConnection cc) {
+    private void publishData(Pipe<NetPayloadSchema> targetPipe, 
+    		                 long channelId, 
+    		                 long len) {
 
     	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";        
 
         final int size = Pipe.addMsgIdx(targetPipe, messageType);               
         if (messageType>=0) {
 	        Pipe.addLongValue(channelId, targetPipe);  
-	        long nowNS = System.nanoTime();
-	        cc.setLastUsedTime(nowNS);//needed to know when this connection can be disposed
-			Pipe.addLongValue(nowNS, targetPipe);
+	        Pipe.addLongValue(System.nanoTime(), targetPipe);
 			
 	        if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
 	        	Pipe.addLongValue(-1, targetPipe);
 	        }
 	        
-	        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
-	
-	        
-	//ONLY VALID FOR UTF8
+	        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);     
 	
 	        if (showRequests) {
-	        	logger.info("/////////////\n/////Server read for channel {} has connection {} bPos{} len {} \n{}\n/////////////////////",channelId, 
-	        			cc.isValid, originalBlobPosition, len, 
+	        	//ONLY VALID FOR UTF8
+	        	logger.info("/////////////\n/////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",
+	        			channelId, originalBlobPosition, len, 
 	        			
 	        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
 	        			

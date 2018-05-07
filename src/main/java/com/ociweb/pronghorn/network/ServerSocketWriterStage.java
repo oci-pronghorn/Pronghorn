@@ -246,7 +246,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
     
 		    if (null!=socketHolder) {
-
+		    	//logger.info("removed server id {}",channelId);
+                //new Exception("removed server id "+channelId).printStackTrace();
+                
 		    	//we are disconnecting so we will remove the connection from the holder.
 		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
 		        assert(null != serverConnection);
@@ -297,17 +299,15 @@ public class ServerSocketWriterStage extends PronghornStage {
 	
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
-    	final boolean takeTail = NetPayloadSchema.MSG_PLAIN_210 == msgIdx;
-     	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
+    	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
     	
         Pipe<NetPayloadSchema> pipe = input[idx];
         final long channelId = Pipe.takeLong(pipe);
         final long arrivalTime = Pipe.takeLong(pipe);        
-        
-        
+               
         activeIds[idx] = channelId;
-        if (takeTail) {
-        	activeTails[idx] =  Pipe.takeLong(pipe);
+        if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {
+        	activeTails[idx] = Pipe.takeLong(pipe);
         } else {
         	assert(msgIdx == NetPayloadSchema.MSG_ENCRYPTED_200);
         	activeTails[idx] = -1;
@@ -317,13 +317,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         int len = Pipe.takeRingByteLen(pipe);
                 
         assert(len>0) : "All socket writes must be of zero length or they should not be requested";
-        
-        //this len is often too short??
-        
-        
-        
-        //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
-                
+    
         ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         
         if (null!=socketHolder) {
@@ -343,6 +337,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
 	        	writeToChannelBatchCountDown[idx] = maxBatchCount;
+
 	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
@@ -497,6 +492,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			        	}
 			        	//output buffer may be too small so keep writing
 		        	} while (target.hasRemaining());
+	
 		        	
 		        	if (!target.hasRemaining()) {
 		        		markDoneAndRelease(idx);

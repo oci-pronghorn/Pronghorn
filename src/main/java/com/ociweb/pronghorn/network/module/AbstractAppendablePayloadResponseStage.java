@@ -237,7 +237,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			//NOTE: we MUST close this or the telemetry data feed will hang on the browser side
 			//      TODO: we may want a way to define this in construction.
 			activeFieldRequestContext |=  OrderSupervisorStage.CLOSE_CONNECTION_MASK;
-			
+
 			//mark all done.
 			payloadWorkspace.clear();
 			activeChannelId = -1;

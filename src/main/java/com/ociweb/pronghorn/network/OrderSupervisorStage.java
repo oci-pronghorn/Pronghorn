@@ -797,7 +797,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	 	//can only be done when we are at the end of the message
 	 	//////////////
 	 	if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
-	 		//logger.info("sending disconnect to the ServerSocketWriter");
+	 		
+	 		//logger.info("context is closed so sending disconnect to the ServerSocketWriter for connection {}",channelId);
+	 		
 	 		int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
 	 		Pipe.addLongValue(channelId, output);
 	 		Pipe.confirmLowLevelWrite(output, disSize);
