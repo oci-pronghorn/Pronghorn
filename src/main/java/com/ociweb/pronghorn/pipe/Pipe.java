@@ -3270,15 +3270,6 @@ public class Pipe<T extends MessageSchema<T>> {
         pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
     }
 
-    @Deprecated
-	public static <S extends MessageSchema<S>> void releaseAll(Pipe<S> pipe) {
-    	    assert(Pipe.singleThreadPerPipeRead(pipe.id));
-			int i = pipe.blobRingTail.byteWorkingTailPos.value= pipe.blobRingHead.byteWorkingHeadPos.value;
-            PaddedInt.set(pipe.blobRingTail.bytesTailPos,i);
-			pipe.slabRingTail.tailPos.lazySet(pipe.slabRingTail.workingTailPos.value= pipe.slabRingHead.workingHeadPos.value);
-
-    }
-
     /**
      * Low level API for publish
      * @param pipe
