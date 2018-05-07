@@ -189,7 +189,6 @@ public class ServiceObjectHolder<T> {
                    //copy and grow the data space, done locally then it is all replaced at once to not break concurrent callers
                     data = new ServiceObjectData<T>(data, 2);   
                 } else {
-                	sequenceCounter = localSequenceCount;//where we left off
                     //do not grow instead replace the least used member                    
                     index = maxPeriodIdx;
                     modIdx = data.mask & (int)maxPeriodIdx;
@@ -201,11 +200,13 @@ public class ServiceObjectHolder<T> {
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (keepLooking(data.serviceObjectValues[modIdx]));
         
-        sequenceCounter = localSequenceCount;//where we left off
         
         data.addTimeMS[modIdx] = System.currentTimeMillis();
         data.serviceObjectKeys[modIdx] = index;
         data.serviceObjectValues[modIdx] = serviceObject;
+        
+        sequenceCounter = Math.max(sequenceCounter,index);
+        
         //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }
@@ -254,21 +255,14 @@ public class ServiceObjectHolder<T> {
           //  System.err.println("checking "+modIdx+"  "+index+"  "+data.serviceObjectValues[modIdx]);
         
             if (index==hardStop && keepLooking(data.serviceObjectValues[modIdx])) {
-            	assert(-1!=maxPeriodIdx);
-            	
-            	sequenceCounter = maxPeriodIdx;//where we left off
+            	assert(-1!=maxPeriodIdx);            	
             	//do not grow instead return the negative value of the least used object
             	return -maxPeriodIdx;
-            }
-            
+            }            
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (keepLooking(data.serviceObjectValues[modIdx]));
-        
-        sequenceCounter = localSequenceCount;//where we left off
 
-        data.serviceObjectKeys[modIdx] = index;
-        data.serviceObjectValues[modIdx] = null; //To be set by set value later
         //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }
@@ -287,7 +281,7 @@ public class ServiceObjectHolder<T> {
     	data.addTimeMS[modIdx] = System.currentTimeMillis();
     	data.serviceObjectKeys[modIdx] = index;//must be stored to make this a valid object
     	data.serviceObjectValues[modIdx] = (T)object;    	
-    	
+    	sequenceCounter = Math.max(sequenceCounter,index);
     }
     
     

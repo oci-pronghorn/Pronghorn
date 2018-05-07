@@ -298,7 +298,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	        	    Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
 	        	    
 	        	    doneSelectors.clear();
-	        	    
+	        	    //selectedKeys.forEach(selectionKeyAction);
 	                while (keyIterator.hasNext()) {
 	                
 	                  SelectionKey key = keyIterator.next();
@@ -334,16 +334,18 @@ public class ServerNewConnectionStage extends PronghornStage{
 	}
 	
 	private void processSelectionKey(SelectionKey key) throws IOException {
+		
+		if (null!=newClientConnections 
+			&& !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+			return;
+		}
+
 		int readyOps = key.readyOps();
 		                    
 		  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
 		     
 			  //ServerCoordinator.acceptConnectionStart = now;
 			  
-		      if (null!=newClientConnections 
-		    	  && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
-		    	  return;
-		      }
 
 		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
@@ -380,10 +382,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 		            				  channel, channelId,
 		            				  coordinator));
 		              
-		            // System.err.println("new connection:"+channelId+" AAAA "+holder);
-		             
-		              
-		                                                                                                                
+		             //logger.info("\naccepting new connection {}",channelId); 
+		        		                                                                                                                
 		             // logger.info("register new data to selector for pipe {}",targetPipeIdx);
 		              Selector selector2 = ServerCoordinator.getSelector(coordinator);
 					  channel.register(selector2, 
@@ -397,7 +397,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 					  
 		              
 		          } catch (IOException e) {
-		        	  logger.trace("Unable to accept connection",e);
+		        	  logger.error("Unable to accept connection",e);
 		          } 
 		          doneSelectors.add(key);		          
 		      }
