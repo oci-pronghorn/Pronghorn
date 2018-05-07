@@ -297,104 +297,17 @@ public class ServerNewConnectionStage extends PronghornStage{
 	        	    //TODO: switch to visitor pattern like others...
 	        	    Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
 	        	    
+	        	    doneSelectors.clear();
+	        	    
 	                while (keyIterator.hasNext()) {
 	                
 	                  SelectionKey key = keyIterator.next();
-	                  int readyOps = key.readyOps();
-	                                    
-	                  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
-	                     
-	                	  //ServerCoordinator.acceptConnectionStart = now;
-	                	  
-	                      if (null!=newClientConnections 
-	                    	  && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
-	                    	  return;
-	                      }
-	
-	                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
-
-	                      long channelId = holder.lookupInsertPosition();	        
-	                     // logger.info("\nnew connection {}",channelId);
-	                      	                      
-	                      if (channelId<0) {	                    	
-//	                    	  long leastUsedConnectionId = (-channelId);
-//	                    	  ServerConnection tempConnection = holder.get(leastUsedConnectionId);	     
-//	                    	  if ( (tempConnection!=null)
-//	                    //		  && (now-tempConnection.getLastUsedTime() < CONNECTION_TTL_MS )
-//	                    			  ) {	  //                  		
-//	                    		  logger.info("\n*******************8 server can not accept new connections");
-//	                    		 // server.accept().close();
-//	                    		  //We have no connections we can replace so do not accept this
-//	                    		  return;//try again later if the client is still waiting.	                    		  
-//	                    	  } else {
-//	                    		  //TODO: must close and dispose of old connection before use...
-//	                    		  //only use if its been removed.
-//	                    		  logger.info("\n###################3  server will reuse old connection position {}",leastUsedConnectionId);
-//	                    		  //reuse old index for this new connection
-//	                    		  channelId = leastUsedConnectionId;	                    		  
-//	                    	  }
-	                    	  return;//must wait for the old value to no longer be used
-	                      }
-	                      
-	                      int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
-	                                            
-	                      SocketChannel channel = server.accept();
-	                      
-	                      try {                          
-	                          channel.configureBlocking(false);
-	                          
-	                          //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
-	                          channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
-	                          channel.socket().setPerformancePreferences(1, 0, 2);
-	                 
-	                          SSLEngine sslEngine = null;
-	                          if (coordinator.isTLS) {
-								  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
-								  sslEngine.setUseClientMode(false); //here just to be complete and clear
-								  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
-								  // sslEngine.setWantClientAuth(true); //the auth is optional
-								  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
-								  
-								  sslEngine.beginHandshake();
-	                          }
-							  							  
-							  
-	                          holder.setValue(channelId, 
-	                        		  new ServerConnection(sslEngine, 
-	                        				  channel, channelId,
-	                        				  coordinator));
-	                          
-	                        // System.err.println("new connection:"+channelId+" AAAA "+holder);
 	                         
-	                          
-	                                                                                                                            
-	                         // logger.info("register new data to selector for pipe {}",targetPipeIdx);
-	                          Selector selector2 = ServerCoordinator.getSelector(coordinator);
-							  channel.register(selector2, 
-									           SelectionKey.OP_READ, 
-									           ServerCoordinator.selectorKeyContext(coordinator, channelId));
-	    						
-							  //logger.info("\nnew server connection attached for new id {} ",channelId);
-							  if (null!=newClientConnections) {								  
-		                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
-							  }
-							  
-	                          
-	                      } catch (IOException e) {
-	                    	  logger.trace("Unable to accept connection",e);
-	                      } 
-	
-	                  } else {
-	                	  logger.error("should this be run at all?");
-	                      assert(0 != (SelectionKey.OP_CONNECT & readyOps)) : "only expected connect";
-	                      ((SocketChannel)key.channel()).finishConnect(); //TODO: if this does not scale we should move it to the IOStage.
-	                  }
+	                  processSelectionKey(key);
 
-	                  //only remove if we consumed this.
-	                  keyIterator.remove();
-	                                   
 	                }
 	                
+	                removeDoneKeys(selectedKeys);
 	                
 	            }
 	        } catch (IOException e) {
@@ -407,6 +320,95 @@ public class ServerNewConnectionStage extends PronghornStage{
 		}
 	
     }
+
+
+	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
+		//sad but this is the best way to remove these without allocating a new iterator
+		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
+		ArrayList<SelectionKey> doneSelectors2 = doneSelectors;
+		int c = doneSelectors2.size();
+		while (--c>=0) {
+		    	selectedKeys.remove(doneSelectors2.get(c));
+		}
+
+	}
+	
+	private void processSelectionKey(SelectionKey key) throws IOException {
+		int readyOps = key.readyOps();
+		                    
+		  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
+		     
+			  //ServerCoordinator.acceptConnectionStart = now;
+			  
+		      if (null!=newClientConnections 
+		    	  && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+		    	  return;
+		      }
+
+		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
+
+		      long channelId = holder.lookupInsertPosition();	        
+		     // logger.info("\nnew connection {}",channelId);
+		      	                      
+		      if (channelId>=0) {		                    
+		          
+		          int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
+		                                
+		          SocketChannel channel = server.accept();
+		          
+		          try {                          
+		              channel.configureBlocking(false);
+		              
+		              //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
+		              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
+		              channel.socket().setPerformancePreferences(1, 0, 2);
+		     
+		              SSLEngine sslEngine = null;
+		              if (coordinator.isTLS) {
+						  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
+						  sslEngine.setUseClientMode(false); //here just to be complete and clear
+						  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
+						  // sslEngine.setWantClientAuth(true); //the auth is optional
+						  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
+						  
+						  sslEngine.beginHandshake();
+		              }
+					  							  
+					  
+		              holder.setValue(channelId, 
+		            		  new ServerConnection(sslEngine, 
+		            				  channel, channelId,
+		            				  coordinator));
+		              
+		            // System.err.println("new connection:"+channelId+" AAAA "+holder);
+		             
+		              
+		                                                                                                                
+		             // logger.info("register new data to selector for pipe {}",targetPipeIdx);
+		              Selector selector2 = ServerCoordinator.getSelector(coordinator);
+					  channel.register(selector2, 
+							           SelectionKey.OP_READ, 
+							           ServerCoordinator.selectorKeyContext(coordinator, channelId));
+						
+					  //logger.info("\nnew server connection attached for new id {} ",channelId);
+					  if (null!=newClientConnections) {								  
+		                  publishNotificationOFNewConnection(targetPipeIdx, channelId);
+					  }
+					  
+		              
+		          } catch (IOException e) {
+		        	  logger.trace("Unable to accept connection",e);
+		          } 
+		          doneSelectors.add(key);		          
+		      }
+
+		  } else {
+			  logger.error("should this be run at all?");
+		      assert(0 != (SelectionKey.OP_CONNECT & readyOps)) : "only expected connect";
+		      ((SocketChannel)key.channel()).finishConnect(); //TODO: if this does not scale we should move it to the IOStage.
+		      doneSelectors.add(key);
+		  }
+	}
 
 	private void publishNotificationOFNewConnection(int targetPipeIdx, final long channelId) {
 		//the pipe selected has already been checked to ensure room for the connect message                      
