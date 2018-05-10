@@ -1,4 +1,4 @@
-# PronghornRanch (A Maven Archetype for GreenLightning projects)
+# PronghornRanch (A Maven Archetype for Pronghorn projects)
 
 ## What you will need before you start:
 #### [Java 8](https://docs.oracle.com/javase/8/docs/technotes/guides/install/install_overview.html) 
