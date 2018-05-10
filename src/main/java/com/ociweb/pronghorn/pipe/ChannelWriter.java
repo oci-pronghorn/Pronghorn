@@ -13,7 +13,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 
 	/**
 	 * Writes specified string to ChannelWriter
-	 * @param s string to be written
+	 * @param s UTF to be written
 	 */
 	 abstract public void writeUTF(String s);
 
@@ -25,7 +25,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 
 	/**
 	 * Gets length of data written so far to ChannelWriter and passes data as int
-	 * @return int length of ChannelWriter
+	 * @return length of ChannelWriter
 	 */
 	 abstract public int length();
 
@@ -74,43 +74,106 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * @param s ASCII to be written
 	 */
 	 abstract public void writeASCII(CharSequence s);
-	 	 
+
+	/**
+	 * Writes longs to ChannelWriter
+	 * @param numerator long to be written
+	 * @param denominator long to be written
+	 */
 	 abstract public void writeRational(long numerator, long denominator);
-	 
+
+	/**
+	 * Writes long and byte to ChannelWriter
+	 * @param m long to be written
+	 * @param e byte to be written
+	 * //TODO: more descriptive args?
+	 */
 	 abstract public void writeDecimal(long m, byte e);
-	 
+
+	/**
+	 * Writes array of UTFs to ChannelWriter
+	 * @param utfs string to be written
+	 */
 	 abstract public void writeUTFArray(String[] utfs);
-	 
+
 	 abstract public void write(byte[] source, int sourceOff, int sourceLen, int sourceMask);
-	 
+
+	/**
+	 * Writes packed CharSequence to ChannelWriter
+	 * @param text text to be written
+	 */
 	 abstract public void writePackedString(CharSequence text);
-	 
+
+	/**
+	 * Writes packed long to ChannelWriter
+	 * @param value long to be written
+	 */
 	 abstract public void writePackedLong(long value);
-	 
+
+	/**
+	 * Writes packed int to ChannelWriter
+	 * @param value int to be written
+	 */
 	 abstract public void writePackedInt(int value);
-	 
+
+	/**
+	 * Writes packed short to ChannelWriter
+	 * @param value short to be written
+	 */
 	 abstract public void writePackedShort(short value);
-	 
+
+	/**
+	 * Writes double to ChannelWriter
+	 * @param value double to be written
+	 */
 	 abstract public void writeDouble(double value);
-	 
-	 abstract public void writeFloat(float value);	 
-	 
-	 abstract public void writeLong(long v);
-	 
+
+	/**
+	 * Writes float to ChannelWriter
+	 * @param value float to be written
+	 */
+	abstract public void writeFloat(float value);
+
+	/**
+	 * Writes long to ChannelWriter
+	 * @param v long to be written
+	 */
+	abstract public void writeLong(long v);
+
+	/**
+	 * Writes int to ChannelWriter
+	 * @param v int to be written
+	 */
 	 abstract public void writeInt(int v);
-	 
+
+	/**
+	 * The low 16 bits are written to ChannelWriter
+	 * @param v int to be converted to short and written
+	 */
 	 abstract public void writeShort(int v);
 
+	/**
+	 * The low 8 bits are written to ChannelWriter
+	 * @param v int to be converted to byte and written
+	 */
 	 abstract public void writeByte(int v);
-	 
+
+	/**
+	 * Writes boolean to ChannelWriter
+	 * @param v boolean to be written
+	 */
 	 abstract public void writeBoolean(boolean v);
-	 
-	 abstract public void writeBooleanNull();
+
+	abstract public void writeBooleanNull();
 
 	 abstract public void writePackedNull();
 	 
 	 abstract public void write(byte b[], int off, int len);
-	 
+
+	/**
+	 * Writes byte array to ChannelWriter
+	 * @param b byte array to be written
+	 */
 	 abstract public void write(byte b[]);
 	 
 	 abstract public void writeUTF8Text(CharSequence s, int pos, int len);
