@@ -2,6 +2,12 @@ package com.ociweb.jpgRaster.j2r;
 
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPGSchema;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -19,14 +25,16 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class InverseDCTStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(InverseDCTStage.class);
+			
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
-	public static long timer = 0;
+	private double[] idctMap;
 	
-	Header header;
-	MCU mcu = new MCU();
-	double[] temp = new double[64];
+	private Header header;
+	private MCU mcu;
+	private double[] temp = new double[64];
 	
 	public InverseDCTStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
@@ -35,10 +43,14 @@ public class InverseDCTStage extends PronghornStage {
 		this.verbose = verbose;
 	}
 	
-	private static double[] idctMap = new double[64];
-	
-	// prepare idctMap
-	static {
+
+	@Override
+	public void startup() {
+		temp = new double[64];
+		mcu = new MCU();
+		idctMap = new double[64];
+		
+		// prepare idctMap
 		for (int u = 0; u < 8; ++u) {
 			double c = 1.0 / 2.0;
 			if (u == 0) {
@@ -50,7 +62,8 @@ public class InverseDCTStage extends PronghornStage {
 		}
 	}
 	
-	private static void TransformColumn(short[] in, double[] out, int offset) {
+	
+	private void TransformColumn(short[] in, double[] out, int offset) {
 		double temp;
 		for (int y = 0; y < 8; ++y) {
 			temp = 0;
@@ -61,7 +74,7 @@ public class InverseDCTStage extends PronghornStage {
 		}
 	}
 	
-	private static void TransformRow(double[] in, short[] out, int offset) {
+	private void TransformRow(double[] in, short[] out, int offset) {
 		double temp;
 		for (int x = 0; x < 8; ++x) {
 			temp = 0;
@@ -108,8 +121,9 @@ public class InverseDCTStage extends PronghornStage {
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
-					if (verbose) 
+					if (verbose) {
 						System.out.println("Inverse DCT writing header to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
@@ -117,7 +131,7 @@ public class InverseDCTStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					logger.error("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -143,7 +157,7 @@ public class InverseDCTStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					logger.error("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -187,15 +201,18 @@ public class InverseDCTStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse DCT requesting shutdown");
+					logger.error("Inverse DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Inverse DCT requesting shutdown");
+				logger.error("Inverse DCT requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 }

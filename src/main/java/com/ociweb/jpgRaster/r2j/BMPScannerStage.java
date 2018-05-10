@@ -16,22 +16,27 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BMPScannerStage extends PronghornStage {
 
-	private ArrayList<String> inputFiles = new ArrayList<String>();
+	private static final Logger logger = LoggerFactory.getLogger(BMPScannerStage.class);
+			
+	private ArrayList<String> inputFiles;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
+	private boolean verbose;
+	private final Collection<String> files;
+	private int mcuWidth = 0;
+	private int mcuHeight = 0;
+	private int numMCUs = 0;
+	private int numProcessed = 0;
+	private int paddingSize = 0;
 	
-	int mcuWidth = 0;
-	int mcuHeight = 0;
-	int numMCUs = 0;
-	int numProcessed = 0;
-	int paddingSize = 0;
-	
-	Header header;
-	MCU mcu = new MCU();
+	private Header header;
+	private MCU mcu;
 	
 	short[][] pixels;
 	
@@ -39,7 +44,15 @@ public class BMPScannerStage extends PronghornStage {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
-		this.inputFiles.addAll(files);
+		this.files = files;
+	}
+	
+	@Override
+	public void startup() {
+		mcu = new MCU();
+		
+		inputFiles = new ArrayList<String>();
+		inputFiles.addAll(files);
 	}
 	
 	public Header ReadBMP(String filename) throws IOException {
@@ -69,7 +82,7 @@ public class BMPScannerStage extends PronghornStage {
 		b.flip();
 		
 		if ((b.get() & 0xFF) != 'B' || (b.get() & 0xFF) != 'M') {
-			System.err.println("Error - not a BMP file");
+			logger.error("Error - not a BMP file");
 			return null;
 		}
 		
@@ -153,24 +166,24 @@ public class BMPScannerStage extends PronghornStage {
 			offset -= 54;
 		}
 		else {
-			System.err.println("Error - DIB Header not supported");
+			logger.error("Error - DIB Header not supported");
 			return null;
 		}
 		
 		if (planes != 1) {
-			System.err.println("Error - Number of color planes must be 1");
+			logger.error("Error - Number of color planes must be 1");
 			return null;
 		}
 		if (depth != 24) {
-			System.err.println("Error - Only 24bpp color depth supported");
+			logger.error("Error - Only 24bpp color depth supported");
 			return null;
 		}
 		if (compr != 0) {
-			System.err.println("Error - BMP compression not supported");
+			logger.error("Error - BMP compression not supported");
 			return null;
 		}
 		if (offset < 0) {
-			System.err.println("Error - Invalid offset");
+			logger.error("Error - Invalid offset");
 			return null;
 		}
 		
@@ -249,7 +262,7 @@ public class BMPScannerStage extends PronghornStage {
 			numProcessed += 1;
 		}
 		else {
-			System.err.println("BMP Scanner requesting shutdown");
+			logger.error("BMP Scanner requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -269,7 +282,7 @@ public class BMPScannerStage extends PronghornStage {
 			try {
 				header = ReadBMP(file);
 				if (header == null || !header.valid) {
-					System.err.println("Error - BMP file '" + file + "' invalid");
+					logger.error("Error - BMP file '{}' invalid",file);
 					if (inputFiles.size() > 0) {
 						return;
 					}
@@ -280,8 +293,9 @@ public class BMPScannerStage extends PronghornStage {
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
-					if (verbose) 
+					if (verbose) {
 						System.out.println("BMP Scanner writing header to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
@@ -289,18 +303,23 @@ public class BMPScannerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("BMP Scanner requesting shutdown");
+					logger.error("BMP Scanner requesting shutdown");
 					requestShutdown();
 				}
 			}
 			catch (IOException e) {
-				System.err.println("Error - Unknown error reading file '" + file + "'");
+				logger.error("Error - Unknown error reading file '" + file + "'");
 			}
 			if (inputFiles.isEmpty()) {
-				if (verbose) 
+				if (verbose) {
 					System.out.println("All input files read.");
+				}
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
+	
 }

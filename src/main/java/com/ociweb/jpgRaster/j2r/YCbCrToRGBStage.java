@@ -1,5 +1,10 @@
 package com.ociweb.jpgRaster.j2r;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
 import com.ociweb.jpgRaster.JPG.Header;
@@ -14,28 +19,40 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class YCbCrToRGBStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(YCbCrToRGBStage.class);
+			
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
+	private boolean verbose;
+
+	private int aboutToSend = 0;
 	
-	int aboutToSend = 0;
-	
-	Header header;
-	MCU mcu1 = new MCU();
-	MCU mcu2 = new MCU();
-	MCU mcu3 = new MCU();
-	MCU mcu4 = new MCU();
-	short[] tempCB = new short[64];
-	short[] tempCR = new short[64];
-	int count = 0;
-	byte[] rgb = new byte[3];
+	private Header header;
+	private MCU mcu1;
+	private MCU mcu2;
+	private MCU mcu3;
+	private MCU mcu4;
+	private short[] tempCB;
+	private short[] tempCR;
+	private int count = 0;
+	private byte[] rgb;
 	
 	public YCbCrToRGBStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+	}
+	
+	@Override
+	public void startup() {
+		mcu1 = new MCU();
+		mcu2 = new MCU();
+		mcu3 = new MCU();
+		mcu4 = new MCU();
+		tempCB = new short[64];
+		tempCR = new short[64];
+		rgb = new byte[3];
 	}
 
 	private void convertToRGB(short Y, short Cb, short Cr) {
@@ -191,7 +208,7 @@ public class YCbCrToRGBStage extends PronghornStage {
 			PipeWriter.publishWrites(output);
 		}
 		else {
-			System.err.println("YCbCrToRGB requesting shutdown");
+			logger.error("YCbCrToRGB requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -252,7 +269,7 @@ public class YCbCrToRGBStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("YCbCrToRGB requesting shutdown");
+					logger.error("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -278,7 +295,7 @@ public class YCbCrToRGBStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("YCbCrToRGB requesting shutdown");
+					logger.error("YCbCrToRGB requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -411,10 +428,14 @@ public class YCbCrToRGBStage extends PronghornStage {
 				}
 			}
 			else {
-				System.err.println("YCbCrToRGB requesting shutdown");
+				logger.error("YCbCrToRGB requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
+	
 }

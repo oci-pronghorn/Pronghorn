@@ -1,5 +1,10 @@
 package com.ociweb.jpgRaster.r2j;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.Header;
 import com.ociweb.jpgRaster.JPG.MCU;
@@ -13,20 +18,27 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class RGBToYCbCrStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(RGBToYCbCrStage.class);
+	
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
+	private boolean verbose;
 	
-	Header header;
-	MCU mcu = new MCU();
-	short[] ycbcr = new short[3];
+	private Header header;
+	private MCU mcu;
+	private short[] ycbcr;
 	
 	public RGBToYCbCrStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+	}
+	
+	@Override
+	public void startup() {
+		mcu = new MCU();
+		ycbcr = new short[3];
 	}
 
 	private void convertToRGB(short r, short g, short b) {
@@ -63,8 +75,9 @@ public class RGBToYCbCrStage extends PronghornStage {
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
-					if (verbose) 
+					if (verbose) {
 						System.out.println("RGBToYCbCr writing header to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
@@ -72,7 +85,7 @@ public class RGBToYCbCrStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("RGBToYCbCr requesting shutdown");
+					logger.error("RGBToYCbCr requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -117,15 +130,18 @@ public class RGBToYCbCrStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("RGBToYCbCr requesting shutdown");
+					logger.error("RGBToYCbCr requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("RGBToYCbCr requesting shutdown");
+				logger.error("RGBToYCbCr requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 }

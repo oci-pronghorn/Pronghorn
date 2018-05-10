@@ -1,6 +1,12 @@
 package com.ociweb.jpgRaster.r2j;
 
 import com.ociweb.jpgRaster.JPG.Header;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.MCU;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -18,14 +24,16 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class ForwardDCTStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(ForwardDCTStage.class);
+			
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
-	
-	Header header;
-	MCU mcu = new MCU();
-	double[] temp = new double[64];
+	private boolean verbose;
+
+	private Header header;
+	private MCU mcu;
+	private double[] temp;
+	private double[] fdctMap;
 	
 	public ForwardDCTStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
@@ -33,11 +41,13 @@ public class ForwardDCTStage extends PronghornStage {
 		this.output = output;
 		this.verbose = verbose;
 	}
-	
-	private static double[] fdctMap = new double[64];
-	
-	// prepare fdctMap
-	static {
+
+	@Override
+	public void startup() {
+		mcu = new MCU();
+		temp = new double[64];
+		fdctMap = new double[64];
+		// prepare fdctMap
 		for (int u = 0; u < 8; ++u) {
 			double c = 1.0 / 2.0;
 			if (u == 0) {
@@ -49,7 +59,8 @@ public class ForwardDCTStage extends PronghornStage {
 		}
 	}
 	
-	private static void TransformColumn(short[] in, double[] out, int offset) {
+	
+	private void TransformColumn(short[] in, double[] out, int offset) {
 		double temp;
 		for (int y = 0; y < 8; ++y) {
 			temp = 0;
@@ -60,7 +71,7 @@ public class ForwardDCTStage extends PronghornStage {
 		}
 	}
 	
-	private static void TransformRow(double[] in, short[] out, int offset) {
+	private void TransformRow(double[] in, short[] out, int offset) {
 		double temp;
 		for (int x = 0; x < 8; ++x) {
 			temp = 0;
@@ -114,7 +125,7 @@ public class ForwardDCTStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Forward DCT requesting shutdown");
+					logger.error("Forward DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -159,15 +170,19 @@ public class ForwardDCTStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Forward DCT requesting shutdown");
+					logger.error("Forward DCT requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Forward DCT requesting shutdown");
+				logger.error("Forward DCT requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
+	
 }

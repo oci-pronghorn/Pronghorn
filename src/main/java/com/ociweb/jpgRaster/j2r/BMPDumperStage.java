@@ -15,17 +15,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class BMPDumperStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(BMPDumperStage.class);
+	
 	private final Pipe<JPGSchema> input;
 	boolean verbose;
 	boolean time;
-	public static long timer = 0;
+	private long timer = 0;
 	long start;
 	
 	Header header;
 	int last = 0;
-	MCU mcu = new MCU();
+	MCU mcu;
 	
 	short[][] pixels;
 	int count;
@@ -45,7 +50,12 @@ public class BMPDumperStage extends PronghornStage {
 		start = System.nanoTime();
 	}
 
-	private static void Dump(short[][] pixels, String filename) throws IOException {
+	@Override
+	public void startup() {
+		mcu = new MCU();
+	}
+	
+	private static void dump(short[][] pixels, String filename) throws IOException {
 		int width = pixels[0].length / 3;
 		int height = pixels.length;
 		int paddingSize = (4 - (width * 3) % 4) % 4;
@@ -129,10 +139,10 @@ public class BMPDumperStage extends PronghornStage {
 				if (last == 1 && header.height == 0 && header.width == 0) {
 					if (time) {
 						timer += (System.nanoTime() - s);
-						System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer) / 1000000) + " ms");
-						System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer) / 1000000) + " ms");
-						System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer) / 1000000) + " ms");
-						System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer) / 1000000) + " ms");
+						System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer.get()) / 1000000) + " ms");
 						System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
 						System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 					}
@@ -219,16 +229,16 @@ public class BMPDumperStage extends PronghornStage {
 						}
 						if (verbose) 
 							System.out.println("Writing to '" + header.filename + "'...");
-						Dump(pixels, header.filename);
+						dump(pixels, header.filename);
 						if (verbose) 
 							System.out.println("Done.");
 						if (last == 1) {
 							if (time) {
 								timer += (System.nanoTime() - s);
-								System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer) / 1000000) + " ms");
-								System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer) / 1000000) + " ms");
-								System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer) / 1000000) + " ms");
-								System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer) / 1000000) + " ms");
+								System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer.get()) / 1000000) + " ms");
+								System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer.get()) / 1000000) + " ms");
+								System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer.get()) / 1000000) + " ms");
+								System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer.get()) / 1000000) + " ms");
 								System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
 								System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 							}
@@ -242,7 +252,7 @@ public class BMPDumperStage extends PronghornStage {
 				}
 			}
 			else {
-				System.err.println("BMPDumper requesting shutdown");
+				logger.error("BMPDumper requesting shutdown");
 				requestShutdown();
 			}
 		}

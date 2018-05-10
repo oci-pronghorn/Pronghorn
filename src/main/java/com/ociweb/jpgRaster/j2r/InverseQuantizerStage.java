@@ -1,6 +1,12 @@
 package com.ociweb.jpgRaster.j2r;
 
 import com.ociweb.jpgRaster.JPG.Header;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.ColorComponent;
@@ -16,19 +22,25 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class InverseQuantizerStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(InverseQuantizerStage.class);
+			
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
-	public static long timer = 0;
 	
 	Header header;
-	MCU mcu = new MCU();
+	MCU mcu;
 	
 	public InverseQuantizerStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+	}
+	
+	@Override
+	public void startup() {
+		mcu = new MCU();
 	}
 	
 	private static void dequantizeMCU(short[] MCU, QuantizationTable table) {
@@ -74,7 +86,7 @@ public class InverseQuantizerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse Quantizer requesting shutdown");
+					logger.error("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -100,7 +112,7 @@ public class InverseQuantizerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse Quantizer requesting shutdown");
+					logger.error("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -166,15 +178,18 @@ public class InverseQuantizerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Inverse Quantizer requesting shutdown");
+					logger.error("Inverse Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Inverse Quantizer requesting shutdown");
+				logger.error("Inverse Quantizer requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 }

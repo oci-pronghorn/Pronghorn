@@ -2,6 +2,10 @@ package com.ociweb.jpgRaster.r2j;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPGSchema;
@@ -16,6 +20,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class HuffmanEncoderStage extends PronghornStage {
 	
+	private static final Logger logger = LoggerFactory.getLogger(HuffmanEncoderStage.class);
+			
 	private static class BitWriter {
 		private int nextByte = -1;
 		private int nextBit = 8;
@@ -50,22 +56,21 @@ public class HuffmanEncoderStage extends PronghornStage {
 	}
 	
 	private final Pipe<JPGSchema> input;
-	boolean verbose;
-	boolean time;
-	public static long timer = 0;
-	long start;
-	int quality;
+	private boolean verbose;
+	private boolean time;
+	private long start;
+	private int quality;
 	
-	Header header;
-	int last = 0;
-	MCU mcu = new MCU();
+	private Header header;
+	private int last = 0;
+	private MCU mcu;
 	
-	int count;
-	int numMCUs;
+	private int count;
+	private int numMCUs;
 
-	short[] previousDC = new short[3];
+	private short[] previousDC;
 
-	BitWriter b = new BitWriter();
+	private BitWriter b;
 	
 	public HuffmanEncoderStage(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time, int quality) {
 		super(graphManager, input, NONE);
@@ -74,6 +79,13 @@ public class HuffmanEncoderStage extends PronghornStage {
 		this.time = time;
 		this.quality = quality;
 		start = System.nanoTime();
+	}
+	
+	@Override
+	public void startup() {
+		mcu = new MCU();
+		previousDC = new short[3];
+		b = new BitWriter();
 	}
 	
 	private static int bitLength(int x) {
@@ -98,7 +110,7 @@ public class HuffmanEncoderStage extends PronghornStage {
 		previousDC[compID] = component[0];
 		int coeffLength = (coeff == 0 ? 0 : bitLength(Math.abs(coeff)));
 		if (coeffLength > 11) {
-			System.err.println("Error - coeffLength > 11 : " + coeffLength);
+			logger.error("Error - coeffLength > 11 : {}", coeffLength);
 			return false;
 		}
 		if (coeff <= 0) {
@@ -162,7 +174,7 @@ public class HuffmanEncoderStage extends PronghornStage {
 			coeff = component[JPG.zigZagMap[i]];
 			coeffLength = bitLength(Math.abs(coeff));
 			if (coeffLength > 10) {
-				System.err.println("Error - coeffLength > 10 : " + coeffLength);
+				logger.error("Error - coeffLength > 10 : {}", coeffLength);
 				return false;
 			}
 			if (coeff <= 0) {
@@ -190,13 +202,13 @@ public class HuffmanEncoderStage extends PronghornStage {
 
 	public void encodeHuffmanData(MCU mcu) {
 		if (!encodeMCUComponent(JPG.DCTableCodes0, JPG.ACTableCodes0, JPG.hDCTable0, JPG.hACTable0, mcu.y, 0)) {
-			System.err.println("Error during Y component Huffman coding");
+			logger.error("Error during Y component Huffman coding");
 		}
 		if (!encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cb, 1)) {
-			System.err.println("Error during Cb component Huffman coding");
+			logger.error("Error during Cb component Huffman coding");
 		}
 		if (!encodeMCUComponent(JPG.DCTableCodes1, JPG.ACTableCodes1, JPG.hDCTable1, JPG.hACTable1, mcu.cr, 2)) {
-			System.err.println("Error during Cr component Huffman coding");
+			logger.error("Error during Cr component Huffman coding");
 		}
 	}
 
@@ -219,12 +231,12 @@ public class HuffmanEncoderStage extends PronghornStage {
 				
 				if (last == 1 && header.height == 0 && header.width == 0) {
 					if (time) {
-						timer += (System.nanoTime() - s);
-						System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer) / 1000000) + " ms");
-						System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer) / 1000000) + " ms");
-						System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer) / 1000000) + " ms");
-						System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer) / 1000000) + " ms");
-						System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer) / 1000000) + " ms");
+						timer.addAndGet(System.nanoTime() - s);
+						System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer.get()) / 1000000) + " ms");
+						System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer.get()) / 1000000) + " ms");
 						System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 					}
 					
@@ -265,12 +277,12 @@ public class HuffmanEncoderStage extends PronghornStage {
 					}
 					if (last == 1) {
 						if (time) {
-							timer += (System.nanoTime() - s);
-							System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer) / 1000000) + " ms");
-							System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer) / 1000000) + " ms");
-							System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer) / 1000000) + " ms");
-							System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer) / 1000000) + " ms");
-							System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer) / 1000000) + " ms");
+							timer.addAndGet(System.nanoTime() - s);
+							System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer.get()) / 1000000) + " ms");
+							System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer.get()) / 1000000) + " ms");
+							System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer.get()) / 1000000) + " ms");
+							System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer.get()) / 1000000) + " ms");
+							System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer.get()) / 1000000) + " ms");
 							System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 						}
 						
@@ -279,11 +291,13 @@ public class HuffmanEncoderStage extends PronghornStage {
 				}
 			}
 			else {
-				System.err.println("Huffman Encoder requesting shutdown");
+				logger.error("Huffman Encoder requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
-
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 }

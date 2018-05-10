@@ -1,6 +1,12 @@
 package com.ociweb.jpgRaster.r2j;
 
 import com.ociweb.jpgRaster.JPG.Header;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jpgRaster.JPG;
 import com.ociweb.jpgRaster.JPGSchema;
 import com.ociweb.jpgRaster.JPG.QuantizationTable;
@@ -15,14 +21,15 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class QuantizerStage extends PronghornStage {
 
+	private static final Logger logger = LoggerFactory.getLogger(QuantizerStage.class);
+			
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
-	int quality;
+	private boolean verbose;
+	private int quality;
 	
-	Header header;
-	MCU mcu = new MCU();
+	private Header header;
+	private MCU mcu;
 	
 	public QuantizerStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose, int quality) {
 		super(graphManager, input, output);
@@ -30,6 +37,11 @@ public class QuantizerStage extends PronghornStage {
 		this.output = output;
 		this.verbose = verbose;
 		this.quality = quality;
+	}
+	
+	@Override
+	public void startup() {
+		mcu = new MCU();
 	}
 	
 	private static void quantizeMCU(short[] MCU, QuantizationTable table) {
@@ -84,7 +96,7 @@ public class QuantizerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Quantizer requesting shutdown");
+					logger.error("Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
@@ -129,15 +141,18 @@ public class QuantizerStage extends PronghornStage {
 					PipeWriter.publishWrites(output);
 				}
 				else {
-					System.err.println("Quantizer requesting shutdown");
+					logger.error("Quantizer requesting shutdown");
 					requestShutdown();
 				}
 			}
 			else {
-				System.err.println("Quantizer requesting shutdown");
+				logger.error("Quantizer requesting shutdown");
 				requestShutdown();
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+	
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 }

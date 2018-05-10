@@ -21,36 +21,58 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JPGScannerStage extends PronghornStage {
 
-	private ArrayList<String> inputFiles = new ArrayList<String>();
+	private static final Logger logger = LoggerFactory.getLogger(JPGScannerStage.class);
+			
+	private ArrayList<String> workdownList;
 	private final Pipe<JPGSchema> output;
-	boolean verbose;
-	public static long timer = 0;
+	private boolean verbose;
+	private final Collection<String> files;
 	
-	private HuffmanDecoder decoder = new HuffmanDecoder();
+	private HuffmanDecoder decoder;
 	
-	int mcuWidth = 0;
-	int mcuHeight = 0;
-	int numMCUs = 0;
-	int numProcessed = 0;
-	int aboutToSend = 0;
+	private int mcuWidth = 0;
+	private int mcuHeight = 0;
+	private int numMCUs = 0;
+	private int numProcessed = 0;
+	private int aboutToSend = 0;
 	
-	Header header;
-	MCU mcu1 = new MCU();
-	MCU mcu2 = new MCU();
-	MCU mcu3 = new MCU();
-	MCU mcu4 = new MCU();
-	ArrayList<MCU> mcus = null;
+	private Header header;
+	private MCU mcu1;
+	private MCU mcu2;
+	private MCU mcu3;
+	private MCU mcu4;
+	private ArrayList<MCU> mcus;
 	
 	public JPGScannerStage(GraphManager graphManager, Pipe<JPGSchema> output,
 			           boolean verbose, Collection<String> files) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
-		this.inputFiles.addAll(files);
+		this.files = files;
 	}
+	
+	
+	@Override
+	public void startup() {
+		decoder = new HuffmanDecoder();
+		
+		workdownList = new ArrayList<String>();
+		workdownList.addAll(files);
+		
+		mcu1 = new MCU();
+		mcu2 = new MCU();
+		mcu3 = new MCU();
+		mcu4 = new MCU();
+		
+	}
+	
 	
 	/**
 	 * Reads JPG File into an ArrayList of MCUs.
@@ -100,7 +122,7 @@ public class JPGScannerStage extends PronghornStage {
 		
 		while (header.valid) {
 			if (last != 0xFF) {
-				System.err.println("Error - Expected a marker");
+				logger.error("Error - Expected a marker");
 				header.valid = false;
 				return header;
 			}
@@ -182,15 +204,15 @@ public class JPGScannerStage extends PronghornStage {
 				// unsupported segment with no size
 				break;
 			case JPGConstants.SOI:
-				System.err.println("Error - This JPG contains an embedded JPG; THis is not supported");
+				logger.error("Error - This JPG contains an embedded JPG; THis is not supported");
 				header.valid = false;
 				return header;
 			case JPGConstants.EOI:
-				System.err.println("Error - EOI detected before SOS");
+				logger.error("Error - EOI detected before SOS");
 				header.valid = false;
 				return header;
 			case JPGConstants.DAC:
-				System.err.println("Error - Arithmetic Table mode is not supported");
+				logger.error("Error - Arithmetic Table mode is not supported");
 				header.valid = false;
 				return header;
 				// case JPGConstants.SOF4:
@@ -205,7 +227,7 @@ public class JPGScannerStage extends PronghornStage {
 			case JPGConstants.SOF13:
 			case JPGConstants.SOF14:
 			case JPGConstants.SOF15:
-				System.err.println("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
+				logger.error("Error - This Start of Frame marker is not supported: " + String.format("0x%2x", current));
 				header.valid = false;
 				return header;
 			case JPGConstants.RST0:
@@ -216,11 +238,11 @@ public class JPGScannerStage extends PronghornStage {
 			case JPGConstants.RST5:
 			case JPGConstants.RST6:
 			case JPGConstants.RST7:
-				System.err.println("Error - RSTN detected before SOS");
+				logger.error("Error - RSTN detected before SOS");
 				header.valid = false;
 				return header;
 			default:
-				System.err.println("Error - Unknown Marker: " + String.format("0x%2x", current));
+				logger.error("Error - Unknown Marker: " + String.format("0x%2x", current));
 				header.valid = false;
 				return header;
 			}
@@ -277,7 +299,7 @@ public class JPGScannerStage extends PronghornStage {
 							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
-							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							logger.error("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
 							return header;
 						}
@@ -308,7 +330,7 @@ public class JPGScannerStage extends PronghornStage {
 							current = (short)(b.get() & 0xFF);
 						}
 						else if (current != 0xFF) {
-							System.err.println("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
+							logger.error("Error - Invalid marker during compressed data scan: " + String.format("0x%2x", current));
 							header.valid = false;
 							return header;
 						}
@@ -321,7 +343,7 @@ public class JPGScannerStage extends PronghornStage {
 		}
 		
 		if (header.numComponents != 1 && header.numComponents != 3) {
-			System.err.println("Error - " + header.numComponents + " color components given (1 or 3 required)");
+			logger.error("Error - {} color components given (1 or 3 required)",header.numComponents);
 			header.valid = false;
 			return header;
 		}
@@ -329,19 +351,19 @@ public class JPGScannerStage extends PronghornStage {
 		if (header.numComponents > 0 &&
 			(header.colorComponents[0].horizontalSamplingFactor > 2 ||
 			 header.colorComponents[0].verticalSamplingFactor > 2)) {
-			System.err.println("Error - Unsupported Sampling Factor");
+			logger.error("Error - Unsupported Sampling Factor");
 			header.valid = false;
 		}
 		if (header.numComponents > 1 &&
 			(header.colorComponents[1].horizontalSamplingFactor != 1 ||
 			 header.colorComponents[1].verticalSamplingFactor != 1)) {
-			System.err.println("Error - Unsupported Sampling Factor");
+			logger.error("Error - Unsupported Sampling Factor");
 			header.valid = false;
 		}
 		if (header.numComponents > 2 &&
 			(header.colorComponents[2].horizontalSamplingFactor != 1 ||
 			 header.colorComponents[2].verticalSamplingFactor != 1)) {
-			System.err.println("Error - Unsupported Sampling Factor");
+			logger.error("Error - Unsupported Sampling Factor");
 			header.valid = false;
 		}
 		
@@ -382,7 +404,7 @@ public class JPGScannerStage extends PronghornStage {
 				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
 			if (!decoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
-				System.err.println("Error during scan " + numScans);
+				logger.error("Error during scan {}", numScans);
 				header.imageData.clear();
 				return false;
 			}
@@ -430,7 +452,7 @@ public class JPGScannerStage extends PronghornStage {
 			table.tableID = (short)(info & 0x0F);
 			
 			if (table.tableID > 3) {
-				System.err.println("Error - Invalid Quantization table ID: " + table.tableID);
+				logger.error("Error - Invalid Quantization table ID: {}", table.tableID);
 				header.valid = false;
 				return;
 			}
@@ -455,7 +477,7 @@ public class JPGScannerStage extends PronghornStage {
 			length -= 64 * table.precision + 1;
 		}
 		if (length != 0) {
-			System.err.println("Error - DQT Invalid");
+			logger.error("Error - DQT Invalid");
 			header.valid = false;
 		}
 	}
@@ -469,7 +491,7 @@ public class JPGScannerStage extends PronghornStage {
 	 */
 	private void ReadStartOfFrame(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents != 0) {
-			System.err.println("Error - Multiple SOFs detected");
+			logger.error("Error - Multiple SOFs detected");
 			header.valid = false;
 			return;
 		}
@@ -480,7 +502,7 @@ public class JPGScannerStage extends PronghornStage {
 		header.precision = (short)(b.get() & 0xFF);
 		
 		if (header.precision != 8) {
-			System.err.println("Error - Invalid precision: " + header.precision);
+			logger.error("Error - Invalid precision: {}", header.precision);
 			header.valid = false;
 			return;
 		}
@@ -489,19 +511,19 @@ public class JPGScannerStage extends PronghornStage {
 		header.width = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		if (header.height == 0 || header.width == 0) {
-			System.err.println("Error - Invalid dimensions");
+			logger.error("Error - Invalid dimensions");
 			header.valid = false;
 			return;
 		}
 		
 		header.numComponents = (short)(b.get() & 0xFF);
 		if (header.numComponents == 4) {
-			System.err.println("Error - CMYK color mode not supported");
+			logger.error("Error - CMYK color mode not supported");
 			header.valid = false;
 			return;
 		}
 		if (header.numComponents == 0) {
-			System.err.println("Error - Number of color components must not be zero");
+			logger.error("Error - Number of color components must not be zero");
 			header.valid = false;
 			return;
 		}
@@ -521,17 +543,17 @@ public class JPGScannerStage extends PronghornStage {
 			}
 			
 			if (component.componentID == 4 || component.componentID == 5) {
-				System.err.println("Error - YIQ color mode not supported");
+				logger.error("Error - YIQ color mode not supported");
 				header.valid = false;
 				return;
 			}
 			if (header.colorComponents[component.componentID - 1] != null) {
-				System.err.println("Error - Duplicate color component ID");
+				logger.error("Error - Duplicate color component ID");
 				header.valid = false;
 				return;
 			}
 			if (component.quantizationTableID > 3) {
-				System.err.println("Error - Invalid Quantization table ID in frame components");
+				logger.error("Error - Invalid Quantization table ID in frame components");
 				header.valid = false;
 				return;
 			}
@@ -553,7 +575,7 @@ public class JPGScannerStage extends PronghornStage {
 		numProcessed = 0;
 		
 		if (length - 8 - (header.numComponents * 3) != 0) {
-			System.err.println("Error - SOF Invalid");
+			logger.error("Error - SOF Invalid");
 			header.valid = false;
 		}
 	}
@@ -577,7 +599,7 @@ public class JPGScannerStage extends PronghornStage {
 			boolean ACTable = (info & 0xF0) != 0;
 			
 			if (table.tableID > 3) {
-				System.err.println("Error - Invalid Huffman table ID: " + table.tableID);
+				logger.error("Error - Invalid Huffman table ID: {}", table.tableID);
 				header.valid = false;
 				return;
 			}
@@ -590,7 +612,7 @@ public class JPGScannerStage extends PronghornStage {
 			}
 			
 			if (allSymbols > 256) {
-				System.err.println("Error - Invalid Huffman table");
+				logger.error("Error - Invalid Huffman table");
 				header.valid = false;
 				return;
 			}
@@ -610,7 +632,7 @@ public class JPGScannerStage extends PronghornStage {
 			length -= allSymbols + 17;
 		}
 		if (length != 0) {
-			System.err.println("Error - DHT Invalid");
+			logger.error("Error - DHT Invalid");
 			header.valid = false;
 		}
 	}
@@ -624,7 +646,7 @@ public class JPGScannerStage extends PronghornStage {
 	 */
 	private void ReadStartOfScan(ByteBuffer b, Header header) throws IOException {
 		if (header.numComponents == 0) {
-			System.err.println("Error - SOS detected before SOF");
+			logger.error("Error - SOS detected before SOF");
 			header.valid = false;
 			return;
 		}
@@ -648,13 +670,13 @@ public class JPGScannerStage extends PronghornStage {
 			}
 			
 			if (huffmanACTableID > 3 || huffmanDCTableID > 3) {
-				System.err.println("Error - Invalid Huffman table ID in scan components");
+				logger.error("Error - Invalid Huffman table ID in scan components");
 				header.valid = false;
 				return;
 			}
 
 			if (componentID > header.numComponents) {
-				System.err.println("Error - Invalid Color Component ID: " + componentID);
+				logger.error("Error - Invalid Color Component ID: " + componentID);
 				header.valid = false;
 				return;
 			}
@@ -673,13 +695,13 @@ public class JPGScannerStage extends PronghornStage {
 			header.endOfSelection != 63 ||
 			header.successiveApproximationHigh != 0 ||
 			header.successiveApproximationLow != 0)) {
-			System.err.println("Error - Spectral selection or approximation is incompatible with Baseline");
+			logger.error("Error - Spectral selection or approximation is incompatible with Baseline");
 			header.valid = false;
 			return;
 		}
 		
 		if (length - 6 - (numComponents * 2) != 0) {
-			System.err.println("Error - SOS Invalid");
+			logger.error("Error - SOS Invalid");
 			header.valid = false;
 		}
 	}
@@ -691,7 +713,7 @@ public class JPGScannerStage extends PronghornStage {
 		
 		header.restartInterval = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		if (length - 4 != 0) {
-			System.err.println("Error - DRI Invalid");
+			logger.error("Error - DRI Invalid");
 			header.valid = false;
 		}
 	}
@@ -754,7 +776,7 @@ public class JPGScannerStage extends PronghornStage {
 			}
 		}
 		else {
-			System.err.println("JPG Scanner requesting shutdown");
+			logger.error("JPG Scanner requesting shutdown");
 			requestShutdown();
 		}
 	}
@@ -852,21 +874,21 @@ public class JPGScannerStage extends PronghornStage {
 				}
 			}
 		}
-		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !inputFiles.isEmpty()) {
-			String file = inputFiles.get(0);
-			inputFiles.remove(0);
+		if (PipeWriter.hasRoomForFragmentOfSize(output, 400) && !workdownList.isEmpty()) {
+			String file = workdownList.get(0);
+			workdownList.remove(0);
 			System.out.println(file);
 			try {
 				mcus = new ArrayList<MCU>();
 				header = ReadJPG(file, mcus);
 				if (header == null || !header.valid) {
 					numMCUs = 0;
-					System.err.println("Error - JPG file '" + file + "' invalid");
-					if (inputFiles.size() > 0) {
+					logger.error("Error - JPG file '{}' invalid",file);
+					if (workdownList.size() > 0) {
 						return;
+					} else if (verbose) {
+						logger.error("All input files read.");
 					}
-					else if (verbose) 
-						System.out.println("All input files read.");
 					header = new Header();
 					header.width = 0;
 					header.height = 0;
@@ -879,14 +901,14 @@ public class JPGScannerStage extends PronghornStage {
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
-					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401, (inputFiles.size() == 0 ? 1 : 0));
+					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FINAL_401, (workdownList.size() == 0 ? 1 : 0));
 					PipeWriter.publishWrites(output);
 					if (!header.valid) {
 						return;
 					}
 				}
 				else {
-					System.err.println("JPG Scanner requesting shutdown");
+					logger.error("JPG Scanner requesting shutdown");
 					requestShutdown();
 				}
 				// write color component data to pipe
@@ -901,7 +923,7 @@ public class JPGScannerStage extends PronghornStage {
 						PipeWriter.publishWrites(output);
 					}
 					else {
-						System.err.println("JPG Scanner requesting shutdown");
+						logger.error("JPG Scanner requesting shutdown");
 						requestShutdown();
 					}
 				}
@@ -930,7 +952,7 @@ public class JPGScannerStage extends PronghornStage {
 							PipeWriter.publishWrites(output);
 						}
 						else {
-							System.err.println("JPG Scanner requesting shutdown");
+							logger.error("JPG Scanner requesting shutdown");
 							requestShutdown();
 						}
 					}
@@ -940,15 +962,19 @@ public class JPGScannerStage extends PronghornStage {
 				}
 			}
 			catch (IOException e) {
-				System.err.println("Error - Unknown error reading file '" + file + "'");
+				logger.error("Error - Unknown error reading file '{}'",file);
 			}
-			if (inputFiles.isEmpty()) {
-				if (verbose) 
+			if (workdownList.isEmpty()) {
+				if (verbose) {
 					System.out.println("All input files read.");
+				}
 			}
 		}
-		timer += (System.nanoTime() - s);
+		timer.addAndGet(System.nanoTime() - s);
 	}
+
+	public static AtomicLong timer = new AtomicLong(0);//NOTE: using statics like this is not recommended
+	
 	
 	/*public static void main(String[] args) {
 		Header header = null;
@@ -1029,10 +1055,10 @@ public class JPGScannerStage extends PronghornStage {
 				System.out.println("Length of Image Data: " + header.imageData.size());
 			}
 			else {
-				System.err.println("Error - Not a valid JPG file");
+				logger.error("Error - Not a valid JPG file");
 			}
 		} catch(IOException e) {
-			System.err.println("Error - Unknown error reading JPG file");
+			logger.error("Error - Unknown error reading JPG file");
 		}
 	}*/
 }

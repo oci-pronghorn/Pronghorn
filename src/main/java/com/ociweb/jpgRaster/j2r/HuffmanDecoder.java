@@ -7,8 +7,13 @@ import com.ociweb.jpgRaster.JPG.MCU;
 
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class HuffmanDecoder {
 
+	private static final Logger logger = LoggerFactory.getLogger(HuffmanDecoder.class);
+	
 	private static class BitReader {
 		private int nextByte = 0;
 		private int nextBit = 0;
@@ -130,27 +135,27 @@ public class HuffmanDecoder {
 			}
 			
 			if (header.startOfSelection > header.endOfSelection) {
-				System.err.println("Error - Bad spectral selection (start greater than end)");
+				logger.error("Error - Bad spectral selection (start greater than end)");
 			}
 			if (header.endOfSelection > 63) {
-				System.err.println("Error - Bad spectral selection (end greater than 63)");
+				logger.error("Error - Bad spectral selection (end greater than 63)");
 			}
 			if (header.startOfSelection == 0 && header.endOfSelection != 0) {
-				System.err.println("Error - Bad spectral selection (contains DC and AC)");
+				logger.error("Error - Bad spectral selection (contains DC and AC)");
 			}
 			if (header.startOfSelection != 0 && componentsInUse != 1) {
-				System.err.println("Error - Bad spectral selection (AC scan contains multiple components)");
+				logger.error("Error - Bad spectral selection (AC scan contains multiple components)");
 			}
 			if (header.successiveApproximationHigh != 0 &&
 				header.successiveApproximationLow != header.successiveApproximationHigh - 1) {
-				System.err.println("Error - Bad successive approximation");
+				logger.error("Error - Bad successive approximation");
 			}
 			
 			if (header.startOfSelection == 0 && header.successiveApproximationHigh == 0) {
 				// DC first visit
 				short length = getNextSymbol(DCTableCodes, DCTable.symbols);
 				if (length == -1) {
-					System.err.println("Error - Invalid DC Value");
+					logger.error("Error - Invalid DC Value");
 					return false;
 				}
 				short coeff = (short)b.nextBits(length);
@@ -190,7 +195,7 @@ public class HuffmanDecoder {
 						}
 					
 						if (k == 64) {
-							System.err.println("Error - Zero run-length exceeded MCU");
+							logger.error("Error - Zero run-length exceeded MCU");
 							return false;
 						}
 						
@@ -207,7 +212,7 @@ public class HuffmanDecoder {
 								component[JPG.zigZagMap[k]] = 0;
 							}
 							if (k == 64) {
-								System.err.println("Error - Zero run-length exceeded MCU");
+								logger.error("Error - Zero run-length exceeded MCU");
 								return false;
 							}
 						}
@@ -228,7 +233,7 @@ public class HuffmanDecoder {
 					for (; k <= header.endOfSelection; ++k) {
 						short symbol = getNextSymbol(ACTableCodes, ACTable.symbols);
 						if (symbol == -1) {
-							System.err.println("Error - Invalid AC Value");
+							logger.error("Error - Invalid AC Value");
 							return false;
 						}
 						short numZeroes = (short)((symbol & 0xF0) >> 4);
@@ -237,7 +242,7 @@ public class HuffmanDecoder {
 						
 						if (coeffLength != 0) {
 							if (coeffLength != 1) {
-								System.err.println("Error - Invalid AC Value");
+								logger.error("Error - Invalid AC Value");
 								return false;
 							}
 							switch(b.nextBit()) {
@@ -301,7 +306,7 @@ public class HuffmanDecoder {
 			// get the DC value for this MCU
 			short length = getNextSymbol(DCTableCodes, DCTable.symbols);
 			if (length == -1) {
-				System.err.println("Error - Invalid DC Value");
+				logger.error("Error - Invalid DC Value");
 				return false;
 			}
 			short coeff = (short)b.nextBits(length);
@@ -317,7 +322,7 @@ public class HuffmanDecoder {
 			for (int k = 1; k <= 63; ++k) {
 				short symbol = getNextSymbol(ACTableCodes, ACTable.symbols);
 				if (symbol == -1) {
-					System.err.println("Error - Invalid AC Value");
+					logger.error("Error - Invalid AC Value");
 					return false;
 				}
 				
@@ -345,7 +350,7 @@ public class HuffmanDecoder {
 					
 					if (coeffLength != 0) {
 						if (k == 64) {
-							System.err.println("Error - Zero run-length exceeded MCU");
+							logger.error("Error - Zero run-length exceeded MCU");
 							return false;
 						}
 						

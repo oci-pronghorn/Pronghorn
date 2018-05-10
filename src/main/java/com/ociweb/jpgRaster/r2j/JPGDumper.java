@@ -22,8 +22,9 @@ public class JPGDumper {
 			header.filename = header.filename.substring(0, extension) + ".jpg";
 		}
 		
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Writing to '" + header.filename + "'...");
+		}
 		
 		FileOutputStream fileStream = new FileOutputStream(header.filename);
 		FileChannel file = fileStream.getChannel();
