@@ -15,8 +15,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collection;
 
-public class BMPScanner extends PronghornStage {
+public class BMPScannerStage extends PronghornStage {
 
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
@@ -34,10 +35,11 @@ public class BMPScanner extends PronghornStage {
 	
 	short[][] pixels;
 	
-	public BMPScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
+	public BMPScannerStage(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose, Collection<String> files) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
+		this.inputFiles.addAll(files);
 	}
 	
 	public Header ReadBMP(String filename) throws IOException {
@@ -220,11 +222,7 @@ public class BMPScanner extends PronghornStage {
 		}
 	}
 	
-	public void queueFile(String inFile) {
-		inputFiles.add(inFile);
-	}
-	
-	public void sendMCU(MCU emcu) {
+	private void sendMCU(MCU emcu) {
 		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);

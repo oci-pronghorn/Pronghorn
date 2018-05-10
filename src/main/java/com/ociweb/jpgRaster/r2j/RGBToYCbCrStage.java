@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class RGBToYCbCr extends PronghornStage {
+public class RGBToYCbCrStage extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
@@ -20,22 +20,22 @@ public class RGBToYCbCr extends PronghornStage {
 	
 	Header header;
 	MCU mcu = new MCU();
-	static short[] ycbcr = new short[3];
+	short[] ycbcr = new short[3];
 	
-	public RGBToYCbCr(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
+	public RGBToYCbCrStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
 	}
 
-	private static void convertToRGB(short r, short g, short b) {
+	private void convertToRGB(short r, short g, short b) {
 		ycbcr[0] = (short)( 0.299    * r +  0.587    * g +  0.114    * b - 128);
 		ycbcr[1] = (short)(-0.168736 * r + -0.331264 * g +  0.5      * b);
 		ycbcr[2] = (short)( 0.5      * r + -0.418688 * g + -0.081312 * b);
 	}
 	
-	public static void convertYCbCrToRGB(MCU mcu) {
+	public void convertYCbCrToRGB(MCU mcu) {
 		for (int i = 0; i < 64; ++i) {
 			convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
 			mcu.y[i] = ycbcr[0];

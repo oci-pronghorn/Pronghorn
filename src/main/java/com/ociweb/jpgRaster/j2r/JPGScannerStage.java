@@ -19,13 +19,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Set;
 
-public class JPGScanner extends PronghornStage {
+public class JPGScannerStage extends PronghornStage {
 
 	private ArrayList<String> inputFiles = new ArrayList<String>();
 	private final Pipe<JPGSchema> output;
 	boolean verbose;
 	public static long timer = 0;
+	
+	private HuffmanDecoder decoder = new HuffmanDecoder();
 	
 	int mcuWidth = 0;
 	int mcuHeight = 0;
@@ -40,10 +44,12 @@ public class JPGScanner extends PronghornStage {
 	MCU mcu4 = new MCU();
 	ArrayList<MCU> mcus = null;
 	
-	public JPGScanner(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose) {
+	public JPGScannerStage(GraphManager graphManager, Pipe<JPGSchema> output,
+			           boolean verbose, Collection<String> files) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
+		this.inputFiles.addAll(files);
 	}
 	
 	/**
@@ -52,7 +58,7 @@ public class JPGScanner extends PronghornStage {
 	 * @param filename name of file to be read
 	 * @param mcus ArrayList of MCUs to be populated during the decoding process
 	 */
-	public Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
+	private Header ReadJPG(String filename, ArrayList<MCU> mcus) throws IOException {
 		Header header = new Header();
 		header.filename = filename;
 		
@@ -347,7 +353,7 @@ public class JPGScanner extends PronghornStage {
 		// decode scan so far
 		if (verbose) 
 			System.out.println("Decoding a scan of size " + header.imageData.size());
-		HuffmanDecoder.beginDecode(header);
+		decoder.beginDecode(header);
 
 		MCU mcu1 = null;
 		MCU mcu2 = null;
@@ -375,7 +381,7 @@ public class JPGScanner extends PronghornStage {
 				mcu3 = mcus.get(pos + mcuWidth);
 				mcu4 = mcus.get(pos + mcuWidth + 1);
 			}
-			if (!HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
+			if (!decoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4)) {
 				System.err.println("Error during scan " + numScans);
 				header.imageData.clear();
 				return false;
@@ -718,12 +724,7 @@ public class JPGScanner extends PronghornStage {
 		}
 	}
 	
-	public void queueFile(String inFile) {
-		inputFiles.add(inFile);
-	}
-	
-	
-	public void sendMCU(MCU emcu) {
+	private void sendMCU(MCU emcu) {
 		if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_MCUMESSAGE_4)) {
 			DataOutputBlobWriter<JPGSchema> mcuWriter = PipeWriter.outputStream(output);
 			DataOutputBlobWriter.openField(mcuWriter);
@@ -749,7 +750,7 @@ public class JPGScanner extends PronghornStage {
 			
 			numProcessed += 1;
 			if (header.restartInterval > 0 && numProcessed % header.restartInterval == 0) {
-				HuffmanDecoder.restart();
+				decoder.restart();
 			}
 		}
 		else {
@@ -810,7 +811,7 @@ public class JPGScanner extends PronghornStage {
 					}
 				}
 				else {
-					HuffmanDecoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
+					decoder.decodeHuffmanData(mcu1, mcu2, mcu3, mcu4);
 				}
 				// write mcu to pipe
 				if (horizontal == 1 && vertical == 1) {
@@ -935,7 +936,7 @@ public class JPGScanner extends PronghornStage {
 					}
 				}
 				if (header.frameType.equals("Baseline")) {
-					HuffmanDecoder.beginDecode(header);
+					decoder.beginDecode(header);
 				}
 			}
 			catch (IOException e) {

@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class BMPDumper extends PronghornStage {
+public class BMPDumperStage extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	boolean verbose;
@@ -37,7 +37,7 @@ public class BMPDumper extends PronghornStage {
 	int numMCUsReal;
 	int pos;
 	
-	public BMPDumper(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time) {
+	public BMPDumperStage(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
@@ -129,10 +129,10 @@ public class BMPDumper extends PronghornStage {
 				if (last == 1 && header.height == 0 && header.width == 0) {
 					if (time) {
 						timer += (System.nanoTime() - s);
-						System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScanner.timer) / 1000000) + " ms");
-						System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizer.timer) / 1000000) + " ms");
-						System.out.println("Time for InverseDCT: " + ((double)(InverseDCT.timer) / 1000000) + " ms");
-						System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGB.timer) / 1000000) + " ms");
+						System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer) / 1000000) + " ms");
+						System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer) / 1000000) + " ms");
+						System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer) / 1000000) + " ms");
+						System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer) / 1000000) + " ms");
 						System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
 						System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 					}
@@ -225,10 +225,10 @@ public class BMPDumper extends PronghornStage {
 						if (last == 1) {
 							if (time) {
 								timer += (System.nanoTime() - s);
-								System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScanner.timer) / 1000000) + " ms");
-								System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizer.timer) / 1000000) + " ms");
-								System.out.println("Time for InverseDCT: " + ((double)(InverseDCT.timer) / 1000000) + " ms");
-								System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGB.timer) / 1000000) + " ms");
+								System.out.println("Time for JPGScanner/HuffmanDecoder: " + ((double)(JPGScannerStage.timer) / 1000000) + " ms");
+								System.out.println("Time for InverseQuantizer: " + ((double)(InverseQuantizerStage.timer) / 1000000) + " ms");
+								System.out.println("Time for InverseDCT: " + ((double)(InverseDCTStage.timer) / 1000000) + " ms");
+								System.out.println("Time for YCbCrToRGB: " + ((double)(YCbCrToRGBStage.timer) / 1000000) + " ms");
 								System.out.println("Time for BMPDumper: " + ((double)(timer) / 1000000) + " ms");
 								System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 							}

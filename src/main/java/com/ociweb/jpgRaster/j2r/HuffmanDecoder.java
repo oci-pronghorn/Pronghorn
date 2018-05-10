@@ -64,24 +64,24 @@ public class HuffmanDecoder {
 		}
 	}
 	
-	static Header header;
-	static boolean progressive;
-	static BitReader b;
-	static ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes;
-	static ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes;
+	Header header;
+	boolean progressive;
+	BitReader b;
+	ArrayList<ArrayList<ArrayList<Integer>>> DCTableCodes;
+	ArrayList<ArrayList<ArrayList<Integer>>> ACTableCodes;
 
-	static short yDCTableID;
-	static short yACTableID;
-	static short cbDCTableID;
-	static short cbACTableID;
-	static short crDCTableID;
-	static short crACTableID;
+	short yDCTableID;
+	short yACTableID;
+	short cbDCTableID;
+	short cbACTableID;
+	short crDCTableID;
+	short crACTableID;
 
-	static short previousYDC;
-	static short previousCbDC;
-	static short previousCrDC;
+	short previousYDC;
+	short previousCbDC;
+	short previousCrDC;
 	
-	static int skips;
+	int skips;
 	
 	public static ArrayList<ArrayList<Integer>> generateCodes(HuffmanTable table){
 		ArrayList<ArrayList<Integer>> codes = new ArrayList<ArrayList<Integer>>(16);
@@ -100,7 +100,7 @@ public class HuffmanDecoder {
 		return codes;
 	}
 	
-	private static short getNextSymbol(ArrayList<ArrayList<Integer>> codes,
+	private short getNextSymbol(ArrayList<ArrayList<Integer>> codes,
 									   ArrayList<ArrayList<Short>> symbols) {
 		int currentCode = b.nextBit();
 		for (int i = 0; i < 16; ++i) {
@@ -114,7 +114,7 @@ public class HuffmanDecoder {
 		return -1;
 	}
 	
-	private static boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
+	private boolean decodeMCUComponent(ArrayList<ArrayList<Integer>> DCTableCodes,
 											  ArrayList<ArrayList<Integer>> ACTableCodes,
 											  HuffmanTable DCTable,
 											  HuffmanTable ACTable,
@@ -362,7 +362,7 @@ public class HuffmanDecoder {
 		return true;
 	}
 	
-	public static boolean decodeHuffmanData(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
+	public boolean decodeHuffmanData(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
 		if (!b.hasBits()) return true;
 		
 		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
@@ -458,7 +458,7 @@ public class HuffmanDecoder {
 		return true;
 	}
 	
-	public static void beginDecode(Header h) {
+	public void beginDecode(Header h) {
 		header = h;
 		progressive = header.frameType.equals("Progressive");
 		b = new BitReader(header.imageData);
@@ -498,7 +498,7 @@ public class HuffmanDecoder {
 		skips = 0;
 	}
 	
-	public static void restart() {
+	public void restart() {
 		previousYDC = 0;
 		previousCbDC = 0;
 		previousCrDC = 0;

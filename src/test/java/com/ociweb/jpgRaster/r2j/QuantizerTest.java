@@ -66,7 +66,7 @@ public class QuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        Quantizer.quantize(outputmcu, 50);
+        QuantizerStage.quantize(outputmcu, 50);
         // Check output MCU against expected result
         quantizeCheck(inputmcu, outputmcu);
     }
@@ -93,7 +93,7 @@ public class QuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        Quantizer.quantize(outputmcu, 50);
+        QuantizerStage.quantize(outputmcu, 50);
         // Check output MCU against expected result
         quantizeCheck(inputmcu, outputmcu);
     }

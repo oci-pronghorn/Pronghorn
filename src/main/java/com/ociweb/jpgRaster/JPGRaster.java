@@ -6,16 +6,16 @@ import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
-import com.ociweb.jpgRaster.j2r.BMPDumper;
-import com.ociweb.jpgRaster.j2r.InverseDCT;
-import com.ociweb.jpgRaster.j2r.InverseQuantizer;
-import com.ociweb.jpgRaster.j2r.JPGScanner;
-import com.ociweb.jpgRaster.j2r.YCbCrToRGB;
-import com.ociweb.jpgRaster.r2j.BMPScanner;
-import com.ociweb.jpgRaster.r2j.ForwardDCT;
-import com.ociweb.jpgRaster.r2j.HuffmanEncoder;
-import com.ociweb.jpgRaster.r2j.Quantizer;
-import com.ociweb.jpgRaster.r2j.RGBToYCbCr;
+import com.ociweb.jpgRaster.j2r.BMPDumperStage;
+import com.ociweb.jpgRaster.j2r.InverseDCTStage;
+import com.ociweb.jpgRaster.j2r.InverseQuantizerStage;
+import com.ociweb.jpgRaster.j2r.JPGScannerStage;
+import com.ociweb.jpgRaster.j2r.YCbCrToRGBStage;
+import com.ociweb.jpgRaster.r2j.BMPScannerStage;
+import com.ociweb.jpgRaster.r2j.ForwardDCTStage;
+import com.ociweb.jpgRaster.r2j.HuffmanEncoderStage;
+import com.ociweb.jpgRaster.r2j.QuantizerStage;
+import com.ociweb.jpgRaster.r2j.RGBToYCbCrStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
@@ -126,15 +126,12 @@ public class JPGRaster {
 		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(500, 200);
 		
-		JPGScanner scanner = new JPGScanner(gm, pipe1, verbose);
-		new InverseQuantizer(gm, pipe1, pipe2, verbose);
-		new InverseDCT(gm, pipe2, pipe3, verbose);
-		new YCbCrToRGB(gm, pipe3, pipe4, verbose);
-		new BMPDumper(gm, pipe4, verbose, time);
-		
-		for (String file : inputFiles) {
-			scanner.queueFile(file);
-		}
+		new JPGScannerStage(gm, pipe1, verbose, inputFiles);
+		new InverseQuantizerStage(gm, pipe1, pipe2, verbose);
+		new InverseDCTStage(gm, pipe2, pipe3, verbose);
+		new YCbCrToRGBStage(gm, pipe3, pipe4, verbose);
+		new BMPDumperStage(gm, pipe4, verbose, time);
+
 	}
 
 	private static void populateEncoderGraph(GraphManager gm, ArrayList<String> inputFiles, boolean verbose, boolean time, int quality) {
@@ -144,15 +141,12 @@ public class JPGRaster {
 		Pipe<JPGSchema> pipe3 = JPGSchema.instance.newPipe(500, 200);
 		Pipe<JPGSchema> pipe4 = JPGSchema.instance.newPipe(500, 200);
 		
-		BMPScanner scanner = new BMPScanner(gm, pipe1, verbose);
-		new RGBToYCbCr(gm, pipe1, pipe2, verbose);
-		new ForwardDCT(gm, pipe2, pipe3, verbose);
-		new Quantizer(gm, pipe3, pipe4, verbose, quality);
-		new HuffmanEncoder(gm, pipe4, verbose, time, quality);
-		
-		for (String file : inputFiles) {
-			scanner.queueFile(file);
-		}
+		new BMPScannerStage(gm, pipe1, verbose, inputFiles);
+		new RGBToYCbCrStage(gm, pipe1, pipe2, verbose);
+		new ForwardDCTStage(gm, pipe2, pipe3, verbose);
+		new QuantizerStage(gm, pipe3, pipe4, verbose, quality);
+		new HuffmanEncoderStage(gm, pipe4, verbose, time, quality);
+	
 	}
 	
 	public static String getOptArg(String longName, String shortName, String[] args, String defaultValue) {

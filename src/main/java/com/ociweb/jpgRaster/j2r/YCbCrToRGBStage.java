@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class YCbCrToRGB extends PronghornStage {
+public class YCbCrToRGBStage extends PronghornStage {
 
 	private final Pipe<JPGSchema> input;
 	private final Pipe<JPGSchema> output;
@@ -26,19 +26,19 @@ public class YCbCrToRGB extends PronghornStage {
 	MCU mcu2 = new MCU();
 	MCU mcu3 = new MCU();
 	MCU mcu4 = new MCU();
-	static short[] tempCB = new short[64];
-	static short[] tempCR = new short[64];
+	short[] tempCB = new short[64];
+	short[] tempCR = new short[64];
 	int count = 0;
-	static byte[] rgb = new byte[3];
+	byte[] rgb = new byte[3];
 	
-	public YCbCrToRGB(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
+	public YCbCrToRGBStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
 	}
 
-	private static void convertToRGB(short Y, short Cb, short Cr) {
+	private void convertToRGB(short Y, short Cb, short Cr) {
 		short r, g, b;
 		r = (short)(Y + 1.402 * Cr + 128);
 		g = (short)((Y - (0.114 * (Y + 1.772 * Cb)) - 0.299 * (Y + 1.402 * Cr)) / 0.587 + 128);
@@ -55,7 +55,7 @@ public class YCbCrToRGB extends PronghornStage {
 		//System.out.println("(" + Y + ", " + Cb + ", " + Cr + ") -> (" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ")");
 	}
 	
-	public static void convertYCbCrToRGB(MCU mcu) {
+	public void convertYCbCrToRGB(MCU mcu) {
 		for (int i = 0; i < 64; ++i) {
 			convertToRGB(mcu.y[i], mcu.cb[i], mcu.cr[i]);
 			mcu.y[i] = rgb[0];
@@ -65,7 +65,7 @@ public class YCbCrToRGB extends PronghornStage {
 		return;
 	}
 	
-	public static void expandColumns(MCU mcu, MCU mcu2) {
+	public void expandColumns(MCU mcu, MCU mcu2) {
 		for (int i = 0; i < 64; ++i) {
 			tempCB[i] = mcu.cb[i];
 			tempCR[i] = mcu.cr[i];
@@ -89,7 +89,7 @@ public class YCbCrToRGB extends PronghornStage {
 		}
 	}
 	
-	public static void expandRows(MCU mcu, MCU mcu2) {
+	public void expandRows(MCU mcu, MCU mcu2) {
 		for (int i = 0; i < 64; ++i) {
 			tempCB[i] = mcu.cb[i];
 			tempCR[i] = mcu.cr[i];
@@ -113,7 +113,7 @@ public class YCbCrToRGB extends PronghornStage {
 		}
 	}
 	
-	public static void expandColumnsAndRows(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
+	public void expandColumnsAndRows(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
 		for (int i = 0; i < 64; ++i) {
 			tempCB[i] = mcu1.cb[i];
 			tempCR[i] = mcu1.cr[i];

@@ -93,7 +93,7 @@ public class InverseQuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        InverseQuantizer.dequantize(outputmcu, header);
+        InverseQuantizerStage.dequantize(outputmcu, header);
         // Check output MCU against expected result
         dequantizeCheck(inputmcu, outputmcu);
     }
@@ -120,7 +120,7 @@ public class InverseQuantizerTest {
             outputmcu.cr[i] = inputmcu.cr[i];
         }
         // Call function
-        InverseQuantizer.dequantize(outputmcu, header);
+        InverseQuantizerStage.dequantize(outputmcu, header);
         // Check output MCU against expected result
         dequantizeCheck(inputmcu, outputmcu);
     }

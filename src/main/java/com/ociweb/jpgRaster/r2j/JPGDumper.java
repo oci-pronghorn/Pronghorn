@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 public class JPGDumper {
 
-	public static void Dump(ArrayList<Byte> data, Header header, boolean verbose, int quality) throws IOException {
+	public static void dumper(ArrayList<Byte> data, Header header, boolean verbose, int quality) throws IOException {
 		int extension = header.filename.lastIndexOf('.');
 		if (extension == -1) {
 			header.filename += ".jpg";
@@ -167,6 +167,6 @@ public class JPGDumper {
 		header.height = 8;
 		header.width = 8;
 		header.filename = "simple_test.jpg";
-		Dump(data, header, true, 50);
+		dumper(data, header, true, 50);
 	}
 }

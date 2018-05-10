@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class HuffmanEncoder extends PronghornStage {
+public class HuffmanEncoderStage extends PronghornStage {
 	
 	private static class BitWriter {
 		private int nextByte = -1;
@@ -63,11 +63,11 @@ public class HuffmanEncoder extends PronghornStage {
 	int count;
 	int numMCUs;
 
-	static short[] previousDC = new short[3];
+	short[] previousDC = new short[3];
 
-	static BitWriter b = new BitWriter();
+	BitWriter b = new BitWriter();
 	
-	public HuffmanEncoder(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time, int quality) {
+	public HuffmanEncoderStage(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time, int quality) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
@@ -220,10 +220,10 @@ public class HuffmanEncoder extends PronghornStage {
 				if (last == 1 && header.height == 0 && header.width == 0) {
 					if (time) {
 						timer += (System.nanoTime() - s);
-						System.out.println("Time for BMPScanner: " + ((double)(BMPScanner.timer) / 1000000) + " ms");
-						System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCr.timer) / 1000000) + " ms");
-						System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCT.timer) / 1000000) + " ms");
-						System.out.println("Time for Quantizer: " + ((double)(Quantizer.timer) / 1000000) + " ms");
+						System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer) / 1000000) + " ms");
+						System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer) / 1000000) + " ms");
+						System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer) / 1000000) + " ms");
+						System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer) / 1000000) + " ms");
 						System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer) / 1000000) + " ms");
 						System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 					}
@@ -258,7 +258,7 @@ public class HuffmanEncoder extends PronghornStage {
 				count += 1;
 				if (count >= numMCUs) {
 					try {
-						JPGDumper.Dump(b.data, header, verbose, quality);
+						JPGDumper.dumper(b.data, header, verbose, quality);
 					}
 					catch (IOException e) {
 						throw new RuntimeException(e);
@@ -266,10 +266,10 @@ public class HuffmanEncoder extends PronghornStage {
 					if (last == 1) {
 						if (time) {
 							timer += (System.nanoTime() - s);
-							System.out.println("Time for BMPScanner: " + ((double)(BMPScanner.timer) / 1000000) + " ms");
-							System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCr.timer) / 1000000) + " ms");
-							System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCT.timer) / 1000000) + " ms");
-							System.out.println("Time for Quantizer: " + ((double)(Quantizer.timer) / 1000000) + " ms");
+							System.out.println("Time for BMPScanner: " + ((double)(BMPScannerStage.timer) / 1000000) + " ms");
+							System.out.println("Time for RGBToYCbCr: " + ((double)(RGBToYCbCrStage.timer) / 1000000) + " ms");
+							System.out.println("Time for ForwardDCT: " + ((double)(ForwardDCTStage.timer) / 1000000) + " ms");
+							System.out.println("Time for Quantizer: " + ((double)(QuantizerStage.timer) / 1000000) + " ms");
 							System.out.println("Time for JPGDumper/HuffmanEncoder: " + ((double)(timer) / 1000000) + " ms");
 							System.out.println("Total time: " + ((double)(System.nanoTime() - start) / 1000000) + " ms");
 						}
