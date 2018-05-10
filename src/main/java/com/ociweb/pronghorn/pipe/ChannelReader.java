@@ -97,13 +97,21 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	 * @return <code>target</code>
 	 */
 	public abstract <A extends Appendable> A readPackedChars(A target);
-	
+
+	/**
+	 * Reads data from ChannelReader to check if data was packed null
+	 * @return <code>true</code> if data was packed null
+	 */
 	public abstract boolean wasPackedNull();
-	
+
+	/**
+	 * Reads data from ChannelReader to check if data was decimal null
+	 * @return <code>true</code> if data was decimal null
+	 */
 	public abstract boolean wasDecimalNull();
 
 	/**
-	 * Reads packed Long from ChannelReader and passes to long
+	 * Reads packed Long from ChannelReader and passes as long
 	 * @return long with data from ChannelReader
 	 */
 	public abstract long readPackedLong();
@@ -121,67 +129,67 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	public abstract long readDecimalAsLong();
 
 	/**
-	 * Reads packed Short from ChannelReader and passes to short
+	 * Reads packed Short from ChannelReader and passes as short
 	 * @return short with data from ChannelReader
 	 */
 	public abstract short readPackedShort();
 
 	/**
-	 * Reads Byte from ChannelReader and passes to byte
+	 * Reads Byte from ChannelReader and passes as byte
 	 * @return byte with data from ChannelReader
 	 */
 	public abstract byte readByte();
 
 	/**
-	 * Reads Short from ChannelReader and passes to short
+	 * Reads Short from ChannelReader and passes as short
 	 * @return short with data from ChannelReader
 	 */
 	public abstract short readShort();
 
 	/**
-	 * Reads Int from ChannelReader and passes to int
+	 * Reads Int from ChannelReader and passes as int
 	 * @return in with data from ChannelReader
 	 */
 	public abstract int readInt();
 
 	/**
-	 * Reads Long from ChannelReader and passes to long
+	 * Reads Long from ChannelReader and passes as long
 	 * @return long with data from ChannelReader
 	 */
 	public abstract long readLong();
 
 	/**
-	 * Reads Double from ChannelReader and passes to double
+	 * Reads Double from ChannelReader and passes as double
 	 * @return double with data from ChannelReader
 	 */
 	public abstract double readDouble();
 
 	/**
-	 * Reads Float from ChannelReader and passes to float
+	 * Reads Float from ChannelReader and passes as float
 	 * @return float with data from ChannelReader
 	 */
 	public abstract float readFloat();
 
 	/**
-	 * Reads data from ChannelReader and passes to int
+	 * Reads data from ChannelReader and passes as int
 	 * @return int with data from ChannelReader
 	 */
 	public abstract int read();
 
 	/**
-	 * Reads Boolean from ChannelReader and passes to boolean
+	 * Reads Boolean from ChannelReader and passes as boolean
 	 * @return boolean with data from ChannelReader
 	 */
 	public abstract boolean readBoolean();
 
 	/**
-	 * Reads data from ChannelReader and checks if null, if not passes bool to boolean
+	 * Reads data from ChannelReader and checks if null, if not passes bool as boolean
 	 * @return boolean with data from ChannelReader
 	 */
 	public abstract boolean wasBooleanNull();
 
 	/**
-	 * Reads data from ChannelReader after skipping n bytes and passes data to int
+	 * Reads data from ChannelReader after skipping n bytes and passes data as int
 	 * @param n number of bytes to skip
 	 * @return int with data from ChannelReader
 	 */
