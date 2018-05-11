@@ -128,10 +128,16 @@ public class HuffmanDecoder {
 											  Header header) {
 		if (progressive) {
 			int componentsInUse = 0;
-			if (header.colorComponents[0].used) ++componentsInUse;
+			if (header.colorComponents[0].used) {
+				++componentsInUse;
+			}
 			if (header.numComponents > 1) {
-				if (header.colorComponents[1].used) ++componentsInUse;
-				if (header.colorComponents[2].used) ++componentsInUse;
+				if (header.colorComponents[1].used) {
+					++componentsInUse;
+				}
+				if (header.colorComponents[2].used) {
+					++componentsInUse;
+				}
 			}
 			
 			if (header.startOfSelection > header.endOfSelection) {
@@ -159,7 +165,9 @@ public class HuffmanDecoder {
 					return false;
 				}
 				short coeff = (short)b.nextBits(length);
-				if (coeff == -1) return true;
+				if (coeff == -1) {
+					return true;
+				}
 				if (length != 0 && coeff < (1 << (length - 1))) {
 					coeff -= (1 << length) - 1;
 				}
@@ -200,7 +208,9 @@ public class HuffmanDecoder {
 						}
 						
 						short coeff = (short)b.nextBits(coeffLength);
-						if (coeff == -1) return true;
+						if (coeff == -1) {
+							return true;
+						}
 						if (coeff < (1 << (coeffLength - 1))) {
 							coeff -= (1 << coeffLength) - 1;
 						}
@@ -310,7 +320,9 @@ public class HuffmanDecoder {
 				return false;
 			}
 			short coeff = (short)b.nextBits(length);
-			if (coeff == -1) return true;
+			if (coeff == -1) {
+				return true;
+			}
 			if (length != 0 && coeff < (1 << (length - 1))) {
 				coeff -= (1 << length) - 1;
 			}
@@ -355,7 +367,9 @@ public class HuffmanDecoder {
 						}
 						
 						coeff = (short)b.nextBits(coeffLength);
-						if (coeff == -1) return true;
+						if (coeff == -1) {
+							return true;
+						}
 						if (coeff < (1 << (coeffLength - 1))) {
 							coeff -= (1 << coeffLength) - 1;
 						}
@@ -368,7 +382,9 @@ public class HuffmanDecoder {
 	}
 	
 	public boolean decodeHuffmanData(MCU mcu1, MCU mcu2, MCU mcu3, MCU mcu4) {
-		if (!b.hasBits()) return true;
+		if (!b.hasBits()) {
+			return true;
+		}
 		
 		int horizontal = header.colorComponents[0].horizontalSamplingFactor;
 		int vertical = header.colorComponents[0].verticalSamplingFactor;

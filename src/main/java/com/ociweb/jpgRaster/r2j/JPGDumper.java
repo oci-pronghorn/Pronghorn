@@ -85,8 +85,9 @@ public class JPGDumper {
 		file.close();
 		fileStream.close();
 
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Done.");
+		}
 	}
 	
 	private static void WriteAPP0(ByteBuffer buffer) {
