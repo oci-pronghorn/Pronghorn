@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.util.parse.JSONFieldSchema;
 
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
-public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
+public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive {
 
 	private final JSONFieldSchema schema;
 	private JSONFieldMapping activeMapping;
@@ -23,12 +23,12 @@ public class JSONExtractor implements JSONExtractorUber, JSONExtractorActive {
 	private int[] indexLookup;
 	
 	
-	public JSONExtractor() {
+	public JSONExtractorImpl() {
 		schema = new JSONFieldSchema(0);//can we set the position here for the null block???=
 		writeDot = false;
 	}
 	
-	public JSONExtractor(boolean writeDot) {
+	public JSONExtractorImpl(boolean writeDot) {
 		this.schema = new JSONFieldSchema(0);
 		this.writeDot = writeDot;
 	}
