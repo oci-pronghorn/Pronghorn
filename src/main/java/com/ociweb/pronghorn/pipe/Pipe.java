@@ -73,12 +73,22 @@ public class Pipe<T extends MessageSchema<T>> {
     //package protected to be called by low and high level API
     PipePublishListener[] pubListeners = new PipePublishListener[0];
     
-    private StructRegistry typeData;    
-    
+    private StructRegistry typeData;
+
+    /**
+     * Adds a pub listener to the specified pipe
+     * @param p pipe to be used
+     * @param listener pub listener to add
+     */
     public static void addPubListener(Pipe p, PipePublishListener listener) {
     	p.pubListeners = grow(p.pubListeners, listener);
     }
- 
+
+    /**
+     * Removes a pub listener from the specified pipe
+     * @param p pipe to be used
+     * @param listener pub listener to remove
+     */
 	public static void removePubListener(Pipe p, PipePublishListener listener) {
     	p.pubListeners = shrink(p.pubListeners, listener);
     }
@@ -767,9 +777,8 @@ public class Pipe<T extends MessageSchema<T>> {
 
 /**
  * Returns <code>true</code> if the provided pipe is replaying.
- *
- * @param ringBuffer  the ringBuffer to check.
- * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
+ * @param ringBuffer the ringBuffer to check.
+ * @return <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
  */
 	public static <S extends MessageSchema<S>> boolean isReplaying(Pipe<S> ringBuffer) {
 		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingSlabWorkingTail;
@@ -1015,7 +1024,7 @@ public class Pipe<T extends MessageSchema<T>> {
         //This assignment is critical to knowing that init was called
         this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
 
-        //only create if there is a possiblity that they may be used.
+        //only create if there is a possibility that they may be used.
         if (sizeOfBlobRing>0) {
 	        this.wrappedBlobReadingRingA = ByteBuffer.wrap(this.blobRing);
 	        this.wrappedBlobReadingRingB = ByteBuffer.wrap(this.blobRing);
@@ -1290,6 +1299,13 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
+    /**
+     * Writes in an int as an ASCII character to specified pipe
+     * @param output pipe to write to
+     * @param value int to write as ASCII
+     * @param <S> MessageSchema to extend
+     * @return addLongAsUTF8(output, value)
+     */
 	public static <S extends MessageSchema<S>> int addIntAsASCII(Pipe<S> output, int value) {
 		validateVarLength(output, 12);
 		return addLongAsUTF8(output, value);
@@ -1309,8 +1325,14 @@ public class Pipe<T extends MessageSchema<T>> {
 	      return outputStream.closeLowLevelField();	
 	
     }
-    
-    
+
+    /**
+     * Writes in a long as an ASCII character to specified pipe
+     * @param output pipe to write to
+     * @param value long to write as ASCII
+     * @param <S> MessageSchema to extend
+     * @return addLongAsUTF8(output, value)
+     */
 	public static <S extends MessageSchema<S>> int addLongAsASCII(Pipe<S> output, long value) {
 		return addLongAsUTF8(output, value);
 	}
@@ -2152,11 +2174,11 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     /**
-     * Checks to see whether end of pipe has been reached
+     * Checks to see if the end of the pipe has been reached
      * @param pipe MessageSchema to be extended
      * @param tailPosition position of assumed end of pipe
      * @param <S> pipe to be checked
-     * @return true or false
+     * @return <code>true</code> if end of pipe reached, else <code>false</code>
      */
 	public static <S extends MessageSchema<S>> boolean isEndOfPipe(Pipe<S> pipe, long tailPosition) {
 		return tailPosition>=pipe.knownPositionOfEOF;
@@ -2938,7 +2960,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     /**
-     * Writes specified int value to specific position in the pipe
+     * Writes int value to specific position in the given pipe
      * @param value int to be written
      * @param pipe pipe to be written to
      * @param position position to write int
@@ -3004,7 +3026,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Writes position and length of byte to add the the pipe
+     * Writes position and length of byte to add to the pipe
      * @param pipe pipe to be written to
      * @param position position of byte
      * @param length length of byte
@@ -3145,7 +3167,7 @@ public class Pipe<T extends MessageSchema<T>> {
     //TODO: may want to deprecate this interface
 
     /**
-     * Reads the value at a specific index on the given pipe and returns an int
+     * Reads the data at a specific index on the given pipe and returns an int
      * @param idx index to read
      * @param pipe pipe to read from
      * @param <S> MessageSchema to extend
@@ -3265,7 +3287,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Checks to see if pipe has data or not
+     * Checks to see whether pipe has any data or not
      * @param pipe pipe to be checked
      * @param <S> MessageSchema to extend
      * @return <code>true</code> if pipe has no data else <code>false</code>
@@ -3878,7 +3900,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Checks specified pipe and checks if there is any data to read
+     * Checks specified pipe to see if there is any data to read
      * @param pipe pipe to be examined
      * @param <S> MessageSchema to extend
      * @return <code>true</code> if there is data to read else <code>false</code>
@@ -4055,7 +4077,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
      * Hold this position in case we want to abandon what is written
-     * @param pipe
+     * @param pipe pipe to be used
      */
     public static void markHead(Pipe pipe) {
         pipe.markedHeadSlab = Pipe.workingHeadPosition(pipe);
@@ -4064,7 +4086,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
      * abandon what has been written in this fragment back to the markHead position.
-     * @param pipe
+     * @param pipe pipe to be used
      */
     public static void resetHead(Pipe pipe) {
         Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);
