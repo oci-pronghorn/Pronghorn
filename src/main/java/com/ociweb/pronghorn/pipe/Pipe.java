@@ -1,5 +1,14 @@
 package com.ociweb.pronghorn.pipe;
 
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.util.Appendables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,16 +21,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ociweb.pronghorn.pipe.token.OperatorMask;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
-import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
-import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.util.Appendables;
 
 
 //cas: comment -- general for full file.
@@ -1316,6 +1315,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		return addLongAsUTF8(output, value);
 	}
 
+    /**
+     * Writes long as UTF8 with specified length to named Pipe
+     * @param digitBuffer Pipe reference
+     * @param length length of long to add
+     * @param <S> MessageSchema to extend
+     * @return outputStream of Pipe
+     */
     public static <S extends MessageSchema<S>> int addLongAsUTF8(Pipe<S> digitBuffer, long length) {
     	  validateVarLength(digitBuffer, 21);
 	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
@@ -1870,7 +1876,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 	
 	public static <S extends MessageSchema<S>, A extends Appendable> A readASCII(Pipe<S> pipe, A target, int meta, int len) {
-		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+		if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
 	        return readASCIIConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
 	        return readASCIIRing(pipe,len,target,restorePosition(pipe, meta));
@@ -2019,10 +2025,18 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return target;
 	}
 
-	
 
+    /**
+     * Reads UTF8 characters from specified Pipe
+     * @param pipe pipe to read from
+     * @param target section of pipe to read from
+     * @param len number of characters to read
+     * @param <S> MessageSchema to extend
+     * @param <A> Appendable to extend
+     * @return TODO: unsure of return
+     */
 	public static <S extends MessageSchema<S>, A extends Appendable> A readUTF8(Pipe<S> pipe, A target, int meta, int len) { 
-    		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+    		if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
     	        return (A) readUTF8Const(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
     	    } else {
     	        return (A) readUTF8Ring(pipe,len,target,restorePosition(pipe,meta));
@@ -2034,7 +2048,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	     if (len<0) {
     	         return null;
     	     }
-	        if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
 	            return readUTF8Const(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	        } else {
 	            return readUTF8Ring(pipe,len,target,restorePosition(pipe,meta));
@@ -2072,6 +2086,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		  return target;
 	}
 
+    /**
+     * Writes decimal as ASCII to specified Pipe
+     * @param readDecimalExponent TODO: unsure
+     * @param readDecimalMantissa ??
+     * @param outputRing Pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe<S> outputRing) {
 		long ones = (long)(readDecimalMantissa*PipeReader.powdi[64 + readDecimalExponent]);
 		validateVarLength(outputRing, 21);
@@ -2130,6 +2151,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
+    /**
+     * Checks to see whether end of pipe has been reached
+     * @param pipe MessageSchema to be extended
+     * @param tailPosition position of assumed end of pipe
+     * @param <S> pipe to be checked
+     * @return true or false
+     */
 	public static <S extends MessageSchema<S>> boolean isEndOfPipe(Pipe<S> pipe, long tailPosition) {
 		return tailPosition>=pipe.knownPositionOfEOF;
 	}

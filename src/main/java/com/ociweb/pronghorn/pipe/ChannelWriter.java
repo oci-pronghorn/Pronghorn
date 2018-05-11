@@ -33,8 +33,16 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 
 	 abstract public void absolutePosition(int absolutePosition);
 
+	/**
+	 * Gets position of data written so far to ChannelWriter and passes data as int
+	 * @return position of data
+	 */
 	 abstract public int position();
 
+	/**
+	 * Gets byte data written so far to ChannelWriter and passes data to byte array
+	 * @return byte array
+	 */
 	 abstract public byte[] toByteArray();
 
 	 abstract public Appendable append(CharSequence csq);
@@ -164,7 +172,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 */
 	 abstract public void writeBoolean(boolean v);
 
-	abstract public void writeBooleanNull();
+	 abstract public void writeBooleanNull();
 
 	 abstract public void writePackedNull();
 	 
