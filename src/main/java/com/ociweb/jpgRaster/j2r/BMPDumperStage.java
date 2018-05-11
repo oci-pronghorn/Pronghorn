@@ -229,8 +229,8 @@ public class BMPDumperStage extends PronghornStage {
 						}
 						if (verbose) {
 							System.out.println("Writing to '" + header.filename + "'...");
-							dump(pixels, header.filename);
 						}
+						dump(pixels, header.filename);
 						if (verbose) {
 							System.out.println("Done.");
 						}

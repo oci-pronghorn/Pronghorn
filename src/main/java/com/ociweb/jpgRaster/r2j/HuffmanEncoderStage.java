@@ -197,7 +197,9 @@ public class HuffmanEncoderStage extends PronghornStage {
 						break;
 					}
 				}
-				if (found){ break;}
+				if (found) {
+					break;
+				}
 			}
 		}
 		return true;

@@ -316,12 +316,9 @@ public class JPGScannerStage extends PronghornStage {
 				while (true) {
 					last = current;
 					current = (short)(b.get() & 0xFF);
-					if (last == 0xFF)
-					{
-						if(current == JPGConstants.EOI)
-						{
-							if (verbose)
-							{
+					if (last == 0xFF) {
+						if (current == JPGConstants.EOI) {
+							if (verbose) {
 								System.out.println("End of Image");
 							}
 							break;
