@@ -1,14 +1,14 @@
 package com.ociweb.json.decode;
 
 import com.ociweb.json.JSONAccumRule;
-import com.ociweb.json.JSONExtractor;
+import com.ociweb.json.JSONExtractorImpl;
 import com.ociweb.json.JSONExtractorActive;
 import com.ociweb.json.JSONType;
 
 public abstract class JSONTable<P> {
-    final JSONExtractor extractor;
+    final JSONExtractorImpl extractor;
 
-    JSONTable(JSONExtractor extractor) {
+    JSONTable(JSONExtractorImpl extractor) {
         this.extractor = extractor;
     }
 

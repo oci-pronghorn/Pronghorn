@@ -1,7 +1,7 @@
 package com.ociweb.json.parse;
 
 import com.ociweb.json.JSONType;
-import com.ociweb.json.decode.JSONDecoder;
+import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.json.encode.JSONRenderer;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
@@ -22,7 +22,7 @@ public class JSONResponse {
     	Status, Message, Body;
     }    
 
-	private final JSONDecoder jsonExtractor = new JSONDecoder()
+	private final JSONExtractor jsonExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeInteger, true)
 				.key("status")

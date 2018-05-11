@@ -11,7 +11,7 @@ import org.junit.Test;
 
 import com.ociweb.json.JSONAccumRule;
 import com.ociweb.json.JSONType;
-import com.ociweb.json.decode.JSONDecoder;
+import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -40,7 +40,7 @@ public class JSONParseTest {
 			+ "]"
 			+ "}";
 
-	private final JSONDecoder simpleExtractor = new JSONDecoder()
+	private final JSONExtractor simpleExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeString, false)//set flags for first, last, all, ordered...
 					.key("root").key("keyb")
@@ -50,7 +50,7 @@ public class JSONParseTest {
 					.asField(Field.a)
 			.finish();
 
-	private final JSONDecoder simpleArrayExtractor = new JSONDecoder()
+	private final JSONExtractor simpleArrayExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 					.key("root").array().key("keyb")
@@ -60,7 +60,7 @@ public class JSONParseTest {
 					.asField(Field.a)
 			.finish();
 
-	private final JSONDecoder simple2DArrayExtractor = new JSONDecoder(false)
+	private final JSONExtractor simple2DArrayExtractor = new JSONExtractor(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 					.key("root").array().key("[]").key("keyb")
@@ -458,7 +458,7 @@ public class JSONParseTest {
 
 
 
-	private Pipe<RawDataSchema> parseJSON(String sourceData, JSONDecoder extractor) {
+	private Pipe<RawDataSchema> parseJSON(String sourceData, JSONExtractor extractor) {
 		
 		StructRegistry reg = new StructRegistry();
 		int structId = reg.addStruct();		
@@ -521,7 +521,7 @@ public class JSONParseTest {
 	
 	private void parseJSONLoad(int i,
 			                   String sourceData,
-							   JSONDecoder extractor) {
+							   JSONExtractor extractor) {
 
 		StructRegistry reg = new StructRegistry();
 		int structId = reg.addStruct();		
@@ -597,7 +597,7 @@ public class JSONParseTest {
 	//////////////////////////////////////
 	//new tests for reading JSON with arrays using structures
 	//////////////////////////////////////
-	private final JSONDecoder column2DArrayExtractor = new JSONDecoder(false)
+	private final JSONExtractor column2DArrayExtractor = new JSONExtractor(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
 					.key("root").array().key("[]").key("keyb")

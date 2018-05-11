@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.struct;
 
 import java.util.Arrays;
 
-import com.ociweb.json.decode.JSONDecoder;
+import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8Local;
 
@@ -166,7 +166,7 @@ public class StructBuilder {
 				);		
 	}
 
-	public StructBuilder add(JSONDecoder jsonDecoder) {
+	public StructBuilder add(JSONExtractor jsonDecoder) {
 		jsonDecoder.addToStruct(typeData, this);
 		return this;
 	}

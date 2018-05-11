@@ -1,30 +1,30 @@
 package com.ociweb.json.decode;
 
-import com.ociweb.json.JSONExtractor;
+import com.ociweb.json.JSONExtractorImpl;
 import com.ociweb.json.JSONExtractorCompleted;
 import com.ociweb.pronghorn.struct.StructBuilder;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
-public class JSONDecoder implements JSONExtractorCompleted {
-    private final JSONExtractor extractor;
+public class JSONExtractor implements JSONExtractorCompleted {
+    private final JSONExtractorImpl extractor;
     private boolean locked = false;
 
-    public JSONDecoder() {
-        extractor = new JSONExtractor();
+    public JSONExtractor() {
+        extractor = new JSONExtractorImpl();
     }
 
-    public JSONDecoder(boolean writeDot) {
-        extractor = new JSONExtractor(writeDot);
+    public JSONExtractor(boolean writeDot) {
+        extractor = new JSONExtractorImpl(writeDot);
     }
 
-    public JSONTable<JSONDecoder> begin() {
+    public JSONTable<JSONExtractor> begin() {
         assert(!locked) : "Cannot begin a locked decoder";
-        return new JSONTable<JSONDecoder>(extractor) {
-            public JSONDecoder tableEnded() {
+        return new JSONTable<JSONExtractor>(extractor) {
+            public JSONExtractor tableEnded() {
                 locked = true;
-                return JSONDecoder.this;
+                return JSONExtractor.this;
             }
         };
     }
