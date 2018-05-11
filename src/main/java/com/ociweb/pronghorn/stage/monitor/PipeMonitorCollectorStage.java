@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
 
-public class MonitorConsoleStage extends PronghornStage {
+public class PipeMonitorCollectorStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
 	private final Pipe[] inputs;
@@ -31,7 +31,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	private int[] messagesPerSecondValues;
 	
 	
-	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(PipeMonitorCollectorStage.class);
 			
 	private short[] pctFull; //running exponential average of pipe percent full
 	private int[]   messagesPerSecond; //running exponential average of messages per second
@@ -42,7 +42,7 @@ public class MonitorConsoleStage extends PronghornStage {
     private final int batchSize;
 	private int reportSlowSpeed = 10;
 
-	private MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
+	private PipeMonitorCollectorStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
 		this.graphManager = graphManager;
@@ -215,11 +215,11 @@ public class MonitorConsoleStage extends PronghornStage {
 	private static final Long defaultMonitorRate = Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE); 
 	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 15, 0);
 	
-	public static MonitorConsoleStage attach(GraphManager gm) {
+	public static PipeMonitorCollectorStage attach(GraphManager gm) {
 		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
 	}
 	
-	public static MonitorConsoleStage attach(GraphManager gm, long rate) {
+	public static PipeMonitorCollectorStage attach(GraphManager gm, long rate) {
 	        return attach(gm,Long.valueOf(rate),defaultMonitorRingConfig);
 	}
 	
@@ -229,9 +229,9 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param monitorRate
 	 * @param ringBufferMonitorConfig
 	 */
-	public static MonitorConsoleStage attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
+	public static PipeMonitorCollectorStage attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
-		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
+		PipeMonitorCollectorStage stage = new PipeMonitorCollectorStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate>>5, stage);
 		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);

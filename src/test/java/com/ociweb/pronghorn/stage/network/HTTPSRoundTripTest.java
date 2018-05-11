@@ -10,26 +10,17 @@ import java.net.URL;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.HTTPServerConfig;
+import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.TLSCertificates;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
-import com.ociweb.pronghorn.network.http.RouterStageConfig;
-import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ScriptedNonThreadScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -83,7 +74,7 @@ public class HTTPSRoundTripTest {
     	
 		
 		String pathRoot = buildStaticFileFolderPath(testFile);
-		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
+		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
 	
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
@@ -161,16 +152,15 @@ public class HTTPSRoundTripTest {
 			
 		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
 								clientRequestCount, clientRequestSize, tlsCertificates);
-    	
-		String pathRoot = buildStaticFileFolderPath(testFile);
-		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
-	
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
-		
+    	
+		String pathRoot = buildStaticFileFolderPath(testFile);
+		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);	
 		NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, modules);
     	
 		runRoundTrip(gm, results);
+		
     }
     
     @Test
@@ -243,21 +233,24 @@ public class HTTPSRoundTripTest {
 								clientRequestCount, clientRequestSize, tlsCertificates);
     	
 		String pathRoot = buildStaticFileFolderPath(testFile);
-		ModuleConfig modules = simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
+		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);
 	
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
-				 
-		ServerPipesConfig serverConfig = NetGraphBuilder.simpleServerPipesConfig(tlsCertificates, processors);
+		
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		c.setTLS(tlsCertificates);	
+		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		
+		final ServerPipesConfig serverConfig = c.buildServerConfig();
+			
 		
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
-				   serverConfig.maxConnectionBitsOnServer, 
-				   serverConfig.maxConcurrentInputs, 
-				   serverConfig.maxConcurrentOutputs,
-				   serverConfig.moduleParallelism, true, "Server", "", serverConfig.logFile);
+				    true, "Server", "", serverConfig);
 		
-		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord);
 		
 		runRoundTrip(gm, results);
     }
@@ -281,48 +274,6 @@ public class HTTPSRoundTripTest {
 	}
 
 
-	public static ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,
-			final int messageSizeToOrderingSuper) {
-		//using the basic no-fills API
-		ModuleConfig config = new ModuleConfig() { 
-		
-		    //this is the cache for the files, so larger is better plus making it longer helps a lot but not sure why.
-		    final PipeConfig<ServerResponseSchema> fileServerOutgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 
-		    		         messagesToOrderingSuper, messageSizeToOrderingSuper);//from module to  supervisor
-	
-			@Override
-			public int moduleCount() {
-				return 1;
-			}
-
-			@Override
-			public Pipe<ServerResponseSchema>[] registerModule(int a,
-					GraphManager graphManager, RouterStageConfig routerConfig, 
-					Pipe<HTTPRequestSchema>[] inputPipes) {
-				
-
-					//the file server is stateless therefore we can build 1 instance for every input pipe
-					int instances = inputPipes.length;
-					
-					Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
-					
-					int i = instances;
-					while (--i>=0) {
-						staticFileOutputs[i] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
-						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
-					}
-						
-					routerConfig.registerCompositeRoute().path("/${path}");
-					//no headers requested
-					
-				return staticFileOutputs;
-			}        
-		 	
-		 };
-		return config;
-	}
-	
-	
 	private static String buildStaticFileFolderPath(String testFile) {
 		URL dir = ClassLoader.getSystemResource(testFile);
 		String root = "";	//file:/home/nate/Pronghorn/target/test-classes/OCILogo.png

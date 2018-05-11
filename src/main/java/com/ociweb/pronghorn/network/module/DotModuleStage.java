@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
@@ -27,23 +27,23 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	private static final Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
 	private final String graphName;
 	
-    public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, MonitorConsoleStage monitor,
+    public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, PipeMonitorCollectorStage monitor,
     		                  Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
 
     	return new DotModuleStage(graphManager, inputs, outputs, httpSpec, monitor);
     }
     
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec) {
-    	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);		
+    	PipeMonitorCollectorStage monitor = PipeMonitorCollectorStage.attach(graphManager);		
         return new DotModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, monitor);
     }
 	
-    private final MonitorConsoleStage monitor;
+    private final PipeMonitorCollectorStage monitor;
     
 	private DotModuleStage(GraphManager graphManager, 
 			Pipe<HTTPRequestSchema>[] inputs, 
 			Pipe<ServerResponseSchema>[] outputs, 
-			HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
+			HTTPSpecification httpSpec, PipeMonitorCollectorStage monitor) {
 		super(graphManager, inputs, outputs, httpSpec);
 		this.monitor = monitor;
 		this.graphName = "AGraph";

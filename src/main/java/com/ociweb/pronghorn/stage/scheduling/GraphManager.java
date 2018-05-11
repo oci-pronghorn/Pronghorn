@@ -24,7 +24,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -1873,7 +1873,7 @@ public class GraphManager {
 	                
 	                //skip all pipes that are gathering monitor data
 	                if (consumer<0  ||
-	                		((!(GraphManager.getStage(m, consumer) instanceof MonitorConsoleStage))
+	                		((!(GraphManager.getStage(m, consumer) instanceof PipeMonitorCollectorStage))
 	                		&& (!(stageForMonitorData(m,GraphManager.getStage(m, consumer))))) 
 	                		) {
 		                
@@ -2229,7 +2229,7 @@ public class GraphManager {
 
 	private static boolean mustShowOnTelemetry(GraphManager m, PronghornStage stage) {
 		return null!=stage 
-				&& !(stage instanceof MonitorConsoleStage) 
+				&& !(stage instanceof PipeMonitorCollectorStage) 
 				&& !(stage instanceof PipeMonitorStage)
 				&& !stageForMonitorData(m,stage);
 	}

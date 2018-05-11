@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
@@ -53,7 +53,7 @@ public class HTTPServer {
 			////////////////
 			///FOR DEBUG GENERATE A PICTURE OF THE SERVER
 			////////////////	
-			final MonitorConsoleStage attach =  MonitorConsoleStage.attach(gm);
+			final PipeMonitorCollectorStage attach =  PipeMonitorCollectorStage.attach(gm);
 		}
 		
 		////////////////

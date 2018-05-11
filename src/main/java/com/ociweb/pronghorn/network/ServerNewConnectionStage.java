@@ -13,6 +13,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngine;
 
@@ -74,6 +75,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 
     }
     
+    public final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
+		@Override
+		public void accept(SelectionKey selection) {
+			processSelection(selection); 
+		}
+    };   
+
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, boolean isTLS) {
 		return new ServerNewConnectionStage(graphManager,coordinator);
 	}
@@ -284,9 +292,9 @@ public class ServerNewConnectionStage extends PronghornStage{
   
     	if (!needsToNotifyStartup) {	  
 	    	//long now = System.nanoTime();
-	    	
-	        try {//selector may be null if shutdown was called on startup.
-	           if (hasNewDataToRead()) {
+	    	    		  
+    		   int maxIterations = 1000;
+	           while (hasNewDataToRead() && --maxIterations>=0) {
 	                //we know that there is an interesting (non zero positive) number of keys waiting.
 	        
 	        	    //we have no pipes to monitor so this must be done explicity
@@ -294,26 +302,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 	        	    	this.didWorkMonitor.published();
 	        	    }
 	        	    
-	        	    //TODO: switch to visitor pattern like others...
-	        	    Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
-	        	    
 	        	    doneSelectors.clear();
-	        	    //selectedKeys.forEach(selectionKeyAction);
-	                while (keyIterator.hasNext()) {
-	                
-	                  SelectionKey key = keyIterator.next();
-	                         
-	                  processSelectionKey(key);
-
-	                }
-	                
+	        	    selectedKeys.forEach(selectionKeyAction);	                
 	                removeDoneKeys(selectedKeys);
 	                
 	            }
-	        } catch (IOException e) {
-	        	logger.trace("Unable to open new incoming connection",e);
-	        }
-	        
+	 	        
 		} else {
 			reportServerIsRunning(host);
 			needsToNotifyStartup=false;
@@ -333,7 +327,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 
 	}
 	
-	private void processSelectionKey(SelectionKey key) throws IOException {
+	private void processSelection(SelectionKey key) {
 		
 		if (null!=newClientConnections 
 			&& !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
@@ -343,10 +337,6 @@ public class ServerNewConnectionStage extends PronghornStage{
 		int readyOps = key.readyOps();
 		                    
 		  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
-		     
-			  //ServerCoordinator.acceptConnectionStart = now;
-			  
-
 		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
 		      long channelId = holder.lookupInsertPosition();	        
@@ -355,13 +345,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      if (channelId>=0) {		                    
 		          
 		          int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
-		                                
-		          SocketChannel channel = server.accept();
-		          
+		                                		          
 		          try {                          
+		        	  SocketChannel channel = server.accept();
 		              channel.configureBlocking(false);
 		              
-		              //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
+		              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 		              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
 		              channel.socket().setPerformancePreferences(1, 0, 2);
 		     
@@ -378,15 +367,15 @@ public class ServerNewConnectionStage extends PronghornStage{
 					  							  
 					  
 		              holder.setValue(channelId, 
-		            		  new ServerConnection(sslEngine, 
-		            				  channel, channelId,
-		            				  coordinator));
+		            		  		  new ServerConnection(sslEngine, 
+		            		  				  		       channel, channelId,
+		            				                       coordinator)
+		            		  		  );
 		              
 		             //logger.info("\naccepting new connection {}",channelId); 
 		        		                                                                                                                
 		             // logger.info("register new data to selector for pipe {}",targetPipeIdx);
-		              Selector selector2 = ServerCoordinator.getSelector(coordinator);
-					  channel.register(selector2, 
+		              channel.register(ServerCoordinator.getSelector(coordinator), 
 							           SelectionKey.OP_READ, 
 							           ServerCoordinator.selectorKeyContext(coordinator, channelId));
 						
@@ -403,10 +392,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      }
 
 		  } else {
-			  logger.error("should this be run at all?");
 		      assert(0 != (SelectionKey.OP_CONNECT & readyOps)) : "only expected connect";
-		      ((SocketChannel)key.channel()).finishConnect(); //TODO: if this does not scale we should move it to the IOStage.
-		      doneSelectors.add(key);
+		      try {
+				((SocketChannel)key.channel()).finishConnect();
+				doneSelectors.add(key);
+			} catch (IOException e) {
+				logger.error("Unable to finish connect",e);
+			} 
 		  }
 	}
 

@@ -19,7 +19,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
@@ -292,7 +292,7 @@ public class PhastCodecSchemaTest {
         
        //GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
         
-        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
+        PipeMonitorCollectorStage monitor = PipeMonitorCollectorStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
         final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice = false; //this may or may not help
 
@@ -365,7 +365,7 @@ public class PhastCodecSchemaTest {
 	        
 	  //      GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
 	        
-	        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
+	        PipeMonitorCollectorStage monitor = PipeMonitorCollectorStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
 	        final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
 	        scheduler.playNice = false; //this may or may not help
 

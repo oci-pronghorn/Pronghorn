@@ -12,6 +12,7 @@ public class ServerConnectionStruct {
 	public static enum connectionFields {
 		arrivalTime,
 		businessStartTime,
+		routeId,
 		context;
 	}	
 	private HTTPHeader[] headersToEcho;
@@ -21,11 +22,11 @@ public class ServerConnectionStruct {
 	public final long contextFieldId;
 	public final long arrivalTimeFieldId;
 	public final long businessStartTime;
+	public final long routeIdFieldId;
 
 	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
-	private int minInternalInFlightPayloadSize = 48;//TODO: add update method
-	
-	
+	private int minInternalInFlightPayloadSize = 56;//TODO: add update method
+		
 	public int inFlightCount() {
 		return minInternalInFlightCount;		
 	}
@@ -37,7 +38,7 @@ public class ServerConnectionStruct {
 	public ServerConnectionStruct(StructRegistry recordTypeData) {
 		this.registry = recordTypeData;
 	
-		int fieldsCount = 3;		
+		int fieldsCount = 4;		
 		byte[][] fieldNames = new byte[fieldsCount][];
 		StructType[] structTypes = new StructType[fieldsCount];
 		int [] fieldDims = new int[fieldsCount];//all zeros, no dim supported
@@ -54,7 +55,11 @@ public class ServerConnectionStruct {
 		fieldNames[2] = "context".getBytes();
 		structTypes[2] = StructType.Integer;
 		fieldAssoc[2] = connectionFields.context;
-		
+				
+		fieldNames[3] = "routeId".getBytes();
+		structTypes[3] = StructType.Integer;
+		fieldAssoc[3] = connectionFields.routeId;
+
 		//keeps the requestContext, header echos and arrival time for use upon response.
 		this.connectionStructId = recordTypeData.addStruct(
 				fieldNames,
@@ -72,6 +77,9 @@ public class ServerConnectionStruct {
         businessStartTime = registry.fieldLookupByIdentity(
                 connectionFields.businessStartTime, connectionStructId);
 		
+        routeIdFieldId = registry.fieldLookupByIdentity(
+                connectionFields.routeId, connectionStructId);
+        
 	}
 	
 	public void maxInternalServerRequestsInFlight(int max) {

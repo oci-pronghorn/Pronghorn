@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 
 public class ThreadPerStageScheduler extends StageScheduler {
 	private static final Logger logger = LoggerFactory.getLogger(ThreadPerStageScheduler.class);
@@ -68,7 +68,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     			        if (null != GraphManager.getNota(graphManager, stage, GraphManager.MONITOR, null)) {
     			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
     			        }
-    			        if (stage instanceof MonitorConsoleStage) {
+    			        if (stage instanceof PipeMonitorCollectorStage) {
     			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
     			        }
     					executorService.execute(buildRunnable(allStagesLatch, stage)); 	
@@ -79,7 +79,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			        if (null != GraphManager.getNota(graphManager, stage, GraphManager.MONITOR, null)) {
 			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
 			        }
-			        if (stage instanceof MonitorConsoleStage) {
+			        if (stage instanceof PipeMonitorCollectorStage) {
 			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
 			        }
 			        executorService.execute(buildNonRunnable(allStagesLatch,stage));

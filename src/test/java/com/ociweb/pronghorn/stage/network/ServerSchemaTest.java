@@ -4,6 +4,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.schema.AlertNoticeSchema;
 import com.ociweb.pronghorn.network.schema.HTTPLogRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -40,5 +41,9 @@ public class ServerSchemaTest {
         assertTrue(FROMValidation.checkSchema("/HTTPLogResponse.xml", HTTPLogResponseSchema.class));
     }
     
+    @Test
+    public void testAlertNoticeFROMMatchesXML() {
+        assertTrue(FROMValidation.checkSchema("/AlertNotice.xml", AlertNoticeSchema.class));
+    }
     
 }

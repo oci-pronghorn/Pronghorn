@@ -6,7 +6,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public interface ModuleConfig {
-
+ 
 	int moduleCount(); 
 
 	Pipe<ServerResponseSchema>[] registerModule(int moduleInstance, 

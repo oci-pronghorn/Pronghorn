@@ -21,12 +21,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class OrderSupervisorTest {
 
-	private final ServerCoordinator coordinator = new ServerCoordinator(null,
-			"127.0.0.1",9999, null,
-			12,
-			4,4,
-			1,
-			false, "Server", "", null);
+
 	private final boolean isTLS = false;
 	private final PipeConfig<ServerResponseSchema> resConfig = ServerResponseSchema.instance.newPipeConfig(6,100);
 	private final PipeConfig<NetPayloadSchema> netConfig = NetPayloadSchema.instance.newPipeConfig(6,100);
@@ -83,7 +78,7 @@ public class OrderSupervisorTest {
 		OrderSupervisorStage.newInstance(gm, 
 				inputPipes, null,
 				outgoingPipes, 
-				coordinator, 
+				coordinator(gm), 
 				isTLS);
 		
 		StringBuilder console = new StringBuilder();
@@ -151,7 +146,7 @@ public class OrderSupervisorTest {
 		OrderSupervisorStage.newInstance(gm, 
 				inputPipes, null,
 				outgoingPipes, 
-				coordinator, 
+				coordinator(gm), 
 				isTLS);
 		
 		StringBuilder console = new StringBuilder();
@@ -175,5 +170,28 @@ public class OrderSupervisorTest {
 		
 		assertFalse(captured, captured.indexOf("Hang detected")>=0);
 				
+	}
+
+	private ServerCoordinator coordinator(GraphManager gm) {
+		
+		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(9999, gm);
+		serverConfig.setHost("127.0.0.1");
+		serverConfig.setConcurrentChannelsPerDecryptUnit(4);
+		serverConfig.setConcurrentChannelsPerEncryptUnit(4);
+		
+		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
+				
+		ServerPipesConfig serverPipesConfig = serverConfig.buildServerConfig();
+		
+		return new ServerCoordinator(
+				serverConfig.getCertificates(),
+				serverConfig.bindHost(), 
+				serverConfig.bindPort(),
+				serverConfig.connectionStruct(),
+				serverConfig.requireClientAuth(),
+				serverConfig.serviceName(),
+				serverConfig.defaultHostPath(), 
+				serverPipesConfig);
+
 	}
 }

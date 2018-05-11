@@ -16,6 +16,13 @@ public class DummyRestStage extends PronghornStage {
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
 	
+	public static DummyRestStage newInstance(GraphManager graphManager,
+			Pipe<HTTPRequestSchema>[] inputPipes,
+			Pipe<ServerResponseSchema>[] outputs,
+			HTTPSpecification<?,?,?,?> httpSpec) {
+		return new DummyRestStage(graphManager, inputPipes, outputs, httpSpec);
+	}
+		
 	public DummyRestStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes,
 			Pipe<ServerResponseSchema>[] outputs,
@@ -37,7 +44,6 @@ public class DummyRestStage extends PronghornStage {
 		while(--i>=0) {
 			process(inputPipes[i], outputs[i]);
 		}
-			
 	}
 
 	private void process(Pipe<HTTPRequestSchema> input, 

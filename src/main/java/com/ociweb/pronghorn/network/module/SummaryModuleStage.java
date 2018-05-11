@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
@@ -26,22 +26,22 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
 
 	Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
 	
-    public static SummaryModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, MonitorConsoleStage monitor, 
+    public static SummaryModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, PipeMonitorCollectorStage monitor, 
     		                      Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
     	return new SummaryModuleStage(graphManager, inputs, outputs, httpSpec, monitor);
     }
     
     public static SummaryModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec) {
-    	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);		
+    	PipeMonitorCollectorStage monitor = PipeMonitorCollectorStage.attach(graphManager);		
         return new SummaryModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, monitor);
     }
 	
-    private final MonitorConsoleStage monitor;
+    private final PipeMonitorCollectorStage monitor;
     
 	private SummaryModuleStage(GraphManager graphManager, 
 			Pipe<HTTPRequestSchema>[] inputs, 
 			Pipe<ServerResponseSchema>[] outputs, 
-			HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
+			HTTPSpecification httpSpec, PipeMonitorCollectorStage monitor) {
 		super(graphManager, inputs, outputs, httpSpec);
 		this.monitor = monitor;
 		

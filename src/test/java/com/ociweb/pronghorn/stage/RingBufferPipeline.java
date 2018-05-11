@@ -27,7 +27,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorAdapter;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
@@ -107,43 +107,6 @@ public class RingBufferPipeline {
 
 	}
 
-	private final class DumpStageStreamingConsumer extends PronghornStage {
-
-		private final boolean useRoute;
-		private final StreamingReadVisitor visitor;
-		private final StreamingVisitorReader reader;
-		
-		private DumpStageStreamingConsumer(GraphManager gm,Pipe inputRing, boolean useRoute) {
-			super(gm, inputRing, NONE);
-			this.useRoute = useRoute;			
-			this.visitor =// new StreamingConsumerToJSON(System.out); 
-					new StreamingReadVisitorAdapter() {
-				@Override
-				public void visitBytes(String name, long id, ByteBuffer value) {
-					
-					value.flip();
-					if (0==value.remaining()) {
-						return;//EOM??
-					}
-					assertEquals(testArray.length, value.remaining());
-					value.get(tempArray);
-			//	    System.err.println(new String(Arrays.copyOfRange(tempArray, 0 ,100)));
-		///		    System.err.println(new String(Arrays.copyOfRange(testArray,0,100)));
-				    //TODO: B, this test is not passing.
-					
-				//	assertTrue(Arrays.equals(testArray, tempArray));
-		
-				}
-			};
-			reader = new StreamingVisitorReader(inputRing, visitor );
-		}
-
-		@Override
-		public void run() {
-				reader.run();
-		}
-	}
-	
 	
 	private final class DumpStageHighLevel extends PronghornStage {
 		private final Pipe inputRing;
@@ -551,7 +514,7 @@ public class RingBufferPipeline {
 		 
 		 
 		 if (monitor) {			 
-			 MonitorConsoleStage.attach(gm);
+			 PipeMonitorCollectorStage.attach(gm);
 		 }
 		 
 		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);

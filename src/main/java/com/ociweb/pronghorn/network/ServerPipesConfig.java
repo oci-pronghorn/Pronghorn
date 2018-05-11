@@ -3,10 +3,13 @@ package com.ociweb.pronghorn.network;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeConfigManager;
 
 public class ServerPipesConfig {
 	
@@ -18,51 +21,40 @@ public class ServerPipesConfig {
 	public final LogFileConfig logFile;
 	public final int serverOutputMsg;
 	
-	public final int fromRouterToModuleCount;
 	public final int releaseMsg;
 	
 	public final int moduleParallelism; //scale of compute modules
 	public final int maxConnectionBitsOnServer; //max connected users
 	public final int maxConcurrentInputs; //concurrent actions count
 	public final int maxConcurrentOutputs;
-
 	
-	public int fromRouterToModuleBlob; //may grow based on largest post required
+	public final int fromRouterToModuleCount;
+	public final int fromRouterToModuleBlob; //may grow based on largest post required
+
 	private int serverBlobToWrite; //may need to grow based on largest payload required
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerPipesConfig.class);
 	
 	
-    public final PipeConfig<ReleaseSchema> releaseConfig;
-    
-    public final PipeConfig<ServerConnectionSchema> newConnectionsConfig;
-	    
     //byte buffer must remain small because we will have a lot of these for all the partial messages
-    public final PipeConfig<NetPayloadSchema> incomingDataConfig;
-
     //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
-    private PipeConfig<NetPayloadSchema> fromOrderWraperConfig;
-        
-    public final PipeConfig<NetPayloadSchema> handshakeDataConfig;
-	
-	public int writeBufferMultiplier;
+    private      PipeConfig<NetPayloadSchema> fromOrderWraperConfig;     
   
-//	public ServerPipesConfig(
-//			LogFileConfig logFile,
-//			 boolean isTLS, 
-//			 int maxConnectionBits,
-//			 int tracks,
-//			 int encryptUnitsPerTrack,
-//			 int concurrentChannelsPerEncryptUnit,
-//			 int decryptUnitsPerTrack,
-//			 int concurrentChannelsPerDecryptUnit
-//			 ) {
-//		this(logFile, isTLS, maxConnectionBits, tracks,
-//				encryptUnitsPerTrack, concurrentChannelsPerEncryptUnit,
-//				decryptUnitsPerTrack, concurrentChannelsPerDecryptUnit,
-//				4,512);
-//	}
+    
+    //this cannot be put in the PCM or it will collide..
+    public final PipeConfig<NetPayloadSchema> incomingDataConfig; //also meets handshake req when TLS is used
+
 	
+    //This list of configs is kept inside the PCM, some of the above are to be moved down here...
+    //final PipeConfig<NetPayloadSchema> fromOrderWraperConfig;     
+    //final PipeConfig<ServerConnectionSchema> newConnectionsConfig;	    
+    //final PipeConfig<ReleaseSchema> releaseConfig;    
+	//final PipeConfig<HTTPRequestSchema> routerToModuleConfig
+	//final PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);	
+    public final PipeConfigManager pcm; //TODO: move all the above configs to this PCM...
+    
+	public int writeBufferMultiplier;
+
 	public ServerPipesConfig(LogFileConfig logFile, boolean isTLS, 
 							 int maxConnectionBits,
 							 int tracks,
@@ -71,8 +63,9 @@ public class ServerPipesConfig {
 							 int decryptUnitsPerTrack,
 							 int concurrentChannelsPerDecryptUnit, 
 							 int partialPartsIn,  //make larger for many fragments
-							 int maxRequestSize //make larger for large posts
-							 ) {
+							 int maxRequestSize, //make larger for large posts
+							 PipeConfigManager pcm				 
+			) {
 		
 		if (isTLS && (maxRequestSize< (1<<15))) {
 			maxRequestSize = (1<<15);//TLS requires this larger payload size
@@ -83,6 +76,7 @@ public class ServerPipesConfig {
 		this.serverOutputMsg           = 16; //count of outgoing responses to writer
 	    //largest file to be cached in file server
    
+		this.pcm = pcm;
 	    this.logFile = logFile;
 	    this.moduleParallelism = tracks;
 	    this.maxConnectionBitsOnServer = maxConnectionBits;
@@ -118,19 +112,15 @@ public class ServerPipesConfig {
 		
 		this.releaseMsg                      = 2048;
 				
-		this.releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
-	    
-		this.newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 100);
-	    
+		pcm.addConfig(new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg));
 
 	    //byte buffer must remain small because we will have a lot of these for all the partial messages
+		//however for large posts we make this large for fast data reading
+		//in addition this MUST be 1<15 in var size when TLS is in use.
 		this.incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 	    								partialPartsIn, 
-	    								maxRequestSize);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
-
-		this.handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 
-	    		Math.max(maxConcurrentInputs>>1,4), 1<<15); //must be 1<<15 at a minimum for handshake
-	    	    
+	    								maxRequestSize);
+	
 	}
 	
 	public void ensureServerCanWrite(int length) {

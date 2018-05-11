@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="RouteSLA" id="100">
+   
+        <uInt64 name="Connection"   id="1"/>
+        <uInt64 name="Sequence" id="2"/>
+        <uInt64 name="Duration" id="2"/>
+        <uInt32 name="Route" id="4"/>
+        
+    </template>
+
+</templates>

@@ -23,7 +23,7 @@ import com.ociweb.pronghorn.network.http.HTTPLogUnificationStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.BloomFilter;
@@ -606,10 +606,10 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return false;//never combine log info producer with the log unification stage
 		}
 		
-		if (consumerStage instanceof MonitorConsoleStage ) {
+		if (consumerStage instanceof PipeMonitorCollectorStage ) {
 			return false;
 		}
-		if (producerStage instanceof MonitorConsoleStage ) {
+		if (producerStage instanceof PipeMonitorCollectorStage ) {
 			return false;
 		}		
 		

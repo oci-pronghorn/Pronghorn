@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import org.junit.Assert;
@@ -50,13 +50,38 @@ public class SocketIOStageTest {
         GraphManager gm = new GraphManager();
         
         String bindHost = "127.0.0.1";
-        int routerCount = 1;
+        int tracks = 1;
 
 		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
 
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, scs, maxConnBits, 
-        		maxConcurrentInputs, maxConcurrentOutputs, routerCount, false, "Server", "", null);
+		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
+		serverConfig.setHost(bindHost)
+		 .setMaxConnectionBits(maxConnBits)
+		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
+		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs)
+		 .setTracks(tracks);
+
+		if (null==certs) {
+			serverConfig.useInsecureServer();
+		} else {
+			serverConfig.setTLS(certs);
+		}
+		
+		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
+				
+		ServerPipesConfig serverPipesConfig = serverConfig.buildServerConfig();
+		
+		ServerCoordinator serverCoord = new ServerCoordinator(
+				serverConfig.getCertificates(),
+				serverConfig.bindHost(), 
+				serverConfig.bindPort(),
+				serverConfig.connectionStruct(),
+				serverConfig.requireClientAuth(),
+				serverConfig.serviceName(),
+				serverConfig.defaultHostPath(), 
+				serverPipesConfig);
+				
+		
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null,gm.recordTypeData);
 
 		
@@ -70,7 +95,7 @@ public class SocketIOStageTest {
 		///
 		///server new connections e-poll
 		///
-        ServerNewConnectionStage.newIntance(gm, serverCoordinator, false); //no actual encryption so false.
+        ServerNewConnectionStage.newIntance(gm, serverCoord, false); //no actual encryption so false.
         
         ////
         ////client to write data to socket
@@ -92,8 +117,8 @@ public class SocketIOStageTest {
 		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
 		    Pipe<ReleaseSchema>[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, encryptedContent);	
-	        new ServerSocketWriterStage(gm, serverCoordinator, output, releasePipes[0]); 
+			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoord, encryptedContent);	
+	        new ServerSocketWriterStage(gm, serverCoord, output, releasePipes[0]); 
         }
 		
 
@@ -112,7 +137,7 @@ public class SocketIOStageTest {
 			watch = new SocketClientTestDataStage(gm, response, releasePipes[0], encryptedContent, testUsers, testSeeds, testSizes); 
 		}
 		
-	    MonitorConsoleStage.attach(gm);
+	    PipeMonitorCollectorStage.attach(gm);
 		
 		/////////////////////////////////
 		//run the full test on the JUnit thread until the consumer is complete
@@ -143,20 +168,41 @@ public class SocketIOStageTest {
         PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
         
         String bindHost = "127.0.0.1";
-        int routerCount = 1;
+        int tracks = 1;
 		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
 
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoordinator = new ServerCoordinator(certs, bindHost, port, scs, maxConnBits, 
-				maxConcurrentInputs, 
-				maxConcurrentOutputs, 
-				routerCount, false, "Server", "", null);
+		
+		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
+		serverConfig.setHost(bindHost)
+		 .setMaxConnectionBits(maxConnBits)
+		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
+		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs)
+		 .setTracks(tracks);
+		 	
+		if (null==certs) {
+			serverConfig.useInsecureServer();
+		} else {
+			serverConfig.setTLS(certs);
+		}
+		
+		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
+
+		ServerCoordinator serverCoord = new ServerCoordinator(
+				serverConfig.getCertificates(),
+				serverConfig.bindHost(), 
+				serverConfig.bindPort(),
+				serverConfig.connectionStruct(),
+				serverConfig.requireClientAuth(),
+				serverConfig.serviceName(),
+				serverConfig.defaultHostPath(), 
+				serverConfig.buildServerConfig());
+		
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null,gm.recordTypeData);
 					
 		///
 		///server new connections e-poll
 		///
-        ServerNewConnectionStage.newIntance(gm, serverCoordinator, false); //no actual encryption so false.
+        ServerNewConnectionStage.newIntance(gm, serverCoord, false); //no actual encryption so false.
         
         ////
         ////server to consume data from socket
@@ -168,7 +214,7 @@ public class SocketIOStageTest {
 	    }
 	    
 	    Pipe[] acks = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoordinator, encryptedContent);
+		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoord, encryptedContent);
         SocketTestDataStage watch = new SocketTestDataStage(gm, output, acks[0], encryptedContent, testUsers, testSeeds, testSizes); 
         
         ////
@@ -180,7 +226,7 @@ public class SocketIOStageTest {
 		
 
 		GraphManager.exportGraphDotFile(gm, "UnitTest", true);
-		MonitorConsoleStage.attach(gm);
+		PipeMonitorCollectorStage.attach(gm);
 		   
 		/////////////////////////////////
 		//run the full test on the JUnit thread until the consumer is complete

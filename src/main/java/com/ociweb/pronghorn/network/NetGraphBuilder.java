@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -26,6 +27,7 @@ import com.ociweb.pronghorn.network.http.HTTPRequestJSONExtractionStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.DotModuleStage;
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.module.ResourceModuleStage;
 import com.ociweb.pronghorn.network.module.SummaryModuleStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -43,11 +45,12 @@ import com.ociweb.pronghorn.network.twitter.RequestTwitterUserStreamStage;
 import com.ociweb.pronghorn.network.twitter.TwitterJSONToTwitterEventsStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeConfigManager;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.FileBlobWriteStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.IPv4Tools;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -78,14 +81,13 @@ public class NetGraphBuilder {
 		};
 		buildClientGraph(gm, ccm, responseQueue, requests, 
 				         responseUnwrapCount, clientWrapperCount, clientWriters, 
-				             releaseCount, netResponseCount, factory, 
-				             writeBufferMultiplier);
+				             releaseCount, netResponseCount, factory);
 	}
 	
 	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,
 										final int responseUnwrapCount, int clientWrapperCount, int clientWriters,
 										int releaseCount, 
-										int netResponseCount, ClientResponseParserFactory parserFactory, int writeBufferMultiplier
+										int netResponseCount, ClientResponseParserFactory parserFactory
 										) {
 	
 		int maxPartialResponses = ccm.resposePoolSize();
@@ -151,7 +153,7 @@ public class NetGraphBuilder {
 		
 		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(gm, ccm, requests, responseUnwrapCount, socketResponse, clearResponse, acks);	
 
-		buildClientWrapAndWrite(gm, ccm, requests, clientWrapperCount, clientWriters, hanshakePipes, writeBufferMultiplier);	    
+		buildClientWrapAndWrite(gm, ccm, requests, clientWrapperCount, clientWriters, hanshakePipes);	    
 
 		parserFactory.buildParser(gm, ccm, clearResponse, ackReleaseForResponseParser);
 	    
@@ -181,7 +183,7 @@ public class NetGraphBuilder {
 	}
 
 	private static void buildClientWrapAndWrite(GraphManager gm, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] requests,
-			int clientWrapperCount, int clientWriters, Pipe<NetPayloadSchema>[] hanshakePipes, int writeBufferMultiplier) {
+			int clientWrapperCount, int clientWriters, Pipe<NetPayloadSchema>[] hanshakePipes) {
 		//////////////////////////////
 		//////////////////////////////
 		Pipe<NetPayloadSchema>[] wrappedClientRequests;		
@@ -241,17 +243,9 @@ public class NetGraphBuilder {
 		
 	}
 
-//	private static void buildParser(GraphManager gm, ClientCoordinator ccm, 
-//			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
-//		
-//		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], ccm, HTTPSpecification.defaultSpec());
-//		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
-//		ccm.processNota(gm, parser);
-//	}
-
-
-	public static GraphManager buildHTTPServerGraph(final GraphManager graphManager, final ModuleConfig modules, final ServerCoordinator coordinator,
-			                                        final ServerPipesConfig serverConfig) {
+	public static GraphManager buildHTTPServerGraph(final GraphManager graphManager, 
+			                                        final ModuleConfig modules, 
+			                                        final ServerCoordinator coordinator) {
 
 		final ServerFactory factory = new ServerFactory() {
 
@@ -260,37 +254,40 @@ public class NetGraphBuilder {
 					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
 					Pipe<NetPayloadSchema>[] sendingToNet) {
 				
-				buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet);
+				buildHTTPStages(gm, coordinator, modules, 
+						        releaseAfterParse, receivedFromNet, sendingToNet);
 			}
 			
 		};
 				
-        return buildServerGraph(graphManager, coordinator, serverConfig, factory);
+        return buildServerGraph(graphManager, coordinator, factory);
         
 	}
 
 	public static GraphManager buildServerGraph(final GraphManager graphManager,
-													final ServerCoordinator coordinator, 
-													final ServerPipesConfig serverConfig,
+													final ServerCoordinator coordinator,
 													ServerFactory factory) {
 		logger.info("building server graph");
-		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxConcurrentInputs, serverConfig.incomingDataConfig);           
+		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs, coordinator.incomingDataConfig);           
            
         Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.moduleParallelism(),
-        		                                                         serverConfig, encryptedIncomingGroup);
+        		                                                         encryptedIncomingGroup);
                        
         Pipe<NetPayloadSchema>[] handshakeIncomingGroup=null;
         Pipe<NetPayloadSchema>[] receivedFromNet;
         
         if (coordinator.isTLS) {
-        	receivedFromNet = Pipe.buildPipes(serverConfig.maxConcurrentInputs, serverConfig.incomingDataConfig);
-        	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, serverConfig.serverRequestUnwrapUnits, serverConfig.handshakeDataConfig,
+        	receivedFromNet = Pipe.buildPipes(	coordinator.maxConcurrentInputs,
+        										coordinator.incomingDataConfig);
+        	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, 
+							        			coordinator.serverRequestUnwrapUnits, 
+							        			coordinator.incomingDataConfig,
         			                      encryptedIncomingGroup, receivedFromNet, releaseAfterParse);
         } else {
         	receivedFromNet = encryptedIncomingGroup;
         }
 		
-        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(graphManager, coordinator, serverConfig, handshakeIncomingGroup);
+        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(graphManager, coordinator, handshakeIncomingGroup);
         
         factory.buildServer(graphManager, coordinator, 
         		            releaseAfterParse,
@@ -300,11 +297,9 @@ public class NetGraphBuilder {
         return graphManager;
 	}
 
-	private static void buildHTTPStages(GraphManager graphManager,
-			ServerCoordinator coordinator, ModuleConfig modules,
-			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
-			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet) {
-  		
+	public static void buildHTTPStages(GraphManager graphManager, ServerCoordinator coordinator, ModuleConfig modules,
+			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
+			Pipe<NetPayloadSchema>[] sendingToNet) {
 		assert(sendingToNet.length >= coordinator.moduleParallelism()) : "reduce track count since we only have "+sendingToNet.length+" pipes";
 
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
@@ -316,19 +311,12 @@ public class NetGraphBuilder {
 		//logger.info("build modules");
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[coordinator.moduleParallelism()][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[coordinator.moduleParallelism()][];
-        
-        final int maxSize = serverConfig.fromRouterToModuleBlob 
-        		          + coordinator.connectionStruct().inFlightPayloadSize();
-        
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(
-        		HTTPRequestSchema.instance, 
-        		serverConfig.fromRouterToModuleCount, maxSize);///if payload is smaller than average file size will be slower
-
-        final HTTP1xRouterStageConfig routerConfig = buildModules(coordinator, graphManager, modules, httpSpec, routerToModuleConfig, fromModule, toModules);
+                
+        final HTTP1xRouterStageConfig routerConfig = buildModules(coordinator, graphManager,
+        		 									modules, httpSpec, fromModule, toModules);
         
         
         //logger.info("build http stages 3");
-        PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         
 		Pipe<HTTPLogRequestSchema>[] reqLog = new Pipe[coordinator.moduleParallelism()];
 		
@@ -343,12 +331,25 @@ public class NetGraphBuilder {
 		buildLogging(graphManager, coordinator, reqLog, resLog);
 		
 		buildRouters(graphManager, coordinator, releaseAfterParse,
-				fromModule, toModules, routerConfig, config,
+				fromModule, toModules, routerConfig, 
 				false, reqLog, perTrackFromNet);
 		
 		//logger.info("build http ordering supervisors");
 		buildOrderingSupers(graphManager, coordinator, fromModule, resLog, perTrackFromSuper);
+	}
+
+	public static PipeConfig<HTTPRequestSchema> buildRoutertoModulePipeConfig(
+			ServerCoordinator coordinator,
+			ServerPipesConfig serverConfig) {
+		
+		final int maxSize = serverConfig.fromRouterToModuleBlob 
+        		          + coordinator.connectionStruct().inFlightPayloadSize();
         
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(
+        		HTTPRequestSchema.instance, 
+        		serverConfig.fromRouterToModuleCount, maxSize);///if payload is smaller than average file size will be slower
+		
+        return routerToModuleConfig;
 	}
 
 	public static void buildLogging(GraphManager graphManager,
@@ -408,11 +409,15 @@ public class NetGraphBuilder {
 	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
 			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules, final HTTP1xRouterStageConfig routerConfig,
-			PipeConfig<ServerResponseSchema> config, boolean captureAll, Pipe<HTTPLogRequestSchema>[] log,
+			boolean captureAll, Pipe<HTTPLogRequestSchema>[] log,
 			Pipe[][] perTrackFromNet) {
 		/////////////////////
 		//create the routers
 		/////////////////////
+		
+		PipeConfig<ServerResponseSchema> config = coordinator.pcm.getConfig(ServerResponseSchema.class);
+
+		
 		int acksBase = releaseAfterParse.length-1;
 		int parallelTrack = toModules.length; 
 		while (--parallelTrack>=0) { 
@@ -483,11 +488,11 @@ public class NetGraphBuilder {
 	}
 
 	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(GraphManager graphManager, ServerCoordinator coordinator, final int routerCount,
-			ServerPipesConfig serverConfig, Pipe<NetPayloadSchema>[] encryptedIncomingGroup) {
-		int a = routerCount+(coordinator.isTLS?serverConfig.serverRequestUnwrapUnits:0);
+			Pipe<NetPayloadSchema>[] encryptedIncomingGroup) {
+		int a = routerCount+(coordinator.isTLS?coordinator.serverRequestUnwrapUnits:0);
 		Pipe<ReleaseSchema>[] acks = new Pipe[a];
 		while (--a>=0) {
-			acks[a] =  new Pipe<ReleaseSchema>(serverConfig.releaseConfig, false);	
+			acks[a] =  new Pipe<ReleaseSchema>(coordinator.pcm.getConfig(ReleaseSchema.class), false);	
 		}
                    
         //reads from the socket connection
@@ -498,19 +503,16 @@ public class NetGraphBuilder {
 	}
 
 	public static Pipe<NetPayloadSchema>[] buildRemainderOFServerStages(final GraphManager graphManager,
-			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
-			Pipe<NetPayloadSchema>[] handshakeIncomingGroup) {
-		
-	//	logger.info("build remainder of server");
-		PipeConfig<NetPayloadSchema> fromOrderedConfig = serverConfig.orderWrapConfig();
-		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnitsAndOutputs * serverConfig.serverPipesPerOutputEngine];
+			ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] handshakeIncomingGroup) {
 
-		Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, serverConfig, 
+		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[
+		                       coordinator.serverResponseWrapUnitsAndOutputs * coordinator.serverPipesPerOutputEngine];
+
+		Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, 
 				                                                       handshakeIncomingGroup,
-				                                                       fromOrderedContent, fromOrderedConfig);
+				                                                       fromOrderedContent);
                     
-        buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes, 
-        		           serverConfig.writeBufferMultiplier);
+        buildSocketWriters(graphManager, coordinator, coordinator.serverSocketWriters, toWiterPipes);
 
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator); 
         coordinator.processNota(graphManager, newConStage);
@@ -519,16 +521,16 @@ public class NetGraphBuilder {
 	}
 
 	private static Pipe<NetPayloadSchema>[] buildSSLWrapersAsNeeded(final GraphManager graphManager,
-			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
+			ServerCoordinator coordinator,
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup,
-			Pipe<NetPayloadSchema>[] fromOrderedContent,
-			PipeConfig<NetPayloadSchema> fromOrderedConfig) {
+			Pipe<NetPayloadSchema>[] fromOrderedContent) {
 		
 		
-		int requestUnwrapUnits = serverConfig.serverRequestUnwrapUnits;		
-		int y = serverConfig.serverPipesPerOutputEngine;
-		int z = serverConfig.serverResponseWrapUnitsAndOutputs;
+		int requestUnwrapUnits = coordinator.serverRequestUnwrapUnits;		
+		int y = coordinator.serverPipesPerOutputEngine;
+		int z = coordinator.serverResponseWrapUnitsAndOutputs;
 		Pipe<NetPayloadSchema>[] toWiterPipes = null;
+		PipeConfig<NetPayloadSchema> fromOrderedConfig= coordinator.pcm.getConfig(NetPayloadSchema.class);
 		
 		if (coordinator.isTLS) {
 		    
@@ -603,8 +605,7 @@ public class NetGraphBuilder {
 	}
 
 	private static void buildSocketWriters(GraphManager graphManager, ServerCoordinator coordinator, 
-											int socketWriters, Pipe<NetPayloadSchema>[] toWiterPipes, 
-											int writeBufferMultiplier) {
+											int socketWriters, Pipe<NetPayloadSchema>[] toWiterPipes) {
 		///////////////
 		//all the writer stages
 		///////////////
@@ -622,8 +623,10 @@ public class NetGraphBuilder {
 
 	public static HTTP1xRouterStageConfig buildModules(ServerCoordinator coordinator, GraphManager graphManager, ModuleConfig modules,
 			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec,
-			PipeConfig<HTTPRequestSchema> routerToModuleConfig, Pipe<ServerResponseSchema>[][] fromModule,
+			Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
+		
+		PipeConfig<HTTPRequestSchema> routerToModuleConfig = coordinator.pcm.getConfig(HTTPRequestSchema.class);
 		
 		final int routerCount = coordinator.moduleParallelism();
 
@@ -755,30 +758,27 @@ public class NetGraphBuilder {
 	public static ServerCoordinator httpServerSetup(TLSCertificates tlsCertificates, String bindHost, int port, 
 													GraphManager gm,
 			                                        int processors, ModuleConfig modules) {
-	
-		ServerPipesConfig serverConfig = simpleServerPipesConfig(tlsCertificates, processors);
+			
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		if (null == tlsCertificates) {
+			c.useInsecureServer();
+		} else {
+			c.setTLS(tlsCertificates);
+		}
+		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		
+		final ServerPipesConfig serverConfig = c.buildServerConfig();
 				 
-		 //This must be large enough for both partials and new handshakes.
+		//This must be large enough for both partials and new handshakes.
 	
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
-				   serverConfig.maxConnectionBitsOnServer, 
-				   serverConfig.maxConcurrentInputs, 
-				   serverConfig.maxConcurrentOutputs,
-				   serverConfig.moduleParallelism, false, "Server", "", serverConfig.logFile);
+				   false, "Server", "", serverConfig);
 		
-		buildHTTPServerGraph(gm, modules, serverCoord, serverConfig);
+		buildHTTPServerGraph(gm, modules, serverCoord);
 		
 		return serverCoord;
-	}
-
-	public static ServerPipesConfig simpleServerPipesConfig(TLSCertificates tlsCertificates, int processors) {
-		ServerPipesConfig serverConfig = new ServerPipesConfig(null, tlsCertificates != null, 
-		  (processors >= 4) ? 20 : 12, 
-		   processors > 0? processors : ((processors >= 4) ? (tlsCertificates != null?4:8) : 2),
-		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1,
-		  (processors >= 4) ? 2 : 1, (processors >= 4) ? 2 : 1, 8, 1<<8);
-		return serverConfig;
 	}
 	
 	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
@@ -802,21 +802,28 @@ public class NetGraphBuilder {
 				
 		int maxRequestSize = 1<<16; //for cookies sent in
 		
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(null, isTLS, 
-				maxConnectionBits, tracks, 
-				2, concurrentChannelsPerEncryptUnit, 
-				1, concurrentChannelsPerDecryptUnit, 8, maxRequestSize);
 		
-				 		
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		if (!isTLS) {
+			c.useInsecureServer();
+		}
+		c.setEncryptionUnitsPerTrack(2);
+		c.setConcurrentChannelsPerEncryptUnit(concurrentChannelsPerEncryptUnit);
+		c.setDecryptionUnitsPerTrack(1);
+		c.setConcurrentChannelsPerDecryptUnit(concurrentChannelsPerDecryptUnit);
+		c.setMaxConnectionBits(maxConnectionBits);
+		c.setMaxRequestSize(maxRequestSize);
+		c.setTracks(tracks);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		
+		final ServerPipesConfig serverConfig = c.buildServerConfig();
+		
 		//This must be large enough for both partials and new handshakes.
 		serverConfig.ensureServerCanWrite(1<<20);//1MB out
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,								
-				                                              serverConfig.maxConnectionBitsOnServer, 
-				                                              serverConfig.maxConcurrentInputs, 
-				                                              serverConfig.maxConcurrentOutputs, 
-				                                              serverConfig.moduleParallelism, false, 
-				                                              "Telemetry Server","", serverConfig.logFile);
+				                                             false, 
+				                                              "Telemetry Server","", serverConfig);
 
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
@@ -876,11 +883,12 @@ public class NetGraphBuilder {
 					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
 					Pipe<NetPayloadSchema>[] sendingToNet) {
 	
-				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet);
+				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, 
+						        releaseAfterParse, receivedFromNet, sendingToNet);
 			}			
 		};
 		
-		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, factory);
+		NetGraphBuilder.buildServerGraph(gm, serverCoord, factory);
 	}
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
@@ -889,7 +897,7 @@ public class NetGraphBuilder {
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
 		ModuleConfig config = new ModuleConfig(){
-			MonitorConsoleStage monitor;
+			PipeMonitorCollectorStage monitor;
 	
 			private final String[] routes = new String[] {
 					 "/${path}"			
@@ -935,7 +943,7 @@ public class NetGraphBuilder {
 
 						case 1:
 					    if (null==monitor) {	
-							monitor = MonitorConsoleStage.attach(graphManager);	
+							monitor = PipeMonitorCollectorStage.attach(graphManager);	
 					    }
 						activeStage = DotModuleStage.newInstance(graphManager, monitor,
 								inputPipes, 
@@ -945,7 +953,7 @@ public class NetGraphBuilder {
 						break;
 						case 2:
 						    if (null==monitor) {	
-								monitor = MonitorConsoleStage.attach(graphManager);	
+								monitor = PipeMonitorCollectorStage.attach(graphManager);	
 						    }
 							activeStage = SummaryModuleStage.newInstance(graphManager, monitor,
 									inputPipes, 
@@ -1070,10 +1078,9 @@ public class NetGraphBuilder {
 		int releaseCount = 2048;
 		int netResponseCount = 64;
 		int netResponseBlob = 1<<19;
-		int writeBufferMultiplier = 20;
 				
 		buildClientGraph(gm, ccm, responseQueue, clientRequests, responseUnwrapCount, clientWrapperCount, clientWriters,
-				         releaseCount, netResponseCount, factory, writeBufferMultiplier);
+				         releaseCount, netResponseCount, factory);
 	}
 	
 	public static void buildHTTPClientGraph(GraphManager gm, 
@@ -1216,6 +1223,55 @@ public class NetGraphBuilder {
 
 		return eventPipes;		
 		
+	}
+
+	public static HTTPServerConfig serverConfig(int host, PipeConfigManager pcm, GraphManager gm) {
+		return new HTTPServerConfigImpl(host, pcm, gm.recordTypeData);				
+	}
+	
+	public static HTTPServerConfig serverConfig(int host, GraphManager gm) {
+		return new HTTPServerConfigImpl(host, new PipeConfigManager(), gm.recordTypeData);				
+	}
+	
+	public static ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,
+			final int messageSizeToOrderingSuper) {
+		//using the basic no-fills API
+		ModuleConfig config = new ModuleConfig() { 
+		
+		    //this is the cache for the files, so larger is better plus making it longer helps a lot but not sure why.
+		    final PipeConfig<ServerResponseSchema> fileServerOutgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 
+		    		         messagesToOrderingSuper, messageSizeToOrderingSuper);//from module to  supervisor
+	
+			@Override
+			public int moduleCount() {
+				return 1;
+			}
+	
+			@Override
+			public Pipe<ServerResponseSchema>[] registerModule(int a,
+					GraphManager graphManager, RouterStageConfig routerConfig, 
+					Pipe<HTTPRequestSchema>[] inputPipes) {
+				
+	
+					//the file server is stateless therefore we can build 1 instance for every input pipe
+					int instances = inputPipes.length;
+					
+					Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
+					
+					int i = instances;
+					while (--i>=0) {
+						staticFileOutputs[i] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
+						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
+					}
+						
+					routerConfig.registerCompositeRoute().path("/${path}");
+					//no headers requested
+					
+				return staticFileOutputs;
+			}        
+		 	
+		 };
+		return config;
 	}
 	
 }

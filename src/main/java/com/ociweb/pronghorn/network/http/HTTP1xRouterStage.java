@@ -899,6 +899,8 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		HTTP1xRouterStageConfig<?, ?, ?, ?> config,
 		ErrorReporter errorReporter2, long arrivalTime) {
 	
+
+	
 	if (null == serverConnection) {
 		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 	}
@@ -920,11 +922,12 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
 			    				    	
 					if (iteration!=0) {
+						int routeId = config.getRouteIdForPathId(pathId);
 						
 						return endOfHeadersLogic(writer, cwc, cw, 
 								serverConnection.scs,
 								errorReporter2, requestContext, 
-								trieReader, postLength, arrivalTime);
+								trieReader, postLength, arrivalTime, routeId);
 						
 					} else {	          
 						//needs more data 
@@ -1252,7 +1255,7 @@ private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
     		ChannelWriter cw,
     		ServerConnectionStruct scs, ErrorReporter errorReporter,
 			int requestContext, final TrieParserReader trieReader,
-			long postLength, long arrivalTime) {
+			long postLength, long arrivalTime, int routeId) {
 		//logger.trace("end of request found");
 		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
 		//ALL OTHERS MUST RETURN INCOMPLETE
@@ -1286,7 +1289,8 @@ private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 
 			}
 		}
-	
+				
+		cw.structured().writeInt(routeId, scs.routeIdFieldId);
 		cw.structured().writeLong(System.nanoTime(), scs.businessStartTime);
 		cw.structured().writeLong(arrivalTime, scs.arrivalTimeFieldId);
 		cw.structured().writeInt(requestContext, scs.contextFieldId); 

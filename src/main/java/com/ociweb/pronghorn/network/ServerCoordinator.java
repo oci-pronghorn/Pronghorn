@@ -11,7 +11,12 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeConfigManager;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -81,39 +86,48 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
-	
+
+	public final PipeConfigManager pcm;
+
+	public final PipeConfig<NetPayloadSchema> incomingDataConfig;
+	public final int serverRequestUnwrapUnits;
+	public final int serverPipesPerOutputEngine;
+	public final int serverResponseWrapUnitsAndOutputs;
+	public final int serverSocketWriters;
 	
     public ServerCoordinator(TLSCertificates tlsCertificates,
     		                 String bindHost, int port,
-    		                 ServerConnectionStruct scs,
-    		                 int maxConnectionsBits, 
-							 int maxConcurrentInputs,
-							 int maxConcurrentOutputs,
-							 int moduleParallelism,
+    		                 ServerConnectionStruct scs,    		                
 							 boolean requireClientAuth,
 							 String serviceName, 
 							 String defaultPath, 
-							 LogFileConfig log){
+							 ServerPipesConfig serverPipesConfig){
 
 		super(tlsCertificates);
+		
+		this.channelBits = serverPipesConfig.maxConnectionBitsOnServer;
+		this.maxConcurrentInputs = serverPipesConfig.maxConcurrentInputs;
+		this.maxConcurrentOutputs = serverPipesConfig.maxConcurrentOutputs;
+		this.moduleParallelism = serverPipesConfig.moduleParallelism;
+		this.logFile = serverPipesConfig.logFile;
+		 
+		this.incomingDataConfig       = serverPipesConfig.incomingDataConfig;
+		this.serverRequestUnwrapUnits = serverPipesConfig.serverRequestUnwrapUnits;
+		this.serverPipesPerOutputEngine = serverPipesConfig.serverPipesPerOutputEngine;
+		this.serverResponseWrapUnitsAndOutputs = serverPipesConfig.serverResponseWrapUnitsAndOutputs;
+		this.serverSocketWriters = serverPipesConfig.serverSocketWriters;
 		
 		this.requireClientAuth = requireClientAuth;
 		this.scs = scs;
         this.port              = port;
-        this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
         this.bindHost          = bindHost;
-        this.logFile           = log;
           
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
     	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs, moduleParallelism); 
     	
-    	this.maxConcurrentInputs = maxConcurrentInputs;
-    	this.maxConcurrentOutputs = maxConcurrentOutputs;
-
-    	this.moduleParallelism = moduleParallelism;
     	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
         this.concurrentPerModules = maxConcurrentInputs/moduleParallelism;
     	//  0 0 0 0 1 1 1 1 
@@ -123,6 +137,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
         		channelBits, 
         		ServerConnection.class, 
         		new SocketValidator(), false/*Do not grow*/);
+        
+        //TODO: need to allow this to be configured to larger blocks?
+        serverPipesConfig.pcm.addConfig(ServerResponseSchema.instance.newPipeConfig(8, 1024));
+        serverPipesConfig.pcm.addConfig(NetGraphBuilder.buildRoutertoModulePipeConfig(this, serverPipesConfig));
+        serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig());
+        
+		pcm = serverPipesConfig.pcm;
+        
     }
     
     public void setStageNotaProcessor(PronghornStageProcessor p) {
@@ -166,6 +188,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 	
 	private PipeLineFilter isOk = new PipeLineFilter();
+
+	public long[] routeSLALimits = new long[0];
+
+
 	
 	//NOT thread safe only called by ServerSocketReaderStage
 	public int responsePipeLineIdx(final long ccId) {

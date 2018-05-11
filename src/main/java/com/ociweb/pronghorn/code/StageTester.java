@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 
@@ -71,7 +71,7 @@ public class StageTester {
     			                  new ExpectedUseGeneratorStage(gm, generatorInputs, generatorOutputs, random, generator));
     	
     	if (log.isDebugEnabled()) {
-    		MonitorConsoleStage.attach(gm);
+    		PipeMonitorCollectorStage.attach(gm);
     	}
 
     	NonThreadScheduler scheduler = new NonThreadScheduler(gm);
@@ -363,7 +363,7 @@ public class StageTester {
 				
 		
 		if (log.isDebugEnabled()) {
-			MonitorConsoleStage.attach(gm);
+			PipeMonitorCollectorStage.attach(gm);
 		}
 		
 		NonThreadScheduler scheduler = new NonThreadScheduler(gm);
@@ -414,7 +414,7 @@ public class StageTester {
     			
     	
     	if (log.isDebugEnabled()) {
-    		MonitorConsoleStage.attach(gm);
+    		PipeMonitorCollectorStage.attach(gm);
     	}
     	 
     	NonThreadScheduler scheduler = new NonThreadScheduler(gm);
