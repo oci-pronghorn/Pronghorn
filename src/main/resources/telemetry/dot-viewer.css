@@ -119,6 +119,11 @@ nav > div {
   width: 70px;
 }
 
+#diagram {
+  margin: auto;
+  width: 50%;
+}
+
 #spinner-container {
   display: flex;
   height: 100vh;
