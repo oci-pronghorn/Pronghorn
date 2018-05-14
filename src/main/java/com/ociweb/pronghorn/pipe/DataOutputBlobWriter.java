@@ -360,12 +360,12 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 
     @Override
     public void write(byte[] b) {
-        write(this,b,0,b.length,Integer.MAX_VALUE);
+    	DataOutputBlobWriter.write(this, b, 0, b.length);    	
     }
 
     @Override
     public void write(byte[] b, int off, int len) {
-        write(this,b,off,len,Integer.MAX_VALUE);
+    	DataOutputBlobWriter.write(this, b, off, len);
     }
 
     @Override
@@ -572,7 +572,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
     private static <T extends MessageSchema<T>> int writeByteArray(DataOutputBlobWriter<T> writer, byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
     	pos = writePackedInt(bufLocal, mask, pos, len);
-        Pipe.copyBytesFromToRing(bytes, 0, Integer.MAX_VALUE, writer.byteBuffer, pos, writer.byteMask, len); 
+        Pipe.copyBytesFromArrayToRing(bytes, 0, writer.byteBuffer, pos, writer.byteMask, len); 
 		return pos+len;
     }
 

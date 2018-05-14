@@ -7,7 +7,7 @@ import java.io.Externalizable;
 import java.io.InputStream;
 import java.io.ObjectInput;
 
-public abstract class ChannelReader extends InputStream implements ObjectInput {
+public abstract class ChannelReader extends InputStream implements ObjectInput, TextReader {
 
 	/**
 	 * Will give how many bytes are available right now
@@ -16,14 +16,15 @@ public abstract class ChannelReader extends InputStream implements ObjectInput {
 	public abstract int available();
 
 	/**
-	 * Reads bytes from ChannelReader depending on available() and assuming they are UTF and passes them to target
+	 * Reads bytes from ChannelReader depending on leading short for length
+	 * assuming bytes are UTF-8 encoded passes them to target
 	 * @param target receiver of converted bytes
 	 * @return target with UTF bytes
 	 */
 	public abstract <A extends Appendable> A readUTF(A target);
 
 	/**
-	 * Reads all UTF bytes from ChannelReader
+	 * Reads all UTF bytes from ChannelReader, does not use leading short.
 	 * @return String of UTF bytes
 	 */
 	public abstract String readUTFFully();

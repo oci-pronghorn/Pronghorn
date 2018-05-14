@@ -2168,8 +2168,21 @@ public class Pipe<T extends MessageSchema<T>> {
 		copyIntsFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask, length);
 	}
 
-	public static void copyBytesFromArrayToRing(byte[] source, int sourceloc, byte[] target, int targetloc, int targetMask, int length) {
-		copyBytesFromToRingMasked(source, sourceloc, (sourceloc + length), target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
+	public static void copyBytesFromArrayToRing(byte[] source, final int sourceloc, byte[] target, int targetloc, int targetMask, int length) {
+		///NOTE: the source can never wrap..				
+		if (length > 0) {
+			final int tStart = targetloc & targetMask;
+			final int tStop = (targetloc + length) & targetMask;
+			if (tStop > tStart) {
+				//the source and target do not wrap
+				System.arraycopy(source, sourceloc, target, tStart, length);
+			} else {
+				//the source does not wrap but the target does
+				// done as two copies
+				System.arraycopy(source, sourceloc, target, tStart, length-tStop);
+				System.arraycopy(source, sourceloc + length - tStop, target, 0, tStop);
+			}
+		}
 	}
 	
 	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addByteArray(Pipe<S> source, Pipe<T> target) {
@@ -2801,7 +2814,13 @@ public class Pipe<T extends MessageSchema<T>> {
     	addByteArray(source,0,source.length,pipe);
     }
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> pipe) {
-    	addByteArray(source,sourceIdx,sourceLen, Integer.MAX_VALUE, pipe);
+    	assert(sourceLen>=0);
+		validateVarLength(pipe, sourceLen);
+		
+		copyBytesFromArrayToRing(source, sourceIdx, pipe.blobRing, pipe.blobRingHead.byteWorkingHeadPos.value, pipe.blobMask, sourceLen);
+		
+		addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, sourceLen);
+		pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value + sourceLen);
     }
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, int sourceMask, Pipe<S> pipe) {
 

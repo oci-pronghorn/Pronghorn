@@ -625,7 +625,7 @@ public class JSONParseTest {
 		
 		StructIntListener visitor = new StructIntListener() {
 			@Override
-			public void value(int value, boolean isNull, int instance, int totalCount) {
+			public void value(int value, boolean isNull, int[] pos, int[] size, int instance, int totalCount) {
 				assertFalse(isNull);
 				assertEquals(expectedVal.getAndIncrement(),instance);
 				assertEquals(7, totalCount);
