@@ -47,7 +47,7 @@ nav > div {
 }
 
 #nav1 {
-  background-color: #72C7D5; /* dark teal */
+  background-color: #006600;
   display: flex;
   justify-content: space-between;
 }
@@ -58,7 +58,7 @@ nav > div {
 }
 
 #nav2 {
-  background-color: #EDF8FA; /* light teal */
+  background-color: #008000;
   top: 48px;
 }
 
@@ -67,7 +67,6 @@ nav > div {
 }
 
 #preview {
-  background-color: white;
   border: solid #72C7D5 2px;
   border-radius: 4px;
   left: 10px;
