@@ -687,7 +687,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 												tempWrapSpace, 
 												0);
 																	
-							Pipe.copyBytesFromToRing(tempWrapSpace, 0, Integer.MAX_VALUE, 
+							Pipe.copyBytesFromArrayToRing(tempWrapSpace, 0, 
 									targetBacking, targetPos, targetMask,
 									result);
 				    	}
@@ -856,7 +856,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 				/////////////////////////////
 				finalLength = c.doFinal(finalWrapBuffer, 0);
 				assert(finalLength <= (finalBlockSize-8));
-				Pipe.copyBytesFromToRing(finalWrapBuffer, 0, Integer.MAX_VALUE, 
+				Pipe.copyBytesFromArrayToRing(finalWrapBuffer, 0, 
 						                 targetBacking, targetPosition, targetMask,
 						                 finalLength);
 			}

@@ -657,31 +657,22 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									outputOwner[(int)cc.readDestinationRouteId()] = -1; 
 									long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
-												
+									//NOTE: I think this is needed but is causing a hang...
+									//TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+									//if (Pipe.hasRoomForWrite(targetPipe)) {
 									
-									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-
-									foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
-									state = positionMemoData[stateIdx];
-																
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-			
-									/////////////////////////////////////////////////////
-									/////////////////////////////////////////////////////
-									
-									//expecting H to be the next valid char in the buffer 
-									boolean isPipeValid = trieReader.sourceLen<=0 
-										|| input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H';
-									
-									//server has sent data which is not HTTP request
-									//directly after this request
-									if (!isPipeValid) {
-										logger.warn("server has sent unparsable data '{}' after a complete message.",
-												(char)input[i].blobRing[input[i].blobMask&trieReader.sourcePos]);
-										//close this bad server...
-										badServerSoCloseConnection(memoIdx, cc);
-									}
-									
+										assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+	
+										foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
+										state = positionMemoData[stateIdx];
+																	
+										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+										if (0==state) {
+											validateNextByte(i, memoIdx, cc);
+										}
+									//} else {
+									//	foundWork = 0;
+									//}
 									break;
 								} else {
 									
@@ -752,11 +743,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										outputOwner[(int)cc.readDestinationRouteId()] = -1; 
 										long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
-										
-										assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-
-				                    	foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
-										
+										//NOTE: I think this is needed but is causing a hang...
+										//TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+										//if (Pipe.hasRoomForWrite(targetPipe)) {
+											assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+	
+					                    	foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe); 
+										//} else {
+										//	foundWork = 0;
+										//}
 										break;
 									} else {
 											
@@ -866,15 +861,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						} 
 						break;
 					case 5: //END SEND ACK
-						logger.info("source position {} source length {} state {} ",trieReader.sourcePos,trieReader.sourceLen,state);
-						
+						if (Pipe.hasRoomForWrite(targetPipe)) {
+							//logger.info("source position {} source length {} state {} ",trieReader.sourcePos,trieReader.sourceLen,state);
 											
-						assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-
-					    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe);
-				
-					    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
-					    
+							assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+	
+						    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0, targetPipe);
+					
+						    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
+						} else {
+							foundWork = 0;
+						}
 						break;	
 												
 				}	
@@ -883,6 +880,24 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			}
 		} while(foundWork>0);//hasDataToParse()); //stay when very busy
 		
+	}
+
+	private void validateNextByte(int i, final int memoIdx, HTTPClientConnection cc) {
+		/////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////
+		
+		//expecting H to be the next valid char in the buffer 
+		boolean isPipeValid = trieReader.sourceLen<=0 
+			|| input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H';
+		
+		//server has sent data which is not HTTP request
+		//directly after this request
+		if (!isPipeValid) {
+			logger.warn("server has sent unparsable data '{}' after a complete message.",
+					(char)input[i].blobRing[input[i].blobMask&trieReader.sourcePos]);
+			//close this bad server...
+			badServerSoCloseConnection(memoIdx, cc);
+		}
 	}
 
 	private void badServerSoCloseConnection(final int memoIdx, HTTPClientConnection cc) {
@@ -911,7 +926,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	}
 
 	private void publishCloseMessage(CharSequence host, int port, Pipe<NetResponseSchema> targetPipe) {
+		
 		Pipe.presumeRoomForWrite(targetPipe);
+		
 		int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
 		Pipe.addUTF8(host, targetPipe);
 		Pipe.addIntValue(port, targetPipe);

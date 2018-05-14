@@ -136,12 +136,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    //logger.info("\n ^^^^ send for active pipe {} with msg {} connection {}",requestPipe.id,msgIdx,activeConnection.id);
 		    
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
-				HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
-		    } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
+				HTTPClientUtil.publishGetFast(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
+		    } else if (ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201 == msgIdx) {
+				HTTPClientUtil.processPostFast(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
+		    } else if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
 		    	//logger.info("Warning slower call for HTTP GET detected, clean up lazy init.");
-		    	HTTPClientUtil.processGetLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
+		    	HTTPClientUtil.processGetSlow(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
 		    } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
-		    	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
+		    	HTTPClientUtil.processPostSlow(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
 		    } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
 		    	HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
 		    } else  if (-1 == msgIdx) {
@@ -204,14 +206,13 @@ public class HTTPClientRequestStage extends PronghornStage {
  		int hostMask=0;
  		
  		long connectionId;
- 		//System.err.println("xxxxxxxxxxxx reading msg "+Pipe.peekInt(requestPipe));
- 		
+
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
  			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
  			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
  			assert(-1 != connectionId);
  		} else {
- 
+
  			if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_CLOSE_104) ) {
  	 			
  				userId = Pipe.peekInt(requestPipe,      1); //user id always after the msg idx
@@ -243,8 +244,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  				//this is the only point where we can decompose since 
  				//we are creating a new active connection 				
  				ccm.removeConnection(activeConnection.id);
- 			}
- 			
+ 			}			
  			
  			if (0==port) {
  				int routeId = Pipe.peekInt(requestPipe, 1);

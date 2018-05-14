@@ -198,7 +198,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			return;
 		} else {
 			
-			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
+			InetAddress inetAddress = ipAddresses[0];			
+			this.getSocketChannel().connect(new InetSocketAddress(inetAddress, port));
 			
 			//if you see BindException: Can't assign requested address then something is
 			//up with your local network and this machine no longer has access to that address and port.

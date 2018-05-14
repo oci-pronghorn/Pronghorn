@@ -30,18 +30,17 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private String defaultHostPath = "";
 	private String bindHost = null;
 	private int bindPort = -1;
-	private int maxConnectionBits = 12;//default of 4K
+	private int maxConnectionBits = 15; //default of 32K
 	private int encryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
 	private int decryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
 	private int concurrentChannelsPerEncryptUnit = 1; //default 1, for low memory usage
 	private int concurrentChannelsPerDecryptUnit = 1; //default 1, for low memory usage
-	private TLSCertificates serverTLS;
+	private TLSCertificates serverTLS = TLSCertificates.defaultCerts;
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	private int maxRequestSize = 1<<16;//default of 64K
 	private final PipeConfigManager pcm;
-    private int tracks = 1;
-	private LogFileConfig logFile;
-	
+    private int tracks = 1;//default 1, for low memory usage
+	private LogFileConfig logFile;	
 	private boolean requireClientAuth = false;
 	private String serviceName = "Server";
 	
@@ -54,11 +53,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		if (bindPort<=0 || (bindPort>=(1<<16))) {
 			throw new UnsupportedOperationException("invalid port "+bindPort);
 		}
-		this.defaultHostPath = "";
-		this.serverTLS = TLSCertificates.defaultCerts;
 
-		this.bindHost = null;
-		this.maxConnectionBits = 12;
 		this.pcm = pcm;
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
