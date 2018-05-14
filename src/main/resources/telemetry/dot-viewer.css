@@ -4,6 +4,7 @@ body {
   /* The following should prevent bounce on overscroll,
      but Chrome still does it. */
   overscroll-behavior: none;
+  background-color: #000000;
 }
 
 .dropdown {
@@ -80,6 +81,7 @@ nav > div {
 }
 
 #preview > svg {
+  padding-top: 10px;
   height: 100%;
   width: 100%;
 }
@@ -125,6 +127,7 @@ nav > div {
 }
 
 #spinner-container {
+  background: #000000;
   display: flex;
   height: 100vh;
   justify-content: center;
