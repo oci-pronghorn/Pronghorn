@@ -245,7 +245,7 @@ public class SequentialReplayerStageTest {
 			np = new NoiseProducer(new SecureRandom("seed".getBytes()));
 		}
 		
-		long rate = 2400;
+		final long rate = 2400;
 		
 		Pipe<PersistedBlobLoadReleaseSchema>  perLoadRelease  = PersistedBlobLoadReleaseSchema.instance.newPipe(inFlightCount, largestBlock);
 		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, largestBlock);
