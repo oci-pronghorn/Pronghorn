@@ -90,11 +90,10 @@ public class HTTPClientUtil {
 		    
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
 	
-			if (prePendSlash) {
-				activeWriter.writeByte(' ');
-				activeWriter.writeByte('/');				
-			} else {				
-				activeWriter.writeByte(' ');
+			if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
+				DataOutputBlobWriter.encodeAsUTF8(activeWriter," /");
+			} else {
+				DataOutputBlobWriter.encodeAsUTF8(activeWriter," ");
 			}
 			
 			//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
@@ -140,10 +139,7 @@ public class HTTPClientUtil {
 			DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 			DataOutputBlobWriter.openField(activeWriter);
 					   
-			activeWriter.writeByte('P');
-			activeWriter.writeByte('O');
-			activeWriter.writeByte('S');
-			activeWriter.writeByte('T');
+			activeWriter.write(POST_BYTES);
 			
 			int routeId = Pipe.takeInt(requestPipe);
 			int userId = Pipe.takeInt(requestPipe);
@@ -166,11 +162,10 @@ public class HTTPClientUtil {
 		
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
 	
-			if (prePendSlash) {
-				activeWriter.writeByte(' ');
-				activeWriter.writeByte('/');				
-			} else {				
-				activeWriter.writeByte(' ');
+			if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
+				activeWriter.write(SLASH_BYTES);
+			} else {
+				activeWriter.write(WHITE_BYTES);
 			}
 			
 			//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
@@ -183,7 +178,8 @@ public class HTTPClientUtil {
 			
 			int payloadMeta = Pipe.takeRingByteMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
 			int payloadLen  = Pipe.takeRingByteLen(requestPipe);
-						
+			
+			
 			//For chunked must pass in -1
 	
 			//TODO: this field can no be any loger than 4G so we cant post anything larger than that
@@ -197,8 +193,7 @@ public class HTTPClientUtil {
 			
 			HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 			//callers custom headers are written where.
-			activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe),
-					           headersPos, headersLen, backingMask);	
+			activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe), headersPos, headersLen, backingMask);	
 			boolean keepOpen = true;
 			
 			HeaderUtil.writeHeaderEnding(activeWriter, keepOpen, (long) payloadLen);
@@ -216,8 +211,65 @@ public class HTTPClientUtil {
 	
 	}
 
-
+	public static void publishGetFast(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
+			Pipe<NetPayloadSchema> outputPipe, long now, int stageId) {
+		
+		clientConnection.incRequestsSent();//count of messages can only be done here, AFTER requestPipeLineIdx
+		
+		//long pos = Pipe.workingHeadPosition(outputPipe);
+		
+		final int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210); 	
+		  
+		Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+		Pipe.addLongValue(now, outputPipe);
+		Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
+		
+		int routeId = Pipe.takeInt(requestPipe);
+		int userId = Pipe.takeInt(requestPipe);
+		int port   = Pipe.takeInt(requestPipe);
+		int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
+		int hostLen  = Pipe.takeRingByteLen(requestPipe);
+		int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
+		long connId = Pipe.takeLong(requestPipe);
+		
+    	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
+    	assert(routeId>=0);
+    	clientConnection.recordDestinationRouteId(routeId);
+		
+		int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
+		int len  = Pipe.takeRingByteLen(requestPipe);
+		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[Pipe.bytePosition(meta, requestPipe, len)&Pipe.blobMask(requestPipe)]);  
+		
+		int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER
+		int headersLen  = Pipe.takeRingByteMetaData(requestPipe);
+		int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
+		
+		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
+		DataOutputBlobWriter.openField(activeWriter);
 	
+		if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
+			DataOutputBlobWriter.write(activeWriter,HTTPClientRequestStage.GET_BYTES_SPACE_SLASH, 0, HTTPClientRequestStage.GET_BYTES_SPACE_SLASH.length);
+	
+		} else {
+			DataOutputBlobWriter.write(activeWriter,HTTPClientRequestStage.GET_BYTES_SPACE, 0, HTTPClientRequestStage.GET_BYTES_SPACE.length);
+		}
+		
+		//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
+		Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
+		
+		HeaderUtil.writeHeaderBeginning(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), activeWriter);
+		HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
+		Pipe.readBytes(requestPipe, activeWriter, headersMeta, headersLen);
+		
+		HeaderUtil.writeHeaderEnding(activeWriter, true, (long) 0);  
+		
+		int msgLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+		
+		Pipe.confirmLowLevelWrite(outputPipe,pSize);
+		Pipe.publishWrites(outputPipe);
+
+	}
+
 	public static void processPostFast(long now, Pipe<ClientHTTPRequestSchema> requestPipe, 
 			ClientConnection clientConnection,
 			Pipe<NetPayloadSchema> outputPipe,
@@ -323,64 +375,4 @@ public class HTTPClientUtil {
 			Pipe.publishWrites(outputPipe);
 	
 	}
-	
-	public static void publishGetFast(long now, Pipe<ClientHTTPRequestSchema> requestPipe,
-			ClientConnection clientConnection, Pipe<NetPayloadSchema> outputPipe, int stageId) {
-		
-		clientConnection.incRequestsSent();//count of messages can only be done here, AFTER requestPipeLineIdx
-		
-		//long pos = Pipe.workingHeadPosition(outputPipe);
-		
-		final int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210); 	
-		  
-		Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
-		Pipe.addLongValue(now, outputPipe);
-		Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
-		
-		int routeId = Pipe.takeInt(requestPipe);
-		int userId = Pipe.takeInt(requestPipe);
-		int port   = Pipe.takeInt(requestPipe);
-		int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
-		int hostLen  = Pipe.takeRingByteLen(requestPipe);
-		int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
-		long connId = Pipe.takeLong(requestPipe);
-		
-    	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
-    	assert(routeId>=0);
-    	clientConnection.recordDestinationRouteId(routeId);
-		
-		int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
-		int len  = Pipe.takeRingByteLen(requestPipe);
-		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[Pipe.bytePosition(meta, requestPipe, len)&Pipe.blobMask(requestPipe)]);  
-		
-		int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER
-		int headersLen  = Pipe.takeRingByteMetaData(requestPipe);
-		int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
-		
-		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
-		DataOutputBlobWriter.openField(activeWriter);
-	
-		if (prePendSlash) {
-			activeWriter.writeByte(' ');
-			activeWriter.writeByte('/');				
-		} else {				
-			activeWriter.writeByte(' ');
-		}
-		
-		//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
-		Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
-		
-		HeaderUtil.writeHeaderBeginning(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), activeWriter);
-		HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
-		Pipe.readBytes(requestPipe, activeWriter, headersMeta, headersLen);
-		
-		HeaderUtil.writeHeaderEnding(activeWriter, true, (long) 0);  
-		
-		int msgLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-		
-		Pipe.confirmLowLevelWrite(outputPipe,pSize);
-		Pipe.publishWrites(outputPipe);
-
-	}
-
 }
