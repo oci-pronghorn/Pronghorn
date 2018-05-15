@@ -1,4 +1,3 @@
-
 Pronghorn  [![Powered by CloudBees](https://www.cloudbees.com/sites/default/files/styles/large/public/Button-Powered-by-CB.png?itok=uMDWINfY)](https://pronghorn.ci.cloudbees.com/)
 =====
 
@@ -10,22 +9,20 @@ Staged event driven single machine embedded micro-framework.
 * Small memory footprint
 * Smart thread scheduling
 
+**Garbage free message passing** design eliminates garbage collector stalls providing predictable data rates.  
+**Lock free non-blocking message passing** enables cores to make continuous progress at all times.  
+**Staged pipeline scheduler** enables optimization of the workload across cores. 
 
-Garbage free message passing design eliminates garbage collector stalls providing predictable data rates.  
-Lock free non-blocking message passing enables cores to make continuous progress at all times.  
-Staged pipeline scheduler enables optimization of the workload across cores.  
+## Documentation
+Please refer to the [wiki](https://github.com/oci-pronghorn/Pronghorn/wiki) for documentation, how to get started, and examples.
 
 ## Demo
-Below is a demo 
+Below is a recorded live demo of an application written using Pronghorn that quickly encodes and decodes JPG to raster (such as BMP) and vice versa. The project can be viewed [here](https://github.com/oci-pronghorn/JPG-Raster).
 
-![alt text](https://github.com/tobischw/Pronghorn/blob/master/DecodingJPGS.gif "Decoding JPGs")
-![alt text](https://github.com/tobischw/Pronghorn/blob/master/EncodingJPGs.gif "Encoding JPGs")
+**Every Pronghorn project** receives an automatically generated, live telemetry page such as the one featured below.
 
-
-## Simple stage examples
-
-- https://github.com/oci-pronghorn/PronghornExampleInputStages
-- https://github.com/oci-pronghorn/PronghornExampleOutputStages
+![Decoding JPGs GIF](https://github.com/tobischw/Pronghorn/blob/master/DecodingJPGS.gif "Decoding JPGs")
+![Encoding JPGs GIF](https://github.com/tobischw/Pronghorn/blob/master/EncodingJPGs.gif "Encoding JPGs")
 
 ## Why Pronghorn
 
@@ -80,16 +77,6 @@ Below is a demo
 	Ultra-small attack surface   
 	Scales well in docker and cloud deployments   
 	Targests absolute minimum resources consumed   
-
-## Expected usage plan
-
-Most projects using this framework will follow these steps.
-
-1. Define your data flow graph.
-2. Define the contracts between each stage.
-3. Test first development by using generative testing as the graph is implemented.
-
-NOTE: this is being proved out in the PronghornGateway project.
 
 ## Usage
 
