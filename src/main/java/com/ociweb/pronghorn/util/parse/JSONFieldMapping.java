@@ -77,7 +77,7 @@ public class JSONFieldMapping {
 		return association;
 	}
 	
-	public void setPath(JSONFieldSchema schema, String... path) {
+	public void setPath(JSONFieldSchema schema, CharSequence ... path) {
 		this.values = new int[path.length];
 		int dimCounter = 0;
 		for(int x = 0; x<path.length; x++) {			
@@ -105,8 +105,8 @@ public class JSONFieldMapping {
 	}
 	
 
-	private boolean isArray(String value) {
-		return (value.startsWith("[") && value.endsWith("]"));
+	private boolean isArray(CharSequence value) {
+		return (value.charAt(0)=='[');
 	}
 
 	public static int addHashToTable(int fieldIdx, int dimsIdx,

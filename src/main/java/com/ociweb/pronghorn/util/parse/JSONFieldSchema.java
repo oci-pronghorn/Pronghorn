@@ -60,7 +60,7 @@ public class JSONFieldSchema {
 		return parser;
 	 }
 	 
-	 public int lookupId(String text) {
+	 public int lookupId(CharSequence text) {
 		 //adds new one if it is not found.
 		 	
 		 long idx = TrieParserReader.query(TrieParserReaderLocal.get(), 

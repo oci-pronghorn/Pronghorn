@@ -59,6 +59,12 @@ public class CharSequenceToUTF8 {
 									  mask, length);
 	}
 
+	public void parseSetup(TrieParserReader trieParserReader) {
+		TrieParserReader.parseSetup(trieParserReader, 
+				backing, 0, length, 
+				Short.MAX_VALUE);
+	}
+	
 	public boolean isEquals(byte[] target) {
 		if (target.length!=length) {
 			return false;
@@ -78,5 +84,6 @@ public class CharSequenceToUTF8 {
 		//do not leak data
 		Arrays.fill(backing, (byte)0);
 	}
+
 	
 }
