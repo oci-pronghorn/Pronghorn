@@ -68,7 +68,13 @@ function onDrag(event) {
 }
 
 function onExport() {
-  const data = diagram.innerHTML;
+  var data = diagram.innerHTML;
+
+  // Invert the graph.
+  data = data.replace(/stroke="#ffffff"/g, 'stroke="#000000"');
+  data = data.replace(/fill="#ffffff"/g, 'fill="#000000"');
+  data = data.replace('polygon fill="#000000"', 'polygon fill="#ffffff"');
+
   const blob = new Blob([data], {type: 'octet/stream'});
   const url = window.URL.createObjectURL(blob);
   exportAnchor.download = getFileName();

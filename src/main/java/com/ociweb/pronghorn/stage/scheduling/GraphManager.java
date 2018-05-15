@@ -1731,6 +1731,12 @@ public class GraphManager {
 	        }
 	        target.append(" {\n"); 
 	     //   target.append("concentrate=true\n");
+
+			target.append("bgcolor=\"#000000\"");
+			target.append("graph [fontname = \"arial\"];");
+			target.append("node [fontname = \"arial\"];");
+			target.append("edge [fontname = \"arial\"];");
+
 	        if (stages<500) {
 	            //no need if the picture is very large
 		        if (isVertical) {
@@ -1821,14 +1827,16 @@ public class GraphManager {
 	                }
 	                
 	                target.append(AQUOTE);
-	                
-	                if (pct>=60000) {
+
+					if (pct>=60000) {
                 		target.append(",color=red,penwidth=5");	    
                 	} else if (pct>=40000) {
                 		target.append(",color=orange,penwidth=5");	    
                 	} else if (pct>=20000) {
                 		target.append(",color=blue,penwidth=5");
-                	}
+                	} else {
+						target.append(",color=white,penwidth=3");
+					}
 	                
 	                /////////////////////////////////////
 	                //////fill the background of a node
@@ -1988,9 +1996,10 @@ public class GraphManager {
 			                    	m.pipeDOTConst[pipe.id] = pipeMemory;
 			                    }
 			                    target.append(pipeMemory);
+
 			                }
-		                    target.append(AQUOTE);	
-    		                
+		                    target.append(AQUOTE);
+
 						    int lineWidth = computeLineWidth(pipeTraffic, pipe);
 						    
 						    if (null!=pipePercentileFullValues) {		                	
@@ -2000,10 +2009,12 @@ public class GraphManager {
 						    	} else if (pctFull>=40) {
 						    		target.append(",color=orange");	    
 						    	} else {
-						    	}
+									target.append(",color=white");
+								}
 						    }
 						    Appendables.appendValue(target.append(",penwidth="),lineWidth);
-						    
+						    target.append(",fontcolor=white");
+
 						    target.append(CLOSEBRACKET_NEWLINE);
 		                    
 		                } 

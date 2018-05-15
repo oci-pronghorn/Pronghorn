@@ -4,6 +4,7 @@ body {
   /* The following should prevent bounce on overscroll,
      but Chrome still does it. */
   overscroll-behavior: none;
+  background-color: #000000;
 }
 
 .dropdown {
@@ -47,7 +48,7 @@ nav > div {
 }
 
 #nav1 {
-  background-color: #72C7D5; /* dark teal */
+  background-color: #006600;
   display: flex;
   justify-content: space-between;
 }
@@ -58,7 +59,7 @@ nav > div {
 }
 
 #nav2 {
-  background-color: #EDF8FA; /* light teal */
+  background-color: #008000;
   top: 48px;
 }
 
@@ -67,7 +68,7 @@ nav > div {
 }
 
 #preview {
-  background-color: white;
+  background: #000000;
   border: solid #72C7D5 2px;
   border-radius: 4px;
   left: 10px;
@@ -81,6 +82,7 @@ nav > div {
 }
 
 #preview > svg {
+  padding-top: 10px;
   height: 100%;
   width: 100%;
 }
@@ -120,7 +122,14 @@ nav > div {
   width: 70px;
 }
 
+#diagram {
+/* this needs to be removed if not in demo because it breaks the initial preview window */
+  margin: auto;
+  width: 50%;
+}
+
 #spinner-container {
+  background: #000000;
   display: flex;
   height: 100vh;
   justify-content: center;
