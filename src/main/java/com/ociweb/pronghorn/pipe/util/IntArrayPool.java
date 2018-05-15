@@ -7,7 +7,7 @@ public class IntArrayPool {
 	private final boolean[][] locked;
 	private final int[] lockedCount;
 	
-	public IntArrayPool(int maxSize) {
+	IntArrayPool(int maxSize) {
 		
 		data   = new int[maxSize][0][];
 		locked = new boolean[maxSize][];
@@ -32,7 +32,7 @@ public class IntArrayPool {
 			boolean[] temp = that.locked[size];
 			int i = temp.length;
 			//NOTE: if this becomes a long array we may want to start where we left off..
-			while (--i>0) {
+			while (--i>=0) {
 				if (!temp[i]) {
 					temp[i] = true;
 					that.lockedCount[size]++;
@@ -44,21 +44,30 @@ public class IntArrayPool {
 			//more rare case where we must grow
 			that.locked[size] = grow(that.locked[size]);
 			that.data[size] = grow(that.data[size], size);
-			return that.data[size].length-1;//last index is always the new empty one
+			int result = that.data[size].length-1;//last index is always the new empty one
+			that.locked[size][result] = true;
+			that.lockedCount[size]++;
+			return result;
 		}
 		
 	}
 
 	private static int[][] grow(int[][] source, int size) {
-		int[][] result = new int[source.length+1][];
-		System.arraycopy(source, 0, result, 0, source.length);
-		result[source.length] = new int[size];
+		int base = null!=source? source.length : 0;
+		int[][] result = new int[base+1][];
+		if (null!=source) {
+			System.arraycopy(source, 0, result, 0, source.length);
+		}
+		result[base] = new int[size];
 		return result;
 	}
 
 	private static boolean[] grow(boolean[] source) {
-		boolean[] result = new boolean[source.length+1];
-		System.arraycopy(source, 0, result, 0, source.length);
+		int base = null!=source? source.length : 0;
+		boolean[] result = new boolean[base+1];
+		if (null!=source) {
+			System.arraycopy(source, 0, result, 0, source.length);
+		}
 		return result;
 	}
 	

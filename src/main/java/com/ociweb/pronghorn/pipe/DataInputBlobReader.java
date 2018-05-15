@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.util.IntArrayPool;
+import com.ociweb.pronghorn.pipe.util.IntArrayPoolLocal;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -30,23 +31,19 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     protected int position;
     protected boolean isStructured;
     
-    private IntArrayPool dimVisitorFields;
     private final StructuredReader structuredReader;
     
     /////////////////////////
     //package protected DimArray methods
     /////////////////////////    
-    public static int reserveDimArray(DataInputBlobReader reader, int size, int maxSize) {   	
-    	if (null == reader.dimVisitorFields) {
-    		reader.dimVisitorFields = new IntArrayPool(maxSize);
-    	}    	
-    	return IntArrayPool.lockInstance(reader.dimVisitorFields, size);  	
+    public static int reserveDimArray(DataInputBlobReader reader, int size, int maxSize) {   	   	
+    	return IntArrayPool.lockInstance(IntArrayPoolLocal.get(), size);  	
     }
     public static int[] lookupDimArray(DataInputBlobReader reader, int size, int instance) {
-      	return IntArrayPool.getArray(reader.dimVisitorFields, size, instance);  	
+      	return IntArrayPool.getArray(IntArrayPoolLocal.get(), size, instance);  	
     }
     public static void releaseDimArray(DataInputBlobReader reader, int size, int instance) {
-    	IntArrayPool.releaseLock(reader.dimVisitorFields, size, instance);
+    	IntArrayPool.releaseLock(IntArrayPoolLocal.get(), size, instance);
     }
     ////////////////////////////////
     ////////////////////////////////
@@ -936,8 +933,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public StructuredReader structured() {
 		return structuredReader;
 	}
-
-
+	
+	public static short peekShort(DataInputBlobReader<?> channelReader) {
+        return (short)((       channelReader.backing[channelReader.byteMask & channelReader.position] << 8) |
+        		       (0xFF & channelReader.backing[channelReader.byteMask & channelReader.position])); 
+	}
 
     
 }

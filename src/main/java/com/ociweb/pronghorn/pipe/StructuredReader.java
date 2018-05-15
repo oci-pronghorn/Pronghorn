@@ -1,9 +1,11 @@
 package com.ociweb.pronghorn.pipe;
 
+import com.ociweb.pronghorn.pipe.util.IntArrayPool;
+import com.ociweb.pronghorn.pipe.util.IntArrayPoolLocal;
+import com.ociweb.pronghorn.struct.StructBlobListener;
 import com.ociweb.pronghorn.struct.StructBooleanListener;
 import com.ociweb.pronghorn.struct.StructByteListener;
 import com.ociweb.pronghorn.struct.StructDecimalListener;
-import com.ociweb.pronghorn.struct.StructDimIntListener;
 import com.ociweb.pronghorn.struct.StructDoubleListener;
 import com.ociweb.pronghorn.struct.StructFieldVisitor;
 import com.ociweb.pronghorn.struct.StructFloatListener;
@@ -12,14 +14,15 @@ import com.ociweb.pronghorn.struct.StructLongListener;
 import com.ociweb.pronghorn.struct.StructRationalListener;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructShortListener;
+import com.ociweb.pronghorn.struct.StructTextListener;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.math.Decimal;
 
 public final class StructuredReader {
 
 	public static final int PAYLOAD_INDEX_LOCATION = 0;
-	private final DataInputBlobReader<?> channelReader; 
+	private final DataInputBlobReader<?> channelReader;
+	private static int[] EMPTY = new int[0];
 	
 	public StructuredReader(DataInputBlobReader<?> reader) {
 		this.channelReader = reader;		
@@ -377,37 +380,114 @@ public final class StructuredReader {
 	
 	public void visitRational(StructRationalListener visitor, long fieldId) {
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational );
-			
-		
+
     	int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
     	
 		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
     	
     	int totalCount = 1;
-    	
-    	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				long numerator   = channelReader.readPackedLong();
-				long denominator = channelReader.readPackedLong();
-				
-				
-				boolean isNull = false;
-				if (0==numerator) {
-					isNull = channelReader.wasPackedNull();
-				}
-				visitor.value(numerator, denominator, isNull, c, totalCount);
-    		}  
+    	    	
+    	if (index>=0) {    		
+	    		channelReader.position(index);  
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);
+	    				    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    		    final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	    			curData[0] = channelReader.absolutePosition();
+	    			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitRationals(visitor, totalCount, curPos, curSize, curData);
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitRationals(visitor, totalCount, EMPTY, EMPTY, EMPTY); 
+	    		}
     	} else {
-    		visitor.value(0, 1, true, 0, 0);
+    		visitor.value(0, 1, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitRationals(StructRationalListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimRationalData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+		
+	}
+
+	private int consumeDimRationalData(StructRationalListener visitor, int totalCount,
+	                   final int[] curPos, final int[] curSize, final int[] curData,
+	                   int count, int dim, 
+	                   DataInputBlobReader<?> reader) {
+	if (dim>0) {
+	dim--;			
+	int c = reader.readPackedInt(); //2  1     5 0  2 0
+	if (dim>0) {	
+		final int idx = curPos.length-(1+dim);
+		curSize[idx] = c;
+		for(int i=0; i<c; i++) {			
+			curPos[idx] = i;
+			count += consumeDimRationalData(visitor, totalCount, 
+					                   curPos, curSize, curData, 
+					                   count, dim, reader);
+		}
+	} else {
+		//dim is zero so we have reached the data
+		
+		int dimPos = reader.absolutePosition();
+	
+		if (curData.length==1) {
+			//restore the data position
+			reader.absolutePosition(curData[0]);
+		}
+		
+		final int idx = curPos.length-1;
+		curSize[idx] = c;
+		for(int i=0; i<c; i++) {
+			curPos[idx] = i;
+			visitSingleRational(visitor, totalCount, curPos, curSize, count+i);
+		}
+		
+		if (curData.length==1) {
+			//store the current data position again
+			curData[0] = reader.absolutePosition();
+		}
+		
+		//restore the old position to read the next dim
+		reader.absolutePosition(dimPos);
+						
+		return count+c;
+	}
+	}	
+	return count;
+	}
+
+	private void visitSingleRational(StructRationalListener visitor, int totalCount, final int[] curPos,
+			final int[] curSize, int c) {
+		long numerator   = channelReader.readPackedLong();
+		long denominator = channelReader.readPackedLong();
+
+		
+		boolean isNull = false;
+		if (0==numerator) {
+			isNull = channelReader.wasPackedNull();
+		}
+		visitor.value(numerator, denominator, isNull, curPos, curSize, c, totalCount);
 	}
 	
 	
@@ -424,31 +504,325 @@ public final class StructuredReader {
 		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
     									StructRegistry.FIELD_MASK&(int)fieldId);
 
-		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+		final int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
     	
     	int totalCount = 1;
     	
     	if (index>=0) {
     		channelReader.position(index);  
-    		
+    		final int dimPos = channelReader.absolutePosition();
     		int count = consumeDimData(0, dims, channelReader);
     		if (count>0) {
     			totalCount = count;
+    			
+    			IntArrayPool local = IntArrayPoolLocal.get();
+    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);
+    			    			
+    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+    		    final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+    			curData[0] = channelReader.absolutePosition();
+    			
+    			try {  
+    				channelReader.absolutePosition(dimPos);
+    				visitInts(visitor, totalCount, curPos, curSize, curData);				
+    			} finally {
+    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+    				IntArrayPool.releaseLock(local, 1, instanceKeyD);
+    			}
+    			
+    		} else {
+    			visitInts(visitor, totalCount, EMPTY, EMPTY, EMPTY);
     		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				int readPackedInt = channelReader.readPackedInt();
-				boolean isNull = false;
-				if (0==readPackedInt) {
-					isNull = channelReader.wasPackedNull();
-				}
-				visitor.value(readPackedInt, isNull, c, totalCount);
-    		}
-			
     	} else {
-    		visitor.value(0, true, 0, 0);
+    		visitor.value(0, true, EMPTY, EMPTY, 0, 0);
     	}    	
 	}
+
+	private void visitInts(StructIntListener visitor, int totalCount, 
+			               final int[] curPos, 
+			               final int[] curSize, 
+			               final int[] curData) {
+				
+		consumeDimIntData(visitor, totalCount, curPos, curSize, curData,
+				           0, curSize.length,
+				           channelReader);
+		
+	}
+
+	private int consumeDimIntData(StructIntListener visitor, int totalCount,
+			                      final int[] curPos, final int[] curSize, final int[] curData,
+			                      int count, int dim, 
+			                      DataInputBlobReader<?> reader) {
+		if (dim>0) {
+			dim--;			
+			int c = reader.readPackedInt(); //2  1     5 0  2 0
+			if (dim>0) {	
+				final int idx = curPos.length-(1+dim);
+				curSize[idx] = c;
+				for(int i=0; i<c; i++) {			
+					curPos[idx] = i;
+					count += consumeDimIntData(visitor, totalCount, 
+							                   curPos, curSize, curData, 
+							                   count, dim, reader);
+				}
+			} else {
+				//dim is zero so we have reached the data
+				
+				int dimPos = reader.absolutePosition();
+	
+				if (curData.length==1) {
+					//restore the data position
+					reader.absolutePosition(curData[0]);
+				}
+				
+				final int idx = curPos.length-1;
+				curSize[idx] = c;
+				for(int i=0; i<c; i++) {
+					curPos[idx] = i;
+					visitSingleInt(visitor, totalCount, curPos, curSize, count+i);
+				}
+				
+				if (curData.length==1) {
+					//store the current data position again
+					curData[0] = reader.absolutePosition();
+				}
+				
+				//restore the old position to read the next dim
+				reader.absolutePosition(dimPos);
+								
+				return count+c;
+			}
+		}	
+		return count;
+	}
+
+	private void visitSingleInt(StructIntListener visitor, int totalCount,
+			final int[] curPos, final int[] curSize, int c) {
+		final int readPackedInt = channelReader.readPackedInt();
+		boolean isNull = false;
+		if (0==readPackedInt) {
+			isNull = channelReader.wasPackedNull();
+		}
+		visitor.value(readPackedInt, isNull, curPos, curSize, c, totalCount);
+	}
+	
+	public void visitBlob(StructBlobListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		final int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		final int dimPos = channelReader.absolutePosition();
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    			
+    			IntArrayPool local = IntArrayPoolLocal.get();
+    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);
+    			    			
+    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+    		    final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+    			curData[0] = channelReader.absolutePosition();
+    			
+    			try {  
+    				channelReader.absolutePosition(dimPos);
+    				visitBlobs(visitor, totalCount, curPos, curSize, curData);				
+    			} finally {
+    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+    				IntArrayPool.releaseLock(local, 1, instanceKeyD);
+    			}
+    			
+    		} else {
+    			visitBlobs(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+    		}
+    	} else {
+    		visitor.value(null, EMPTY, EMPTY, 0, 0);
+    	}    	
+	}
+	
+	private void visitBlobs(StructBlobListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimBlobData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+		
+	}
+	
+	private int consumeDimBlobData(StructBlobListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			final int[] curData, int count, int dim, DataInputBlobReader<?> reader) {
+		if (dim > 0) {
+			dim--;
+			int c = reader.readPackedInt(); // 2 1 5 0 2 0
+			if (dim > 0) {
+				final int idx = curPos.length - (1 + dim);
+				curSize[idx] = c;
+				for (int i = 0; i < c; i++) {
+					curPos[idx] = i;
+					count += consumeDimBlobData(visitor, totalCount, curPos, curSize, curData, count, dim, reader);
+				}
+			} else {
+				// dim is zero so we have reached the data
+
+				int dimPos = reader.absolutePosition();
+
+				if (curData.length == 1) {
+					// restore the data position
+					reader.absolutePosition(curData[0]);
+				}
+
+				final int idx = curPos.length - 1;
+				curSize[idx] = c;
+				for (int i = 0; i < c; i++) {
+					curPos[idx] = i;
+					visitSingleBlob(visitor, totalCount, curPos, curSize, count + i);
+				}
+
+				if (curData.length == 1) {
+					// store the current data position again
+					curData[0] = reader.absolutePosition();
+				}
+
+				// restore the old position to read the next dim
+				reader.absolutePosition(dimPos);
+
+				return count + c;
+			}
+		}
+		return count;
+	}
+	
+	
+	private void visitSingleBlob(StructBlobListener visitor, int totalCount,
+			final int[] curPos, final int[] curSize, int c) {
+		
+		visitor.value(channelReader, curPos, curSize, c, totalCount);
+	
+	}
+	
+	public void visitText(StructTextListener visitor, long fieldId) {
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
+    	
+		
+		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
+    									StructRegistry.FIELD_MASK&(int)fieldId);
+
+		final int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
+    	
+    	int totalCount = 1;
+    	
+    	if (index>=0) {
+    		channelReader.position(index);  
+    		final int dimPos = channelReader.absolutePosition();
+    		int count = consumeDimData(0, dims, channelReader);
+    		if (count>0) {
+    			totalCount = count;
+    			
+    			IntArrayPool local = IntArrayPoolLocal.get();
+    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);
+    			    			
+    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+    		    final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+    			curData[0] = channelReader.absolutePosition();
+    			
+    			try {  
+    				channelReader.absolutePosition(dimPos);
+    				visitTexts(visitor, totalCount, curPos, curSize, curData);				
+    			} finally {
+    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+    				IntArrayPool.releaseLock(local, 1, instanceKeyD);
+    			}
+    			
+    		} else {
+    			visitTexts(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+    		}
+    	} else {
+    		visitor.value(channelReader, true, EMPTY, EMPTY, 0, 0);
+    	}    	
+	}
+	
+	
+	private void visitTexts(StructTextListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimTextData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+		
+	}
+	
+	private int consumeDimTextData(StructTextListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			final int[] curData, int count, int dim, DataInputBlobReader<?> reader) {
+		if (dim > 0) {
+			dim--;
+			int c = reader.readPackedInt(); // 2 1 5 0 2 0
+			if (dim > 0) {
+				final int idx = curPos.length - (1 + dim);
+				curSize[idx] = c;
+				for (int i = 0; i < c; i++) {
+					curPos[idx] = i;
+					count += consumeDimTextData(visitor, totalCount, curPos, curSize, curData, count, dim, reader);
+				}
+			} else {
+				// dim is zero so we have reached the data
+
+				int dimPos = reader.absolutePosition();
+
+				if (curData.length == 1) {
+					// restore the data position
+					reader.absolutePosition(curData[0]);
+				}
+
+				final int idx = curPos.length - 1;
+				curSize[idx] = c;
+				for (int i = 0; i < c; i++) {
+					curPos[idx] = i;
+					visitSingleText(visitor, totalCount, curPos, curSize, count + i);
+				}
+
+				if (curData.length == 1) {
+					// store the current data position again
+					curData[0] = reader.absolutePosition();
+				}
+
+				// restore the old position to read the next dim
+				reader.absolutePosition(dimPos);
+
+				return count + c;
+			}
+		}
+		return count;
+	}
+	
+	
+	private void visitSingleText(StructTextListener visitor, int totalCount,
+			final int[] curPos, final int[] curSize, int c) {
+		visitor.value(channelReader, DataInputBlobReader.peekShort(channelReader)<0, curPos, curSize, c, totalCount);
+	}
+	
 	
 	private int consumeDimData(int count, int dim, DataInputBlobReader<?> reader) {
 		if (dim>0) {
@@ -480,26 +854,102 @@ public final class StructuredReader {
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index); 
-    		
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				long readPackedLong = channelReader.readPackedLong();
-				boolean isNull = false;
-				if (0==readPackedLong) {
-					isNull = channelReader.wasPackedNull();
-				}
-				visitor.value(readPackedLong, isNull, c, totalCount);
-    		}
-			    		
+	    		channelReader.position(index); 
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	    			
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	    			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+		    			visitLongs(visitor, totalCount, curPos, curSize, curData);
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitLongs(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+	    		}
     	} else {
-    		visitor.value(0, true, 0, 0);
+    		visitor.value(0, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitLongs(StructLongListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimLongData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimLongData(StructLongListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimLongData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleLong(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleLong(StructLongListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			int c) {
+		long readPackedLong = channelReader.readPackedLong();
+		boolean isNull = false;
+		if (0==readPackedLong) {
+			isNull = channelReader.wasPackedNull();
+		}
+		visitor.value(readPackedLong, isNull, curPos, curSize, c, totalCount);
 	}
 
 	
@@ -511,27 +961,104 @@ public final class StructuredReader {
 		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
     	
     	int totalCount = 1;
-    	
-    	
+    	    	
     	if (index>=0) {
-    		channelReader.position(index);
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				short readPackedShort = channelReader.readPackedShort();
-				boolean isNull = false;
-				if (0==readPackedShort) {
-					isNull = channelReader.wasPackedNull();
-				}
-				visitor.value(readPackedShort, isNull, c, totalCount);
-    		}    		
+	    		channelReader.position(index);
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitShorts(visitor, totalCount, curPos, curSize, curData); 
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitShorts(visitor, totalCount, EMPTY, EMPTY, EMPTY); 
+	    		}
     	} else {
-    		visitor.value((short)0, true, 0, 0);
+    		visitor.value((short)0, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitShorts(StructShortListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimShortData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimShortData(StructShortListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimShortData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleShort(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleShort(StructShortListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			int c) {
+		short readPackedShort = channelReader.readPackedShort();
+		boolean isNull = false;
+		if (0==readPackedShort) {
+			isNull = channelReader.wasPackedNull();
+		}
+		visitor.value(readPackedShort, isNull, curPos, curSize, c, totalCount);
 	}
 	
 	public void visitShort(StructShortListener visitor, Object association) {
@@ -547,23 +1074,101 @@ public final class StructuredReader {
 		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
     	
     	int totalCount = 1;
-    	
-    	
+    	    	
     	if (index>=0) {
-    		channelReader.position(index);
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				byte value = channelReader.readByte();
-				visitor.value(value, false, c, totalCount);
-    		}    		
+	    		channelReader.position(index);
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitBytes(visitor, totalCount, curPos, curSize, curData);	    				
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitBytes(visitor, totalCount, EMPTY, EMPTY, EMPTY);  
+	    		}
+	    		
     	} else {
-    		visitor.value((byte)0, true, 0, 0);
+    		visitor.value((byte)0, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitBytes(StructByteListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimByteData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimByteData(StructByteListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimByteData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleByte(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleByte(StructByteListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			int c) {
+		byte value = channelReader.readByte();
+		visitor.value(value, false, curPos, curSize, c, totalCount);
 	}
 	
 	public void visitByte(StructByteListener visitor, Object association) {
@@ -588,21 +1193,98 @@ public final class StructuredReader {
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {    			
-    			float value = Float.intBitsToFloat(channelReader.readPackedInt());    			
-				visitor.value(value, Float.isNaN(value), c, totalCount);
-    		}
-			
+	    		channelReader.position(index);  
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitFloats(visitor, totalCount, curPos, curSize, curData);
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitFloats(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+	    		}
     	} else {
-    		visitor.value(0, true, 0, 0);
+    		visitor.value(0, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitFloats(StructFloatListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimFloatData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimFloatData(StructFloatListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimFloatData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleFloat(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleFloat(StructFloatListener visitor, int totalCount, final int[] curPos, final int[] curSize,
+			int c) {
+		float value = Float.intBitsToFloat(channelReader.readPackedInt());    			
+		visitor.value(value, Float.isNaN(value), curPos, curSize, c, totalCount);
 	}
 	
 	public void visitDouble(StructDoubleListener visitor, Object association) {
@@ -622,21 +1304,100 @@ public final class StructuredReader {
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {    			
-    			double value = Double.longBitsToDouble(channelReader.readPackedLong());    			
-				visitor.value(value, Double.isNaN(value), c, totalCount);
-    		}
-			
+	    		channelReader.position(index);  
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitDoubles(visitor, totalCount, curPos, curSize, curData);
+	    				
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitDoubles(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+	    		}
+	    		
     	} else {
-    		visitor.value(0, true, 0, 0);
+    		visitor.value(0, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+ 	private void visitDoubles(StructDoubleListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimDoubleData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimDoubleData(StructDoubleListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimDoubleData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleDouble(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleDouble(StructDoubleListener visitor, int totalCount, final int[] curPos,
+			final int[] curSize, int c) {
+		double value = Double.longBitsToDouble(channelReader.readPackedLong());    			
+		visitor.value(value, Double.isNaN(value), curPos, curSize, c, totalCount);
 	}
 	
 	public void visitBoolean(StructBooleanListener visitor, Object association) {
@@ -656,25 +1417,105 @@ public final class StructuredReader {
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {  
-    			boolean value = channelReader.readBoolean();
-    			boolean isNull = false;
-    			if (!value) {
-    				isNull = channelReader.wasBooleanNull();
-    			}   			
-				visitor.value(value, isNull, c, totalCount);
-    		}
-			
+	    		channelReader.position(index);  
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {
+	    				channelReader.absolutePosition(dimPos);
+	    				visitBooleans(visitor, totalCount, curPos, curSize, curData);
+	    				
+	    			} finally {
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitBooleans(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+	    		}
     	} else {
-    		visitor.value(false, true, 0, 0);
+    		visitor.value(false, true, EMPTY, EMPTY, 0, 0);
     	}    	
+	}
+
+	private void visitBooleans(StructBooleanListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
+	
+		consumeDimBooleanData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
+
+	private int consumeDimBooleanData(StructBooleanListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimBooleanData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
+			
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleBoolean(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleBoolean(StructBooleanListener visitor, int totalCount, final int[] curPos,
+			final int[] curSize, int c) {
+		//TODO: populate arrays for call 
+		
+		boolean value = channelReader.readBoolean();
+		boolean isNull = false;
+		if (!value) {
+			isNull = channelReader.wasBooleanNull();
+		}   			
+		visitor.value(value, isNull, curPos, curSize, c, totalCount);
 	}
  	
  	public static int structType(StructuredReader that) {
@@ -694,84 +1535,111 @@ public final class StructuredReader {
     									StructRegistry.FIELD_MASK&(int)fieldId);
 
 		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
-    	
     	int totalCount = 1;
     	
     	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {    			
-    			long m = channelReader.readPackedLong();
-    	    	assert(channelReader.storeMostRecentPacked(m));
-    	    	if (0!=m) {
-    	    		visitor.value(channelReader.readByte(), m, false, c, totalCount);
-    	    	} else {
-    	    		if (!channelReader.wasPackedNull()) {
-    	    			visitor.value(channelReader.readByte(), m, false, c, totalCount);
-    	    		} else {
-    	    			visitor.value((byte)0, 0, true, 0, 0);
-    	    			channelReader.readByte();
-    	    		}
-    	    	}
-    		}
-			
+	    		channelReader.position(index);  
+	    		final int dimPos = channelReader.absolutePosition();
+	    		int count = consumeDimData(0, dims, channelReader);
+	    		if (count>0) {
+	    			totalCount = count;
+	    			IntArrayPool local = IntArrayPoolLocal.get();
+	    			final int instanceKeyP = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyS = IntArrayPool.lockInstance(local, dims);
+	    			final int instanceKeyD = IntArrayPool.lockInstance(local, 1);	
+	    			
+	    			final int[] curPos = IntArrayPool.getArray(local, dims, instanceKeyP);
+	    			final int[] curSize = IntArrayPool.getArray(local, dims, instanceKeyS);
+	    			final int[] curData = IntArrayPool.getArray(local, 1, instanceKeyD);
+	     			curData[0] = channelReader.absolutePosition();
+	     			
+	    			try {   
+	    				channelReader.absolutePosition(dimPos);
+	    				visitDecimals(visitor, totalCount, curPos, curSize, curData);
+	    			} finally {				
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyP);
+	    				IntArrayPool.releaseLock(local, dims, instanceKeyS);
+	    			}
+	    		} else {
+	    			visitDecimals(visitor, totalCount, EMPTY, EMPTY, EMPTY);
+	    		}
     	} else {
-    		visitor.value((byte)0, 0, true, 0, 0);
+    		visitor.value((byte)0, 0, true, EMPTY, EMPTY, 0, 0);
     	}    	
 	}
- 	//TODO: add visit of text...
- 	
- 	
-	////////////////////////
-	///////////////////////
-	//////////////////////
-	////////////////////
-	//////////////////
-	////////////////
 
-
-	public void visitIntByDim(StructDimIntListener visitor, Object association) {
-		visitIntByDim(visitor, 
-				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
-	}
+	private void visitDecimals(StructDecimalListener visitor, int totalCount, 
+            final int[] curPos, 
+            final int[] curSize, 
+            final int[] curData) {
 	
-    //null values are also visited
-	public void visitIntByDim(StructDimIntListener visitor, long fieldId) {
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Long);
-    	
-		
-		int index = DataInputBlobReader.readFromLastInt((DataInputBlobReader<?>) channelReader,
-    									StructRegistry.FIELD_MASK&(int)fieldId);
+		consumeDimDecimalData(visitor, totalCount, curPos, curSize, curData,
+			           0, curSize.length,
+			           channelReader);
+	
+	}
 
-		int dims = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId);
-    	
-    	int totalCount = 1;
-    	
-    	if (index>=0) {
-    		channelReader.position(index);  
-    		
-    		int count = consumeDimData(0, dims, channelReader);
-    		if (count>0) {
-    			totalCount = count;
-    		}
-    		
-    		for(int c=0; c<totalCount; c++) {
-				int readPackedInt = channelReader.readPackedInt();
-				boolean isNull = false;
-				if (0==readPackedInt) {
-					isNull = channelReader.wasPackedNull();
-				}
-			//	visitor.value(readPackedInt, isNull, c, totalCount);
-    		}
+	private int consumeDimDecimalData(StructDecimalListener visitor, int totalCount,
+                   final int[] curPos, final int[] curSize, final int[] curData,
+                   int count, int dim, 
+                   DataInputBlobReader<?> reader) {
+		if (dim>0) {
+		dim--;			
+		int c = reader.readPackedInt(); //2  1     5 0  2 0
+		if (dim>0) {	
+			final int idx = curPos.length-(1+dim);
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {			
+				curPos[idx] = i;
+				count += consumeDimDecimalData(visitor, totalCount, 
+						                   curPos, curSize, curData, 
+						                   count, dim, reader);
+			}
+		} else {
+			//dim is zero so we have reached the data
 			
-    	} else {
-    	//	visitor.value(0, true, 0, 0);
-    	}    	
+			int dimPos = reader.absolutePosition();
+		
+			if (curData.length==1) {
+				//restore the data position
+				reader.absolutePosition(curData[0]);
+			}
+			
+			final int idx = curPos.length-1;
+			curSize[idx] = c;
+			for(int i=0; i<c; i++) {
+				curPos[idx] = i;
+				visitSingleDecimal(visitor, totalCount, curPos, curSize, count+i);
+			}
+			
+			if (curData.length==1) {
+				//store the current data position again
+				curData[0] = reader.absolutePosition();
+			}
+			
+			//restore the old position to read the next dim
+			reader.absolutePosition(dimPos);
+							
+			return count+c;
+		}
+		}	
+		return count;
+	}
+
+	private void visitSingleDecimal(StructDecimalListener visitor, int totalCount, final int[] curPos,
+			final int[] curSize, int c) {
+		long m = channelReader.readPackedLong();
+		assert(channelReader.storeMostRecentPacked(m));
+		if (0!=m) {
+			visitor.value(channelReader.readByte(), m, false, curPos, curSize, c, totalCount);
+		} else {
+			if (!channelReader.wasPackedNull()) {
+				visitor.value(channelReader.readByte(), m, false, curPos, curSize, c, totalCount);
+			} else {
+				visitor.value((byte)0, 0, true, null, null, 0, 0);
+				channelReader.readByte();
+			}
+		}
 	}
 
 	
@@ -861,9 +1729,8 @@ public final class StructuredReader {
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
-			
-			//TODO: new method copyPackedLong which moves bytes until end is found
-			output.writeBoolean(association, channelReader.readBoolean());
+			//we know boolean is stored as a single byte so just copy it
+			output.writeByte(association, channelReader.readByte());
 			return true;
 		}
 		return false;

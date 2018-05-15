@@ -163,7 +163,7 @@ public class PipeWriter {
     	Pipe.validateVarLength(pipe, sourceLen);
 		
         assert(sourceLen>=0);		
-        Pipe.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition( pipe), pipe.blobMask, sourceLen);   	
+        Pipe.copyBytesFromArrayToRing(source, 0, Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition( pipe), pipe.blobMask, sourceLen);   	
         Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getWorkingBlobHeadPosition( pipe), sourceLen, Pipe.bytesWriteBase(pipe));
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,sourceLen);
     }
