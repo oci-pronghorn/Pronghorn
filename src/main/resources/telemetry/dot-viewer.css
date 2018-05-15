@@ -68,6 +68,7 @@ nav > div {
 }
 
 #preview {
+  background: #000000;
   border: solid #72C7D5 2px;
   border-radius: 4px;
   left: 10px;
@@ -122,6 +123,7 @@ nav > div {
 }
 
 #diagram {
+/* this needs to be removed if not in demo because it breaks the initial preview window */
   margin: auto;
   width: 50%;
 }
