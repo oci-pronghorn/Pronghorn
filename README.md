@@ -15,6 +15,12 @@ Garbage free message passing design eliminates garbage collector stalls providin
 Lock free non-blocking message passing enables cores to make continuous progress at all times.  
 Staged pipeline scheduler enables optimization of the workload across cores.  
 
+## Demo
+Below is a demo 
+
+![alt text](https://github.com/tobischw/Pronghorn/blob/master/DecodingJPGS.gif "Decoding JPGs")
+![alt text](https://github.com/tobischw/Pronghorn/blob/master/EncodingJPGs.gif "Encoding JPGs")
+
 
 ## Simple stage examples
 
