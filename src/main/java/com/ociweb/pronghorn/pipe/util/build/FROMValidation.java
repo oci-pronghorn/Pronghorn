@@ -86,7 +86,7 @@ public class FROMValidation {
 	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz) {
 		
 		StringBuilder target = new StringBuilder();
-		buildConstructor(target, clazz);		
+	
 		S schemaInstance = MessageSchema.findInstance(clazz);		
 		
 		/////////////////////////
@@ -126,7 +126,9 @@ public class FROMValidation {
 			    		target, expectedFrom, 
 			    		"FROM", templateFile.substring(1+templateFile.lastIndexOf('/') ));  
           
-			    //////////////////
+				buildConstructor(target, clazz);//want FROM to be first at the top
+			
+				//////////////////
 			    //////////////////
 			    if (!result) {
 			    	forceCodeGen = true;
@@ -152,6 +154,8 @@ public class FROMValidation {
 						"FROM", 
 						templateFile.substring(1+templateFile.lastIndexOf('/') ));
 				
+				buildConstructor(target, clazz);//want FROM to be first at the top
+				
 			    //////////////////
 			    //////////////////
 			    forceCodeGen = true;
@@ -166,6 +170,7 @@ public class FROMValidation {
 			}
 		}
 
+		
 		if (!result) {
 			System.out.println(target);
 		}
@@ -180,17 +185,21 @@ public class FROMValidation {
 		try {
 			
 			target.append("\n");
+			
+			target.append("public "+clazz.getSimpleName()+"() { \n");
+			target.append("    super(FROM);\n");
+			target.append("}\n");			
+			target.append("\n");
+			
 			target.append("protected "+clazz.getSimpleName()+"("+FieldReferenceOffsetManager.class.getSimpleName()+" from) { \n");
 			target.append("    super(from);\n");
-			target.append("}\n");
+			target.append("}\n");			
+			target.append("\n");
 			
-			target.append("\n");
-			target.append("protected "+clazz.getSimpleName()+"() { \n");
-			target.append("    super(FROM);\n");
-			target.append("}\n");
-			target.append("\n");
 			//show the line needed for adding the instance
 			target.append("public static final "+clazz.getSimpleName()+" instance = new "+clazz.getSimpleName()+"();\n");
+			target.append("\n");
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
