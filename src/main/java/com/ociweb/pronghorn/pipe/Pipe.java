@@ -1,5 +1,14 @@
 package com.ociweb.pronghorn.pipe;
 
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.util.Appendables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,16 +21,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ociweb.pronghorn.pipe.token.OperatorMask;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
-import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
-import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.util.Appendables;
 
 
 //cas: comment -- general for full file.
@@ -74,12 +73,22 @@ public class Pipe<T extends MessageSchema<T>> {
     //package protected to be called by low and high level API
     PipePublishListener[] pubListeners = new PipePublishListener[0];
     
-    private StructRegistry typeData;    
-    
+    private StructRegistry typeData;
+
+    /**
+     * Adds a pub listener to the specified pipe
+     * @param p pipe to be used
+     * @param listener pub listener to add
+     */
     public static void addPubListener(Pipe p, PipePublishListener listener) {
     	p.pubListeners = grow(p.pubListeners, listener);
     }
- 
+
+    /**
+     * Removes a pub listener from the specified pipe
+     * @param p pipe to be used
+     * @param listener pub listener to remove
+     */
 	public static void removePubListener(Pipe p, PipePublishListener listener) {
     	p.pubListeners = shrink(p.pubListeners, listener);
     }
@@ -768,9 +777,8 @@ public class Pipe<T extends MessageSchema<T>> {
 
 /**
  * Returns <code>true</code> if the provided pipe is replaying.
- *
- * @param ringBuffer  the ringBuffer to check.
- * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
+ * @param ringBuffer the ringBuffer to check.
+ * @return <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
  */
 	public static <S extends MessageSchema<S>> boolean isReplaying(Pipe<S> ringBuffer) {
 		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingSlabWorkingTail;
@@ -1016,7 +1024,7 @@ public class Pipe<T extends MessageSchema<T>> {
         //This assignment is critical to knowing that init was called
         this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
 
-        //only create if there is a possiblity that they may be used.
+        //only create if there is a possibility that they may be used.
         if (sizeOfBlobRing>0) {
 	        this.wrappedBlobReadingRingA = ByteBuffer.wrap(this.blobRing);
 	        this.wrappedBlobReadingRingB = ByteBuffer.wrap(this.blobRing);
@@ -1291,6 +1299,13 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
+    /**
+     * Writes in an int as an ASCII character to specified pipe
+     * @param output pipe to write to
+     * @param value int to write as ASCII
+     * @param <S> MessageSchema to extend
+     * @return addLongAsUTF8(output, value)
+     */
 	public static <S extends MessageSchema<S>> int addIntAsASCII(Pipe<S> output, int value) {
 		validateVarLength(output, 12);
 		return addLongAsUTF8(output, value);
@@ -1310,12 +1325,25 @@ public class Pipe<T extends MessageSchema<T>> {
 	      return outputStream.closeLowLevelField();	
 	
     }
-    
-    
+
+    /**
+     * Writes in a long as an ASCII character to specified pipe
+     * @param output pipe to write to
+     * @param value long to write as ASCII
+     * @param <S> MessageSchema to extend
+     * @return addLongAsUTF8(output, value)
+     */
 	public static <S extends MessageSchema<S>> int addLongAsASCII(Pipe<S> output, long value) {
 		return addLongAsUTF8(output, value);
 	}
 
+    /**
+     * Writes long as UTF8 with specified length to named Pipe
+     * @param digitBuffer Pipe reference
+     * @param length length of long to add
+     * @param <S> MessageSchema to extend
+     * @return outputStream of Pipe
+     */
     public static <S extends MessageSchema<S>> int addLongAsUTF8(Pipe<S> digitBuffer, long length) {
     	  validateVarLength(digitBuffer, 21);
 	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
@@ -1870,7 +1898,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 	
 	public static <S extends MessageSchema<S>, A extends Appendable> A readASCII(Pipe<S> pipe, A target, int meta, int len) {
-		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+		if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
 	        return readASCIIConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
 	        return readASCIIRing(pipe,len,target,restorePosition(pipe, meta));
@@ -2019,10 +2047,18 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return target;
 	}
 
-	
 
+    /**
+     * Reads UTF8 characters from specified Pipe
+     * @param pipe pipe to read from
+     * @param target section of pipe to read from
+     * @param len number of characters to read
+     * @param <S> MessageSchema to extend
+     * @param <A> Appendable to extend
+     * @return TODO: unsure of return
+     */
 	public static <S extends MessageSchema<S>, A extends Appendable> A readUTF8(Pipe<S> pipe, A target, int meta, int len) { 
-    		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+    		if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
     	        return (A) readUTF8Const(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
     	    } else {
     	        return (A) readUTF8Ring(pipe,len,target,restorePosition(pipe,meta));
@@ -2034,7 +2070,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	     if (len<0) {
     	         return null;
     	     }
-	        if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        if (meta < 0) {//NOTE: only uses const for const or default, may be able to optimize away this conditional.
 	            return readUTF8Const(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	        } else {
 	            return readUTF8Ring(pipe,len,target,restorePosition(pipe,meta));
@@ -2072,6 +2108,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		  return target;
 	}
 
+    /**
+     * Writes decimal as ASCII to specified Pipe
+     * @param readDecimalExponent TODO: unsure
+     * @param readDecimalMantissa ??
+     * @param outputRing Pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe<S> outputRing) {
 		long ones = (long)(readDecimalMantissa*PipeReader.powdi[64 + readDecimalExponent]);
 		validateVarLength(outputRing, 21);
@@ -2130,6 +2173,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
+    /**
+     * Checks to see if the end of the pipe has been reached
+     * @param pipe MessageSchema to be extended
+     * @param tailPosition position of assumed end of pipe
+     * @param <S> pipe to be checked
+     * @return <code>true</code> if end of pipe reached, else <code>false</code>
+     */
 	public static <S extends MessageSchema<S>> boolean isEndOfPipe(Pipe<S> pipe, long tailPosition) {
 		return tailPosition>=pipe.knownPositionOfEOF;
 	}
@@ -2535,6 +2585,12 @@ public class Pipe<T extends MessageSchema<T>> {
 		return copyASCIIToBytes(source, 0, source.length(), rbRingBuffer);
 	}
 
+    /**
+     * Writes ASCII to specified pipe
+     * @param source characters to write
+     * @param rb pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addASCII(CharSequence source, Pipe<S> rb) {
 	    addASCII(source, 0, null==source ? -1 : source.length(), rb);
 	}
@@ -2603,13 +2659,25 @@ public class Pipe<T extends MessageSchema<T>> {
 		while (--i>=0) {
 			target[targetIdx+i] = (byte)(0xFF&source.charAt(sourceIdx+i));
 		}
-	}	
+	}
 
-
+    /**
+     * Writes UTF8 characters to specified pipe
+     * @param source characters to write
+     * @param rb pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addUTF8(CharSequence source, Pipe<S> rb) {
 	    addUTF8(source, null==source? -1 : source.length(), rb);
 	}
 
+    /**
+     * Writes UTF8 characters to specified pipe
+     * @param source characters to write
+     * @param sourceCharCount character count of the source to write
+     * @param rb pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addUTF8(CharSequence source, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,0, sourceCharCount, rb));
 	}
@@ -2810,9 +2878,24 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
+    /**
+     * Writes a byte array to the specified pipe
+     * @param source byte array to write
+     * @param pipe pipe to write to
+     * @param <S> MessageSchema to extend
+     */
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, Pipe<S> pipe) {
     	addByteArray(source,0,source.length,pipe);
     }
+
+    /**
+     * Writes a byte array to the specified pipe
+     * @param source byte array to write
+     * @param sourceIdx index of the source array
+     * @param sourceLen length of the array to be written TODO: max length?
+     * @param pipe pipe to be written to
+     * @param <S> MessageSchema to be extended
+     */
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> pipe) {
     	assert(sourceLen>=0);
 		validateVarLength(pipe, sourceLen);
@@ -2822,6 +2905,16 @@ public class Pipe<T extends MessageSchema<T>> {
 		addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, sourceLen);
 		pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value + sourceLen);
     }
+
+    /**
+     * Writes a a byte array to the specified pipe
+     * @param source byte array to write
+     * @param sourceIdx index of the source array
+     * @param sourceLen  max? length of the array to be written
+     * @param sourceMask TODO: not sure of description
+     * @param pipe pipe to be written to
+     * @param <S> MessageSchema to be extended
+     */
     public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, int sourceMask, Pipe<S> pipe) {
 
     	assert(sourceLen>=0);
@@ -2838,7 +2931,12 @@ public class Pipe<T extends MessageSchema<T>> {
         addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, -1);
     }
 
-
+    /**
+     * Writes an int value to the specified pipe
+     * @param value int to be written
+     * @param pipe pipe to be written to
+     * @param <S> MessageSchema to extend
+     */
     public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> pipe) {
          assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
          //TODO: not always working in deep structures, check offsets:  assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
@@ -2879,7 +2977,14 @@ public class Pipe<T extends MessageSchema<T>> {
          }
          return true;
 	}
-    
+
+    /**
+     * Writes int value to specific position in the given pipe
+     * @param value int to be written
+     * @param pipe pipe to be written to
+     * @param position position to write int
+     * @param <S> MessageSchema to extend
+     */
     public static <S extends MessageSchema<S>> void setIntValue(int value, Pipe<S> pipe, long position) {
         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
         setValue(pipe.slabRing,pipe.slabMask,position,value);
@@ -2939,7 +3044,13 @@ public class Pipe<T extends MessageSchema<T>> {
         buffer[rbMask & (int)offset] |= value;
     }
 
-	
+    /**
+     * Writes position and length of byte to add to the pipe
+     * @param pipe pipe to be written to
+     * @param position position of byte
+     * @param length length of byte
+     * @param <S> MessageSchema to be extended
+     */
     public static <S extends MessageSchema<S>> void addBytePosAndLen(Pipe<S> pipe, int position, int length) {
         addBytePosAndLenSpecial(pipe,position,length);
     }
@@ -3016,11 +3127,17 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pos;
 	}
 
-	@Deprecated //use addLongVlue(value, rb)
+	@Deprecated //use addLongValue(value, rb)
     public static <S extends MessageSchema<S>> void addLongValue(Pipe<S> pipe, long value) {
 		 addLongValue(value, pipe);
 	}
 
+    /**
+     * Writes long value to the specified pipe
+     * @param value long to be written
+     * @param rb pipe to be written to
+     * @param <S> MessageSchema to be extended
+     */
 	public static <S extends MessageSchema<S>> void addLongValue(long value, Pipe<S> rb) {
 		 addLongValue(rb.slabRing, rb.slabMask, rb.slabRingHead.workingHeadPos, value);
 	}
@@ -3067,6 +3184,14 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     //TODO: may want to deprecate this interface
+
+    /**
+     * Reads the data at a specific index on the given pipe and returns an int
+     * @param idx index to read
+     * @param pipe pipe to read from
+     * @param <S> MessageSchema to extend
+     * @return int value from specified index
+     */
     public static <S extends MessageSchema<S>> int readValue(int idx, Pipe<S> pipe) {
     	return readValue(idx, pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
     }
@@ -3115,8 +3240,14 @@ public class Pipe<T extends MessageSchema<T>> {
         pipe.slabRingTail.workingTailPos.value+=2;
         return absent64Value!=result ? new Long(result) : null;
     }
-    
 
+    /**
+     * Reads the value at specified index on the given pipe and returns a long
+     * @param idx index to read
+     * @param pipe pipe to read from
+     * @param <S> MessageSchema to extend
+     * @return long value from specified index
+     */
     public static <S extends MessageSchema<S>> long readLong(int idx, Pipe<S> pipe) {
     	return readLong(pipe.slabRing,pipe.slabMask,idx+pipe.slabRingTail.workingTailPos.value);
 
@@ -3173,7 +3304,13 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(result>=0) : "content remaining must never be negative. problem in "+schemaName(pipe)+" pipe "; //do not add pipe.toString since it will be recursive.
         return result;
     }
-    
+
+    /**
+     * Checks to see whether pipe has any data or not
+     * @param pipe pipe to be checked
+     * @param <S> MessageSchema to extend
+     * @return <code>true</code> if pipe has no data else <code>false</code>
+     */
     public static <S extends MessageSchema<S>> boolean isEmpty(Pipe<S> pipe) {
     	return pipe.slabRingHead.workingHeadPos.value == pipe.slabRingTail.workingTailPos.value;
     }
@@ -3248,7 +3385,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     /**
      * Release any reads that were held back due to batching.
-     * @param pipe
+     * @param pipe pipe to be examined
      */
     public static <S extends MessageSchema<S>> void releaseAllBatchedReads(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
@@ -3385,7 +3522,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	private static <S extends MessageSchema<S>> boolean debugHeadAssignment(Pipe<S> pipe) {
 
 		if (0!=(PipeConfig.SHOW_HEAD_PUBLISH&pipe.debugFlags) ) {
-			new Exception("Debug stack for assignment of published head positition"+pipe.slabRingHead.headPos.get()).printStackTrace();
+			new Exception("Debug stack for assignment of published head position"+pipe.slabRingHead.headPos.get()).printStackTrace();
 		}
 		return true;
 	}
@@ -3402,7 +3539,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	//assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
 	    //TODO: need way to test if publish was called on an input ? 
-    	//      may be much easer to detect missing publish. or extra release.
+    	//      may be much easier to detect missing publish. or extra release.
     	
 	    if ((--pipe.batchPublishCountDown<=0)) {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
@@ -3686,7 +3823,13 @@ public class Pipe<T extends MessageSchema<T>> {
     		}
     	}
     }
-    
+
+    /**
+     * Checks the specified pipe to see if there is room to write
+     * @param pipe pipe to examine
+     * @param <S> MessageSchema to extend
+     * @return <code>true</code> if pipe has room to write else <code>false</code>
+     */
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         assert(null != pipe.llRead) : "Expected pipe to be setup for low level use.";
@@ -3766,15 +3909,21 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static <S extends MessageSchema<S>> int lastConfirmedWritePosition(Pipe<S> output) {
 		return output.slabMask&(int)output.llRead.llwConfirmedPosition;
 	}
-	
-	
+
+
 	//do not use with high level API, is dependent on low level confirm calls.
 	public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe, int size) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
         return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition+size-1, pipe.llWrite); 
     }
-    
+
+    /**
+     * Checks specified pipe to see if there is any data to read
+     * @param pipe pipe to be examined
+     * @param <S> MessageSchema to extend
+     * @return <code>true</code> if there is data to read else <code>false</code>
+     */
 	//this method can only be used with low level api navigation loop
 	//CAUTION: THIS IS NOT COMPATIBLE WITH PipeReader behavior...
     public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe) {
@@ -3947,7 +4096,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
      * Hold this position in case we want to abandon what is written
-     * @param pipe
+     * @param pipe pipe to be used
      */
     public static void markHead(Pipe pipe) {
         pipe.markedHeadSlab = Pipe.workingHeadPosition(pipe);
@@ -3956,7 +4105,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
      * abandon what has been written in this fragment back to the markHead position.
-     * @param pipe
+     * @param pipe pipe to be used
      */
     public static void resetHead(Pipe pipe) {
         Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);

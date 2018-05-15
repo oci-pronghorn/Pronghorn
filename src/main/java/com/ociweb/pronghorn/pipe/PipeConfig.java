@@ -180,7 +180,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
         if (this.schema == sourceConfig.schema) {
             if (this.blobBits>=sourceConfig.blobBits) {
                 if (this.slabBits>=sourceConfig.slabBits) {
-                    //NOTE: proably also want to check the ratio.
+                    //NOTE: probably also want to check the ratio.
                     return true;
                 }
             }

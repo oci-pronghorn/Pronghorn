@@ -11,7 +11,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 
 	/**
 	 * Will give how many bytes are available right now
-	 * @return the number of bytes bytes
+	 * @return the number of bytes
 	 */
 	public abstract int available();
 

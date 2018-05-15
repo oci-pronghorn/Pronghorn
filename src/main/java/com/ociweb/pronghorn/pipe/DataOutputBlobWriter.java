@@ -1,16 +1,15 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWriter {
 
@@ -66,7 +65,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	
 	
     /**
-     * Internal function only used when dependent clases want to add bounds check per method call.
+     * Internal function only used when dependent classes want to add bounds check per method call.
      * @param that
      * @param x
      */

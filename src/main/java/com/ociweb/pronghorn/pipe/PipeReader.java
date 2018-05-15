@@ -1,16 +1,15 @@
 package com.ociweb.pronghorn.pipe;
 
+import com.ociweb.pronghorn.pipe.token.LOCUtil;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ociweb.pronghorn.pipe.token.LOCUtil;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
-import com.ociweb.pronghorn.pipe.token.TypeMask;
 
 /**
  * Public interface for applications desiring to consume data from a FAST feed.
@@ -50,8 +49,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		stream.openHighLevelAPIField(loc);
 		return stream;
 	}
-    
-       
+
+    /**
+     * Reads int from specified pipe
+     * @param pipe pipe to read from
+     * @param loc location of int to read
+     */
 	public static int readInt(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -112,9 +115,15 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return Pipe.readLong(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
     }
-    
 
-  
+
+    /**
+     * Checks specified pipe to see if charSeq and another value are equal
+     * @param pipe pipe to be checked
+     * @param loc location of value to compare
+     * @param charSeq CharSequence to compare
+     * @return <code>true</code> if the values are equal else <code>false</code>
+     */
     public static boolean isEqual(Pipe pipe, int loc, CharSequence charSeq) {
     	int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
     	return Pipe.isEqual(pipe, charSeq, pos, PipeReader.readBytesLength(pipe,loc));
