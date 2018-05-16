@@ -1,18 +1,5 @@
 package com.ociweb.jpgRaster.j2r;
 
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPGConstants;
-import com.ociweb.jpgRaster.JPGSchema;
-import com.ociweb.jpgRaster.JPG.ColorComponent;
-import com.ociweb.jpgRaster.JPG.QuantizationTable;
-import com.ociweb.jpgRaster.JPG.HuffmanTable;
-import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -20,11 +7,23 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.ociweb.jpgRaster.JPG.ColorComponent;
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.HuffmanTable;
+import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
+import com.ociweb.jpgRaster.JPGConstants;
+import com.ociweb.jpgRaster.JPGSchema;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class JPGScannerStage extends PronghornStage {
 

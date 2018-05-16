@@ -3,14 +3,11 @@ package com.ociweb.jpgRaster.r2j;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Random;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import com.ociweb.jpgRaster.JPG;
-import com.ociweb.jpgRaster.JPG.ColorComponent;
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.QuantizationTable;
 
 public class QuantizerTest {
     private JPG.Header header;

@@ -3,14 +3,11 @@ package com.ociweb.jpgRaster.j2r;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Random;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import com.ociweb.jpgRaster.JPG;
-import com.ociweb.jpgRaster.JPG.ColorComponent;
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.QuantizationTable;
 
 public class InverseQuantizerTest {
     private JPG.Header header;
