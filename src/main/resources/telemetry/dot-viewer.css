@@ -123,9 +123,9 @@ nav > div {
 }
 
 #diagram {
-/* this needs to be removed if not in demo because it breaks the initial preview window */
+/* this needs to be removed if not in demo because it breaks the initial preview window
   margin: auto;
-  width: 50%;
+  width: 50%;*/
 }
 
 #spinner-container {

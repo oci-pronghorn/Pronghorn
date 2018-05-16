@@ -39,6 +39,8 @@ public class FileBlobReadStage extends PronghornStage {
         super(graphManager, NONE, output);
         this.inputPathString = inputPathString;
         this.output = output;
+
+        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
         
     }
 
