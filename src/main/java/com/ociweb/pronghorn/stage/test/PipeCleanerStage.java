@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+@SuppressWarnings("unchecked")
 public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private long totalSlabCount = 0;
