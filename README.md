@@ -18,8 +18,8 @@
  mvn install
  ```
  
-#### Create a new directory outside of the GreenLighter project directory for your new IoT project.
-Now, ```cd``` into the directory for your to be created IoT project, and enter:
+#### Create a new directory outside of the PronghornRanch project directory for your new project.
+Now, ```cd``` into the directory for your new project, and enter:
 ```
 mvn archetype:generate -DarchetypeGroupId=com.ociweb -DarchetypeArtifactId=PronghornRanch -DarchetypeVersion=0.0.1-SNAPSHOT
 ```
@@ -96,22 +96,6 @@ We have provided a key to sign your project; however, if you would like to use a
 mvn install
 ```
 .. to build the project. This will create a .jar file named ProjectXYZ.jar in the **/target** folder (note that there are other .jar files  in **/target**, but we don’t have to worry about those). This jar is executable and contains all its needed dependencies. 
-
-### Importing and running the project to your device
-After succesfully building the project, ```cd``` into the **/target** folder. Now, use 
-```
-scp ProjectXYZ.jar username@servername:
-``` 
-This will send the jar file to your RaspberryPi. You can also send the jar file to a specifc location by adding the file path after the colon. For example, if your username was "pi", the server name was "raspberry" and you wanted to add the .jar file to your Projects folder, the command would look like this ..
-```
-scp ProjectXYZ.jar pi@raspberry:/Projects/
-```
-
-Once the project is your device, use PuTTY to connect to your device. In PuTTY, if needed, ```cd``` into the folder containging your .jar file and then use the following command on your device..
-```
-java -jar ProjectXYZ.jar
-```
-.. to execute it. To exit the app at any time, press Ctrl+c.
 
 
 
