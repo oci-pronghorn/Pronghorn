@@ -733,38 +733,49 @@ public class TrieParserReader {
 				final int t2 = reader.localSourcePos+run;
 				final short[] data = trie.data;
 				
-				int r = scanBytes(source, run, srcMask, caseMask, t1, t2, data);
+				return scanBytes2(reader, source, run, srcMask, caseMask, t1, t2, data);
 				
-				if (r<=0) {
-					reader.pos = t1;
-					reader.localSourcePos = t2;
-					return false;
-				} else {
-					return true;
+	}
+
+	private static boolean scanBytes2(TrieParserReader reader, final byte[] source,final int run, final int srcMask,
+			final byte caseMask, final int t1, final int t2, final short[] data) {
+		
+				int t11 = t1;
+				int t21 = t2;
+				t11-=run;
+				t21-=run;
+						
+				int r = run;
+				
+				while (r>=3) {
+					
+					r -= 3;
+					boolean b1 = (caseMask & data[t11]) != (caseMask & source[srcMask & (t21)]);
+					boolean b2 = (caseMask & data[t11+1]) != (caseMask & source[srcMask & (t21+1)]);
+					boolean b3 = (caseMask & data[t11+2]) != (caseMask & source[srcMask & (t21+2)]);
+				
+
+					if (b1 | b2 | b3) {
+						return true;
+					}
+										
+					t11 += 3;
+					t21 += 3;
 				}
 				
-	}
-
-	private static int scanBytes(final byte[] source, 
-								int r, final int srcMask, 
-								final byte caseMask, int t1,
-								int t2, final short[] data) {
+				while (--r >= 0) {
 					
-		t1-=r;
-		t2-=r;
-		
-		while (
-				(          (caseMask & data[t1++])
-						== (caseMask & source[srcMask & (t2++)])
-				)
-				&& (--r > 0) 
-			 ) {
-		}
-		return r;
+					if ((caseMask & data[t11++]) != (caseMask & source[srcMask & (t21++)]) ) {
+						return true;
+					}
+					
+				}
+				reader.pos = t1;
+				reader.localSourcePos = t2;
+				return false;
+	
 	}
 
-	
-	
 	private static void processBinaryBranch(TrieParserReader reader,
 			TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, final long unfoundResult) {

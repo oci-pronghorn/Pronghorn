@@ -86,7 +86,7 @@ public class JSONObjectTests {
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
                     .decimal("d", 2, o->o.d)
-                    .string("s", o->o.s)
+                    .string("s", (o,t)-> t.append(o.s))
                     .array("empty", null)
                         .empty()
                     .beginObject("m")
@@ -107,7 +107,7 @@ public class JSONObjectTests {
                     .nullableBool("b", o->true, o->o.b)
                     .nullableInteger("i", o->true, o->o.i)
                     .nullableDecimal("d", 2, o->true, o->o.d)
-                    .nullableString("s", o->null)
+                    .nullableString("s", (o,t)-> t.append(null))
                     .beginObject("m", o->o.m)
                     .endObject()
                     .constantNull("always")
@@ -116,6 +116,7 @@ public class JSONObjectTests {
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
+        System.out.println(out);
         assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null,\"always\":null,\"en\":null,\"eo\":null}", out.toString());
     }
 
@@ -126,7 +127,7 @@ public class JSONObjectTests {
                     .nullableBool("b", o->false, o->o.b)
                     .nullableInteger("i", o->false, o->o.i)
                     .nullableDecimal("d", 2, o->false, o->o.d)
-                    .nullableString("s", o->o.s)
+                    .nullableString("s", (o,t)->t.append(o.s))
                     .beginObject("m", o->o.m)
                         .beginObject("c", o->o.m).endObject()
                     .endObject()

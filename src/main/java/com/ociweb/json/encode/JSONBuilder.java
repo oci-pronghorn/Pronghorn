@@ -2,6 +2,7 @@ package com.ociweb.json.encode;
 
 import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
@@ -569,19 +570,32 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     void addString(final boolean checkNull, final ToStringFunction<T> func) {
         final byte[] declaredMemberName = consumeDeclaredMemberName();
+        
         scripts.add(new StringTemplateScript<T>() {
+        	
+        	NullableAppendableByteWriterWrapper nabww = new NullableAppendableByteWriterWrapper();
+        	
             @Override
             public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
-                CharSequence s = func.applyAsString(source);
-                if (checkNull && s == null) {
-                    kw.Null(writer);
+                
+                if (!checkNull) {
+                	kw.Quote(writer);
+                	func.applyAsString(source, writer);
+                	kw.Quote(writer);                	
+                } else {
+                	nabww.externalWriter = writer;
+                	nabww.wasNull = false;
+                	nabww.needsQuote = true;
+                	func.applyAsString(source, nabww);
+                	if (!nabww.wasNull) {
+                		kw.Quote(writer);
+                	} else {
+                		//Note we are already reset to the beginning.
+                		kw.Null(writer);
+                	}
                 }
-                else {
-                    kw.Quote(writer);
-                    writer.append(s);
-                    kw.Quote(writer);
-                }
+                
             }
         });
     }
@@ -634,11 +648,16 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
 
     <E extends Enum<E>> void addEnumName(final ToEnumFunction<T, E> func) {
         addString(true, new ToStringFunction<T>() {
-            @Override
-            public CharSequence applyAsString(T value) {
+
+			@Override
+			public void applyAsString(T value, AppendableByteWriter<?> target) {
                 E v = func.applyAsEnum(value);
-                return (v != null ? v.name() : null);
-            }
+                if (null!=v) {
+                	target.append(v.name());
+                } else {
+                	target.append(null);
+                }
+			}
         });
     }
 

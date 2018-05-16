@@ -1,9 +1,15 @@
 package com.ociweb.pronghorn.util;
 
-public interface PHAppendable extends Appendable {
-    Appendable append(CharSequence csq);
+public interface PHAppendable<T extends PHAppendable<T>> extends Appendable {
+	
+	/**
+	 * Drop everything written so far and return cursor to beginning of the stream
+	 */
+	void reset();
+	
+	T append(CharSequence csq);
 
-    Appendable append(CharSequence csq, int start, int end);
+	T append(CharSequence csq, int start, int end);
 
-    Appendable append(char c);
+	T append(char c);
 }

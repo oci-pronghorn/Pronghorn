@@ -45,7 +45,7 @@ public class JSONSelectTests {
                 .beginSelect()
                     .tryCase(o->false).constantNull()
                     .tryCase(o->true).integer(o->6)
-                    .tryCase(o->true).string(o->"hello")
+                    .tryCase(o->true).string((o,t)->t.append("hello"))
                 .endSelect();
         assertTrue(json.isLocked());
         json.render(out, true);

@@ -51,7 +51,7 @@ public class JSONArrayCompoundTests {
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
                     .decimal("d", 2, o->o.d)
-                    .string("s", o->o.s)
+                    .string("s", (o,t)-> t.append(o.s))
                     .beginObject("m")
                     .endObject()
                 .endObject();

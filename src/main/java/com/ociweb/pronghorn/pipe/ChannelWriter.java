@@ -7,7 +7,7 @@ import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.OutputStream;
 
-public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, AppendableByteWriter {
+public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, AppendableByteWriter<ChannelWriter> {
 
 	 abstract public StructuredWriter structured();
 
@@ -44,12 +44,6 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * @return byte array
 	 */
 	 abstract public byte[] toByteArray();
-
-	 abstract public Appendable append(CharSequence csq);
-	 
-	 abstract public Appendable append(CharSequence csq, int start, int end);
-	 
-	 abstract public Appendable append(char c);	 
 	 
 	 abstract public boolean reportObjectSizes(Appendable target);
 

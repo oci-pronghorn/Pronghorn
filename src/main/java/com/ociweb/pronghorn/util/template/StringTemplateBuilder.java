@@ -11,6 +11,22 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		this.script = new StringTemplateScript[8];
 	}
 
+
+	@Override
+	public void reset() {
+		count = 0;
+	}
+
+	@Override
+	public void writeByte(final int b) {
+		append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void render(AppendableByteWriter writer, T source) {
+						writer.writeByte(b);
+					}
+				});
+	}
 	@Override
 	public void write(byte[] b) {
 		write(b, 0, b.length);
@@ -98,4 +114,5 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		script[count++] = fetchData;
 		return this;
 	}
+
 }
