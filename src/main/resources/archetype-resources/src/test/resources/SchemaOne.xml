@@ -2,7 +2,10 @@
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
   
    <template name="SomeKindOfMesage" id="1">
-     <uInt32 name="AnUnsignedInt" id="101"/>
+     <string name="AUTF8String" id="99" charset="unicode"/>
+     <string name="AnASCIIString" id="100"/>
+     <uInt16 name="AnUnsignedShort" id="101"/>
+     <uInt32 name="AnUnsignedInt" id="102"/>
      <uInt64 name="AnUnsignedLong" id="201"/>
      <byteVector name="AnArrayOfBytes" id="301"/>
    </template>
