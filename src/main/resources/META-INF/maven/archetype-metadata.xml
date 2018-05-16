@@ -31,5 +31,11 @@
         <include>proguard.conf</include>
       </includes>
     </fileSet>
+    <fileSet filtered="false" packaged="false">
+      <directory/>
+      <includes>
+        <include>image.jpg</include>
+      </includes>
+    </fileSet>
   </fileSets>
 </archetype-descriptor>
