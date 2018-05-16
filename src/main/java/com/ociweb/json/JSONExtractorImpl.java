@@ -137,7 +137,7 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 		
 		parseExtractionPath(extractionPath);
 		activeMapping.setName(pathName);
-		activeMapping.setPath(schema, path.toArray(new String[path.size()]));	
+		activeMapping.setPath(schema, path.toArray(new CharSequence[path.size()]));	
 		schema.addMappings(activeMapping);
 		return this;
 	}
