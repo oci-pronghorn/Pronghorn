@@ -60,12 +60,24 @@ public class YCbCrToRGBStage extends PronghornStage {
 		r = (short)(Y + 1.402 * Cr + 128);
 		g = (short)((Y - (0.114 * (Y + 1.772 * Cb)) - 0.299 * (Y + 1.402 * Cr)) / 0.587 + 128);
 		b = (short)(Y + 1.772 * Cb + 128);
-		if (r < 0)   r = 0;
-		if (r > 255) r = 255;
-		if (g < 0)   g = 0;
-		if (g > 255) g = 255;
-		if (b < 0)   b = 0;
-		if (b > 255) b = 255;
+		if (r < 0) {
+			r = 0;
+		}
+		if (r > 255) {
+			r = 255;
+		}
+		if (g < 0) {
+			g = 0;
+		}
+		if (g > 255) {
+			g = 255;
+		}
+		if (b < 0) {
+			b = 0;
+		}
+		if (b > 255) {
+			b = 255;
+		}
 		rgb[0] = (byte)r;
 		rgb[1] = (byte)g;
 		rgb[2] = (byte)b;
@@ -260,8 +272,9 @@ public class YCbCrToRGBStage extends PronghornStage {
 
 				// write header to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
-					if (verbose) 
+					if (verbose) {
 						System.out.println("YCbCrToRGB writing header to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, header.filename);
@@ -286,8 +299,9 @@ public class YCbCrToRGBStage extends PronghornStage {
 				
 				// write color component data to pipe
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-					if (verbose) 
+					if (verbose) {
 						System.out.println("YCbCrToRGB writing color component to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, component.componentID);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, component.horizontalSamplingFactor);
 					PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, component.verticalSamplingFactor);

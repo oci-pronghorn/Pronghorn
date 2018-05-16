@@ -115,8 +115,9 @@ public class JPGScannerStage extends PronghornStage {
 			header.valid = false;
 			return header;
 		}
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Start of Image");
+		}
 		last = (short)(b.get() & 0xFF);
 		current = (short)(b.get() & 0xFF);
 		
@@ -267,8 +268,9 @@ public class JPGScannerStage extends PronghornStage {
 					if (last == 0xFF) {
 						if      (current == JPGConstants.EOI) {
 							decodeScan(header, mcus, numScans);
-							if (verbose)
+							if (verbose) {
 								System.out.println("End of Image");
+							}
 							break;
 						}
 						else if (current == 0x00) {
@@ -315,9 +317,10 @@ public class JPGScannerStage extends PronghornStage {
 					last = current;
 					current = (short)(b.get() & 0xFF);
 					if (last == 0xFF) {
-						if      (current == JPGConstants.EOI) {
-							if (verbose) 
+						if (current == JPGConstants.EOI) {
+							if (verbose) {
 								System.out.println("End of Image");
+							}
 							break;
 						}
 						else if (current == 0x00) {
@@ -373,8 +376,9 @@ public class JPGScannerStage extends PronghornStage {
 	// decode a whole scan, progressive images only
 	private boolean decodeScan(Header header, ArrayList<MCU> mcus, int numScans) {
 		// decode scan so far
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Decoding a scan of size " + header.imageData.size());
+		}
 		decoder.beginDecode(header);
 
 		MCU mcu1 = null;
@@ -441,8 +445,9 @@ public class JPGScannerStage extends PronghornStage {
 	 * @param	header object representation of JPG header
 	 */
 	private void ReadQuantizationTable(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Quantization Tables");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		length -= 2;
@@ -495,8 +500,9 @@ public class JPGScannerStage extends PronghornStage {
 			header.valid = false;
 			return;
 		}
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Start of Frame");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		header.precision = (short)(b.get() & 0xFF);
@@ -587,8 +593,9 @@ public class JPGScannerStage extends PronghornStage {
 	 * @param	header object representation of JPG header
 	 */
 	private void ReadHuffmanTable(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Huffman Tables");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		length -= 2;
@@ -650,8 +657,9 @@ public class JPGScannerStage extends PronghornStage {
 			header.valid = false;
 			return;
 		}
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Start of Scan");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		for (int i = 0; i < header.numComponents; ++i) {
@@ -707,8 +715,9 @@ public class JPGScannerStage extends PronghornStage {
 	}
 	
 	private void ReadRestartInterval(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Restart Interval");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		header.restartInterval = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
@@ -719,14 +728,16 @@ public class JPGScannerStage extends PronghornStage {
 	}
 	
 	private void ReadRSTN(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading RSTN");
+		}
 		// RSTN has no length
 	}
 	
 	private void ReadAPPN(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading APPN");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		// all of APPN markers can be ignored
@@ -736,8 +747,9 @@ public class JPGScannerStage extends PronghornStage {
 	}
 	
 	private void ReadComment(ByteBuffer b, Header header) throws IOException {
-		if (verbose) 
+		if (verbose) {
 			System.out.println("Reading Comment");
+		}
 		int length = ((b.get() & 0xFF) << 8) + (b.get() & 0xFF);
 		
 		// all comment markers can be ignored
@@ -896,8 +908,9 @@ public class JPGScannerStage extends PronghornStage {
 				}
 				if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_HEADERMESSAGE_1)) {
 					// write header to pipe
-					if (verbose) 
+					if (verbose) {
 						System.out.println("JPG Scanner writing header to pipe...");
+					}
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_HEIGHT_101, header.height);
 					PipeWriter.writeInt(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_WIDTH_201, header.width);
 					PipeWriter.writeASCII(output, JPGSchema.MSG_HEADERMESSAGE_1_FIELD_FILENAME_301, file);
@@ -914,8 +927,9 @@ public class JPGScannerStage extends PronghornStage {
 				// write color component data to pipe
 				for (int i = 0; i < header.numComponents; ++i) {
 					if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2)) {
-						if (verbose) 
+						if (verbose) {
 							System.out.println("JPG Scanner writing color component to pipe...");
+						}
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_COMPONENTID_102, header.colorComponents[i].componentID);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_HORIZONTALSAMPLINGFACTOR_202, header.colorComponents[i].horizontalSamplingFactor);
 						PipeWriter.writeInt(output, JPGSchema.MSG_COLORCOMPONENTMESSAGE_2_FIELD_VERTICALSAMPLINGFACTOR_302, header.colorComponents[i].verticalSamplingFactor);
@@ -931,8 +945,9 @@ public class JPGScannerStage extends PronghornStage {
 				for (int i = 0; i < header.quantizationTables.length; ++i) {
 					if (header.quantizationTables[i] != null) {
 						if (PipeWriter.tryWriteFragment(output, JPGSchema.MSG_QUANTIZATIONTABLEMESSAGE_3)) {
-							if (verbose) 
+							if (verbose) {
 								System.out.println("JPG Scanner writing quantization table to pipe...");
+							}
 	
 							DataOutputBlobWriter<JPGSchema> quantizationTableWriter = PipeWriter.outputStream(output);
 							DataOutputBlobWriter.openField(quantizationTableWriter);

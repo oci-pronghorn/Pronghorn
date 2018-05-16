@@ -127,7 +127,9 @@ public class HuffmanEncoderStage extends PronghornStage {
 					break;
 				}
 			}
-			if (found) break;
+			if (found) {
+				break;
+			}
 		}
 		
 		// code AC values
@@ -165,7 +167,9 @@ public class HuffmanEncoderStage extends PronghornStage {
 							break;
 						}
 					}
-					if (found) break;
+					if (found) {
+						break;
+					}
 				}
 				numZeroes -= 16;
 			}
@@ -193,7 +197,9 @@ public class HuffmanEncoderStage extends PronghornStage {
 						break;
 					}
 				}
-				if (found) break;
+				if (found) {
+					break;
+				}
 			}
 		}
 		return true;
