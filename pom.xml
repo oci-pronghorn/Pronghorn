@@ -80,6 +80,20 @@
 		</dependency>
 	</dependencies>
 
+  <scm>
+    <connection>scm:git:git://github.com/oci-pronghorn/JPG-Raster.git</connection>
+    <url>https://github.com/oci-pronghorn/GreenLightning</url>
+    <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/JPG-Raster.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+    
+  <distributionManagement>
+    <repository>
+      <id>cloudbees.release</id>
+      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+    </repository>
+  </distributionManagement>
+
 	<build>
 
 		<plugins>
