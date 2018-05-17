@@ -19,7 +19,7 @@ public class JSONRootStringTests {
     @Test
     public void testRootString() {
         JSONRenderer<String> json = new JSONRenderer<String>()
-                .string(o -> o);
+                .string((o,t) -> t.append(o));
         assertTrue(json.isLocked());
         json.render(out, "Hello");
         assertEquals("\"Hello\"", out.toString());
@@ -28,7 +28,7 @@ public class JSONRootStringTests {
     @Test
     public void testRootStringrNull_Null() {
         JSONRenderer<String> json = new JSONRenderer<String>()
-                .nullableString(o -> o);
+                .nullableString((o,t) -> t.append(o));
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -37,7 +37,7 @@ public class JSONRootStringTests {
     @Test
     public void testRootStringrNull_Value() {
         JSONRenderer<String> json = new JSONRenderer<String>()
-                .nullableString(o -> o);
+                .nullableString((o,t) -> t.append(o));
         assertTrue(json.isLocked());
         json.render(out, "Hello");
         assertEquals("\"Hello\"", out.toString());

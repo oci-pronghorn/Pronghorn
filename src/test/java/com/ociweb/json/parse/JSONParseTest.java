@@ -43,31 +43,25 @@ public class JSONParseTest {
 	private final JSONExtractor simpleExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeString, false)//set flags for first, last, all, ordered...
-					.key("root").key("keyb")
-					.asField(Field.b)
+					.asField("root.keyb",Field.b)
 				.element(JSONType.TypeInteger, false)
-					.key("root").key("keya")
-					.asField(Field.a)
+					.asField("root.keya",Field.a)
 			.finish();
 
 	private final JSONExtractor simpleArrayExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.key("root").array().key("keyb")
-					.asField(Field.b)
+					.asField("root.[].keyb",Field.b)
 				.element(JSONType.TypeInteger, true)
-					.key("root").key("[]").key("keya")
-					.asField(Field.a)
+					.asField("root.[].keya",Field.a)
 			.finish();
 
 	private final JSONExtractor simple2DArrayExtractor = new JSONExtractor(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.key("root").array().key("[]").key("keyb")
-					.asField(Field.b)
+					.asField("root.[].[].keyb",Field.b)
 				.element(JSONType.TypeInteger, true)
-					.key("root").key("[]").key("[]").key("keya")
-					.asField(Field.a)
+					.asField("root.[].[].keya",Field.a)
 			.finish();
 
 	@Test
@@ -600,11 +594,9 @@ public class JSONParseTest {
 	private final JSONExtractor column2DArrayExtractor = new JSONExtractor(false)
 			.begin()
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.key("root").array().key("[]").key("keyb")
-					.asField(Field.b)
+					.asField("root.[].keyb",Field.b)
 				.element(JSONType.TypeInteger, true, JSONAccumRule.Collect)
-					.key("root").key("[]").key("[]").key("keya")
-					.asField(Field.a)
+					.asField("root.[].[].keya",Field.a)
 			.finish();
 	
 	@Test

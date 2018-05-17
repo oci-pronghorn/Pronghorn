@@ -14,8 +14,8 @@ public class JSONResponse {
     private static final JSONRenderer<JSONResponse> jsonRenderer = new JSONRenderer<JSONResponse>()
             .beginObject()
             .integer("status", o->o.status)
-            .string("message", o->o.message)
-            .string("body", o->o.body)
+            .string("message", (o,t)-> t.append(o.message))
+            .string("body", (o,t)->t.append(o.body))
             .endObject();
 
     public enum Fields {
@@ -25,16 +25,13 @@ public class JSONResponse {
 	private final JSONExtractor jsonExtractor = new JSONExtractor()
 			.begin()
 				.element(JSONType.TypeInteger, true)
-				.key("status")
-				.asField(Fields.Status)
+				.asField("status",Fields.Status)
 				
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-				.key("message")
-				.asField(Fields.Message)
+				.asField("message",Fields.Message)
 				
 				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-				.key("body")
-				.asField(Fields.Body)
+				.asField("body",Fields.Body)
 			.finish();
     
     public void reset() {

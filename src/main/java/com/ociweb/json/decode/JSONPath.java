@@ -9,30 +9,21 @@ public abstract class JSONPath<P> {
         this.extractor = extractor;
     }
 
-    public JSONPath<P> key(String key) {
-        extractor = extractor.key(key);
-        return this;
-    }
 
-    public JSONPath<P> array() {
-        extractor = extractor.array();
-        return this;
-    }
-
-    public P asField(String name) {
-        extractor.completePath(name);
+    public P asField(String extractionPath, String name) {
+        extractor.completePath(extractionPath, name);
         extractor = null;
         return pathEnded();
     }
 
-    public P asField(String name, Object object) {
-        extractor.completePath(name, object);
+    public P asField(String extractionPath, String name, Object object) {
+        extractor.completePath(extractionPath, name, object);
         extractor = null;
         return pathEnded();
     }
 
-    public <T extends Enum<T>> P asField(T field) {
-        extractor.completePath(field.name(), field);
+    public <T extends Enum<T>> P asField(String extractionPath, T field) {
+        extractor.completePath(extractionPath, field.name(), field);
         extractor = null;
         return pathEnded();
     }

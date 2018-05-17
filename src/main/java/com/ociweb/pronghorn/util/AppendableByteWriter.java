@@ -1,5 +1,5 @@
 package com.ociweb.pronghorn.util;
 
-public interface AppendableByteWriter extends PHAppendable, ByteWriter {
+public interface AppendableByteWriter<T extends AppendableByteWriter<T>> extends PHAppendable<T>, ByteWriter {
 }
 

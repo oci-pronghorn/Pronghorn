@@ -909,19 +909,26 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
     @Override
-    public Appendable append(CharSequence csq) {
-        encodeAsUTF8(this, csq);
+    public ChannelWriter append(CharSequence s) {
+	    if (null!=s) {
+			encodeAsUTF8(this,s);
+		} else {
+			writeByte('n');
+			writeByte('u');
+			writeByte('l');
+			writeByte('l');
+		}
         return this;
     }
 
     @Override
-    public Appendable append(CharSequence csq, int start, int end) {
+    public ChannelWriter append(CharSequence csq, int start, int end) {
         this.activePosition = encodeAsUTF8(this, csq, start, end-start, this.byteMask, this.byteBuffer, this.activePosition);
         return this;
     }
 
     @Override
-    public Appendable append(char c) {
+    public ChannelWriter append(char c) {
         this.activePosition = Pipe.encodeSingleChar((int)c, this.byteBuffer, this.byteMask, this.activePosition);
         return this;
     }
@@ -983,7 +990,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writePackedLong(m);	
 	}
 
-
-
+	@Override
+	public void reset() {
+		activePosition = startPosition;
+	}
     
 }

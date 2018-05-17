@@ -8,6 +8,8 @@ import com.ociweb.pronghorn.util.StringBuilderWriter;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.channels.Pipe;
+
 class Bucket {
     boolean b1;
     int i1;
@@ -43,7 +45,7 @@ public class JSONBucketTests {
                 .bool("b", o -> o.b1)
                 .integer("i", o -> o.i1)
                 .decimal("d", 2, o->o.d1)
-                .string("s", o -> o.s1)
+                .string("s", (o,t) -> t.append(o.s1))
                 .array("a", (o,i,n) -> i < o.a1.length? o : null)
                     .integer((o, i) -> o.a1[i])
                 .array("a2", o -> o.a2,(o,i,n) -> i < o.length? o : null)
@@ -52,13 +54,13 @@ public class JSONBucketTests {
                     .nullableBool("b", o->true, o->o.b2)
                     .nullableInteger("i", o->true, o->o.i2)
                     .nullableDecimal("d", 2, o->true, o->0)
-                    .nullableString("s", o -> o.s2)
+                    .nullableString("s", (o,t) -> t.append(o.s2))
                 .endObject()
                 .beginObject("m", o->o.m)
                     .nullableBool("b", o->true, o->o.b2)
                     .nullableInteger("i", o->true, o->o.i2)
                     .nullableDecimal("d", 2, o->true, o->o.d2)
-                    .nullableString("s", o -> o.s2)
+                    .nullableString("s", (o,t) -> t.append(o.s2))
                 .endObject()
             .endObject();
         assertTrue(json.isLocked());

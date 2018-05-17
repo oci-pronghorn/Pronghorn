@@ -39,8 +39,10 @@ public abstract class MessageSchema<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> S findInstance(Class<S> clazz) {
 		S found = null;
-		for(Field f:clazz.getFields()) {    		
-			
+		Field[] declaredFields = clazz.getDeclaredFields();
+		int i = declaredFields.length;
+		while (--i>=0) {
+			Field f = declaredFields[i];			
 			Type type = f.getGenericType();    	
 			
 			if (type.getTypeName().equals(clazz.getName())) { 
