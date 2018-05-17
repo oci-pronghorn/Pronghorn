@@ -1,13 +1,12 @@
 package com.ociweb.pronghorn.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import org.HdrHistogram.Histogram;
 import org.junit.Ignore;
-import org.junit.Test;
 
 public class CPUMonitorTest {
 
@@ -26,15 +25,17 @@ public class CPUMonitorTest {
            return;
         }
                 
-        Histogram histogram = monitor.stop();
+        SmallFootprintHistogram histogram = monitor.stop();
         assertTrue(null!=histogram);
-        if (histogram.getTotalCount()>0) {//some platforms do not support this monitor.
-            assertEquals(5, histogram.getTotalCount());
+        
+        if (SmallFootprintHistogram.totalCount(histogram)>0) {//some platforms do not support this monitor.
+            assertEquals(5, SmallFootprintHistogram.totalCount(histogram));
         }
         PrintStream printStream = new PrintStream(new ByteArrayOutputStream());
         
-        histogram.outputPercentileDistribution(printStream, CPUMonitor.UNIT_SCALING_RATIO);
         
+        histogram.report(printStream);
+        //System.out.println(histogram);
         
     }
     
