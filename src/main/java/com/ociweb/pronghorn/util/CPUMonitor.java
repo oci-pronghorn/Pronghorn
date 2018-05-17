@@ -11,7 +11,6 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /*
@@ -31,7 +30,7 @@ public class CPUMonitor {
     
     private final static Logger log = LoggerFactory.getLogger(CPUMonitor.class);
     
-    private Histogram histogram;
+    private SmallFootprintHistogram histogram = new SmallFootprintHistogram();
     private final ScheduledExecutorService scheduledExecutor;
     private final long period;
     private final boolean monitorEntireSystem;
@@ -63,9 +62,8 @@ public class CPUMonitor {
        scheduledExecutor.scheduleAtFixedRate(new Watcher(this), 0, period, TimeUnit.MILLISECONDS);
     }
     
-    public Histogram stop() {
+    public SmallFootprintHistogram stop() {
         scheduledExecutor.shutdownNow();
-        histogram.setEndTimeStamp(System.currentTimeMillis());
         return histogram;
     }
     
@@ -82,7 +80,7 @@ public class CPUMonitor {
         }
 
         private void init() {
-            that.histogram = new Histogram(ONE_HUNDRED_PERCENT, 4);  //TODO: Bug do not set this to 6 or it will hang.              
+            SmallFootprintHistogram.clear(that.histogram);   
             this.mbs    = ManagementFactory.getPlatformMBeanServer();
             
             this.id = (that.monitorEntireSystem ? new String[]{ "SystemCpuLoad" } : new String[]{ "ProcessCpuLoad" });
@@ -96,7 +94,6 @@ public class CPUMonitor {
                 log.warn("looking up os", e);
                 this.os = null;
             }
-            that.histogram.setStartTimeStamp(System.currentTimeMillis());
         }
         
         @Override
@@ -124,7 +121,7 @@ public class CPUMonitor {
                     return;  // usually takes a couple of seconds before we get real values
                 } else {
                     long longValue = (long)(ONE_HUNDRED_PERCENT * value.doubleValue());
-                    that.histogram.recordValue(longValue);
+                    SmallFootprintHistogram.record(that.histogram, longValue);
                 }
             } catch (Exception e) {
                 log.warn("unable to fetch CPU usage", e);
