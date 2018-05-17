@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
@@ -54,7 +55,7 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
 	@Override
 	protected byte[] payload(AppendableBuilder payload, 
 			                 GraphManager gm, 
-			                 DataInputBlobReader<HTTPRequestSchema> params,
+			                 ChannelReader params,
 			                 HTTPVerbDefaults verb) {
 	
 		//logger.info("begin building requested graph");

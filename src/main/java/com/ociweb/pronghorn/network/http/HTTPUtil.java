@@ -43,7 +43,7 @@ public class HTTPUtil {
 		int contentPosition = 0;
 		int contentMask = Integer.MAX_VALUE;
 		
-		simplePublish(ServerCoordinator.END_RESPONSE_MASK, sequence, status, localOutput, channelIdHigh, channelIdLow, null,
+		publishArrayResponse(ServerCoordinator.END_RESPONSE_MASK, sequence, status, localOutput, channelIdHigh, channelIdLow, null,
 				      contentLength, contentBacking, contentPosition, contentMask);
 	}
     
@@ -54,7 +54,21 @@ public class HTTPUtil {
 	      return chunkMap;
 	}
 
-	public static void simplePublish(int requestContext, int sequence, int status,
+	
+
+	public static void publishArrayResponse(int requestContext, int sequence, int status,
+			Pipe<ServerResponseSchema> localOutput, long channelId, byte[] typeBytes,
+			int contentLength, byte[] contentBacking, int contentPosition, int contentMask) {
+		
+		int channelIdHigh = (int)(channelId>>32); 
+		int channelIdLow = (int)channelId;
+		
+		publishArrayResponse(requestContext, sequence, status, localOutput,
+				channelIdHigh, channelIdLow, typeBytes, contentLength, contentBacking, contentPosition, contentMask);
+		
+	}
+	
+	public static void publishArrayResponse(int requestContext, int sequence, int status,
 			Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, byte[] typeBytes,
 			int contentLength, byte[] contentBacking, int contentPosition, int contentMask) {
 		assert(contentLength>=0) : "This method does not support chunking";

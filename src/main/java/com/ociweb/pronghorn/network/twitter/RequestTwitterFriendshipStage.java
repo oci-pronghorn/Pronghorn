@@ -172,7 +172,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 					int channelIdHigh = (int)(activeConnectionId>>32); 
 					int channelIdLow = (int)activeConnectionId;
 					
-					HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
+					HTTPUtil.publishArrayResponse(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
 							      activeSequenceId, statusId, output, channelIdHigh, channelIdLow, null,
 							      contentLength, contentBacking, contentPosition, contentMask);          	 
 					
@@ -257,7 +257,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 			int channelIdHigh = (int)(connectionId>>32); 
 			int channelIdLow = (int)connectionId;
 			
-			HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
+			HTTPUtil.publishArrayResponse(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
 					      sequenceID, 420, output, channelIdHigh, channelIdLow, null,
 					      contentLength, contentBacking, contentPosition, contentMask);
 

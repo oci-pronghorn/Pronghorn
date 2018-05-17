@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.network.http.AbstractRestStage;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -32,6 +33,9 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private final Pipe<HTTPRequestSchema>[] inputs;
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final GraphManager graphManager;
+	
+	//TODO: this would be better if it wrote directly to the output pipe and left
+	//      room for the headers,  it would be 1 less copy of the body content helping telemetry and others..
 	private AppendableBuilder payloadWorkspace;
 		
 	private static final Logger logger = LoggerFactory.getLogger(AbstractAppendablePayloadResponseStage.class);
@@ -172,7 +176,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	    
 		DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.openOutputStream(output);
 
-		payloadWorkspace.clear();
+		payloadWorkspace.reset();
 		byte[] etagBytes = payload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
         
         activeOutput = output;
@@ -205,7 +209,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		return true;
 	}
 	
-	protected abstract byte[] payload(AppendableBuilder payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
+	protected abstract byte[] payload(AppendableBuilder payload,
+			                          GraphManager gm, 
+			                          ChannelReader params, 
+			                          HTTPVerbDefaults verb);
 
 	protected abstract byte[] contentType();
 	
@@ -239,7 +246,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			activeFieldRequestContext |=  OrderSupervisorStage.CLOSE_CONNECTION_MASK;
 
 			//mark all done.
-			payloadWorkspace.clear();
+			payloadWorkspace.reset();
 			activeChannelId = -1;
 			activeSequenceNo = -1;
 			workingPosition = 0;
