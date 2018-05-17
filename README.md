@@ -1,7 +1,7 @@
 # JPG-Raster
 ## What is it?
-JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
-It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel values.
+JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.  
+It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel values.  
 It can also read an uncompressed BMP file, compress the data and output a corresponding JPG file.
 
 ## How does it work?
@@ -21,17 +21,17 @@ J2R uses Pronghorn-Pipes for multi-threading and dataflow management to speed up
 ## How to use it?
 A runnable JAR file can be downloaded from the Releases tab, or you can compile the source yourself.
 
-From the command line, you can specify an input JPG file (or a space-separated list of many files) with the `-f` option.*
-Then it will produce a `.bmp` file with the same name after decompressing the JPG file.
-If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.
+From the command line, you can specify an input JPG file (or a space-separated list of many files) with the `-f` option.*  
+Then it will produce a `.bmp` file with the same name after decompressing the JPG file.  
+If including J2R in your own project, you can opt to not create BMP files and instead just use the RGB pixel array in memory for your own purposes.  
 BMP was chosen as the output file type due to its very small header (26 bytes) followed by the raw, uncompressed RGB values.
 
-J2R uses decoding mode by default, but you can enable encoding mode with the `-e` option.
-Then use the `-f` option to specify input BMP files.
-This encodes the BMP files using the standard JPG quantization tables and Huffman tables.
-Additionally, you can use the `-q` option to specify the output JPG file quality (50, 75, or 100) (75 by default).
-50 is moderate loss of detail.
-75 is some loss of detail.
+J2R uses decoding mode by default, but you can enable encoding mode with the `-e` option.  
+Then use the `-f` option to specify input BMP files.  
+This encodes the BMP files using the standard JPG quantization tables and Huffman tables.  
+Additionally, you can use the `-q` option to specify the output JPG file quality (50, 75, or 100) (75 by default).  
+50 is moderate loss of detail.  
+75 is some loss of detail.  
 100 is no loss of detail.
 
 *The `-f` option supports file globbing, such as the following:
@@ -42,10 +42,11 @@ picutres/cat?.jpg          // all JPGs in pictures/ beginning with cat followed 
 pictures/*.jp{e,}g         // all JPGs in pictures/ ending in .jpg or .jpeg
 
 ```
-Globbing syntax can only be used on the filename itself; not a folder along the filepath.
-Filepaths can be absolute or relative.
-Any filepaths that contain spaces must be wrapped in quotes.
+On Windows, globbing syntax can only be used on the filename itself; not a folder along the filepath.  
+On Unix, globbing syntax can be used on both files and folders.  
+Filepaths can be absolute or relative.  
+Any filepaths that contain spaces must be wrapped in quotes.  
 
 ## Known Issues
-Some rarely used JPG metadata options, such as the ICC_PROFILE, are ignored, which can cause the output BMP's color to look slightly wrong.
-If two files in the same folder are named cat.jpg and cat.jpeg and both are processed, only one output file will be produced (cat.bmp).
+* Some rarely used JPG metadata options, such as the ICC_PROFILE, are ignored, which can cause the output BMP's color to look slightly wrong.
+* If two files in the same folder are named cat.jpg and cat.jpeg and both are processed, only one output file will be produced (cat.bmp).
