@@ -49,7 +49,7 @@ public class ${artifactId}  {
 	/**
 	 * Use the default scheduler with the passed in GraphManager to start
 	 */
-	public void startup() {
+	void startup() {
 
 		StageScheduler.defaultScheduler(gm).startup();
 
