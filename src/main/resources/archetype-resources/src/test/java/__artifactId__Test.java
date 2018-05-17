@@ -28,12 +28,12 @@ class ${artifactId}Test {
         // Start the scheduler
         program.startup();
 
-        // Fetch the stage based on their IDs (which are displayed in the telemetry)
-        PronghornStage fileBlobReadStage = GraphManager.getStage(program.gm, 1);
-        PronghornStage consoleJSONDumpStage = GraphManager.getStage(program.gm, 3);
+        // Fetch the stage based on the class
+        PronghornStage fileBlobReadStage = GraphManager.allStagesByType(program.gm, FileBlobReadStage.class)[0];
+        PronghornStage consoleJSONDumpStage = GraphManager.allStagesByType(program.gm, ConsoleJSONDumpStage.class)[0];
 
         // We are blocking until JSON output is done
-        GraphManager.blockUntilStageBeginsShutdown(program.gm, consoleJSONDumpStage);
+        GraphManager.blockUntilStageTerminated(program.gm, consoleJSONDumpStage);
 
         // Run our final assertions
         assertAll(
