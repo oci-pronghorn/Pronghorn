@@ -72,19 +72,17 @@ public class ${artifactId}  {
 		Pipe<RawDataSchema> pipe1A = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1B = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 
-		//TODO: replace new with static newInstance methods
-
 		// This stage reads a file
-		new FileBlobReadStage(gm, pipe1, inputFilePath);
-		
+		FileBlobReadStage.newInstance(gm, pipe1, inputFilePath);
+
 		// This stage replicates the data to two pipes, great for debugging while passing on the real data
-		new ReplicatorStage<>(gm, pipe1, pipe1A, pipe1B);
+		ReplicatorStage.newInstance(gm, pipe1, pipe1A, pipe1B);
 
-        // See all the data in the console
-		new ConsoleJSONDumpStage(gm, pipe1A, out);
+		// See all the data in the console
+		ConsoleJSONDumpStage.newInstance(gm, pipe1A, out);
 
-        // Dumps all data which came in
-		new PipeCleanerStage(gm, pipe1B);
+		// Dumps all data which came in
+		PipeCleanerStage.newInstance(gm, pipe1B);
 		
 	}
           
