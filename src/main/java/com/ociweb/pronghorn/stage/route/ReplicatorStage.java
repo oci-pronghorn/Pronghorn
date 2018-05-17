@@ -35,7 +35,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	public static <T extends MessageSchema<T>> ReplicatorStage<T> instance(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		return newInstance(gm, source, targets);
 	}
-	
+
+	@SuppressWarnings("unchecked")
 	public static <T extends MessageSchema<T>> ReplicatorStage<T> newInstance(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		return new ReplicatorStage<T>(gm,source,targets);
 	}
