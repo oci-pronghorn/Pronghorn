@@ -16,7 +16,7 @@ public class ${artifactId}  {
 	final GraphManager gm = new GraphManager();
 
 	/**
-	 * Main entry point that creates an instance of ${artifactId} and runs it.
+	 * Main entry point that creates an instance of ${artifactId} and starts it.
 	 */
 	public static void main(String[] args) {
 
@@ -66,14 +66,17 @@ public class ${artifactId}  {
 		Pipe<RawDataSchema> pipe1 = RawDataSchema.instance.newPipe(10, 10_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1A = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
 		Pipe<RawDataSchema> pipe1B = RawDataSchema.instance.newPipe(20, 20_000); // 10 chunks each 10K in  size
-		
-		new FileBlobReadStage(gm, pipe1, inputFilePath); // This stage reads a file
+
+		//TODO: replace new with static newInstance methods
+
+		// This stage reads a file
+		new FileBlobReadStage(gm, pipe1, inputFilePath);
 		
 		// This stage replicates the data to two pipes, great for debugging while passing on the real data
 		new ReplicatorStage<>(gm, pipe1, pipe1A, pipe1B);
 
         // See all the data in the console
-		new ConsoleJSONDumpStage(gm, pipe1A);
+		new ConsoleJSONDumpStage(gm, pipe1A, out);
 
         // Dumps all data which came in
 		new PipeCleanerStage(gm, pipe1B);
