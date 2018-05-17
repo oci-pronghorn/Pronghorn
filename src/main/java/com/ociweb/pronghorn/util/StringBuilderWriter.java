@@ -16,15 +16,6 @@ public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWr
 		builder.setLength(0);
 	}
 
-    @Override
-    public void write(byte b[], int pos, int len){    	
-    	Appendables.appendUTF8(builder, b, pos, len, Integer.MAX_VALUE);
-    }
-
-    @Override
-    public void write(byte[] b) {
-        write(b, 0, b.length);
-    }
 
     @Override
     public StringBuilderWriter append(CharSequence csq){
@@ -45,9 +36,17 @@ public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWr
     }
 
 	@Override
-	public void writeByte(int b) {
-		assert(b>=32) : "only simple ASCII char values are supported here";
-		assert(b<127) : "only simple ASCII char values are supported here";
-		builder.append((char)b);//be carefull these MUST be ASCII only
+	public void write(byte[] encodedBlock) {
+		Appendables.appendUTF8(builder, encodedBlock, 0, encodedBlock.length, Integer.MAX_VALUE);
+	}
+
+	@Override
+	public void write(byte[] encodedBlock, int pos, int len) {
+		Appendables.appendUTF8(builder, encodedBlock, pos, len, Integer.MAX_VALUE);
+	}
+
+	@Override
+	public void writeByte(int asciiChar) {
+		builder.append((char)asciiChar);
 	}
 }

@@ -17,25 +17,6 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		count = 0;
 	}
 
-	@Override
-	public void writeByte(final int b) {
-		append(
-				new StringTemplateScript<T>() {
-					@Override
-					public void render(AppendableByteWriter writer, T source) {
-						writer.writeByte(b);
-					}
-				});
-	}
-	@Override
-	public void write(byte[] b) {
-		write(b, 0, b.length);
-	}
-
-	@Override
-	public void write(byte[] b, int pos, int len) {
-		add(b, pos, len);
-	}
 
 	public StringTemplateBuilder<T> add(String text) {
 		return addBytes(text.getBytes());
@@ -99,7 +80,8 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 				new StringTemplateScript<T>() {
 					@Override
 					public void render(AppendableByteWriter writer, T source) {
-						writer.write(byteData, 0, byteData.length);
+						writer.write(byteData);
+						
 					}
 				});
 	}
@@ -115,4 +97,33 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return this;
 	}
 
+
+	@Override
+	public void write(byte[] encodedBlock) {
+		add(encodedBlock);
+	}
+
+
+	@Override
+	public void write(byte[] encodedBlock, int pos, int len) {
+		add(encodedBlock, pos, len);
+	}
+
+
+	@Override
+	public void writeByte(int asciiChar) {
+		append(
+				new StringTemplateScript<T>() {
+					@Override
+					public void render(AppendableByteWriter writer, T source) {
+						writer.writeByte(asciiChar);
+						
+					}
+				});
+	}
+
+
+
+	
+	
 }
