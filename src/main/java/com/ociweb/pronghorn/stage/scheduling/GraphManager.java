@@ -2670,9 +2670,14 @@ public class GraphManager {
 		
 	}
 
+	@Deprecated
     public void blockUntilStageBeginsShutdown(PronghornStage stageToWatch) {
-        blockUntilStageBeginsShutdown(this,stageToWatch);
+		blockUntilStageHasTerminated(stageToWatch);
     }
+
+    public void blockUntilStageHasTerminated(PronghornStage stageToWatch) {
+		blockUntilStageTerminated(this, stageToWatch);
+	}
 	
     private String 			telemetryHost=null;
     private int    			telemetryPort=-1;
@@ -2712,10 +2717,20 @@ public class GraphManager {
         } while (!isStarted);
     }
 
+    @Deprecated
     public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch) {
-        //keep waiting until this stage starts it shut down or completed its shutdown, 
+        blockUntilStageTerminated(gm, stageToWatch);
+    }
+   
+	@Deprecated
+    public static boolean blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
+       return blockUntilStageTerminated(gm, stageToWatch, timeoutMS);
+    }
+
+    public static void blockUntilStageTerminated(GraphManager gm, PronghornStage stageToWatch) {
+        //keep waiting until this stage starts it shut down or completed its shutdown,
         //eg return on leading edge as soon as we detect shutdown in progress..
-        while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) { 
+        while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
@@ -2723,12 +2738,11 @@ public class GraphManager {
             }
         }
     }
-   
 
-    public static boolean blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
-        //keep waiting until this stage starts it shut down or completed its shutdown, 
+    public static boolean blockUntilStageTerminated(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
+        //keep waiting until this stage starts it shut down or completed its shutdown,
         //eg return on leading edge as soon as we detect shutdown in progress..
-        while (--timeoutMS>=0 && (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId))) ) { 
+        while (--timeoutMS>=0 && (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId))) ) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
