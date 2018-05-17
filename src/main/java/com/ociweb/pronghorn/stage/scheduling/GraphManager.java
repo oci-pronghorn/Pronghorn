@@ -2730,7 +2730,7 @@ public class GraphManager {
     public static void blockUntilStageTerminated(GraphManager gm, PronghornStage stageToWatch) {
         //keep waiting until this stage starts it shut down or completed its shutdown,
         //eg return on leading edge as soon as we detect shutdown in progress..
-        while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) { 
+        while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
