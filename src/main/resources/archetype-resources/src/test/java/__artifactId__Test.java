@@ -23,7 +23,7 @@ class ${artifactId}Test {
 
         // Use a StringBuilder as Appendable so we can do an indexOf on the output to assert that a keyword exists
         StringBuilder sb = new StringBuilder();
-        ${artifactId} program = new ${artifactId}("./image.jpg", sb);
+        ${artifactId} program = new ${artifactId}("./image.jpg", 7778, sb);
 
         // Start the scheduler
         program.startup();

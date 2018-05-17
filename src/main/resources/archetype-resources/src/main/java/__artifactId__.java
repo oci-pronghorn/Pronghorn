@@ -17,6 +17,7 @@ public class ${artifactId}  {
 
 	/**
 	 * Main entry point that creates an instance of ${artifactId} and starts it.
+	 * @param args Arguments for starting main
 	 */
 	public static void main(String[] args) {
 
@@ -24,7 +25,7 @@ public class ${artifactId}  {
 		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./image.jpg");
 
 		// Create a new ${artifactId} instance, put the output stream on the system log
-		${artifactId} program = new ${artifactId}(inputFilePath, System.out);
+		${artifactId} program = new ${artifactId}(inputFilePath, 7777, System.out);
 
 		program.startup();
 
@@ -33,16 +34,17 @@ public class ${artifactId}  {
 	/**
 	 * Constructor for ${artifactId}
 	 * @param inputFilePath The input path for the file to be logged
-	 *        out An appendable in which the specified file gets written to
+	 * @param port The port on which telemetry will run
+	 * @param out An appendable in which the specified file gets written to
 	 */
-	public ${artifactId} (String inputFilePath, Appendable out) {
+	public ${artifactId} (String inputFilePath, int port, Appendable out) {
 
 		// Add edges and pipes
 		populateGraph(gm, inputFilePath, out);
 
 		// Turning on the telemetry web page is as simple as adding this line
 		// It will be accessible on the most public IP it can find by default
-		gm.enableTelemetry(7777);
+		gm.enableTelemetry(port);
 
 	}
 
@@ -57,6 +59,9 @@ public class ${artifactId}  {
 
 	/**
 	 * Creates the pipes and the 4 stages (FileBlobReadStage, ReplicatorStage, ConsoleJSONDumpStage, and PipeCleanerStage)
+	 * @param gm The current graph manager
+	 * @param inputFilePath The path to the file that will be passed through the pipes
+	 * @param out The appendable in which the console log will be written into (i.e. System.out)
 	 */
 	private static void populateGraph(GraphManager gm, String inputFilePath, Appendable out) {
 
