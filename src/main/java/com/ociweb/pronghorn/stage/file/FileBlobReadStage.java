@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class FileBlobReadStage extends PronghornStage {
 
@@ -42,6 +43,13 @@ public class FileBlobReadStage extends PronghornStage {
 
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
         
+    }
+
+    public static FileBlobReadStage newInstance(GraphManager graphManager,
+                                                //add input pipe to select file to read
+                                                Pipe<RawDataSchema> output,
+                                                String ... inputPathString) {
+        return new FileBlobReadStage(graphManager, output, inputPathString);
     }
 
     @Override
