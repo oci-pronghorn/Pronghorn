@@ -2177,7 +2177,7 @@ public class GraphManager {
 			} else if (pctFull>=40) {
 				target.append(",color=orange");	    
 			} else {
-				target.append(",color=gray30");
+				target.append(",color=\"#b2b2b2\""); //replaced gray30 with the inverse of it, which is #B2B2B2
 			}
 		}
 		
