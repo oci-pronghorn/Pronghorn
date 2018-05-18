@@ -56,16 +56,6 @@ public class NullableAppendableByteWriterWrapper implements AppendableByteWriter
 	}
 
 	@Override
-	public void write(byte[] b, int pos, int len) {
-		assert(!wasNull) : "Can not write text after writing a null";
-		if (needsQuote) {
-			externalWriter.writeByte('"');
-			needsQuote = false;
-		}
-		externalWriter.write(b,pos,len);
-	}
-
-	@Override
 	public void write(byte[] b) {
 		assert(!wasNull) : "Can not write text after writing a null";
 		if (needsQuote) {
@@ -76,12 +66,23 @@ public class NullableAppendableByteWriterWrapper implements AppendableByteWriter
 	}
 
 	@Override
-	public void writeByte(int b) {
+	public void write(byte[] b, int pos, int len) {
+		assert(!wasNull) : "Can not write text after writing a null";
 		if (needsQuote) {
 			externalWriter.writeByte('"');
 			needsQuote = false;
 		}
-		externalWriter.writeByte(b);
+		externalWriter.write(b,pos,len);
+	}
+
+	@Override
+	public void writeByte(int asciiChar) {
+		assert(!wasNull) : "Can not write text after writing a null";
+		if (needsQuote) {
+			externalWriter.writeByte('"');
+			needsQuote = false;
+		}
+		externalWriter.writeByte(asciiChar);
 	}
 	
 }
