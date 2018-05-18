@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.network.http;
 
-public class HTTPStatusCodes {
+public class HTTPResponseStatusCodes {
 
     /* Source: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes */
 
