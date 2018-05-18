@@ -1,17 +1,16 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.util.Appendables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Arrays;
 
 public class FieldReferenceOffsetManager {
 	
@@ -496,17 +495,17 @@ public class FieldReferenceOffsetManager {
      * get dead reckoning offset into the field location. 
      * 
      * @param name
-     * @param framentStart
+     * @param fragmentStart
      * @param from
      */
-    public static int lookupFieldLocator(String name, int framentStart, FieldReferenceOffsetManager from) {
-		int x = framentStart;
+    public static int lookupFieldLocator(String name, int fragmentStart, FieldReferenceOffsetManager from) {
+		int x = fragmentStart;
         		
 		//upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
             if (name.equalsIgnoreCase(from.fieldNameScript[x])) {            	
-            	return buildFieldLoc(from, framentStart, x);                
+            	return buildFieldLoc(from, fragmentStart, x);
             }
             
             if (exitSearch(from, x)) {
@@ -527,14 +526,14 @@ public class FieldReferenceOffsetManager {
         return isGroupClosed;
     }
 
-    public static int paranoidLookupFieldLocator(long id, String name, int framentStart, FieldReferenceOffsetManager from) {
-		int x = framentStart;
+    public static int paranoidLookupFieldLocator(long id, String name, int fragmentStart, FieldReferenceOffsetManager from) {
+		int x = fragmentStart;
         		
 		//upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
             if (id == from.fieldIdScript[x] && name.equalsIgnoreCase(from.fieldNameScript[x])) {            	
-            	return buildFieldLoc(from, framentStart, x);                
+            	return buildFieldLoc(from, fragmentStart, x);
             }
             
             if (exitSearch(from, x)) {
@@ -546,14 +545,14 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field id: "+id+" in "+Arrays.toString(from.fieldNameScript));
 	}
     
-    public static int lookupFieldLocator(long id, int framentStart, FieldReferenceOffsetManager from) {
-        int x = framentStart;
+    public static int lookupFieldLocator(long id, int fragmentStart, FieldReferenceOffsetManager from) {
+        int x = fragmentStart;
                 
         //upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
             if (id == from.fieldIdScript[x]) {              
-                return buildFieldLoc(from, framentStart, x);                
+                return buildFieldLoc(from, fragmentStart, x);
             }
             
             if (exitSearch(from, x)) {
@@ -566,8 +565,8 @@ public class FieldReferenceOffsetManager {
     }
     
 	private static int buildFieldLoc(FieldReferenceOffsetManager from,
-			int framentStart, int fieldCursor) {
-		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
+			int fragmentStart, int fieldCursor) {
+		final int stackOff = from.fragDepth[fragmentStart]<<RW_STACK_OFF_SHIFT;
 		final int shiftedFieldType = TokenBuilder.extractType(from.tokens[fieldCursor])<<RW_FIELD_OFF_BITS;
 		//type is 5 bits of information
 		
@@ -584,18 +583,18 @@ public class FieldReferenceOffsetManager {
 		return loc;
 	}
 
-    public static int lookupToken(String target, int framentStart, FieldReferenceOffsetManager from) {
-    	return from.tokens[lookupFragmentLocator(target,framentStart,from)];
+    public static int lookupToken(String target, int fragmentStart, FieldReferenceOffsetManager from) {
+    	return from.tokens[lookupFragmentLocator(target,fragmentStart,from)];
     }
     
-    public static int lookupSequenceLengthLoc(String target, int framentStart, FieldReferenceOffsetManager from) {
-    	int x = lookupFragmentLocator(target, framentStart, from);
-    	return buildFieldLoc(from, framentStart, x-1);
+    public static int lookupSequenceLengthLoc(String target, int fragmentStart, FieldReferenceOffsetManager from) {
+    	int x = lookupFragmentLocator(target, fragmentStart, from);
+    	return buildFieldLoc(from, fragmentStart, x-1);
     }
 	
 	
-    public static int lookupFragmentLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
-		int x = framentStart;
+    public static int lookupFragmentLocator(String target, int fragmentStart, FieldReferenceOffsetManager from) {
+		int x = fragmentStart;
         		
         while (x < from.fieldNameScript.length) {
             if (target.equalsIgnoreCase(from.fieldNameScript[x])) {
@@ -613,8 +612,8 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find fragment name: "+target+" in "+Arrays.toString(from.fieldNameScript));
 	}
     
-    public static int lookupFragmentLocator(final long id, int framentStart, FieldReferenceOffsetManager from) {
-		int x = framentStart;
+    public static int lookupFragmentLocator(final long id, int fragmentStart, FieldReferenceOffsetManager from) {
+		int x = fragmentStart;
         		
         while (x < from.fieldNameScript.length) {
             if (id == from.fieldIdScript[x]) {
@@ -882,7 +881,7 @@ public class FieldReferenceOffsetManager {
                         //break
                         //ends this fragment //TODO: needs recursive decent to build these.
                         //begins another nested fragment
-                        //TODO: if the message has muliple fragments we must continue to build interfaces for this other types
+                        //TODO: if the message has multiple fragments we must continue to build interfaces for this other types
                         throw new UnsupportedOperationException();
                     }
                                         

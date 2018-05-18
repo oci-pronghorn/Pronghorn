@@ -298,7 +298,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedNull();
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeShort(short value, long fieldId) {
@@ -312,7 +312,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedShort(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}	
 	
 	//no support for writing null since this is a literal byte
@@ -327,7 +327,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeByte(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}	
 	
 	//for null use NaN, for all fields not written null is read..
@@ -342,7 +342,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeDouble(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeFloat(float value, long fieldId) {
@@ -356,7 +356,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeFloat(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeRational(Object assoc, long numerator, long denominator) {
@@ -376,7 +376,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeRational(numerator, denominator);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeDecimal(Object assoc, long m, byte e) {
@@ -396,7 +396,7 @@ public class StructuredWriter {
 		
 		channelWriter.writeDecimal(m, e);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 
 	public void fullIndexWriteFrom(int indexSizeInBytes, DataInputBlobReader<RawDataSchema> reader) {

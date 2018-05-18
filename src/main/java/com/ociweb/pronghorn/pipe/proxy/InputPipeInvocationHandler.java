@@ -1,14 +1,13 @@
 package com.ociweb.pronghorn.pipe.proxy;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 
 public class InputPipeInvocationHandler extends PipeInvokeHandler implements InvocationHandler {
 	//TODO: NOTE: this approach does NOT support nested structures at all.
@@ -30,10 +29,10 @@ public class InputPipeInvocationHandler extends PipeInvokeHandler implements Inv
 		int j = methods.length;
 		while (--j>=0) {
 			final Method method = methods[j];			
-			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
-			if (null!=fieldAnnonation) {
+			ProngTemplateField fieldAnnotation = method.getAnnotation(ProngTemplateField.class);
+			if (null!=fieldAnnotation) {
 				
-				int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldAnnonation.fieldId(), msgIdx, from);		
+				int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldAnnotation.fieldId(), msgIdx, from);
 				
 				int key = buildKey(this, method.getName());
 				if (null!=readers[key]) {
