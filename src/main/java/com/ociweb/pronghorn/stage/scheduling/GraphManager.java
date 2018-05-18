@@ -1845,7 +1845,9 @@ public class GraphManager {
 	            	if (null!=background) {
 	            		target.append(",style=filled,fillcolor=");
 	            		target.append(background.toString());
-	            	}    
+	            	} else {
+						target.append(",style=filled,fillcolor=gray90");
+					}
 	                /////////////////////////////////////
 	            	
 	                target.append(CLOSEBRACKET_NEWLINE);
