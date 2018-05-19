@@ -111,7 +111,7 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 
 
 	@Override
-	public void writeByte(int asciiChar) {
+	public void writeByte(final int asciiChar) {
 		append(
 				new StringTemplateScript<T>() {
 					@Override
