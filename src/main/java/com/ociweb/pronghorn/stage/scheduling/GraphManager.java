@@ -31,6 +31,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
@@ -1676,7 +1677,7 @@ public class GraphManager {
     private static final byte[] SUMMARY_CLOSE = "}".getBytes();
 
     
-    public static void writeAsSummary(GraphManager m, AppendableBuilder target,
+    public static void writeAsSummary(GraphManager m, AppendableByteWriter<?> target,
             						 int[] pipePercentileFullValues) {
 
     	int maxPctFull = 0;
@@ -1712,7 +1713,7 @@ public class GraphManager {
     
     
 	public static void writeAsDOT(GraphManager m, String graphName, 
-			                      AppendableBuilder target, boolean isVertical,
+								  AppendableByteWriter<?> target, boolean isVertical,
 			                      int[] pipePercentileFullValues, 
 			                      long[] pipeTraffic, int[] msgPerSec) {
 					    	
@@ -2138,7 +2139,7 @@ public class GraphManager {
 		return allTheSame;
 	}
 
-	private static void writeAggregatedPipeLabel(AppendableBuilder target, int[] pipePercentileFullValues,
+	private static void writeAggregatedPipeLabel(AppendableByteWriter<?> target, int[] pipePercentileFullValues,
 			long[] pipeTraffic, int[] msgPerSec, final int width, long sumPctFull, long sumTraffic, long sumMsgPerSec,
 			int count) {
 		target.write(LABEL_OPEN);
@@ -2207,7 +2208,7 @@ public class GraphManager {
 
 	}
 
-	private static void appendVolume(AppendableBuilder target, long traf) {
+	private static void appendVolume(AppendableByteWriter<?> target, long traf) {
 		if (traf>9999) {
 			Appendables.appendValue(target.append("Vol:"), traf);
 		} else {
@@ -2215,7 +2216,7 @@ public class GraphManager {
 		}
 	}
 
-	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {
+	private static void fixedSpaceValue(AppendableByteWriter<?> target, long value, byte[] msgPerSeclabel) {
 		if (value<10_000) {
 			//use x.xxx places (5)
 			Appendables.appendDecimalValue(target, value, (byte)-3).write(msgPerSeclabel);			          
@@ -2245,14 +2246,14 @@ public class GraphManager {
 				&& !stageForMonitorData(m,stage);
 	}
 
-	private static void writeElapsed(AppendableBuilder target, long atPct) {
+	private static void writeElapsed(AppendableByteWriter<?> target, long atPct) {
 		target.write(ELAP);
 		
-		if (atPct<2_000) {
+		if (atPct<7_000) {
 			Appendables.appendFixedDecimalDigits(target, atPct, 1000).write(NS);
-		} else if (atPct<2_000_000){
+		} else if (atPct<7_000_000){
 			Appendables.appendFixedDecimalDigits(target, atPct/1_000, 1000).write(MICROS);
-		} else if (atPct<2_000_000_000){
+		} else if (atPct<7_000_000_000L){
 			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000, 1000).write(MS);				
 		} else if (atPct<90_000_000_000L){
 			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000_000L, 100).write(SEC);

@@ -32,7 +32,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private long[] lastRun;
     public PronghornStage[] stages;
     private long[] sla;
-
+	
+    private final int defaultValue = 4_000; //Default for this scheduler
+	
     private DidWorkMonitor didWorkMonitor;
 	private long deepSleepCycleLimt;
 	
@@ -157,7 +159,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	name = totalName.toString();
 
         // Pre-allocate rates based on number of stages.
-    	final int defaultValue = 2_000_000;
+
         long rates[] = new long[stages.length];
 
         int k = stages.length;

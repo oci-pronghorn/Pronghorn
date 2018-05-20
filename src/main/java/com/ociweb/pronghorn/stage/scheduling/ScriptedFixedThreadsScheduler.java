@@ -658,7 +658,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//this server pipe is only used for 404 based on route failures
 		//since this is not a priority it should not be an optimized relationship
 		if ((producerStage instanceof HTTP1xRouterStage)
-			&& (consumerStage instanceof OrderSupervisorStage)	
+		&& (consumerStage instanceof OrderSupervisorStage)
 			) {
 			return false;
 		}

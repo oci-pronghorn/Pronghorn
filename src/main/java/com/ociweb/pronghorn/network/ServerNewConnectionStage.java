@@ -273,7 +273,7 @@ public class ServerNewConnectionStage extends PronghornStage{
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
-            if (selector.selectNow() > 0) {
+            if (null!=selector && selector.selectNow() > 0) {
             	selectedKeys = selector.selectedKeys();
             	return true;
             } else {

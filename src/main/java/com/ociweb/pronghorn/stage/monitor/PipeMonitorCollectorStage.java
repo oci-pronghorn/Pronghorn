@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 
 public class PipeMonitorCollectorStage extends PronghornStage {
@@ -238,12 +238,12 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		return stage;
 	}
 
-	public void writeAsDot(GraphManager gm, String name, AppendableBuilder payload) {
+	public void writeAsDot(GraphManager gm, String name, AppendableByteWriter<?> payload) {
 		
 		GraphManager.writeAsDOT(gm, name, payload, true, percentileFullValues, trafficValues, messagesPerSecondValues);
 	}
 
-	public void writeAsSummary(GraphManager gm, AppendableBuilder payload) {
+	public void writeAsSummary(GraphManager gm, AppendableByteWriter<?> payload) {
 		GraphManager.writeAsSummary(gm, payload, percentileFullValues);
 	}	
 
