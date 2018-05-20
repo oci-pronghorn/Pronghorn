@@ -209,6 +209,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		
 	}
     
+	@Override
     public int closeHighLevelField(int targetFieldLoc) {
         return closeHighLevelField(this, targetFieldLoc);
     }
@@ -228,6 +229,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         return len;
     }
     
+    @Override
     public int closeLowLevelField() {
         return closeLowLevelField(this);
     }
@@ -254,7 +256,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	 	setStructType(writer, structId);
 	 }
     
-	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
+	 public static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
 		if (writer.structuredWithIndexData) {
 			
