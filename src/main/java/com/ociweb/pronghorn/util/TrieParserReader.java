@@ -686,18 +686,33 @@ public class TrieParserReader {
 		final int run = trie.data[reader.pos++];    
 
 		//we will not have the room to do a match.
-		if (reader.runLength+run > sourceLength && !hasSafePoint && 0==reader.altStackPos) {
+		final boolean hasNoRoom = reader.runLength+run > sourceLength 
+				&& !hasSafePoint 
+				&& 0==reader.altStackPos;
+		
+		final boolean doNotScan = trie.skipDeepChecks 
+				&& !hasSafePoint 
+				&& 0==reader.altStackPos;		
+		
+		if (!hasNoRoom) {
+			if (!doNotScan) {
+				//most frequent case
+				scanForRun(reader, trie, source, sourceMask, unfoundResult, hasSafePoint, run);
+				
+			} else {
+				//second most frequent case.
+				reader.pos += run;
+				reader.localSourcePos += run; 
+				reader.runLength += run;
+				reader.type = trie.data[reader.pos++];
+				
+			}
+		} else {
 			reader.normalExit=false;
 			reader.result = unfoundResult;
-			reader.runLength += run;   
-		} else if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
-			scanForRun(reader, trie, source, sourceMask, unfoundResult, hasSafePoint, run);
-		} else {
-			reader.pos += run;
-			reader.localSourcePos += run; 
-			reader.runLength += run;
-			reader.type = trie.data[reader.pos++];
+			reader.runLength += run;  			
 		}
+		
 	}
 
 	private static void scanForRun(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask,
