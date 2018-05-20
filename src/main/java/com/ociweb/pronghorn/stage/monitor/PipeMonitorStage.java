@@ -57,6 +57,7 @@ public class PipeMonitorStage extends PronghornStage {
 	}
 
 	private void monitorSinglePipe(Pipe<PipeMonitorSchema> output, Pipe<?> localObserved) {
+
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (Pipe.hasRoomForWrite(output)) {
 									

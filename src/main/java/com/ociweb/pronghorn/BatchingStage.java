@@ -37,11 +37,8 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 	@Override
 	public void run() {
 		
-		//only move the data if we are over the lmit
-		int remaining;
-		
-		
-		if ((remaining = (int)(Pipe.getWorkingHeadPositionObject(input).value-tailCache)) >= limit) {
+		if (Pipe.hasContentToRead(input)) {	
+			int remaining = limit;
 			if (Pipe.hasRoomForWrite(output, remaining)) {
 			
 				//move all the data we can
@@ -51,7 +48,6 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 					remaining -= Pipe.copyFragment(input, output);					
 				}
 			}
-			tailCache = Pipe.tailPosition(input);
 		}
 	}
 

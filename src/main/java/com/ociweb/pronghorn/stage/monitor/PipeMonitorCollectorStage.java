@@ -193,6 +193,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 			/////////////////////////////////////
 			int pipeId = observedPipeId[pos];
 			trafficValues[pipeId] = fragments; 
+
 			messagesPerSecondValues[pipeId] = messagesPerSecond[pos];
 			percentileFullValues[pipeId] = pctFullAvg[pos]/100;
 			

@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
@@ -43,20 +43,32 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 			Pipe<HTTPRequestSchema>[] inputs, 
 			Pipe<ServerResponseSchema>[] outputs, 
 			HTTPSpecification httpSpec, PipeMonitorCollectorStage monitor) {
-		super(graphManager, inputs, outputs, httpSpec);
+		super(graphManager, inputs, outputs, httpSpec, dotEstimate(graphManager));
 		this.monitor = monitor;
 		this.graphName = "AGraph";
+
 		
 		if (inputs.length>1) {
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		}
-        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000L, this);
 
 	}
 	
+	private static int dotEstimate(GraphManager graphManager) {
+		
+		return (300*GraphManager.countStages(graphManager))+
+		       (400*GraphManager.allPipes(graphManager).length);
+
+	}
+
 	@Override
-	protected byte[] payload(AppendableBuilder payload, 
+	protected boolean closeEveryRequest() {
+		return true;
+	}
+
+	@Override
+	protected boolean payload(AppendableByteWriter<?> payload, 
 			                 GraphManager gm, 
 			                 ChannelReader params,
 			                 HTTPVerbDefaults verb) {
@@ -66,7 +78,7 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		monitor.writeAsDot(gm, graphName, payload);
 		
 		//logger.info("finished requested dot");
-		return null; //never cache this so we return null.
+		return true;//return false if we are not able to write it all...
 	}
 	
 	@Override
