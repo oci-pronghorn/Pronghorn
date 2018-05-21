@@ -60,7 +60,7 @@ public class GraphManager {
 	//will show telemetry its self
 	public static boolean monitorAll = false;
 	public static boolean showScheduledRateOnTelemetry = false;
-	public static boolean showThreadIdOnTelemetry = true;
+	public static boolean showThreadIdOnTelemetry = false;
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
 	//set to false when we see telemetry missing edges. 
