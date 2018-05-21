@@ -16,14 +16,6 @@ Staged event driven single machine embedded micro-framework.
 ## Documentation
 Please refer to the [wiki](https://github.com/oci-pronghorn/Pronghorn/wiki) for documentation, how to get started, and examples.
 
-## Demo
-Below is a recorded live demo of an application written using Pronghorn that quickly encodes and decodes JPG to raster (such as BMP) and vice versa. The project can be viewed [here](https://github.com/oci-pronghorn/JPG-Raster).
-
-**Every Pronghorn project** receives an automatically generated, live telemetry page such as the one featured below.
-
-![Decoding JPGs GIF](https://github.com/tobischw/Pronghorn/blob/master/DecodingJPGS.gif "Decoding JPGs")
-![Encoding JPGs GIF](https://github.com/tobischw/Pronghorn/blob/master/EncodingJPGs.gif "Encoding JPGs")
-
 ## Why Pronghorn
 
 1. Broad compatibility   
