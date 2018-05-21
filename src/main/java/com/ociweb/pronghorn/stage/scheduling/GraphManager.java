@@ -59,7 +59,7 @@ public class GraphManager {
 	//will show telemetry its self
 	public static boolean monitorAll = false;
 	public static boolean showScheduledRateOnTelemetry = false;
-	public static boolean showThreadIdOnTelemetry = true;
+	public static boolean showThreadIdOnTelemetry = false;
 	public static boolean showMessageCountRangeOnTelemetry = false;
 			
 	//set to false when we see telemetry missing edges. 
@@ -1734,9 +1734,10 @@ public class GraphManager {
 
 			//add new font and black background color
 			target.append("bgcolor=\"#000000\"");
-			target.append("graph [fontname = \"arial\"];");
-			target.append("node [fontname = \"arial\"];");
-			target.append("edge [fontname = \"arial\"];");
+			target.append("bgcolor=\"#000000\"");
+			target.append("graph [fontname = \"arial\", fontsize=12];");
+			target.append("node [fontname = \"arial\", fontsize=12];");
+			target.append("edge [fontname = \"arial\", fontsize=12];");
 
 	        if (stages<500) {
 	            //no need if the picture is very large
