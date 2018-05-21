@@ -21,10 +21,15 @@ body {
   height: 24px;
   margin: 0 10px;
   padding: 10px 5px 4px 5px;
+  cursor: pointer;
+}
+
+.dropdown > div:hover {
+  background-color: #00a900;
 }
 
 .dropdown > .selected {
-  background-color: #72C7D5;
+  background-color: #008000;
   color: white;
 }
 

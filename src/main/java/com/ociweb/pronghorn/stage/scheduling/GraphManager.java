@@ -1733,6 +1733,7 @@ public class GraphManager {
 	        target.append(" {\n"); 
 	     //   target.append("concentrate=true\n");
 
+			//add new font and black background color
 			target.append("bgcolor=\"#000000\"");
 			target.append("graph [fontname = \"arial\"];");
 			target.append("node [fontname = \"arial\"];");
@@ -1842,11 +1843,11 @@ public class GraphManager {
 	                /////////////////////////////////////
 	                //////fill the background of a node
 	                /////////////////////////////////////
-	            	Object background = getNota(m, stage.stageId, GraphManager.DOT_BACKGROUND, null);	            	
+	            	Object background = getNota(m, stage.stageId, GraphManager.DOT_BACKGROUND, "gray90");
 	            	if (null!=background) {
 	            		target.append(",style=filled,fillcolor=");
 	            		target.append(background.toString());
-	            	}    
+	            	}
 	                /////////////////////////////////////
 	            	
 	                target.write(CLOSEBRACKET_NEWLINE);
@@ -2177,7 +2178,7 @@ public class GraphManager {
 			} else if (pctFull>=40) {
 				target.append(",color=orange");	    
 			} else {
-				target.append(",color=gray30");
+				target.append(",color=\"#b2b2b2\""); //replaced gray30 with the inverse of it, which is #B2B2B2
 			}
 		}
 		
