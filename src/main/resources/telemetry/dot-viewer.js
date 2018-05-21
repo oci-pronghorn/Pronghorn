@@ -108,8 +108,7 @@ function onMessage(message) {
     firstTime = false;
 
     // Make the viewport start at the same size as the preview.
-    setStyle(viewport, 'height', px(newHeight));
-    setStyle(viewport, 'width', px(previewRect.width - BW2));
+    onResize();
   }
 }
 
