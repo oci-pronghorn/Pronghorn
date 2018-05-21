@@ -1055,11 +1055,11 @@ public class Appendables {
 
 	public static <A extends Appendable> A appendNearestTimeUnit(A target, long nsValue) {
 		try {
-			if (nsValue<2_000) {
+			if (nsValue<7_000) {
 				appendFixedDecimalDigits(target, nsValue, 1000).append(" ns");
-			} else if (nsValue<2_000_000){
+			} else if (nsValue<7_000_000){
 				appendFixedDecimalDigits(target, nsValue/1_000,1000).append(" µs");
-			} else if (nsValue<2_000_000_000){
+			} else if (nsValue<7_000_000_000L){
 				appendFixedDecimalDigits(target, nsValue/1_000_000,1000).append(" ms");				
 			} else if (nsValue<90_000_000_000L){
 				appendFixedDecimalDigits(target, nsValue/1_000_000_000L,100).append(" sec");

@@ -180,5 +180,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 
 	 abstract public void writeUTF8Text(CharSequence s, int pos, int len);
 	 
+	 abstract public int closeLowLevelField();
+	 abstract public int closeHighLevelField(int targetFieldLoc);
 		
 }
