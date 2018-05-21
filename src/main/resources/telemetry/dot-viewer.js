@@ -297,7 +297,6 @@ function setSpeed(s) {
   speedText = s;
   speedMs = speedMap[speedText];
 
-  console.log("set speed to " + speedMs);
   menuItem = document.querySelector('.speed' + speedMs);
   addClass(menuItem, 'selected');
 
