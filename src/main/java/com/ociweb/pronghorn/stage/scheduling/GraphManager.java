@@ -1738,7 +1738,7 @@ public class GraphManager {
 			target.append("bgcolor=\"#000000\"");
 			target.append("graph [fontname = \"arial\"];");
 			target.append("node [fontname = \"arial\", margin=0, fontsize=25];");
-			target.append("edge [fontname = \"arial\", fontsize=25];");
+			target.append("edge [fontname = \"arial\", fontsize=25, arrowsize=1.5];");
 
 	        if (stages<500) {
 	            //no need if the picture is very large

@@ -10,8 +10,10 @@ const ZOOM_MAX = 800;
 
 const speedMap = {
   'No refresh': 0,
-  '160 ms': 160,
+  '100 ms': 100,
+  '200 ms': 200,
   '1 sec': 1000,
+  '10 sec': 10000,
   '20 sec': 20000,
   '1 min': 60000,
   '20 min': 1200000,
@@ -106,8 +108,7 @@ function onMessage(message) {
     firstTime = false;
 
     // Make the viewport start at the same size as the preview.
-    setStyle(viewport, 'height', px(newHeight));
-    setStyle(viewport, 'width', px(previewRect.width - BW2));
+    onResize();
   }
 }
 
@@ -159,7 +160,7 @@ function onResize() {
   }
 
   setStyle(viewport, 'height', px(vHeight));
-  setStyle(viewport, 'width', px(vWidth));
+  setStyle(viewport, 'width', px(vWidth - BW2));
 }
 
 function onScroll() {
@@ -294,6 +295,7 @@ function setSpeed(s) {
   // Select a new menu item.
   speedText = s;
   speedMs = speedMap[speedText];
+
   menuItem = document.querySelector('.speed' + speedMs);
   addClass(menuItem, 'selected');
 
