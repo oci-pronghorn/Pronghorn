@@ -1,18 +1,17 @@
 package com.ociweb.pronghorn.struct;
 
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 
 public class StructRegistry { //prong struct store  
 	
@@ -149,8 +148,7 @@ public class StructRegistry { //prong struct store
 				target.append("});\n");
 				
 			}
-			
-			
+
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

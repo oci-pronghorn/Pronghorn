@@ -118,7 +118,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
 
     /**
-     * Checks specified pipe to see if charSeq and another value are equal
+     * Checks specified pipe to see if charSeq and value at specific location are equal
      * @param pipe pipe to be checked
      * @param loc location of value to compare
      * @param charSeq CharSequence to compare
@@ -281,12 +281,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     /**
      * checks equals without moving buffer cursor.
-     * 
-     * @param pipe
-     * @param bytesLen
-     * @param seq
-     * @param ringPos
-     * @return
      */
     private static boolean eqUTF8Const(Pipe pipe, int bytesLen, CharSequence seq, int ringPos) {
         
@@ -422,8 +416,15 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 			return Pipe.wrappedReadingBufffersConst(pipe, meta, len);
 		}
 	}
-    
 
+
+    /**
+     * Reads byte array at specified location in pipe
+     * @param pipe pipe to check
+     * @param loc location to read from
+     * @param target target byte array
+     * @return length of byte array
+     */
     public static int readBytes(Pipe pipe, int loc, byte[] target, int targetOffset) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc)+"  b"+Integer.toBinaryString(loc);
 

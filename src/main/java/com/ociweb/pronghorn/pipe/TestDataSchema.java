@@ -119,11 +119,23 @@ public class TestDataSchema extends MessageSchema<TestDataSchema> {
 		        PipeWriter.writeBytes(output,MSG_LONGANDCHUNKEDSTREAM_30_FIELD_BYTEARRAY_32, fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
 		        PipeWriter.publishWrites(output);
 		}
+
+	/**
+	 * Writes int to specified pipe
+	 * @param output pipe to write to
+	 * @param fieldIntValue int to write
+	 */
 		public static void publishInt(Pipe<TestDataSchema> output, int fieldIntValue) {
 		        PipeWriter.presumeWriteFragment(output, MSG_INT_40);
 		        PipeWriter.writeInt(output,MSG_INT_40_FIELD_INTVALUE_41, fieldIntValue);
 		        PipeWriter.publishWrites(output);
 		}
+
+	/**
+	 * Writes long to specified pipe
+	 * @param output pipe to write to
+	 * @param fieldLongValue long to write
+	 */
 		public static void publishLong(Pipe<TestDataSchema> output, long fieldLongValue) {
 		        PipeWriter.presumeWriteFragment(output, MSG_LONG_50);
 		        PipeWriter.writeLong(output,MSG_LONG_50_FIELD_LONGVALUE_51, fieldLongValue);

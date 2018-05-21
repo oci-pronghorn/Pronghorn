@@ -1,9 +1,9 @@
 package com.ociweb.pronghorn.pipe.proxy;
 
-import java.lang.reflect.Method;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Method;
 
 public class PipeInvokeHandler {
 
@@ -29,8 +29,8 @@ public class PipeInvokeHandler {
 		String lastName = null;
 		while (--j>=0) {
 			Method method = methods[j];			
-			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
-			if (null!=fieldAnnonation) {
+			ProngTemplateField fieldAnnotation = method.getAnnotation(ProngTemplateField.class);
+			if (null!=fieldAnnotation) {
 				String methodName = method.getName();
 				minMethodNameLength = Math.min(minMethodNameLength, methodName.length());
 				if (null!=lastName) {
