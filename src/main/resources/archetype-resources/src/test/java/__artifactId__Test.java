@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import org.junit.jupiter.api.Test;
 import com.ociweb.${artifactId};
 
