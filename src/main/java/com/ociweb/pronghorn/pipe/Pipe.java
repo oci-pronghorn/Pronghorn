@@ -1952,6 +1952,11 @@ public class Pipe<T extends MessageSchema<T>> {
 	   
    }
 
+    /**
+     * Skips over specified section of the pipe
+     * @param pipe that you're reading from
+     * @param msgIdx TODO: index to skip over or to skip too??
+     */
 	public static <S extends MessageSchema<S>> void skipNextFragment(Pipe<S> pipe, int msgIdx) {
 		   long pos = Pipe.getWorkingTailPosition(pipe);
 		   int msgSize = Pipe.sizeOf(pipe, msgIdx);
@@ -1965,8 +1970,15 @@ public class Pipe<T extends MessageSchema<T>> {
 		   Pipe.confirmLowLevelRead(pipe, msgSize);
 		   Pipe.releaseReadLock(pipe);
 	}
-		   
-   
+
+    /**
+     * Checks if given CharSequence is equal to data in a given area
+     * @param pipe used in comparison
+     * @param charSeq CharSequence to compare
+     * @param meta TODO: ??
+     * @param len TODO: ??
+     * @return true if they are equal
+     */
 	public static <S extends MessageSchema<S>> boolean isEqual(Pipe<S> pipe, CharSequence charSeq, int meta, int len) {
 		if (len!=charSeq.length()) {
 			return false;
@@ -2239,10 +2251,22 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
+    /**
+     * Copies bytes from specified location to Ring
+     * @param source data to be copied
+     * @param sourceloc location of data to be copied
+     * @param targetloc location to copy data to
+     */
 	public static void copyBytesFromToRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
 		copyBytesFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
 	}
 
+    /**
+     * Copies ints from specified location to Ring
+     * @param source data to be copied
+     * @param sourceloc location of data to be copied
+     * @param targetloc location to copy data to
+     */
 	public static void copyIntsFromToRing(int[] source, int sourceloc, int sourceMask, int[] target, int targetloc, int targetMask, int length) {
 		copyIntsFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask, length);
 	}
@@ -2711,6 +2735,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,0, sourceCharCount, rb));
 	}
 
+    /**
+     * Writes array of UTF8 characters to specified pipe
+     * @param source characters to write
+     * @param sourceCharCount character count of the source to write
+     * @param rb pipe to write to
+     * @param <S> MessageSchema to extend
+     */
 	public static <S extends MessageSchema<S>> void addUTF8(char[] source, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
@@ -2986,7 +3017,7 @@ public class Pipe<T extends MessageSchema<T>> {
         		 //TODO: after walking over longs and strings may be off, TODO: double check this before using it again.
         		 
         		 int idx = starts[j]+1; //skip over msg id field of fixed size.
-        		 int rem = (int)(offset-1);//skipe over msg id 
+        		 int rem = (int)(offset-1);//skip over msg id
         		 
         		 while (rem>0) {
         			 rem -= from.fragDataSize[idx++];
@@ -3282,6 +3313,11 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
+    /**
+     * Gets the index of a message in the pipe
+     * @param pipe pipe to check
+     * @return message index
+     */
     public static <S extends MessageSchema<S>> int takeMsgIdx(Pipe<S> pipe) {
         
     	assert(PipeMonitor.monitor(pipe,

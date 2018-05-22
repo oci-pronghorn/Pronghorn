@@ -52,7 +52,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     /**
      * Reads int from specified pipe
-     * @param pipe pipe to read from
+     * @param pipe to read from
      * @param loc location of int to read
      */
 	public static int readInt(Pipe pipe, int loc) {
@@ -66,25 +66,45 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
         return Pipe.readIntSecure(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc),clearValue);
     }
-    	
+
+    /**
+     * Reads short from specified pipe
+     * @param pipe to be read
+     * @param loc location of short to read
+     */
 	public static short readShort(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         return (short)Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
-	
+
+    /**
+     * Reads byte from specified pipe
+     * @param pipe to be read
+     * @param loc location of short to read
+     */
 	public static byte readByte(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         return (byte)Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 
+    /**
+     * Reads long from specified pipe
+     * @param pipe to be read
+     * @param loc location of long to read
+     */
 	public static long readLong(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	    
         return Pipe.readLong(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
     }
 
+    /**
+     * Reads double from specified pipe
+     * @param pipe to be read
+     * @param loc location of long to read
+     */
     public static double readDouble(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return ((double)readDecimalMantissa(pipe,loc))*powdi[64 - readDecimalExponent(pipe,loc)];
@@ -93,8 +113,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     public static double readLongBitsToDouble(Pipe pipe, int loc) {
     	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   
         return Double.longBitsToDouble(readLong(pipe,loc));
-    }    
-    
+    }
+
+    /**
+     * Reads float from specified pipe
+     * @param pipe to be read
+     * @param loc location of float to read
+     */
     public static float readFloat(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return ((float)readDecimalMantissa(pipe,loc))*powfi[64 - readDecimalExponent(pipe,loc)];

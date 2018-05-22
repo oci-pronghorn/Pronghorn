@@ -5,28 +5,28 @@ public class PipeConfigManager {
 	private PipeConfig[] configs;
 	private int configCount;
 	private int defaultMinimumFragmentsOnPipe;
-	private int defaultMaximumLenghOfVariableLengthFields;
+	private int defaultMaximumLengthOfVariableLengthFields;
 	
 	public PipeConfigManager() {
 		this(4, 32, 512);
 	}
 	
-	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLenghOfVariableLengthFields) {		
+	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLengthOfVariableLengthFields) {
 		this.configs = new PipeConfig[initialCount];
 		this.configCount = 0;
 		if (defaultMinimumFragmentsOnPipe>1024) {
 			throw new UnsupportedOperationException("Why is this value "+defaultMinimumFragmentsOnPipe+" soo large?");
 		}
 		this.defaultMinimumFragmentsOnPipe = defaultMinimumFragmentsOnPipe;
-		this.defaultMaximumLenghOfVariableLengthFields = defaultMaximumLenghOfVariableLengthFields;
+		this.defaultMaximumLengthOfVariableLengthFields = defaultMaximumLengthOfVariableLengthFields;
 		
 	}
 	
-	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(int minimumFragmentsOnPipe, int maximumLenghOfVariableLengthFields, Class<S> clazz) {
+	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(int minimumFragmentsOnPipe, int maximumLengthOfVariableLengthFields, Class<S> clazz) {
 		
 		PipeConfig<S> newConfig = MessageSchema
 								.findInstance(clazz)
-								.newPipeConfig(minimumFragmentsOnPipe, maximumLenghOfVariableLengthFields);
+								.newPipeConfig(minimumFragmentsOnPipe, maximumLengthOfVariableLengthFields);
 		
 		return addConfig(newConfig);
 	}
@@ -63,7 +63,7 @@ public class PipeConfigManager {
 			}
 		} else {
 			//add it was not found
-			addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),Math.max(maxMessageSize, defaultMaximumLenghOfVariableLengthFields),clazz);
+			addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),Math.max(maxMessageSize, defaultMaximumLengthOfVariableLengthFields),clazz);
 		}
 	}	
 	
@@ -74,7 +74,7 @@ public class PipeConfigManager {
     		return (PipeConfig<S>)configs[idx];
     	}
     	//when undefined build store and return the default
-    	return addConfig(defaultMinimumFragmentsOnPipe, defaultMaximumLenghOfVariableLengthFields, clazz);
+    	return addConfig(defaultMinimumFragmentsOnPipe, defaultMaximumLengthOfVariableLengthFields, clazz);
     	
     }
 
