@@ -284,6 +284,33 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         
         return len;
 	}
+	 
+	 //only called when we want to keep what was written but NOT add this field into the record.
+	 //used by special case where we want to write across multiple records.
+	 public static <T extends MessageSchema<T>> void closeLowLeveLFieldWithoutWrite(DataOutputBlobWriter<T> writer) {
+	      
+		if (writer.structuredWithIndexData) {
+			
+			//write this field as length len but move head to the end of maxvarlen
+			writer.activePosition = writer.lastPosition;
+			Pipe.setBytesWorkingHead(writer.backingPipe, 
+					                 writer.activePosition & Pipe.BYTES_WRAP_MASK);			
+		    
+		} else { 
+			//do not keep index just move forward by length size
+			Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, writer.length());
+		}
+		
+		assert(writer.startPosition>=0) : "Error bad position of "+writer.startPosition+" length was "+writer.length();
+
+        writer.backingPipe.closeBlobFieldWrite();
+ 
+        if (writer.structuredWithIndexData) {
+        	//set the flag marking this as structed.
+        	Pipe.slab(writer.backingPipe)[writer.backingPipe.slabMask & (int)(Pipe.workingHeadPosition(writer.backingPipe)-2)] |= Pipe.STRUCTURED_POS_MASK;
+        }
+        
+	}
  
 	@Override
     public int length() {
