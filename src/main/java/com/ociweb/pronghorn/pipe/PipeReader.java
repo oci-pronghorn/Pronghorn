@@ -413,7 +413,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		if (meta >= 0) {
 			return Pipe.wrappedReadingBuffersRing(pipe, len, (pipe).blobMask & Pipe.convertToPosition(meta,pipe));
 		} else {
-			return Pipe.wrappedReadingBufffersConst(pipe, meta, len);
+			return Pipe.wrappedReadingBuffersConst(pipe, meta, len);
 		}
 	}
 

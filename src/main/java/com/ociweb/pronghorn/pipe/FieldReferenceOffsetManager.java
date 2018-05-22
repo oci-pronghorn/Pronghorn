@@ -117,7 +117,7 @@ public class FieldReferenceOffsetManager {
 			tokens = EMPTY;
 			messageStarts = computeMessageStarts(); 
 			
-			//Not convinced we should support this degenerate case (null script) but it does make some unit tests much easer to write.
+			//Not convinced we should support this degenerate case (null script) but it does make some unit tests much easier to write.
             fragDataSize = null;
             fragScriptSize = null;
             fragDepth = null;
@@ -152,7 +152,7 @@ public class FieldReferenceOffsetManager {
             }
             maximumFragmentStackDepth = m;
             
-            //when the max depth is only one it is because there are no sub fagments found inside any messages
+            //when the max depth is only one it is because there are no sub fragments found inside any messages
             hasSimpleMessagesOnly = (1==maximumFragmentStackDepth);
             			
             //consumer of this need not check for null because it is always created.
