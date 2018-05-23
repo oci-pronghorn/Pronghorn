@@ -501,8 +501,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         	return 0;
         }
     }
-    
-    
+
+    /**
+     * Copies int from specified pipe ring to target pipe ring
+     * @param sourceRing to copy from
+     * @param targetRing to copy to
+     * @param sourceLOC location of the int to copy
+     * @param targetLOC location to put the copied int
+     */
     public static void copyInt(final Pipe sourceRing,	final Pipe targetRing, int sourceLOC, int targetLOC) {
         assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
@@ -510,7 +516,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		Pipe.primaryBuffer(targetRing)[targetRing.slabMask &((int)targetRing.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC))] =
 		     Pipe.primaryBuffer(sourceRing)[sourceRing.slabMask & (int)(sourceRing.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
     }
-    
+
+    /**
+     * Copies long from specified pipe to target pipe
+     * @param sourcePipe to copy from
+     * @param targetPipe to copy to
+     * @param sourceLOC location of long to copy
+     * @param targetLOC location to put copied long
+     */
     public static void copyLong(final Pipe sourcePipe, final Pipe targetPipe, int sourceLOC, int targetLOC) {
     	assert((sourceLOC&0x1C<<PipeReader.OFF_BITS)==(0x4<<PipeReader.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((sourceLOC>>PipeReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
     	assert((targetLOC&0x1C<<PipeWriter.OFF_BITS)==(0x4<<PipeWriter.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((targetLOC>>PipeWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
@@ -519,7 +532,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		Pipe.slab(targetPipe)[targetPipe.slabMask & (int)targetIdx]     = Pipe.slab(sourcePipe)[sourcePipe.slabMask & (int)srcIdx];
 		Pipe.slab(targetPipe)[targetPipe.slabMask & (int)targetIdx+1] = Pipe.slab(sourcePipe)[sourcePipe.slabMask & (int)srcIdx+1];
     }
-    
+
+    /**
+     * Copies decimal from specified pipe ring to target pipe ring
+     * @param sourceRing to copy from
+     * @param targetRing to copy to
+     * @param sourceLOC location of decimal to copy
+     * @param targetLOC location to put copied decimal
+     */
     public static void copyDecimal(final Pipe sourceRing, final Pipe targetRing, int sourceLOC, int targetLOC) {
     	assert((sourceLOC&0x1E<<PipeReader.OFF_BITS)==(0x0C<<PipeReader.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((sourceLOC>>PipeReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
     	assert((targetLOC&0x1E<<PipeWriter.OFF_BITS)==(0x0C<<PipeWriter.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((targetLOC>>PipeWriter.OFF_BITS)&TokenBuilder.MASK_TYPE); 
@@ -534,7 +554,15 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		tSlab[targetRing.slabMask & (int)targetIdx+2] = sSlab[sourceRing.slabMask & (int)srcIdx+2];
 		
     }
-        
+
+    /**
+     * Copies bytes from specified pipe to target pipe
+     * @param sourcePipe to copy from
+     * @param targetPipe to copy to
+     * @param sourceLOC location of bytes to copy
+     * @param targetLOC location to put bytes
+     * @return length of copied bytes
+     */
 	public static int copyBytes(final Pipe sourcePipe,	final Pipe targetPipe, int sourceLOC, int targetLOC) {
         assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);

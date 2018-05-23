@@ -1,13 +1,12 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.util.Arrays;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 class StackStateWalker {
 	private static final Logger log = LoggerFactory.getLogger(StackStateWalker.class);
@@ -145,7 +144,7 @@ class StackStateWalker {
 			if ((ringBuffer.llWrite.llwHeadPosCache = Pipe.headPosition(ringBuffer)) > 1+ringBufferConsumer.nextWorkingTail) {
 				prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 			} else {
-				//rare slow case where we dont find any data
+				//rare slow case where we don't find any data
 				ringBufferConsumer.isNewMessage = false; 
 				return false;					
 			}
@@ -157,24 +156,24 @@ class StackStateWalker {
 
 	private static void prepReadFragment(Pipe ringBuffer,
 			final StackStateWalker ringBufferConsumer, final int scriptFragSize,
-			long tmpNextWokingTail, final long target) {
+			long tmpNextWorkingTail, final long target) {
 
 		//from the last known fragment move up the working tail position to this new fragment location
-		Pipe.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
+		Pipe.setWorkingTailPosition(ringBuffer, tmpNextWorkingTail);
 		
 		//save the index into these fragments so the reader will be able to find them.
-		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWokingTail;
+		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWorkingTail;
 		
 		assert(Pipe.getWorkingBlobRingTailPosition(ringBuffer) <= Pipe.getBlobRingHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobRingTailPosition(ringBuffer)+" but we only have "+Pipe.getBlobRingHeadPosition(ringBuffer);
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
-		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
+		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWorkingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);
 	
 	}
 
 
 	private static void prepReadFragment2(Pipe ringBuffer,
-			final StackStateWalker ringBufferConsumer, long tmpNextWokingTail,
+			final StackStateWalker ringBufferConsumer, long tmpNextWorkingTail,
 			final long target, int lastScriptPos, int lastTokenOfFragment) {
 	    
 	    assert(isValidFragmentStart(ringBuffer, target)) : "Bad target of "+target+" for new fragment start";
@@ -183,7 +182,7 @@ class StackStateWalker {
         if ( (lastTokenOfFragment &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
         	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
         } else {
-        	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, lastScriptPos, lastTokenOfFragment);
+        	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWorkingTail, lastScriptPos, lastTokenOfFragment);
         	 ringBufferConsumer.nextWorkingTail = target;
         }
         
@@ -227,7 +226,7 @@ class StackStateWalker {
 
     private static void openOrCloseSequenceWhileInsideFragment(
 			Pipe ringBuffer, final StackStateWalker ringBufferConsumer,
-			long tmpNextWokingTail, int lastScriptPos, int lastTokenOfFragment) {
+			long tmpNextWorkingTail, int lastScriptPos, int lastTokenOfFragment) {
 		//this is a group or groupLength that has appeared while inside a fragment that does not start a message
 
 		 //this single bit on indicates that this starts a sequence length  00100
@@ -238,15 +237,15 @@ class StackStateWalker {
 		         continueSequence(ringBufferConsumer);
 		     }
 		 } else {
-		     openSequenceWhileInsideFragment(ringBuffer, ringBufferConsumer, tmpNextWokingTail, lastScriptPos);
+		     openSequenceWhileInsideFragment(ringBuffer, ringBufferConsumer, tmpNextWorkingTail, lastScriptPos);
 		 }
 		 
 	}
 
     private static void openSequenceWhileInsideFragment(Pipe ringBuffer, final StackStateWalker ringBufferConsumer,
-            long tmpNextWokingTail, int lastScriptPos) {
+            long tmpNextWorkingTail, int lastScriptPos) {
         //this is a groupLength Sequence that starts inside of a fragment 
-         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.slabMask];
+         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
          //now start new sequence
          ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
          ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
@@ -294,7 +293,7 @@ class StackStateWalker {
     }
 
 
-	private static void prepReadMessage(Pipe pipe, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
+	private static void prepReadMessage(Pipe pipe, StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail) {
 	    //Would like to add an assert like this but the logic is not right yet.
 	//    assert(pipe.ringWalker.nextWorkingTail == RingBuffer.getWorkingTailPosition(pipe) || 
 	  //          pipe.lastReleasedTail != pipe.ringWalker.nextWorkingTail) : "Must call release before trying to read next message.";
@@ -302,8 +301,8 @@ class StackStateWalker {
 	    //we now have enough room to read the id
 		//for this simple case we always have a new message
 		ringBufferConsumer.isNewMessage = true;	
-		Pipe.setWorkingTailPosition(pipe, tmpNextWokingTail);
-		prepReadMessage2(pipe, ringBufferConsumer, tmpNextWokingTail);
+		Pipe.setWorkingTailPosition(pipe, tmpNextWorkingTail);
+		prepReadMessage2(pipe, ringBufferConsumer, tmpNextWorkingTail);
 		
 	}
 
@@ -326,18 +325,18 @@ class StackStateWalker {
     }
 
 
-    private static void prepReadMessage2(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
+    private static void prepReadMessage2(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail) {
 		//
 		//Start new stack of fragments because this is a new message
-		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;				 
-		setMsgIdx(ringBufferConsumer, readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail), ringBuffer.llWrite.llwHeadPosCache);
-		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail,	ringBufferConsumer.from.fragDataSize);
+		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWorkingTail;
+		setMsgIdx(ringBufferConsumer, readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail), ringBuffer.llWrite.llwHeadPosCache);
+		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWorkingTail,	ringBufferConsumer.from.fragDataSize);
 	}
 
 
-	private static int readMsgIdx(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
+	private static int readMsgIdx(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail) {
 	    
-		int i = ringBuffer.slabMask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
+		int i = ringBuffer.slabMask & (int)(tmpNextWorkingTail + ringBufferConsumer.from.templateOffset);
         int idx = Pipe.slab(ringBuffer)[i];
         
 		
@@ -346,35 +345,35 @@ class StackStateWalker {
 	}
 
 
-	private static void prepReadMessage2(Pipe ringBuffer,	StackStateWalker ringBufferConsumer, final long tmpNextWokingTail, int[] fragDataSize) {
+	private static void prepReadMessage2(Pipe ringBuffer,	StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail, int[] fragDataSize) {
 		if (ringBufferConsumer.msgIdx >= 0 && ringBufferConsumer.msgIdx < fragDataSize.length) {
-			prepReadMessage2Normal(ringBuffer, ringBufferConsumer, tmpNextWokingTail, fragDataSize); 
+			prepReadMessage2Normal(ringBuffer, ringBufferConsumer, tmpNextWorkingTail, fragDataSize);
 		} else {
-			prepReadMessage2EOF(ringBuffer, ringBufferConsumer, tmpNextWokingTail, fragDataSize);
+			prepReadMessage2EOF(ringBuffer, ringBufferConsumer, tmpNextWorkingTail, fragDataSize);
 		}
 	}
 
 
 	private static void prepReadMessage2Normal(Pipe ringBuffer,
-			StackStateWalker ringBufferConsumer, final long tmpNextWokingTail,
+			StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail,
 			int[] fragDataSize) {
 
-		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  
+		ringBufferConsumer.nextWorkingTail = tmpNextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read
 		
 		
 		//This validation is very important, because all down stream consumers will assume it to be true.
-		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
-				TypeMask.Group == TokenBuilder.extractType(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)])) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)]);
+		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
+				TypeMask.Group == TokenBuilder.extractType(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail)])) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail)]);
 	
-		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
-				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)])) == 0) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)]);
+		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
+				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail)])) == 0) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWorkingTail)]);
 	
 		ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
 		
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
 		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
 			//Can not assume end of message any more.
-			int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.slabMask];
+			int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
             final StackStateWalker ringBufferConsumer1 = ringBufferConsumer;
 			//now start new sequence
             ringBufferConsumer1.seqStack[++ringBufferConsumer1.seqStackHead] = seqLength;
@@ -383,7 +382,7 @@ class StackStateWalker {
 	}
 
 	private static void prepReadMessage2EOF(Pipe ringBuffer,
-			StackStateWalker ringBufferConsumer, final long tmpNextWokingTail,
+			StackStateWalker ringBufferConsumer, final long tmpNextWorkingTail,
 			int[] fragDataSize) {
 		//rare so we can afford some extra checking at this point 
 		if (ringBufferConsumer.msgIdx > fragDataSize.length) {
@@ -391,14 +390,14 @@ class StackStateWalker {
 		    
 		    
 			//this is very large so it is probably bad data, catch it now and send back a meaningful error
-			int limit = (ringBuffer.slabMask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
+			int limit = (ringBuffer.slabMask & (int)(tmpNextWorkingTail + ringBufferConsumer.from.templateOffset))+1;
 			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
-					" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
+					" encountered at last absolute position:"+(tmpNextWorkingTail + ringBufferConsumer.from.templateOffset)+
 					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(Pipe.slab(ringBuffer), Math.max(0, limit-10), limit ))+"\n"+ringBuffer);
 		}		
 		
 		//this is commonly used as the end of file marker  
-		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+Pipe.EOF_SIZE;
+		ringBufferConsumer.nextWorkingTail = tmpNextWorkingTail+Pipe.EOF_SIZE;
 	}
     
  

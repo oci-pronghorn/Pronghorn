@@ -96,6 +96,12 @@ public final class StructuredReader {
 	}
 	
 	//returns null if absent
+
+	/**
+	 * Reads text at given field
+	 * @param fieldId to read from
+	 * @return text if data exists, else <code>null</code>
+	 */
 	public String readText(long fieldId) {
 		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
