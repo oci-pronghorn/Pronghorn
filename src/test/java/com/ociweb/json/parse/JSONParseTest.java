@@ -471,7 +471,7 @@ public class JSONParseTest {
 		Pipe.publishWrites(testInputData);				
 		////
 		
-		TrieParserReader reader = new TrieParserReader(5,true);
+		TrieParserReader reader = new TrieParserReader(true);
 		
 		//start consuming the data from the pipe
 		int msgIdx = Pipe.takeMsgIdx(testInputData);
@@ -525,7 +525,7 @@ public class JSONParseTest {
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
 		targetData.initBuffers();
 
-		TrieParserReader reader = new TrieParserReader(5,true);
+		TrieParserReader reader = new TrieParserReader(true);
 		JSONStreamParser parser = new JSONStreamParser();
 
 		PipeConfig<RawDataSchema> testInputDataConfig = RawDataSchema.instance.newPipeConfig(

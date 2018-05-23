@@ -85,21 +85,12 @@ public class TrieParserReader {
 	private final boolean alwaysCompletePayloads;
 
 	public TrieParserReader() {
-		this(0, false);
+		this(false);
 	}
 
 	public TrieParserReader(boolean alwaysCompletePayloads) {
-		this(0, alwaysCompletePayloads);
-	}
-
-	public TrieParserReader(int maxCapturedFields) {
-		this(maxCapturedFields,false);
-	}
-
-	public TrieParserReader(int maxCapturedFields, boolean alwaysCompletePayloads) {
-		this.capturedValues = new int[maxCapturedFields*4];
-		this.alwaysCompletePayloads = alwaysCompletePayloads;
 		
+		this.alwaysCompletePayloads = alwaysCompletePayloads;		
 		workingPipe.initBuffers();
 		
 	}
@@ -322,6 +313,10 @@ public class TrieParserReader {
 		reader.result = unfoundResult;
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
+		
+		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
+			reader.capturedValues = new int[trie.maxExtractedFields()*4];
+		}		
 
 		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
 
@@ -336,8 +331,10 @@ public class TrieParserReader {
 		that.sourcePos     = offset;
 		assert(that.sourcePos>=0) : "Negative source position offsets are not supported.";
 		that.sourceLen     = length;
-		that.sourceMask    = mask;   
-		assert(that.sourceLen <= that.sourceMask + 1) : "ERROR the source length is larger than the backing array";
+		that.sourceMask    = mask;
+		
+		assert(that.sourceLen <= ((long)that.sourceMask) + 1) : 
+			  "ERROR the source length is larger than the backing array. "+that.sourceLen+" > "+(that.sourceMask + 1);
 
 	}
 
@@ -1027,6 +1024,10 @@ public class TrieParserReader {
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
 		
+		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
+			reader.capturedValues = new int[(1+trie.maxExtractedFields())*4];
+		}
+
 		reader.sourceBacking = source;
 		
 		//if we have a data specific mask use it, if nothing was set take full pipe size.
@@ -1510,7 +1511,6 @@ public class TrieParserReader {
 		int length    = Pipe.takeRingByteLen(input);
 		parseSetup(trieReader, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input));
 	}
-
 
 	public static int capturedFieldCount(TrieParserReader reader) {
 		return reader.capturedPos>>2;

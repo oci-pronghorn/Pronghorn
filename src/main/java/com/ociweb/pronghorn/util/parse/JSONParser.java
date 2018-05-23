@@ -172,7 +172,7 @@ public class JSONParser {
 	
 	
 	public static TrieParserReader newReader() {
-		return new TrieParserReader(4);
+		return new TrieParserReader();
 	}
 	
 	public static <A extends Appendable> void parse(Pipe<?> pipe, TrieParserReader reader, JSONVisitor visitor) {

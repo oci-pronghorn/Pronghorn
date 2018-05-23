@@ -6,7 +6,6 @@ import java.io.Reader;
 public class MutableCharReader extends Reader implements Appendable {
 
 	private final StringBuilder buffer = new StringBuilder();
-	
 
 	@Override
 	public Appendable append(CharSequence source) throws IOException {
@@ -40,8 +39,10 @@ public class MutableCharReader extends Reader implements Appendable {
 
 	@Override
 	public int read(char[] target, int off, int len) throws IOException {
+
 		int j = 0;
-		for(int i=off; i<off+len; i++) {
+		int copyLen = Math.min(buffer.length(), len);
+		for(int i=off; i<off+copyLen; i++) {
 			target[i] = buffer.charAt(j++);
 		}
 		return j;
