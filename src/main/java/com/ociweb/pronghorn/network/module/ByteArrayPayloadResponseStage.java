@@ -11,27 +11,29 @@ import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.http.AbstractRestStage;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.AppendableBuilder;
 
 public abstract class ByteArrayPayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
-								H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
+								H extends Enum<H> & HTTPHeader> extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputs;
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final GraphManager graphManager;
 		
+	protected final HTTPSpecification<T,R,V, H> httpSpec;
+	
 	private static final Logger logger = LoggerFactory.getLogger(ByteArrayPayloadResponseStage.class);
 	
 	private long activeChannelId = -1;
@@ -46,8 +48,9 @@ public abstract class ByteArrayPayloadResponseStage <
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 			 HTTPSpecification<T, R, V, H> httpSpec) {
-			super(graphManager, inputs, outputs, httpSpec);
+			super(graphManager, inputs, outputs);
 			
+			this.httpSpec = httpSpec;
 			this.inputs = inputs;
 			this.outputs = outputs;		
 			this.graphManager = graphManager;
@@ -62,8 +65,9 @@ public abstract class ByteArrayPayloadResponseStage <
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 							 HTTPSpecification<T, R, V, H> httpSpec, Pipe[] otherInputs) {
-		super(graphManager, join(inputs,otherInputs), outputs, httpSpec);
+		super(graphManager, join(inputs,otherInputs), outputs);
 		
+		this.httpSpec = httpSpec;
 		this.inputs = inputs;
 		this.outputs = outputs;		
 		this.graphManager = graphManager;
@@ -198,21 +202,18 @@ public abstract class ByteArrayPayloadResponseStage <
 		final boolean isChunked = false;
 		final boolean isServer = true;
 		
-		//NOTE: we can force redirects to this content location if desired.
-		byte[] contentLocationBacking = null;		
-		int contLocBytesPos = 0;
-		int contLocBytesLen = 0;
-		int contLocBytesMask = 0;
+		//NOTE: we can add extra headers here
+		HeaderWritable headers = null;
 		
-		writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
+		HTTPUtil.writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
 				    status, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
 		 		    prefixCount()+payloadLength+suffixCount(), 
 		 		    isChunked, isServer,
-		 		    contentLocationBacking, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
 		 		    outputStream, 
-		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
+		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT),
+		 		    headers );
 		
 		assert(outputStream.length()<=output.maxVarLen): "Header is too large or pipe max var size of "+output.maxVarLen+" is too small";
 		//logger.trace("built new header response of length "+length);

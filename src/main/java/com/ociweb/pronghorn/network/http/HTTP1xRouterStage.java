@@ -218,7 +218,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         sequences = new int[inputs.length];
         sequencesSent = new int[inputs.length];
       
-        trieReader = new TrieParserReader(16);//max fields we support capturing.
+        trieReader = new TrieParserReader();//max fields we support capturing.
         
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
 
@@ -329,11 +329,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				            		 that.inputs[idx],
 				            		 that.inputChannels[idx]) >=0) {//message idx            
         	if (that.needsData[idx]) {
-        		if (that.inputLengths[idx]==start) {            			
+        		if (that.inputLengths[idx]!=start) {            			
+        			that.needsData[idx]=false;
+        		} else {            			
         			//we got no data so move on to the next
         			return 0;
-        		} else {            			
-        			that.needsData[idx]=false;
         		}
         	}            
         } else {

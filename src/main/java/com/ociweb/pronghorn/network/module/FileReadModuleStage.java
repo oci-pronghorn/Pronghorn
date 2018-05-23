@@ -19,19 +19,23 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.http.AbstractRestStage;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
+import com.ociweb.pronghorn.network.http.HeaderWriter;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.PipeHashTable;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
@@ -43,13 +47,24 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,
                                         V extends Enum<V> & HTTPVerb,
-                                        H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
+                                        H extends Enum<H> & HTTPHeader> extends PronghornStage {
 
     
     private static final int SIZE_OF_RESTREQUEST = Pipe.sizeOf(HTTPRequestSchema.instance, HTTPRequestSchema.MSG_RESTREQUEST_300);
 
+    protected final HTTPSpecification<T, R, V, H> httpSpec;
 
+   	private HeaderWritable headerWriterContentLoc = new HeaderWritable() {
+
+			@Override
+			public void write(HeaderWriter writer) {						
+				writer.writeUTF8(HTTPHeaderDefaults.CONTENT_LOCATION, defaultPathBytes);
+			}
+    		
+    	};
+    	
 	public static class FileReadModuleStageData {
+		
 		private Set<OpenOption> readOptions;
 		private TrieParser pathCache;
 		private Path[] paths;
@@ -58,6 +73,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		private byte[][] etagBytes;
 		private int[] type;
 		public final FileSystem fileSystem = FileSystems.getDefault();
+
+		
 		
 		//move to external utility
 	    private IntHashTable fileExtensionTable;
@@ -221,7 +238,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                                    HTTPSpecification<T,R,V,H> httpSpec,
                                    File rootPath) {
         
-        super(graphManager, inputs, outputs, httpSpec);
+        super(graphManager, inputs, outputs);
         this.inputs = inputs; 
         this.outputs = outputs;        
         this.trailingReader = 0;
@@ -229,7 +246,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         assert( httpSpec.verbMatches(VERB_GET, "GET") );
         assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
         this.inIdx = inputs.length;
-        
+        this.httpSpec = httpSpec;
         
         this.folderRootFile = rootPath.isFile()? rootPath.getParentFile() : rootPath;       
         this.folderRootString = folderRootFile.toString();
@@ -252,7 +269,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             HTTPSpecification<T,R,V,H> httpSpec,
             String resourceRootFolder, String resourceDefaultPath) {
 
-		super(graphManager, inputs, outputs, httpSpec);
+		super(graphManager, inputs, outputs);
 		this.inputs = inputs; 
 		this.outputs = outputs;        
 		this.trailingReader = 0;
@@ -260,7 +277,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		assert( httpSpec.verbMatches(VERB_GET, "GET") );
 		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
 		this.inIdx = inputs.length;
-				
+		this.httpSpec = httpSpec;
+		 
 		this.folderRootFile = null;//when this value is null we can only check the resources....  
 		this.folderRootString = resourceRootFolder;
 		this.defaultPathFile = resourceDefaultPath;
@@ -615,10 +633,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             }
         } else {
         	//if bytesLength is 0 then use the defaultPathFile
-        	System.err.println("default: "+	defaultPathFile);
-        	       
-        	        	
-        	
+        	//System.err.println("default: "+	defaultPathFile);
+        
         	//TODO: need to lookup the resource??
         	StringBuilder builder = new StringBuilder();
         	
@@ -630,23 +646,20 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		
         	if (null!=stream) {
         		try {
-					long size = stream.available();
-					
-					logger.info("found as resource at {} size {}",name,size);
-					
+					long size = stream.available();					
+					logger.info("found as resource at {} size {}",name,size);					
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
-        		
-        				
+				}	
         	} else {
-        		logger.info("NOT found as resource at {}",name);
-        		
+        		//NOTE: the name is too large
+        		//logger.trace("NOT found as resource at {}",name);
         	}
         	
         	
-        	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
+        	//NOTE: the file name is too long and must be trimmed
+        	//logger.trace("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }
         return pathId;
         
@@ -681,11 +694,11 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             int status = 200;
             boolean reportServer = true;
                         
-            byte[] contLoc = null;
-            int    contLocLen = 0;            
+	        HeaderWritable headerWriter = null;
+        
             if (pathId==defaultPathId) {
-            	contLoc = defaultPathBytes;
-            	contLocLen = defaultPathBytes.length;
+            	//redirect to the correct request location...
+		        headerWriter = headerWriterContentLoc; 
             }
             
           //  logger.info("begin file response for channel {} {}", activeChannelHigh, activeChannelLow);
@@ -696,13 +709,32 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             
             assert(data.getFileSizes()[pathId]<Integer.MAX_VALUE) : "Can not support files larger than 2G at this time.";
             boolean chunked = false;
-            int bytesConsumed = publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
-            		                           status, output, activeChannelHigh, activeChannelLow,  
-                                               httpSpec, revision, contentType, 
-                                               (int)data.getFileSizes()[pathId], chunked, 
-                                               data.getEtagBytes()[pathId],
-                                               reportServer, contLoc, 0,contLocLen,Integer.MAX_VALUE                           
-            		); 
+			int headerSize = Pipe.addMsgIdx(output, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
+			        
+			        Pipe.addIntValue(activeChannelHigh, output);
+			        Pipe.addIntValue(activeChannelLow, output);
+			        Pipe.addIntValue(sequence, output);        
+			        
+			//        logger.info("publish rest response for channel {} {} and seq {}",channelIdHigh, channelIdLow, sequence);
+			        
+			        DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(output);
+			        writer.openField();
+
+					HTTPUtil.writeHeader(revision, 
+			        		    status, requestContext, data.getEtagBytes()[pathId],  
+			        		    contentType, (int)data.getFileSizes()[pathId],
+			        		    chunked, reportServer, writer, 
+			        		    1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT),
+			        		    headerWriter);
+			        int bytesLength = writer.closeLowLevelField();
+			        
+			        Pipe.addIntValue( VERB_GET==verb ? 0 : requestContext , output); //empty request context, set the full value last. 
+			        
+			        Pipe.confirmLowLevelWrite(output, headerSize);
+			        int consumed = Pipe.publishWrites(output);
+			        assert(consumed == bytesLength) : "header bytes length of "+bytesLength+" but total sent was "+consumed;
+			        //logger.debug("published header");
+            int bytesConsumed = bytesLength; 
 
             totalBytesWritten = totalBytesWritten + bytesConsumed;
      //       assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);

@@ -117,7 +117,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  
 		  runningHeaderBytes = new int[input.length];
 		  			  
-		  trieReader = new TrieParserReader(4);//max fields we support capturing.
+		  trieReader = new TrieParserReader();//max fields we support capturing.
 		  
 		  int x;
 		  

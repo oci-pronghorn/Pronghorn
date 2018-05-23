@@ -57,7 +57,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     private URLTemplateParser routeParser;
     private final ServerConnectionStruct conStruct;
 	
-	private final TrieParserReader localReader = new TrieParserReader(2, true);
+	private final TrieParserReader localReader = new TrieParserReader(true);
 
 
 	public int totalSizeOfIndexes(int structId) {

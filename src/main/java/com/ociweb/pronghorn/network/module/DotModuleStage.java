@@ -63,11 +63,6 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 
 	@Override
-	protected boolean closeEveryRequest() {
-		return true;
-	}
-
-	@Override
 	protected boolean payload(AppendableByteWriter<?> payload, 
 			                 GraphManager gm, 
 			                 ChannelReader params,
@@ -82,8 +77,8 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 	
 	@Override
-	protected byte[] contentType() {
-		return HTTPContentTypeDefaults.DOT.getBytes();
+	public HTTPContentType contentType() {
+		return HTTPContentTypeDefaults.DOT;
 	}
 
 }

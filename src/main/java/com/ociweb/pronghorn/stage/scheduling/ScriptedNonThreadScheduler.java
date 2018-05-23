@@ -625,11 +625,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			
 		        //play the script
 	   			int scheduleIdx = 0;
-				while (scheduleIdx < that.schedule.script.length) {	
+				int[] script = that.schedule.script;
+				while (scheduleIdx < script.length) {	
 						
 						waitBeforeRun(that, System.nanoTime());
 		
-						scheduleIdx = that.runBlock(scheduleIdx, that.schedule.script, that.stages, that.graphManager, that.recordTime);
+						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, that.graphManager, that.recordTime);
 		        }
 		
 				checkForLongRun(that);

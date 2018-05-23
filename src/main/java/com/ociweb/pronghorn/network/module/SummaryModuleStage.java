@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
-public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
+public class SummaryModuleStage<T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
 								H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
@@ -36,11 +36,6 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
     }
 	
     private final PipeMonitorCollectorStage monitor;
-    
-	@Override
-	protected boolean closeEveryRequest() {
-		return true;
-	}
 	
 	private SummaryModuleStage(GraphManager graphManager, 
 			Pipe<HTTPRequestSchema>[] inputs, 
@@ -77,8 +72,8 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 	
 	@Override
-	protected byte[] contentType() {
-		return HTTPContentTypeDefaults.DOT.getBytes();
+	public HTTPContentType contentType() {
+		return HTTPContentTypeDefaults.DOT;
 	}
 
 }

@@ -56,7 +56,7 @@ public class PinningUtil {
 		
 		
 		try {
-			TrieParserReader reader = new TrieParserReader(10,true);
+			TrieParserReader reader = new TrieParserReader(true);
 			Process process = Runtime.getRuntime().exec("jstack -l "+getPid());
 		    InputStream stream = process.getInputStream();	
 		    

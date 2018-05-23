@@ -5,20 +5,19 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.http.AbstractRestStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorToJSON;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.AppendableReplicator;
 
 public class PipeMonitorModuleStage<T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
+									H extends Enum<H> & HTTPHeader> extends PronghornStage {
 
 	private StreamingVisitorReader reader;
 	
@@ -34,7 +33,7 @@ public class PipeMonitorModuleStage<T extends Enum<T> & HTTPContentType,
 			Pipe<?> monitorInput,
 			Pipe<ServerResponseSchema> output, 
 			HTTPSpecification<T, R, V, H> httpSpec) {
-		super(graphManager, inputs, output, httpSpec);
+		super(graphManager, inputs, output);
 		
 		this.inputs = inputs;
 		this.monitorInput = monitorInput;

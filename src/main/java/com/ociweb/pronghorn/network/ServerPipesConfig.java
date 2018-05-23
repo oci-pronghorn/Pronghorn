@@ -66,7 +66,7 @@ public class ServerPipesConfig {
 							 int maxRequestSize, //make larger for large posts
 							 PipeConfigManager pcm				 
 			) {
-		
+	
 		if (isTLS && (maxRequestSize< (1<<15))) {
 			maxRequestSize = (1<<15);//TLS requires this larger payload size
 		}
