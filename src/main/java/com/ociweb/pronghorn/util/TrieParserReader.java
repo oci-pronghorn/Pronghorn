@@ -315,7 +315,7 @@ public class TrieParserReader {
 		reader.altStackPos = 0; 
 		
 		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
-			reader.capturedValues = new int[trie.maxExtractedFields()*4];
+			reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
 		}		
 
 		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
@@ -1025,7 +1025,7 @@ public class TrieParserReader {
 		reader.altStackPos = 0; 
 		
 		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
-			reader.capturedValues = new int[(1+trie.maxExtractedFields())*4];
+			reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
 		}
 
 		reader.sourceBacking = source;
@@ -1208,7 +1208,6 @@ public class TrieParserReader {
 	private static int indexOfMatchInArrayScan(short value, short[] data, int i) {
 		while (--i>=0) {
 			if (value == data[i]) {
-				System.err.println("found inddex at "+i);
 				return i;
 			}
 		}
