@@ -1640,6 +1640,7 @@ public class TrieParser implements Serializable {
         data[pos++] = TYPE_VALUE_BYTES;
         data[pos++] = stop;
         extractions[activeExtractionCount++] = ESCAPE_CMD_BYTES;
+        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
         return pos;
     }
     
@@ -1653,6 +1654,7 @@ public class TrieParser implements Serializable {
         data[pos++] = TYPE_VALUE_NUMERIC;
         data[pos++] = buildNumberBits((byte)type);
         extractions[activeExtractionCount++] = (byte)type;
+        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
         return pos;
     }
  
