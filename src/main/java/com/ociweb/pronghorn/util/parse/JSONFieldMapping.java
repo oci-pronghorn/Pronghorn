@@ -1,16 +1,15 @@
 package com.ociweb.pronghorn.util.parse;
 
 
-import java.io.IOException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.ociweb.json.JSONAccumRule;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
 import com.ociweb.pronghorn.util.Appendables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class JSONFieldMapping {
 	
@@ -111,7 +110,7 @@ public class JSONFieldMapping {
 
 	public static int addHashToTable(int fieldIdx, int dimsIdx,
 			LongHashTable lookupFieldTableLocal,
-			LongHashTable lookupDimentions,
+			LongHashTable lookupDimensions,
 			int[][] dimUsages,
 			JSONFieldMapping jsonFieldMapping) {
 		
@@ -131,11 +130,11 @@ public class JSONFieldMapping {
 						          -jsonFieldMapping.values[i]);
 								
 				int dimIdx;//lookup which fields make use of this array
-				if (!LongHashTable.hasItem(lookupDimentions, pathHash)) {
+				if (!LongHashTable.hasItem(lookupDimensions, pathHash)) {
 					dimIdx = dimsIdx++;
-					LongHashTable.setItem(lookupDimentions, pathHash, dimIdx);
+					LongHashTable.setItem(lookupDimensions, pathHash, dimIdx);
 				} else {
-					dimIdx = LongHashTable.getItem(lookupDimentions, pathHash);					
+					dimIdx = LongHashTable.getItem(lookupDimensions, pathHash);
 				}
 
 				dimDepth++; //must increment before it is stored.
@@ -159,7 +158,7 @@ public class JSONFieldMapping {
 		}
 		
 		if (LongHashTable.hasItem(lookupFieldTableLocal, pathHash)) {
-			throw new UnsupportedOperationException("field "+fieldIdx+" confilicts with previous field, each must be unique.");
+			throw new UnsupportedOperationException("field "+fieldIdx+" conflicts with previous field, each must be unique.");
 		}
 		
 //		if (jsonFieldMapping.groupId>=0) {
