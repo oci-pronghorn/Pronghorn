@@ -116,20 +116,24 @@ public class TrieParser implements Serializable {
     private int[] altStackA = new int[MAX_ALT_DEPTH];
     private int[] altStackB = new int[MAX_ALT_DEPTH];
     
-    int extractionCount;
+    int activeExtractionCount;
     byte[] extractions = new byte[32];//hard coded limit of extraction points, could be larger but why...
     
     /**
      * Provides visibility into which fields will be extracted from the last known pattern
      */
     public byte[] lastSetValueExtractonPattern() {
-    	return Arrays.copyOfRange(extractions, 0, extractionCount);
+    	return Arrays.copyOfRange(extractions, 0, activeExtractionCount);
     }    
     
     public int lastSetValueExtractionCount() {
-    	return extractionCount;
+    	return activeExtractionCount;
     }
 
+    public int maxExtractedFields() {
+    	return maxExtractedFields;
+    }
+    
 	//used for detection of parse errors, eg do we need more data or did something bad happen.
 	private int maxBytesCapturable      = 500; //largest text
 	private int maxNumericLenCapturable = 20; //largest numeric.
@@ -813,23 +817,26 @@ public class TrieParser implements Serializable {
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
  
     	assert(isValidSize(value));
+    	assert(sourceLength<=source.length);
+    	assert((sourceMask&sourcePos)<=source.length);
     	
-    	
-    	extractionCount = 0;//clear this so it can be requested after set is complete.
+    	activeExtractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
     	
         assert(value >= 0);
 
         altStackPos = 0;
-        int fieldExtractionsCount = 0;
+      
         
         if (0!=limit) {
+        	
             int length = 0;
                     
             while (true) {
             
                 int type = 0xFF & data[pos++];
+
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
                         
@@ -837,13 +844,12 @@ public class TrieParser implements Serializable {
                         if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==v && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
                             //we have found an escape sequence so we must insert a branch here we cant branch on a value
                         	
-                            fieldExtractionsCount++;
 							final int sourcePos1 = sourcePos;
 							final int sourceLength1 = sourceLength-length; 
                             assert(sourceLength1>=1);
 							          
 							writeEnd(writeRuns(insertAltBranch(0, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
-                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                      
                             return;
                             
                         } else {
@@ -869,13 +875,11 @@ public class TrieParser implements Serializable {
                         sourcePos = altStackB[selectedStackPos];
                 
                         break;
-                    case TYPE_VALUE_NUMERIC:   
-                        fieldExtractionsCount++;
-                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
-                        
+                    case TYPE_VALUE_NUMERIC:
                         if (ESCAPE_BYTE==source[sourceMask & sourcePos]) {                        	
                     		byte second = source[sourceMask & (sourcePos+1)];
-                    		extractions[extractionCount++] = second;
+                    		extractions[activeExtractionCount++] = second;
+                    		maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                 			if (isNumber(second)) {
                 				
                 				pos++;
@@ -893,10 +897,9 @@ public class TrieParser implements Serializable {
 					    return;
 
                     case TYPE_VALUE_BYTES:
-                        fieldExtractionsCount++;       
-                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                         
-                        extractions[extractionCount++] = ESCAPE_CMD_BYTES;
+                        extractions[activeExtractionCount++] = ESCAPE_CMD_BYTES;
+                        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                                                
                     	if (ESCAPE_BYTE!=source[sourceMask & sourcePos]     || 
                     		ESCAPE_CMD_BYTES!=source[sourceMask & (sourcePos+1)] ||
@@ -940,12 +943,9 @@ public class TrieParser implements Serializable {
                                     sourceByte = source[sourceMask & sourcePos++];
              
                                     //confirm second value is not also the escape byte so we do have a command
-                                    if (ESCAPE_BYTE != sourceByte) {
-                                        fieldExtractionsCount++;
-                                                                                    
+                                    if (ESCAPE_BYTE != sourceByte) {                           
 										insertAtBranchValueAlt(pos, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun,	sourcePos-2); //TODO: this count can be off by buried extractions.      
 									                                   
-                                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
                                     } else {
                                     	
@@ -958,14 +958,14 @@ public class TrieParser implements Serializable {
                                 	                                	
                                     insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);    		
 					
-                                    maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                                    maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                                     return;
                                 }
                             }
                             length = afterWhileLength;
                             //matched up to this point but this was shorter than the run so insert a safe point
                             insertNewSafePoint(pos, source, sourcePos, afterWhileRun, sourceMask, value, runPos);     
-                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                            maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                             return;
                         }                        
                         
@@ -980,11 +980,10 @@ public class TrieParser implements Serializable {
                                 
                                 if (ESCAPE_BYTE != sourceByte) {
                                     //sourceByte holds the specific command
-                                    fieldExtractionsCount++;
-                                    
+     
 									insertAtBranchValueAlt(pos, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-2);
                  
-                                    maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                                    maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                                     return;
                                 } else {
                                 
@@ -998,7 +997,7 @@ public class TrieParser implements Serializable {
                                            	
                             	insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
                             	                            	 
-                                maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                                maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                                 return;
                             }
                         }
@@ -1013,7 +1012,7 @@ public class TrieParser implements Serializable {
                         } else {
                             writeEndValue(pos, value);
                         }
-                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount); //TODO: should this only be for the normal end??
+                        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount); //TODO: should this only be for the normal end??
                         return;
                         
                         
@@ -1027,7 +1026,7 @@ public class TrieParser implements Serializable {
                         } else {
           
                             pos = writeEndValue(pos, value);
-                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                            maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
                             return;
                         }
                     default:
@@ -1037,9 +1036,12 @@ public class TrieParser implements Serializable {
                
             }
         } else {
+
+        	
             //Start case where we insert the first run;
             pos = writeRuns( pos, source, sourcePos, sourceLength, sourceMask);
             limit = Math.max(limit, writeEnd(pos, value));
+  
         }
         
         
@@ -1637,7 +1639,8 @@ public class TrieParser implements Serializable {
 
         data[pos++] = TYPE_VALUE_BYTES;
         data[pos++] = stop;
-        extractions[extractionCount++] = ESCAPE_CMD_BYTES;
+        extractions[activeExtractionCount++] = ESCAPE_CMD_BYTES;
+        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
         return pos;
     }
     
@@ -1650,7 +1653,8 @@ public class TrieParser implements Serializable {
 		
         data[pos++] = TYPE_VALUE_NUMERIC;
         data[pos++] = buildNumberBits((byte)type);
-        extractions[extractionCount++] = (byte)type;
+        extractions[activeExtractionCount++] = (byte)type;
+        maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
         return pos;
     }
  
@@ -1689,7 +1693,8 @@ public class TrieParser implements Serializable {
                           if (ESCAPE_CMD_BYTES == value) {
                               byte stop = sourcePos<sourceStop ? source[sourceMask & sourcePos++] : 0; //end of run if this is the end of the template pattern
                               pos = writeBytesExtract(pos, stop);
-                              
+    
+                            
                               //Recursion used to complete the rest of the run.
                               int remainingLength = runLeft-2;
                               if (remainingLength > 0) {
@@ -1702,6 +1707,8 @@ public class TrieParser implements Serializable {
                                   pos = writeRuns(pos, source, sourcePos, remainingLength, sourceMask);
                               }
                           }
+                          maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
+                          
                           return pos;
                       } else {
                           //add this value twice 

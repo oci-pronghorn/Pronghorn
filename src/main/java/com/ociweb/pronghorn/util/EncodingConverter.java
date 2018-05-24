@@ -8,10 +8,9 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class EncodingConverter {
 
 	private final int MAX_TEXT_LENGTH = 2048;
-	private final int MAX_CAPTURE_FIELDS = 32;
 	private final Pipe<RawDataSchema> workingPipeA = RawDataSchema.instance.newPipe(3,MAX_TEXT_LENGTH);
 	private final Pipe<RawDataSchema> workingPipeB = RawDataSchema.instance.newPipe(3,MAX_TEXT_LENGTH);
-	private final TrieParserReader templateParserReader = new TrieParserReader(MAX_CAPTURE_FIELDS, true);
+	private final TrieParserReader templateParserReader = new TrieParserReader(true);
 
 	public interface EncodingStorage {
 

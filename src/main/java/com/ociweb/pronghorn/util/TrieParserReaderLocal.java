@@ -6,8 +6,7 @@ public class TrieParserReaderLocal {
 	         new ThreadLocal<TrieParserReader>() {
 	             @Override protected TrieParserReader initialValue() {
 	                boolean alwaysCompletePayloads = true;
-					int maxCapturedFields = 63;
-					return new TrieParserReader(maxCapturedFields, alwaysCompletePayloads);
+					return new TrieParserReader(alwaysCompletePayloads);
 	         }
 	     };
 

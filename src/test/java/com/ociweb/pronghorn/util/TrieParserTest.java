@@ -108,7 +108,7 @@ public class TrieParserTest {
 	@Test
 	public void testCharSequenceQuery() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		CharSequence test = "hello";
 		CharSequence test1 = "1234";
@@ -138,7 +138,7 @@ public class TrieParserTest {
 	@Test
 	public void testCharSequenceNumberQuery() {
 
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 		CharSequence test = "hello";
 		CharSequence test1 = "1234";
@@ -173,7 +173,7 @@ public class TrieParserTest {
 	@Test // ******
 	// captured val: whatever is in wild card.
 	public void testwriteCapturedValuesToAppendable() throws IOException {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		// map.setValue(wrapping(dataBytesExtractStart,4), 0,
 		// dataBytesExtractStart.length, 15, value2);
@@ -205,7 +205,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testwriteCapturedValuesToDataOutput() throws IOException {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		// map.setValue(wrapping(dataBytesExtractStart,4), 0,
 		// dataBytesExtractStart.length, 15, value2);
@@ -250,7 +250,7 @@ public class TrieParserTest {
 
 		// test to cover unsigned decimal value.
 
-		reader = new TrieParserReader(3);
+		reader = new TrieParserReader();
 		map = new TrieParser(16);
 
 		map.setUTF8Value("%i%.", 33);
@@ -296,7 +296,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testcapturedFieldBytesAsUTF8Debug() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("%b1234", 33);
@@ -320,7 +320,7 @@ public class TrieParserTest {
 	@Test
 
 	public void testcapturedFieldSetValue() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b1234", 33);
@@ -340,7 +340,7 @@ public class TrieParserTest {
 	public void testcapturedFieldQuery() {
 		// *****method parses the capture text as a query against yet another
 		// trie
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		TrieParser map2 = new TrieParser(16);
 		map.setUTF8Value("%b1234", 33);
@@ -367,7 +367,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testcapturedFieldBytes() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b1234", 33);
@@ -409,7 +409,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testwriteCapturedShort() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%iabcd", 33);
@@ -446,7 +446,7 @@ public class TrieParserTest {
 		// should I be testing debugging methods? the sys.err? ask tom.
 
 		// in here we will test debug() and debugAsUTF8.
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b12", 33);
@@ -482,7 +482,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testdebugAsUTF8() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b12", 33);
@@ -499,7 +499,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testparseGather() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b12", 33);
@@ -543,7 +543,7 @@ public class TrieParserTest {
 	@Test
 	public void testparseSkip() {
 		// will test all parse skip(and parseskipone) methods.
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b123", 33);
@@ -562,7 +562,7 @@ public class TrieParserTest {
 		assertEquals(val, 33);
 		assertEquals(len, 2); // length of skip(same as parameter essentially.
 
-		reader = new TrieParserReader(3);
+		reader = new TrieParserReader();
 		TrieParserReader.parseSetup(reader, "12abcd123".getBytes(), 0, 9, 8);
 		boolean b = TrieParserReader.parseSkipUntil(reader, 51); // 51 is ascii
 																	// for 3.
@@ -578,7 +578,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testParseSetUpGrow() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b123", 33);
@@ -595,7 +595,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testparseCopy() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b12", 33);
@@ -640,7 +640,7 @@ public class TrieParserTest {
 	// figure out what this does
 	@Test
 	public void testsaveloadPositionMemo() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b", 33);
@@ -682,7 +682,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testblobQuery() throws IOException {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b12", 33);
@@ -730,7 +730,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testwriteCapturedUTF8() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("12%b1234", 33);
@@ -767,7 +767,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testwriteCapturedUTF8ToPipe() throws IOException {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		// map.setValue(wrapping(dataBytesExtractStart,4), 0,
 		// dataBytesExtractStart.length, 15, value2);
@@ -808,7 +808,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractMultiBytes() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
@@ -848,7 +848,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractMultiBytes2() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 
 		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
@@ -866,7 +866,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testQuotesWithExtractions() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 
 		map.setUTF8Value("\"%b\"", 1);
@@ -888,7 +888,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEnd() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, 7, value1); // 101,102,103
@@ -915,7 +915,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEnd2a() {
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, 7, value1);
@@ -947,7 +947,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEnd2b() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // 1 added
@@ -984,7 +984,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEndAll() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // added 101,102,103
@@ -1036,7 +1036,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEndStart() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000, false);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // 101,102,103 e,f,g
@@ -1097,7 +1097,7 @@ public class TrieParserTest {
 	 */
 	@Test
 	public void testExtractBytesEndMulti() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 
 		map.setValue(data1, 0, 3, 7, value1); // 101,102,103
@@ -1202,7 +1202,7 @@ public class TrieParserTest {
 	
 	@Test
 	public void testEmptyPatterns() {
-		TrieParserReader reader = new TrieParserReader(8, true);
+		TrieParserReader reader = new TrieParserReader(true);
 
 		TrieParser map = new TrieParser(16);
 
@@ -1227,7 +1227,7 @@ public class TrieParserTest {
 	public void testComplexNumericPattern() {
 
 		// NOTE: if stack is too short or complete is not set to true
-		TrieParserReader reader = new TrieParserReader(8, true);
+		TrieParserReader reader = new TrieParserReader(true);
 
 		TrieParser map = new TrieParser(16);
 
@@ -1350,7 +1350,7 @@ public class TrieParserTest {
 		// these two values are divided to produce the results
 		/////////////////
 
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("%i%/", value2);
@@ -1402,7 +1402,7 @@ public class TrieParserTest {
 		// These two values are added to produce the result
 		////////////////////
 
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 
 		map.setUTF8Value("%i%.", value2);
@@ -1464,7 +1464,7 @@ public class TrieParserTest {
 	@Test
 	public void testNonBranchInsert() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		map.setUTF8Value("Hello: %u\r", value2); // FYI, one should not see one
 													// of these in the wild
@@ -1485,7 +1485,7 @@ public class TrieParserTest {
 	@Test
 	public void testNumberAtEnd() {
 
-		TrieParserReader reader = new TrieParserReader(2, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 		map.setValue("unfollow/%u".getBytes(), 0, "unfollow/%u".length(), Integer.MAX_VALUE, value2);
 
@@ -1511,7 +1511,7 @@ public class TrieParserTest {
 	@Test
 	public void testSimpleURLPaths() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
 		map.setUTF8Value("/%b", value3);
@@ -1535,7 +1535,7 @@ public class TrieParserTest {
 		// if we have 2 gigs to run this test do so
 		if (Runtime.getRuntime().freeMemory() > (2L << 30)) {
 
-			TrieParserReader reader = new TrieParserReader(3);
+			TrieParserReader reader = new TrieParserReader();
 			TrieParser map = new TrieParser(16, false);
 			map.setUTF8Value("/unfollow?user=%u", value2);
 			map.setUTF8Value("/%b", value3);
@@ -1580,7 +1580,7 @@ public class TrieParserTest {
 	@Test
 	public void testNumericPatternMatchesPatternDef() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
 		map.setUTF8Value("/%b", value3);
@@ -1594,7 +1594,7 @@ public class TrieParserTest {
 	@Test
 	public void testNumericPatternMatchesAtEnd() {
 
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
 		map.setUTF8Value("/%b", value3);
@@ -1609,7 +1609,7 @@ public class TrieParserTest {
 	@Test
 	public void testNumericPatternMatchesAtEndNot() {
 
-		TrieParserReader reader = new TrieParserReader(3, false);
+		TrieParserReader reader = new TrieParserReader(false);
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
 		map.setUTF8Value("/%b", value3);
@@ -1624,7 +1624,7 @@ public class TrieParserTest {
 	@Test
 	public void testOrder1Insert() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("%bb\n", value2);
 		String a = map.toString();
@@ -1640,7 +1640,7 @@ public class TrieParserTest {
 	@Test
 	public void testOrder2Insert() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		map.setUTF8Value("ab\n", value3);
 		map.setUTF8Value("%bb\n", value2);
@@ -1651,7 +1651,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testMultipleTrysOfTrie() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 		map.setUTF8Value("tuesday", value2);
 		map.setUTF8Value("hello", "2", value3);
@@ -1694,7 +1694,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testUTF8Set() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 		map.setUTF8Value("helloworld", value1);
 		map.setUTF8Value("tuesday", value2);
@@ -1717,7 +1717,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testUTF8Set2() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000, false);
 		map.setUTF8Value("topic19", value1);
 		map.setUTF8Value("/testTopic/%b", value2);
@@ -1736,7 +1736,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesMiddle() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, Integer.MAX_VALUE, value1);
@@ -1770,7 +1770,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesBeginning() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(wrapping(data1, 3), 0, 3, 7, value1);
@@ -1827,7 +1827,7 @@ public class TrieParserTest {
 	@Test
 	public void testExtractMultipleParse() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		byte[] a = "StringA%b ".getBytes();
@@ -2083,7 +2083,7 @@ public class TrieParserTest {
 	@Test
 	public void testByteExtractExample() {
 
-		TrieParserReader reader = new TrieParserReader(10);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();
@@ -2295,7 +2295,7 @@ public class TrieParserTest {
 	public void testURLExtract() {
 
 		TrieParser trie = new TrieParser(1000, 1, true, true);
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 
 		trie.setUTF8Value("#", 1); // Ignores
 		trie.setUTF8Value(":", 1); // Ignores
@@ -2417,7 +2417,7 @@ public class TrieParserTest {
 	public void testCustomEscapeChar() {
 
 		TrieParser parser = new TrieParser(1000, 1, true, true, false, (byte) '"');
-		TrieParserReader reader = new TrieParserReader(4, true);
+		TrieParserReader reader = new TrieParserReader(true);
 
 		parser.setUTF8Value("#{\"b}", TrieParser.ESCAPE_CMD_SIGNED_INT); // %i
 		parser.setUTF8Value("#\"b/", TrieParser.ESCAPE_CMD_SIGNED_INT); // %i
@@ -2474,7 +2474,7 @@ public class TrieParserTest {
 	@Test
 	public void testPatternExtraction() {
 		TrieParser parser = new TrieParser(1000, 1, true, true);
-		TrieParserReader reader = new TrieParserReader(4, true);
+		TrieParserReader reader = new TrieParserReader(true);
 
 		parser.setUTF8Value("$%b/", TrieParser.ESCAPE_CMD_BYTES);
 		assertFalse(parser.toString(), parser.toString().contains("ERROR"));
@@ -2544,7 +2544,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testExtractBytesEnd_temp() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, 7, value1); // 101,102,103
@@ -2581,7 +2581,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitor() {
-		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16, false);
 
 		map.setValue(data1, 0, 3, 7, value2);
@@ -2615,7 +2615,7 @@ public class TrieParserTest {
 	 */
 	@Test
 	public void visitor_catalog_example() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data_catalog, 0, data_catalog.length, 7, value8);
@@ -2631,7 +2631,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractMultiBytes() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
@@ -2676,7 +2676,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesEnd() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, 7, value1); // 101,102,103
@@ -2707,7 +2707,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesEnd2b() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // 1 added
@@ -2753,7 +2753,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesEndAll() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // added 101,102,103
@@ -2847,7 +2847,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesEndStart() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000, false);
 
 		map.setValue(wrapping(data1, 4), 0, 3, 15, value1); // 101,102,103 e,f,g
@@ -2914,7 +2914,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesEndMulti() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);
 
 		map.setValue(data1, 0, 3, 7, value1); // 101,102,103
@@ -2948,7 +2948,7 @@ public class TrieParserTest {
 	@Test
 	public void testVisitorNonBranchInsert() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 		map.setUTF8Value("Hello: %u\r", value2); // FYI, one should not see one
 													// of these in the wild
@@ -2978,7 +2978,7 @@ public class TrieParserTest {
 	@Test
 	public void testVisitorNumberAtEnd() {
 
-		TrieParserReader reader = new TrieParserReader(2, true);
+		TrieParserReader reader = new TrieParserReader(true);
 		TrieParser map = new TrieParser(16);
 		map.setValue("unfollow/%u".getBytes(), 0, "unfollow/%u".length(), Integer.MAX_VALUE, value2);
 
@@ -3004,7 +3004,7 @@ public class TrieParserTest {
 	@Test
 	public void testVisitorSimpleURLPaths() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
@@ -3057,7 +3057,7 @@ public class TrieParserTest {
 	@Test
 	public void testVisitorNumericPatternMatchesPatternDef() {
 
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16, false);
 		map.setUTF8Value("/unfollow?user=%u", value2);
 		map.setUTF8Value("/%b", value3);
@@ -3128,7 +3128,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesMiddle() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, Integer.MAX_VALUE, value1);
@@ -3158,7 +3158,7 @@ public class TrieParserTest {
 
 	@Test
 	public void testVisitorExtractBytesBeginning() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(wrapping(data1, 3), 0, 3, 7, value1);
@@ -3570,7 +3570,7 @@ public class TrieParserTest {
 	@Test
 	public void testVisitorByteExtractExample() {
 
-		TrieParserReader reader = new TrieParserReader(10);
+		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
 
 		byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();

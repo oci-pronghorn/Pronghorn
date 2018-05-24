@@ -62,7 +62,7 @@ public class CharSequenceToUTF8 {
 	public void parseSetup(TrieParserReader trieParserReader) {
 		TrieParserReader.parseSetup(trieParserReader, 
 				backing, 0, length, 
-				Short.MAX_VALUE);
+				Integer.MAX_VALUE);
 	}
 	
 	public boolean isEquals(byte[] target) {

@@ -166,7 +166,7 @@ public class JSONStreamParser {
 	
     
 	public static TrieParserReader newReader() {
-		return new TrieParserReader(2);
+		return new TrieParserReader();
 	}
 
 

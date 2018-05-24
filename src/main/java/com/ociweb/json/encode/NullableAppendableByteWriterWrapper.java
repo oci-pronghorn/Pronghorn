@@ -28,7 +28,6 @@ public class NullableAppendableByteWriterWrapper implements AppendableByteWriter
 		} else {
 			wasNull = true;
 			needsQuote = false;
-			externalWriter.reset();
 		}
 		return this;
 	}

@@ -1,15 +1,14 @@
 package com.ociweb.pronghorn.util;
 
-public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWriter> {
-    private final StringBuilder builder = new StringBuilder();
+public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWriter>, CharSequence {
+    
+	private StringBuilder builder = new StringBuilder();
 
     public String toString() {
         return builder.toString();
     }
 
-    public void setLength(int length) {
-        builder.setLength(length);
-    }
+    
     
 	@Override
 	public void reset() {
@@ -48,5 +47,22 @@ public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWr
 	@Override
 	public void writeByte(int asciiChar) {
 		builder.append((char)asciiChar);
+	}
+
+	@Override
+	public int length() {
+		return builder.length();
+	}
+
+
+	@Override
+	public char charAt(int index) {
+		return builder.charAt(index);
+	}
+
+
+	@Override
+	public CharSequence subSequence(int start, int end) {
+		return builder.subSequence(start, end);
 	}
 }

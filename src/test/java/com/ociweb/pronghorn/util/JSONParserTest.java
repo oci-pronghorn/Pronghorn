@@ -100,7 +100,7 @@ public class JSONParserTest {
 		Pipe pipe = buildPopulatedPipe(json);
 			
 		
-		TrieParserReader reader = new TrieParserReader(2);
+		TrieParserReader reader = new TrieParserReader();
 		
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		TrieParserReader.parseSetup(reader,pipe); 
