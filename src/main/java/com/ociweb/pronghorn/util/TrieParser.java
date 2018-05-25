@@ -816,6 +816,11 @@ public class TrieParser implements Serializable {
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
  
+//    	System.out.print(value+"  ");
+//    	Appendables.appendUTF8(System.out, source, sourcePos, sourceLength, sourceMask);
+//    	System.out.println();
+    	
+    	
     	assert(isValidSize(value));
     	assert(sourceLength<=source.length);
     	assert((sourceMask&sourcePos)<=source.length);
