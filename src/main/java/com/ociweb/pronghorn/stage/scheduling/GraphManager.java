@@ -31,6 +31,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
@@ -1676,7 +1677,7 @@ public class GraphManager {
     private static final byte[] SUMMARY_CLOSE = "}".getBytes();
 
     
-    public static void writeAsSummary(GraphManager m, AppendableBuilder target,
+    public static void writeAsSummary(GraphManager m, AppendableByteWriter<?> target,
             						 int[] pipePercentileFullValues) {
 
     	int maxPctFull = 0;
@@ -1702,17 +1703,17 @@ public class GraphManager {
     	////////
     	////////
         
-		target.append(SUMMARY_MAXPIPEFILL);
+		target.write(SUMMARY_MAXPIPEFILL);
         Appendables.appendValue(target, maxPctFull);
-		target.append(SUMMARY_MAXCPUPCT);
+		target.write(SUMMARY_MAXCPUPCT);
         Appendables.appendDecimalValue(target, maxCPUPct, (byte)-3);
-		target.append(SUMMARY_CLOSE);
+		target.write(SUMMARY_CLOSE);
         
     }
     
     
 	public static void writeAsDOT(GraphManager m, String graphName, 
-			                      AppendableBuilder target, boolean isVertical,
+								  AppendableByteWriter<?> target, boolean isVertical,
 			                      int[] pipePercentileFullValues, 
 			                      long[] pipeTraffic, int[] msgPerSec) {
 					    	
@@ -1767,16 +1768,16 @@ public class GraphManager {
 	            	//////////////////
 	            	populateRanks(m, ranks, stage, stageId);
 
-	                target.append(AQUOTE);
+	                target.write(AQUOTE);
 	                target.append(stageId);
-	                target.append(LABEL_OPEN);
+	                target.write(LABEL_OPEN);
 	                
 	                byte[] stageDisplayName = m.stageDOTNames[stage.stageId];
 	                if (null!=stageDisplayName) {
-	                	target.append(stageDisplayName);	        
+	                	target.write(stageDisplayName);	        
 		        	} else {
 		        		stageDisplayName = buldStageDOTName(m, stage);
-		        		target.append(stageDisplayName);	           	           
+		        		target.write(stageDisplayName);	           	           
 		        	}
 	                               
 	                
@@ -1803,7 +1804,7 @@ public class GraphManager {
 	                		
 	                		
 	                		if (pct>=0) {
-	                			target.append(cpuValues[pct]);	                			
+	                			target.write(cpuValues[pct]);	                			
 	                		} else {
 	                			target.append(" Wrk:N/A%");
 	                			
@@ -1825,10 +1826,10 @@ public class GraphManager {
 
 	            	byte[] stageRate = m.stageDOTRate[stage.stageId];	            	
 	                if (null!=stageRate) {
-	                	target.append(stageRate);	                
+	                	target.write(stageRate);	                
 	                }
 	                
-	                target.append(AQUOTE);
+	                target.write(AQUOTE);
 
 					if (pct>=60000) {
                 		target.append(",color=red,penwidth=5");	    
@@ -1850,7 +1851,7 @@ public class GraphManager {
 	            	}
 	                /////////////////////////////////////
 	            	
-	                target.append(CLOSEBRACKET_NEWLINE);
+	                target.write(CLOSEBRACKET_NEWLINE);
 	                	                
 	            }
 	        }
@@ -1967,28 +1968,28 @@ public class GraphManager {
 		                	
 		                	
 		                	
-			                target.append(pipeIdBytes);
+			                target.write(pipeIdBytes);
 			                
-			                target.append(LABEL_OPEN);
+			                target.write(LABEL_OPEN);
 			                
 			                if (pipe.config().showLabels()) {
-				                target.append(m.pipeDOTSchemaNames[pipe.id]);
+				                target.write(m.pipeDOTSchemaNames[pipe.id]);
 				                		                
 				                if (null!=pipePercentileFullValues) {
 				                	target.append(" \n");
-				                	target.append(pipeFullValues[pipePercentileFullValues[pipe.id]]);
+				                	target.write(pipeFullValues[pipePercentileFullValues[pipe.id]]);
 				                	target.append(" ");
 				                }
 				              
 				                if (null!=pipeTraffic) {
 				                	appendVolume(target, pipeTraffic[pipe.id]);
 				                } 
-				                target.append(WHITE_SPACE_NL);
+				                target.write(WHITE_SPACE_NL);
 				               			                
 				                if (null!=msgPerSec) {
-				                	target.append(WHITE_SPACE);
+				                	target.write(WHITE_SPACE);
 				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_TPS);
-				                	target.append(WHITE_SPACE);
+				                	target.write(WHITE_SPACE);
 				                }
 				                	                    
 			                    
@@ -2000,7 +2001,7 @@ public class GraphManager {
 			                    target.append(pipeMemory);
 
 			                }
-		                    target.append(AQUOTE);
+		                    target.write(AQUOTE);
 
 						    int lineWidth = computeLineWidth(pipeTraffic, pipe);
 						    
@@ -2017,7 +2018,7 @@ public class GraphManager {
 						    Appendables.appendValue(target.append(",penwidth="),lineWidth);
 						    target.append(",fontcolor=white");
 
-						    target.append(CLOSEBRACKET_NEWLINE);
+						    target.write(CLOSEBRACKET_NEWLINE);
 		                    
 		                } 
 
@@ -2029,7 +2030,7 @@ public class GraphManager {
 		                		&& pipe.id == GraphManager.getInputPipe(m, consumer, 1).id
 		                		) {
 		                
-                				target.append(pipeIdBytes);
+                				target.write(pipeIdBytes);
 		                		
                 				final int width = GraphManager.getOutputPipeCount(m, producer);
                 				long sumPctFull = 0;
@@ -2070,7 +2071,7 @@ public class GraphManager {
 		                			&& pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
 		                		//show consolidated single line
 		                				                				
-                				target.append(pipeIdBytes);
+                				target.write(pipeIdBytes);
 		                		
                 				final int width = GraphManager.getInputPipeCount(m, consumer);
                 				long sumPctFull = 0;
@@ -2140,17 +2141,17 @@ public class GraphManager {
 		return allTheSame;
 	}
 
-	private static void writeAggregatedPipeLabel(AppendableBuilder target, int[] pipePercentileFullValues,
+	private static void writeAggregatedPipeLabel(AppendableByteWriter<?> target, int[] pipePercentileFullValues,
 			long[] pipeTraffic, int[] msgPerSec, final int width, long sumPctFull, long sumTraffic, long sumMsgPerSec,
 			int count) {
-		target.append(LABEL_OPEN);
+		target.write(LABEL_OPEN);
 		
 		Appendables.appendValue(target, count);
 		target.append(" Pipes\n");
 		
 		if (null!=pipePercentileFullValues) {		                	
 			int pctFull = (int)(sumPctFull/width);
-			target.append(pipeFullValues[pctFull]);
+			target.write(pipeFullValues[pctFull]);
 			target.append("\n");			
 		}
 		//right here.
@@ -2161,13 +2162,13 @@ public class GraphManager {
 		
 		if (null!=pipeTraffic) {
 			appendVolume(target, sumTraffic);
-			target.append(WHITE_SPACE_NL);
+			target.write(WHITE_SPACE_NL);
 		} 
 		if (null!=msgPerSec) {
 			fixedSpaceValue(target, sumMsgPerSec, LABEL_TPS);
 		}
 		
-		target.append(AQUOTE);
+		target.write(AQUOTE);
 		
 		int lineWidth = 10;
 		
@@ -2184,7 +2185,7 @@ public class GraphManager {
 		
 		Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		
-		target.append(CLOSEBRACKET_NEWLINE);
+		target.write(CLOSEBRACKET_NEWLINE);
 	}
 
 	private static boolean isSameDestination(GraphManager m, int producer, int a, int b) {
@@ -2209,7 +2210,7 @@ public class GraphManager {
 
 	}
 
-	private static void appendVolume(AppendableBuilder target, long traf) {
+	private static void appendVolume(AppendableByteWriter<?> target, long traf) {
 		if (traf>9999) {
 			Appendables.appendValue(target.append("Vol:"), traf);
 		} else {
@@ -2217,23 +2218,23 @@ public class GraphManager {
 		}
 	}
 
-	private static void fixedSpaceValue(AppendableBuilder target, long value, byte[] msgPerSeclabel) {
+	private static void fixedSpaceValue(AppendableByteWriter<?> target, long value, byte[] msgPerSeclabel) {
 		if (value<10_000) {
 			//use x.xxx places (5)
-			Appendables.appendDecimalValue(target, value, (byte)-3).append(msgPerSeclabel);			          
+			Appendables.appendDecimalValue(target, value, (byte)-3).write(msgPerSeclabel);			          
 		} else {		
 			if (value<100_000) {
 				//use xx.xx places (5)
-				Appendables.appendDecimalValue(target, value/10, (byte)-2).append(msgPerSeclabel);			          
+				Appendables.appendDecimalValue(target, value/10, (byte)-2).write(msgPerSeclabel);			          
 			} else {
 				if (value<1000_000) {
 		    		//use xxx.x places (5)
-		    		Appendables.appendDecimalValue(target, value/100, (byte)-1).append(msgPerSeclabel);			          
+		    		Appendables.appendDecimalValue(target, value/100, (byte)-1).write(msgPerSeclabel);			          
 		    	} else {
 		    		if (value<100_000_000) {
-		    			Appendables.appendFixedDecimalDigits(target, value/1000, 10_000).append(msgPerSeclabel);
+		    			Appendables.appendFixedDecimalDigits(target, value/1000, 10_000).write(msgPerSeclabel);
 		    		} else {
-		    			Appendables.appendValue(target, value/1000).append(msgPerSeclabel);
+		    			Appendables.appendValue(target, value/1000).write(msgPerSeclabel);
 		    		}
 		    	}
 			}
@@ -2247,21 +2248,21 @@ public class GraphManager {
 				&& !stageForMonitorData(m,stage);
 	}
 
-	private static void writeElapsed(AppendableBuilder target, long atPct) {
-		target.append(ELAP);
+	private static void writeElapsed(AppendableByteWriter<?> target, long atPct) {
+		target.write(ELAP);
 		
-		if (atPct<2_000) {
-			Appendables.appendFixedDecimalDigits(target, atPct, 1000).append(NS);
-		} else if (atPct<2_000_000){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000, 1000).append(MICROS,2);
-		} else if (atPct<2_000_000_000){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000, 1000).append(MS);				
+		if (atPct<7_000) {
+			Appendables.appendFixedDecimalDigits(target, atPct, 1000).write(NS);
+		} else if (atPct<7_000_000){
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000, 1000).write(MICROS);
+		} else if (atPct<7_000_000_000L){
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000, 1000).write(MS);				
 		} else if (atPct<90_000_000_000L){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000_000L, 100).append(SEC);
+			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000_000L, 100).write(SEC);
 		} else if (atPct<(120L*60_000_000_000L)){
-			Appendables.appendFixedDecimalDigits(target, atPct/60_000_000_000L, 100).append(MIN);
+			Appendables.appendFixedDecimalDigits(target, atPct/60_000_000_000L, 100).write(MIN);
 		} else {
-			Appendables.appendValue(target, atPct/(60L*60_000_000_000L)).append(HR);
+			Appendables.appendValue(target, atPct/(60L*60_000_000_000L)).write(HR);
 		}
 	
 	}

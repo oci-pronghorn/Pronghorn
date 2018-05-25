@@ -143,6 +143,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
         serverPipesConfig.pcm.addConfig(NetGraphBuilder.buildRoutertoModulePipeConfig(this, serverPipesConfig));
         serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig());
         
+        //TODO: this is a test to fix the output... NOTE: how to set this??
+        serverPipesConfig.pcm.addConfig(NetPayloadSchema.instance.newPipeConfig(8,1<<19));
+        
 		pcm = serverPipesConfig.pcm;
         
     }

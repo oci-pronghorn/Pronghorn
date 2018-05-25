@@ -720,20 +720,34 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 //if we have a log pipe then log these events
 				 Pipe<HTTPLogResponseSchema> outLog = log;
 				 if (null!=outLog) {
-					 Pipe.presumeRoomForWrite(outLog);
-					 
-					 int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
-					 Pipe.addLongValue(now, outLog);
-					 Pipe.addLongValue(channelId, outLog);
-					 Pipe.addIntValue(expSeq, outLog);
+					 //the log max var len may not be large enough for the entire payload
+					 //so this may need to write multiple messages to capture all the data.
 					 
 					 DataOutputBlobWriter<?> logStr = Pipe.openOutputStream(outLog);				 
 					 Pipe.outputStream(output).replicate(logStr);
-					 DataOutputBlobWriter.closeLowLevelField(logStr);
+					 outLog.closeBlobFieldWrite();
 					 
-					 Pipe.addLongValue(businessDuration, outLog);
-					 Pipe.confirmLowLevelWrite(outLog, size);
-					 Pipe.publishWrites(outLog);
+					 int writeLength = logStr.length();
+					 int startPos = Pipe.getWorkingBlobHeadPosition(outLog);
+					 do {
+						 //we do not know how many will be needed so we use presume to block as needed.
+						 Pipe.presumeRoomForWrite(outLog);
+						 
+						 int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
+						 Pipe.addLongValue(now, outLog);
+						 Pipe.addLongValue(channelId, outLog);
+						 Pipe.addIntValue(expSeq, outLog);
+						 
+						 int blockLen = Math.min(writeLength, outLog.maxVarLen);
+						 Pipe.addBytePosAndLenSpecial(outLog, startPos, blockLen);
+						 startPos += blockLen;
+						 writeLength -= blockLen;
+						 
+						 Pipe.addLongValue(businessDuration, outLog);
+						 Pipe.confirmLowLevelWrite(outLog, size);
+						 Pipe.publishWrites(outLog);
+					 } while (writeLength>0);
+					 
 				 }
 			 }			 
 			 

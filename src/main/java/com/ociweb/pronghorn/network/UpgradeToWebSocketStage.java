@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.http.AbstractRestStage;
+import com.ociweb.pronghorn.network.http.HTTPResponseStatusCodes;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
@@ -18,7 +18,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 public class UpgradeToWebSocketStage extends PronghornStage {
 
@@ -303,28 +302,28 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 										
 							//line one
 							writer.write(HTTPRevisionDefaults.HTTP_1_1.getBytes());
-							writer.write(AbstractRestStage.Switching_Protocols_101);          
+							writer.write(HTTPResponseStatusCodes.codes[101]);          
 				       
 							writer.write(HTTPHeaderDefaults.UPGRADE.rootBytes());
 							writer.write(WS_WEBSOCKET);
-							writer.write(AbstractRestStage.RETURN_NEWLINE);
+							writer.write(HTTPUtil.RETURN_NEWLINE);
 							
 							writer.write(HTTPHeaderDefaults.CONNECTION.rootBytes());
 							writer.write(WS_UPGRADE);
-							writer.write(AbstractRestStage.RETURN_NEWLINE);
+							writer.write(HTTPUtil.RETURN_NEWLINE);
 							
 							
 							if (acceptLength>=0) {
 								writer.write(HTTPHeaderDefaults.SEC_WEBSOCKET_ACCEPT.rootBytes());
 								writer.write(acceptBacking, acceptPosition, acceptLength, acceptMask);
-								writer.write(AbstractRestStage.RETURN_NEWLINE);
+								writer.write(HTTPUtil.RETURN_NEWLINE);
 							}
 							
 							
 							if (protocolLength>=0) {
 								writer.write(HTTPHeaderDefaults.SEC_WEBSOCKET_PROTOCOL.rootBytes());
 								writer.write(protocolBacking, protocolPosition, protocolLength, protocolMask);
-								writer.write(AbstractRestStage.RETURN_NEWLINE);
+								writer.write(HTTPUtil.RETURN_NEWLINE);
 							}
 							
 							
@@ -333,7 +332,7 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 							//			        Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 							//			        Sec-WebSocket-Protocol: chat
 							
-							writer.write(AbstractRestStage.RETURN_NEWLINE);
+							writer.write(HTTPUtil.RETURN_NEWLINE);
 							
 							writer.closeLowLevelField();          
 							

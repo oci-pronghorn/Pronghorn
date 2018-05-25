@@ -117,8 +117,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	}
 	
 	@Override
-	public void run() {		
-		
+	public void run() {
 		processAvailData(this);
 	}
 
@@ -212,6 +211,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		}
 		
 		ss.totalFragmentsCopy = ss.totalWrittenFragments-oldFragments;
+		
 	}
 
 	
@@ -225,12 +225,12 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		int c = 0;
 		int[] working = ss.working;
 		int limit = ss.workingPos;
+		
 		for(int j=0; j<limit; j++) {
 			
-			final int w = working[j];
-			if (Pipe.hasRoomForWrite(ss.targets[w], totalPrimaryCopy)) {
-				Pipe<S> target = ss.targets[w];
-				
+			Pipe<S> target = ss.targets[working[j]];
+			if (Pipe.hasRoomForWrite(target, totalPrimaryCopy)) {
+
 				Pipe.confirmLowLevelWriteUnchecked(target, totalPrimaryCopy);	
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, target);				
 				Pipe.sumWrittenFragments(target, ss.totalFragmentsCopy);
@@ -238,7 +238,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 				Pipe.notifyPubListener(target);					
 		
 			} else {
-				working[c++] = w;
+				working[c++] = working[j];
 			}
 		}
 		ss.workingPos = c;

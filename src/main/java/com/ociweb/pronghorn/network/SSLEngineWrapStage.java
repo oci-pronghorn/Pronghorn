@@ -50,6 +50,12 @@ public class SSLEngineWrapStage extends PronghornStage {
 			
 			int bufferSize = Math.max(encLen,plnLen);
 			if (bufferSize<min) {
+				if (encLen<min) {
+					encryptedContent[c].creationStack();
+				}
+				if (plnLen<min) {
+					plainContent[c].creationStack();
+				}
 				throw new UnsupportedOperationException("ERROR: buffer size must be larger than "+min+" but found Enc:"+encLen+" Pln:"+plnLen);
 			}
 		}		

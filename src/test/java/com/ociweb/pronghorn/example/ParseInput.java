@@ -26,7 +26,7 @@ public class ParseInput extends PronghornStage {
 
 	@Override
 	public void startup() {
-		reader = new TrieParserReader(5);
+		reader = new TrieParserReader();
 		parser = new TrieParser(200,4,false,true);
 		parser.setUTF8Value("%b\r\n", 1);
 		parser.setUTF8Value("OUT%bBusinessLatency:%i µs\r\n", 1000);

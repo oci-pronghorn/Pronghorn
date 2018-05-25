@@ -326,7 +326,7 @@ public class FieldExtractionDefinitions {
 	public <A extends Appendable> A appendDefaultText(int id, A target) {
 		
 		if (target instanceof AppendableBuilder) {//TODO: revist this may now be an interface.
-			((AppendableBuilder)target).append(defaultBytes[DEFAULT_VALUE_FLAG_MASK&id]);
+			((AppendableBuilder)target).write(defaultBytes[DEFAULT_VALUE_FLAG_MASK&id]);
 			return target;
 		}
 		

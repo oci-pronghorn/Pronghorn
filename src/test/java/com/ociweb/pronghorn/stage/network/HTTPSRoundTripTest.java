@@ -69,8 +69,8 @@ public class HTTPSRoundTripTest {
 														fieldPath, 
 														fieldHeaders);
 			
-		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
-								clientRequestCount, clientRequestSize, tlsCertificates);
+		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+		 clientRequestCount, clientRequestSize, tlsCertificates);
     	
 		
 		String pathRoot = buildStaticFileFolderPath(testFile);
@@ -150,8 +150,8 @@ public class HTTPSRoundTripTest {
 														fieldPath, 
 														fieldHeaders);
 			
-		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
-								clientRequestCount, clientRequestSize, tlsCertificates);
+		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+		 clientRequestCount, clientRequestSize, tlsCertificates);
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
     	
@@ -229,8 +229,8 @@ public class HTTPSRoundTripTest {
 														fieldPath, 
 														fieldHeaders);
 			
-		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
-								clientRequestCount, clientRequestSize, tlsCertificates);
+		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+		 clientRequestCount, clientRequestSize, tlsCertificates);
     	
 		String pathRoot = buildStaticFileFolderPath(testFile);
 		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);

@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+
 public class DummyRestStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputPipes;

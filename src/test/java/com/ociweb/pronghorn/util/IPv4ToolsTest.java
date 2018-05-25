@@ -15,7 +15,7 @@ public class IPv4ToolsTest {
 	@Test
 	public void matchTest() {
 		
-		TrieParserReader reader = new TrieParserReader(4,true);
+		TrieParserReader reader = new TrieParserReader(true);
 		
 		assertEquals(4, reader.query(IPv4Tools.addressParser, "1.2.3.4"));
 		assertEquals(3, reader.query(IPv4Tools.addressParser, "5.6.7.*"));

@@ -54,7 +54,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 			throw new UnsupportedOperationException("invalid port "+bindPort);
 		}
 
-		this.pcm = pcm;
+		this.pcm = pcm;			
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
 
@@ -223,16 +223,6 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 						getMaxRequestSize()));
 				
 		pcm.addConfig(ServerResponseSchema.instance.newPipeConfig(4, 512));
-		
-	
-		
-//		final PipeConfig<HTTPRequestSchema> routerToModuleConfig = 
-//				NetGraphBuilder.buildRoutertoModulePipeConfig(
-//						serverCoord, 
-//						serverPipesConfig);
-		
-		
-	
 		
 		return new ServerPipesConfig(
 				logFile,

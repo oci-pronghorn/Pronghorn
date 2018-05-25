@@ -59,11 +59,16 @@ public class NetGraphBuilder {
 	
 	private static final Logger logger = LoggerFactory.getLogger(NetGraphBuilder.class);	
 	
-	public static void buildHTTPClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue,
-			final Pipe<NetPayloadSchema>[] requests, final Pipe<NetResponseSchema>[] responses,
+	/**
+	 * This method is only for GreenLighting deep integration and should not be used
+	 * unless you want to take responsibility for the handshake activity
+	 */
+	public static void buildHTTPClientGraph(GraphManager gm, 
+			ClientCoordinator ccm, int responseQueue,
+			final Pipe<NetPayloadSchema>[] requests, 
+			final Pipe<NetResponseSchema>[] responses,
 			int netResponseCount,
 			int releaseCount, 
-			int writeBufferMultiplier, 
 			int responseUnwrapCount, 
 			int clientWrapperCount,
 			int clientWriters) {
@@ -84,10 +89,15 @@ public class NetGraphBuilder {
 				             releaseCount, netResponseCount, factory);
 	}
 	
-	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, int responseQueue, Pipe<NetPayloadSchema>[] requests,
-										final int responseUnwrapCount, int clientWrapperCount, int clientWriters,
+	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, 
+										int responseQueue,
+										Pipe<NetPayloadSchema>[] requests,
+										final int responseUnwrapCount,
+										int clientWrapperCount,
+										int clientWriters,
 										int releaseCount, 
-										int netResponseCount, ClientResponseParserFactory parserFactory
+										int netResponseCount, 
+										ClientResponseParserFactory parserFactory
 										) {
 	
 		int maxPartialResponses = ccm.resposePoolSize();
@@ -506,7 +516,8 @@ public class NetGraphBuilder {
 			ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] handshakeIncomingGroup) {
 
 		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[
-		                       coordinator.serverResponseWrapUnitsAndOutputs * coordinator.serverPipesPerOutputEngine];
+		                       coordinator.serverResponseWrapUnitsAndOutputs 
+		                       * coordinator.serverPipesPerOutputEngine];
 
 		Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, 
 				                                                       handshakeIncomingGroup,
@@ -530,7 +541,7 @@ public class NetGraphBuilder {
 		int y = coordinator.serverPipesPerOutputEngine;
 		int z = coordinator.serverResponseWrapUnitsAndOutputs;
 		Pipe<NetPayloadSchema>[] toWiterPipes = null;
-		PipeConfig<NetPayloadSchema> fromOrderedConfig= coordinator.pcm.getConfig(NetPayloadSchema.class);
+		PipeConfig<NetPayloadSchema> fromOrderedConfig = coordinator.pcm.getConfig(NetPayloadSchema.class);
 		
 		if (coordinator.isTLS) {
 		    
@@ -700,7 +711,7 @@ public class NetGraphBuilder {
 	public static String bindHost(String bindHost) {
 		
 		
-		TrieParserReader reader = new TrieParserReader(4,true);
+		TrieParserReader reader = new TrieParserReader(true);
 		int token =  null==bindHost?-1:(int)reader.query(IPv4Tools.addressParser, bindHost);
 		
 		if ((null==bindHost || token>=0) && token<4) {
@@ -1055,18 +1066,10 @@ public class NetGraphBuilder {
 		int clientRequestSize = 1<<15;
 		final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
 
-		buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
-								clientRequestCount, clientRequestSize, tlsCertificates);
+		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+		 clientRequestCount, clientRequestSize, tlsCertificates);
 				
 	}
-
-	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
-			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
-			int connectionsInBits, int clientRequestCount, int clientRequestSize, TLSCertificates tlsCertificates) {
-		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
-							 clientRequestCount, clientRequestSize, tlsCertificates);
-	}
-	
 
 	public static void buildSimpleClientGraph(GraphManager gm, ClientCoordinator ccm,
 											  ClientResponseParserFactory factory, 
@@ -1083,6 +1086,17 @@ public class NetGraphBuilder {
 				         releaseCount, netResponseCount, factory);
 	}
 	
+	/**
+	 * This is the method you want for making HTTP calls from the client side
+	 * @param gm
+	 * @param httpResponsePipe
+	 * @param requestsPipe
+	 * @param maxPartialResponses
+	 * @param connectionsInBits
+	 * @param clientRequestCount
+	 * @param clientRequestSize
+	 * @param tlsCertificates
+	 */
 	public static void buildHTTPClientGraph(GraphManager gm, 
 			final Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] requestsPipe,
 			int maxPartialResponses, int connectionsInBits, int clientRequestCount, int clientRequestSize,

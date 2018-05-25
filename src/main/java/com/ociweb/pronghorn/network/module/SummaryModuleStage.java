@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.network.module;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -13,13 +12,13 @@ import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.AppendableBuilder;
+import com.ociweb.pronghorn.util.AppendableByteWriter;
 
-public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
+public class SummaryModuleStage<T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
 								H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
@@ -37,24 +36,31 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
     }
 	
     private final PipeMonitorCollectorStage monitor;
-    
+	
 	private SummaryModuleStage(GraphManager graphManager, 
 			Pipe<HTTPRequestSchema>[] inputs, 
 			Pipe<ServerResponseSchema>[] outputs, 
 			HTTPSpecification httpSpec, PipeMonitorCollectorStage monitor) {
-		super(graphManager, inputs, outputs, httpSpec);
+		super(graphManager, inputs, outputs, httpSpec, estimate(graphManager));
 		this.monitor = monitor;
 		
 		if (inputs.length>1) {
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		}
-        GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+       
+	}
+	
+	private static int estimate(GraphManager graphManager) {
+		return 1000;
+		//return (300*GraphManager.countStages(graphManager))+
+		//       (400*GraphManager.allPipes(graphManager).length);
+
 	}
 	
 	@Override
-	protected byte[] payload(AppendableBuilder payload, 
+	protected boolean payload(AppendableByteWriter<?> payload, 
 			                 GraphManager gm, 
-			                 DataInputBlobReader<HTTPRequestSchema> params,
+			                 ChannelReader params,
 			                 HTTPVerbDefaults verb) {
 	
 		//logger.info("begin building requested graph");
@@ -62,12 +68,12 @@ public class SummaryModuleStage<   T extends Enum<T> & HTTPContentType,
 		monitor.writeAsSummary(gm, payload);
 		
 		//logger.info("finished requested dot");
-		return null; //never cache this so we return null.
+		return true;
 	}
 	
 	@Override
-	protected byte[] contentType() {
-		return HTTPContentTypeDefaults.DOT.getBytes();
+	public HTTPContentType contentType() {
+		return HTTPContentTypeDefaults.DOT;
 	}
 
 }
