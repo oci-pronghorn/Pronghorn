@@ -24,6 +24,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
+/**
+ * Stage that acts as a client for sockets
+ */
 public class ClientSocketReaderStage extends PronghornStage {	
 	
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
@@ -39,7 +42,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final static int KNOWN_BLOCK_ENDING = -1;
 	private int iteration;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param coordinator
+	 * @param parseAck _in_ The parse acknowledgment input pipes
+	 * @param output _out_ Writes payload to multiple output pipes
+	 */
 	public ClientSocketReaderStage(GraphManager graphManager,
 			                       ClientCoordinator coordinator, 
 			                       Pipe<ReleaseSchema>[] parseAck, 

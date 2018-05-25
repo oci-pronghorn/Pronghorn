@@ -172,7 +172,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	    
 		DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.openOutputStream(output);
 
-		payloadWorkspace.clear();
+		payloadWorkspace.reset();
 		byte[] etagBytes = payload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
         
         activeOutput = output;

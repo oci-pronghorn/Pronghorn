@@ -6,6 +6,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ *
+ * @param <T>
+ */
 public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private final int limit;

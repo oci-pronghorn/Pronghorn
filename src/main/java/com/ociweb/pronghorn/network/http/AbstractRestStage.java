@@ -16,6 +16,13 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * Represents an abstract REST stage. Extend this to build a REST responder.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ */
 public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                          R extends Enum<R> & HTTPRevision,
                                          V extends Enum<V> & HTTPVerb,

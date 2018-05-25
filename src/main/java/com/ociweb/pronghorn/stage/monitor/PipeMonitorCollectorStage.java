@@ -12,7 +12,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
-
+/**
+ * Listens to all the pipe monitoring data and collects them into a single list. This is needed for the telemetry.
+ */
 public class PipeMonitorCollectorStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);

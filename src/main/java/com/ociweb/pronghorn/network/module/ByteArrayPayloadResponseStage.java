@@ -22,6 +22,13 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
+/**
+ * Abstract stage that can be extended for dealing with byte payloads.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ */
 public abstract class ByteArrayPayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
@@ -42,7 +49,14 @@ public abstract class ByteArrayPayloadResponseStage <
 	protected int status = 200;
 	
 	private int maximumAllocation = 1<<27; //128M largest file, should expose this
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes with HTTPRequestSchema
+	 * @param outputs _out_ Output pipes as several ServerResponseSchema
+	 * @param httpSpec
+	 */
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 			 HTTPSpecification<T, R, V, H> httpSpec) {
@@ -58,7 +72,15 @@ public abstract class ByteArrayPayloadResponseStage <
 			this.supportsBatchedRelease = false;
 			
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes with HTTPRequestSchema
+	 * @param outputs _out_ Output pipes as several ServerResponseSchema
+	 * @param httpSpec
+	 * @param otherInputs _in_ Multiple other input pipes to respond to
+	 */
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 							 HTTPSpecification<T, R, V, H> httpSpec, Pipe[] otherInputs) {

@@ -5,6 +5,10 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Takes an array of bytes and writes them to the output pipe once.
+ * Useful for testing RawDataSchema
+ */
 public class ByteArrayProducerStage extends PronghornStage{
 
     private final byte[] rawData;
@@ -15,11 +19,24 @@ public class ByteArrayProducerStage extends PronghornStage{
     private final int chunkSize;
     private final Pipe<RawDataSchema> output;
     private boolean shutdownInProgress;
-    
+
+    /**
+     *
+     * @param gm
+     * @param rawData
+     * @param output _out_ The pipe onto which the rawData byte array will be written to
+     */
     public ByteArrayProducerStage(GraphManager gm, byte[] rawData, Pipe<RawDataSchema> output) {
         this(gm, rawData, null, output);
     }
-    
+
+    /**
+     *
+     * @param gm
+     * @param rawData
+     * @param optionalChunkSizes
+     * @param output _out_ The pipe onto which the rawData byte array will be written to
+     */
     public ByteArrayProducerStage(GraphManager gm, byte[] rawData, int[] optionalChunkSizes, Pipe<RawDataSchema> output) {
         super(gm, NONE, output);
         this.rawData = rawData;
