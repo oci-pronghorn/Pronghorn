@@ -28,6 +28,7 @@ public final class StructuredReader {
 		this.channelReader = reader;		
 	}
 
+
 	public <T> void visit(Class<T> attachedInstanceOf, StructFieldVisitor<T> visitor) {		
 		Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).visit(channelReader, attachedInstanceOf, visitor);
 	}
@@ -77,6 +78,12 @@ public final class StructuredReader {
 	
 	public boolean hasValue(long fieldId) {
 		return channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId)>0;
+	}
+	
+	public final ChannelReader readPayload() {
+		DataInputBlobReader.position(channelReader, 
+				                     DataInputBlobReader.readFromLastInt(channelReader, StructuredReader.PAYLOAD_INDEX_LOCATION));
+		return channelReader;
 	}
 	
 	//set to a position for general reading

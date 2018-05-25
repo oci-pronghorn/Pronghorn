@@ -931,7 +931,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public StructuredReader structured() {
 		return structuredReader;
 	}
-	
+
 	public static short peekShort(DataInputBlobReader<?> channelReader) {
         return (short)((       channelReader.backing[channelReader.byteMask & channelReader.position] << 8) |
         		       (0xFF & channelReader.backing[channelReader.byteMask & channelReader.position])); 
