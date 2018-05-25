@@ -3,6 +3,7 @@ package com.ociweb;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -13,18 +14,24 @@ public class RequestToBackEnd extends PronghornStage {
 	private final Pipe<HTTPRequestSchema>[] inputPipes;
 	private final Pipe<ConnectionData>[] connectionId;
 	private final Pipe<ClientHTTPRequestSchema>[] clientRequests;
+	private final String targetHost;
+	private final int targetPort;
 	
 	public static RequestToBackEnd newInstance(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
-			Pipe<ClientHTTPRequestSchema>[] clientRequests) {
-		return new RequestToBackEnd(graphManager, inputPipes, connectionId, clientRequests);
+			Pipe<ClientHTTPRequestSchema>[] clientRequests,
+			String targetHost, int targetPort) {
+		return new RequestToBackEnd(graphManager, inputPipes, 
+				                    connectionId, clientRequests, 
+				                    targetHost, targetPort);
 	}	
 	
 	public RequestToBackEnd(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
-			Pipe<ClientHTTPRequestSchema>[] clientRequests) {
+			Pipe<ClientHTTPRequestSchema>[] clientRequests,
+			String targetHost, int targetPort) {
 		
 		super(graphManager, inputPipes, join(clientRequests,connectionId));
 		this.inputPipes = inputPipes;
@@ -32,7 +39,8 @@ public class RequestToBackEnd extends PronghornStage {
 		this.clientRequests = clientRequests;
 		assert(inputPipes.length == connectionId.length);
 		assert(inputPipes.length == clientRequests.length);
-		
+		this.targetHost = targetHost;
+		this.targetPort = targetPort;
 	}
 
 	@Override
@@ -58,40 +66,52 @@ public class RequestToBackEnd extends PronghornStage {
 		
 			int requestIdx = Pipe.takeMsgIdx(sourceRequest);
 
-			long connectionId = Pipe.takeLong(sourceRequest);
-			int sequenceNo = Pipe.takeInt(sourceRequest);
-			
-			ConnectionData.publishConnectionData(targetConnectionData, 
-												connectionId, sequenceNo);
-			
+			final long connectionId = Pipe.takeLong(sourceRequest);
+			final int sequenceNo = Pipe.takeInt(sourceRequest);
+						
 			int verb       = Pipe.takeInt(sourceRequest);
 			
 			DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(sourceRequest);
+		
+			int fieldDestination = 0; //pipe index for the response
+			int fieldSession = 0; //value for us to know which this belongs
+			
+			assert(fieldDestination>=0);
+						
+			int size = Pipe.addMsgIdx(targetClientRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+			
+			Pipe.addIntValue(fieldDestination, targetClientRequest);
+			Pipe.addIntValue(fieldSession, targetClientRequest);
+			Pipe.addIntValue(targetPort, targetClientRequest);
+			Pipe.addUTF8(targetHost, targetClientRequest);
+			
 			StructuredReader reader = inputStream.structured();
 			
+			DataOutputBlobWriter<ClientHTTPRequestSchema> outputStream = Pipe.openOutputStream(targetClientRequest);			
+			reader.readText(WebFields.proxyGet, outputStream);
+			DataOutputBlobWriter.closeLowLevelField(outputStream);
+						
+			Pipe.addUTF8(null, targetClientRequest); //no headers
 			
-//			ClientHTTPRequestSchema.publishHTTPGet(output, 
-//					fieldDestination, fieldSession, 
-//					fieldPort, fieldHost, 
-//					fieldPath, fieldHeaders);
-	
-			
+			Pipe.confirmLowLevelWrite(targetClientRequest, size);
+			Pipe.publishWrites(targetClientRequest);
 			
 			int revision   = Pipe.takeInt(sourceRequest);
-			int context    = Pipe.takeInt(sourceRequest);
+			final int context    = Pipe.takeInt(sourceRequest);
+			
+			//TODO: in the future this will be held by the connection so this part will not be needed
+			//      also upon disconnection it will be auto disposed...
+			int size2 = Pipe.addMsgIdx(targetConnectionData, ConnectionData.MSG_CONNECTIONDATA_1);
+			Pipe.addLongValue(connectionId, targetConnectionData);
+			Pipe.addIntValue(sequenceNo, targetConnectionData);
+			Pipe.addIntValue(context, targetConnectionData);
+			Pipe.confirmLowLevelWrite(targetConnectionData, size2);
+			Pipe.publishWrites(targetConnectionData);
 			
 			Pipe.confirmLowLevelRead(sourceRequest, Pipe.sizeOf(sourceRequest, requestIdx));
 			Pipe.releaseReadLock(sourceRequest);
-					
-			
+								
 		}
-		
-		
 	}
-
-
-
-
-
-};
+}
 

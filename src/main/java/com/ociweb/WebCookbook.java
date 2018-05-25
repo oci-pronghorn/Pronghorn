@@ -31,7 +31,9 @@ import com.ociweb.pronghorn.util.MainArgs;
 
 public class WebCookbook  {
 
-
+	private static String boundHost;
+	private static int boundPort;
+	
 	public static void main(String[] args) {
 		
 		
@@ -54,9 +56,13 @@ public class WebCookbook  {
 		serverConfig.setDecryptionUnitsPerTrack(2);
 		serverConfig.setConcurrentChannelsPerDecryptUnit(8);
 		serverConfig.setEncryptionUnitsPerTrack(2);
+		serverConfig.setMaxResponseSize(1<<14);
+		serverConfig.logTraffic();
+		
+		
 		serverConfig.useInsecureServer();//TODO: turn this off later...
 		
-		serverConfig.logTraffic(false);//we are sending back images so do not log the responses.
+
 		
 		NetGraphBuilder.buildServerGraph(gm, serverConfig.buildServerCoordinator(), new ServerFactory() {
 		
@@ -72,6 +78,11 @@ public class WebCookbook  {
 			}
 		});
 		
+		//must not be called before we buildServerCoordinator
+		//we are keeping these values for the proxy example
+		boundHost = serverConfig.bindHost();
+		boundPort = serverConfig.bindPort();
+			
 	}
 
 	private static ModuleConfig buildModules(String filesPath) {
@@ -95,9 +106,8 @@ public class WebCookbook  {
 						{
 						//if we like we can create one module for each input pipe or as we do here
 					    //create one module to consume all the pipes and produce results.
-						int maximumLenghOfVariableLengthFields = 1<<16;//TODO: max file size based on files??
 						Pipe<ServerResponseSchema>[] response = Pipe.buildPipes(inputPipes.length, 
-								 ServerResponseSchema.instance.newPipeConfig(2, maximumLenghOfVariableLengthFields));
+								 ServerResponseSchema.instance.newPipeConfig(2, 1<<14));
 								
 						ResourceModuleStage.newInstance(graphManager, 
 								inputPipes, 
@@ -194,9 +204,12 @@ public class WebCookbook  {
 						int maxPartialResponses = 4;					
 						int clientRequestCount=5; 
 						int clientRequestSize=200;
-																		
-						RequestToBackEnd.newInstance(graphManager, inputPipes, connectionData, clientRequests);
-
+											
+						
+						RequestToBackEnd.newInstance(graphManager, inputPipes, 
+												     connectionData, clientRequests, 
+												     boundHost, boundPort);
+						
 						NetGraphBuilder.buildHTTPClientGraph(graphManager, 
 															clientResponses,
 															clientRequests,
@@ -208,7 +221,8 @@ public class WebCookbook  {
 						ResponseFromBackEnd.newInstance(graphManager, clientResponses, connectionData, responses);
 								
 						routerConfig.registerCompositeRoute()
-				            .path("/rest/myCall?${argsVal}") //multiple paths can be added here
+				            .path("/proxy/?${myCall}") //multiple paths can be added here
+				            .associatedObject("myCall", WebFields.proxyGet)
 				            .routeId();
 						
 						return responses;
@@ -216,31 +230,28 @@ public class WebCookbook  {
 					case 4:
 						{
 							
-						final int blockers = inputPipes.length;
-						
 						Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(inputPipes.length, 
 								 ServerResponseSchema.instance.newPipeConfig(2, 1<<9));
 						
 						long timeoutNS = 10_000_000_000L;//10sec
-						
-								
-						for(int i = 0; i<blockers; i++) {
+														
+						for(int i = 0; i<inputPipes.length; i++) {
 							//one blocking stage for each of the tracks
 							new BlockingSupportStage<HTTPRequestSchema,ServerResponseSchema,ServerResponseSchema>(graphManager, 
 									inputPipes[i], responses[i], responses[i], 
 									timeoutNS, 
-									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%blockers;}, 
+									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%inputPipes.length;}, 
 									new DBCaller(), new DBCaller(), new DBCaller()); //TODO: is caller right? DB problems
 						}
 						
 						// http://172.16.10.221:8080/person/add?id=333&name=nathan
-						// http://172.16.10.221:8080/proxy/list
+						// http://172.16.10.221:8080/person/list
 						
 						// http://10.10.10.105:8080/person/add?id=333&name=nathan
-						// http://10.10.10.105:8080/proxy/list
+						// http://10.10.10.105:8080/person/list
 						
 						routerConfig.registerCompositeRoute()
-						    .path("/proxy/list") //multiple paths can be added here
+						    .path("/person/list") //multiple paths can be added here
 				            .path("/person/add?id=#{id}&name=${name}") //multiple paths can be added here
 				            .defaultInteger("id", Integer.MIN_VALUE)
 							.defaultText("name", "")

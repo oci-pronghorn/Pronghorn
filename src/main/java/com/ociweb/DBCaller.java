@@ -68,9 +68,7 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
 								
 	@Override
 	public void begin(Pipe<HTTPRequestSchema> input) {
-		
-		System.err.println("begin take call data");
-		
+
 		int msgIdx = Pipe.takeMsgIdx(input);
 		channelId = Pipe.takeLong(input);
 		sequence = Pipe.takeInt(input);
@@ -110,20 +108,21 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
             e.printStackTrace();
         }		
 	}
-	
+
 	@Override
 	public void finish(Pipe<ServerResponseSchema> output) {
 
 		ChannelWriter outputStream = HTTPUtilResponse.openHTTPPayload(ebh, output, 
 				                     channelId, 
 				                     sequence);
-		
+				
 		outputStream.append(payloadBuffer);
 	
 		HTTPUtilResponse.closePayloadAndPublish(
 				ebh, null, HTTPContentTypeDefaults.JSON, 
 				output, channelId, sequence, context, outputStream);
 				
+		
 	}
 
 	@Override

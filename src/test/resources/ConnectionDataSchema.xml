@@ -4,6 +4,7 @@
    <template name="ConnectionData" id="1">
      <uInt64 name="ConnectionId" id="11"/>
      <uInt32 name="SequenceNo" id="12"/>
+	 <uInt32 name="Context" id="13"/>
    </template>
    
 </templates>
