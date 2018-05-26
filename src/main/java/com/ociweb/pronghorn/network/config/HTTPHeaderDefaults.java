@@ -62,7 +62,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
 	}, //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b") {
 	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
-            
+            assert(null!=httpSpec) : "http spec required";
 	    	HTTPContentType contentType = httpSpec.getContentType(reader.readShort());
             try {
                 target.append(contentType.contentType());
