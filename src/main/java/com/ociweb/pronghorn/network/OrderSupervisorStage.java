@@ -447,23 +447,27 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
-	
-		if (failureIterations==100000) { //equals so we only do this once.
 
-	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
-	        
-				logger.warn("Hang detected, Critical internal error must shutdown.");
-				logger.info("looking for {} but got {} for connection {} on idx {}",
-							expected, sequenceNo, channelId, pipeIdx);
-				logger.info("jumped ahead a total of {} ",movedUpCount);
-				if (null!=recordChannelId) {
-					//we have the most recent history so do display it.
-					displayRecentRequests();
-				}
-				shutdownInProgress = true;
-		} else {
-			failureIterations++;
-		}
+		////////////
+		//disabled until we can find a better way to compute this
+		//this works but requires a long wait window and we know not how long to wait.
+		////////////
+//		if (failureIterations==100_000_000) { //equals so we only do this once.
+//
+//	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
+//	        
+//				logger.warn("Hang detected, Critical internal error must shutdown.");
+//				logger.info("looking for {} but got {} for connection {} on idx {}",
+//							expected, sequenceNo, channelId, pipeIdx);
+//				logger.info("jumped ahead a total of {} ",movedUpCount);
+//				if (null!=recordChannelId) {
+//					//we have the most recent history so do display it.
+//					displayRecentRequests();
+//				}
+//				shutdownInProgress = true;
+//		} else {
+//			failureIterations++;
+//		}
 		return true;
 	}
 
