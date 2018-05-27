@@ -13,9 +13,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /**
  * Stage that allows for blocking calls, e.g. to make a call to a database and to wait
  * until a response is received.
- * @param <T>
- * @param <P>
- * @param <Q>
  */
 public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageSchema<P>, Q extends MessageSchema<Q>> extends PronghornStage {
 

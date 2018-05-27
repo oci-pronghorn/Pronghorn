@@ -4,6 +4,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Stage that converts columns to rows in a matrix.
+ */
 public class ColumnsToRowsStage<M extends MatrixSchema<M>> extends PronghornStage{
 
 	private Pipe<ColumnSchema<M>>[] columnPipeInput;
@@ -19,8 +22,13 @@ public class ColumnsToRowsStage<M extends MatrixSchema<M>> extends PronghornStag
 	
 	
     //NOTE: For Neural compute? Improve .. the column converters need a flag to hold and re-use the last value so we only need to xmit once....
-	
 
+	/**
+	 *
+	 * @param graphManager
+	 * @param columnPipeInput _in_ Pipes containing ColumnSchema that will be converted to RowSchema
+	 * @param matrixPipeOutput _out_ Pipes onto which ColumnSchema will be output to RowSchema
+	 */
 	public ColumnsToRowsStage(GraphManager graphManager, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
 		super(graphManager, columnPipeInput, matrixPipeOutput);
 		

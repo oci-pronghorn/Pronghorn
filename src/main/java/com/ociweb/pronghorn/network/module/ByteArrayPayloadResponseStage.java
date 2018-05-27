@@ -23,11 +23,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
- * Abstract stage that can be extended for dealing with byte payloads.
- * @param <T>
- * @param <R>
- * @param <V>
- * @param <H>
+ * Abstract stage that can be extended for dealing with payloads stored as bytes.
  */
 public abstract class ByteArrayPayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,

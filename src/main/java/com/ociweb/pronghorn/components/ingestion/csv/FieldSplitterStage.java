@@ -18,8 +18,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Split CSV lines into meta messages
- * @author Nathan Tippy
- *
  */
 public class FieldSplitterStage extends PronghornStage {
 
@@ -36,7 +34,13 @@ public class FieldSplitterStage extends PronghornStage {
     	quoter = new byte[256]; //these are all zeros
     	quoter['"'] = 1; //except for the value of quote.
     }
-     
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputRing _in_ Pipe containing inputRing
+	 * @param outputRing _out_ Pipe containing outputRing
+	 */
 	public FieldSplitterStage(GraphManager graphManager, Pipe inputRing, Pipe outputRing) {
 		super(graphManager,inputRing,outputRing);
 		this.inputRing = inputRing;

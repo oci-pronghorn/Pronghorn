@@ -10,7 +10,9 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-
+/**
+ * Dummy REST stage that does nothing.
+ */
 public class DummyRestStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputPipes;
@@ -23,7 +25,14 @@ public class DummyRestStage extends PronghornStage {
 			HTTPSpecification<?,?,?,?> httpSpec) {
 		return new DummyRestStage(graphManager, inputPipes, outputs, httpSpec);
 	}
-		
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputPipes _in_ Input pipes containing the HTTP request
+	 * @param outputs _out_ Output pipes will contain the server response
+	 * @param httpSpec
+	 */
 	public DummyRestStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes,
 			Pipe<ServerResponseSchema>[] outputs,
