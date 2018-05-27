@@ -1,5 +1,6 @@
 package com.ociweb;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -9,7 +10,7 @@ import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class RequestToBackEnd extends PronghornStage {
+public class ProxyRequestToBackEndStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputPipes;
 	private final Pipe<ConnectionData>[] connectionId;
@@ -17,17 +18,17 @@ public class RequestToBackEnd extends PronghornStage {
 	private final String targetHost;
 	private final int targetPort;
 	
-	public static RequestToBackEnd newInstance(GraphManager graphManager,
+	public static ProxyRequestToBackEndStage newInstance(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
 			Pipe<ClientHTTPRequestSchema>[] clientRequests,
 			String targetHost, int targetPort) {
-		return new RequestToBackEnd(graphManager, inputPipes, 
+		return new ProxyRequestToBackEndStage(graphManager, inputPipes, 
 				                    connectionId, clientRequests, 
 				                    targetHost, targetPort);
 	}	
 	
-	public RequestToBackEnd(GraphManager graphManager,
+	public ProxyRequestToBackEndStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
 			Pipe<ClientHTTPRequestSchema>[] clientRequests,
@@ -41,6 +42,9 @@ public class RequestToBackEnd extends PronghornStage {
 		assert(inputPipes.length == clientRequests.length);
 		this.targetHost = targetHost;
 		this.targetPort = targetPort;
+		
+		assert(targetHost!=null);
+		ClientCoordinator.registerDomain(targetHost);
 	}
 
 	@Override
@@ -52,6 +56,16 @@ public class RequestToBackEnd extends PronghornStage {
 		}
 		
 	}
+	
+//	httpRequestReader.structured().visit(HTTPHeader.class, (header,reader) -> {
+//		  if (   (header != HTTPHeaderDefaults.HOST)
+//	            	&& (header != HTTPHeaderDefaults.CONNECTION)	){
+//	  
+//	            	writer.write((HTTPHeader)header,
+//	            			     httpRequestReader.getSpec(), 
+//	            			     reader);
+//         }
+//});
 
 	private void process(
 			Pipe<HTTPRequestSchema> sourceRequest, 

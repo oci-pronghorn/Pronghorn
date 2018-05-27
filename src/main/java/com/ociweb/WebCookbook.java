@@ -31,28 +31,29 @@ import com.ociweb.pronghorn.util.MainArgs;
 
 public class WebCookbook  {
 
-	private static String boundHost;
-	private static int boundPort;
+	private static ServerCoordinator serverCoordinator;
 	
 	public static void main(String[] args) {
 		
-		
 		String home = System.getenv().get("HOME");
 		String filesPath = MainArgs.getOptArg("files", "-f", args, (null==home?"~":home)+"/www");
-
+		String host = MainArgs.getOptArg("host", "-h", args, null);
+		int port = Integer.valueOf(MainArgs.getOptArg("port", "-p", args, "8080"));
+				
 		GraphManager gm = new GraphManager();		
-		populateGraph(gm, filesPath);		
+		populateGraph(gm, host, port, filesPath);		
 		gm.enableTelemetry(8089);		
 		StageScheduler.defaultScheduler(gm).startup();
 		
 	}
 
 
-	private static void populateGraph(GraphManager gm, String filesPath) {
+	private static void populateGraph(GraphManager gm, String host, int port, String filesPath) {
 		
-		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(8080, gm);
+		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
 		
 		//show all these
+		serverConfig.setHost(host);
 		serverConfig.setDecryptionUnitsPerTrack(2);
 		serverConfig.setConcurrentChannelsPerDecryptUnit(8);
 		serverConfig.setEncryptionUnitsPerTrack(2);
@@ -62,9 +63,10 @@ public class WebCookbook  {
 		
 		serverConfig.useInsecureServer();//TODO: turn this off later...
 		
-
 		
-		NetGraphBuilder.buildServerGraph(gm, serverConfig.buildServerCoordinator(), new ServerFactory() {
+		serverCoordinator = serverConfig.buildServerCoordinator();
+		
+		NetGraphBuilder.buildServerGraph(gm, serverCoordinator, new ServerFactory() {
 		
 			@Override
 			public void buildServer(GraphManager gm, 
@@ -77,11 +79,6 @@ public class WebCookbook  {
 										        releaseAfterParse, receivedFromNet, sendingToNet);
 			}
 		});
-		
-		//must not be called before we buildServerCoordinator
-		//we are keeping these values for the proxy example
-		boundHost = serverConfig.bindHost();
-		boundPort = serverConfig.bindPort();
 			
 	}
 
@@ -91,7 +88,7 @@ public class WebCookbook  {
 
 			@Override
 			public int moduleCount() {
-				return 6;
+				return 5;
 			}
 
 			@Override
@@ -153,26 +150,19 @@ public class WebCookbook  {
 						
 						return responses;
 						}					
-					case 2: //custom REST call
+					case 2: //dummy REST call
 						{
 						Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(inputPipes.length, 
 								 ServerResponseSchema.instance.newPipeConfig(2, 1<<9));
 							
-						//TODO: replace this with custom rest call?
+						//NOTE: your actual REST logic replaces this stage.
 						DummyRestStage.newInstance(
 								graphManager, inputPipes, responses, 
 								routerConfig.httpSpec()
 								);
-												
-						JSONExtractorCompleted extractor =
-								new JSONExtractor()
-								 .begin()
-								 .element(JSONType.TypeInteger, false, JSONAccumRule.First)
-								 .asField("root.value","someValue")								 
-								 .finish();
-						
-						routerConfig.registerCompositeRoute(extractor)
-				            .path("/rest/myCall?a=#{aVal}&text=${textVal}") //multiple paths can be added here
+								
+						routerConfig.registerCompositeRoute()
+				            .path("/dummy/${textVal}") //multiple paths can be added here
 				            .routeId();
 						
 						return responses;
@@ -184,6 +174,10 @@ public class WebCookbook  {
 						Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(
 									tracks, 
 									ServerResponseSchema.instance.newPipeConfig(2, 1<<9));
+						
+						Pipe<ConnectionData>[] connectionData = Pipe.buildPipes(
+								tracks, 
+								ConnectionData.instance.newPipeConfig(2, 1<<9));
 
 						
 						Pipe<ClientHTTPRequestSchema>[] clientRequests = Pipe.buildPipes(
@@ -193,10 +187,6 @@ public class WebCookbook  {
 						Pipe<NetResponseSchema>[] clientResponses = Pipe.buildPipes(
 									tracks, 
 									NetResponseSchema.instance.newPipeConfig(2, 1<<9));
-								
-						Pipe<ConnectionData>[] connectionData = Pipe.buildPipes(
-								tracks, 
-								ConnectionData.instance.newPipeConfig(2, 1<<9));
 						
 						//TODO: turn this on later..
 						TLSCertificates tlsCertificates = null;//TLSCertificates.defaultCerts;
@@ -204,11 +194,6 @@ public class WebCookbook  {
 						int maxPartialResponses = 4;					
 						int clientRequestCount=5; 
 						int clientRequestSize=200;
-											
-						
-						RequestToBackEnd.newInstance(graphManager, inputPipes, 
-												     connectionData, clientRequests, 
-												     boundHost, boundPort);
 						
 						NetGraphBuilder.buildHTTPClientGraph(graphManager, 
 															clientResponses,
@@ -217,11 +202,21 @@ public class WebCookbook  {
 															clientRequestCount,
 															clientRequestSize,
 															tlsCertificates);
+												
 						
-						ResponseFromBackEnd.newInstance(graphManager, clientResponses, connectionData, responses);
+						ProxyRequestToBackEndStage.newInstance(graphManager, inputPipes, 
+								connectionData, clientRequests, 
+								serverCoordinator.host(), serverCoordinator.port());
+
+						ProxyResponseFromBackEndStage.newInstance(graphManager, 
+								                                  clientResponses, 
+								                                  connectionData, 
+								                                  responses,
+								                                  serverCoordinator
+								                                  );
 								
 						routerConfig.registerCompositeRoute()
-				            .path("/proxy/?${myCall}") //multiple paths can be added here
+				            .path("/proxy${myCall}") //multiple paths can be added here
 				            .associatedObject("myCall", WebFields.proxyGet)
 				            .routeId();
 						
@@ -237,7 +232,8 @@ public class WebCookbook  {
 														
 						for(int i = 0; i<inputPipes.length; i++) {
 							//one blocking stage for each of the tracks
-							new BlockingSupportStage<HTTPRequestSchema,ServerResponseSchema,ServerResponseSchema>(graphManager, 
+							new BlockingSupportStage<HTTPRequestSchema,
+							        ServerResponseSchema,ServerResponseSchema>(graphManager, 
 									inputPipes[i], responses[i], responses[i], 
 									timeoutNS, 
 									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%inputPipes.length;}, 
@@ -261,22 +257,6 @@ public class WebCookbook  {
 						
 						return responses;
 						}
-					case 5:
-						{
-							Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(inputPipes.length, 
-									 ServerResponseSchema.instance.newPipeConfig(2, 1<<9));
-								
-							DummyRestStage.newInstance(
-									graphManager, inputPipes, responses, 
-									routerConfig.httpSpec()
-									);
-									
-							routerConfig.registerCompositeRoute()
-					            .path("/dummy/${textVal}") //multiple paths can be added here
-					            .routeId();
-							
-							return responses;
-							}
 					default:
 						throw new UnsupportedOperationException();
 

@@ -16,6 +16,7 @@ import com.ociweb.json.encode.JSONRenderer;
 import com.ociweb.pronghorn.network.HTTPUtilResponse;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
@@ -118,9 +119,12 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
 				
 		outputStream.append(payloadBuffer);
 	
+		HeaderWritable additionalHeaderWriter = null;
+		
 		HTTPUtilResponse.closePayloadAndPublish(
 				ebh, null, HTTPContentTypeDefaults.JSON, 
-				output, channelId, sequence, context, outputStream);
+				output, channelId, sequence, context, 
+				outputStream, additionalHeaderWriter);
 				
 		
 	}

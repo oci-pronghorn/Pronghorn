@@ -3,7 +3,12 @@ package com.ociweb;
 import com.ociweb.pronghorn.network.HTTPUtilResponse;
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPRevision;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
@@ -15,25 +20,28 @@ import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class ResponseFromBackEnd extends PronghornStage {
+public class ProxyResponseFromBackEndStage extends PronghornStage {
 
 	private final Pipe<NetResponseSchema>[] clientResponses;
 	private final Pipe<ConnectionData>[] connectionId;
 	private final Pipe<ServerResponseSchema>[] responses;
 	
 	public final HTTPUtilResponse ebh = new HTTPUtilResponse();
-	
-	public static ResponseFromBackEnd newInstance(GraphManager graphManager,
+	private final HTTPSpecification<? extends Enum<? extends HTTPContentType>, ? extends Enum<? extends HTTPRevision>, ? extends Enum<? extends HTTPVerb>, ? extends Enum<? extends HTTPHeader>> spec;
+			
+	public static ProxyResponseFromBackEndStage newInstance(GraphManager graphManager,
 			Pipe<NetResponseSchema>[] clientResponses,
 			Pipe<ConnectionData>[] connectionId,
-			Pipe<ServerResponseSchema>[] responses) {
-		return new ResponseFromBackEnd(graphManager, clientResponses, connectionId, responses);
+			Pipe<ServerResponseSchema>[] responses,
+			ServerCoordinator coordinator) {
+		return new ProxyResponseFromBackEndStage(graphManager, clientResponses, connectionId, responses, coordinator);
 	}	
 	
-	public ResponseFromBackEnd(GraphManager graphManager,
+	public ProxyResponseFromBackEndStage(GraphManager graphManager,
 			Pipe<NetResponseSchema>[] clientResponses,
 			Pipe<ConnectionData>[] connectionId,
-			Pipe<ServerResponseSchema>[] responses) {
+			Pipe<ServerResponseSchema>[] responses, 
+			ServerCoordinator coordinator) {
 		super(graphManager, join(clientResponses,connectionId), responses);
 		
 		this.clientResponses = clientResponses;
@@ -41,7 +49,7 @@ public class ResponseFromBackEnd extends PronghornStage {
 		this.responses = responses;
 		assert(clientResponses.length==connectionId.length);
 		assert(clientResponses.length==responses.length);		
-				
+		this.spec = coordinator.spec;		
 	}
 
 	@Override
@@ -57,7 +65,8 @@ public class ResponseFromBackEnd extends PronghornStage {
 	private void process(
 			Pipe<NetResponseSchema> sourceResponse, 
 			Pipe<ConnectionData> sourceConnectionData, 
-			Pipe<ServerResponseSchema> output) {
+			Pipe<ServerResponseSchema> output
+			) {
 			
 		while ((Pipe.hasContentToRead(sourceConnectionData)) &&
 		    (Pipe.hasContentToRead(sourceResponse)) &&
@@ -77,13 +86,15 @@ public class ResponseFromBackEnd extends PronghornStage {
 			if (respIdx == NetResponseSchema.MSG_RESPONSE_101) {
 				long respChannelId = Pipe.takeLong(sourceResponse);
 				int flags2 = Pipe.takeInt(sourceResponse);
-				DataInputBlobReader<?> inputStream = Pipe.openInputStream(sourceResponse);
 								
+
 				ChannelWriter outputStream = HTTPUtilResponse.openHTTPPayload(ebh, output, 
 						                     				    activeChannelId, 
 						                     				    activeSequenceNo);
 				
-				inputStream.readInto(outputStream, inputStream.available());
+				DataInputBlobReader<?> inputStream = Pipe.openInputStream(sourceResponse);
+				
+				inputStream.structured().readPayload().readInto(outputStream, inputStream.available());
 				
 				//finish the header
 				HTTPUtilResponse.closePayloadAndPublish(
@@ -92,7 +103,15 @@ public class ResponseFromBackEnd extends PronghornStage {
 						activeContext 
 				         | (flags2&ServerCoordinator.CLOSE_CONNECTION_MASK)
 				         | (flags2&ServerCoordinator.END_RESPONSE_MASK)
-						, outputStream);
+						, outputStream, (w)->{
+							
+							//TODO: fix..
+//							inputStream.structured().visit(HTTPHeader.class, (header,reader)->{
+//						    	//write all the headers back
+//						    	w.write(header, spec, reader);					   
+//						    });		    
+							
+						});
 				
 			} else if (respIdx == NetResponseSchema.MSG_CONTINUATION_102) {
 				long channelIdx2 = Pipe.takeLong(sourceResponse);
@@ -104,7 +123,7 @@ public class ResponseFromBackEnd extends PronghornStage {
 				
 				DataInputBlobReader<?> inputStream = Pipe.openInputStream(sourceResponse);
 				DataOutputBlobWriter<ServerResponseSchema> targetStream = Pipe.openOutputStream(output);//payload
-				inputStream.readInto(targetStream, inputStream.available());
+				inputStream.structured().readPayload().readInto(targetStream, inputStream.available());
 				
 				Pipe.addIntValue(activeContext 
 						         | (flags2&ServerCoordinator.CLOSE_CONNECTION_MASK)
