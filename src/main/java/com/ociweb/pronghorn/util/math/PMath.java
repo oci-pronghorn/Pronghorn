@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.util.math;
 
-import java.util.Arrays;
-
 /*
  * @Author Nathan Tippy
  */
@@ -218,9 +216,9 @@ public class PMath {
     }
 
     /**
-     * Not a general method, this only wokrs for up to numbers 1 larger than the last prime discovered.
+     * Not a general method, this only works for up to numbers 1 larger than the last prime discovered.
      * @param i
-     * @return
+     * @return true if is prime
      */
     private static boolean isPrime(int i) {
         int j = primes.length;

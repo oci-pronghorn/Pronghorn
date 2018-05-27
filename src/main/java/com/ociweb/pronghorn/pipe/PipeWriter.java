@@ -224,7 +224,7 @@ public class PipeWriter {
 	}
 
 	/**
-	 *
+	 * Writes UTF8 to defined location in specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param source CharSequence to write to specified location
@@ -249,7 +249,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes UTF8 to defined location in specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param source char[] to write to specified location
@@ -273,7 +273,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes ASCII to defined location in specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param source char[] to write to specified location
@@ -296,7 +296,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes ASCII to defined location in specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param source CharSequence to write to specified location

@@ -1,17 +1,13 @@
 package com.ociweb.pronghorn.util.parse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ociweb.json.JSONType;
-import com.ociweb.pronghorn.pipe.ChannelReader;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.struct.StructBuilder;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JSONFieldSchema {
 
@@ -104,14 +100,14 @@ public class JSONFieldSchema {
 	public int[] addToStruct(StructRegistry struct, int structId) {
 				
 		int length = mappings.length;
-		int[] jsonIndexLoookup = new int[length];
+		int[] jsonIndexLookup = new int[length];
 						
 		int i = length;
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
 			long fieldId = struct.growStruct(structId, mapTypes(mapping), mapping.dimensions(), mapping.getName().getBytes());
 			
-			jsonIndexLoookup[i] = StructRegistry.FIELD_MASK&(int)fieldId;
+			jsonIndexLookup[i] = StructRegistry.FIELD_MASK&(int)fieldId;
 			Object assoc = mapping.getAssociatedObject();
 			if (null!=assoc) {
 				if (!struct.setAssociatedObject(fieldId, assoc)) {
@@ -119,7 +115,7 @@ public class JSONFieldSchema {
 				}
 			}
 		}
-		return jsonIndexLoookup;
+		return jsonIndexLookup;
 	}
 
 	public int[] indexTable(StructRegistry typeData, int structId) {

@@ -199,7 +199,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedNull();
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeLong(long value, long fieldId) {
@@ -214,7 +214,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedLong(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeLong(Object assoc, long value) {
@@ -241,7 +241,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedNull();
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 	
 	public void writeInt(int value, long fieldId) {
@@ -256,7 +256,7 @@ public class StructuredWriter {
 		
 		channelWriter.writePackedInt(value);
 		
-		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has witten over index data";
+		assert confirmDataDoesNotWriteOverIndex(fieldId) : "Data has written over index data";
 	}
 
 	//TODO: this is fine for asserts but we need to check this before it happens like the old pub sub struct did.
