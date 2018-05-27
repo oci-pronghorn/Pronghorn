@@ -9,6 +9,7 @@ public interface HTTPServerConfig {
 	HTTPServerConfig useInsecureServer();
 	HTTPServerConfig setMaxConnectionBits(int bits);
 	HTTPServerConfig setMaxRequestSize(int maxRequestSize);
+	HTTPServerConfig setMaxResponseSize(int maxRequestSize);	
 	HTTPServerConfig setEncryptionUnitsPerTrack(int value);
 	HTTPServerConfig setDecryptionUnitsPerTrack(int value);
 	HTTPServerConfig setConcurrentChannelsPerEncryptUnit(int value);

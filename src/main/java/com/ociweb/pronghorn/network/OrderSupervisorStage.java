@@ -447,10 +447,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
-				
-		logger.info("hang detect at iteration "+failureIterations);
-		
-		if (failureIterations==10000) { //equals so we only do this once.
+	
+		if (failureIterations==100000) { //equals so we only do this once.
 
 	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
 	        

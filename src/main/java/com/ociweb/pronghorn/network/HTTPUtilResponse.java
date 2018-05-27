@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
-import com.ociweb.pronghorn.network.module.AbstractAppendablePayloadResponseStage;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -74,8 +74,10 @@ public class HTTPUtilResponse {
 			byte[] eTag, HTTPContentType contentTypeEnum,
 			Pipe<ServerResponseSchema> output, 
 			long activeChannelId, int activeSequenceNo, int activeFieldRequestContext, 
-			ChannelWriter outputStream) {
-				 
+			ChannelWriter outputStream, 
+			HeaderWritable additionalHeaderWriter) {
+		
+						 
 		byte[] contentType = null!=contentTypeEnum ? contentTypeEnum.getBytes() : null;
 		
 		int totalLengthWritten = outputStream.length();
@@ -83,6 +85,18 @@ public class HTTPUtilResponse {
 		output.closeBlobFieldWrite(); //closed because we will add each part below...
 		HTTPUtil.prependBodyWithHeader(output, 
 				              eTag, totalLengthWritten, that, activeFieldRequestContext,
-				              activeChannelId,  activeSequenceNo, contentType);//context
+				              activeChannelId,  activeSequenceNo, contentType, additionalHeaderWriter);//context
+	}
+	
+	public static boolean isBeginningOfResponse(int flags) {
+		return 0 != (flags & ServerCoordinator.BEGIN_RESPONSE_MASK);
+	}
+	
+	public static boolean isEndOfResponse(int flags) {
+		return 0 != (flags & ServerCoordinator.END_RESPONSE_MASK);
+	}
+	
+	public static boolean isConnectionClosed(int flags) {
+		return 0 != (flags & ServerCoordinator.CLOSE_CONNECTION_MASK);
 	}
 }
