@@ -17,6 +17,9 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Converts YCbCr to RGB of the passed in JPG
+ */
 public class YCbCrToRGBStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(YCbCrToRGBStage.class);
@@ -36,12 +39,21 @@ public class YCbCrToRGBStage extends PronghornStage {
 	private short[] tempCR;
 	private int count = 0;
 	private byte[] rgb;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Input JPG Schema
+	 * @param output _out_ Outputted JPG Schema
+	 * @param verbose
+	 */
 	public YCbCrToRGBStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	@Override

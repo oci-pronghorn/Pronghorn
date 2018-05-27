@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /*
  * Updated Forward DCT Algorithm is based on the Guetzli JPEG encoder's
  * DCT implementation. This code can be found here:
- * 	https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc
+ * <a href="https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc">DCT_Double.css</a>
  */
 public class ForwardDCTStage extends PronghornStage {
 
@@ -34,12 +34,21 @@ public class ForwardDCTStage extends PronghornStage {
 	private MCU mcu;
 	private double[] temp;
 	private double[] fdctMap;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Input JPG schema that the Forward DCT algorithm will be applied to
+	 * @param output _out_ Output JPG schema with DCT algorithm applied
+	 * @param verbose
+	 */
 	public ForwardDCTStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 
 	@Override

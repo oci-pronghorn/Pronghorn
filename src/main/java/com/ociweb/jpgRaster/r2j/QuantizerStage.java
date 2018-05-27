@@ -19,6 +19,12 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Performs quantization on a JPG schema pipe and returns
+ * the results back onto a JPG schema pipe.
+ * Examples can be found here:
+ * <a href="http://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPS/ipps_ch9/ch9_lp_analysis_and_quantization_functions.htm">Quantization</a>
+ */
 public class QuantizerStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(QuantizerStage.class);
@@ -30,13 +36,23 @@ public class QuantizerStage extends PronghornStage {
 	
 	private Header header;
 	private MCU mcu;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ The JPG schema on which quantization will be applied to
+	 * @param output _out_ JPG schema with applied quantization
+	 * @param verbose
+	 * @param quality
+	 */
 	public QuantizerStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose, int quality) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
 		this.quality = quality;
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	@Override

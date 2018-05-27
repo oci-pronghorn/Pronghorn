@@ -18,6 +18,10 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Using Huffman encoding, this creates the necessary JPG headers and generates MCUs.
+ * <a href="https://en.wikipedia.org/wiki/Huffman_coding">Huffman coding</a>
+ */
 public class HuffmanEncoderStage extends PronghornStage {
 	
 	private static final Logger logger = LoggerFactory.getLogger(HuffmanEncoderStage.class);
@@ -71,7 +75,15 @@ public class HuffmanEncoderStage extends PronghornStage {
 	private short[] previousDC;
 
 	private BitWriter b;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ The JPG schema on which Huffman encoding will be applied to
+	 * @param verbose
+	 * @param time
+	 * @param quality
+	 */
 	public HuffmanEncoderStage(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time, int quality) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -79,6 +91,8 @@ public class HuffmanEncoderStage extends PronghornStage {
 		this.time = time;
 		this.quality = quality;
 		start = System.nanoTime();
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	@Override

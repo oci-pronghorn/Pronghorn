@@ -18,6 +18,9 @@ import java.nio.channels.FileChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Dumps the BMP raster of a JPG Schema into a file
+ */
 public class BMPDumperStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(BMPDumperStage.class);
@@ -41,13 +44,22 @@ public class BMPDumperStage extends PronghornStage {
 	int mcuWidthReal;
 	int numMCUsReal;
 	int pos;
-	
+
+	/**
+	 * Takes a JPG schema and allows for verbose output with time.
+	 * @param graphManager
+	 * @param input _in_ Input pipe to be dumped
+	 * @param verbose
+	 * @param time
+	 */
 	public BMPDumperStage(GraphManager graphManager, Pipe<JPGSchema> input, boolean verbose, boolean time) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.verbose = verbose;
 		this.time = time;
 		start = System.nanoTime();
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 
 	@Override

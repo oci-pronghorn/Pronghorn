@@ -20,6 +20,12 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Performs inverse quantization on a JPG schema pipe and returns
+ * the results back onto a JPG schema pipe.
+ * Examples can be found here:
+ * <a href="http://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPI/ippi_ch16/ch16_inverse_quantization.htm">Inverse Quantization</a>
+ */
 public class InverseQuantizerStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(InverseQuantizerStage.class);
@@ -30,12 +36,20 @@ public class InverseQuantizerStage extends PronghornStage {
 	
 	Header header;
 	MCU mcu;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Input JPG schema
+	 * @param output _out_ Output JPG schema
+	 * @param verbose
+	 */
 	public InverseQuantizerStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	@Override

@@ -26,6 +26,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Scans a JPG using a Huffman decoder.
+ * This creates a useful JPG schema.
+ */
 public class JPGScannerStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(JPGScannerStage.class);
@@ -49,13 +53,21 @@ public class JPGScannerStage extends PronghornStage {
 	private MCU mcu3;
 	private MCU mcu4;
 	private ArrayList<MCU> mcus;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param output _out_ Output JPG schema
+	 * @param verbose
+	 * @param files
+	 */
 	public JPGScannerStage(GraphManager graphManager, Pipe<JPGSchema> output,
 			           boolean verbose, Collection<String> files) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
 		this.files = files;
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 	
