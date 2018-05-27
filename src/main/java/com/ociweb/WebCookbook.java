@@ -206,7 +206,7 @@ public class WebCookbook  {
 						
 						ProxyRequestToBackEndStage.newInstance(graphManager, inputPipes, 
 								connectionData, clientRequests, 
-								serverCoordinator.host(), serverCoordinator.port());
+								serverCoordinator);
 
 						ProxyResponseFromBackEndStage.newInstance(graphManager, 
 								                                  clientResponses, 

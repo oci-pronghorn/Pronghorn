@@ -112,7 +112,7 @@ public class WebCookbookTest {
 		
 		
 		scheduler.startup();
-		int i = 20;
+		int i = 200;
 		while (--i>=0) {
 			try {
 				Thread.sleep(10);

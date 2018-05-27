@@ -105,11 +105,10 @@ public class ProxyResponseFromBackEndStage extends PronghornStage {
 				         | (flags2&ServerCoordinator.END_RESPONSE_MASK)
 						, outputStream, (w)->{
 							
-							//TODO: fix..
-//							inputStream.structured().visit(HTTPHeader.class, (header,reader)->{
-//						    	//write all the headers back
-//						    	w.write(header, spec, reader);					   
-//						    });		    
+							inputStream.structured().visit(HTTPHeader.class, (header,reader)->{
+						    	//write all the headers back
+						    	w.write(header, spec, reader);					   
+						    });		    
 							
 						});
 				

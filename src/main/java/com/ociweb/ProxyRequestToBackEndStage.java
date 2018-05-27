@@ -1,6 +1,15 @@
 package com.ociweb;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HeaderWriter;
+import com.ociweb.pronghorn.network.http.HeaderWriterLocal;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -17,22 +26,23 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 	private final Pipe<ClientHTTPRequestSchema>[] clientRequests;
 	private final String targetHost;
 	private final int targetPort;
+	private HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec;
 	
 	public static ProxyRequestToBackEndStage newInstance(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
 			Pipe<ClientHTTPRequestSchema>[] clientRequests,
-			String targetHost, int targetPort) {
+			ServerCoordinator serverCoordinator) {
 		return new ProxyRequestToBackEndStage(graphManager, inputPipes, 
 				                    connectionId, clientRequests, 
-				                    targetHost, targetPort);
+				                    serverCoordinator);
 	}	
 	
 	public ProxyRequestToBackEndStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes, 
 			Pipe<ConnectionData>[] connectionId, 
 			Pipe<ClientHTTPRequestSchema>[] clientRequests,
-			String targetHost, int targetPort) {
+			ServerCoordinator serverCoordinator) {
 		
 		super(graphManager, inputPipes, join(clientRequests,connectionId));
 		this.inputPipes = inputPipes;
@@ -40,8 +50,9 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 		this.clientRequests = clientRequests;
 		assert(inputPipes.length == connectionId.length);
 		assert(inputPipes.length == clientRequests.length);
-		this.targetHost = targetHost;
-		this.targetPort = targetPort;
+		this.targetHost = serverCoordinator.host();
+		this.targetPort = serverCoordinator.port();
+		this.spec = serverCoordinator.spec;
 		
 		assert(targetHost!=null);
 		ClientCoordinator.registerDomain(targetHost);
@@ -57,15 +68,7 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 		
 	}
 	
-//	httpRequestReader.structured().visit(HTTPHeader.class, (header,reader) -> {
-//		  if (   (header != HTTPHeaderDefaults.HOST)
-//	            	&& (header != HTTPHeaderDefaults.CONNECTION)	){
-//	  
-//	            	writer.write((HTTPHeader)header,
-//	            			     httpRequestReader.getSpec(), 
-//	            			     reader);
-//         }
-//});
+
 
 	private void process(
 			Pipe<HTTPRequestSchema> sourceRequest, 
@@ -104,8 +107,18 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 			DataOutputBlobWriter<ClientHTTPRequestSchema> outputStream = Pipe.openOutputStream(targetClientRequest);			
 			reader.readText(WebFields.proxyGet, outputStream);
 			DataOutputBlobWriter.closeLowLevelField(outputStream);
-						
-			Pipe.addUTF8(null, targetClientRequest); //no headers
+				
+			
+			//open as output stream for headers..
+			DataOutputBlobWriter<ClientHTTPRequestSchema> headerStream = Pipe.openOutputStream(targetClientRequest);			
+			final HeaderWriter headWriter = (HeaderWriterLocal.get().target(headerStream));
+			reader.visit(HTTPHeader.class, (header,hr) -> {
+				if (   (header != HTTPHeaderDefaults.HOST)
+						&& (header != HTTPHeaderDefaults.CONNECTION)	){					
+					headWriter.write((HTTPHeader)header, spec, hr);
+				}
+			});
+			DataOutputBlobWriter.closeLowLevelField(headerStream);
 			
 			Pipe.confirmLowLevelWrite(targetClientRequest, size);
 			Pipe.publishWrites(targetClientRequest);
@@ -113,8 +126,9 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 			int revision   = Pipe.takeInt(sourceRequest);
 			final int context    = Pipe.takeInt(sourceRequest);
 			
-			//TODO: in the future this will be held by the connection so this part will not be needed
-			//      also upon disconnection it will be auto disposed...
+
+			
+			
 			int size2 = Pipe.addMsgIdx(targetConnectionData, ConnectionData.MSG_CONNECTIONDATA_1);
 			Pipe.addLongValue(connectionId, targetConnectionData);
 			Pipe.addIntValue(sequenceNo, targetConnectionData);
