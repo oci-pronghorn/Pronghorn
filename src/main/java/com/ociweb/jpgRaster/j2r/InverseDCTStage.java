@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /*
  * Updated Inverse DCT Algorithm is based on the Guetzli JPEG encoder's
  * DCT implementation. This code can be found here:
- * 	https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc
+ * <a href="https://github.com/google/guetzli/blob/master/guetzli/dct_double.cc">DCT_Double.cc</a>
  */
 public class InverseDCTStage extends PronghornStage {
 
@@ -35,12 +35,21 @@ public class InverseDCTStage extends PronghornStage {
 	private Header header;
 	private MCU mcu;
 	private double[] temp = new double[64];
-	
+
+	/**
+	 * Constructor for InverseDCTStage
+	 * @param graphManager
+	 * @param input _in_ Defined JPG schema
+	 * @param output _out_ Outputs the JPG schema onto the pipe
+	 * @param verbose
+	 */
 	public InverseDCTStage(GraphManager graphManager, Pipe<JPGSchema> input, Pipe<JPGSchema> output, boolean verbose) {
 		super(graphManager, input, output);
 		this.input = input;
 		this.output = output;
 		this.verbose = verbose;
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 	}
 	
 

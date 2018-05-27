@@ -21,6 +21,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Scans a BMP and puts it onto a JPG Schema pipe.
+ */
 public class BMPScannerStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(BMPScannerStage.class);
@@ -39,14 +42,28 @@ public class BMPScannerStage extends PronghornStage {
 	private MCU mcu;
 	
 	short[][] pixels;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param output _out_ Valid JPG schema from BMP will be put onto this pipe
+	 * @param verbose
+	 * @param files
+	 */
 	public BMPScannerStage(GraphManager graphManager, Pipe<JPGSchema> output, boolean verbose, Collection<String> files) {
 		super(graphManager, NONE, output);
 		this.output = output;
 		this.verbose = verbose;
 		this.files = files;
+
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
+		GraphManager.addNota(graphManager, GraphManager.STAGE_NAME, "BMP going on!", this);
 	}
-	
+
+	//NUMA
+	//do new init
+	//do database connection etc...
+	//if you dont return from startup, nothing happens <- NO BUG no shared state across two stages
 	@Override
 	public void startup() {
 		mcu = new MCU();
@@ -270,6 +287,8 @@ public class BMPScannerStage extends PronghornStage {
 	@Override
 	public void run() {
 		long s = System.nanoTime();
+		//check for write before reading!
+		//prefer while otherwise no throughput
 		while (PipeWriter.hasRoomForWrite(output) && numProcessed < numMCUs) {
 			fillMCU(numProcessed % mcuWidth);
 			//JPG.printMCU(mcu);
