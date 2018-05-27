@@ -344,6 +344,7 @@ window.onload = () => {
   zoomOutBtnDisabled = getById('zoomOutBtnDisabled');
 
   setStyle(diagram, 'width', px(window.innerWidth));
+  setStyle(diagram, 'height', px(window.innerHeight));
 
   getById('previewBtn').onclick = togglePreview;
 
@@ -365,7 +366,6 @@ window.onload = () => {
     hide(userDropdown);
   };
 
-  //getById('downloadBtn').onclick = download;
   zoomInBtn.onclick = () => onZoom(true);
   zoomOutBtn.onclick = () => onZoom(false);
 
@@ -374,7 +374,6 @@ window.onload = () => {
   webworker.postMessage(DOT_URL);
 
   setSpeed('1 sec');
-  //setSpeed('No refresh');
 };
 
 window.onresize = onResize;

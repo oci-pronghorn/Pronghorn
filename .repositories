@@ -1,0 +1,17 @@
+# In this document, we list all Pronghorn repositories that we want to extract stages and schemas from
+# To have your PR to this document accepted, please follow these rules:
+
+# 1. Your repository must be located on GitHub and must be using the most recent Pronghorn release
+# 2. Always link to your master.zip
+# 3. Before your URL, place a comment like this with your name, contact e-mail, and your GitHub URL
+#    Example: # NAME <NAME@mail.com> github.com/name
+#    If you feel uncomfortable providing your e-mail, leave the brackets empty.
+# 4. Place your URL at the bottom of the document. Do not edit any other parts of this document
+
+# The listing will be updated every 24 hours. Please be patient. 
+
+# PRONGHORN-DEV <info@objectcomputing.com> github.com/oci-pronghorn
+https://github.com/tobischw/Pronghorn/archive/master.zip
+https://github.com/oci-pronghorn/WebCookbook/archive/master.zip
+https://github.com/oci-pronghorn/JPG-Raster/archive/master.zip
+https://github.com/oci-pronghorn/GreenLightning/archive/master.zip

@@ -7,6 +7,10 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * For some schema T distributes the records across N output streams of the same
+ * @param <T>
+ */
 public class RoundRobinRouteStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private Pipe<T> inputRing;
@@ -14,7 +18,13 @@ public class RoundRobinRouteStage<T extends MessageSchema<T>> extends PronghornS
 	private int targetRing;
 	private int targetRingInit;
 	private int msgId = -2;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param input _in_ Schema T input pipes that will be distributed
+	 * @param outputs _out_ Pipes on which the input pipe will be distributed on
+	 */
 	public RoundRobinRouteStage(GraphManager gm, Pipe<T> input, Pipe<T> ... outputs) {
 		super(gm,input,outputs);
 		this.inputRing = input;
@@ -28,7 +38,7 @@ public class RoundRobinRouteStage<T extends MessageSchema<T>> extends PronghornS
 		assert(validateTargetSize(input, outputs)) : "output pipes must be as large or larger than input";
 	}
 
-    private boolean validateTargetSize(Pipe<T> inputRing, Pipe<T>... outputRings) {
+    private boolean validateTargetSize(Pipe<T> inputRing, Pipe<T> ... outputRings) {
         boolean ok = true;
 		PipeConfig<T> sourceConfig = inputRing.config();
 		int i = outputRings.length;

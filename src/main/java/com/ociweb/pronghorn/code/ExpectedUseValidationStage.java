@@ -7,6 +7,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * TO-DO (unsure what this does)
+ */
 public class ExpectedUseValidationStage extends PronghornStage{
 
 	private final Pipe[] inputs;
@@ -15,7 +18,14 @@ public class ExpectedUseValidationStage extends PronghornStage{
 	private final GVSValidator validator;
 	private boolean foundError = false;
 	private final Logger logger = LoggerFactory.getLogger(ExpectedUseValidationStage.class);
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes
+	 * @param outputs _out_ Output pipes
+	 * @param validator
+	 */
 	public ExpectedUseValidationStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, GVSValidator validator) {
 		super(graphManager, inputs, outputs);
 		this.inputs = inputs;

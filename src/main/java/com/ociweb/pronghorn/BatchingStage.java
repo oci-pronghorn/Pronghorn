@@ -6,12 +6,23 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Batches messages based on a limit.
+ * @param <T>
+ */
 public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private final int limit;
 	private final Pipe<T> input;
 	private final Pipe<T> output;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param pct
+	 * @param input _in_ The pipe that will be batched
+	 * @param output _out_ Pipe onto which batches will be released
+	 */
 	public BatchingStage(GraphManager gm, double pct, Pipe<T> input, Pipe<T> output) {
 		super(gm, input, output);
 	    

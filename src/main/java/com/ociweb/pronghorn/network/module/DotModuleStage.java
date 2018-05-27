@@ -18,6 +18,13 @@ import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
+/**
+ * For raw bytes schema writes data out to typical output stream.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ */
 public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,

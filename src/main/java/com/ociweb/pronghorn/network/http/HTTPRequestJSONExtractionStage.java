@@ -18,6 +18,10 @@ import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
+/**
+ * Using a JSONExtractor, this stage takes a HTTP request with JSON and turns it into
+ * a ServerResponseSchema.
+ */
 public class HTTPRequestJSONExtractionStage extends PronghornStage {
 
 	private final JSONExtractorCompleted extractor;
@@ -34,8 +38,16 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	private final int structId;
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
-		
-	//TODO: add error response pipe however we first need to update graph building to pass this in.
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param extractor
+	 * @param structId
+	 * @param input _in_ The HTTP request containing JSON
+	 * @param output _out_ The HTTP response
+	 * @param err _out_ Contains ServerResponseSchema if error occurred
+	 */
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 
 											JSONExtractorCompleted extractor,  int structId,
 											Pipe<HTTPRequestSchema> input,

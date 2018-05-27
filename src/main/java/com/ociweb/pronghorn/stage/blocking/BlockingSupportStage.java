@@ -10,6 +10,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Stage that allows for blocking calls, e.g. to make a call to a database and to wait
+ * until a response is received.
+ */
 public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageSchema<P>, Q extends MessageSchema<Q>> extends PronghornStage {
 
 	private final Pipe<T> input;
@@ -24,7 +28,17 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	private long timeoutNS;
 	private AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 	private Logger logger = LoggerFactory.getLogger(BlockingSupportStage.class);
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Input that will be released until ready
+	 * @param output _out_ Pipe onto which the input will be released on
+	 * @param timeout
+	 * @param timeoutNS
+	 * @param chooser
+	 * @param blockables
+	 */
 	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, long timeoutNS, Choosable<T> chooser, Blockable<T,P,Q> ... blockables) {
 		super(graphManager, input, output==timeout ? join(output) : join(output,timeout));
 		this.input = input;

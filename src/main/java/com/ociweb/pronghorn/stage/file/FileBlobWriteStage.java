@@ -24,6 +24,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 //TODO: should roll up writes when possible.
 //TODO: update to use byteBuffer array...
 
+/**
+ * Writes blob to file based on path.
+ */
 public class FileBlobWriteStage extends PronghornStage{
 
     private static final long FILE_ROTATE_SIZE = 1L<<27;
@@ -58,7 +61,14 @@ public class FileBlobWriteStage extends PronghornStage{
     private final boolean append;
     private StringBuilder pathBuilder;
     private ISOTimeFormatterLowGC formatter;
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ RawDataSchema that will be written  to file.
+     * @param append
+     * @param outputPathString
+     */
     public FileBlobWriteStage(GraphManager graphManager,
             Pipe<RawDataSchema> input,
             //add pipe to select file.
