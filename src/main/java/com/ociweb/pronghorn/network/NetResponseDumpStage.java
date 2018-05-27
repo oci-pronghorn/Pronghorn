@@ -11,12 +11,23 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * Dumps a NetResponseSchema onto an Appendable target.
+ * @param <A>
+ */
 public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
 	private final A target;
 	private final HTTPSpecification<?, ?, ?, ?> httpSpec;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ The net response input pipe.
+	 * @param target The Appendable onto which the net response will be dumped.
+	 * @param httpSpec
+	 */
 	public NetResponseDumpStage(GraphManager graphManager, 
 			                    Pipe<NetResponseSchema> input, 
 			                    A target, 

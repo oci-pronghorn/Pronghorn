@@ -31,6 +31,9 @@ import com.ociweb.pronghorn.util.BloomFilter;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * Parses HTTP1.x requests.
+ */
 public class HTTP1xResponseParserStage extends PronghornStage {
 	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);
 	private final Pipe<NetPayloadSchema>[] input; 
@@ -70,7 +73,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int[] runningHeaderBytes;
 	
 	public static boolean showData = false;
-	
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ The pipe containing the HTTP payload
+     * @param output _out_  The net response
+     * @param ackStop _out_ The acknowledgment
+     * @param ccm
+     * @param httpSpec
+     */
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
 			                       Pipe<NetResponseSchema>[] output, 
