@@ -264,8 +264,7 @@ public class HTTPUtil {
 	        writer.writeByte('\n');
 	        
 	        if (null!=hw) {
-	        	HeaderWriter target = HeaderWriterLocal.get().target(writer);
-				hw.write(target);
+	        	hw.write(HeaderWriterLocal.get().target(writer));
 	        }
 	                    
 	        writer.writeByte('\r');
