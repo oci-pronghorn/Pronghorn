@@ -44,7 +44,9 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /*
- * Minimal memory usage and leverages SSD.
+ * Minimal memory usage and leverages SSD for file reading module.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,

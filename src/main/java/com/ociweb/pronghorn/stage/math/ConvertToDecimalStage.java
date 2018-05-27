@@ -7,6 +7,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Converts data in matrix to decimal data onto the matrix.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ConvertToDecimalStage<M extends MatrixSchema<M>> extends PronghornStage {
 

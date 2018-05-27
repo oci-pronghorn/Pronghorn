@@ -14,6 +14,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Performs MQTT client responses.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MQTTClientResponseStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(MQTTClientResponseStage.class);
@@ -21,7 +26,15 @@ public class MQTTClientResponseStage extends PronghornStage {
 	final Pipe<NetPayloadSchema>[] fromBroker;
 	final Pipe<ReleaseSchema> ackReleaseForResponseParser;
 	final Pipe<MQTTServerToClientSchema> out;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param ccm
+	 * @param fromBroker _in_ Payload received from broker
+	 * @param ackReleaseForResponseParser _out_ Writes release for the response parser
+	 * @param out _out_ Outputs MQTTServerToClientSchema response
+	 */
 	public MQTTClientResponseStage(GraphManager gm, ClientCoordinator ccm, 
 									Pipe<NetPayloadSchema>[] fromBroker,
 									Pipe<ReleaseSchema> ackReleaseForResponseParser, 

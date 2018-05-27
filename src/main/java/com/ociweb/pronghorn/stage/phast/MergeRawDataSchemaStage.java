@@ -6,6 +6,11 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Merges multiple RawDataSchema into one
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MergeRawDataSchemaStage extends PronghornStage {
 
     //TODO: modify to take any simple schema, nothing with nested messages.
@@ -21,7 +26,13 @@ public class MergeRawDataSchemaStage extends PronghornStage {
     
     long outputCount;
     long[] inputCount;
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param inputs _in_ Multiple RawDataSchema that shoud be merged into one
+     * @param output _out_ Resulting single RawDataSchema from multiple RawDataSchema
+     */
     protected MergeRawDataSchemaStage(GraphManager graphManager, Pipe<RawDataSchema>[] inputs, Pipe<RawDataSchema> output) {
         super(graphManager, inputs, output);
         this.inputs = inputs;

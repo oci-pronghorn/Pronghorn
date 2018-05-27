@@ -9,6 +9,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * TO-DO (unsure what this does)
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ExpectedUseValidationStage extends PronghornStage{
 

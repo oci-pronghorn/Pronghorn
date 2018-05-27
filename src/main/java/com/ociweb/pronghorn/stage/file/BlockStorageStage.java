@@ -20,6 +20,8 @@ import com.ociweb.pronghorn.util.Appendables;
 
 /**
  * Stage that blocks storage until released.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class BlockStorageStage extends PronghornStage {
 

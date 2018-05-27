@@ -19,6 +19,8 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 /**
  * Reads files as blobs based on an input path.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FileBlobReadStage extends PronghornStage {
 

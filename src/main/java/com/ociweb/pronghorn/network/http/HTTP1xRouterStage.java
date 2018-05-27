@@ -31,6 +31,15 @@ import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * Routes HTTP 1x requests.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							   R extends Enum<R> & HTTPRevision,
 						       V extends Enum<V> & HTTPVerb,

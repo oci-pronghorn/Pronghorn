@@ -26,6 +26,8 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Stage that acts as a client for sockets
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ClientSocketReaderStage extends PronghornStage {	
 	

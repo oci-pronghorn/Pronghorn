@@ -11,6 +11,11 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Consumes meta messages and produces new XML templates catalog upon receiving a flush message.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MetaMessagesToCSVStage extends PronghornStage {
 
 	private final Pipe inputRing;
@@ -19,9 +24,12 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	
 	private int activeFieldIdx = 0;
 	private int activeByteBase = 0;
-	
-	/*
-	 * Consumes Meta messages and produces new XML templates catalog upon receiving the flush message
+
+	/**
+	 *
+	 * @param gm
+	 * @param inputRing _in_ Pipe containing meta messages
+	 * @param outputRing _out_ Pipe containing newly produced XML templates
 	 */
 	public MetaMessagesToCSVStage(GraphManager gm, Pipe inputRing, Pipe outputRing) {
 		super(gm,inputRing,outputRing);

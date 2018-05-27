@@ -17,6 +17,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 @Deprecated
 /**
  * _no-docs_
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FileWriteStage extends PronghornStage {
 

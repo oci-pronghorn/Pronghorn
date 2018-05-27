@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * 
  * Does not require schema knowledge for copy but does ensure targets and source have the same FROM.
  * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  *
  */
 public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage {

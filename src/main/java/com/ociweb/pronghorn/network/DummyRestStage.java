@@ -12,6 +12,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Dummy REST stage that does nothing.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class DummyRestStage extends PronghornStage {
 

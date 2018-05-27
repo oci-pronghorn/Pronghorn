@@ -25,7 +25,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 //TODO: update to use byteBuffer array...
 
 /**
- * Writes blob to file based on path.
+ * Writes data to file.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FileBlobWriteStage extends PronghornStage{
 

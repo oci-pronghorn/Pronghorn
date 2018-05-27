@@ -8,6 +8,14 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Commputes matrices based on columns and a single row.
+ * @param <M>
+ * @param <C>
+ * @param <R>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchema<C>, R extends MatrixSchema<R> > extends PronghornStage {
 
 	private Logger logger = LoggerFactory.getLogger(ColumnComputeStage.class);

@@ -18,6 +18,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Split CSV lines into meta messages
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FieldSplitterStage extends PronghornStage {
 

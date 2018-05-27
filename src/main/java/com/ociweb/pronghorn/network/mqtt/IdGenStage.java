@@ -22,6 +22,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * and the high value holding the exclusive stop.
  * 
  * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  *
  */
 public class IdGenStage extends PronghornStage {
@@ -46,7 +47,14 @@ public class IdGenStage extends PronghornStage {
 	private final Pipe<MQTTIdRangeSchema>[] outputs;	
 	private final int sizeOfFragment;
 	private static final int theOneMsg = 0;// there is only 1 message supported by this stage
-		
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ MQTT IDs ranges that should be generated
+	 * @param control _in_ Fine-tunes generation
+	 * @param output _out_ Outputs the IDs
+	 */
 	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema> input, Pipe<MQTTIdRangeControllerSchema> control, Pipe<MQTTIdRangeSchema> output) {
 		super(graphManager, join(input, control), output);
 		this.inputs = new Pipe[]{input};

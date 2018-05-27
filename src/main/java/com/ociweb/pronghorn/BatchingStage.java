@@ -9,6 +9,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /**
  * Batches messages based on a limit.
  * @param <T>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 

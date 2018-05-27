@@ -34,6 +34,7 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
  * No protocol specifics are found in this class only socket usage logic
  * 
  * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  *
  */
 public class ServerNewConnectionStage extends PronghornStage{

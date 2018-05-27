@@ -33,6 +33,8 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
  * Parses HTTP1.x requests.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class HTTP1xResponseParserStage extends PronghornStage {
 	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);

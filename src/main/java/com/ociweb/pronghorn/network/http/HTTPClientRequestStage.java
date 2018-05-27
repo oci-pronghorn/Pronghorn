@@ -18,6 +18,8 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
  * Takes a HTTP client request and responds with a net payload.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class HTTPClientRequestStage extends PronghornStage {
 

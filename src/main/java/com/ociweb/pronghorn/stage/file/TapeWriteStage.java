@@ -23,6 +23,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * This is the simplest way to save data in a pipe to disk.
  * 
  * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  *
  */
 public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {

@@ -18,6 +18,8 @@ import com.ociweb.pronghorn.util.Appendables;
 
 /**
  * Socket client with capabilities to write back
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ClientSocketWriterStage extends PronghornStage {
 	
