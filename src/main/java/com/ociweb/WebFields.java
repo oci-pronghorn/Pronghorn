@@ -1,5 +1,5 @@
 package com.ociweb;
 
 public enum WebFields {
-	name,id, proxyGet;
+	name, id, proxyGet, happy, age;
 }

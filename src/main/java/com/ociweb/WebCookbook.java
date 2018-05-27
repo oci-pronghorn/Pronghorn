@@ -88,7 +88,7 @@ public class WebCookbook  {
 
 			@Override
 			public int moduleCount() {
-				return 5;
+				return 6;
 			}
 
 			@Override
@@ -256,6 +256,39 @@ public class WebCookbook  {
 				            .routeId();
 						
 						return responses;
+						}
+					case 5:
+						{
+							Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(inputPipes.length, 
+									 ServerResponseSchema.instance.newPipeConfig(1<<12, 1<<9));
+								
+							int i = inputPipes.length;
+							while (--i>=0) {
+								ExampleRestStage.newInstance(
+										graphManager, 
+										inputPipes[i], 
+										responses[i], 
+										routerConfig.httpSpec()
+										);
+							}
+				
+							JSONExtractorCompleted extractor =
+									new JSONExtractor()
+									 .begin()
+									 
+								     .element(JSONType.TypeString, false, JSONAccumRule.First)					 
+									 	.asField("name",WebFields.name)
+									 	
+								     .element(JSONType.TypeBoolean, false, JSONAccumRule.First)					 
+									 	.asField("happy",WebFields.happy)
+									 	
+								     .element(JSONType.TypeInteger, false, JSONAccumRule.First)					 
+									 	.asField("age",WebFields.age)	 
+									 
+									 .finish();
+							
+							routerConfig.registerCompositeRoute(extractor).path("/hello").routeId(Routes.primary);
+							return responses;
 						}
 					default:
 						throw new UnsupportedOperationException();
