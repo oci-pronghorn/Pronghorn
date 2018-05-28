@@ -85,8 +85,28 @@
 		</dependency>
 	</dependencies>
 
+  <scm>
+    <connection>scm:git:git://github.com/oci-pronghorn/WebCookbook.git</connection>
+    <url>https://github.com/oci-pronghorn/WebCookbook</url>
+    <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/WebCookbook.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+    
+  <distributionManagement>
+    <repository>
+      <id>cloudbees.release</id>
+      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+    </repository>
+  </distributionManagement>
+  
 	<build>
-
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-webdav-jackrabbit</artifactId>
+				<version>2.2</version>
+			</extension>
+		</extensions>
 		<plugins>
 
 			<plugin>
