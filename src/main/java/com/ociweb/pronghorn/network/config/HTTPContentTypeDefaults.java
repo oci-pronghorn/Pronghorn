@@ -5,7 +5,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
 	//TODO: for DOT file we need to add UTF8...
 	
     //TODO: user smaller hash and put the lest used values at the bottom so they get the collision jump
-    UNKNOWN("","",true),//MUST BE FIRST WITH ORDINAL ZERO, market as alias to ensrue its not used for file lookup.
+    UNKNOWN("","",true),//MUST BE FIRST WITH ORDINAL ZERO, market as alias to ensure its not used for file lookup.
     AI("application/postscript","ai"),
     AIF("audio/x-aiff","aif"),
     AIFF("audio/x-aiff","aiff"),

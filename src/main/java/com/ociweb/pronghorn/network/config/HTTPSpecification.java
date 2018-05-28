@@ -217,10 +217,10 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		int typeIdx = 0;
 		if (idxOfDot>=0) {
 			int extHash = HTTPSpecification.extHash(resourceName.substring(idxOfDot+1, resourceName.length()));
+			//value will be zero if not found
 			typeIdx = IntHashTable.getItem(httpSpec.fileExtHashTable, extHash);
 		}
-		HTTPContentType httpContentType = (HTTPContentType)httpSpec.contentTypes[typeIdx];
-		return httpContentType;
+		return (HTTPContentType)httpSpec.contentTypes[typeIdx];
 	}
 
 	private static < T extends Enum<T> & HTTPContentType> IntHashTable buildFileExtHashTable(Class<T> supportedHTTPContentTypes) {
