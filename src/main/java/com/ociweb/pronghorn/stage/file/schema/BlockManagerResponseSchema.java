@@ -8,6 +8,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines block responses.
+ * @author Nathan Tippy
+ */
 public class BlockManagerResponseSchema extends MessageSchema<BlockManagerResponseSchema> {
 
 

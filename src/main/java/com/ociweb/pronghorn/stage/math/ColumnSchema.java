@@ -2,6 +2,11 @@ package com.ociweb.pronghorn.stage.math;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 
+/**
+ * Represents a column inside a matrix.
+ * @param <M>
+ * @author Nathan Tippy
+ */
 public class ColumnSchema<M extends MatrixSchema<M>> extends MatrixSchema<ColumnSchema<M>> {
 
 	private final MatrixSchema<M> root;

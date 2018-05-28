@@ -29,6 +29,8 @@ import com.ociweb.pronghorn.util.TrieParserReader;
  * @param <R>
  * @param <V>
  * @param <H>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
