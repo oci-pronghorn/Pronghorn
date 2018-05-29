@@ -33,22 +33,18 @@
         <tag>HEAD</tag>
     </scm>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>PronghornPipes</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>PronghornPipes</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-        <!--<repository> // cloud bees repository release location
-        <id>cloudbees.release</id>
-        <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-      </repository> -->
-    </distributionManagement>
+
 
     <profiles>
+        <profile>
+            <id>cloudbees</id>
+            <distributionManagement>
+                <repository>
+                    <id>cloudbees.release</id>
+                    <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+                </repository>
+            </distributionManagement>
+        </profile>
         <profile>
             <id>disable-java8-doclint</id>
             <activation>
@@ -60,6 +56,16 @@
         </profile>
         <profile>
             <id>mvn-central</id> <!-- profile for deploying to maven central -->
+            <distributionManagement>
+            <snapshotRepository>
+                <id>PronghornPipes</id>
+                <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            </snapshotRepository>
+            <repository>
+                <id>PronghornPipes</id>
+                <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            </repository>
+            </distributionManagement>
             <build>
                 <plugins>
                     <plugin>
