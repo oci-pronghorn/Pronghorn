@@ -67,7 +67,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes short to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value short to write to specified location
@@ -79,7 +79,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes byte to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value byte to write to specified location
@@ -91,7 +91,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes long to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value long to write to specified location
@@ -116,8 +116,6 @@ public class PipeWriter {
 	 * Writes decimal to specified pipe
 	 * @param pipe to be written to
 	 * @param loc location to write to
-	 * @param exponent
-	 * @param mantissa
 	 */
     public static void writeDecimal(Pipe pipe, int loc, int exponent, long mantissa) {    	
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);     	
@@ -198,7 +196,15 @@ public class PipeWriter {
 		writeSpecialBytesPosAndLen(pipe, loc, length, p);
 		
     }
-    
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write to
+	 * @param source byte array used to write data
+	 * @param offset
+	 * @param length
+	 */
     public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length) {
         assert(offset+length<=source.length) : "out of bounds";
         writeBytes(pipe,loc,source,offset,length,Integer.MAX_VALUE);

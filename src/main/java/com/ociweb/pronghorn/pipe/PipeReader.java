@@ -160,7 +160,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads decimal exponent from specified pipe
      * @param pipe to read from
      * @param loc location to read from
-     * @return
+     * @return decimal
      */
     public static int readDecimalExponent(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
@@ -171,7 +171,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads decimal mantissa from specified pipe
      * @param pipe to read from
      * @param loc location to read from
-     * @return
+     * @return mantissa
      */
     public static long readDecimalMantissa(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
@@ -218,6 +218,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return (A)Pipe.readUTF8(pipe, target, pos, PipeReader.readBytesLength(pipe,loc));
     }
 
+    /**
+     * Reads UTF8 in specified pipe and writes characters to char[]
+     * @param pipe to read
+     * @param loc location to read from
+     * @param target char array to write UTF8 to
+     * @return UTF8 data
+     */
 	public static int readUTF8(Pipe pipe, int loc, char[] target, int targetOffset) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
@@ -258,8 +265,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		  return i - targetloc;
 		         
 	}
-	
-	
+
+    /**
+     * Reads ASCII characters in specific location of given pipe
+     * @param pipe to be read from
+     * @param loc location to read from
+     * @param target char[] to write ASCII data to
+     * @return
+     */
     public static int readASCII(Pipe pipe, int loc, char[] target, int targetOffset) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	
@@ -304,8 +317,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             target[targetloc++]=(char)buffer[mask & pos++];
         }
     }
-   
-    
+
+    /**
+     * Checks to see if CharSequence matches UTF8 at given location
+     * @param pipe to be read from
+     * @param loc to read UTF8 from
+     * @param seq CharSequence to compare
+     * @return <code>true</code> if they are equal else <code>false</code>
+     */
   public static boolean eqUTF8(Pipe pipe, int loc, CharSequence seq) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
@@ -323,8 +342,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             return eqUTF8Ring(pipe,len,seq,Pipe.restorePosition(pipe,pos));
         }
     }
-    
-    
+
+    /**
+     * Checks to see if CharSequence matches ASCII at given location
+     * @param pipe to be read from
+     * @param loc to read ASCII from
+     * @param seq CharSequence to compare
+     * @return <code>true</code> if they are equal else <code>false</code>
+     */
     public static boolean eqASCII(Pipe pipe, int loc, CharSequence seq) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	
@@ -440,7 +465,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(0!=loc) : "This field needed for swapping to different array per field, like the constants array";
     	return pipe.blobMask;
     }
-    
+
+    /**
+     * Reads positions of bytes at specified location in given pipe
+     * @param pipe to read
+     * @param loc location to read from
+     * @return byte positions
+     */
     public static int readBytesPosition(Pipe pipe, int loc) {
         int tmp = readBytesMeta(pipe, loc);
 		return tmp<0 ? POS_CONST_MASK & tmp : Pipe.restorePosition(pipe,tmp);// first int is always the length
@@ -461,6 +492,10 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
 	}
 
+    /**
+     * An access to internal data structures; advanced feature
+     * @return byteBackingArray for given pipe
+     */
     public static byte[] readBytesBackingArray(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -699,10 +734,20 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return copied;
 	}
 
+    /**
+     * Determines if rw is a new message
+     * @param rw StackStateWalker checked to see if it is a new message
+     * @return <code>true</code> if rm is a new message, else <code>false</code>
+     */
 	public static boolean isNewMessage(StackStateWalker rw) {
 		return rw.isNewMessage;
 	}
 
+    /**
+     * Determines if ring is a new message
+     * @param ring Pipe checked to see if it is a new message
+     * @return <code>true</code> if ring is a new message, else <code>false</code>
+     */
 	public static boolean isNewMessage(Pipe ring) {
 		return ring.ringWalker.isNewMessage;
 	}
@@ -719,7 +764,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static int bytesConsumedByFragment(Pipe ringBuffer) {
 		return ringBuffer.ringWalker.nextWorkingTail>0 ? bytesConsumed(ringBuffer) : 0;
 	}
-	
+
+    /**
+     * Checks to see if pipe has content to read
+     * @param pipe to be checked
+     * @return <code>true</code> if pipe has content, else <code>false</code>
+     */
 	public static boolean hasContentToRead(Pipe pipe) {
 	    return StackStateWalker.hasContentToRead(pipe);
 	}
