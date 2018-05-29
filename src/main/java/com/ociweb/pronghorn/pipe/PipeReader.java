@@ -54,13 +54,21 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads int from specified pipe
      * @param pipe to read from
      * @param loc location of int to read
+     * @return data from specified location
      */
 	public static int readInt(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
         return Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
-	
+
+    /**
+     * Reads int securely from specified pipe
+     * @param pipe to read from
+     * @param loc location of int to read
+     * @param clearValue value to replace previous int with
+     * @return data from specified location
+     */
 	public static int readIntSecure(Pipe pipe, int loc, int clearValue) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -71,6 +79,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads short from specified pipe
      * @param pipe to be read
      * @param loc location of short to read
+     * @return data from specified location
      */
 	public static short readShort(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -81,7 +90,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     /**
      * Reads byte from specified pipe
      * @param pipe to be read
-     * @param loc location of short to read
+     * @param loc location of byte to read
+     * @return data from specified location
      */
 	public static byte readByte(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -93,6 +103,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads long from specified pipe
      * @param pipe to be read
      * @param loc location of long to read
+     * @return data from specified location
      */
 	public static long readLong(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -103,13 +114,20 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     /**
      * Reads double from specified pipe
      * @param pipe to be read
-     * @param loc location of long to read
+     * @param loc location of double to read
+     * @return data from specified location
      */
     public static double readDouble(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return ((double)readDecimalMantissa(pipe,loc))*powdi[64 - readDecimalExponent(pipe,loc)];
     }
 
+    /**
+     * Reads long bits from specified pipe and converts to double
+     * @param pipe to be read
+     * @param loc location of long bits to read
+     * @return double bits converted from long
+     */
     public static double readLongBitsToDouble(Pipe pipe, int loc) {
     	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   
         return Double.longBitsToDouble(readLong(pipe,loc));
@@ -119,12 +137,19 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * Reads float from specified pipe
      * @param pipe to be read
      * @param loc location of float to read
+     * @return data from specified location
      */
     public static float readFloat(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return ((float)readDecimalMantissa(pipe,loc))*powfi[64 - readDecimalExponent(pipe,loc)];
     }
-    
+
+    /**
+     * Reads int bits from specified pipe and converts to float
+     * @param pipe to be read
+     * @param loc location of int bits to read
+     * @return float bits converted from int
+     */
     public static float readIntBitsToFloat(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 

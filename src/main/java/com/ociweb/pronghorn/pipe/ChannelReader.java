@@ -44,6 +44,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 */
 	public abstract <A extends Appendable> A readUTFOfLength(int length, A target);
 
+
 	public abstract long parse(TrieParserReader reader, TrieParser trie, int length);
 
 	/**
@@ -64,7 +65,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 * @return <code>true</code> if there are bytes remaining else <code>false</code>
 	 */
 	public abstract boolean hasRemainingBytes();
-	
+
 	public abstract int read(byte b[]);
 	
 	public abstract int read(byte b[], int off, int len);
@@ -76,6 +77,13 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 */
 	public abstract boolean equalBytes(byte[] bytes);
 
+	/**
+	 * Checks to see if bytes passed are equal to bytes in ChannelReader
+	 * @param bytes byte array to pass in for comparison
+	 * @param bytesPos position to read from
+	 * @param bytesLen length of bytes to read
+	 * @return <code>true</code> if bytes are equal else <code>false</code>
+	 */
 	public abstract boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen);
 
 	/**
@@ -83,6 +91,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 * @param target to receive data from ChannelReader
 	 */
 	public abstract void readInto(Externalizable target);
+
 
 	public abstract void readInto(ChannelWriter writer, int length);
 
@@ -112,7 +121,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	public abstract boolean wasDecimalNull();
 
 	/**
-	 * Reads packed Long from ChannelReader and passes as long
+	 * Reads packed Long from ChannelReader and passes to long
 	 * @return long with data from ChannelReader
 	 */
 	public abstract long readPackedLong();
@@ -123,10 +132,22 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 */
 	public abstract int readPackedInt();
 
+	/**
+	 * Reads decimal from ChannelReader and passes to double
+	 * @return double with data from ChannelReader
+	 */
 	public abstract double readDecimalAsDouble();
-	
-	public abstract double readRationalAsDouble();	
-	
+
+	/**
+	 * Reads rational from ChannelReader and passes to double
+	 * @return double with data from ChannelReader
+	 */
+	public abstract double readRationalAsDouble();
+
+	/**
+	 * Reads decimal from ChannelReader and passes to long
+	 * @return long with data from ChannelReader
+	 */
 	public abstract long readDecimalAsLong();
 
 	/**
@@ -195,17 +216,37 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 * @return int with data from ChannelReader
 	 */
 	public abstract int skipBytes(int n);
-	
+
+	/**
+	 * @return actual offset position in the array where you are right now
+	 */
 	public abstract int absolutePosition();
-	
+
+	/**
+	 * @param position the actual offset position in the array where you want to be right now
+	 */
 	public abstract void absolutePosition(int position);
-	
+
+	/**
+	 * @return your position relative the the absolute position (if you've read 3 bytes since the absolutePosition, your position is 3)
+	 */
 	public abstract int position();
 
+	/**
+	 * @param position offset that you want from the absolutePosition
+	 */
 	public abstract void position(int position);
-	
+
+	/**
+	 * Determines if ChannelReader is structured
+	 * @return <code>true</code> if ChannelReader is structured else <code>false</code>
+	 */
 	public abstract boolean isStructured();
 
+	/**
+	 * Structures ChannelReader allowing access to field name
+	 * @return structured form of ChannelReader
+	 */
 	public abstract StructuredReader structured();
 	
 }
