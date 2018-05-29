@@ -576,7 +576,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
                 target[targetloc++]=buffer[mask & pos++]; //TODO:M replace with dual arrayCopy as seen elsewhere
             }
     }
-    
+
+    /**
+     * Reads bytes in given pipe at specified location and populates target with bytes
+     * @param pipe pipe to read from
+     * @param loc location to read from
+     * @param target byte array to write to
+     * @return if len>=0 return len, else 0
+     */
     public static int readBytes(Pipe pipe, int loc, byte[] target, int targetOffset, int targetMask) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -752,10 +759,20 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return ring.ringWalker.isNewMessage;
 	}
 
+    /**
+     * Gets the message index in the pipe
+     * @param rb pipe to find index in
+     * @return message index
+     */
 	public static int getMsgIdx(Pipe rb) {
 		return rb.lastMsgIdx = rb.ringWalker.msgIdx;
 	}
 
+    /**
+     * Gets the message index
+     * @param rw StackStateWalker to find index in
+     * @return message index
+     */
 	static int getMsgIdx(StackStateWalker rw) {
 		return rw.msgIdx;
 	}
@@ -784,13 +801,26 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)));
 	}
-	
+
+    /**
+     * Checks pipe to see if message equals expected
+     * @param pipe to be checked
+     * @param expected used for comparison with message
+     * @return <code>true</code> if message == expected, else <code>false</code>
+     */
 	public static boolean peekMsg(Pipe pipe, int expected) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		return StackStateWalker.hasContentToRead(pipe) 
 				&& (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
-	
+
+    /**
+     * Checks pipe to see if message equals expected
+     * @param pipe to be checked
+     * @param expected1 used for comparison with message
+     * @param expected2 used for comparison with message
+     * @return <code>true</code> if message == expected1 && expected2, else <code>false</code>
+     */
 	public static boolean peekMsg(Pipe pipe, int expected1, int expected2) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		return StackStateWalker.hasContentToRead(pipe) 
@@ -799,7 +829,16 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 						|| (expected2 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail)) 
 					);
 	}
-	
+
+    /**
+     * Checks pipe to see if message equals expected
+     * @param pipe to be checked
+     * @param expected1 used for comparison with message
+     * @param expected2 used for comparison with message
+     * @param expected3 used for comparison with message
+     * @return <code>true</code> if message == expected1, expected2 && expected3, else <code>false</code>
+     */
+
 	public static boolean peekMsg(Pipe pipe, int expected1, int expected2, int expected3) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		return StackStateWalker.hasContentToRead(pipe) 
@@ -809,35 +848,75 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 						|| (expected3 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail))
 					);
 	}
-	
+
+    /**
+     * Checks pipe to see if message does not equal expected
+     * @param pipe to be checked
+     * @param expected used for comparison
+     * @return <code>true</code> if message != expected, else <code>false</code>
+     */
 	public static boolean peekNotMsg(Pipe pipe, int expected) {			
 		return StackStateWalker.hasContentToRead(pipe) && (expected != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
-	
+
+    /**
+     * Checks pipe to see if message does not equal expected
+     * @param pipe to be checked
+     * @param expected1 used for comparison
+     * @param expected2 used for comparison
+     * @return <code>true</code> if message != expected1 && message != expected2, else <code>false</code>
+     */
+
 	public static boolean peekNotMsg(Pipe pipe, int expected1, int expected2) {			
 		return StackStateWalker.hasContentToRead(pipe) && 
 			(expected1 != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail)) && 
 			(expected2 != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
-	
+
+    /**
+     * Peeks ahead to specified field in pipe before Trie parsing is done
+     * @param pipe pipe to read
+     * @param loc field to peek in
+     * @return int data in that field
+     */
 	public static int peekInt(Pipe pipe, int loc) {			
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 		return Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
 	}
-	
+
+    /**
+     * Peeks ahead to specified field in pipe before Trie parsing is run
+     * @param pipe pipe to read
+     * @param loc field to peek in
+     * @return long data in that field
+     */
 	public static long peekLong(Pipe pipe, int loc) {
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		return Pipe.readLong(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
 	}
-	
+
+    /**
+     * Peeks ahead to specified field in pipe before Trie parsing is run
+     * @param pipe pipe to read
+     * @param loc field to peek in
+     * @return UTF8 data in that field
+     */
+
 	public static <A extends Appendable> A peekUTF8(Pipe pipe, int loc, A target) {
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         return (A)Pipe.readUTF8(pipe, target, peekDataPosition(pipe, loc), PipeReader.peekDataLength(pipe, loc));
     }
-	
+
+    /**
+     * Peeks ahead to specified field in pipe before Trie parsing is run
+     * @param pipe pipe to read
+     * @param loc field to peek in
+     * @return length of data in that field
+     */
+
     public static int peekDataLength(Pipe pipe, int loc) {
     	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -857,14 +936,22 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))];
     }
-    
+
+    /**
+     * Peeks at internal data; advanced feature
+     */
     public static byte[] peekDataBackingArray(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	 int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+ (OFF_MASK&loc))];
     	 return pos<0 ? pipe.blobConstBuffer :  Pipe.blob(pipe);
     }
-	
+
+    /**
+     * Peeks at input stream of specified pipe before Trie parse is run
+     * @param pipe pipe to read
+     * @return stream
+     */
     public static <S extends MessageSchema<S>> DataInputBlobReader<S> peekInputStream(Pipe<S> pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc)+"  b"+Integer.toBinaryString(loc);
 
@@ -905,11 +992,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    return 0;
 	}
 
-    /**
-     * Gives the total bytes consumed in a given pipe
-     * @param pipe to be read
-     * @return total bytes
-     */
     private static int bytesConsumed(Pipe pipe) {
         return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail-1)];
     }
@@ -939,10 +1021,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    return consumed;
 	}
 
+    /**
+     * Release all pending records
+     * @param pipe the pipe where this message is found
+     */
 	public static void releaseAllPendingReadLock(Pipe pipe) {
 		Pipe.releaseAllPendingReadLock(pipe);
 	}
-	
+
 	public static void releaseAllPendingReadLock(Pipe pipe, int consumed) {
 		Pipe.releasePendingAsReadLock(pipe, consumed);
 	}
