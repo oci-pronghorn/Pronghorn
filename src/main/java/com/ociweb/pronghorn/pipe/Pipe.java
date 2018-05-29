@@ -2479,32 +2479,20 @@ public class Pipe<T extends MessageSchema<T>> {
 
     /**
      * Writes decimal as ASCII to specified Pipe
-     * @param readDecimalExponent TODO: unsure
-     * @param readDecimalMantissa ??
+     * @param readDecimalExponent int exponent -63 to +64 where the point goes
+     * @param readDecimalMantissa long actual value for the number
      * @param outputRing Pipe to write to
-     * @param <S> MessageSchema to extend
+     * @param <S> MessageSchema to write to
      */
-	public static <S extends MessageSchema<S>> void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe<S> outputRing) {
-		long ones = (long)(readDecimalMantissa*PipeReader.powdi[64 + readDecimalExponent]);
-		validateVarLength(outputRing, 21);
-		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
-		int len = leftConvertLongToASCII(outputRing, ones, max);
-		outputRing.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
+	public static <S extends MessageSchema<S>> void addDecimalAsASCII(
+			                     int readDecimalExponent,	
+			                     long readDecimalMantissa, 
+			                     Pipe<S> outputRing) {
 
-		copyASCIIToBytes(".", outputRing);
-
-		long frac = Math.abs(readDecimalMantissa - (long)(ones/PipeReader.powdi[64 + readDecimalExponent]));
-
-		validateVarLength(outputRing, 21);
-		int max1 = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
-		int len1 = leftConvertLongWithLeadingZerosToASCII(outputRing, readDecimalExponent, frac, max1);
-		outputRing.blobRingHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len1 + outputRing.blobRingHead.byteWorkingHeadPos.value);
-
-		//may require trailing zeros
-		while (len1<readDecimalExponent) {
-			copyASCIIToBytes("0",outputRing);
-			len1++;
-		}
+		DataOutputBlobWriter<S> out = outputRing.openOutputStream(outputRing);
+		Appendables.appendDecimalValue(out, readDecimalMantissa, (byte)readDecimalExponent);
+		DataOutputBlobWriter.closeLowLevelField(out);
+				
 	}
 
 	/**
@@ -2634,6 +2622,15 @@ public class Pipe<T extends MessageSchema<T>> {
 		copyIntsFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask, length);
 	}
 
+	/**
+	 * Copy bytes from a non-wrapping array into a ring buffer (an array which wraps)
+	 * @param source byte[] source array
+	 * @param sourceloc int source location
+	 * @param target byte[] target array
+	 * @param targetloc int target location
+	 * @param targetMask int target mask for looping over target array
+	 * @param length int length in bytes to copy
+	 */
 	public static void copyBytesFromArrayToRing(byte[] source, final int sourceloc, byte[] target, int targetloc, int targetMask, int length) {
 		///NOTE: the source can never wrap..				
 		if (length > 0) {
@@ -2651,6 +2648,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 	
+	/**
+	 * directly copy byte array field from the source pipe to the target pipe
+	 * @param source Pipe source positioned to the field to be copied
+	 * @param target Pipe target positioned to where the field is to be written
+	 */
 	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addByteArray(Pipe<S> source, Pipe<T> target) {
 				
 		int sourceMeta = Pipe.takeRingByteMetaData(source);
@@ -2788,8 +2790,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
-	@Deprecated //use the Appendables methods
-	public static <S extends MessageSchema<S>> int leftConvertIntToASCII(Pipe<S> pipe, int value, int idx) {
+	@Deprecated //use the Appendables methods, Delete this 
+	public static <S extends MessageSchema<S>> int leftConvertIntToASCII(
+			Pipe<S> pipe, 
+			int value, 
+			int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = pipe.blobRing;
@@ -2848,41 +2853,14 @@ public class Pipe<T extends MessageSchema<T>> {
 		return length;
 	}
 
-   public static <S extends MessageSchema<S>> int leftConvertLongWithLeadingZerosToASCII(Pipe<S> pipe, int chars, long value, int idx) {
-        //max places is value for -2B therefore its 11 places so we start out that far and work backwards.
-        //this will leave a gap but that is not a problem.
-        byte[] target = pipe.blobRing;
-        long tmp = Math.abs(value);
-        int max = idx;
-
-        do {
-            //do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
-            long t = tmp/10;
-            long r = tmp%10;
-            target[pipe.blobMask&--idx] = (byte)('0'+r);
-            tmp = t;
-            chars--;
-        } while (0!=tmp);
-        while(--chars>=0) {
-            target[pipe.blobMask&--idx] = '0';
-        }
-
-        target[pipe.blobMask& (idx-1)] = (byte)'-';
-        //to make it positive we jump over the sign.
-        idx -= (1&(value>>63));
-
-        int length = max-idx;
-        //shift it down to the head
-        if (idx!=pipe.blobRingHead.byteWorkingHeadPos.value) {
-            int s = 0;
-            while (s<length) {
-                target[pipe.blobMask & (s+pipe.blobRingHead.byteWorkingHeadPos.value)] = target[pipe.blobMask & (s+idx)];
-                s++;
-            }
-        }
-        return length;
-    }
-
+	/**
+	 * read the int at this index in the buffer and return it.
+	 * 
+	 * @param buffer int[] source array
+	 * @param mask int mask for position
+	 * @param index int offset to find int
+	 * @return int value at that poisition
+	 */
 	public static int readInt(int[] buffer, int mask, long index) {
 		return buffer[mask & (int)(index)];
 	}
@@ -2906,18 +2884,28 @@ public class Pipe<T extends MessageSchema<T>> {
             return result;
 	}
 
+	/**
+	 * Read long value from int buffer
+	 * 
+	 * @param buffer int[] backing buffer to read from
+	 * @param mask int ring buffer mask to loop over buffer
+	 * @param index int position in byte array
+	 * @return long value
+	 */
 	public static long readLong(int[] buffer, int mask, long index) {
 		return (((long) buffer[mask & (int)index]) << 32) | (((long) buffer[mask & (int)(index + 1)]) & 0xFFFFFFFFl);
 	}
 
+
 	/**
-	   * Convert bytes into chars using UTF-8.
-	   *
-	   *  High 32   BytePosition
-	   *  Low  32   Char (caller can cast response to char to get the decoded value)
-	   *
-	   */
-	  public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
+	 * Convert bytes into a single char using UTF-8.
+	 * 
+	 * @param source byte[] source bytes
+	 * @param posAndChar long first position and char, normally high 32 are zero
+	 * @param mask int source mask 
+	 * @return long with High32 as BytePosition and Low32 as Char for easy access.
+	 */
+	public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
 
 		  // 7  //high bit zero all others its 1
 		  // 5 6
@@ -2997,8 +2985,14 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return (((long)sourcePos)<<32) | chr;
 	  }
 
-	public static <S extends MessageSchema<S>> int copyASCIIToBytes(CharSequence source, Pipe<S> rbRingBuffer) {
-		return copyASCIIToBytes(source, 0, source.length(), rbRingBuffer);
+	/**
+	 * copy ASCII to bytes
+	 * @param source CharSequence char source
+	 * @param pipe Pipe target to write bytes field
+	 * @return int new position after write
+	 */
+	public static <S extends MessageSchema<S>> int copyASCIIToBytes(CharSequence source, Pipe<S> pipe) {
+		return copyASCIIToBytes(source, 0, source.length(), pipe);
 	}
 
     /**
@@ -3011,20 +3005,45 @@ public class Pipe<T extends MessageSchema<T>> {
 	    addASCII(source, 0, null==source ? -1 : source.length(), rb);
 	}
 
-	public static <S extends MessageSchema<S>> void addASCII(CharSequence source, int sourceIdx, int sourceCharCount, Pipe<S> rb) {
-		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);
+	/**
+	 * Add these chars as ASCII values to output pipe
+	 * @param source CharSequence chars
+	 * @param sourceIdx position to start reading chars
+	 * @param sourceCharCount count of chars to write
+	 * @param pipe Pipe target to add byte field into
+	 */
+	public static <S extends MessageSchema<S>> void addASCII(
+			CharSequence source, int sourceIdx, 
+			int sourceCharCount, Pipe<S> pipe) {
+		addBytePosAndLen(pipe, copyASCIIToBytes(source, sourceIdx, sourceCharCount, pipe), sourceCharCount);
 	}
 
-	public static <S extends MessageSchema<S>> void addASCII(char[] source, int sourceIdx, int sourceCharCount, Pipe<S> rb) {
-		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);
+	/**
+	 * Add these chars as ASCII values to output pipe
+	 * @param source char[] char source
+	 * @param sourceIdx int start position of chars
+	 * @param sourceCharCount int count of chars
+	 * @param pipe Pipe target to write byte field
+	 */
+	public static <S extends MessageSchema<S>> void addASCII(char[] source, int sourceIdx, 
+			                                               int sourceCharCount, Pipe<S> pipe) {
+		addBytePosAndLen(pipe, copyASCIIToBytes(source, sourceIdx, sourceCharCount, pipe), sourceCharCount);
 	}
 
-	public static <S extends MessageSchema<S>> int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
-		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
+	/**
+	 * Add these chars as ASCII values to output pipe
+	 * @param source CharSequence source chars
+	 * @param sourceIdx start position of chars to read
+	 * @param sourceLen length of chars to read
+	 * @param pipe Pipe target pipe
+	 * @return int new position after write
+	 */
+	public static <S extends MessageSchema<S>> int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe<S> pipe) {
+		final int p = pipe.blobRingHead.byteWorkingHeadPos.value;
 		
 	    if (sourceLen > 0) {
-	    	int tStart = p & rbRingBuffer.blobMask;
-	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.blobRing, tStart, 1+rbRingBuffer.blobMask - tStart);
+	    	int tStart = p & pipe.blobMask;
+	        copyASCIIToBytes2(source, sourceIdx, sourceLen, pipe, p, pipe.blobRing, tStart, 1+pipe.blobMask - tStart);
 	    }
 		return p;
 	}
@@ -3042,11 +3061,20 @@ public class Pipe<T extends MessageSchema<T>> {
 		rbRingBuffer.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	}
 
-    public static <S extends MessageSchema<S>> int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
-		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
+	/**
+	 * Copy ascii chars as bytes into a var field in the pipe
+	 * @param source char[] char source
+	 * @param sourceIdx int start position to read chars
+	 * @param sourceLen int length to copy
+	 * @param pipe Pipe target pipe to add field
+	 * @return int new position after write
+	 */
+    public static <S extends MessageSchema<S>> int copyASCIIToBytes(char[] source, 
+    		                      int sourceIdx, final int sourceLen, Pipe<S> pipe) {
+		final int p = pipe.blobRingHead.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
-	    	int targetMask = rbRingBuffer.blobMask;
-	    	byte[] target = rbRingBuffer.blobRing;
+	    	int targetMask = pipe.blobMask;
+	    	byte[] target = pipe.blobRing;
 
 	        int tStart = p & targetMask;
 	        int len1 = 1+targetMask - tStart;
@@ -3058,7 +3086,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			    copyASCIIToByte(source, sourceIdx, target, tStart, 1+ targetMask - tStart);
 			    copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 			}
-	        rbRingBuffer.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
+	        pipe.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	    }
 		return p;
 	}
@@ -3091,11 +3119,11 @@ public class Pipe<T extends MessageSchema<T>> {
      * Writes UTF8 characters to specified pipe
      * @param source characters to write
      * @param sourceCharCount character count of the source to write
-     * @param rb pipe to write to
+     * @param pipe pipe to write to
      * @param <S> MessageSchema to extend
      */
-	public static <S extends MessageSchema<S>> void addUTF8(CharSequence source, int sourceCharCount, Pipe<S> rb) {
-		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,0, sourceCharCount, rb));
+	public static <S extends MessageSchema<S>> void addUTF8(CharSequence source, int sourceCharCount, Pipe<S> pipe) {
+		addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,0, sourceCharCount, pipe));
 	}
 
     /**
@@ -3109,9 +3137,14 @@ public class Pipe<T extends MessageSchema<T>> {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
-	/**
-	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
-	 */
+   /**
+    * Copy CharSequence to bytes field in the pipe using UTF8 encoding.	
+    * @param source CharSequence source
+    * @param sourceOffset int start position for reading chars
+    * @param sourceCharCount count of chars to read
+    * @param pipe Pipe target
+    * @return int number of bytes written (WARNING: this is different from the ASCII version which returns the position)
+    */
    public static <S extends MessageSchema<S>> int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe<S> pipe) {
         if (sourceCharCount>0) {
             int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, pipe.blobRing, pipe.blobMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
@@ -3122,6 +3155,16 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
 
+    /**
+     * Copy CharSequence to bytes field in the pipe using UTF8 encoding.	
+     * @param source CharSequence chars
+     * @param sourceIdx int start offset to read from
+     * @param target byte[] target byte array
+     * @param targetMask int target mask for looping
+     * @param targetIdx int target offset
+     * @param charCount int count of chars to be converted
+     * @return int number of bytes written (WARNING: this is different from the ASCII version which returns the position)
+     */
 	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 	    int pos = targetIdx;
 	    int c = 0;
@@ -3131,12 +3174,30 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return pos - targetIdx;
 	}
 
+	/**
+	 * Write xor random data into the target array
+	 * @param r Random source for random values
+	 * @param target byte[] backing target array
+	 * @param targetIdx int targetIdx
+	 * @param count int length in bytes
+	 * @param targetMask ring buffer mask to loop over target
+	 */
 	public static void xorRandomToBytes(Random r, byte[] target, int targetIdx, int count, int targetMask) {
 		while (--count>=0) {
 			target[targetMask& (targetIdx+count)] ^= r.nextInt(256);
 		}
 	}
 	
+	/**
+	 * Xor target bytes in place with the source bytes
+	 * @param source byte[] source backing data
+	 * @param sourceIdx int source start position
+	 * @param sourceMask int mask ring buffer source byte[]
+	 * @param target byte[] target backing array
+	 * @param targetIdx int target start xor position
+	 * @param targetMask int mask to loop back over target buffer
+	 * @param count int total count of bytes length
+	 */
 	public static void xorBytesToBytes(byte[] source, int sourceIdx, int sourceMask,
 			                            byte[] target, int targetIdx, int targetMask, 
 			                            int count) {
@@ -3146,18 +3207,35 @@ public class Pipe<T extends MessageSchema<T>> {
 	}	
 	
 	
-	/**
+	/*
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static <S extends MessageSchema<S>> int copyUTF8ToByte(char[] source, int sourceCharCount, Pipe<S> rb) {
-		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.blobMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
-		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
+	
+	/**
+	 * Copy chars to UTF8 encoded bytes
+	 * @param source char[] chars
+	 * @param sourceCharCount count of chars from 0 position
+	 * @param pipe Pipe target to write field
+	 * @return int count of bytes copied
+	 */
+	public static <S extends MessageSchema<S>> int copyUTF8ToByte(char[] source, int sourceCharCount, 
+			                                                      Pipe<S> pipe) {
+		int byteLength = Pipe.copyUTF8ToByte(source, 0, pipe.blobRing, pipe.blobMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+		pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value+byteLength);
 		return byteLength;
 	}
 
-	public static <S extends MessageSchema<S>> int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe<S> rb) {
-	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.blobMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
-	    rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
+	/**
+	 * Copy chars to UTF8 encoded bytes
+	 * @param source char[] chars
+	 * @param sourceOffset start position to read chars
+	 * @param sourceCharCount total count of chars read
+	 * @param pipe Pipe target to write field
+	 * @return int count of bytes copied
+	 */
+	public static <S extends MessageSchema<S>> int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe<S> pipe) {
+	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, pipe.blobRing, pipe.blobMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+	    pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value+byteLength);
 	    return byteLength;
 	}
 
@@ -3171,6 +3249,14 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return pos - targetIdx;
 	}
 
+	/**
+	 * UTF8 Encode single char to bytes
+	 * @param c int, single char
+	 * @param buffer byte[] target 
+	 * @param mask int mask for looping ring buffer target
+	 * @param pos int index in target to write bytes
+	 * @return int count of bytes written for this char
+	 */
 	public static <S extends MessageSchema<S>> int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
 
 	    if (c <= 0x007F) { // less than or equal to 7 bits or 127
@@ -3225,6 +3311,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pos;
 	}
 
+	/**
+	 * add byte buffer as a field in pipe
+	 * @param source ByteBuffer source with var data
+	 * @param pipe Pipe target
+	 */
 	public static <S extends MessageSchema<S>> void addByteBuffer(ByteBuffer source, Pipe<S> pipe) {
 	    int bytePos = pipe.blobRingHead.byteWorkingHeadPos.value;
 	    int len = -1;
@@ -3241,64 +3332,122 @@ public class Pipe<T extends MessageSchema<T>> {
 	    Pipe.addBytePosAndLen(pipe, bytePos, len);
 	}
 
-   public static <S extends MessageSchema<S>> void addByteBuffer(ByteBuffer source, int length, Pipe<S> rb) {
-        int bytePos = rb.blobRingHead.byteWorkingHeadPos.value;
+	/**
+	 * add byte buffer as a field in pipe
+	 * @param source ByteBuffer target
+	 * @param length int limits bytes from target byte buffer
+	 * @param pipe Pipe target 
+	 */
+   public static <S extends MessageSchema<S>> void addByteBuffer(ByteBuffer source, int length, Pipe<S> pipe) {
+        int bytePos = pipe.blobRingHead.byteWorkingHeadPos.value;
         int len = -1;
         if (null!=source && length>0) {
             len = length;
-            copyByteBuffer(source,length,rb);
+            copyByteBuffer(source,length,pipe);
         }
-        Pipe.addBytePosAndLen(rb, bytePos, len);
+        Pipe.addBytePosAndLen(pipe, bytePos, len);
     }
 	   
-	public static <S extends MessageSchema<S>> void copyByteBuffer(ByteBuffer source, int length, Pipe<S> rb) {
-		validateVarLength(rb, length);
-		int idx = rb.blobRingHead.byteWorkingHeadPos.value & rb.blobMask;
-		int partialLength = 1 + rb.blobMask - idx;
+   /**
+    * copy ByteBuffer into pipe as a field.
+    * @param source ByteBuffer
+    * @param length int limits the bytes copied from the source
+    * @param pipe Pipe target for writing the field
+    */
+	public static <S extends MessageSchema<S>> void copyByteBuffer(ByteBuffer source, int length, 
+			                                                       Pipe<S> pipe) {
+		validateVarLength(pipe, length);
+		int idx = pipe.blobRingHead.byteWorkingHeadPos.value & pipe.blobMask;
+		int partialLength = 1 + pipe.blobMask - idx;
 		//may need to wrap around ringBuffer so this may need to be two copies
 		if (partialLength>=length) {
-		    source.get(rb.blobRing, idx, length);
+		    source.get(pipe.blobRing, idx, length);
 		} else {
 		    //read from source and write into byteBuffer
-		    source.get(rb.blobRing, idx, partialLength);
-		    source.get(rb.blobRing, 0, length - partialLength);
+		    source.get(pipe.blobRing, idx, partialLength);
+		    source.get(pipe.blobRing, 0, length - partialLength);
 		}
-		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value + length);
+		pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value + length);
 	}
 
-	public static <S extends MessageSchema<S>> void addByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset) {
+	/**
+	 * Add byte array to target pipe
+	 * 
+	 * @param outputRing Pipe target
+	 * @param mask int mask to loop arround data target
+	 * @param len int total bytes to copy
+	 * @param data byte[] backing array
+	 * @param offset int bytes position
+	 */
+	public static <S extends MessageSchema<S>> void addByteArrayWithMask(final Pipe<S> outputRing, 
+												int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
 		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.blobMask, len);
 		addBytePosAndLenSpecial(outputRing, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),len);
 		PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
 	
-    public static <S extends MessageSchema<S>> void setByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset, long slabPosition) {
+	/**
+	 * Set byte array into specific location
+	 * 
+	 * @param outputRing Pipe target
+	 * @param mask int backing data mask
+	 * @param len int count of bytes
+	 * @param data byte[] backing data to copy
+	 * @param offset int start at position to copy
+	 * @param slabPosition int slab position to set this data
+	 */
+    public static <S extends MessageSchema<S>> void setByteArrayWithMask(final Pipe<S> outputRing,
+    		int mask, int len, byte[] data, int offset, long slabPosition) {
 	        validateVarLength(outputRing, len);
 	        copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.blobMask, len);
             setBytePosAndLen(slab(outputRing), outputRing.slabMask, slabPosition, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos), len, bytesWriteBase(outputRing));
 	        PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
 
+    /**
+     * Peek an int value without moving the cursors.
+     * 
+     * @param buf int[] backing slap array
+     * @param pos int index position to read from
+     * @param mask int mask for access to backing array
+     * @return int value
+     */
 	public static <S extends MessageSchema<S>> int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
     }
 
+	/**
+	 * Peek a long value without moving the cursors.
+	 * 
+     * @param buf int[] backing slap array
+     * @param pos int index position to read from
+     * @param mask int mask for access to backing array
+     * @return int value
+	 */
     public static <S extends MessageSchema<S>> long peekLong(int[] buf, long pos, int mask) {
 
         return (((long) buf[mask & (int)pos]) << 32) | (((long) buf[mask & (int)(pos + 1)]) & 0xFFFFFFFFl);
 
     }
 
+    /**
+     * check if this pipe has been shutdown
+     * @param pipe Pipe source to read from
+     * @return boolean true if is shutdown
+     */
     public static <S extends MessageSchema<S>> boolean isShutdown(Pipe<S> pipe) {
     	return pipe.imperativeShutDown.get();
     }
 
+    /**
+     * shutdown this pipe now, this should only be called by internal logic for an emergency
+     * @param pipe Pipe pipe to shutdown
+     */
     public static <S extends MessageSchema<S>> void shutdown(Pipe<S> pipe) {
     	if (!pipe.imperativeShutDown.getAndSet(true)) {
     		pipe.firstShutdownCaller = new PipeException("Shutdown called from this stacktrace");
     	}
-
     }
 
     /**
@@ -3350,6 +3499,10 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
+    /**
+     * add a null byte array in this position of the target pipe
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void addNullByteArray(Pipe<S> pipe) {
         addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, -1);
     }
@@ -3413,19 +3566,25 @@ public class Pipe<T extends MessageSchema<T>> {
         setValue(pipe.slabRing,pipe.slabMask,position,value);
     }
     
+    /**
+     * Ors int value to specific position in the given pipe
+     * @param value int to be ored
+     * @param pipe Pipe to be written to
+     * @param position position to or
+     */
     public static <S extends MessageSchema<S>> void orIntValue(int value, Pipe<S> pipe, long position) {
         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
         orValue(pipe.slabRing,pipe.slabMask,position,value);
     }
 
-    //
-    //TODO: URGENT, A, It may be much nicer to add a method called 'beginMessage' which does only the base work and then moves the cursor forward one.
-    //         Then we can take the confirm write and it can go back and set the id. Also add asserts on all fiels that this happens first !!!
-    //
-    
-    //TODO: How can we test that the msgIdx that is passed in is only applicable to S ?? we need a way to check this.
-    
-    //must be called by low-level API when starting a new message
+
+    /**
+     * Called to start a new message when using the low level API
+     * 
+     * @param pipe Pipe target
+     * @param msgIdx int message to be written, Find this value in the MessageSchema for the type in use
+     * @return int size of the message, this value is needed to confirm writes.
+     */
     public static <S extends MessageSchema<S>> int addMsgIdx(final Pipe<S> pipe, int msgIdx) {
          assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+ pipe.sizeOfSlabRing  /*    pipe.slabMask*/  )) : "Working position is now writing into published(unreleased) tail "+
                 Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.sizeOfSlabRing /*pipe.slabMask*/+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
@@ -3455,16 +3614,31 @@ public class Pipe<T extends MessageSchema<T>> {
 		    }//for mixing high and low calls
 		    //////////////////////////////////////
 		 
-		 return size;
-		 
+		 return size;		 
 	}
 
-	public static <S extends MessageSchema<S>> void setValue(int[] buffer, int rbMask, long offset, int value) {
-        buffer[rbMask & (int)offset] = value;
+    /**
+     * set an int value at this position
+     * 
+     * @param buffer int[] backing buffer
+     * @param mask int mask
+     * @param offset long offset into backing buffer
+     * @param value int value to be assigned to this position
+     */
+	public static <S extends MessageSchema<S>> void setValue(int[] buffer, int mask, long offset, int value) {
+        buffer[mask & (int)offset] = value;
     }
 
-	public static <S extends MessageSchema<S>> void orValue(int[] buffer, int rbMask, long offset, int value) {
-        buffer[rbMask & (int)offset] |= value;
+	/**
+	 * or an int value at this position
+	 * 
+	 * @param buffer int[] backing buffer
+	 * @param mask int mask
+	 * @param offset long offset into backing buffer
+	 * @param value int value to be ored at this position
+	 */
+	public static <S extends MessageSchema<S>> void orValue(int[] buffer, int mask, long offset, int value) {
+        buffer[mask & (int)offset] |= value;
     }
 
     /**
@@ -3478,6 +3652,13 @@ public class Pipe<T extends MessageSchema<T>> {
         addBytePosAndLenSpecial(pipe,position,length);
     }
 
+    /**
+     * Writes the position and len for a var byte field to the pipe but it does not move the 
+     * byte count forward, that is assumed to already be done.
+     * @param targetOutput Pipe target
+     * @param startBytePos int start position where the bytes were written
+     * @param bytesLength int count length of bytes written
+     */    
     public static <S extends MessageSchema<S>> void addBytePosAndLenSpecial(Pipe<S> targetOutput, final int startBytePos, int bytesLength) {
         PaddedLong workingHeadPos = getWorkingHeadPositionObject(targetOutput);
         setBytePosAndLen(slab(targetOutput), targetOutput.slabMask, workingHeadPos.value, 
@@ -3486,7 +3667,8 @@ public class Pipe<T extends MessageSchema<T>> {
         PaddedLong.add(workingHeadPos, 2);
     }
 
-	public static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int bufferMask, long bufferPos, int dataBlobPos, int dataBlobLen, int baseBytePos) {
+	static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int bufferMask, 
+			long bufferPos, int dataBlobPos, int dataBlobLen, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	if (dataBlobPos>=0) {
@@ -3502,10 +3684,15 @@ public class Pipe<T extends MessageSchema<T>> {
 		assert(pos>=0);
 		return pos + Pipe.bytesReadBase(pipe);
 	}
-
-	
-	/*
-	 * WARNING: this method has side effect of moving byte pointer.
+		
+	/**
+	 * convert meta and len field data into a specific position field.
+	 * NOTE: this method has the side effect of moving the cursor forward.
+	 * 
+	 * @param meta int pos and location data for thie field
+	 * @param pipe Pipe pipe holding this data
+	 * @param len int length for this field
+	 * @return int position
 	 */
     public static <S extends MessageSchema<S>> int bytePosition(int meta, Pipe<S> pipe, int len) {
     	int pos =  restorePosition(pipe, meta & RELATIVE_POS_MASK);
@@ -3515,33 +3702,49 @@ public class Pipe<T extends MessageSchema<T>> {
         return pos;
     }
     
-    //WARNING: this has no side effect
+    
+    /**
+	 * convert meta field data into a specific position field.
+	 * NOTE: this method has NO side effect of moving the cursor forward
+	 *       and may not be the method you want to call.
+	 *       
+     * @param meta int meta
+     * @param pipe Pipe pipe holding this data
+     * @return int position
+     */
     public static <S extends MessageSchema<S>> int convertToPosition(int meta, Pipe<S> pipe) {
     	return restorePosition(pipe, meta & RELATIVE_POS_MASK);
     }
 
 
-    public static <S extends MessageSchema> void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
+    /**
+     * add 3 integer values in a single call
+     * @param buffer byte[] target backing array
+     * @param mask int mask to loop over ring buffer
+     * @param headCache head position 
+     * @param value1 int value 1
+     * @param value2 int value 2
+     * @param value3 int value 3
+     */
+    public static <S extends MessageSchema> void addValue(int[] buffer, int mask, PaddedLong headCache, int value1, int value2, int value3) {
 
         long p = headCache.value;
-        buffer[rbMask & (int)p++] = value1;
-        buffer[rbMask & (int)p++] = value2;
-        buffer[rbMask & (int)p++] = value3;
+        buffer[mask & (int)p++] = value1;
+        buffer[mask & (int)p++] = value2;
+        buffer[mask & (int)p++] = value3;
         headCache.value = p;
 
     }
 
-    @Deprecated
-    public static <S extends MessageSchema<S>> void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
-
-        headCache.value = setValues(buffer, rbMask, headCache.value, value1, value2);
-
-    }
-
+    /**
+     * add Decimal value to pipe
+     * @param exponent int exponent -63 to +63
+     * @param mantissa long raw value
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void addDecimal(int exponent, long mantissa, Pipe<S> pipe) {
         pipe.slabRingHead.workingHeadPos.value = setValues(pipe.slabRing, pipe.slabMask, pipe.slabRingHead.workingHeadPos.value, exponent, mantissa);
     }
-
 
 	static <S extends MessageSchema<S>> long setValues(int[] buffer, int rbMask, long pos, int value1, long value2) {
 		buffer[rbMask & (int)pos++] = value1;
@@ -3550,26 +3753,23 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pos;
 	}
 
-	@Deprecated //use addLongValue(value, rb)
-    public static <S extends MessageSchema<S>> void addLongValue(Pipe<S> pipe, long value) {
-		 addLongValue(value, pipe);
-	}
-
-    /**
+	/**
      * Writes long value to the specified pipe
      * @param value long to be written
-     * @param rb pipe to be written to
+     * @param pipe pipe to be written to
      * @param <S> MessageSchema to be extended
      */
-	public static <S extends MessageSchema<S>> void addLongValue(long value, Pipe<S> rb) {
-		 addLongValue(rb.slabRing, rb.slabMask, rb.slabRingHead.workingHeadPos, value);
+	public static <S extends MessageSchema<S>> void addLongValue(long value, Pipe<S> pipe) {
+		 addLongValue(pipe.slabRing, pipe.slabMask, pipe.slabRingHead.workingHeadPos, value);
 	}
 
-    public static <S extends MessageSchema<S>> void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
+	
+    public static <S extends MessageSchema<S>> void addLongValue(
+    		int[] buffer, int mask, PaddedLong headCache, long value) {
 
         long p = headCache.value;
-        buffer[rbMask & (int)p] = (int)(value >>> 32);
-        buffer[rbMask & (int)(p+1)] = ((int)value);
+        buffer[mask & (int)p] = (int)(value >>> 32);
+        buffer[mask & (int)(p+1)] = ((int)value);
         headCache.value = p+2;
 
     }

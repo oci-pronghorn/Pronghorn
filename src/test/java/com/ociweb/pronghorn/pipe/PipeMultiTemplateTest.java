@@ -426,7 +426,7 @@ public class PipeMultiTemplateTest {
                 Pipe.addIntValue(9, pipe);
 	        		
                 Pipe.addIntValue(2, pipe);
-	        		Pipe.addLongValue(pipe, 123456);
+				Pipe.addLongValue((long) 123456, pipe);
 
 	        		Pipe.publishWrites(pipe);
 	        		break;
