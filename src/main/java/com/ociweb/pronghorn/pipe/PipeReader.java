@@ -154,13 +154,25 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         return Float.intBitsToFloat(readInt(pipe,loc));
-    }    
+    }
 
+    /**
+     * Reads decimal exponent from specified pipe
+     * @param pipe to read from
+     * @param loc location to read from
+     * @return
+     */
     public static int readDecimalExponent(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
     	return Pipe.readInt(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
     }
-    
+
+    /**
+     * Reads decimal mantissa from specified pipe
+     * @param pipe to read from
+     * @param loc location to read from
+     * @return
+     */
     public static long readDecimalMantissa(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
         return Pipe.readLong(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
@@ -178,7 +190,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
     	return Pipe.isEqual(pipe, charSeq, pos, PipeReader.readBytesLength(pipe,loc));
     }
-    
+
+    /**
+     * Reads ASCII from specified pipe
+     * @param pipe to read from
+     * @param loc location of data to read
+     * @return ASCII data
+     */
     public static Appendable readASCII(Pipe pipe, int loc, Appendable target) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
@@ -187,6 +205,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.readASCII(pipe, target, pos, len);
     }
 
+    /**
+     * Reads UTF8 from specified pipe
+     * @param pipe to read from
+     * @param loc location of data to read
+     * @return UTF8 data
+     */
 	public static <A extends Appendable> A readUTF8(Pipe pipe, int loc, A target) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
@@ -399,7 +423,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     
     //Bytes
-    
+
+    /**
+     * Reads the length of bytes at given section of a pipe
+     * @param pipe to read from
+     * @param loc location of bytes to read
+     * @return bytes
+     */
     public static int readBytesLength(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
@@ -415,7 +445,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         int tmp = readBytesMeta(pipe, loc);
 		return tmp<0 ? POS_CONST_MASK & tmp : Pipe.restorePosition(pipe,tmp);// first int is always the length
     }
-    
+
+    /**
+     * Checks to see if pipe is structured at a certain location
+     * @param pipe to read
+     * @param loc location to check
+     * @return <code>true</code> if pipe is structured
+     */
     public static boolean isStructured(Pipe pipe, int loc) {
     	return 0!=(Pipe.STRUCTURED_POS_MASK & readBytesMeta(pipe, loc));
     }
@@ -819,6 +855,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    return 0;
 	}
 
+    /**
+     * Gives the total bytes consumed in a given pipe
+     * @param pipe to be read
+     * @return total bytes
+     */
     private static int bytesConsumed(Pipe pipe) {
         return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail-1)];
     }
@@ -874,7 +915,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             return false;
         }
 	}
-	
+
+    /**
+     * Gives the size of the fragment from input to the end of pipe
+     * @param input starting point from which to measure fragment
+     * @return size of fragment
+     */
 	public static int sizeOfFragment(Pipe input) {
         return Pipe.from(input).fragDataSize[input.ringWalker.cursor];
     }

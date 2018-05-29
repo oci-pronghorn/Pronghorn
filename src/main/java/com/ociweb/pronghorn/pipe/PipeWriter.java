@@ -112,6 +112,13 @@ public class PipeWriter {
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
     }
 
+	/**
+	 * Writes decimal to specified pipe
+	 * @param pipe to be written to
+	 * @param loc location to write to
+	 * @param exponent
+	 * @param mantissa
+	 */
     public static void writeDecimal(Pipe pipe, int loc, int exponent, long mantissa) {    	
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);     	
         int[] buffer = Pipe.slab(pipe);
@@ -126,14 +133,35 @@ public class PipeWriter {
 		buffer[rbMask & (int)p] = (int)mantissa & 0xFFFFFFFF;		  
     }
 
+	/**
+	 * Makes specified location in pipe structured
+	 * @param pipe to write to
+	 * @param loc location to write to
+	 * @return structured position
+	 */
     public static long structuredPositionForLOC(Pipe pipe, int loc) {
         return pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
     }
-    
+
+	/**
+	 * Writes float to specific location in pipe
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param value float to be written
+	 * @param places to write values in
+	 */
     public static void writeFloat(Pipe pipe, int loc, float value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
     	Pipe.setValues(Pipe.slab(pipe), pipe.slabMask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
     }
+
+	/**
+	 * Writes double to specific location in pipe
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param value double to be written
+	 * @param places to write values in
+	 */
     public static void writeDouble(Pipe pipe, int loc, double value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
     	Pipe.setValues(Pipe.slab(pipe), pipe.slabMask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
@@ -150,7 +178,13 @@ public class PipeWriter {
 
     	writeInt(pipe, loc, Float.floatToIntBits(value));
     }
-    
+
+	/**
+	 * Writes double to specified pipe as long bits
+	 * @param pipe to write to
+	 * @param loc location to write to
+	 * @param value double to be converted
+	 */
     public static void writeDoubleAsLongBits(Pipe pipe, int loc,  double value) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc); 
     	writeLong(pipe, loc, Double.doubleToLongBits(value));

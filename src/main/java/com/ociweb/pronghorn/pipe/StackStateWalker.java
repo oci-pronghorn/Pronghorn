@@ -25,7 +25,7 @@ class StackStateWalker {
 
     
     //TODO:M, Make code more foolproof for usage by developers. 
-    //        need to add error checking to caputre the case when something on the stack has fallen off the ring
+    //        need to add error checking to capture the case when something on the stack has fallen off the ring
     //        This can be a simple assert when we move the tail that it does not go past the value in stack[0];
     
 	final long[] activeReadFragmentStack;
