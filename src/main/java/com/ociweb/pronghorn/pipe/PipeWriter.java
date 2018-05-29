@@ -561,20 +561,6 @@ public class PipeWriter {
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
     
-    @Deprecated
-	public static ByteBuffer wrappedUnstructuredLayoutBufferOpenA(Pipe<?> target, int loc) {
-		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
-		return Pipe.wrappedBlobForWritingA(Pipe.storeBlobWorkingHeadPosition(target), target);
-	}
-	
-	@Deprecated
-	public static ByteBuffer wrappedUnstructuredLayoutBufferOpenB(Pipe<?> target, int loc) {
-		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
-		return Pipe.wrappedBlobForWritingB(Pipe.getBlobWorkingHeadPosition(target), target);
-	}
-	
 	
 	/**
 	 * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write

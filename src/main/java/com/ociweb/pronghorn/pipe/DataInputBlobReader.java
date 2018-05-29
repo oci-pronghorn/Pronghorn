@@ -936,6 +936,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         return (short)((       channelReader.backing[channelReader.byteMask & channelReader.position] << 8) |
         		       (0xFF & channelReader.backing[channelReader.byteMask & channelReader.position])); 
 	}
+	
+	public int length() {
+		return length;
+	}
 
 
     

@@ -585,7 +585,7 @@ public class StructRegistry { //prong struct store
 				if (attachedInstanceOf.isInstance(locals[i])) {
 					int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, i);
 					//if no value then do not visit
-					if (readFromLastInt>=0) {
+					if (readFromLastInt>=0 && readFromLastInt<reader.length()) {
 						result = true;
 						DataInputBlobReader.position(reader, readFromLastInt);	
 						

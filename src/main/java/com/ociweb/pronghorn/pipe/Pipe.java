@@ -22,17 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-
-//cas: comment -- general for full file.
-//     -- It would be worthwhile running this through a code formatter to bring it in line with what the
-//        typical Java dev would expect.  A couple of things to consider would be max line length (one of the asserts
-//        makes it all the way to col. 244).   A truly curious thing is the lack of spaces around the
-//        less-than/greater-than operators.  All the other ops seem to get a nice padding, but not these.  Unequal
-//        treatment, it would seem.  More or less.
-//     --  JavaDoc!  (obviously) I think I can do this for you.  I'm not sure when I can do it, but the class seems
-//         mature enough that the public API should be well-documented.  (Although I'm not sure all the public API
-//         really is public.)  There will be some "jdoc" comments below as hints for whoever does it.
-
 /**
  *
  * Schema aware data pipe implemented as an internal pair of ring buffers.
@@ -120,6 +109,11 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 
+    /**
+     * Store the StructRegistry and associate it with this pipe
+     * @param p pipe holding registry
+     * @param recordTypeData registry to be stored
+     */
 	public static void structRegistry(Pipe p, StructRegistry recordTypeData) {
     	assert(null!=recordTypeData) : "must not be null";
     	assert(null==p.typeData || recordTypeData==p.typeData) :
@@ -127,6 +121,11 @@ public class Pipe<T extends MessageSchema<T>> {
     	p.typeData = recordTypeData;
     }
     
+	/**
+	 * Returns the struct registry held by this pipe
+	 * @param p source pipe holding the registry
+	 * @return the registry held by the pipe
+	 */
     public static StructRegistry structRegistry(Pipe p) {
     	return p.typeData;
     }
@@ -546,7 +545,11 @@ public class Pipe<T extends MessageSchema<T>> {
     /////////////////
 	private static ThreadBasedCallerLookup callerLookup;
 	
-	//for debugging
+	/**
+	 * Holds the thread caller for internal bookkeeping. This allows the code
+	 * to assert that only a single thread is involved in the calling.
+	 * @param callerLookup object holding the coller id.
+	 */
 	public static void setThreadCallerLookup(ThreadBasedCallerLookup callerLookup) {
 		Pipe.callerLookup = callerLookup;
 	}
@@ -580,20 +583,40 @@ public class Pipe<T extends MessageSchema<T>> {
 	/////////////////
 	/////////////////
 	
+	/**
+	 * Returns the total count of all fragments written to this pipe since creation.
+	 * @param p pipe with count
+	 * @return count of total fragments written
+	 */
 	public static long totalWrittenFragments(Pipe<?> p) {
 		return p.totalWrittenFragments;
 	}
     
+	/**
+	 * Called to accumulate total fragments written to this pipe
+	 * @param p pipe to accumulate
+	 * @param sum total count to be added for this call
+	 */
 	public static void sumWrittenFragments(Pipe<?> p, long sum) {
 		p.totalWrittenFragments+=sum;
 	}
 	
 	////////////////////
 	////////////////////
+	/**
+	 * Build new Pipe instance.
+	 * @param config reusable PipeConfig for creating many identical pipes.
+	 */
 	public Pipe(PipeConfig<T> config) {
 		this(config,true);
 	}
     	
+	/**
+	 * Build new Pipe instance. Can save some object construction and memory
+	 * if the high level API is not used.
+	 * @param config reusable PipeConfig for creating many identical pipes.
+	 * @param usingHighLevelAPI boolean used to turn off high level if its not used.
+	 */
     public Pipe(PipeConfig<T> config, boolean usingHighLevelAPI) {
     	assert(holdConstructionLocation());
     	this.config = config;
@@ -651,6 +674,10 @@ public class Pipe<T extends MessageSchema<T>> {
     	return true;
 	}
     
+    /**
+     * Prints the call stack as it was when this pipe was created.
+     * This is helpful for debugging as to where this pipe was created.
+     */
     public void creationStack() {
     	if (null!=createdStack) {
     		createdStack.printStackTrace();
@@ -663,14 +690,27 @@ public class Pipe<T extends MessageSchema<T>> {
     //this is used along with tail position to capture the byte count
 	private long totalBlobBytesRead=0;
     
+	/**
+	 * Bookkeeping method to track if a write is in progress to the blob.
+	 * @param pipe writing
+	 * @return boolean true if the blob is in the process of  a write.
+	 */
     public static <S extends MessageSchema<S>> boolean isInBlobFieldWrite(Pipe<S> pipe) {
         return pipe.isInBlobFieldWrite.get();
     }
     
+    /**
+     * total bytes consumed by this fragment
+     * @return count of bytes consumed
+     */
     public long totalBlobBytesRead() {
     	return totalBlobBytesRead;
     }
     
+    /**
+     * Prep this pipe for writing a blob var len field.
+     * Set the internal state for checking if the blob write is in progress.
+     */
     public void openBlobFieldWrite() {  
     	//System.out.println("open stream on "+id);
         if (!isInBlobFieldWrite.compareAndSet(false, true)) {
@@ -688,6 +728,9 @@ public class Pipe<T extends MessageSchema<T>> {
 		return true;
 	}
 
+    /**
+     * Mark this pipe as finished writing blob var len field.
+     */
 	public void closeBlobFieldWrite() {
 		blobOpenStack = null;
     	//System.out.println("close stream on "+id);
@@ -695,14 +738,21 @@ public class Pipe<T extends MessageSchema<T>> {
             throw new UnsupportedOperationException("can not close blob if not open.");
         }
     }
-    
-    //NOTE: can we compute the speed limit based on destination CPU Usage?
-    //TODO: add checking mode where it can communicate back that regulation is too big or too small?
-    
+
+	/**
+	 * Check if the rate is limited from the consumer side of the pipe.
+	 * @param pipe which is rate limited
+	 * @return boolean true if consumer side is rate limited
+	 */
     public static <S extends MessageSchema<S>> boolean isRateLimitedConsumer(Pipe<S> pipe) {
         return null!=pipe.regulatorConsumer;
     }
     
+    /**
+	 * Check if the rate is limited from the producer side of the pipe.
+	 * @param pipe which is rate limited
+	 * @return boolean true if producer side is rate limited
+     */
     public static <S extends MessageSchema<S>> boolean isRateLimitedProducer(Pipe<S> pipe) {
         return null!=pipe.regulatorProducer;
     }
@@ -723,78 +773,117 @@ public class Pipe<T extends MessageSchema<T>> {
         return PipeRegulator.computeRateLimitDelay(pipe, Pipe.workingHeadPosition(pipe), pipe.regulatorProducer);
     }
     
+    /**
+     * Checks if schema matches that used by the pipe.
+     * @param pipe to check schema
+     * @param schema MessageSchema instance type
+     * @return boolean true if the schema matches
+     */
     public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSchema(Pipe<S> pipe, T schema) {
         return pipe.schema == schema;
     }
     
+    /**
+     * Checks if schema matches that used by the pipe.
+     * @param pipe to check schema
+     * @param schema MessageSchema class
+     * @return boolean true if the schema matches
+     */
     public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSchema(Pipe<S> pipe, Class<T> schema) {
         return schema.isInstance(pipe.schema);
     }
     
+    /**
+     * Checks if both pipes use the same schemas.
+     * @param pipeA pipe with a schema S
+     * @param pipeB pipe with a schema T
+     * @return boolean true if the schema matches
+     */
     public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSameSchema(Pipe<S> pipeA, Pipe<T> pipeB) {
         return pipeA.schema == pipeB.schema;
     }
     
+    /**
+     * Checks if pipe uses a dynamic schema which is not backed by an XML contract file.
+     * @param pipe to be checked
+     * @return boolean true if the schema is dynamic
+     */
     public static <S extends MessageSchema<S>> boolean isForDynamicSchema(Pipe<S> pipe) {
         return pipe.schema instanceof MessageSchemaDynamic;
     }
     
+    /**
+     * Estimate of the total bytes consumed by this pipe
+     * @param pipe to be checked
+     * @return long bytes count estimate memory consumed
+     */
     public static <S extends MessageSchema<S>> long estBytesAllocated(Pipe<S> pipe) {
     	return ((long)pipe.blobRing.length) + (pipe.slabRing.length*4L) + 1024L;//1K for overhead
     }
     
+    /**
+     * get name of the schema.
+     * @param pipe to be checked
+     * @return String name of the schema
+     */
     public static <S extends MessageSchema<S>> String schemaName(Pipe<S> pipe) {
         return null==pipe.schema? "NoSchemaFor "+Pipe.from(pipe).name  :pipe.schema.getClass().getSimpleName();
     }
     
-	public static <S extends MessageSchema<S>> void replayUnReleased(Pipe<S> ringBuffer) {
+    
+    /**
+     * Back up the cursor read position. So the fragments can be read again for those not yet released.
+     * 
+     * @param pipe with unreleased fragments to be replayed.
+     */
+	public static <S extends MessageSchema<S>> void replayUnReleased(Pipe<S> pipe) {
 
 //We must enforce this but we have a few unit tests that are in violation which need to be fixed first
 //	    if (!RingBuffer.from(ringBuffer).hasSimpleMessagesOnly) {
 //	        throw new UnsupportedOperationException("replay of unreleased messages is not supported unless every message is also a single fragment.");
 //	    }
 
-		if (!isReplaying(ringBuffer)) {
+		if (!isReplaying(pipe)) {
 			//save all working values only once if we re-enter replaying multiple times.
 
-		    ringBuffer.holdingSlabWorkingTail = Pipe.getWorkingTailPosition(ringBuffer);
-			ringBuffer.holdingBlobWorkingTail = Pipe.getWorkingBlobRingTailPosition(ringBuffer);
+		    pipe.holdingSlabWorkingTail = Pipe.getWorkingTailPosition(pipe);
+			pipe.holdingBlobWorkingTail = Pipe.getWorkingBlobRingTailPosition(pipe);
 
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
-			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
+			pipe.ringWalker.holdingNextWorkingTail = pipe.ringWalker.nextWorkingTail;
 
-			ringBuffer.holdingBlobReadBase = ringBuffer.blobReadBase;
+			pipe.holdingBlobReadBase = pipe.blobReadBase;
 
 		}
 
 		//clears the stack and cursor position back to -1 so we assume that the next read will begin a new message
-		StackStateWalker.resetCursorState(ringBuffer.ringWalker);
+		StackStateWalker.resetCursorState(pipe.ringWalker);
 
 		//set new position values for high and low api
-		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.slabRingTail.rollBackWorking();
-		ringBuffer.blobReadBase = ringBuffer.blobRingTail.rollBackWorking(); //this byte position is used by both high and low api
+		pipe.ringWalker.nextWorkingTail = pipe.slabRingTail.rollBackWorking();
+		pipe.blobReadBase = pipe.blobRingTail.rollBackWorking(); //this byte position is used by both high and low api
 	}
 
-/**
- * Checks to see if the provided pipe is replaying.
- * @param ringBuffer the ringBuffer to check.
- * @return <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
- */
-	public static <S extends MessageSchema<S>> boolean isReplaying(Pipe<S> ringBuffer) {
-		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingSlabWorkingTail;
+	/**
+	 * Checks to see if the provided pipe is replaying.
+	 * @param pipe the ringBuffer to check.
+	 * @return <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
+	 */
+	public static <S extends MessageSchema<S>> boolean isReplaying(Pipe<S> pipe) {
+		return Pipe.getWorkingTailPosition(pipe)<pipe.holdingSlabWorkingTail;
 	}
 
     /**
      * Cancels replay of specified ringBuffer
-     * @param ringBuffer ringBuffer to cancel replay
+     * @param pipe ringBuffer to cancel replay
      */
-	public static <S extends MessageSchema<S>> void cancelReplay(Pipe<S> ringBuffer) {
-		ringBuffer.slabRingTail.workingTailPos.value = ringBuffer.holdingSlabWorkingTail;
-		ringBuffer.blobRingTail.byteWorkingTailPos.value = ringBuffer.holdingBlobWorkingTail;
+	public static <S extends MessageSchema<S>> void cancelReplay(Pipe<S> pipe) {
+		pipe.slabRingTail.workingTailPos.value = pipe.holdingSlabWorkingTail;
+		pipe.blobRingTail.byteWorkingTailPos.value = pipe.holdingBlobWorkingTail;
 
-		ringBuffer.blobReadBase = ringBuffer.holdingBlobReadBase;
+		pipe.blobReadBase = pipe.holdingBlobReadBase;
 
-		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail;
+		pipe.ringWalker.nextWorkingTail = pipe.ringWalker.holdingNextWorkingTail;
 		//NOTE while replay is in effect the head can be moved by the other (writing) thread.
 	}
 
@@ -803,22 +892,35 @@ public class Pipe<T extends MessageSchema<T>> {
 	///////////
 	//support for adding indexes onto the end of the var len blob field
 	///////////
-	public static <S extends MessageSchema<S>> int blobIndexBasePosition(Pipe<S> rb) {
-		if (rb.maxVarLen<INDEX_BASE_OFFSET) {
+	/**
+	 * Base byte position where the index begins.
+	 * @param pipe where the index is written.
+	 * @return int position of index
+	 */
+	public static <S extends MessageSchema<S>> int blobIndexBasePosition(Pipe<S> pipe) {
+		if (pipe.maxVarLen<INDEX_BASE_OFFSET) {
 			throw new UnsupportedOperationException("no var length for index");
 		}		
-		return rb.maxVarLen-INDEX_BASE_OFFSET;
+		return pipe.maxVarLen-INDEX_BASE_OFFSET;
 	}
 	
 	
-	////
-	////
-	public static <S extends MessageSchema<S>> void batchAllReleases(Pipe<S> rb) {
-	   rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
-	   rb.batchReleaseCountDown = Integer.MAX_VALUE;
+	/**
+	 * sets maximum batch count for releases.
+	 * @param pipe to have releases batched
+	 */
+	public static <S extends MessageSchema<S>> void batchAllReleases(Pipe<S> pipe) {
+	   pipe.batchReleaseCountDownInit = Integer.MAX_VALUE;
+	   pipe.batchReleaseCountDown = Integer.MAX_VALUE;
 	}
 
 
+	/**
+	 * sets specific batch release size, releases do not occur when called for but only when the
+	 * size count of releases is reached.
+	 * @param pipe to have releases batched
+	 * @param size count of fragments to batch before release.
+	 */
     public static <S extends MessageSchema<S>> void setReleaseBatchSize(Pipe<S> pipe, int size) {
 
     	validateBatchSize(pipe, size);
@@ -827,6 +929,12 @@ public class Pipe<T extends MessageSchema<T>> {
     	pipe.batchReleaseCountDown = size;
     }
 
+    /**
+     * sets specific batch publish size, publishes do not occur when called for but only when the
+     * size count of publishes is reached.
+     * @param pipe to have publishes batched
+     * @param size count of fragments to batch befoer publish
+     */
     public static <S extends MessageSchema<S>> void setPublishBatchSize(Pipe<S> pipe, int size) {
 
     	validateBatchSize(pipe, size);
@@ -835,42 +943,69 @@ public class Pipe<T extends MessageSchema<T>> {
     	pipe.batchPublishCountDown = size;
     }
     
+    /**
+     * get the publish batch count
+     * @param pipe with batched published count
+     * @return count of fragments to be batched
+     */
     public static <S extends MessageSchema<S>> int getPublishBatchSize(Pipe<S> pipe) {
         return pipe.batchPublishCountDownInit;
     }
     
+    /**
+     * get the release batch count
+     * @param pipe with batched release count
+     * @return count of fragments to be batched
+     */
     public static <S extends MessageSchema<S>> int getReleaseBatchSize(Pipe<S> pipe) {
         return pipe.batchReleaseCountDownInit;
     }
 
-    public static <S extends MessageSchema<S>> void setMaxPublishBatchSize(Pipe<S> rb) {
-
-    	int size = computeMaxBatchSize(rb, 3);
-
-    	rb.batchPublishCountDownInit = size;
-    	rb.batchPublishCountDown = size;
-
-    }
-
-    public static <S extends MessageSchema<S>> void setMaxReleaseBatchSize(Pipe<S> rb) {
-
-    	int size = computeMaxBatchSize(rb, 3);
-    	rb.batchReleaseCountDownInit = size;
-    	rb.batchReleaseCountDown = size;
+    /**
+     * Sets the publish batch size to the max supported by the pipe.
+     * @param pipe to have publishes batched.
+     */
+    public static <S extends MessageSchema<S>> void setMaxPublishBatchSize(Pipe<S> pipe) {
+    	int size = computeMaxBatchSize(pipe, 3);
+    	pipe.batchPublishCountDownInit = size;
+    	pipe.batchPublishCountDown = size;
 
     }
 
+    /**
+     * Sets the release batch size to the max supported by the pipe.
+     * @param pipe
+     */
+    public static <S extends MessageSchema<S>> void setMaxReleaseBatchSize(Pipe<S> pipe) {
 
-//cas: naming -- a couple of things, neither new.  Obviously the name of the buffer, bytes.  Also the use of base in
-// the variable buffer, but not in the fixed.  Otoh, by now, maybe the interested reader would already understand.
-    public static <S extends MessageSchema<S>> int bytesWriteBase(Pipe<S> rb) {
-    	return rb.blobWriteBase;
+    	int size = computeMaxBatchSize(pipe, 3);
+    	pipe.batchReleaseCountDownInit = size;
+    	pipe.batchReleaseCountDown = size;
+
     }
 
-    public static <S extends MessageSchema<S>> void markBytesWriteBase(Pipe<S> rb) {
-    	rb.blobWriteBase = rb.blobRingHead.byteWorkingHeadPos.value;
+    /**
+     * base position to track where the var length
+     * @param pipe holding bytes written
+     * @return write base
+     */
+    public static <S extends MessageSchema<S>> int bytesWriteBase(Pipe<S> pipe) {
+    	return pipe.blobWriteBase;
     }
 
+    /**
+     * Store new var len base written position.
+     * @param pipe to have base marked
+     */
+    public static <S extends MessageSchema<S>> void markBytesWriteBase(Pipe<S> pipe) {
+    	pipe.blobWriteBase = pipe.blobRingHead.byteWorkingHeadPos.value;
+    }
+
+    /**
+     * get base position based on the var length data written. 
+     * @param pipe to read base from
+     * @return int base position
+     */
     public static <S extends MessageSchema<S>> int bytesReadBase(Pipe<S> pipe) {
           
         assert(validateInsideData(pipe, pipe.blobReadBase));
@@ -893,17 +1028,23 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
+    /**
+     * store bytes consumed for fragment bookkeeping
+     * @param pipe reading from
+     * @param bytesConsumed int total for this read
+     */
 	public static <S extends MessageSchema<S>> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         //base has future pos added to it so this value must be masked and kept as small as possible
-
-    //TODO: bytes consumed is wrong when we are using an index...    
-        
         pipe.totalBlobBytesRead = pipe.totalBlobBytesRead+bytesConsumed;        
         pipe.blobReadBase = pipe.blobMask /*Pipe.BYTES_WRAP_MASK*/ & (pipe.blobReadBase+bytesConsumed);
         assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
     }
     
+    /**
+     * auto compute and store bytes consumed for fragment bookkeeping
+     * @param pipe reading from
+     */
     public static <S extends MessageSchema<S>> void markBytesReadBase(Pipe<S> pipe) {
     	final int newBasePosition = pipe.blobMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     
@@ -921,7 +1062,7 @@ public class Pipe<T extends MessageSchema<T>> {
     //;
 
     /**
-     * Helpful user readable summary of the ring buffer.
+     * Helpful user readable summary of the pipe.
      * Shows where the head and tail positions are along with how full the ring is at the time of call.
      */
     public String toString() {
@@ -952,16 +1093,24 @@ public class Pipe<T extends MessageSchema<T>> {
 
 
     /**
-     * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
+     * Return the configuration used for this pipe, Helpful when we need to make clones of the ring which will hold same message types.
      */
     public PipeConfig<T> config() {
     	return config;
     }
 
+    /**
+     * Total count of all pipes in the system. As each pipe is created this counter is incremented.
+     * @return total count of pipes in the application.
+     */
     public static <S extends MessageSchema> int totalPipes() {
         return pipeCounter.get();
     }
 
+    /**
+     * Allocates all internal arrays and buffers before the Pipe can be used
+     * @return Pipe initialized
+     */
 	public Pipe<T> initBuffers() {
 		assert(!isInit(this)) : "RingBuffer was already initialized";
 		if (!isInit(this)) {
@@ -972,12 +1121,24 @@ public class Pipe<T extends MessageSchema<T>> {
 		return this;
     }
     
+	/**
+	 * Set the regulator value for the consumer of the pipe.
+	 * @param pipe to be regulated
+	 * @param msgPerMs messages per ms
+	 * @param msgSize size of messages regulated
+	 */
     public static <S extends MessageSchema<S>> void setConsumerRegulation(Pipe<S> pipe, int msgPerMs, int msgSize) {
         assert(null==pipe.regulatorConsumer) : "regulator must only be set once";
         assert(!isInit(pipe)) : "regular may only be set before scheduler has initialized the pipe";
         pipe.regulatorConsumer = new PipeRegulator(msgPerMs, msgSize);
     }
   
+    /**
+     * Set the regulator value for the producer of the pipe.
+     * @param pipe to be regulated
+     * @param msgPerMs messages per ms
+     * @param msgSize size of messages regulated
+     */
     public static <S extends MessageSchema<S>> void setProducerRegulation(Pipe<S> pipe, int msgPerMs, int msgSize) {
         assert(null==pipe.regulatorProducer) : "regulator must only be set once";
         assert(!isInit(pipe)) : "regular may only be set before scheduler has initialized the pipe";
@@ -1058,28 +1219,38 @@ public class Pipe<T extends MessageSchema<T>> {
 		return new DataOutputBlobWriter<T>(this);
 	}
 	
-
-	public static <S extends MessageSchema<S>> boolean isInit(Pipe<S> ring) {
+    /**
+     * is the pipe initialized and ready for use.
+     * @param pipe
+     * @return boolean true if initialized
+     */
+	public static <S extends MessageSchema<S>> boolean isInit(Pipe<S> pipe) {
 	    //Due to the fact that no locks are used it becomes necessary to check
 	    //every single field to ensure the full initialization of the object
 	    //this is done as part of graph set up and as such is called rarely.
-		return null!=ring.blobRing &&
-			   null!=ring.slabRing &&
-			   null!=ring.blobRingLookup &&
-			   null!=ring.wrappedSlabRing &&
-			   null!=ring.llRead &&
-			   null!=ring.llWrite &&
+		return null!=pipe.blobRing &&
+			   null!=pipe.slabRing &&
+			   null!=pipe.blobRingLookup &&
+			   null!=pipe.wrappedSlabRing &&
+			   null!=pipe.llRead &&
+			   null!=pipe.llWrite &&
 			   (
-			    ring.sizeOfBlobRing == 0 || //no init of these if the blob is not used
-			    (null!=ring.wrappedBlobReadingRingA &&
-		         null!=ring.wrappedBlobReadingRingB &&
-			     null!=ring.wrappedBlobWritingRingA &&
-			     null!=ring.wrappedBlobWritingRingB
+			    pipe.sizeOfBlobRing == 0 || //no init of these if the blob is not used
+			    (null!=pipe.wrappedBlobReadingRingA &&
+		         null!=pipe.wrappedBlobReadingRingB &&
+			     null!=pipe.wrappedBlobWritingRingA &&
+			     null!=pipe.wrappedBlobWritingRingB
 			     )
 			   );
 		      //blobReader and blobWriter and not checked since they call isInit on construction
 	}
 
+	/**
+	 * Confirm that the bytes written are less than the space available.
+	 * @param pipe to be checked.
+	 * @param length written in bytes
+	 * @return boolean true if the bytes written are less than the available length.
+	 */
 	public static <S extends MessageSchema<S>> boolean validateVarLength(Pipe<S> pipe, int length) {
 		assert(length>=-1) : "invalid length value "+length;
 		int newAvg = (length+pipe.varLenMovingAverage)>>1;
@@ -1137,9 +1308,13 @@ public class Pipe<T extends MessageSchema<T>> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
-    public static void releaseReadsBatched(Pipe<MessageSchemaDynamic> p) {
-		Pipe.batchedReleasePublish(p, Pipe.getWorkingBlobRingTailPosition(p),
-	    		                      Pipe.getWorkingTailPosition(p));
+    /**
+     * Publish all the batched up publish calls.
+     * @param pipe to have publications released.
+     */
+    public static void releaseReadsBatched(Pipe<MessageSchemaDynamic> pipe) {
+		Pipe.batchedReleasePublish(pipe, Pipe.getWorkingBlobRingTailPosition(pipe),
+	    		                      Pipe.getWorkingTailPosition(pipe));
 	}
 
     /**
@@ -1189,6 +1364,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 	}
 
+	/**
+	 * Build an array of Pipe instances from a set of PipeConfig.
+	 * @param configs array of PipeConfig values
+	 * @return array of new pipes
+	 */
 	public static Pipe[] buildPipes(PipeConfig[] configs) {
 		int i = configs.length;
 		Pipe[] result = new Pipe[i];
@@ -1198,11 +1378,17 @@ public class Pipe<T extends MessageSchema<T>> {
 		return result;
 	}
 
-	public static <S extends MessageSchema<S>> Pipe<S>[] buildPipes(int count, PipeConfig<S> comonConfig) {		
+	/**
+	 * Build and array of Pipe instances from a single PipeConfig
+	 * @param count of new Pipe instances created
+	 * @param commonConfig PipeConfig used for all the new pipes
+	 * @return array of new pipes
+	 */
+	public static <S extends MessageSchema<S>> Pipe<S>[] buildPipes(int count, PipeConfig<S> commonConfig) {		
 		Pipe[] result = new Pipe[count];
 		int i = count;
 		while (--i>=0) {
-			result[i] = new Pipe<S>(comonConfig);
+			result[i] = new Pipe<S>(commonConfig);
 		}
 		return (Pipe<S>[])result;
 	}
@@ -1321,11 +1507,17 @@ public class Pipe<T extends MessageSchema<T>> {
 		return addLongAsUTF8(output, value);
 	}
 
-	
-    public static <S extends MessageSchema<S>> int addRationalAsASCII(Pipe<S> digitBuffer, long numerator, long denominator) {
+	/**
+	 * Write ascii text for rational value
+	 * @param pipe where ascii is written
+	 * @param numerator of rational to write
+	 * @param denominator of rational to write
+	 * @return count of bytes written.
+	 */
+    public static <S extends MessageSchema<S>> int addRationalAsASCII(Pipe<S> pipe, long numerator, long denominator) {
   	      
-    	  validateVarLength(digitBuffer, 21);
-	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
+    	  validateVarLength(pipe, 21);
+	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(pipe);
 	      outputStream.openField();
 	      
 	      Appendables.appendValue(outputStream, numerator);
@@ -1376,31 +1568,35 @@ public class Pipe<T extends MessageSchema<T>> {
 	      return outputStream.closeLowLevelField();	
 	}
     
-	public static <S extends MessageSchema<S>> Pipe<S>[][] splitPipes(int pipeCount, Pipe<S>[] socketResponse) {
+    /**
+     * Evenly split array of pipes across pipeCount arrays of arrays of pipes.
+     * @param pipeCount int target count of groups
+     * @param pipes array of pipes to be split
+     * @return array of array of pipes
+     */
+	public static <S extends MessageSchema<S>> Pipe<S>[][] splitPipes(int pipeCount, Pipe<S>[] pipes) {
 		
 		Pipe<S>[][] result = new Pipe[pipeCount][];
 			
-		int fullLen = socketResponse.length;
+		int fullLen = pipes.length;
 		int last = 0;
 		for(int p = 1;p<pipeCount;p++) {			
 			int nextLimit = (p*fullLen)/pipeCount;			
 			int plen = nextLimit-last;			
 		    Pipe<S>[] newPipe = new Pipe[plen];
-		    System.arraycopy(socketResponse, last, newPipe, 0, plen);
+		    System.arraycopy(pipes, last, newPipe, 0, plen);
 		    result[p-1]=newPipe;
 			last = nextLimit;
 		}
 		int plen = fullLen-last;
 	    Pipe<S>[] newPipe = new Pipe[plen];
-	    System.arraycopy(socketResponse, last, newPipe, 0, plen);
+	    System.arraycopy(pipes, last, newPipe, 0, plen);
 	    result[pipeCount-1]=newPipe;
 				
 		return result;
 				
 	}
-    
-    //TODO: URGENT we need a unit test to ensure split pipes and split groups give the same splitting results.
-    
+
     /**
      * matching the above splitPipes logic this method produces an inverse lookup array to determine group given a single index.
      * 
@@ -1429,13 +1625,16 @@ public class Pipe<T extends MessageSchema<T>> {
 	    
 		while (--plen>=0) {
 			result[c++] = groups-1;
-		}
-		
-		return result;
-				
+		}		
+		return result;				
 	}
     
-
+    /**
+     * Read this var len field and write its contents to the target OutputStream
+     * @param pipe to read from
+     * @param out OutputStream to write data to
+     * @throws IOException
+     */
 	public static <S extends MessageSchema<S>> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
         int length    = Pipe.takeRingByteLen(pipe);    
@@ -1457,6 +1656,14 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
     
+    /**
+     * Read from InputStream and write the bytes to the var len field.
+     * @param pipe data is written into
+     * @param inputStream InputStream to read data from
+     * @param byteCount of bytes to be read
+     * @return true if the input stream is read
+     * @throws IOException
+     */
     public static boolean readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
         return buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getWorkingBlobHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
@@ -1499,28 +1706,11 @@ public class Pipe<T extends MessageSchema<T>> {
         return ((position+remaining)<=sizeOfBlobRing) ? remaining : sizeOfBlobRing-position;
     }
     
-    public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobForWritingA(int originalBlobPosition, Pipe<S> output) {
-        ByteBuffer target = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
-        int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
-        target.limit(target.capacity());
-        target.position(writeToPos);   
-        target.limit(Math.min(target.capacity(), writeToPos+output.maxVarLen)); //ensure we stop at end of wrap or max var length 
-        return target;
-    }
-
-    public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobForWritingB(int originalBlobPosition, Pipe<S> output) {
-        ByteBuffer target = output.wrappedBlobWritingRingB; //Get the blob array as a wrapped byte buffer     
-        int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
-        target.position(0);   
-        int endPos = writeToPos+output.maxVarLen;
-    	if (endPos>output.sizeOfBlobRing) {
-    		target.limit(output.blobMask & endPos);
-    	} else {
-    		target.limit(0);
-    	}
-        return target;
-    }
-      
+    /**
+     * ByteBuffers which wrap the backing blob array as 2 buffers
+     * @param output target Pipe
+     * @return ByteBuffers array of length 2 wrapping blob array
+     */
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(Pipe<S> output) {
     	return wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(output),output);
     }
@@ -3622,6 +3812,12 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
 
+	/**
+	 * Abandon the fragment written so far so a different fragment can be written or 
+	 * non at all.
+	 * 
+	 * @param pipe
+	 */
     public static <S extends MessageSchema<S>> void abandonWrites(Pipe<S> pipe) {
         //ignore the fact that any of this was written to the ring buffer
     	pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.headPos.longValue();
@@ -3643,10 +3839,20 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
+	/**
+	 * Direct access to the mask for looping the blob.
+	 * @param pipe
+	 * @return the mask value
+	 */
 	public static <S extends MessageSchema<S>> int blobMask(Pipe<S> pipe) {
 		return pipe.blobMask;
 	}
 	
+	/**
+	 * Direct access to the mask for looping the slab
+	 * @param pipe
+	 * @return the mask value
+	 */
 	public static <S extends MessageSchema<S>> int slabMask(Pipe<S> pipe) {
 	    return pipe.slabMask;
 	}

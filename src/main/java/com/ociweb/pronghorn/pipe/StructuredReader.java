@@ -191,13 +191,19 @@ public final class StructuredReader {
 		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
 				
-		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
+		assert isTextOrBlob(fieldId) : "Field type is expected to be text or blob but was "+Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId);
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
 			channelReader.readUTF(target);
 		}
 		return target;
+	}
+
+
+	private boolean isTextOrBlob(long fieldId) {
+		return (Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Blob) ||
+		       (Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Text);
 	}
 	
 	//appends nothing when absent
