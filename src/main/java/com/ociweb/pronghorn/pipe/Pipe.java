@@ -1059,8 +1059,6 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.blobReadBase = newBasePosition;
     }
     
-    //;
-
     /**
      * Helpful user readable summary of the pipe.
      * Shows where the head and tail positions are along with how full the ring is at the time of call.
@@ -1708,19 +1706,32 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
      * ByteBuffers which wrap the backing blob array as 2 buffers
-     * @param output target Pipe
+     * @param output Pipe target
      * @return ByteBuffers array of length 2 wrapping blob array
      */
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(Pipe<S> output) {
     	return wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(output),output);
     }
     
+    /**
+     * ByteBuffers which wrap the backing blob array as 2 buffers
+     * @param originalBlobPosition int position of byte data
+     * @param output Pipe target
+     * @return ByteBuffers array of length 2 wrapping blob array
+     */
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
     	return wrappedWritingBuffers(originalBlobPosition, output, output.maxVarLen);
     }
 
-	public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition,	Pipe<S> output,
-			int maxLen) {
+    /**
+     * ByteBuffers which wrap the backing blob array as 2 buffers
+     * @param originalBlobPosition int position of byte data
+     * @param output Pipe target
+     * @param maxLen int length which could be written 
+     * @return ByteBuffers array of length 2 wrapping blob array
+     */
+	public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition,
+			 				Pipe<S> output, int maxLen) {
 		
 		assert(maxLen>=0);
 		
@@ -1739,10 +1750,25 @@ public class Pipe<T extends MessageSchema<T>> {
 		return output.wrappedWritingBuffers;
 	}
  
+	/**
+	 * Record the number of bytes written after direct manipulation of the backing array.
+	 * This method is not needed if the normal access methods are used.
+	 * 
+	 * @param len int length of bytes written
+	 * @param output Pipe target 
+	 */
     public static <S extends MessageSchema<S>> void moveBlobPointerAndRecordPosAndLength(int len, Pipe<S> output) {
     	moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(output), len, output);
     }
     
+    /**
+	 * Record the number of bytes written after direct manipulation of the backing array.
+	 * This method is not needed if the normal access methods are used.
+	 * 
+     * @param originalBlobPosition int head position where the write started
+     * @param len int length of bytes written
+     * @param output Pipe target 
+     */
     public static <S extends MessageSchema<S>> void moveBlobPointerAndRecordPosAndLength(int originalBlobPosition, int len, Pipe<S> output) {
     	
     	assert(verifyHasRoomForWrite(len, output));    	
@@ -1769,13 +1795,15 @@ public class Pipe<T extends MessageSchema<T>> {
     	}
     	return (consumed<=output.blobMask);
 	}
-
-
-    @Deprecated
-    public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingA(Pipe<S> pipe, int meta, int len) {
-        return wrappedBlobReadingRingA(pipe, meta, len);
-    }
     
+	/**
+	 * Wrapped byte buffer for reading the backing ring.
+	 * 
+	 * @param pipe Pipe source pipe
+	 * @param meta int backing meta data
+	 * @param len int length to be read
+	 * @return ByteBufer wrapping the blob array
+	 */
     public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobReadingRingA(Pipe<S> pipe, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
@@ -1793,12 +1821,16 @@ public class Pipe<T extends MessageSchema<T>> {
         }
         return buffer;
     }
-    
-    @Deprecated
-    public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingB(Pipe<S> pipe, int meta, int len) {
-        return wrappedBlobReadingRingB(pipe,meta,len);
-    }
 
+    
+    /**
+     * Wrapped byte buffer for reading the backing ring.
+     * 
+	 * @param pipe Pipe source pipe
+	 * @param meta int backing meta data
+	 * @param len int length to be read
+	 * @return ByteBufer wrapping the blob array
+     */
     public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobReadingRingB(Pipe<S> pipe, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
@@ -1821,6 +1853,14 @@ public class Pipe<T extends MessageSchema<T>> {
     	return buffer;
     }
 
+    /**
+     * Wrapped byte buffer array of 2 for reading the backing ring.
+     * 
+	 * @param pipe Pipe source pipe
+	 * @param meta int backing meta data
+	 * @param len int length to be read
+	 * @return ByteBufer array wrapping the blob array
+     */
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffers(Pipe<S> pipe, int meta, int len) {
     	if (meta >= 0) {
     		//MUST call this one which creates side effect of assuming this data is consumed
@@ -1862,8 +1902,19 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pipe.wrappedReadingBuffers;
 	}
     
-
-    public static int convertToUTF8(final char[] charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
+    /**
+     * Converts chars in an array to bytes based on UTF8 encoding.
+     * 
+     * @param charSeq backing array of chars
+     * @param charSeqOff offset where to consume chars
+     * @param charSeqLength length of chars to consume
+     * @param targetBuf target array
+     * @param targetIdx offset where to start writing
+     * @param targetMask mask for looping the target buffer
+     * @return int length of encoded bytes
+     */
+    public static int convertToUTF8(final char[] charSeq, final int charSeqOff, final int charSeqLength, 
+    		                        final byte[] targetBuf, final int targetIdx, final int targetMask) {
     	
     	int target = targetIdx;				
         int c = 0;
@@ -1875,7 +1926,19 @@ public class Pipe<T extends MessageSchema<T>> {
         return target-targetIdx;//length;
     }
 
-    public static int convertToUTF8(final CharSequence charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
+    /**
+     * Converts chars in an array to bytes based on UTF8 encoding.
+     * 
+     * @param charSeq CharSequence source chars
+     * @param charSeqOff source offset to read from 
+     * @param charSeqLength source length to read
+     * @param targetBuf target array
+     * @param targetIdx offset where to start writing
+     * @param targetMask mask for looping the target buffer
+     * @return int length of encoded bytes
+     */
+    public static int convertToUTF8(final CharSequence charSeq, final int charSeqOff, final int charSeqLength, 
+    		                        final byte[] targetBuf, final int targetIdx, final int targetMask) {
         /**
          * 
          * Converts CharSequence (base class of String) into UTF-8 encoded bytes and writes those bytes to an array.
@@ -1897,20 +1960,27 @@ public class Pipe<T extends MessageSchema<T>> {
         return target-targetIdx;//length;
     }
 
-    public static <S extends MessageSchema<S>> void appendFragment(Pipe<S> input, Appendable target, int cursor) {
+    /**
+     * Debug write of this fragment to the target appendable
+     * 
+     * @param input Pipe source
+     * @param target Appendable to write text
+     * @param fragIdx fragment idx
+     */
+    public static <S extends MessageSchema<S>> void appendFragment(Pipe<S> input, Appendable target, int fragIdx) {
         try {
 
             FieldReferenceOffsetManager from = from(input);
-            int fields = from.fragScriptSize[cursor];
-            assert (cursor<from.tokensLen-1);//there are no single token messages so there is no room at the last position.
+            int fields = from.fragScriptSize[fragIdx];
+            assert (fragIdx<from.tokensLen-1);//there are no single token messages so there is no room at the last position.
 
 
-            int dataSize = from.fragDataSize[cursor];
-            String msgName = from.fieldNameScript[cursor];
-            long msgId = from.fieldIdScript[cursor];
+            int dataSize = from.fragDataSize[fragIdx];
+            String msgName = from.fieldNameScript[fragIdx];
+            long msgId = from.fieldIdScript[fragIdx];
 
             target.append(" cursor:");
-            Appendables.appendValue(target, cursor);
+            Appendables.appendValue(target, fragIdx);
             target.append(" fields: ");
             Appendables.appendValue(target, fields);
             target.append(" ");
@@ -1918,7 +1988,7 @@ public class Pipe<T extends MessageSchema<T>> {
             target.append(" id: ");
             Appendables.appendValue(target, msgId).append("\n");
 
-            if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
+            if (0==fields && fragIdx==from.tokensLen-1) { //this is an odd case and should not happen
                 //TODO: AA length is too long and we need to detect cursor out of bounds!
                 System.err.println("total tokens:"+from.tokens.length);//Arrays.toString(from.fieldNameScript));
                 throw new RuntimeException("unable to convert fragment to text");
@@ -1927,7 +1997,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
             int i = 0;
             while (i<fields) {
-                final int p = i+cursor;
+                final int p = i+fragIdx;
                 String name = from.fieldNameScript[p];
                 long id = from.fieldIdScript[p];
 
@@ -1937,7 +2007,7 @@ public class Pipe<T extends MessageSchema<T>> {
                 //fields not message name
                 String value = "";
                 if (i>0 || !input.ringWalker.isNewMessage) {
-                    int pos = from.fragDataSize[i+cursor];
+                    int pos = from.fragDataSize[i+fragIdx];
                     //create string values of each field so we can see them easily
                     switch (type) {
                         case TypeMask.Group:
@@ -2006,15 +2076,11 @@ public class Pipe<T extends MessageSchema<T>> {
                         default: target.append("unknown ").append("\n");
 
                     }
-
-
                     value += (" "+TypeMask.toString(type)+" "+pos);
                 }
-
-                target.append("   "+name+":"+id+"  "+value).append("\n");
-
-                //TWEET  x+t+"xxx" is a bad idea.
-
+                target.append("   ").append(name).append(":");
+                Appendables.appendValue(target, id);
+                target.append("  ").append(value).append("\n");
 
                 if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
                     i++;//skip second slot for decimals
@@ -2028,6 +2094,15 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
 
+    /**
+     * Read var length field into a target ByteBuffer
+     * 
+     * @param pipe Pipe source
+     * @param target ByteBuffer written into
+     * @param meta int field meta data
+     * @param len int field length in bytes
+     * @return ByteBuffer target
+     */
     public static <S extends MessageSchema<S>> ByteBuffer readBytes(Pipe<S> pipe, ByteBuffer target, int meta, int len) {
 		if (meta >= 0) {
 			return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
@@ -2036,7 +2111,18 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
     
-    public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, DataOutputBlobWriter<?> target, int meta, int len) {
+    /**
+     * Read var length field into a DataOutputBlobWriter, eg another field.
+     * 
+     * @param pipe Pipe source
+     * @param target DataOutputBlobWriter field to write into
+     * @param meta int field meta data
+     * @param len int field length in bytes
+     * @return DataOutputBlobWriter target;
+     */
+    public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, 
+    		                                                                     DataOutputBlobWriter<?> target, 
+    		                                                                     int meta, int len) {
 		if (meta >= 0) {
 			return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
 	    } else {
@@ -2044,7 +2130,15 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
-    public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, DataOutputBlobWriter<?> target) {
+    /**
+     * Read var length field from the pipe, position must be set up first.  Data is written to target field.
+     * 
+     * @param pipe Pipe source
+     * @param target DataOutputBlobWriter field written into
+     * @return DataOutputBlobWriter target
+     */
+    public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, 
+    		                                                                     DataOutputBlobWriter<?> target) {
     	return Pipe.readBytes(pipe, target, Pipe.takeRingByteMetaData(pipe), Pipe.takeRingByteLen(pipe));
  	}
 
@@ -2124,7 +2218,16 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 	
-   public static <S extends MessageSchema<S>, A extends Appendable> A readOptionalASCII(Pipe<S> pipe, A target, int meta, int len) {
+	/**
+	 * Reads ASCII characters or an optional null at given section of a pipe
+	 * @param pipe Pipe source
+	 * @param target Appendable destination
+	 * @param meta int meta data for the field
+	 * @param len int length for the field
+	 * @return Appendable target
+	 */
+     public static <S extends MessageSchema<S>, A extends Appendable> A readOptionalASCII(Pipe<S> pipe, A target,
+    		                                                                              int meta, int len) {
         if (len<0) {
             return null;
         }
@@ -2135,7 +2238,11 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
 
-   
+   /**
+    * skip over the next fragment and position for reading after that fragment
+    * 
+    * @param pipe Pipe source
+    */
    public static <S extends MessageSchema<S>> void skipNextFragment(Pipe<S> pipe) {
 		   
 	   skipNextFragment(pipe, Pipe.takeMsgIdx(pipe));
@@ -2145,7 +2252,7 @@ public class Pipe<T extends MessageSchema<T>> {
     /**
      * Skips over specified section of the pipe
      * @param pipe that you're reading from
-     * @param msgIdx TODO: index to skip over or to skip too??
+     * @param msgIdx int fragment idx already read of the current fragment to be skipped
      */
 	public static <S extends MessageSchema<S>> void skipNextFragment(Pipe<S> pipe, int msgIdx) {
 		   long pos = Pipe.getWorkingTailPosition(pipe);
@@ -2202,6 +2309,16 @@ public class Pipe<T extends MessageSchema<T>> {
 		return true;
 	}
 
+	/**
+	 * checks for equals bytes
+	 * 
+	 * @param pipe Pipe source
+	 * @param expected byte[] backing array
+	 * @param expectedPos int position in backing array
+	 * @param meta int field meta data
+	 * @param len int length of field
+	 * @return boolean true if equal content
+	 */
 	   public static <S extends MessageSchema<S>> boolean isEqual(Pipe<S> pipe, byte[] expected, int expectedPos, int meta, int len) {
 	        if (len>(expected.length-expectedPos)) {
 	            return false;
@@ -2236,6 +2353,18 @@ public class Pipe<T extends MessageSchema<T>> {
 	        return true;
 	    }
 	
+	   /**
+	    * Check if both segments of bytes are equal
+	    * 
+	    * @param aBack byte[] backing array
+	    * @param aPos int position to read from in backing array a
+	    * @param aMask int mask for looping backing array a
+	    * @param bBack byte[] backing array
+	    * @param bPos int position to read from in backing array b
+	    * @param bMask int mask for looping backing array b
+	    * @param len int length of segment
+	    * @return boolean true if content equals
+	    */
 	   public static boolean isEqual(byte[] aBack, int aPos, int aMask, 
 			                         byte[] bBack, int bPos, int bMask, int len) {
 
@@ -2296,6 +2425,15 @@ public class Pipe<T extends MessageSchema<T>> {
     	    }
 	}
 	
+	/**
+	 * Reads UTF8 characters or a null value from the specified pipe
+	 * 
+	 * @param pipe Pipe source
+	 * @param target Appendable destination
+	 * @param meta int meta data for the field
+	 * @param len int length for the field
+	 * @return Appendable target
+	 */
 	   public static <S extends MessageSchema<S>> Appendable readOptionalUTF8(Pipe<S> pipe, Appendable target, int meta, int len) {
 	       
     	     if (len<0) {
@@ -2369,6 +2507,13 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
+	/**
+	 * safe addition to position by masking early to ensure this value does not become negative.
+	 * 
+	 * @param pos int original position
+	 * @param value long length to be added 
+	 * @return int masked position, will not be negative
+	 */
 	public static int safeBlobPosAdd(int pos, long value) {
 	    return (int)(Pipe.BYTES_WRAP_MASK&(pos+value));
 	}
@@ -2384,6 +2529,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		return ((dif>>31)<<ringBuffer.bitsOfBlogRing)+dif;
 	}
 
+	/**
+	 * Validate batch size is not too large
+	 * @param pipe Pipe target
+	 * @param size int batch size
+	 */
 	public static <S extends MessageSchema<S>> void validateBatchSize(Pipe<S> pipe, int size) {
 		if (null != Pipe.from(pipe)) {
 			int maxBatch = computeMaxBatchSize(pipe);
@@ -2393,10 +2543,23 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 
-	public static <S extends MessageSchema<S>> int computeMaxBatchSize(Pipe<S> rb) {
-		return computeMaxBatchSize(rb,2);//default mustFit of 2
+	/**
+	 * maximum batch size based on the Pipe configuration
+	 * 
+	 * @param pipe Pipe source
+	 * @return int max batch size
+	 */
+	public static <S extends MessageSchema<S>> int computeMaxBatchSize(Pipe<S> pipe) {
+		return computeMaxBatchSize(pipe,2);//default mustFit of 2
 	}
 
+	/**
+	 * maximum batch size based on pipe and must fit batches count
+	 * 
+	 * @param pipe Pipe source
+	 * @param mustFit how many batches must fit on the pipe
+	 * @return max batch size
+	 */
 	public static <S extends MessageSchema<S>> int computeMaxBatchSize(Pipe<S> pipe, int mustFit) {
 		assert(mustFit>=1);
 		int maxBatchFromBytes = pipe.maxVarLen==0?Integer.MAX_VALUE:(pipe.sizeOfBlobRing/pipe.maxVarLen)/mustFit;
@@ -2415,6 +2578,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		return tailPosition>=pipe.knownPositionOfEOF;
 	}
 	
+	/**
+	 * Publish an EOF value to all the outgoing pipes
+	 * 
+	 * @param pipe Pipe[] targets
+	 */
 	public static void publishEOF(Pipe<?>[] pipe) {
 		int i = pipe.length;
 		while (--i>=0) {
@@ -2424,6 +2592,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 	
+	/**
+	 * Publish EOF message to the target pipe
+	 * 
+	 * @param pipe Pipe 
+	 */
 	public static <S extends MessageSchema<S>> void publishEOF(Pipe<S> pipe) {
 
 		if (pipe.slabRingTail.tailPos.get()+pipe.sizeOfSlabRing>=pipe.slabRingHead.headPos.get()+Pipe.EOF_SIZE) {
