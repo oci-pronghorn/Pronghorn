@@ -271,7 +271,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @param pipe to be read from
      * @param loc location to read from
      * @param target char[] to write ASCII data to
-     * @return
      */
     public static int readASCII(Pipe pipe, int loc, char[] target, int targetOffset) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
