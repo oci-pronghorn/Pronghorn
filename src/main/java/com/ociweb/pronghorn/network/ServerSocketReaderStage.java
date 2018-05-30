@@ -25,6 +25,13 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
+/**
+ * Server-side stage that reads from the socket. Useful for building a server.
+ * Accepts unexpected calls (unlike ClientSocketReaderStage).
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ServerSocketReaderStage extends PronghornStage {
    
 	private final int messageType;
@@ -50,8 +57,15 @@ public class ServerSocketReaderStage extends PronghornStage {
     public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean encrypted) {
         return new ServerSocketReaderStage(graphManager, ack, output, coordinator);
     }
-    
-    public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator) {
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param ack _in_ The release acknowledgment.
+	 * @param output _out_ The read payload from the socket.
+	 * @param coordinator
+	 */
+	public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator) {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
 

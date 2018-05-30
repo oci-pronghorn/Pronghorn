@@ -8,6 +8,15 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * For some Schema T encode this data in JSON and write it to the target appendable.
+ * Can be set to assume that bytes are UTF8.
+ * The default output is System.out
+ * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private final Pipe<T> input;
@@ -36,7 +45,12 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 	public static ConsoleJSONDumpStage newInstance(GraphManager graphManager, Pipe input, Appendable out, boolean showBytesAsUTF) {
 		return new ConsoleJSONDumpStage(graphManager, input, out, showBytesAsUTF);
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Pipe to be dumped
+	 */
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -44,7 +58,7 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
         
 	}
-	
+
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out) {
 		this(graphManager, input, out, false);
 		

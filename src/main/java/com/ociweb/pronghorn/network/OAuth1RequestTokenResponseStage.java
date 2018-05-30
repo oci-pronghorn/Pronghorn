@@ -11,6 +11,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ */
 public class OAuth1RequestTokenResponseStage extends PronghornStage {
 
 	private final static Logger logger = LoggerFactory.getLogger(OAuth1RequestTokenResponseStage.class);

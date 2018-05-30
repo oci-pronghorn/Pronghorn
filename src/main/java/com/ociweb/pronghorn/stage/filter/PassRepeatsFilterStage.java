@@ -15,6 +15,14 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.RollingBloomFilter;
 
+/**
+ * _no-docs_
+ * TO-DO
+ * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class PassRepeatsFilterStage<T extends MessageSchema<T>> extends PronghornStage {
 
     //after instances of each id then let them pass
@@ -31,7 +39,16 @@ public class PassRepeatsFilterStage<T extends MessageSchema<T>> extends Pronghor
     private final int varFieldLoc;
     private final File storage;
     private final File backup;
- 
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ Input pipe.
+     * @param output _out_ Output pipe.
+     * @param instances
+     * @param varFieldLoc
+     * @param storage
+     */
     public PassRepeatsFilterStage(GraphManager graphManager, Pipe<T> input, Pipe<T> output, int instances, int varFieldLoc, File storage) {
         super(graphManager, input, output);
         this.input = input;

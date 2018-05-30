@@ -15,6 +15,9 @@ import com.ociweb.pronghorn.util.Branchless;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToPipe;
 import com.ociweb.pronghorn.util.parse.MapJSONToPipeBuilder;
 
+/**
+ * _no-docs_
+ */
 public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<TwitterEventSchema,TwitterKey> {
 
 	private static final Logger logger = LoggerFactory.getLogger(TwitterJSONToTwitterEventsStage.class);

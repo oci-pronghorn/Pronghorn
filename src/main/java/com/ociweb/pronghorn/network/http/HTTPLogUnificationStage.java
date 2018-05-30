@@ -12,7 +12,13 @@ import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
-
+/**
+ * Takes multiple HTTP log requests and responses and turns them into a RawDataSchema for
+ * easier output.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class HTTPLogUnificationStage extends PronghornStage {
 
 	private static final byte[] BYTES_RESPONSE = "OUT ".getBytes();
@@ -31,8 +37,14 @@ public class HTTPLogUnificationStage extends PronghornStage {
 
 	private boolean messageOpen = false;
 	private int cyclesOfNoWork = 0;
-	
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param requestInputs _in_ All HTTP request logs.
+	 * @param responseInputs _in_ All HTTP response logs.
+	 * @param output _out_ All the request and response logs combined onto the output pipe as a RawDataSchema.
+	 */
 	public HTTPLogUnificationStage(GraphManager graphManager, 
 			                          Pipe<HTTPLogRequestSchema>[] requestInputs,
 			                          Pipe<HTTPLogResponseSchema>[] responseInputs,			                          

@@ -7,6 +7,9 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ */
 public class PhastUnpackingStage extends PronghornStage {
 
     private final Pipe<RawDataSchema> input;

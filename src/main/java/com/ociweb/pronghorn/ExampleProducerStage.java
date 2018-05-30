@@ -6,6 +6,12 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * An example for a producer.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ExampleProducerStage extends PronghornStage {
 
 	private final Pipe<RawDataSchema> output;

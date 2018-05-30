@@ -6,7 +6,12 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-
+/**
+ * Defines alert notices.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class AlertNoticeSchema extends MessageSchema<AlertNoticeSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

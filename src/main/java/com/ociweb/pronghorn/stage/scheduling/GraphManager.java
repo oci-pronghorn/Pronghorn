@@ -114,7 +114,7 @@ public class GraphManager {
 	public final static String HEAVY_COMPUTE   = "HEAVY_COMPUTE"; //this stage does a lot of compute, we will avoid putting these on the same thread.
 	public final static String TRIGGER         = "TRIGGER"; //this stage limits rate or flow and triggers other stages.
 	public final static String ROUTER_HUB      = "ROUTER_HUB"; //this stage can become a bottleneck for traffic
-	public final static String ISOLATE         = "ISOLATE"; //this stage should be isolated from its neighbors
+	public final static String ISOLATE         = "ISOLATE"; //this stage should be isolated from its neighbors it will be put on its own thread
 	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
 	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	

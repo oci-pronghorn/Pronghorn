@@ -11,6 +11,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * _no-docs_
+ */
 public class SocketTestGenStage extends PronghornStage {
 
 	private final TrieParserReader READER = new TrieParserReader(true);

@@ -14,6 +14,19 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Rest module which streams live data from specific pipes.
+ * This is for deeper telemetry.
+ * In progress, not yet enabled.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class PipeMonitorModuleStage<T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,

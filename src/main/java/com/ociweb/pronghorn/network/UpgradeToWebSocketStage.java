@@ -19,6 +19,12 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ *  Go from HTTP-based server directly to web sockets for massive speed improvements.
+ *
+ *  @author Nathan Tippy
+ *  @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class UpgradeToWebSocketStage extends PronghornStage {
 
 	private static final byte[] WS_WEBSOCKET = "websocket".getBytes();
@@ -37,8 +43,14 @@ public class UpgradeToWebSocketStage extends PronghornStage {
 	private static final int ID_ORIGIN = 25;
 	
 	private static final Logger logger = LoggerFactory.getLogger(UpgradeToWebSocketStage.class);
-		
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputPipes _in_ HTTP request schema to be upgraded.
+	 * @param outputs _out_ Resulting ServerResponseSchema (multiple) after upgrade.
+	 * @param httpSpec
+	 */
 	public UpgradeToWebSocketStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputPipes,
 			Pipe<ServerResponseSchema>[] outputs,

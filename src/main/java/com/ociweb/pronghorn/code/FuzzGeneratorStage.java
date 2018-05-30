@@ -9,12 +9,26 @@ import com.ociweb.pronghorn.pipe.stream.StreamingWriteVisitorGenerator;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Generates fuzz for testing.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class FuzzGeneratorStage extends PronghornStage{
 
     private final StreamingVisitorWriter writer;
     private final long duration;
     private long timeLimit;
-    
+
+    /**
+     *
+     * @param gm
+     * @param random
+     * @param duration
+     * @param output _out_ Pipe onto which fuzz will be written.
+     */
     public FuzzGeneratorStage(GraphManager gm, Random random, long duration, Pipe output) {
         super(gm, NONE, output);
         

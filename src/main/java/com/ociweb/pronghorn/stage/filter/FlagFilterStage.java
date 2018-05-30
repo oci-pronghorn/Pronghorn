@@ -7,11 +7,17 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Filter messages based on flags.
+ * @param <T>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class FlagFilterStage<T extends MessageSchema<T>> extends PronghornStage {
 
     //after instances of each id then let them pass
     //saves its own state
-    
     
     private final Pipe<T> input;
     private final Pipe<T> output;
@@ -19,7 +25,15 @@ public class FlagFilterStage<T extends MessageSchema<T>> extends PronghornStage 
     private final int mask;
     private int count;
     boolean moveInProgress = false;
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ Input message that will be filtered.
+     * @param output _out_ Filtered messages appear on this pipe.
+     * @param varFieldLoc
+     * @param mask
+     */
     public FlagFilterStage(GraphManager graphManager, Pipe<T> input, Pipe<T> output, int varFieldLoc, int mask) {
         super(graphManager, input, output);
         this.input = input;

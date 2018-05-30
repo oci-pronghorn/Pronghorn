@@ -16,6 +16,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * Takes a HTTP client request and responds with a net payload using a TrieParserReader.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class HTTPClientRequestStage extends PronghornStage {
 
 	private final TrieParserReader READER = new TrieParserReader(true);
@@ -39,7 +45,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 										            Pipe<NetPayloadSchema>[] output) {
     	return new HTTPClientRequestStage(graphManager, ccm, input, output);
     }
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param ccm
+     * @param input _in_ Multiple HTTP client requests
+     * @param output _out_ Multiple net payload responses
+     */
 	public HTTPClientRequestStage(GraphManager graphManager, 	
 			ClientCoordinator ccm,
             Pipe<ClientHTTPRequestSchema>[] input,

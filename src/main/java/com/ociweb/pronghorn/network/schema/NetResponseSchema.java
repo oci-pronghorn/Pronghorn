@@ -7,6 +7,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines a typical networked response. Includes payload, context, connection, host, port, and more.
+ */
 public class NetResponseSchema extends MessageSchema<NetResponseSchema> {
 
 

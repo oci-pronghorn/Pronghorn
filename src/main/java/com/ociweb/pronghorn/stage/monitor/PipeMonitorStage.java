@@ -10,6 +10,13 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Stage which monitors pipes in real time.
+ * This data is passed along for the telemetry.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class PipeMonitorStage extends PronghornStage {
 
 	private final Pipe<?>[] observedPipe;
@@ -17,12 +24,13 @@ public class PipeMonitorStage extends PronghornStage {
 	private final GraphManager gm;
 	private static final Logger logger = LoggerFactory.getLogger(PipeMonitorStage.class);
 	private long dropped = 0;
+
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
 	 * controlling the rate of samples
 	 * 
-	 * @param observedRingBuffer
-	 * @param notifyRingBuffer
+	 * @param observedRingBuffer _out_ observation pipes
+	 * @param notifyRingBuffer _out_ notify pipes
 	 */
 	public PipeMonitorStage(GraphManager gm, 
 						    Pipe<?>[] observedRingBuffer, 

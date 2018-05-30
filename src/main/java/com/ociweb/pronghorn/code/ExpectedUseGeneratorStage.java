@@ -6,6 +6,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ExpectedUseGeneratorStage extends PronghornStage {
 
 	private final Random random;
@@ -13,7 +18,15 @@ public class ExpectedUseGeneratorStage extends PronghornStage {
 	private final Pipe[] inputs;
 	private final Pipe[] outputs;
 	private final GGSGenerator generator;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes
+	 * @param outputs _out_ Output pipes
+	 * @param random
+	 * @param generator
+	 */
 	public ExpectedUseGeneratorStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, Random random, GGSGenerator generator) {
 		super(graphManager, inputs, outputs);
 		this.graphManager = graphManager;

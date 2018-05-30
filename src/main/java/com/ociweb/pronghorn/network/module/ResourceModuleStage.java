@@ -23,6 +23,16 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * Fetches resources as HTTP responses based on request.
+ *
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
@@ -59,7 +69,16 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
         return new ResourceModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, prefix, resourceName);
         
     }
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Multiple HTTPRequest that are requesting resource(s).
+	 * @param outputs _out_ Responds with the resource(s) if it/they exists.
+	 * @param httpSpec
+	 * @param prefix
+	 * @param resourceName
+	 */
 	public ResourceModuleStage(GraphManager graphManager, 
 			                   Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
 			                   HTTPSpecification httpSpec, String prefix, String resourceName) {

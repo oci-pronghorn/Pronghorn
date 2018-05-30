@@ -12,13 +12,23 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Validates previously generated fuzz.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class FuzzValidationStage extends PronghornStage{
 
 	private final StreamingVisitorReader reader;
 	private boolean foundError = false;
 	private static final Logger log = LoggerFactory.getLogger(FuzzValidationStage.class);
-	
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Pipe containing fuzz.
+	 */
 	public FuzzValidationStage(GraphManager graphManager, Pipe<?> input) {
 		super(graphManager, input, NONE);
 

@@ -5,13 +5,25 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Converts data in matrix to decimal data onto the matrix.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ConvertToDecimalStage<M extends MatrixSchema<M>> extends PronghornStage {
 
 	private final Pipe<RowSchema<M>> input;
 	private final Pipe<DecimalSchema<M>> output;
 	private final MatrixTypes inputType;
 	private final int blockSize;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param input _in_ Input pipe as matrix with RowSchema
+	 * @param output _out_ Output pipe in which RowSchema is converted to DecimalSchema
+	 */
 	public ConvertToDecimalStage(GraphManager graphManager, Pipe<RowSchema<M>> input, Pipe<DecimalSchema<M>> output) {
 		super(graphManager, input, output);
 		

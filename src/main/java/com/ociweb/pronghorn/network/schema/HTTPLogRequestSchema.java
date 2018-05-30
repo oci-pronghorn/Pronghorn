@@ -6,7 +6,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-
+/**
+ * Defines how HTTP logging of a request works.
+ */
 public class HTTPLogRequestSchema extends MessageSchema<HTTPLogRequestSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
