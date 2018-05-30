@@ -148,8 +148,8 @@ public class PipeTest {
 		int msgidx = Pipe.takeMsgIdx(p);
 		assertEquals(msgidx, TestDataSchema.MSG_CHUNKEDSTREAM_10);
 		StringBuilder str = new StringBuilder();
-		int meta = Pipe.takeRingByteMetaData(p);
-		int length = Pipe.takeRingByteLen(p);
+		int meta = Pipe.takeByteArrayMetaData(p);
+		int length = Pipe.takeByteArrayLength(p);
 		Pipe.readUTF8(p, str, meta, length);
 
 		assertEquals("#$ԅԔxxx", str.toString());
@@ -251,8 +251,8 @@ public class PipeTest {
 		assertEquals(msgidx, TestDataSchema.MSG_CHUNKEDSTREAM_10);
 		StringBuilder str = new StringBuilder();
 
-		int meta = Pipe.takeRingByteMetaData(p);
-		int length = Math.max(0, Pipe.takeRingByteLen(p));
+		int meta = Pipe.takeByteArrayMetaData(p);
+		int length = Math.max(0, Pipe.takeByteArrayLength(p));
 		int position = Pipe.bytePosition(meta, p, length);
 
 		Pipe.readASCII(p, str, meta, length);
@@ -268,8 +268,8 @@ public class PipeTest {
 
 		Pipe.publishWrites(p);
 
-		meta = Pipe.takeRingByteMetaData(p);
-		length = Math.max(0, Pipe.takeRingByteLen(p));
+		meta = Pipe.takeByteArrayMetaData(p);
+		length = Math.max(0, Pipe.takeByteArrayLength(p));
 		position = Pipe.bytePosition(meta, p, length);
 
 		Pipe.readUTF8(p, str, 4, 4);
@@ -510,8 +510,8 @@ public class PipeTest {
 		Pipe.addMsgIdx(p, TestDataSchema.MSG_CHUNKEDSTREAM_10);
 		Pipe.addASCII("test", p);
 
-		int meta = Pipe.takeRingByteMetaData(p); // just assume this is correct.
-		int length = Math.max(0, Pipe.takeRingByteLen(p));
+		int meta = Pipe.takeByteArrayMetaData(p); // just assume this is correct.
+		int length = Math.max(0, Pipe.takeByteArrayLength(p));
 		int position = Pipe.bytePosition(meta, p, length);
 
 		bool = Pipe.validatePipeBlobHasDataToRead(p, position, length);

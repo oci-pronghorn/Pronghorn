@@ -847,7 +847,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			//save all working values only once if we re-enter replaying multiple times.
 
 		    pipe.holdingSlabWorkingTail = Pipe.getWorkingTailPosition(pipe);
-			pipe.holdingBlobWorkingTail = Pipe.getWorkingBlobRingTailPosition(pipe);
+			pipe.holdingBlobWorkingTail = Pipe.getWorkingBlobTailPosition(pipe);
 
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
 			pipe.ringWalker.holdingNextWorkingTail = pipe.ringWalker.nextWorkingTail;
@@ -1311,7 +1311,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe to have publications released.
      */
     public static void releaseReadsBatched(Pipe<MessageSchemaDynamic> pipe) {
-		Pipe.batchedReleasePublish(pipe, Pipe.getWorkingBlobRingTailPosition(pipe),
+		Pipe.batchedReleasePublish(pipe, Pipe.getWorkingBlobTailPosition(pipe),
 	    		                      Pipe.getWorkingTailPosition(pipe));
 	}
 
@@ -1353,7 +1353,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 		//move source pointers forward
 		Pipe.addAndGetWorkingTail(sourcePipe, slabMsgSize-1);
-		Pipe.addAndGetBytesWorkingTailPosition(sourcePipe, blobMsgSize);
+		Pipe.addAndGetBlobWorkingTailPosition(sourcePipe, blobMsgSize);
 		Pipe.confirmLowLevelRead(sourcePipe, slabMsgSize);
 		Pipe.releaseReadLock(sourcePipe);		
 		
@@ -1634,8 +1634,8 @@ public class Pipe<T extends MessageSchema<T>> {
      * @throws IOException
      */
 	public static <S extends MessageSchema<S>> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        int length    = Pipe.takeRingByteLen(pipe);    
+        int meta = Pipe.takeByteArrayMetaData(pipe);
+        int length    = Pipe.takeByteArrayLength(pipe);    
         if (length>0) {                
             int off = bytePosition(meta,pipe,length) & Pipe.blobMask(pipe);
             copyFieldToOutputStream(out, length, Pipe.byteBackingArray(meta, pipe), off, pipe.sizeOfBlobRing-off);
@@ -1669,7 +1669,7 @@ public class Pipe<T extends MessageSchema<T>> {
     private static boolean buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
         boolean result = copyFromInputStreamLoop(inputStream, byteCount, startPosition, byteMask, buffer, sizeOfBlobRing, 0);        
         Pipe.addBytePosAndLen(pipe, startPosition, byteCount);
-        Pipe.addAndGetBytesWorkingHeadPosition(pipe, byteCount);
+        Pipe.addAndGetBlobWorkingHeadPosition(pipe, byteCount);
         assert(Pipe.validateVarLength(pipe, byteCount));
         return result;
     }
@@ -1775,7 +1775,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	
     	//blob head position is moved forward
     	if (len>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-    		Pipe.addAndGetBytesWorkingHeadPosition(output, len);
+    		Pipe.addAndGetBlobWorkingHeadPosition(output, len);
     	}
         //record the new start and length to the slab for this blob
         Pipe.addBytePosAndLen(output, originalBlobPosition, len);
@@ -2139,7 +2139,7 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, 
     		                                                                     DataOutputBlobWriter<?> target) {
-    	return Pipe.readBytes(pipe, target, Pipe.takeRingByteMetaData(pipe), Pipe.takeRingByteLen(pipe));
+    	return Pipe.readBytes(pipe, target, Pipe.takeByteArrayMetaData(pipe), Pipe.takeByteArrayLength(pipe));
  	}
 
     /**
@@ -2655,8 +2655,8 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addByteArray(Pipe<S> source, Pipe<T> target) {
 				
-		int sourceMeta = Pipe.takeRingByteMetaData(source);
-		int sourceLen  = Pipe.takeRingByteLen(source);
+		int sourceMeta = Pipe.takeByteArrayMetaData(source);
+		int sourceLen  = Pipe.takeByteArrayLength(source);
 		
 		Pipe.validateVarLength(target, sourceLen);
 		
@@ -3697,7 +3697,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> int bytePosition(int meta, Pipe<S> pipe, int len) {
     	int pos =  restorePosition(pipe, meta & RELATIVE_POS_MASK);
         if (len>=0) {
-        	Pipe.addAndGetBytesWorkingTailPosition(pipe, len);
+        	Pipe.addAndGetBlobWorkingTailPosition(pipe, len);
         }        
         return pos;
     }
@@ -3764,6 +3764,13 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
 	
+	/**
+	 * Writes long value to the specified pipe
+	 * @param buffer int[] target backing array
+	 * @param mask int for looping over target buffer
+	 * @param headCache PaddedLong position of head
+	 * @param value long value 
+	 */
     public static <S extends MessageSchema<S>> void addLongValue(
     		int[] buffer, int mask, PaddedLong headCache, long value) {
 
@@ -3774,39 +3781,78 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
-    static <S extends MessageSchema<S>> int readRingByteLen(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+    static <S extends MessageSchema<S>> int readByteArrayLength(int fieldPos, int[] rbB, int rbMask, long rbPos) {
         return rbB[(int) (rbMask & (rbPos + fieldPos + 1))];// second int is always the length
     }
 
-	public static <S extends MessageSchema<S>> int readRingByteLen(int idx, Pipe<S> pipe) {
-		return readRingByteLen(idx,pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value);
+    /**
+     * Read the length portion of the var length field
+     * @param idx int position of field
+     * @param pipe Pipe source pipe
+     * @return int length
+     */
+	public static <S extends MessageSchema<S>> int readByteArrayLength(int idx, Pipe<S> pipe) {
+		return readByteArrayLength(idx,pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value);
 	}
 
-	public static <S extends MessageSchema<S>> int takeRingByteLen(Pipe<S> pipe) {
+	/**
+	 * consume the length for the var length byte field
+	 * @param pipe Pipe source
+	 * @return int length
+	 */
+	public static <S extends MessageSchema<S>> int takeByteArrayLength(Pipe<S> pipe) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(pipe));
 		return pipe.slabRing[(int)(pipe.slabMask & (pipe.slabRingTail.workingTailPos.value++))];// second int is always the length
 	}
 
+	@Deprecated
+	public static <S extends MessageSchema<S>> int takeRingByteLen(Pipe<S> pipe) {
+		return takeByteArrayLength(pipe);	
+	}
 
-
+    /**
+     * Given the meta data for the var length field return the backing array.
+     * @param meta int meta value
+     * @param pipe Pipe source
+     * @return byte[] backing array
+     */
     public static <S extends MessageSchema<S>> byte[] byteBackingArray(int meta, Pipe<S> pipe) {
         return pipe.blobRingLookup[meta>>>31];
     }
 
+    @Deprecated
 	public static <S extends MessageSchema<S>> int readRingByteMetaData(int pos, Pipe<S> pipe) {
-		return readValue(pos,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
+		return readByteArraMetaData(pos, pipe);
+	}
+	
+    /**
+     * Read meta data for a given var length field at this position
+     * @param pos int index position
+     * @param pipe Pipe source
+     * @return int meta
+     */
+	public static <S extends MessageSchema<S>> int readByteArraMetaData(int pos, Pipe<S> pipe) {
+		return readIntValue(pos,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
 	}
 
-	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
+	@Deprecated
 	public static <S extends MessageSchema<S>> int takeRingByteMetaData(Pipe<S> pipe) {
-		return readValue(0,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value++);
+		return takeByteArrayMetaData(pipe);
+	}
+	
+	/**
+	 * Consume the meta data for the var length byte field.  This must always be read BEFORE the length.
+	 * @param pipe Pipe source
+	 * @return int meta
+	 */
+	public static <S extends MessageSchema<S>> int takeByteArrayMetaData(Pipe<S> pipe) {
+		//NOTE: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
+		return readIntValue(0,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value++);
 	}
 
-    static <S extends MessageSchema<S>> int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+    static <S extends MessageSchema<S>> int readIntValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
         return rbB[(int)(rbMask & (rbPos + fieldPos))];
     }
-
-    //TODO: may want to deprecate this interface
 
     /**
      * Reads the data at a specific index on the given pipe and returns an int
@@ -3815,10 +3861,20 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param <S> MessageSchema to extend
      * @return int value from specified index
      */
+    public static <S extends MessageSchema<S>> int readIntValue(int idx, Pipe<S> pipe) {
+    	return readIntValue(idx, pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
+    }
+    
+    @Deprecated
     public static <S extends MessageSchema<S>> int readValue(int idx, Pipe<S> pipe) {
-    	return readValue(idx, pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
+    	return readIntValue(idx,pipe);
     }
 
+    /**
+     * Read int and move the cursor forward
+     * @param pipe Pipe source
+     * @return int value
+     */
     public static <S extends MessageSchema<S>> int takeInt(Pipe<S> pipe) {
     	return readValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
     }
@@ -3827,21 +3883,49 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> int takeValue(Pipe<S> pipe) {
     	return takeInt(pipe);
     }
-    
-    public static <S extends MessageSchema<S>> int readValue(int[] rbB, int rbMask, long rbPos) {
-        return rbB[(int)(rbMask & rbPos)];
+   
+    /**
+     * read int value at the given position
+     * @param backing int[] backing buffer
+     * @param mask int looping mask
+     * @param position int position index
+     * @return int value
+     */
+    public static <S extends MessageSchema<S>> int readIntValue(int[] backing, int mask, long position) {
+        return backing[(int)(mask & position)];
     }
     
+    @Deprecated
+    public static <S extends MessageSchema<S>> int readValue(int[] rbB, int rbMask, long rbPos) {
+        return readIntValue(rbB, rbMask, rbPos);
+    }
+    
+    /**
+     * take optional Integer, this may be null. null is defined as a specific int value in FROM
+     * @param pipe Pipe source
+     * @return Integer value
+     */
     public static <S extends MessageSchema<S>> Integer takeOptionalValue(Pipe<S> pipe) {
         int absent32Value = FieldReferenceOffsetManager.getAbsent32Value(Pipe.from(pipe));
         return takeOptionalValue(pipe, absent32Value);
     }
 
+    /**
+     * take optional Integer, this may be null. null is defined as specific int value passed in.
+     * @param pipe Pipe source
+     * @param absent32Value int value mapped to null
+     * @return Integer value
+     */
     public static <S extends MessageSchema<S>> Integer takeOptionalValue(Pipe<S> pipe, int absent32Value) {
-        int temp = readValue(0, pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
+        int temp = readIntValue(0, pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
         return absent32Value!=temp ? new Integer(temp) : null;
     }
 
+    /**
+     * Read the long position and move the cursor forward.
+     * @param pipe Pipe source
+     * @return long value
+     */
     public static <S extends MessageSchema<S>> long takeLong(Pipe<S> pipe) {
         
         //this assert does not always work because the head position is volatile, Not sure what should be done to resolve it.  
@@ -3852,11 +3936,22 @@ public class Pipe<T extends MessageSchema<T>> {
     	return result;
     }
     
+    /**
+     * Take optional Long which may be null. Null is defined as specific long value in FROM
+     * @param pipe Ping source
+     * @return Long value
+     */
     public static <S extends MessageSchema<S>> Long takeOptionalLong(Pipe<S> pipe) {
         long absent64Value = FieldReferenceOffsetManager.getAbsent64Value(Pipe.from(pipe));
         return takeOptionalLong(pipe, absent64Value);
     }
 
+    /**
+     * Take optional Long which may be null. Null is defined as specific long value passed in.
+     * @param pipe Pipe source
+     * @param absent64Value long value mapped to null
+     * @return Long value
+     */
     public static <S extends MessageSchema<S>> Long takeOptionalLong(Pipe<S> pipe, long absent64Value) {
         assert(pipe.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(pipe)) : "working tail "+pipe.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(pipe);
         long result = readLong(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
@@ -3891,42 +3986,100 @@ public class Pipe<T extends MessageSchema<T>> {
     	return pipe.lastMsgIdx = readValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
     }
     
+    /**
+     * peek message and determine if it matches the expected value
+     * @param pipe Pipe source
+     * @param expected int message idx
+     * @return boolean true if there is a message and if it matches expected
+     */
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected) {
         return (Pipe.contentRemaining(pipe)>0) && peekInt(pipe)==expected;    	
     }
     
+    /**
+     * peek message and determine if it does not match the expected value
+     * @param pipe Pipe source
+     * @param expected int message idx
+     * @return boolean true if there is a message but it is not the expected value
+     */
     public static <S extends MessageSchema<S>> boolean peekNotMsg(Pipe<S> pipe, int expected) {
         return (Pipe.contentRemaining(pipe)>0) && peekInt(pipe)!=expected;    	
     }    
 
+    /**
+     * peek message and determine if it matches one of 2 potential values
+     * @param pipe Pipe source
+     * @param expected1 int message idx
+     * @param expected2 int message idx
+     * @return boolean true if there is a message and it matches one of the two expected values.
+     */
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2) {
         return (Pipe.contentRemaining(pipe)>0) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2);
     }
     
+    /**
+     * peek message and determine if it matches one of 3 potential values
+     * @param pipe Pipe source
+     * @param expected1 int message idx
+     * @param expected2 int message idx
+     * @param expected3 int message idx
+     * @return boolean true if there is a message and it matches one of the three expected values
+     */
     public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2, int expected3) {
         return (Pipe.contentRemaining(pipe)>0) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2 || peekInt(pipe)==expected3);
     }
     
+    /**
+     * peek the int value at this position
+     * @param pipe Pipe source
+     * @return int value
+     */
     public static <S extends MessageSchema<S>> int peekInt(Pipe<S> pipe) {
     	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
-        return readValue(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
+        return readIntValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value);
     }
     
+    /**
+     * peek the int value at this relative offset from where the cursor is upon call
+     * @param pipe Pipe source
+     * @param offset int relative position of field 
+     * @return int value
+     */
     public static <S extends MessageSchema<S>> int peekInt(Pipe<S> pipe, int offset) {
     	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
-        return readValue(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value+offset);
+        return readIntValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value+offset);
     }
    
+    /**
+     * peek the long value at this relative offset from where the cursor is upon call
+     * @param pipe Pipe source
+     * @param offset int relative position of field
+     * @return long value
+     */
     public static <S extends MessageSchema<S>> long peekLong(Pipe<S> pipe, int offset) {
     	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
         return readLong(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value+offset);
     }
     
+    /**
+     * peek UTF8 text at this relative offset from where the cursor is upon call
+     * @param pipe Pipe source
+     * @param offset int relative position of field
+     * @param target Appendable destination for text
+     * @return Appendable target
+     */
     public static <S extends MessageSchema<S>, A extends Appendable> A peekUTF8(Pipe<S> pipe, int offset, A target) {
     	assert((Pipe.contentRemaining(pipe)>0)) : "results would not be repeatable";
     	return readUTF8(pipe, target, peekInt(pipe,offset),peekInt(pipe,offset+1));
     }
 
+    /**
+     * Content remaining on Pipe to be consumed. Uses published head and tail so if this is not zero then
+     * there is a full message to be consumed.
+     * 
+     * @param pipe Pipe source
+     * @return int value
+     */
     public static <S extends MessageSchema<S>> int contentRemaining(Pipe<S> pipe) {
         int result = (int)(pipe.slabRingHead.headPos.get() - pipe.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
         assert(result>=0) : "content remaining must never be negative. problem in "+schemaName(pipe)+" pipe "; //do not add pipe.toString since it will be recursive.
@@ -3934,7 +4087,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Checks to see whether pipe has any data or not
+     * Checks to see whether pipe has any data or not. If not empty does NOT mean it has a full message.
      * @param pipe pipe to be checked
      * @param <S> MessageSchema to extend
      * @return <code>true</code> if pipe has no data else <code>false</code>
@@ -3943,8 +4096,12 @@ public class Pipe<T extends MessageSchema<T>> {
     	return pipe.slabRingHead.workingHeadPos.value == pipe.slabRingTail.workingTailPos.value;
     }
 
+    /**
+     * Release read lock on this fragment. Allows the producer to write over this location.
+     * @param pipe Pipe target
+     * @return int total byte count consumed by fragment
+     */
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
-     	  
     	
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumedByFragment = takeInt(pipe);
@@ -3961,7 +4118,14 @@ public class Pipe<T extends MessageSchema<T>> {
         return bytesConsumedByFragment;        
     }
 
-    
+    /**
+     * Move cursor forward to next fragment for reading but does NOT release the previous fragment
+     * to be written over.  This is helpful in cases where multiple messages must be held until a 
+     * transaction is complete.
+     * 
+     * @param pipe Pipe target
+     * @return int count of bytes consumed by previous fragment
+     */
     public static <S extends MessageSchema<S>> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe); 
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment); //the base has been moved so we can also use it below.
@@ -3980,6 +4144,12 @@ public class Pipe<T extends MessageSchema<T>> {
         return releaseReadLock(pipe);     
     }
 
+    /**
+     * If batch is not yet full this new publish is stored else this is added and released with the rest
+     * @param pipe Pipe target
+     * @param blobTail int blobTail position to release
+     * @param slabTail int slabTail postiion to release
+     */
     public static <S extends MessageSchema<S>> void batchedReleasePublish(Pipe<S> pipe, int blobTail, long slabTail) {
         assert(null==pipe.ringWalker || pipe.ringWalker.cursor<=0 && !PipeReader.isNewMessage(pipe.ringWalker)) : "Unsupported mix of high and low level API.  ";
         releaseBatchedReads(pipe, blobTail, slabTail);
@@ -3989,7 +4159,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         if (decBatchRelease(pipe)<=0) { 
-           setBytesTail(pipe, workingBlobRingTailPosition);
+           setBlobTailPosition(pipe,workingBlobRingTailPosition);
            
            //NOTE: the working tail is in use as part of the read and should not be modified
            //      this method only modifies the externally visible tail to let writers see it.
@@ -4013,7 +4183,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     /**
      * Release any reads that were held back due to batching.
-     * @param pipe pipe to be examined
+     * @param pipe Pipe to be examined
      */
     public static <S extends MessageSchema<S>> void releaseAllBatchedReads(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
@@ -4026,36 +4196,34 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(debugHeadAssignment(pipe));
     }
     
+    /**
+     * Release all batched read releases up to the current position. Eg all things read can now be written over.
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void releaseBatchedReadReleasesUpToThisPosition(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
-        long newTailToPublish = Pipe.getWorkingTailPosition(pipe);
-        int newTailBytesToPublish = Pipe.getWorkingBlobRingTailPosition(pipe);
-        
-        //int newTailBytesToPublish = RingBuffer.bytesReadBase(ring);
-        
-        releaseBatchedReadReleasesUpToPosition(pipe, newTailToPublish, newTailBytesToPublish);
+        releaseBatchedReadReleasesUpToPosition(pipe, Pipe.getWorkingTailPosition(pipe), Pipe.getWorkingBlobTailPosition(pipe));
                 
     }
 
+    /**
+     * Release all batched read releases up to the passed in position.
+     * @param pipe Pipe target
+     * @param newTailToPublish long new tail
+     * @param newTailBytesToPublish int new bytes total
+     */
     public static <S extends MessageSchema<S>> void releaseBatchedReadReleasesUpToPosition(Pipe<S> pipe, long newTailToPublish,  int newTailBytesToPublish) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
     	assert(newTailToPublish<=pipe.lastReleasedSlabTail) : "This new value is forward of the next Release call, eg its too large";
         assert(newTailToPublish>=pipe.slabRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
-        
-//        //TODO: These two asserts would be nice to have but the int of bytePos wraps every 2 gig causing false positives, these need more mask logic to be right
-//        assert(newTailBytesToPublish<=ring.lastReleasedBytesTail) : "This new value is forward of the next Release call, eg its too large";
-//        assert(newTailBytesToPublish>=ring.unstructuredLayoutRingTail.bytesTailPos.value) : "This new value is behind the existing published Tail, eg its too small ";
-//        assert(newTailBytesToPublish<=ring.bytesWorkingTailPosition(ring)) : "Out of bounds should never be above working tail";
-//        assert(newTailBytesToPublish<=ring.bytesHeadPosition(ring)) : "Out of bounds should never be above head";
-        
-        
+
         PaddedInt.set(pipe.blobRingTail.bytesTailPos, newTailBytesToPublish);
         pipe.slabRingTail.tailPos.lazySet(newTailToPublish);
         pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
     }
 
     /**
-     * Low level API for publish
+     * Low level API for publish for new fragment. Must be called in order for consumer to see fragment.
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
@@ -4071,10 +4239,26 @@ public class Pipe<T extends MessageSchema<T>> {
 		return consumed;
     }
 
+    /**
+     * Records the count of bytes consumed by this fragment into the pipe. This is part of the internal
+     * bookkeeping which allows for skipping over messages when reqired.
+     * 
+     * @param pipe Pipe target
+     * @return int count of bytes
+     */
 	public static <S extends MessageSchema<S>> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe) {
 		return writeTrailingCountOfBytesConsumed(pipe, pipe.slabRingHead.workingHeadPos.value++);
 	}
 
+	/**
+	 * Publish writes for this fragment so consumer stage can see it. Adds optional hidden trailing bytes
+	 * between the messages. This advanced feature allows for extra meta data to be passed as long as 
+	 * consuming stage knows its there and should be read. If it does not then the data is ignored.
+	 * 
+	 * @param pipe Pipe source
+	 * @param optionalHiddenTrailingBytes int count of bytes to add after message
+	 * @return int total count of bytes consumed by this fragment including optional count.
+	 */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
     	notifyPubListener(pipe.pubListeners);
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
@@ -4090,6 +4274,14 @@ public class Pipe<T extends MessageSchema<T>> {
 		return consumed;
     }
 
+    /**
+     * Notify any listeners to thsi pipe that a publication has been made. 
+     * This feature is only used in corner cases where a stage needs to watch a number of pipes
+     * and only has work if one of them has new content. Polling many pipes is slower than this 
+     * notification listener however polling one or two pipes is quicker than this pattern.
+     * 
+     * @param pipe Pipe observed pipe
+     */
 	public static <S extends MessageSchema<S>> void notifyPubListener(Pipe<S> pipe) {
 		notifyPubListener(pipe.pubListeners);
 	
@@ -4102,7 +4294,10 @@ public class Pipe<T extends MessageSchema<T>> {
     	}
 	}
     
-    
+    /**
+     * Publish all the batched writes so they can all be seen by the consumer stage
+     * @param pipe Pipe target
+     */	
     public static <S extends MessageSchema<S>> void publishWritesBatched(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         //single length field still needs to move this value up, so this is always done
@@ -4113,7 +4308,12 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 
-    private static <S extends MessageSchema<S>> boolean validateFieldCount(Pipe<S> pipe) {
+    /**
+     * Used by assert any time we need to check the validity of what has been written to the pipe.
+     * @param pipe Pipe target
+     * @return boolean true if the message has a valid field count
+     */
+    public static <S extends MessageSchema<S>> boolean validateFieldCount(Pipe<S> pipe) {
         if (null==Pipe.from(pipe)) {
         	return true;//skip check for this schemaless use
         }
@@ -4155,7 +4355,10 @@ public class Pipe<T extends MessageSchema<T>> {
 		return true;
 	}
 
-
+    /**
+     * Internal method to publish head positions as part of publish writes process
+     * @param pipe Pipe target
+     */
 	public static <S extends MessageSchema<S>> void publishHeadPositions(Pipe<S> pipe) {
 
 		assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
@@ -4163,12 +4366,9 @@ public class Pipe<T extends MessageSchema<T>> {
     		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llrConfirmedPosition) :
     			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llrConfirmedPosition+"\n"+
     		       "OR the XML field types may not match the accessor methods in use.";
-    	//TODO: not sure this works with structs now..
+    	//not working for some tests...
     	//assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
-	    //TODO: need way to test if publish was called on an input ? 
-    	//      may be much easier to detect missing publish. or extra release.
-    	
 	    if ((--pipe.batchPublishCountDown<=0)) {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
 	        pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value);
@@ -4179,6 +4379,10 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
+	/**
+	 * Store the writes for publish later.
+	 * @param pipe Pipe targe
+	 */
 	public static <S extends MessageSchema<S>> void storeUnpublishedWrites(Pipe<S> pipe) {
 		pipe.lastPublishedBlobRingHead = pipe.blobRingHead.byteWorkingHeadPos.value;
 		pipe.lastPublishedSlabRingHead = pipe.slabRingHead.workingHeadPos.value;
@@ -4230,40 +4434,89 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return pipe.slabMask;
 	}
 
+	/**
+	 * Direct access to the head position of the slab
+	 * @param pipe Pipe source
+	 * @return long slab head
+	 */
 	public static <S extends MessageSchema<S>> long getSlabHeadPosition(Pipe<S> pipe) {
 		return headPosition(pipe);
 	}
 	
+	/**
+	 * Direct access to the head position of the slab
+	 * @param pipe Pipe source
+	 * @return long slab head
+	 */
 	public static <S extends MessageSchema<S>> long headPosition(Pipe<S> pipe) {
 		 return pipe.slabRingHead.headPos.get();
 	}
 
+	/**
+	 * Direct access to the working head position of the slab
+	 * @param pipe Pipe source
+	 * @return long slab working head, not yet published and actively used
+	 */
     public static <S extends MessageSchema<S>> long workingHeadPosition(Pipe<S> pipe) {
         return PaddedLong.get(pipe.slabRingHead.workingHeadPos);
     }
 
+    /**
+     * Directly set the new working head position for the slab
+     * @param pipe Pipe target
+     * @param value long new head position for slab
+     */
     public static <S extends MessageSchema<S>> void setWorkingHead(Pipe<S> pipe, long value) {
-    	//assert(pipe.slabRingHead.workingHeadPos.value<=value) : "new working head must be forward";
         PaddedLong.set(pipe.slabRingHead.workingHeadPos, value);
     }
 
+    /**
+     * Directly increment the working head position for the slab
+     * @param pipe Pipe target
+     * @param inc int step to increment head by
+     * @return long new head slab position after inc
+     */
     public static <S extends MessageSchema<S>> long addAndGetWorkingHead(Pipe<S> pipe, int inc) {
         return PaddedLong.add(pipe.slabRingHead.workingHeadPos, inc);
     }
 
+    /**
+     * Direct access to working tail position of the slab
+     * @param pipe Pipe target
+     * @return long new working tail position, not yet published, activily used
+     */
     public static <S extends MessageSchema<S>> long getWorkingTailPosition(Pipe<S> pipe) {
         return PaddedLong.get(pipe.slabRingTail.workingTailPos);
     }
 
+    /**
+     * Direct access to set the working tail position
+     * @param pipe Pipe target
+     * @param value long new working tail position.
+     */
     public static <S extends MessageSchema<S>> void setWorkingTailPosition(Pipe<S> pipe, long value) {
         PaddedLong.set(pipe.slabRingTail.workingTailPos, value);
     }
 
+    /**
+     * Direct access to increment working tail position
+     * @param pipe Pipe target
+     * @param inc int step to increment working tail
+     * @return long new working tail position after increment addition
+     */
     public static <S extends MessageSchema<S>> long addAndGetWorkingTail(Pipe<S> pipe, int inc) {
         return PaddedLong.add(pipe.slabRingTail.workingTailPos, inc);
     }
 
-
+    /**
+     * Replicate slab and blob data from an older fragment inside this same pipe up to the end.
+     * This may be used to re-send a message without having to build it another time.
+     * 
+     * @param pipe Pipe source
+     * @param historicSlabPosition long position
+     * @param historicBlobPosition int position
+     * @return boolean true if this replication was done
+     */
     public static <S extends MessageSchema<S>> boolean tryReplication(Pipe<S> pipe, 
             final long historicSlabPosition, 
             final int historicBlobPosition) {
@@ -4290,16 +4543,6 @@ public class Pipe<T extends MessageSchema<T>> {
 					Pipe.blobMask(pipe), Pipe.slabMask(pipe),
 					historicBlobPosition, idx);
 			
-			
-			
-			//Appendables.appendHexArray(System.out.append("replicate slab: "), '[', slab, historicSlabPosition, pipe.slabMask, ']', slabMsgSize).append('\n');
-			
-			
-			//logger.info("replicate data from old:{} {} new:{} {} ",
-			//historicBlobPosition, historicSlabPosition,
-			//(blobPos&Pipe.blobMask(pipe)), (slabPos&Pipe.slabMask(pipe)));
-			
-			
 			return true;
 		} else {
 			return false;
@@ -4316,7 +4559,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		Pipe.copyBytesFromToRing(sourceBlob, sourceBlobPos, sourceBlobMask, 
 				                 Pipe.blob(targetPipe), Pipe.getWorkingBlobHeadPosition(targetPipe), Pipe.blobMask(targetPipe), 
 				                 blobMsgSize);			
-		Pipe.addAndGetBytesWorkingHeadPosition(targetPipe, blobMsgSize);
+		Pipe.addAndGetBlobWorkingHeadPosition(targetPipe, blobMsgSize);
 		
 		//copy all the ints
 		Pipe.copyIntsFromToRing(sourceSlab, sourceSlabPos, sourceSlabMask, 
@@ -4341,10 +4584,14 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = workingHeadPos);
 	}
 
+	/**
+	 * Direct access to the published tail position
+	 * @param pipe Pipe target
+	 * @return long tail position
+	 */
 	public static <S extends MessageSchema<S>> long tailPosition(Pipe<S> pipe) {
 		return pipe.slabRingTail.tailPos.get();
 	}
-
 
 
 	/**
@@ -4357,6 +4604,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.slabRingTail.tailPos.lazySet(pipe.slabRingTail.workingTailPos.value = workingTailPos);
 	}
     
+	/**
+	 * Direct access to publish working tail position
+	 * @param pipe Pipe target
+	 * @param blobWorkingTailPos int new working tail position
+	 */
 	public static <S extends MessageSchema<S>> void publishBlobWorkingTailPosition(Pipe<S> pipe, int blobWorkingTailPos) {
         pipe.blobRingTail.bytesTailPos.value = (pipe.blobRingTail.byteWorkingTailPos.value = blobWorkingTailPos);
     }
@@ -4366,16 +4618,21 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pipe.sizeOfSlabRing;
 	}
 
+	/**
+	 * Field reference offset manager for the schema used by this pipe.
+	 * 
+	 * This data structure contains all the arrays generated by the schema XML and allows for 
+	 * deep access to schema details.
+	 * 
+	 * @param pipe Pipe target
+	 * @return FieldReferenceOffsetManager aka FROM
+	 */
 	public static <S extends MessageSchema<S>> FieldReferenceOffsetManager from(Pipe<S> pipe) {
 		assert(pipe.schema!=null);	
 		return pipe.schema.from;
 	}
 
-	public static <S extends MessageSchema<S>> int cursor(Pipe<S> pipe) {
-        return pipe.ringWalker.cursor;
-    }
-
-	public static <S extends MessageSchema<S>> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe, final long pos) {
+	static <S extends MessageSchema<S>> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe, final long pos) {
 
 		final int consumed = computeCountOfBytesConsumed(pipe);
 
@@ -4387,6 +4644,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		return consumed;
 	}
 
+	/**
+	 * Total count of bytes consumed since start of this fragment
+	 * @param pipe Pipe pipe
+	 * @return int count of bytes
+	 */
 	public static <S extends MessageSchema<S>> int computeCountOfBytesConsumed(Pipe<S> pipe) {
 		int consumed = pipe.blobRingHead.byteWorkingHeadPos.value - pipe.blobWriteLastConsumedPos;	
 		
@@ -4398,40 +4660,87 @@ public class Pipe<T extends MessageSchema<T>> {
 		return consumed;
 	}
 
+	/**
+	 * Wrapped slab as an IntBuffer
+	 * @param pipe Pipe target
+	 * @return IntBuffer wrapped slab
+	 */
 	public static <S extends MessageSchema<S>> IntBuffer wrappedSlabRing(Pipe<S> pipe) {
 		return pipe.wrappedSlabRing;
 	}
 
+	/**
+	 * Wrapped blob as a ByteBuffer 
+	 * @param pipe
+	 * @return ByteBuffer a
+	 */
 	public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingA(Pipe<S> pipe) {
 		return pipe.wrappedBlobReadingRingA;
 	}
 
+	/**
+	 * Wrapped blob as a ByteBuffer
+	 * @param pipe Pipe target
+	 * @return ByteBuffer b
+	 */
     public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingB(Pipe<S> pipe) {
         return pipe.wrappedBlobReadingRingB;
     }
 
+    /**
+     * Wrapped constant buffer as ByteBuffer
+     * @param pipe Pipe target
+     * @return ByteBuffer b
+     */
 	public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobConstBuffer(Pipe<S> pipe) {
 		return pipe.wrappedBlobConstBuffer;
 	}
 
-	
+	/**
+	 * get the output stream associated with this pipe
+	 * @param pipe Pipe target
+	 * @return DataOutputBlobWriter
+	 */
 	public static <S extends MessageSchema<S>> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
 		return pipe.blobWriter;
 	}
 
+	/**
+	 * get the output stream associated with this pipe and open it
+	 * @param pipe Pipe target
+	 * @return DataOutputBlobWriter
+	 */
 	public static <S extends MessageSchema<S>> DataOutputBlobWriter<S> openOutputStream(Pipe<S> pipe) {
 		return DataOutputBlobWriter.openField(pipe.blobWriter);
 	}
 	
+	/**
+	 * get the input stream associated with this pipe
+	 * @param pipe Pipe target
+	 * @return DataInputBlobReader
+	 */
 	public static <S extends MessageSchema<S>> DataInputBlobReader<S> inputStream(Pipe<S> pipe) {
 		return pipe.blobReader;
 	}
 	
+	/**
+	 * get the input stream associated with this Pipe and open it
+	 * @param pipe Pipe target
+	 * @return DataInputBlobReader
+	 */
 	public static <S extends MessageSchema<S>> DataInputBlobReader<S> openInputStream(Pipe<S> pipe) {
 		pipe.blobReader.openLowLevelAPIField();
 		return pipe.blobReader;
 	}
 	
+	/**
+	 * get the input stream but do not move the cursor position.
+	 * reads from this stream should not be closed since we do not want to cause side effect.
+	 * 
+	 * @param pipe Pipe target
+	 * @param offset int relative index to where this offset
+	 * @return DataInputBlobReader
+	 */
 	public static <S extends MessageSchema<S>> DataInputBlobReader<S> peekInputStream(Pipe<S> pipe, int offset) {
 		pipe.blobReader.peekLowLevelAPIField(offset);
 		return pipe.blobReader;
@@ -4443,22 +4752,36 @@ public class Pipe<T extends MessageSchema<T>> {
 	////////////
 
 
-
 	@Deprecated
 	public static <S extends MessageSchema<S>> boolean roomToLowLevelWrite(Pipe<S> pipe, int size) {
 		return hasRoomForWrite(pipe, size);
 	}
 
-	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
-	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
-	//This is an important performance feature of the low level API and should not be modified.
+	
+	/**
+	 * Checks if outgoing pipe has room for low level fragment write of the given size.
+	 * @param pipe Pipe target
+	 * @param size int size from as defined in FROM
+	 * @return boolean true if there is room
+	 */
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe, int size) {
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+    	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
+    	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
+    	//This is an important performance feature of the low level API and should not be modified.
  
         long temp = pipe.llRead.llwConfirmedPosition+size;
 		return roomToLowLevelWrite(pipe, temp);
     }
     
+    /**
+     * Check if there is room to write the largest known message. If not spin until there is room.
+     * This method will log a warning if there was no room.
+     * Only use this method if you have already checked that there is room for the write and treat this
+     * call as a special kind of assert which will confirm that room is always checked for.
+     * 
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void presumeRoomForWrite(Pipe<S> pipe) {
     	if (!hasRoomForWrite(pipe)) {
     		log.warn("Assumed available space but not found, make pipe larger or write less {}",pipe, new Exception());    		
@@ -4492,6 +4815,15 @@ public class Pipe<T extends MessageSchema<T>> {
         return (pipe.llRead.llrTailPosCache = pipe.slabRingTail.tailPos.get()  ) >= target;
 	}
 
+	/**
+	 * Confirm low level write of fragment of the provided size.  This MUST be called after writing every
+	 * fragment in order to move the cursor forward to write the next and update the internal bookkeping with
+	 * the number of bytes written.
+	 * 
+	 * @param output Pipe target
+	 * @param size int size of fragment as defined in FROM, also returned when addMsgIdx is called
+	 * @return long new position
+	 */
 	public static <S extends MessageSchema<S>> long confirmLowLevelWrite(Pipe<S> output, int size) { 
 	 
 		assert(Pipe.singleThreadPerPipeWrite(output.id));
@@ -4509,6 +4841,9 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	/**
 	 * Method used for moving more than one fragment at a time. Any size value will be acceptable
+	 * @param output Pipe target
+	 * @param size int size of fragment as defined in FROM, also returned when addMsgIdx is called
+	 * @return long new position
 	 */
 	public static <S extends MessageSchema<S>> long confirmLowLevelWriteUnchecked(Pipe<S> output, int size) { 
 		 
@@ -4525,21 +4860,25 @@ public class Pipe<T extends MessageSchema<T>> {
 	
 	private static <S extends MessageSchema<S>> boolean verifySize(Pipe<S> output, int size) {
 		
-//		//TODO: not sure, this may not work with structured fields
-//		try {
-//			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : 
-//				"Did not write the same size fragment as expected, double check message. expected:"
-//					+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])
-//					+" but was passed "+size+" for schema "+Pipe.schemaName(output)
-//					+" and assumed MsgId of "+output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition];
-//		} catch (ArrayIndexOutOfBoundsException aiex) {
-//			//ignore, caused by some poor unit tests which need to be re-written.
-//		}
+		try {
+			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : 
+				"Did not write the same size fragment as expected, double check message. expected:"
+					+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])
+					+" but was passed "+size+" for schema "+Pipe.schemaName(output)
+					+" and assumed MsgId of "+output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition];
+		} catch (ArrayIndexOutOfBoundsException aiex) {
+			//ignore, caused by some poor unit tests which need to be re-written.
+		}
 		return true;
 	}
 
-	//helper method always uses the right size but that value needs to be found so its a bit slower than if you already knew the size and passed it in
+	/**
+	 * Confirm low level write, Must be called after every fragment write to move cursor to next fragment to write	
+	 * @param output
+	 * @return long position
+	 */
 	public static <S extends MessageSchema<S>> long confirmLowLevelWrite(Pipe<S> output) { 
+		//helper method always uses the right size but that value needs to be found so its a bit slower than if you already knew the size and passed it in
 		 
 		assert(Pipe.singleThreadPerPipeWrite(output.id));
 	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
@@ -4550,27 +4889,39 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	}
 
+	/**
+	 * get last confirmed write position in the slab
+	 * @param output Pipe target
+	 * @return int slab position
+	 */
 	public static <S extends MessageSchema<S>> int lastConfirmedWritePosition(Pipe<S> output) {
 		return output.slabMask&(int)output.llRead.llwConfirmedPosition;
 	}
 
-
-	//do not use with high level API, is dependent on low level confirm calls.
+    /**
+     * Low level API only for checking if there is content to read of the size provided.
+     * @param pipe Pipe source
+     * @param size int message size looking for
+     * @return boolean true if there is content
+     */
 	public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe, int size) {
+		//do not use with high level API, is dependent on low level confirm calls.
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
         return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition+size-1, pipe.llWrite); 
     }
 
     /**
-     * Checks specified pipe to see if there is any data to read
+     * Checks specified pipe to see if there is any data to read.
+     * NOTE: only works with low-level API.
+     * 
      * @param pipe pipe to be examined
      * @param <S> MessageSchema to extend
      * @return <code>true</code> if there is data to read else <code>false</code>
      */
-	//this method can only be used with low level api navigation loop
-	//CAUTION: THIS IS NOT COMPATIBLE WITH PipeReader behavior...
     public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe) {
+    	//this method can only be used with low level api navigation loop
+    	//CAUTION: THIS IS NOT COMPATIBLE WITH PipeReader behavior...
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition, pipe.llWrite);
@@ -4586,6 +4937,12 @@ public class Pipe<T extends MessageSchema<T>> {
 		return (llWrite.llwHeadPosCache = pipe.slabRingHead.headPos.get()) > target;  
 	}
 
+	/**
+	 * Confirm low level read of message of this size, Must be called after read to move cursor forward for next read.
+	 * @param pipe Pipe target
+	 * @param size long size as defined in FROM
+	 * @return long new position
+	 */
 	public static <S extends MessageSchema<S>> long confirmLowLevelRead(Pipe<S> pipe, long size) {
 	    assert(size>0) : "Must have read something.";
 	    assert(Pipe.singleThreadPerPipeRead(pipe.id));
@@ -4595,10 +4952,11 @@ public class Pipe<T extends MessageSchema<T>> {
 		return (pipe.llWrite.llrConfirmedPosition += size);
 	}
 
-    public static <S extends MessageSchema<S>> void setWorkingHeadTarget(Pipe<S> pipe) {
-        pipe.llWrite.llrConfirmedPosition =  Pipe.getWorkingTailPosition(pipe);
-    }
-
+	/**
+	 * Direct access to get blob tail position.
+	 * @param pipe Pipe source
+	 * @return int tail position
+	 */
     public static <S extends MessageSchema<S>> int getBlobTailPosition(Pipe<S> pipe) {
 	    return PaddedInt.get(pipe.blobRingTail.bytesTailPos);
 	}
@@ -4608,39 +4966,81 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return getBlobTailPosition(pipe);
 	}
 
-	public static <S extends MessageSchema<S>> void setBytesTail(Pipe<S> pipe, int value) {
+    /**
+     * Direct access to set blob tail position
+     * @param pipe Pipe target
+     * @param value int tail position
+     */
+	public static <S extends MessageSchema<S>> void setBlobTailPosition(Pipe<S> pipe, int value) {
         PaddedInt.set(pipe.blobRingTail.bytesTailPos, value);
     }
+	
+	@Deprecated
+	public static <S extends MessageSchema<S>> void setBytesTail(Pipe<S> pipe, int value) {
+        setBlobTailPosition(pipe,value);
+    }
 
+	/**
+	 * Direct access to read blob head position.
+	 * @param pipe Pipe target
+	 * @return int head position
+	 */
     public static <S extends MessageSchema<S>> int getBlobHeadPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingHead.bytesHeadPos);        
     }
 	
-    @Deprecated
-    public static <S extends MessageSchema<S>> int getBlobRingHeadPosition(Pipe<S> pipe) {
-        return getBlobHeadPosition(pipe); 
-    }
-
-    public static <S extends MessageSchema<S>> void setBytesHead(Pipe<S> pipe, int value) {
+    /**
+     * Direct access to set blob head position
+     * @param pipe Pipe target
+     * @param value int new position
+     */
+    public static <S extends MessageSchema<S>> void setBlobHeadPosition(Pipe<S> pipe, int value) {
         PaddedInt.set(pipe.blobRingHead.bytesHeadPos, value);
     }
 
-    public static <S extends MessageSchema<S>> int addAndGetBytesHead(Pipe<S> pipe, int inc) {
+    /**
+     * Direct access to add and get Blob head position
+     * @param pipe Pipe target
+     * @param inc value to increment
+     * @return int position
+     */
+    public static <S extends MessageSchema<S>> int addAndGetBlobHeadPosition(Pipe<S> pipe, int inc) {
         return PaddedInt.add(pipe.blobRingHead.bytesHeadPos, inc);
     }
 
-    public static <S extends MessageSchema<S>> int getWorkingBlobRingTailPosition(Pipe<S> pipe) {
+    /**
+     * Direct access to working blob tail position
+     * @param pipe Pipe target
+     * @return new tail position
+     */
+    public static <S extends MessageSchema<S>> int getWorkingBlobTailPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
 
-   public static <S extends MessageSchema<S>> int addAndGetBytesWorkingTailPosition(Pipe<S> pipe, int inc) {
+    /**
+     * Direct access to add and get working tail position
+     * @param pipe Pipe target
+     * @param inc value to add
+     * @return int position after add
+     */
+    public static <S extends MessageSchema<S>> int addAndGetBlobWorkingTailPosition(Pipe<S> pipe, int inc) {
         return PaddedInt.maskedAdd(pipe.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static <S extends MessageSchema<S>> void setBytesWorkingTail(Pipe<S> pipe, int value) {
+    /**
+     * Direct method to set the blob working tail.
+     * @param pipe Pipe target
+     * @param value int working tail position
+     */
+    public static <S extends MessageSchema<S>> void setBlobWorkingTail(Pipe<S> pipe, int value) {
         PaddedInt.set(pipe.blobRingTail.byteWorkingTailPos, value);
     }
     
+    /**
+     * Direct method to get the working blob head position
+     * @param pipe Pipe source
+     * @return int working blob head position
+     */
     public static <S extends MessageSchema<S>> int getWorkingBlobHeadPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingHead.byteWorkingHeadPos);
     }
@@ -4650,36 +5050,75 @@ public class Pipe<T extends MessageSchema<T>> {
         return getWorkingBlobHeadPosition(pipe);
     }
     
-    public static <S extends MessageSchema<S>> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {
+    /**
+     * Direct access method for incrementing blob working head position
+     * @param pipe Pipe target
+     * @param inc step to add
+     * @return new working head position
+     */
+    public static <S extends MessageSchema<S>> int addAndGetBlobWorkingHeadPosition(Pipe<S> pipe, int inc) {
     	assert(inc>=0) : "only zero or positive values supported found "+inc;
         return PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static <S extends MessageSchema<S>> void setBytesWorkingHead(Pipe<S> pipe, int value) {
+    /**
+     * Direct access method for setting blob working head position
+     * @param pipe Pipe target
+     * @param value int working head position
+     */
+    public static <S extends MessageSchema<S>> void setBlobWorkingHead(Pipe<S> pipe, int value) {
     	assert(value>=0) : "working head must be positive";
         PaddedInt.set(pipe.blobRingHead.byteWorkingHeadPos, value);
     }
 
+    /**
+     * decrement batch release count down
+     * @param pipe Pipe target
+     * @return int batch release count
+     */
     public static <S extends MessageSchema<S>> int decBatchRelease(Pipe<S> pipe) {
         return --pipe.batchReleaseCountDown;
     }
 
+    /**
+     * decrement batch publish count down
+     * @param pipe Pipe target
+     * @return int batch publish count
+     */
     public static <S extends MessageSchema<S>> int decBatchPublish(Pipe<S> pipe) {
         return --pipe.batchPublishCountDown;
     }
 
+    /**
+     * start new batch for release
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void beginNewReleaseBatch(Pipe<S> pipe) {
         pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
     }
 
+    /**
+     * start new batch for publish
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void beginNewPublishBatch(Pipe<S> pipe) {
         pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
     }
 
+    /**
+     * Direct access to blob backing array.
+     * @param pipe Pipe source
+     * @return byte[] backing
+     */
     public static <S extends MessageSchema<S>> byte[] blob(Pipe<S> pipe) {        
         return pipe.blobRing;
     }
     
+    /**
+     * Direct access to slab backing array
+     * @param pipe Pipe source
+     * @return int[] backing
+     */
     public static <S extends MessageSchema<S>> int[] slab(Pipe<S> pipe) {
         return pipe.slabRing;
     }
@@ -4694,44 +5133,89 @@ public class Pipe<T extends MessageSchema<T>> {
         return slab(pipe);
     }
 
-    public static <S extends MessageSchema<S>> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
+    static <S extends MessageSchema<S>> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
         pipe.blobWriteLastConsumedPos = Pipe.getWorkingBlobHeadPosition(pipe);
     }
 
+    /**
+     * Direct access to working tail position object
+     * @param pipe Pipe source
+     * @return PaddedLong working tail position object
+     */
     public static <S extends MessageSchema<S>> PaddedLong getWorkingTailPositionObject(Pipe<S> pipe) {
         return pipe.slabRingTail.workingTailPos;
     }
 
+    /**
+     * Direct access to working head position object
+     * @param pipe Pipe source
+     * @return PaddedLong working head position object
+     */
     public static <S extends MessageSchema<S>> PaddedLong getWorkingHeadPositionObject(Pipe<S> pipe) {
         return pipe.slabRingHead.workingHeadPos;
     }
 
+    /**
+     * returns size of this message as defined in the FROM and schema in this pipe.
+     * @param pipe Pipe source
+     * @param msgIdx int message idx
+     * @return int size of message as defined by FROM
+     */
     public static <S extends MessageSchema<S>> int sizeOf(Pipe<S> pipe, int msgIdx) {
     	return sizeOf(pipe.schema, msgIdx);
     }
     
+    /**
+     * returns size of this message as defined in the provided schema.
+     * @param schema MessageSchema holding the FROM
+     * @param msgIdx int message idx
+     * @return int size of message as defined by FROM
+     */
     public static <S extends MessageSchema<S>> int sizeOf(S schema, int msgIdx) {
         return msgIdx>=0? schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
     }
 
+    /**
+     * Release for write the old fragment read which are pending release. eg not previously released
+     * @param pipe Pipe target
+     */
     public static <S extends MessageSchema<S>> void releasePendingReadLock(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         PendingReleaseData.releasePendingReadRelease(pipe.pendingReleases, pipe);
     }
     
+    /**
+     * Release for write the old fragments which total up to the provided consumed number of bytes.
+     * @param pipe Pipe target
+     * @param consumed int bytes consumed so far allowing these fragments to be released.
+     */
     public static <S extends MessageSchema<S>> void releasePendingAsReadLock(Pipe<S> pipe, int consumed) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
     	PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
     }
     
+    /**
+     * Count of how many fragments are pending release.
+     * @param pipe Pipe source
+     * @return int count of fragments
+     */
     public static <S extends MessageSchema<S>> int releasePendingCount(Pipe<S> pipe) {
     	return PendingReleaseData.pendingReleaseCount(pipe.pendingReleases);
     }
     
+    /**
+     * Count of how many bytes are pending in the total of all pending release fragments
+     * @param pipe
+     * @return int count of bytes
+     */
     public static <S extends MessageSchema<S>> int releasePendingByteCount(Pipe<S> pipe) {
      	return PendingReleaseData.pendingReleaseByteCount(pipe.pendingReleases);
     }
     
+    /**
+     * Release all pending fragments for release
+     * @param pipe
+     */
     public static <S extends MessageSchema<S>> void releaseAllPendingReadLock(Pipe<S> pipe) {
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         PendingReleaseData.releaseAllPendingReadRelease(pipe.pendingReleases, pipe);
@@ -4753,7 +5237,7 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static void resetHead(Pipe pipe) {
         Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);
-        Pipe.setBytesWorkingHead(pipe, pipe.markedHeadBlob);
+        Pipe.setBlobWorkingHead(pipe, pipe.markedHeadBlob);
     }
     
     /**
@@ -4762,7 +5246,7 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static void markTail(Pipe pipe) {
         pipe.markedTailSlab = Pipe.getWorkingTailPosition(pipe);
-        pipe.markedTailBlob = Pipe.getWorkingBlobRingTailPosition(pipe);
+        pipe.markedTailBlob = Pipe.getWorkingBlobTailPosition(pipe);
     }
     
     /**
@@ -4772,22 +5256,31 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static void resetTail(Pipe pipe) {
         Pipe.setWorkingTailPosition(pipe, pipe.markedTailSlab);
-        Pipe.setBytesWorkingTail(pipe, pipe.markedTailBlob);
+        Pipe.setBlobWorkingTail(pipe, pipe.markedTailBlob);
     }
     
-    
+    /**
+     * Store working head position for use later when field position is written
+     * @param target
+     * @return int new working head position
+     */
 	public static int storeBlobWorkingHeadPosition(Pipe<?> target) {
 		assert(-1 == target.activeBlobHead) : "can not store second until first is resolved";
 		return target.activeBlobHead = Pipe.getWorkingBlobHeadPosition(target);				
 	}
     
+	/**
+	 * Clear the stored blob working head position since we are writing it to the slab.
+	 * 
+	 * @param target
+	 * @return int returns old position before it was cleared
+	 */
 	public static int unstoreBlobWorkingHeadPosition(Pipe<?> target) {
 		assert(-1 != target.activeBlobHead) : "can not unstore value not saved";
 		int result = target.activeBlobHead;
 		target.activeBlobHead = -1;
 		return result;
 	}
-
 
 
 }

@@ -779,7 +779,7 @@ public class TrieParser implements Serializable {
     
 
     public void setValue(Pipe p, long value) {
-        setValue(p, Pipe.takeRingByteMetaData(p), Pipe.takeRingByteLen(p), value);
+        setValue(p, Pipe.takeByteArrayMetaData((Pipe<?>) p), Pipe.takeByteArrayLength((Pipe<?>) p), value);
     }
 
 

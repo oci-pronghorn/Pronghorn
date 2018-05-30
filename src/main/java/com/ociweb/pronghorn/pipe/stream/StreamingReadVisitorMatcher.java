@@ -138,8 +138,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitASCII(String name, long id, CharSequence value) {
         needsClose = true;
-        int meta = takeRingByteMetaData(expectedInput);
-        int len = takeRingByteLen(expectedInput);
+        int meta = Pipe.takeByteArrayMetaData((Pipe<?>) expectedInput);
+        int len = Pipe.takeByteArrayLength((Pipe<?>) expectedInput);
         int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
@@ -167,8 +167,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitUTF8(String name, long id, CharSequence value) {
         needsClose = true;
-        int meta = takeRingByteMetaData(expectedInput);
-        int len = takeRingByteLen(expectedInput);
+        int meta = Pipe.takeByteArrayMetaData((Pipe<?>) expectedInput);
+        int len = Pipe.takeByteArrayLength((Pipe<?>) expectedInput);
         int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
@@ -194,8 +194,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         ((Buffer)value).flip();
         
         needsClose = true;
-        int meta = takeRingByteMetaData(expectedInput);
-        int len = takeRingByteLen(expectedInput);
+        int meta = Pipe.takeByteArrayMetaData((Pipe<?>) expectedInput);
+        int len = Pipe.takeByteArrayLength((Pipe<?>) expectedInput);
         int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion

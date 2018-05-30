@@ -191,8 +191,8 @@ public class PipeTrailingReadingTest {
         	
         	assertTrue(Pipe.hasContentToRead(dataPipe));
         	int msg = Pipe.takeMsgIdx(dataPipe);
-        	int meta = Pipe.takeRingByteMetaData(dataPipe);
-        	int len = Pipe.takeRingByteLen(dataPipe);
+        	int meta = Pipe.takeByteArrayMetaData(dataPipe);
+        	int len = Pipe.takeByteArrayLength(dataPipe);
         	Pipe.bytePosition(meta, dataPipe, len);
         	
         	Pipe.confirmLowLevelRead(dataPipe, Pipe.sizeOf(RawDataSchema.instance, msg));

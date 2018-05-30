@@ -237,12 +237,12 @@ public class PipeMultiTemplateTest {
         			
         			assertEquals(MSG_BOXES_LOC,msgLoc);
         			
-        			int count = Pipe.takeValue(ring);
+        			int count = Pipe.takeInt(ring);
         			assertEquals(42,count);
         				        
         			{
-        				int meta = Pipe.takeRingByteMetaData(ring);
-        	        	int len = Pipe.takeRingByteLen(ring);
+        				int meta = Pipe.takeByteArrayMetaData(ring);
+        	        	int len = Pipe.takeByteArrayLength(ring);
         	        	assertEquals(expectedLength, len);
         	        	Pipe.readBytes(ring, target, 0, 0xFFFFFFFF, meta, len);	        	        
         			}
@@ -251,17 +251,17 @@ public class PipeMultiTemplateTest {
         		case 1:
         			assertEquals(MSG_SAMPLE_LOC,msgLoc);
         			
-        			int year = Pipe.takeValue(ring);
+        			int year = Pipe.takeInt(ring);
         			assertEquals(2014,year);
         			
-        			int month = Pipe.takeValue(ring);
+        			int month = Pipe.takeInt(ring);
         			assertEquals(12,month);
         			
-        			int day = Pipe.takeValue(ring);
+        			int day = Pipe.takeInt(ring);
         			assertEquals(9,day);
         			
         			
-        			int wExp = Pipe.takeValue(ring);
+        			int wExp = Pipe.takeInt(ring);
         			assertEquals(2,wExp);	        			
         			
         			long wMan = Pipe.takeLong(ring);
@@ -273,8 +273,8 @@ public class PipeMultiTemplateTest {
         			assertEquals(MSG_RESET_LOC,msgLoc);
         			
         			{
-        				int meta = Pipe.takeRingByteMetaData(ring);
-        	        	int len = Pipe.takeRingByteLen(ring);
+        				int meta = Pipe.takeByteArrayMetaData(ring);
+        	        	int len = Pipe.takeByteArrayLength(ring);
         	        	assertEquals(3,len);
         	        	Pipe.readBytes(ring, target, 0, 0xFFFFFFFF, meta, len);	   
         			}

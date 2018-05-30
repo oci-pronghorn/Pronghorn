@@ -244,7 +244,7 @@ public class StreamingVisitorReader {
     }
 
     private void processSequenceOpen(final int fragmentCursor, String name, int idx, int fieldCursor, long id) {
-        int seqLength = Pipe.readValue(idx, inputRing);
+        int seqLength = Pipe.readIntValue(idx,inputRing);
         visitor.visitSequenceOpen(name, id, seqLength);
         LowLevelStateManager.processGroupLength(navState, fragmentCursor, seqLength);
     }
@@ -262,7 +262,7 @@ public class StreamingVisitorReader {
     }
 
     private void processDecimalOptional(String name, int idx, int fieldCursor, long id) {
-        int exp = Pipe.readValue(idx, inputRing);
+        int exp = Pipe.readIntValue(idx,inputRing);
         long mant = Pipe.readLong(idx+1, inputRing);
         if (FieldReferenceOffsetManager.getAbsent32Value(from)!=exp) {
         	visitor.visitDecimal(name,id,exp,mant);
@@ -270,28 +270,28 @@ public class StreamingVisitorReader {
     }
 
     private void processDecimal(String name, int idx, int fieldCursor, long id) {
-        int exp = Pipe.readValue(idx, inputRing);
+        int exp = Pipe.readIntValue(idx,inputRing);
         long mant = Pipe.readLong(idx+1, inputRing);
         visitor.visitDecimal(name,id,exp,mant);
     }
 
     private void pronghornIntegerSigned(String name, final int idx, int fieldCursor, long id) {
-        visitor.visitSignedInteger(name,id, Pipe.readValue(idx, inputRing));
+        visitor.visitSignedInteger(name,id, Pipe.readIntValue(idx,inputRing));
     }
 
     private void processIntegerUnsigned(String name, final int idx, int fieldCursor, long id) {
-        visitor.visitUnsignedInteger(name,id,  0xFFFFFFFFL&(long)Pipe.readValue(idx, inputRing));
+        visitor.visitUnsignedInteger(name,id,  0xFFFFFFFFL&(long)Pipe.readIntValue(idx,inputRing));
     }
 
     private void processIntegerSignedOptional(String name, final int idx, int fieldCursor, long id) {
-    	int value = Pipe.readValue(idx, inputRing);
+    	int value = Pipe.readIntValue(idx,inputRing);
     	if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
     		visitor.visitSignedInteger(name,id,value);
     	}
     }
 
     private void processIntegerUnsignedOptional(String name, final int idx, int fieldCursor, long id) {
-    	int value = Pipe.readValue(idx, inputRing);
+    	int value = Pipe.readIntValue(idx,inputRing);
     	if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
     		visitor.visitUnsignedInteger(name, id, 0xFFFFFFFFL&(long)value);
     	}
@@ -320,8 +320,8 @@ public class StreamingVisitorReader {
     }
 
     private void processTextASCII(String name, final int idx, int fieldCursor, long id) {
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
         	assert(len>=0) : "Optional strings are NOT supported for this type";
 
         	visitor.visitASCII(name, id, (CharSequence) Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
@@ -330,8 +330,8 @@ public class StreamingVisitorReader {
 
     private void processTextASCIIOptional(String name, final int idx, int fieldCursor, long id) {
 
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
 
         	if (len>0) { //a negative length is a null and zero there is no work to do
         		visitor.visitASCII(name, id, (CharSequence) Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
@@ -341,8 +341,8 @@ public class StreamingVisitorReader {
 
     private void processTextUTF8(String name, final int idx, int fieldCursor, long id) {
 
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
 
         	assert(len>=0) : "Optional strings are NOT supported for this type";
         	visitor.visitUTF8(name, id, (CharSequence) Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
@@ -351,8 +351,8 @@ public class StreamingVisitorReader {
 
     private void processTextUTF8Optional(String name, final int idx, int fieldCursor, long id) {
 
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
 
         	if (len>0) { //a negative length is a null and zero there is no work to do
         		visitor.visitUTF8(name, id, (CharSequence) Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
@@ -362,8 +362,8 @@ public class StreamingVisitorReader {
 
     private void processByteVector(String name, final int idx, int fieldCursor, long id) {
 
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
 
         	if (len>=0) {
         		visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
@@ -376,8 +376,8 @@ public class StreamingVisitorReader {
     }
 
     private void processByteVectorOptional(String name, int idx, int fieldCursor, long id) {
-        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
-        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	int meta = Pipe.readByteArraMetaData(idx, inputRing);
+        	int len =  Pipe.readByteArrayLength(idx, inputRing);
 
         	if (len>0) { //a negative length is a null and zero there is no work to do
         		visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));

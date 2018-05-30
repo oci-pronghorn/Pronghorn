@@ -57,10 +57,10 @@ public class PipeOldTest {
         //assertEquals(testInt, takeValue(pipe)); 
         
         // constant from heap or dynamic from char ringBuffer
-        int meta = takeRingByteMetaData(pipe); //MUST take this one before the length they come in order       
+        int meta = Pipe.takeByteArrayMetaData((Pipe<?>)pipe); //MUST take this one before the length they come in order       
                 
         //confirm the length is the same
-        int len = takeRingByteLen(pipe);
+        int len = Pipe.takeByteArrayLength((Pipe<?>) pipe);
         assertEquals(testArray.length, len); //MUST take this one second after the meta they come in order    
         
         //read back the array and confirm it matches
@@ -320,8 +320,8 @@ public class PipeOldTest {
     	                    	int messageFieldCount = totalMessageFields;
     	                        while (--messageFieldCount>=0) {
     	                        	
-    	                        	int meta = takeRingByteMetaData(pipe);
-    	                        	int len = takeRingByteLen(pipe);
+    	                        	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) pipe);
+    	                        	int len = Pipe.takeByteArrayLength((Pipe<?>) pipe);
 
     	                        	validateBytes(testArray, pipe, granularity,	messageFieldCount, meta, len);
     	                            

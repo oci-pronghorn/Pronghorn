@@ -262,12 +262,12 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 			
 			//write this field as length len but move head to the end of maxvarlen
 			writer.activePosition = writer.lastPosition;
-			Pipe.setBytesWorkingHead(writer.backingPipe, 
+			Pipe.setBlobWorkingHead(writer.backingPipe, 
 					                 writer.activePosition & Pipe.BYTES_WRAP_MASK);			
 		    
 		} else { 
 			//do not keep index just move forward by length size
-			Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
+			Pipe.addAndGetBlobWorkingHeadPosition(writer.backingPipe, len);
 		}
 		
 		assert(writer.startPosition>=0) : "Error bad position of "+writer.startPosition+" length was "+len;

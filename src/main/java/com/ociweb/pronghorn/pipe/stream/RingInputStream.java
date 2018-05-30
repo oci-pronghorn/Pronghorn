@@ -118,8 +118,8 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		int msgId = Pipe.takeMsgIdx(pipe);
 		
 		if (msgId>=0) { //exit EOF logic
-			int meta = takeRingByteMetaData(pipe);//side effect, this moves the pointer and must happen before we call for length
-			int sourceLength = takeRingByteLen(pipe);
+			int meta = Pipe.takeByteArrayMetaData((Pipe<?>) pipe);//side effect, this moves the pointer and must happen before we call for length
+			int sourceLength = Pipe.takeByteArrayLength((Pipe<?>) pipe);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else { 
 		   // Pipe.confirmLowLevelRead(ring, recordSize);//wrong size?

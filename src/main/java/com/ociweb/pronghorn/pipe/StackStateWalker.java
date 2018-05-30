@@ -25,7 +25,7 @@ class StackStateWalker {
 
     
     //TODO:M, Make code more foolproof for usage by developers. 
-    //        need to add error checking to caputre the case when something on the stack has fallen off the ring
+    //        need to add error checking to capture the case when something on the stack has fallen off the ring
     //        This can be a simple assert when we move the tail that it does not go past the value in stack[0];
     
 	final long[] activeReadFragmentStack;
@@ -164,7 +164,7 @@ class StackStateWalker {
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWorkingTail;
 		
-		assert(Pipe.getWorkingBlobRingTailPosition(ringBuffer) <= Pipe.getBlobRingHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobRingTailPosition(ringBuffer)+" but we only have "+Pipe.getBlobRingHeadPosition(ringBuffer);
+		assert(Pipe.getWorkingBlobTailPosition(ringBuffer) <= Pipe.getBlobHeadPosition((Pipe<?>) ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobTailPosition(ringBuffer)+" but we only have "+Pipe.getBlobHeadPosition((Pipe<?>) ringBuffer);
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWorkingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);
@@ -199,24 +199,24 @@ class StackStateWalker {
 	        FieldReferenceOffsetManager.debugFROM(Pipe.from(ringBuffer));
 	        log.error("new fragment to read is after head write position "+newFragmentBegin+"  "+ringBuffer);	        
 	        int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
-	        int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
-	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
+	        int stop  = Math.min(Pipe.slab((Pipe<?>) ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
+	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.slab((Pipe<?>) ringBuffer), start, stop)));
 	        return false;
 	    }
 	    if (newFragmentBegin>0) {
-	        int byteCount = Pipe.primaryBuffer(ringBuffer)[ringBuffer.slabMask & (int)(newFragmentBegin-1)];
+	        int byteCount = Pipe.slab((Pipe<?>) ringBuffer)[ringBuffer.slabMask & (int)(newFragmentBegin-1)];
 	        if (byteCount<0) {
 	            log.error("if this is a new fragment then previous fragment is negative byte count, more likely this is NOT a valid fragment start.");
 	            int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
-	            int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
-	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
+	            int stop  = Math.min(Pipe.slab((Pipe<?>) ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
+	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.slab((Pipe<?>) ringBuffer), start, stop)));
 	            return false;
 	        }
             if (byteCount>ringBuffer.blobMask) {
                 log.error("if this is a new fragment then previous fragment byte count is larger than byte buffer, more likely this is NOT a valid fragment start. "+byteCount);
                 int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
-                int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
-                log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
+                int stop  = Math.min(Pipe.slab((Pipe<?>) ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
+                log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.slab((Pipe<?>) ringBuffer), start, stop)));
                 return false;
             }	        
 	    }
@@ -245,7 +245,7 @@ class StackStateWalker {
     private static void openSequenceWhileInsideFragment(Pipe ringBuffer, final StackStateWalker ringBufferConsumer,
             long tmpNextWorkingTail, int lastScriptPos) {
         //this is a groupLength Sequence that starts inside of a fragment 
-         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
+         int seqLength = Pipe.slab((Pipe<?>) ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
          //now start new sequence
          ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
          ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
@@ -373,7 +373,7 @@ class StackStateWalker {
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
 		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
 			//Can not assume end of message any more.
-			int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
+			int seqLength = Pipe.slab((Pipe<?>) ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWorkingTail)&ringBuffer.slabMask];
             final StackStateWalker ringBufferConsumer1 = ringBufferConsumer;
 			//now start new sequence
             ringBufferConsumer1.seqStack[++ringBufferConsumer1.seqStackHead] = seqLength;
@@ -492,11 +492,11 @@ class StackStateWalker {
 				                spaceNeeded);
 		Pipe.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
-		Pipe.copyBytesFromToRing(Pipe.blob(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.blobMask, 
-		                               Pipe.blob(outputRing), Pipe.getBlobWorkingHeadPosition(outputRing), outputRing.blobMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(inputRing), Pipe.getWorkingBlobTailPosition(inputRing), inputRing.blobMask, 
+		                               Pipe.blob(outputRing), Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing), outputRing.blobMask, 
 				                       bytesToCopy);
 
-        Pipe.addAndGetBytesWorkingHeadPosition(outputRing, bytesToCopy);		
+        Pipe.addAndGetBlobWorkingHeadPosition(outputRing, bytesToCopy);		
 		
 		//release the input fragment, we are using working tail and next working tail so batch release should work on walker.
 		//prepReadFragment and tryReadFragment do the batched release, so it is not done here.
@@ -567,7 +567,7 @@ class StackStateWalker {
     	ring.llRead.llrTailPosCache = lastCheckedValue;
     	
     	assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-    	Pipe.setBytesHead(ring, Pipe.getBlobWorkingHeadPosition(ring));
+    	Pipe.setBlobHeadPosition(ring, Pipe.getWorkingBlobHeadPosition((Pipe<?>) ring));
     	Pipe.slab(ring)[ring.slabMask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
     	Pipe.slab(ring)[ring.slabMask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
     }

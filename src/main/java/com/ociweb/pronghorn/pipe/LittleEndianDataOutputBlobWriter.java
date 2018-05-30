@@ -18,7 +18,7 @@ public class LittleEndianDataOutputBlobWriter<S extends MessageSchema<S>> extend
     
     public LittleEndianDataOutputBlobWriter(Pipe<S> p) {
         this.p = p;
-        this.byteBuffer = Pipe.byteBuffer(p);
+        this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);      
         assert(byteMask!=0);
     }
@@ -26,7 +26,7 @@ public class LittleEndianDataOutputBlobWriter<S extends MessageSchema<S>> extend
     public void openField() {
         p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-        startPosition = activePosition = Pipe.getBlobWorkingHeadPosition(p);
+        startPosition = activePosition = Pipe.getWorkingBlobHeadPosition(p);
     }
     
     public int closeHighLevelField(int targetFieldLoc) {
@@ -40,7 +40,7 @@ public class LittleEndianDataOutputBlobWriter<S extends MessageSchema<S>> extend
     
     public int closeLowLevelField() {
         int len = length();
-        Pipe.addAndGetBytesWorkingHeadPosition(p, len);
+        Pipe.addAndGetBlobWorkingHeadPosition(p, len);
         Pipe.addBytePosAndLenSpecial(p,startPosition,len);
         p.closeBlobFieldWrite();
         return len;

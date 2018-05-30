@@ -66,9 +66,9 @@ public class BytesFieldConsumer implements FieldConsumer {
 
 	private void extractBytes() {
 		Pipe.takeMsgIdx(pipe);
-		int meta = Pipe.takeRingByteMetaData(pipe);
+		int meta = Pipe.takeByteArrayMetaData(pipe);
 		
-		length = Pipe.takeRingByteLen(pipe);
+		length = Pipe.takeByteArrayLength(pipe);
 		backing = Pipe.byteBackingArray(meta, pipe);
 		mask = Pipe.blobMask(pipe);
 		position = Pipe.bytePosition(meta, pipe, length);

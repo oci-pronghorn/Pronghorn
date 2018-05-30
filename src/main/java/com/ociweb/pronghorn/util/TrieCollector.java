@@ -35,7 +35,7 @@ public class TrieCollector {
         pipe.reset();
         Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
-        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        int origPos = Pipe.getWorkingBlobHeadPosition(pipe);
         int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
         Pipe.addBytePosAndLen(pipe, origPos, len);        
         Pipe.publishWrites(pipe);
@@ -44,8 +44,8 @@ public class TrieCollector {
         Pipe.takeMsgIdx(pipe);
         Pipe.confirmLowLevelRead(pipe, rawChunkSize);
        
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        int result = valueOf(Pipe.byteBackingArray(meta, pipe),Pipe.bytePosition(meta, pipe, Pipe.takeRingByteLen(pipe)),Pipe.takeRingByteLen(pipe),Pipe.blobMask(pipe));
+        int meta = Pipe.takeByteArrayMetaData(pipe);
+        int result = valueOf(Pipe.byteBackingArray(meta, pipe),Pipe.bytePosition(meta, pipe, Pipe.takeByteArrayLength(pipe)),Pipe.takeByteArrayLength(pipe),Pipe.blobMask(pipe));
         
         Pipe.releaseReadLock(pipe);
         return result;

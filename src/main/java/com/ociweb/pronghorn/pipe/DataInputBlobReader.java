@@ -175,11 +175,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	
     
     public int openLowLevelAPIField() {
-        int meta = Pipe.takeRingByteMetaData(this.pipe);
+        int meta = Pipe.takeByteArrayMetaData(this.pipe);
         
         this.isStructured = (0!=(Pipe.STRUCTURED_POS_MASK&meta));
                 
-		this.length    = Math.max(0, Pipe.takeRingByteLen(this.pipe));
+		this.length    = Math.max(0, Pipe.takeByteArrayLength(this.pipe));
 		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
 		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
 		assert(this.backing!=null) : 
@@ -217,8 +217,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     public int accumLowLevelAPIField() {
         if (0==this.length) {
-            int meta = Pipe.takeRingByteMetaData(this.pipe);
-			int localLen = Pipe.takeRingByteLen(this.pipe);
+            int meta = Pipe.takeByteArrayMetaData(this.pipe);
+			int localLen = Pipe.takeByteArrayLength(this.pipe);
 			
 			this.length    = Math.max(0, localLen);
 			this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
@@ -233,8 +233,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 			return localLen;
         } else {        
         
-            Pipe.takeRingByteMetaData(pipe);
-            int len = Pipe.takeRingByteLen(pipe);
+            Pipe.takeByteArrayMetaData(pipe);
+            int len = Pipe.takeByteArrayLength(pipe);
             if (len>0) {//may be -1 for null values
             	this.length += len;
             	this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);

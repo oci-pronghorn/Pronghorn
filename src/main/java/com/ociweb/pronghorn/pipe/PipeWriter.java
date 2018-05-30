@@ -40,7 +40,13 @@ public class PipeWriter {
     //////////////////////////////////
     ///Code after this point is part of the new high level API
     ///////////////////////////////
-    
+
+	/**
+	 * Writes int to specified pipe
+	 * @param pipe pipe to be written to
+	 * @param loc location to write int
+	 * @param value int value to be written
+	 */
     public static void writeInt(Pipe pipe, int loc, int value) {
     	//allow for all types of int and for length
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
@@ -67,7 +73,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes short to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value short to write to specified location
@@ -79,7 +85,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes byte to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value byte to write to specified location
@@ -91,7 +97,7 @@ public class PipeWriter {
     }
 
 	/**
-	 *
+	 * Writes long to specified pipe
 	 * @param pipe to be updated
 	 * @param loc for the field to be updated
 	 * @param value long to write to specified location
@@ -112,6 +118,11 @@ public class PipeWriter {
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
     }
 
+	/**
+	 * Writes decimal to specified pipe
+	 * @param pipe to be written to
+	 * @param loc location to write to
+	 */
     public static void writeDecimal(Pipe pipe, int loc, int exponent, long mantissa) {    	
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);     	
         int[] buffer = Pipe.slab(pipe);
@@ -126,14 +137,35 @@ public class PipeWriter {
 		buffer[rbMask & (int)p] = (int)mantissa & 0xFFFFFFFF;		  
     }
 
+	/**
+	 * Makes specified location in pipe structured
+	 * @param pipe to write to
+	 * @param loc location to write to
+	 * @return structured position
+	 */
     public static long structuredPositionForLOC(Pipe pipe, int loc) {
         return pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
     }
-    
+
+	/**
+	 * Writes float to specific location in pipe
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param value float to be written
+	 * @param places to write values in
+	 */
     public static void writeFloat(Pipe pipe, int loc, float value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
     	Pipe.setValues(Pipe.slab(pipe), pipe.slabMask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
     }
+
+	/**
+	 * Writes double to specific location in pipe
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param value double to be written
+	 * @param places to write values in
+	 */
     public static void writeDouble(Pipe pipe, int loc, double value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
     	Pipe.setValues(Pipe.slab(pipe), pipe.slabMask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
@@ -150,7 +182,13 @@ public class PipeWriter {
 
     	writeInt(pipe, loc, Float.floatToIntBits(value));
     }
-    
+
+	/**
+	 * Writes double to specified pipe as long bits
+	 * @param pipe to write to
+	 * @param loc location to write to
+	 * @param value double to be converted
+	 */
     public static void writeDoubleAsLongBits(Pipe pipe, int loc,  double value) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc); 
     	writeLong(pipe, loc, Double.doubleToLongBits(value));
@@ -164,22 +202,45 @@ public class PipeWriter {
 		writeSpecialBytesPosAndLen(pipe, loc, length, p);
 		
     }
-    
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write to
+	 * @param source byte array used to write data
+	 * @param offset number to offset bytes
+	 * @param length length of bytes to write
+	 */
     public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length) {
         assert(offset+length<=source.length) : "out of bounds";
         writeBytes(pipe,loc,source,offset,length,Integer.MAX_VALUE);
     }
-    
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write to
+	 * @param source byte array used to write data
+	 * @param offset number to offset bytes
+	 * @param length length of bytes to write
+	 * @param mask for looping around the array
+	 */
     public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length, int mask) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	assert(length>=0);
 		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition(pipe), pipe.blobMask, length);		
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getWorkingBlobHeadPosition( pipe), length, Pipe.bytesWriteBase(pipe));
-        Pipe.addAndGetBytesWorkingHeadPosition(pipe, length);	
+        Pipe.addAndGetBlobWorkingHeadPosition(pipe, length);	
     }
-        
-    public static void writeBytes(Pipe pipe, int loc, byte[] source) { // 01000
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param source byte array used to write data
+	 */
+	public static void writeBytes(Pipe pipe, int loc, byte[] source) { // 01000
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	int sourceLen = source.length;
@@ -188,10 +249,16 @@ public class PipeWriter {
         assert(sourceLen>=0);		
         Pipe.copyBytesFromArrayToRing(source, 0, Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition( pipe), pipe.blobMask, sourceLen);   	
         Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getWorkingBlobHeadPosition( pipe), sourceLen, Pipe.bytesWriteBase(pipe));
-        Pipe.addAndGetBytesWorkingHeadPosition(pipe,sourceLen);
+        Pipe.addAndGetBlobWorkingHeadPosition(pipe,sourceLen);
     }
-        
-    public static void writeBytes(Pipe pipe, int loc, ByteBuffer source) {  
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param source ByteBuffer used to write data
+	 */
+	public static void writeBytes(Pipe pipe, int loc, ByteBuffer source) {
         int length = source.remaining();
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
  
@@ -200,7 +267,15 @@ public class PipeWriter {
         Pipe.copyByteBuffer(source, length, pipe);
         Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(pipe));
     }
-    
+
+	/**
+	 * Writes bytes to given pipe at specified location
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param source ByteBuffer used to write data
+	 * @param length length of bytes to write
+	 */
+
 	public static void writeBytes(Pipe pipe, int loc, ByteBuffer source, int length) {		
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -210,6 +285,13 @@ public class PipeWriter {
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(pipe));
     }
 
+	/**
+	 * Writes bytes with specific position and length to given pipe
+	 * @param pipe to be written to
+	 * @param loc location to write
+	 * @param length length of bytes to write
+	 * @param bytePos position in field to write bytes
+	 */
 	public static void writeSpecialBytesPosAndLen(Pipe pipe, int loc, int length, int bytePos) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
@@ -220,12 +302,12 @@ public class PipeWriter {
 				     bytePos, 
 				     length, 
 				     Pipe.bytesWriteBase(pipe));
-		Pipe.addAndGetBytesWorkingHeadPosition(pipe, length>=0?length:0);        
+		Pipe.addAndGetBlobWorkingHeadPosition(pipe, length>=0?length:0);        
 	}
 
 	/**
 	 * Writes UTF8 to defined location in specified pipe
-	 * @param pipe to be updated
+	 * @param pipe to be written to
 	 * @param loc for the field to be updated
 	 * @param source CharSequence to write to specified location
 	 */
@@ -240,18 +322,26 @@ public class PipeWriter {
 		Pipe.validateVarLength(pipe, actualByteCount); //throws if too many bytes were decoded, there is no recover for the data on the pipe.
     }
 
+	/**
+	 * Writes UTF8 to specified location in given pipe
+	 * @param pipe to be written to
+	 * @param loc field to be written to
+	 * @param source CharSequence to write
+	 * @param offset number of UTF8 to offset
+	 * @param length length of data written
+	 */
     public static void writeUTF8(Pipe pipe, int loc, CharSequence source, int offset, int length) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
         int sourceLen = null==source? -1 : source.length();
     	Pipe.validateVarLength(pipe, sourceLen<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, offset, length, pipe), Pipe.bytesWriteBase(pipe));
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getWorkingBlobHeadPosition((Pipe<?>) pipe), Pipe.copyUTF8ToByte(source, offset, length, pipe), Pipe.bytesWriteBase(pipe));
     }
 
 	/**
 	 * Writes UTF8 to defined location in specified pipe
-	 * @param pipe to be updated
-	 * @param loc for the field to be updated
+	 * @param pipe to be written to
+	 * @param loc field to be written to
 	 * @param source char[] to write to specified location
 	 */
 	public static void writeUTF8(Pipe pipe, int loc, char[] source) {
@@ -259,15 +349,23 @@ public class PipeWriter {
 
         int sourceLen = null==source? -1 : source.length;        
     	Pipe.validateVarLength(pipe, sourceLen<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)      
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getWorkingBlobHeadPosition((Pipe<?>) pipe), Pipe.copyUTF8ToByte(source, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
     }
-      
+
+	/**
+	 * Writes UTF8 to specified location in given pipe
+	 * @param pipe to be written to
+	 * @param loc field to be written to
+	 * @param source char[] to write to field
+	 * @param offset char offset
+	 * @param length length of data to be written
+	 */
     public static void writeUTF8(Pipe pipe, int loc, char[] source, int offset, int length) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
     	Pipe.validateVarLength(pipe, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)     
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), 
-		        Pipe.getBlobWorkingHeadPosition( pipe), 
+		        Pipe.getWorkingBlobHeadPosition((Pipe<?>) pipe), 
 		        Pipe.copyUTF8ToByte(source, offset, length, pipe), 
 		        Pipe.bytesWriteBase(pipe));
     }
@@ -286,7 +384,15 @@ public class PipeWriter {
         final int p = Pipe.copyASCIIToBytes(source, 0, sourceLen,	pipe);
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), p, sourceLen, Pipe.bytesWriteBase(pipe));
     }
-    
+
+	/**
+	 * Writes ASCII to specified location in given pipe
+	 * @param pipe to be written to
+	 * @param loc field to write to
+	 * @param source char[] to write to field
+	 * @param offset char[] offset
+	 * @param length length of data to be written
+	 */
     public static void writeASCII(Pipe pipe, int loc, char[] source, int offset, int length) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc)+" b"+Integer.toBinaryString(loc);
  
@@ -309,7 +415,16 @@ public class PipeWriter {
         final int p = Pipe.copyASCIIToBytes(source, 0, sourceLen, pipe);
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), p, sourceLen, Pipe.bytesWriteBase(pipe));
     }
-    
+
+	/**
+	 * Writes ASCII to specified location in given pipe
+	 * @param pipe to be written to
+	 * @param loc field to write to
+	 * @param source CharSequence to write to field
+	 * @param offset CharSequence offset
+	 * @param length length of data to be written
+	 */
+
     public static void writeASCII(Pipe pipe, int loc, CharSequence source, int offset, int length) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
@@ -317,18 +432,24 @@ public class PipeWriter {
         final int p = Pipe.copyASCIIToBytes(source, offset, length, pipe);
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), p, length, Pipe.bytesWriteBase(pipe));
     }
-    
-    public static void writeIntAsText(Pipe pipe, int loc, int value) {
+
+	/**
+	 * Writes given int as String in specified pipe
+	 * @param pipe to be written to
+	 * @param loc field to write data
+	 * @param value int value to be converted
+	 */
+	public static void writeIntAsText(Pipe pipe, int loc, int value) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
-    	int max = 12+ Pipe.getBlobWorkingHeadPosition(pipe);
+    	int max = 12+ Pipe.getWorkingBlobHeadPosition((Pipe<?>) pipe);
     	int len = Pipe.leftConvertIntToASCII(pipe, value, max);    	
     	finishWriteBytesAlreadyStarted(pipe, loc, len);
-        Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);  	
+        Pipe.addAndGetBlobWorkingHeadPosition(pipe,len);  	
 	}
 
 	/**
-	 *
+	 * Writes a long as a String in given pipe
 	 * @param pipe to be updated
 	 * @param loc for field to be updated
 	 * @param value long to write to specified location
@@ -336,12 +457,16 @@ public class PipeWriter {
     public static void writeLongAsText(Pipe pipe, int loc, long value) { 
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
-    	int max = 21+Pipe.getBlobWorkingHeadPosition(pipe);
+    	int max = 21+Pipe.getWorkingBlobHeadPosition((Pipe<?>) pipe);
     	int len = Pipe.leftConvertLongToASCII(pipe, value, max);
     	finishWriteBytesAlreadyStarted(pipe, loc, len);
-        Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);   	
+        Pipe.addAndGetBlobWorkingHeadPosition(pipe,len);   	
 	}
 
+	/**
+	 * This sends a poison pill. Any pipe that receives this pill shuts down and sends the pill to any pipes downstream of them
+	 * @param pipe to send pill
+	 */
     public static void publishEOF(Pipe[] pipe) {
     	int i = pipe.length;
     	while (--i>=0) {
@@ -350,7 +475,11 @@ public class PipeWriter {
     		}
     	}
     }
-    
+
+	/**
+	 * This sends a poison pill. Any pipe that receives this pill shuts down and sends the pill to any pipes downstream of them
+	 * @param pipe to send pill
+	 */
 	public static void publishEOF(Pipe pipe) {	
 		int i = pipe.pubListeners.length;
     	while (--i>=0) {
@@ -362,6 +491,10 @@ public class PipeWriter {
 		Pipe.publishWorkingHeadPosition(pipe, pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);		
 	}
 
+	/**
+	 * This sends a poison pill. Any pipe that receives this pill shuts down and sends the pill to any pipes downstream of them
+	 * @param pipe to send pill
+	 */
 	public static void publishEOL(Pipe pipe) {
 		publishEOF(pipe);
 	}
@@ -396,13 +529,13 @@ public class PipeWriter {
 		//assert(Pipe.workingHeadPosition(pipe) <= pipe.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		
 		//publish writes			
-		Pipe.setBytesHead(pipe, Pipe.getWorkingBlobHeadPosition(pipe));		
+		Pipe.setBlobHeadPosition(pipe, Pipe.getWorkingBlobHeadPosition(pipe));		
 		Pipe.publishWorkingHeadPosition(pipe, Pipe.workingHeadPosition(pipe));
 
 		Pipe.beginNewPublishBatch(pipe);
 	}
 
-	/*
+	/**
 	 * blocks until there is enough room for the requested fragment on the output ring.
 	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
 	 * 
@@ -415,11 +548,7 @@ public class PipeWriter {
 	}
 
 	/**
-	 * Copy message previously send and publish it again.
-	 * 
-	 * @param pipe
-	 * @param historicSlabPosition
-	 * @param historicBlobPosition
+	 * Copy message previously sent and publish it again.
 	 */
 	public static boolean tryReplication(Pipe pipe, 
 			                             final long historicSlabPosition, 
@@ -445,7 +574,7 @@ public class PipeWriter {
 			//copy all the bytes
 			int blobPos = Pipe.getWorkingBlobHeadPosition(pipe);
 			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
-			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
+			Pipe.addAndGetBlobWorkingHeadPosition(pipe, blobMsgSize);
 
 			//copy all the ints
 			long slabPos = Pipe.headPosition(pipe);
@@ -466,7 +595,7 @@ public class PipeWriter {
 		}
 	}
 	
-	/*
+	/**
 	 * We assume that the pipe has room and this was already checked earlier in the code.
 	 * This method will call tryWriteFragment and if is not successful it will.
 	 *  1. log an error so the developer can ensure this pipe is checked before calling this method.
@@ -484,7 +613,7 @@ public class PipeWriter {
 		}
 	}
 	
-    /*
+    /**
 	 * Return true if there is room for the desired fragment in the output buffer.
 	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
 	 * 
@@ -521,11 +650,23 @@ public class PipeWriter {
 	    return StackStateWalker.hasRoomForFragmentOfSizeX(pipe, pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - fragSize));
 	}
 
+	/**
+	 * Sets batch size to be published
+	 * @param pipe to be written to
+	 * @param size of batch
+	 */
     public static void setPublishBatchSize(Pipe pipe, int size) {
 		Pipe.setPublishBatchSize(pipe, size);
 	}
-        
-    public static void writeFieldFromInputStream(Pipe pipe, int loc, InputStream inputStream, final int byteCount) throws IOException { 
+
+	/**
+	 * Writes field from data received in the input stream
+	 * @param pipe to write to
+	 * @param loc location to write field
+	 * @param inputStream to get data to write field
+	 * @param byteCount max bytes in field
+	 */
+	public static void writeFieldFromInputStream(Pipe pipe, int loc, InputStream inputStream, final int byteCount) throws IOException {
         buildFieldFromInputStream(pipe, loc, inputStream, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
     }
 
@@ -543,6 +684,13 @@ public class PipeWriter {
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
 
+	/**
+	 * Writes field from data input in given pipe and location
+	 * @param pipe to write to
+	 * @param loc location to write field
+	 * @param dataInput data used to write field
+	 * @param byteCount max bytes in field
+	 */
     public static void writeFieldFromDataInput(Pipe pipe, int loc, DataInput dataInput, final int byteCount) throws IOException { 
     	buildFieldFromDataInput(pipe, loc, dataInput, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
     }
@@ -565,9 +713,6 @@ public class PipeWriter {
 	/**
 	 * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write
 	 * to determine if we have data that can be written.
-	 * 
-	 * @param target
-	 * @param loc
 	 */
 	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int loc) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -575,7 +720,11 @@ public class PipeWriter {
 		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target, target.maxVarLen);
 
 	}
-	
+
+	/**
+	 * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write
+	 * to determine if we have data that can be written.
+	 */
 	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int maxLength, int loc) {
 		assert(maxLength>=0) : "bad length of "+maxLength;
 		assert(maxLength<=target.maxVarLen+1);
@@ -591,6 +740,11 @@ public class PipeWriter {
 		Pipe.unstoreBlobWorkingHeadPosition(target);
 	}
 
+	/**
+	 * Specifies to close the field
+	 * @param target pipe to use
+	 * @param loc field to close
+	 */
 	public static void wrappedUnstructuredLayoutBufferClose(Pipe<?> target,	int loc, int length) {
 		assert(length>=0);
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -599,10 +753,15 @@ public class PipeWriter {
 		long ringPos = target.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc);		
 		Pipe.slab(target)[target.slabMask & (int)ringPos] = (int)(target.sizeOfBlobRing + Pipe.unstoreBlobWorkingHeadPosition(target)-Pipe.bytesWriteBase(target)) & target.blobMask; //mask is needed for the negative case, does no harm in positive case
 		Pipe.slab(target)[target.slabMask & (int)(ringPos+1)] = length;	
-		Pipe.addAndGetBytesWorkingHeadPosition(target, length);
+		Pipe.addAndGetBlobWorkingHeadPosition(target, length);
 		
 	}
 
+	/**
+	 * Gives outputStream of specified pipe
+	 * @param pipe to get output stream from
+	 * @return outputStream
+	 */
 	public static <S extends MessageSchema<S>> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
 		return Pipe.outputStream(pipe);
 	}

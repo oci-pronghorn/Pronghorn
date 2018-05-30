@@ -56,8 +56,8 @@ public class GenerativeTest {
        Pipe ring2 = buildPopulatedRing(from, rbConfig, commonSeed, iterations);
        
        //confirm that both rings contain the exact same thing
-       assertTrue(Arrays.equals(Pipe.primaryBuffer(ring1), Pipe.primaryBuffer(ring2)));
-       assertTrue(Arrays.equals(Pipe.byteBuffer(ring1), Pipe.byteBuffer(ring2)));
+       assertTrue(Arrays.equals(Pipe.slab((Pipe<?>) ring1), Pipe.slab((Pipe<?>) ring2)));
+       assertTrue(Arrays.equals(Pipe.blob((Pipe<?>) ring1), Pipe.blob((Pipe<?>) ring2)));
        
        //////////////////////////
        //now starts the real test, we need to read/write these values, and check them against the original 

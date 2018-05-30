@@ -198,8 +198,8 @@ public class StreamingConsumerTest {
         svw2.run();
         
         //confirm that both rings contain the exact same thing
-        assertTrue(Arrays.equals(Pipe.primaryBuffer(ring1), Pipe.primaryBuffer(ring2)));
-        assertTrue(Arrays.equals(Pipe.byteBuffer(ring1), Pipe.byteBuffer(ring2)));
+        assertTrue(Arrays.equals(Pipe.slab(ring1), Pipe.slab(ring2)));
+        assertTrue(Arrays.equals(Pipe.blob(ring1), Pipe.blob(ring2)));
         
         //now use matcher to confirm the same.
         StreamingReadVisitorMatcher srvm = new StreamingReadVisitorMatcher(ring1);

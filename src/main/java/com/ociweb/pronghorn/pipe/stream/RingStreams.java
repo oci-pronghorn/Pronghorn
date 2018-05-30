@@ -70,8 +70,8 @@ public class RingStreams {
         		Pipe.releaseReadLock(inputRing);
           		break;
         	} else {          
-            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-            	int len = takeRingByteLen(inputRing);
+            	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);//side effect, this moves the pointer.
+            	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
             	if (len>0) {            	
 					byte[] data = byteBackingArray(meta, inputRing);
 					int off = bytePosition(meta,inputRing,len)&byteMask;
@@ -145,8 +145,8 @@ public class RingStreams {
         		Pipe.releaseReadLock(inputRing);
           		return;
         	} else {                    	
-            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-            	int len = takeRingByteLen(inputRing);
+            	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);//side effect, this moves the pointer.
+            	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
             	
         		int byteMask = inputRing.blobMask;
 				byte[] data = byteBackingArray(meta, inputRing);
@@ -198,10 +198,10 @@ public class RingStreams {
 		long targetTailValue = headPosition(outputRing)-fill;
 		long tailPosCache = tailPosition(outputRing);
 		
-		byte[] buffer = Pipe.byteBuffer(outputRing);
+		byte[] buffer = Pipe.blob((Pipe<?>) outputRing);
 		int byteMask = outputRing.blobMask;
 		
-		int position = Pipe.getBlobWorkingHeadPosition(outputRing);
+		int position = Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing);
 
 		int size = 0;	
 		try{
@@ -220,7 +220,7 @@ public class RingStreams {
 					Pipe.addMsgIdx(outputRing, 0);
 					Pipe.validateVarLength(outputRing, size);
 					Pipe.addBytePosAndLen(outputRing, position, size);
-			        Pipe.addAndGetBytesWorkingHeadPosition(outputRing, size);
+			        Pipe.addAndGetBlobWorkingHeadPosition(outputRing, size);
 			        
 			        Pipe.confirmLowLevelWrite(outputRing, RawDataSchema.FROM.fragDataSize[0]);
 					Pipe.publishWrites(outputRing);
@@ -327,8 +327,8 @@ public class RingStreams {
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
-		    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-		    	int len = takeRingByteLen(inputRing);
+		    	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);//side effect, this moves the pointer.
+		    	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
 		    	
 	    		byte[] data = byteBackingArray(meta, inputRing);
 

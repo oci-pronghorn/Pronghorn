@@ -552,8 +552,8 @@ public class TrieParserReader {
 	}    
 
 	public static long query(TrieParserReader trieReader, TrieParser trie, Pipe<?> input, final long unfoundResult) {
-		int meta = Pipe.takeRingByteMetaData(input);
-		int length    = Pipe.takeRingByteLen(input);
+		int meta = Pipe.takeByteArrayMetaData(input);
+		int length    = Pipe.takeByteArrayLength(input);
 		return query(trieReader, trie, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input), unfoundResult );  
 	}
 
@@ -1506,8 +1506,8 @@ public class TrieParserReader {
 
 	public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
 		//TODO: cofirm this field is next...
-		int meta = Pipe.takeRingByteMetaData(input);
-		int length    = Pipe.takeRingByteLen(input);
+		int meta = Pipe.takeByteArrayMetaData(input);
+		int length    = Pipe.takeByteArrayLength(input);
 		parseSetup(trieReader, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input));
 	}
 

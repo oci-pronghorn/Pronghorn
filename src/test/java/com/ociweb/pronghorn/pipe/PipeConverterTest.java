@@ -29,8 +29,8 @@ public class PipeConverterTest {
         Pipe.publishWrites(pipe);
         
         Pipe.takeMsgIdx(pipe);
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        int len = Pipe.takeRingByteLen(pipe);
+        int meta = Pipe.takeByteArrayMetaData(pipe);
+        int len = Pipe.takeByteArrayLength(pipe);
         
         StringBuilder target = new StringBuilder();
         Pipe.readASCII(pipe, target, meta, len);
@@ -54,8 +54,8 @@ public class PipeConverterTest {
         Pipe.publishWrites(pipe);
         
         Pipe.takeMsgIdx(pipe);
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        int len = Pipe.takeRingByteLen(pipe);
+        int meta = Pipe.takeByteArrayMetaData(pipe);
+        int len = Pipe.takeByteArrayLength(pipe);
         
         StringBuilder target = new StringBuilder();
         Pipe.readASCII(pipe, target, meta, len);
@@ -77,8 +77,8 @@ public class PipeConverterTest {
         
         Pipe.publishWrites(ring);
         
-        int meta = Pipe.takeRingByteMetaData(ring);
-        int len = Pipe.takeRingByteLen(ring);
+        int meta = Pipe.takeByteArrayMetaData(ring);
+        int len = Pipe.takeByteArrayLength(ring);
         
         StringBuilder target = new StringBuilder();
         Pipe.readASCII(ring, target, meta, len);
@@ -96,8 +96,8 @@ public class PipeConverterTest {
         
         Pipe.publishWrites(ring);
         
-        meta = Pipe.takeRingByteMetaData(ring);
-        len = Pipe.takeRingByteLen(ring);
+        meta = Pipe.takeByteArrayMetaData(ring);
+        len = Pipe.takeByteArrayLength(ring);
         
         target.setLength(0);
         Pipe.readASCII(ring, target, meta, len);
@@ -114,8 +114,8 @@ public class PipeConverterTest {
         
         Pipe.publishWrites(ring);
         
-        meta = Pipe.takeRingByteMetaData(ring);
-        len = Pipe.takeRingByteLen(ring);
+        meta = Pipe.takeByteArrayMetaData(ring);
+        len = Pipe.takeByteArrayLength(ring);
         
         target.setLength(0);
         Pipe.readASCII(ring, target, meta, len);
@@ -141,8 +141,8 @@ public class PipeConverterTest {
         Pipe.addByteBuffer(source, ring);
         Pipe.publishWrites(ring);
         
-        int meta = Pipe.takeRingByteMetaData(ring);
-        int len = Pipe.takeRingByteLen(ring);
+        int meta = Pipe.takeByteArrayMetaData(ring);
+        int len = Pipe.takeByteArrayLength(ring);
         
         StringBuilder target = new StringBuilder();
         Pipe.readASCII(ring, target, meta, len);

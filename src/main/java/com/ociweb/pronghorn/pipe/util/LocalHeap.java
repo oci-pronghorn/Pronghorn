@@ -761,15 +761,15 @@ public class LocalHeap {
     }
 
 	public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, Pipe rbRingBuffer) {
-	    final int p = Pipe.getBlobWorkingHeadPosition(rbRingBuffer);
+	    final int p = Pipe.getWorkingBlobHeadPosition((Pipe<?>) rbRingBuffer);
 	    if (sourceLen > 0) {
 	        final int offset = heapId << 2;
 			final int pos = byteHeap.tat[offset];
 			final int len = byteHeap.tat[offset + 1] - pos;
 			
-			copyToRingBuffer(Pipe.byteBuffer(rbRingBuffer), p, rbRingBuffer.blobMask, pos, len, byteHeap.data);
+			copyToRingBuffer(Pipe.blob((Pipe<?>) rbRingBuffer), p, rbRingBuffer.blobMask, pos, len, byteHeap.data);
 
-	        Pipe.addAndGetBytesWorkingHeadPosition(rbRingBuffer,len);
+	        Pipe.addAndGetBlobWorkingHeadPosition(rbRingBuffer,len);
 	    }      
 	    
 	    Pipe.addBytePosAndLen(rbRingBuffer, p, sourceLen);

@@ -40,8 +40,8 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
     }
 
     private static int openLowLevelAPIField(LittleEndianDataInputBlobReader that) {
-        int meta = Pipe.takeRingByteMetaData(that.pipe);
-        that.length    = Pipe.takeRingByteLen(that.pipe);
+        int meta = Pipe.takeByteArrayMetaData((Pipe<?>) that.pipe);
+        that.length    = Pipe.takeByteArrayLength((Pipe<?>) that.pipe);
         that.position  = Pipe.bytePosition(meta, that.pipe, that.length);
         that.backing   = Pipe.byteBackingArray(meta, that.pipe);      
         
@@ -68,8 +68,8 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extend
             return openLowLevelAPIField(that);
         } else {        
         
-            int meta = Pipe.takeRingByteMetaData(that.pipe);
-            int len = Pipe.takeRingByteLen(that.pipe);
+            int meta = Pipe.takeByteArrayMetaData((Pipe<?>) that.pipe);
+            int len = Pipe.takeByteArrayLength((Pipe<?>) that.pipe);
             
             that.length += len;
             that.bytesLimit = that.pipe.blobMask & (that.bytesLimit + len);

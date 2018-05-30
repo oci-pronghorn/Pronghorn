@@ -84,7 +84,7 @@ public class PendingReleaseData {
 			that.pendingReleaseTail+=c;	    		
 			int idx = that.pendingReleaseMask & (that.pendingReleaseTail-1);	    		 
 			int newTail = that.pendingBlobReleaseRing[idx];
-			Pipe.setBytesTail(pipe, newTail);
+			Pipe.setBlobTailPosition(pipe,newTail);
 
 			pipe.slabRingTail.tailPos.lazySet(that.pendingSlabReleaseRing[idx]);
 			that.pendingReleaseCount = 0;
