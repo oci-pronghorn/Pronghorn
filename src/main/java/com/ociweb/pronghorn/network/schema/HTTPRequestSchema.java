@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.network.schema;
 
-import com.ociweb.pronghorn.annotations.UndocumentedSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -12,7 +11,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
  * Defines what a HTTP request looks like. This includes basics such as the verb (GET, POST, etc...), parameters, but lso
  * request context, channel ID, the binary payload, if it is a REST request, and more.
  */
-@UndocumentedSchema
+
 public class HTTPRequestSchema extends MessageSchema<HTTPRequestSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
