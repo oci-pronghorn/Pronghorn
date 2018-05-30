@@ -10,6 +10,12 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Splits lines onto a byte buffer.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class LineSplitterByteBufferStage extends PronghornStage {
 
 	protected final ByteBuffer activeByteBuffer;
@@ -26,8 +32,14 @@ public class LineSplitterByteBufferStage extends PronghornStage {
     public final byte[] quoter;
     protected int shutdownPosition = -1;
     private final Logger log = LoggerFactory.getLogger(LineSplitterByteBufferStage.class);
-    
-    public LineSplitterByteBufferStage(GraphManager graphManager, ByteBuffer sourceByteBuffer, Pipe outputRing) {
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param sourceByteBuffer
+	 * @param outputRing _out_ Resulting byte buffer ring.
+	 */
+	public LineSplitterByteBufferStage(GraphManager graphManager, ByteBuffer sourceByteBuffer, Pipe outputRing) {
     	super(graphManager, NONE, outputRing);
     	this.activeByteBuffer=sourceByteBuffer;
     	
@@ -115,7 +127,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 							
 							Pipe.addMsgIdx(outputRing, 0);
 							long temp = Pipe.workingHeadPosition(outputRing);
-							int bytePos = Pipe.getBlobWorkingHeadPosition(outputRing);    	
+							int bytePos = Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing);    	
 
 							//debug show the lines
 							boolean debug = false;

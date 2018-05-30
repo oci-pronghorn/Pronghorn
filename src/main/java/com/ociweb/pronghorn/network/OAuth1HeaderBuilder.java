@@ -334,8 +334,8 @@ public class OAuth1HeaderBuilder {
 	
 	  Pipe.takeMsgIdx(workingPipe);
 	  
-	  int meta = Pipe.takeRingByteMetaData(workingPipe);
-	  int len  = Pipe.takeRingByteLen(workingPipe);
+	  int meta = Pipe.takeByteArrayMetaData(workingPipe);
+	  int len  = Pipe.takeByteArrayLength(workingPipe);
 	  int mask = blobMask(workingPipe);	
       int pos = bytePosition(meta, workingPipe, len)&mask;     		
 	  byte[] backing = byteBackingArray(meta, workingPipe);

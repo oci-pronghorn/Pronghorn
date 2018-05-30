@@ -13,6 +13,13 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * _no-docs_
+ * Consumes meta messages and produces new XML templates catalog upon receiving a flush message.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MetaMessagesToCSVStage extends PronghornStage {
 
 	private final Pipe inputRing;
@@ -21,9 +28,12 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	
 	private int activeFieldIdx = 0;
 	private int activeByteBase = 0;
-	
-	/*
-	 * Consumes Meta messages and produces new XML templates catalog upon receiving the flush message
+
+	/**
+	 *
+	 * @param gm
+	 * @param inputRing _in_ Pipe containing meta messages
+	 * @param outputRing _out_ Pipe containing newly produced XML templates
 	 */
 	public MetaMessagesToCSVStage(GraphManager gm, Pipe inputRing, Pipe outputRing) {
 		super(gm,inputRing,outputRing);
@@ -170,8 +180,8 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			
 						//	System.err.println("data:"+new String(backing, readBytesPos, readBytesLength));
 							
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.blobMask, readBytesLength);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing),outputRing.blobMask, readBytesLength);
+							Pipe.setBlobWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing) + readBytesLength));
     			
 							
 							
@@ -185,8 +195,8 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			byte[] backing      = PipeReader.readBytesBackingArray(stage.inputRing, MetaMessageDefs.NAMEDASCII_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 									        			
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.blobMask, readBytesLength);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.blobMask,outputRing.blobRing,Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing),outputRing.blobMask, readBytesLength);
+							Pipe.setBlobWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getWorkingBlobHeadPosition((Pipe<?>) outputRing) + readBytesLength));
 
 		        		}
 	        			break;       			
@@ -223,7 +233,7 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 					}
 					Pipe.addMsgIdx(pipe, msgIdx);        			
 	        			stage.activeFieldIdx = 0;
-	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
+	        			stage.activeByteBase = Pipe.getWorkingBlobHeadPosition((Pipe<?>) stage.outputRing);
 	        			break;
 	        		case 80:
 					Pipe pipe1 = stage.outputRing;
@@ -234,15 +244,15 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 					}
 					Pipe.addMsgIdx(pipe1, msgIdx1);	  //?? begin message named?
 	        			stage.activeFieldIdx = 0;
-	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
+	        			stage.activeByteBase = Pipe.getWorkingBlobHeadPosition((Pipe<?>) stage.outputRing);
 	        			break;
 	        		case 17: //endMessage  		
 	        			
 	        			Pipe.copyASCIIToBytes("\n",stage.outputRing);	 //not very efficient may be better to make a single char writer method	         			
 	        			
 	        			//Total length for the full row row!!
-	        			Pipe.validateVarLength(stage.outputRing, Pipe.getBlobWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
-	        			Pipe.addBytePosAndLen(stage.outputRing, stage.activeByteBase, Pipe.getBlobWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
+	        			Pipe.validateVarLength(stage.outputRing, Pipe.getWorkingBlobHeadPosition((Pipe<?>) stage.outputRing)-stage.activeByteBase);
+	        			Pipe.addBytePosAndLen(stage.outputRing, stage.activeByteBase, Pipe.getWorkingBlobHeadPosition((Pipe<?>) stage.outputRing)-stage.activeByteBase);
 	        		        			
 	        			Pipe.publishWrites(stage.outputRing);
 	        				        			

@@ -24,6 +24,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 //TODO: should roll up writes when possible.
 //TODO: update to use byteBuffer array...
 
+/**
+ * Writes data to file on disk (in blobs).
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class FileBlobWriteStage extends PronghornStage{
 
     private static final long FILE_ROTATE_SIZE = 1L<<27;
@@ -58,7 +64,14 @@ public class FileBlobWriteStage extends PronghornStage{
     private final boolean append;
     private StringBuilder pathBuilder;
     private ISOTimeFormatterLowGC formatter;
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ RawDataSchema that will be written  to file.
+     * @param append
+     * @param outputPathString
+     */
     public FileBlobWriteStage(GraphManager graphManager,
             Pipe<RawDataSchema> input,
             //add pipe to select file.
@@ -220,8 +233,8 @@ public class FileBlobWriteStage extends PronghornStage{
                     return;
                 }
                 assert(0==msgId);
-                int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
-                int len = Pipe.takeRingByteLen(input);
+                int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
+                int len = Pipe.takeByteArrayLength(input);
                                 
                 if (len < 0) {
                     Pipe.confirmLowLevelRead(input, SIZE);

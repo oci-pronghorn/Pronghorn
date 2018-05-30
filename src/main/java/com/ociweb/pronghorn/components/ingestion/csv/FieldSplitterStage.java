@@ -17,9 +17,11 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
+ * _no-docs_
  * Split CSV lines into meta messages
- * @author Nathan Tippy
  *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class FieldSplitterStage extends PronghornStage {
 
@@ -36,7 +38,13 @@ public class FieldSplitterStage extends PronghornStage {
     	quoter = new byte[256]; //these are all zeros
     	quoter['"'] = 1; //except for the value of quote.
     }
-     
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputRing _in_ Pipe containing inputRing
+	 * @param outputRing _out_ Pipe containing outputRing
+	 */
 	public FieldSplitterStage(GraphManager graphManager, Pipe inputRing, Pipe outputRing) {
 		super(graphManager,inputRing,outputRing);
 		this.inputRing = inputRing;
@@ -80,8 +88,8 @@ public class FieldSplitterStage extends PronghornStage {
 	    		Pipe.confirmLowLevelRead(inputRing,  step);
 	    		
 	    		
-	    		int meta = takeRingByteMetaData(inputRing);
-	        	int len = takeRingByteLen(inputRing);
+	    		int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);
+	        	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
 	        	int mask = blobMask(inputRing);	
 	        	int pos = bytePosition(meta, inputRing, len)&mask;     		
 				byte[] data = byteBackingArray(meta, inputRing);
@@ -336,14 +344,14 @@ public class FieldSplitterStage extends PronghornStage {
 				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 			
-		int	bytePosition = Pipe.getBlobWorkingHeadPosition(output);		    	
+		int	bytePosition = Pipe.getWorkingBlobHeadPosition((Pipe<?>) output);		    	
 		Pipe.copyBytesFromArrayToRing(data, offset1, output.blobRing, bytePosition, output.blobMask, length1);
 		Pipe.copyBytesFromArrayToRing(data, offset2, output.blobRing, bytePosition+length1, output.blobMask, length2);
 		int length3 = length1+length2;
 			
 		Pipe.validateVarLength(output, length3);
 		Pipe.addBytePosAndLen(output, bytePosition, length3);
-		Pipe.setBytesWorkingHead(output, bytePosition + length3);
+		Pipe.setBlobWorkingHead(output, bytePosition + length3);
 	}
 
 	public static void writeASCIISplit(byte[] data, int offset1, int length1,
@@ -356,14 +364,14 @@ public class FieldSplitterStage extends PronghornStage {
 				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
 			
-		int bytePosition = Pipe.getBlobWorkingHeadPosition(output);
+		int bytePosition = Pipe.getWorkingBlobHeadPosition((Pipe<?>) output);
 		Pipe.copyBytesFromArrayToRing(data, offset1, output.blobRing, bytePosition, output.blobMask, length1);
 		Pipe.copyBytesFromArrayToRing(data, offset2, output.blobRing, bytePosition+length1, output.blobMask, length2);
 		int length = length1+length2;
 
 		Pipe.validateVarLength(output, length);
 		Pipe.addBytePosAndLen(output,bytePosition, length);
-		Pipe.setBytesWorkingHead(output, bytePosition + length);
+		Pipe.setBlobWorkingHead(output, bytePosition + length);
 	}
 
 	public static void writeNull(Pipe output) {

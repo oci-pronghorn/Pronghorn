@@ -30,6 +30,13 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * _no-docs_
+ * Encodes client message for sending to server.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private final TrieParserReader READER = new TrieParserReader(true);
@@ -92,7 +99,23 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private final int ringMask;
 	
     int remainingInFlight;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param ccm
+	 * @param maxInFlight
+	 * @param uniqueId
+	 * @param input _in_
+	 * @param inputAck _in_
+	 * @param persistBlobStoreConsumer _out_
+	 * @param persistBlobStoreProducer _in_
+	 * @param persistBlobLoadRelease _in_
+	 * @param persistBlobLoadConsumer _in_
+	 * @param persistBlobLoadProducer _in_
+	 * @param idRangeControl _out_
+	 * @param toBroker _out_
+	 */
 	public MQTTClientToServerEncodeStage(GraphManager gm, ClientCoordinator ccm, int maxInFlight, int uniqueId, 
 			                             Pipe<MQTTClientToServerSchema> input,
 			                             Pipe<MQTTClientToServerSchemaAck> inputAck,
@@ -551,8 +574,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					
 					this.host.setLength(0);
 										
-					int hostMeta = Pipe.takeRingByteMetaData(input);					
-					int hostLen = Pipe.takeRingByteLen(input);
+					int hostMeta = Pipe.takeByteArrayMetaData(input);					
+					int hostLen = Pipe.takeByteArrayLength(input);
 					Pipe.readUTF8(input, this.host, hostMeta, hostLen);
 														
 					this.hostPort = Pipe.takeInt(input);
@@ -980,24 +1003,24 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						Pipe.addLongValue(arrivalTime, server);
 						Pipe.addLongValue(0, server);
 												
-						int clientIdMeta2 = Pipe.takeRingByteMetaData(input);						
-						int clientIdLen = Pipe.takeRingByteLen(input);
+						int clientIdMeta2 = Pipe.takeByteArrayMetaData(input);						
+						int clientIdLen = Pipe.takeByteArrayLength(input);
 						int clientIdPos = bytePosition(clientIdMeta2, input, clientIdLen);  
 	
-						int willTopicMeta2 = Pipe.takeRingByteMetaData(input);						
-						int willTopicLen = Pipe.takeRingByteLen(input);
+						int willTopicMeta2 = Pipe.takeByteArrayMetaData(input);						
+						int willTopicLen = Pipe.takeByteArrayLength(input);
 						int willTopicPos = bytePosition(willTopicMeta2, input, willTopicLen); 
 						
-						int willMessageMeta2 = Pipe.takeRingByteMetaData(input);						
-						int willMessageLen = Pipe.takeRingByteLen(input);
+						int willMessageMeta2 = Pipe.takeByteArrayMetaData(input);						
+						int willMessageLen = Pipe.takeByteArrayLength(input);
 						int willMessagePos = bytePosition(willMessageMeta2, input, willMessageLen);
 						
-						int userMeta2 = Pipe.takeRingByteMetaData(input);						
-						int userLen = Pipe.takeRingByteLen(input);
+						int userMeta2 = Pipe.takeByteArrayMetaData(input);						
+						int userLen = Pipe.takeByteArrayLength(input);
 						int userPos = bytePosition(userMeta2, input, userLen);
 						
-						int passMeta2 = Pipe.takeRingByteMetaData(input);						
-						int passLen = Pipe.takeRingByteLen(input);
+						int passMeta2 = Pipe.takeByteArrayMetaData(input);						
+						int passLen = Pipe.takeByteArrayLength(input);
 						int passPos = bytePosition(passMeta2, input, passLen);
 	
 						keepAliveMS = keepAliveSec*1000;
@@ -1167,8 +1190,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						arrivalTime = Pipe.takeLong(input); 
 						int packetId8 = Pipe.takeInt(input); 
 						int subscriptionQoS = Pipe.takeInt(input);
-						int topicMeta = Pipe.takeRingByteMetaData(input);
-						int topicLen  = Pipe.takeRingByteLen(input);
+						int topicMeta = Pipe.takeByteArrayMetaData(input);
+						int topicLen  = Pipe.takeByteArrayLength(input);
 	
 						Pipe.addLongValue(connectionId, server);
 						Pipe.addLongValue(arrivalTime, server);
@@ -1217,8 +1240,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						
 						arrivalTime = Pipe.takeLong(input);					
 						int packetId10 = Pipe.takeInt(input);					
-						int topicMeta = Pipe.takeRingByteMetaData(input);
-						int topicIdLen10 = Pipe.takeRingByteLen(input);
+						int topicMeta = Pipe.takeByteArrayMetaData(input);
+						int topicIdLen10 = Pipe.takeByteArrayLength(input);
 								
 						Pipe.addLongValue(connectionId, server);
 						Pipe.addLongValue(arrivalTime, server);
@@ -1293,10 +1316,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 		buildPublishMessage(output, qos, packetId, 
 				Pipe.takeInt(input), 
-				Pipe.takeRingByteMetaData(input), 
-				Pipe.takeRingByteLen(input), 
-				Pipe.takeRingByteMetaData(input), 
-				Pipe.takeRingByteLen(input));
+				Pipe.takeByteArrayMetaData(input), 
+				Pipe.takeByteArrayLength(input), 
+				Pipe.takeByteArrayMetaData(input), 
+				Pipe.takeByteArrayLength(input));
 	}
 
 	private void buildPublishMessage(DataOutputBlobWriter<NetPayloadSchema> output, int qos, int packetId, int retain,

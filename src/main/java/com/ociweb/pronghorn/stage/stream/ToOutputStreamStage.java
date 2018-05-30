@@ -16,13 +16,26 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.ZeroCopyByteArrayOutputStream;
 
+/**
+ * Takes the RawDataSchema on the input pipe and writes it to an output stream.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ToOutputStreamStage extends PronghornStage {
 
 	private final Pipe<RawDataSchema> inputRing;
 	private final OutputStream outputStream;
 	private final int step;
 	private final boolean eol;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param inputRing _in_ The RawDataSchema pipe that will be written to the output stream.
+	 * @param outputStream
+	 * @param eol
+	 */
 	public ToOutputStreamStage(GraphManager gm, Pipe<RawDataSchema> inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
@@ -51,9 +64,9 @@ public class ToOutputStreamStage extends PronghornStage {
 					    return;
 					}
   
-			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+			    	int meta = Pipe.takeByteArrayMetaData(inputRing);//side effect, this moves the pointer.
 	    					    			
-			    	int len = takeRingByteLen(inputRing);
+			    	int len = Pipe.takeByteArrayLength(inputRing);
 			    	int off = bytePosition(meta,inputRing,len)&inputRing.blobMask; 			
 			    	
 			    	if (len>=0) { 

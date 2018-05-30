@@ -559,8 +559,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         int routeId = routeVerb >> HTTPVerb.BITS;
         int verb = routeVerb & HTTPVerb.MASK;
         
-        int meta = Pipe.takeRingByteMetaData(input);
-        int bytesLength    = Pipe.takeRingByteLen(input);
+        int meta = Pipe.takeByteArrayMetaData(input);
+        int bytesLength    = Pipe.takeByteArrayLength(input);
 
         byte[] bytesBackingArray = Pipe.byteBackingArray(meta, input);
         int bytesPosition = Pipe.bytePosition(meta, input, bytesLength);
@@ -1063,7 +1063,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		
 		int size = Pipe.addMsgIdx(output, ServerResponseSchema.MSG_SKIP_300);
 		
-		Pipe.addAndGetBytesWorkingHeadPosition(output, countOfBytesToSkip);//he head is moved becauase we want to skip these bytes.
+		Pipe.addAndGetBlobWorkingHeadPosition(output, countOfBytesToSkip);//he head is moved becauase we want to skip these bytes.
 		
 		Pipe.addBytePosAndLen(output, Pipe.unstoreBlobWorkingHeadPosition(output), countOfBytesToSkip);
 		Pipe.confirmLowLevelWrite(output, size);

@@ -76,16 +76,16 @@ public class HTTPClientUtil {
 			int port   = Pipe.takeInt(requestPipe);
 			assert(clientConnection.port == port);
 			
-			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
-			int hostLen  = Pipe.takeRingByteLen(requestPipe);
+			int hostMeta = Pipe.takeByteArrayMetaData(requestPipe);
+			int hostLen  = Pipe.takeByteArrayLength(requestPipe);
 			int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 			
-		  	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3
-			int len  = Pipe.takeRingByteLen(requestPipe);
+		  	int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3
+			int len  = Pipe.takeByteArrayLength(requestPipe);
 		    int first = Pipe.bytePosition(meta, requestPipe, len);					                	
 		
-			int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER
-			int headersLen  = Pipe.takeRingByteMetaData(requestPipe);
+			int headersMeta = Pipe.takeByteArrayMetaData(requestPipe); // HEADER
+			int headersLen  = Pipe.takeByteArrayMetaData(requestPipe);
 			int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
 		    
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
@@ -152,12 +152,12 @@ public class HTTPClientUtil {
 			int port   = Pipe.takeInt(requestPipe);
 			assert(clientConnection.port == port);
 			
-			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
-			int hostLen  = Pipe.takeRingByteLen(requestPipe);
+			int hostMeta = Pipe.takeByteArrayMetaData(requestPipe);
+			int hostLen  = Pipe.takeByteArrayLength(requestPipe);
 			int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 			
-		  	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
-			int len  = Pipe.takeRingByteLen(requestPipe);
+		  	int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
+			int len  = Pipe.takeByteArrayLength(requestPipe);
 		    int first = Pipe.bytePosition(meta, requestPipe, len);					                	
 		
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
@@ -171,13 +171,13 @@ public class HTTPClientUtil {
 			//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
 			Pipe.readBytes(requestPipe, activeWriter, meta, len);
 			
-			int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER 7
-			int headersLen  = Pipe.takeRingByteLen(requestPipe);
+			int headersMeta = Pipe.takeByteArrayMetaData(requestPipe); // HEADER 7
+			int headersLen  = Pipe.takeByteArrayLength(requestPipe);
 			int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
 			
 			
-			int payloadMeta = Pipe.takeRingByteMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
-			int payloadLen  = Pipe.takeRingByteLen(requestPipe);
+			int payloadMeta = Pipe.takeByteArrayMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
+			int payloadLen  = Pipe.takeByteArrayLength(requestPipe);
 			
 			
 			//For chunked must pass in -1
@@ -227,8 +227,8 @@ public class HTTPClientUtil {
 		int routeId = Pipe.takeInt(requestPipe);
 		int userId = Pipe.takeInt(requestPipe);
 		int port   = Pipe.takeInt(requestPipe);
-		int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
-		int hostLen  = Pipe.takeRingByteLen(requestPipe);
+		int hostMeta = Pipe.takeByteArrayMetaData(requestPipe);
+		int hostLen  = Pipe.takeByteArrayLength(requestPipe);
 		int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 		long connId = Pipe.takeLong(requestPipe);
 		
@@ -236,12 +236,12 @@ public class HTTPClientUtil {
     	assert(routeId>=0);
     	clientConnection.recordDestinationRouteId(routeId);
 		
-		int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
-		int len  = Pipe.takeRingByteLen(requestPipe);
+		int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
+		int len  = Pipe.takeByteArrayLength(requestPipe);
 		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[Pipe.bytePosition(meta, requestPipe, len)&Pipe.blobMask(requestPipe)]);  
 		
-		int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER
-		int headersLen  = Pipe.takeRingByteMetaData(requestPipe);
+		int headersMeta = Pipe.takeByteArrayMetaData(requestPipe); // HEADER
+		int headersLen  = Pipe.takeByteArrayMetaData(requestPipe);
 		int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
 		
 		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
@@ -309,8 +309,8 @@ public class HTTPClientUtil {
 			
 			///////////////////////
 			///host
-			int hostMeta = Pipe.takeRingByteMetaData(requestPipe); //host
-			int hostLen  = Pipe.takeRingByteLen(requestPipe);
+			int hostMeta = Pipe.takeByteArrayMetaData(requestPipe); //host
+			int hostLen  = Pipe.takeByteArrayLength(requestPipe);
 			int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 
 			////////////////
@@ -319,8 +319,8 @@ public class HTTPClientUtil {
 			
 			///////////////////
 			//path
-		  	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
-			int len  = Pipe.takeRingByteLen(requestPipe);
+		  	int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
+			int len  = Pipe.takeByteArrayLength(requestPipe);
 		    int first = Pipe.bytePosition(meta, requestPipe, len);					                	
 		
 		    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
@@ -335,14 +335,14 @@ public class HTTPClientUtil {
 			
 			////////////////
 			//header
-			int headersMeta = Pipe.takeRingByteMetaData(requestPipe); // HEADER 7
-			int headersLen  = Pipe.takeRingByteLen(requestPipe);
+			int headersMeta = Pipe.takeByteArrayMetaData(requestPipe); // HEADER 7
+			int headersLen  = Pipe.takeByteArrayLength(requestPipe);
 			int headersPos  = Pipe.bytePosition(headersMeta, requestPipe, headersLen);
 			
 			//////////////
 			//payloads			
-			int payloadMeta = Pipe.takeRingByteMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
-			int payloadLen  = Pipe.takeRingByteLen(requestPipe);
+			int payloadMeta = Pipe.takeByteArrayMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
+			int payloadLen  = Pipe.takeByteArrayLength(requestPipe);
 						
 			//For chunked must pass in -1
 	

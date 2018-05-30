@@ -31,6 +31,17 @@ import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * Main HTTP router. Quickly redirects any incoming traffic to corresponding routes.
+ *
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							   R extends Enum<R> & HTTPRevision,
 						       V extends Enum<V> & HTTPVerb,
@@ -138,6 +149,19 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				ackStop, config, coordinator, catchAll); 
 	}
 
+	/**
+	 *
+	 * @param gm
+	 * @param parallelId
+	 * @param input _in_ The payload that will be routed.
+	 * @param outputs _out_ The HTTP request parsed from the NetPayloadSchema.
+	 * @param errorResponsePipe _out If error occurs, it will be written to this pipe.
+	 * @param log _out_ Logging output.
+	 * @param ackStop _out_ Acknowledgment for ReleaseSchema.
+	 * @param config
+	 * @param coordinator
+	 * @param catchAll
+	 */
 	public HTTP1xRouterStage(GraphManager gm, 
 			int parallelId,
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
@@ -157,7 +181,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
 	}
-	
+
 	public HTTP1xRouterStage(GraphManager gm, 
 			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 
@@ -651,7 +675,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 	private static boolean consumedAllOfActiveFragment(Pipe<NetPayloadSchema> selectedInput, int p) {
 
-		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobRingTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) && 
+		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) && 
 		       (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobHeadPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p);
 		
 	}
@@ -1147,8 +1171,8 @@ private static long processPlain(
 	long slabPos;
 	that.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
         
-	final int meta       = Pipe.takeRingByteMetaData(selectedInput);
-	final int length     = Pipe.takeRingByteLen(selectedInput);
+	final int meta       = Pipe.takeByteArrayMetaData(selectedInput);
+	final int length     = Pipe.takeByteArrayLength(selectedInput);
 	final int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
 	
 	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            

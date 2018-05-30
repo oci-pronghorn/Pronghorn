@@ -6,6 +6,13 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Merges multiple RawDataSchema into one
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MergeRawDataSchemaStage extends PronghornStage {
 
     //TODO: modify to take any simple schema, nothing with nested messages.
@@ -21,7 +28,13 @@ public class MergeRawDataSchemaStage extends PronghornStage {
     
     long outputCount;
     long[] inputCount;
-    
+
+    /**
+     *
+     * @param graphManager
+     * @param inputs _in_ Multiple RawDataSchema that shoud be merged into one
+     * @param output _out_ Resulting single RawDataSchema from multiple RawDataSchema
+     */
     protected MergeRawDataSchemaStage(GraphManager graphManager, Pipe<RawDataSchema>[] inputs, Pipe<RawDataSchema> output) {
         super(graphManager, inputs, output);
         this.inputs = inputs;
@@ -85,15 +98,15 @@ public class MergeRawDataSchemaStage extends PronghornStage {
                 Pipe.markBytesWriteBase(localOutput);            
                 outputSlab[outputMask & (int) localHead.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;      
                 
-                int inputMeta = Pipe.takeRingByteMetaData(activeInput);
-                int inputLength    = Pipe.takeRingByteLen(activeInput);
+                int inputMeta = Pipe.takeByteArrayMetaData(activeInput);
+                int inputLength    = Pipe.takeByteArrayLength(activeInput);
                 Pipe.addByteArrayWithMask(localOutput, Pipe.blobMask(activeInput), inputLength, Pipe.blob(activeInput), Pipe.bytePosition(inputMeta, activeInput, inputLength));                  
                                 
                 outputSlab[outputMask & (int) localHead.value++] = inputLength;
                 
                 Pipe.publishHeadPositions(localOutput);
                 Pipe.markBytesReadBase(activeInput, inputSlab[inputMask & (int) localTail.value++]);
-                Pipe.batchedReleasePublish(activeInput, Pipe.getWorkingBlobRingTailPosition(activeInput), localTail.value);
+                Pipe.batchedReleasePublish(activeInput, Pipe.getWorkingBlobTailPosition(activeInput), localTail.value);
                 
                 if (++localPipeIdx >= inputsCount) {
                     localPipeIdx = 0;

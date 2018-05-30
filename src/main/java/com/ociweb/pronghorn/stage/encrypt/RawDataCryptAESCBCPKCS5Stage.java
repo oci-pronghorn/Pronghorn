@@ -31,6 +31,9 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * _no-docs_
+ */
 public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 
 	public static final Logger logger = LoggerFactory.getLogger(RawDataCryptAESCBCPKCS5Stage.class);
@@ -598,14 +601,14 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 				int encSize = processBlock(rollLimit, inputStream.absolutePosition() & sourceMask, sourceBuffer, 
 											blobPos, targetBuffer, targetMask); 
 				inputStream.skip(rollLimit);
-				Pipe.addAndGetBytesWorkingHeadPosition(output, encSize);
+				Pipe.addAndGetBlobWorkingHeadPosition(output, encSize);
 				
 				final int rem = avail-rollLimit;
 				int block2 = processBlock(rem, inputStream.absolutePosition() & sourceMask, sourceBuffer,
 						                Pipe.getWorkingBlobHeadPosition(output), targetBuffer, targetMask); 
 				encSize += block2;
 				inputStream.skip(rem);
-				Pipe.addAndGetBytesWorkingHeadPosition(output, block2);
+				Pipe.addAndGetBlobWorkingHeadPosition(output, block2);
 				
 				if (encSize>0) {
 					final int size= Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
@@ -626,7 +629,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	private void publishBockOut(final int targetPos, int length) {
 		int size= Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 		Pipe.addBytePosAndLen(output, targetPos, length);
-		Pipe.addAndGetBytesWorkingHeadPosition(output, length);
+		Pipe.addAndGetBlobWorkingHeadPosition(output, length);
 		Pipe.confirmLowLevelWrite(output, size);
 		Pipe.publishWrites(output);
 	}

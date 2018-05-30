@@ -24,6 +24,15 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
+/**
+ * Client-side stage that reads sockets using a ClientCoordinator
+ * based on a release acknowledgment.
+ * Accepts only expected calls (unlike ServerSocketReaderStage), since
+ * it is a client.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ClientSocketReaderStage extends PronghornStage {	
 	
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
@@ -39,7 +48,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final static int KNOWN_BLOCK_ENDING = -1;
 	private int iteration;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param coordinator
+	 * @param parseAck _in_ The release acknowledgment input pipes.
+	 * @param output _out_ The read payload from the socket.
+	 */
 	public ClientSocketReaderStage(GraphManager graphManager,
 			                       ClientCoordinator coordinator, 
 			                       Pipe<ReleaseSchema>[] parseAck, 
@@ -362,7 +378,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
 		//blob head position is moved forward
 		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
+			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
 		}
 		//record the new start and length to the slab for this blob
 		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
@@ -401,7 +417,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
 		//blob head position is moved forward
 		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
+			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
 		}
 		//record the new start and length to the slab for this blob
 		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);

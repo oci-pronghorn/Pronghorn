@@ -10,6 +10,9 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * _no-docs_
+ */
 public class SocketTestDataStage extends PronghornStage {
 
 	private final Pipe<NetPayloadSchema>[] input; 
@@ -95,8 +98,8 @@ public class SocketTestDataStage extends PronghornStage {
 					long conId = Pipe.takeLong(pipe);
 					long arrivalTime = Pipe.takeLong(pipe);
 										
-					int meta = Pipe.takeRingByteMetaData(pipe);
-					int len = Pipe.takeRingByteLen(pipe);		
+					int meta = Pipe.takeByteArrayMetaData(pipe);
+					int len = Pipe.takeByteArrayLength(pipe);		
 					int pos = Pipe.bytePosition(meta, pipe, len);
 					
 					//TODO: add test here for payload
@@ -123,8 +126,8 @@ public class SocketTestDataStage extends PronghornStage {
 					long position = Pipe.takeLong(pipe);
 					
 
-					int meta = Pipe.takeRingByteMetaData(pipe);
-					int len = Pipe.takeRingByteLen(pipe);					
+					int meta = Pipe.takeByteArrayMetaData(pipe);
+					int len = Pipe.takeByteArrayLength(pipe);					
 					int pos = Pipe.bytePosition(meta, pipe, len);
 					
 

@@ -19,6 +19,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
+/**
+ * Server-side stage that writes back to the socket. Useful for building a server.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
@@ -71,7 +77,7 @@ public class ServerSocketWriterStage extends PronghornStage {
      * 
      * @param graphManager
      * @param coordinator
-     * @param dataToSend
+     * @param dataToSend _in_ The data to be written to the socket.
      */
     public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend) {
         super(graphManager, dataToSend, NONE);
@@ -313,8 +319,8 @@ public class ServerSocketWriterStage extends PronghornStage {
         	activeTails[idx] = -1;
         }
         //byteVector is payload
-        int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-        int len = Pipe.takeRingByteLen(pipe);
+        int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+        int len = Pipe.takeByteArrayLength(pipe);
                 
         assert(len>0) : "All socket writes must be of zero length or they should not be requested";
     
@@ -421,8 +427,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		} else {
 			activeTails[idx] = -1;
 		}
-		int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		int len2 = Pipe.takeRingByteLen(pipe);
+		int meta2 = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+		int len2 = Pipe.takeByteArrayLength(pipe);
 		ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 		
 		workingBuffers[idx].put(writeBuffs2[0]);

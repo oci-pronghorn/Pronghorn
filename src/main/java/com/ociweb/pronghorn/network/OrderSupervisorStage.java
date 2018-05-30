@@ -24,10 +24,15 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
-
-//consumes the sequence number in order and hold a pool entry for this connection
-//sends the data in order to the right pool entry for encryption to be applied down stream.
 //TODO: should add feature of subscriptions here due to it being before the encryption stage.
+
+/**
+ * Consumes the sequence number in order and holds a pool entry for this connection.
+ * Sends the data in order to the right pool entry for encryption to be applied down stream.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
     private static final byte[] BYTES_NEWLINE = "\r\n".getBytes();
@@ -86,17 +91,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     		ServerCoordinator coordinator, boolean isTLS) {
     	return new OrderSupervisorStage(graphManager, inputPipes, log, outgoingPipes, coordinator);
     }
-    
-    /**
-     * 
-     * Data arrives from random input pipes, but each message has a channel id and squence id.
-     * Data is ordered by squence number and sent to the pipe from the pool belonging to that specific channel id
-     * 
-     * 
-     * @param graphManager
-     * @param inputPipes
-     * @param coordinator
-     */
+
+	/**
+	 * Data arrives from random input pipes, but each message has a channel id and squence id.
+	 * Data is ordered by sequence number and sent to the pipe from the pool belonging to that specific channel id
+	 * @param graphManager
+	 * @param inputPipes _in_ The server response which will be supervised.
+	 * @param log _out_ The log output pipe.
+	 * @param outgoingPipes _out_ The net payload after order is enforced.
+	 * @param coordinator
+	 * @param isTLS
+	 */
     public OrderSupervisorStage(GraphManager graphManager, 
     		                     Pipe<ServerResponseSchema>[][] inputPipes, 
     		                     Pipe<HTTPLogResponseSchema> log,
@@ -104,7 +109,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     		                     ServerCoordinator coordinator, boolean isTLS) {
     	this(graphManager, join(inputPipes), log, outgoingPipes, coordinator);
     }
-    
+
     public OrderSupervisorStage(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
     		Pipe<HTTPLogResponseSchema> log,
@@ -581,8 +586,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(sequenceNo == expSeq);
 		 
 		 //byteVector is payload
-		 int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
-		 int len = Pipe.takeRingByteLen(input);
+		 int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
+		 int len = Pipe.takeByteArrayLength(input);
 		
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
 		 
@@ -674,8 +679,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 assert(seq == expSeq);
 					 
 					 
-					 int meta2 = Pipe.takeRingByteMetaData(input); //for string and byte array
-					 int len2 = Pipe.takeRingByteLen(input);
+					 int meta2 = Pipe.takeByteArrayMetaData(input); //for string and byte array
+					 int len2 = Pipe.takeByteArrayLength(input);
 					 len+=len2;//keep running count so we can sure not to overflow the output
 
 					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward
