@@ -2187,6 +2187,7 @@ public class GraphManager {
 		}
 		
 		Appendables.appendValue(target.append(",penwidth="),lineWidth);
+		target.append(",fontcolor=white");
 		
 		target.write(CLOSEBRACKET_NEWLINE);
 	}
