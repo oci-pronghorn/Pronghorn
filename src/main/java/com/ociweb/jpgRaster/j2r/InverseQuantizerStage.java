@@ -20,6 +20,12 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+import com.ociweb.jpgRaster.JPG.ColorComponent;
+import com.ociweb.jpgRaster.JPG.Header;
+import com.ociweb.jpgRaster.JPG.MCU;
+import com.ociweb.jpgRaster.JPG.QuantizationTable;
+
+
 /**
  * Performs inverse quantization on a JPG schema pipe and returns
  * the results back onto a JPG schema pipe.
