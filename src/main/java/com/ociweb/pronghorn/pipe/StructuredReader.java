@@ -139,6 +139,12 @@ public final class StructuredReader {
 		return readText(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
+    /**
+     * Checks to see if passed bytes are equal to field
+     * @param fieldId field to compare
+     * @param utf8EncodedBytes bytes to compare
+     * @return <code>true</code> if equal, else <code>false</code>
+     */
 	public boolean isEqual(long fieldId, byte[] utf8EncodedBytes) {
 		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
@@ -159,6 +165,12 @@ public final class StructuredReader {
 	}
 	
 	//returns -1 when absent
+
+    /**
+     * Reads String as long in given field
+     * @param fieldId field to read from
+     * @return converted String, if field is null return -1
+     */
 	public long readTextAsLong(long fieldId) {
 		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
@@ -179,6 +191,12 @@ public final class StructuredReader {
 	}
 	
 	//returns -1 when absent
+
+    /**
+     * Reads String as double in given field
+     * @param fieldId field to read from
+     * @return converted String, if field is null return -1
+     */
 	public double readTextAsDouble(long fieldId) {
 		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
