@@ -6,6 +6,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines release messages. These are acknowledgments to be sent back to another stage to let them know
+ * that a pipe is free or a task has finished. Use Position and SequenceNo fields to indicate where operation
+ * has ceased.
+ */
 public class ReleaseSchema extends MessageSchema<ReleaseSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

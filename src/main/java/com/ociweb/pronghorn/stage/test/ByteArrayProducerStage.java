@@ -8,6 +8,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /**
  * Takes an array of bytes and writes them to the output pipe once.
  * Useful for testing RawDataSchema
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ByteArrayProducerStage extends PronghornStage{
 
@@ -30,13 +33,6 @@ public class ByteArrayProducerStage extends PronghornStage{
         this(gm, rawData, null, output);
     }
 
-    /**
-     *
-     * @param gm
-     * @param rawData
-     * @param optionalChunkSizes
-     * @param output _out_ The pipe onto which the rawData byte array will be written to
-     */
     public ByteArrayProducerStage(GraphManager gm, byte[] rawData, int[] optionalChunkSizes, Pipe<RawDataSchema> output) {
         super(gm, NONE, output);
         this.rawData = rawData;

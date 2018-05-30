@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
+ * _no-docs_
  * Generate ranges of packet Ids for use in distributed communication. Once communications
  * are complete the Id is returned so it can be used again later for a different transaction.
  * 

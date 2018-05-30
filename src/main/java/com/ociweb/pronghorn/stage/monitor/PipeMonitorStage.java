@@ -13,6 +13,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /**
  * Stage which monitors pipes in real time.
  * This data is passed along for the telemetry.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class PipeMonitorStage extends PronghornStage {
 

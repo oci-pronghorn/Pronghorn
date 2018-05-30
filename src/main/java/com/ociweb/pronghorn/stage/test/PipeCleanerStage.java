@@ -12,6 +12,9 @@ import com.ociweb.pronghorn.util.Appendables;
 /**
  * For some schema T consumes all the data on the input pipes.
  * The data is not reported anyway.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage {
 
@@ -57,12 +60,6 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
     	this(graphManager, input, "");
     }
 
-    /**
-     *
-     * @param graphManager
-     * @param input _in_ Any schema input pipe
-     * @param label
-     */
     public PipeCleanerStage(GraphManager graphManager, Pipe<T> input, String label) {
         this(graphManager, new Pipe[]{input},label);
     }

@@ -43,8 +43,10 @@ import com.ociweb.pronghorn.util.ServiceObjectValidator;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-/*
+/**
  * Minimal memory usage and leverages SSD for file reading module.
+ * Provides HTTP file transfer, i.e. browser requests file and this stage returns it.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -241,8 +243,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 	/**
 	 *
 	 * @param graphManager
-	 * @param inputs _in_ Input request
-	 * @param outputs _out_ Output server response
+	 * @param inputs _in_ Array of requests for file(s).
+	 * @param outputs _out_ Array of responses with the requested file(s).
 	 * @param httpSpec
 	 * @param rootPath
 	 */

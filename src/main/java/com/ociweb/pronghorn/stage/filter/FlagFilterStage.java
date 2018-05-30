@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
+ * _no-docs_
  * Filter messages based on flags.
  * @param <T>
  * @author Nathan Tippy
@@ -17,7 +18,6 @@ public class FlagFilterStage<T extends MessageSchema<T>> extends PronghornStage 
 
     //after instances of each id then let them pass
     //saves its own state
-    
     
     private final Pipe<T> input;
     private final Pipe<T> output;

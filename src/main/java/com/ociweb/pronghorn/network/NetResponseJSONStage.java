@@ -18,6 +18,14 @@ import com.ociweb.pronghorn.util.parse.JSONStreamVisitorCapture;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToPipe;
 import com.ociweb.pronghorn.util.parse.MapJSONToPipeBuilder;
 
+/**
+ * Parses a JSON response using a JSONStreamVisitor.
+ * @param <M>
+ * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>& TrieKeyable> extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
@@ -33,7 +41,14 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 	private static final Logger logger = LoggerFactory.getLogger(NetResponseJSONStage.class);
 	private static final int PAYLOAD_INDEX_OFFSET = 1;
 	protected final int bottomOfJSON;
-	
+
+	/**
+	 *
+ 	 * @param graphManager
+	 * @param input _in_ The NetResponseSchema containing the JSON to be parsed.
+	 * @param bottom
+	 * @param visitor
+	 */
 	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, int bottom, JSONStreamVisitor visitor) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -43,7 +58,17 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 		this.mapper = null;
 		this.bottomOfJSON = bottom;
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param keys
+	 * @param mapper
+	 * @param input _in_ The NetResponseSchema containing the JSON to be parsed.
+	 * @param bottom
+	 * @param output _out_ Put the parsed JSON onto this output pipe.
+	 * @param otherOutputs _out_ Put the parsed JSON onto multiple output pipes.
+	 */
 	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  MapJSONToPipeBuilder<M,T> mapper, Pipe<NetResponseSchema> input, int bottom, Pipe<M> output, Pipe ... otherOutputs) {
 		super(graphManager, input, join(otherOutputs, output));
 		this.input = input;

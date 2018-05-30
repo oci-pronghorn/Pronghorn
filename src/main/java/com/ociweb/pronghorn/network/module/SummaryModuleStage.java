@@ -18,6 +18,14 @@ import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
+/**
+ * _no-docs_
+ *
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ */
 public class SummaryModuleStage<T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,

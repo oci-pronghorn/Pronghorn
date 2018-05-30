@@ -32,7 +32,9 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
- * Parses HTTP1.x requests.
+ * Parses HTTP1.x responses from the server and sends an acknowledgment to an output pipe
+ * to be sent back to a request stage.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -79,9 +81,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
     /**
      *
      * @param graphManager
-     * @param input _in_ The pipe containing the HTTP payload
-     * @param output _out_  The net response
-     * @param ackStop _out_ The acknowledgment
+     * @param input _in_ Pipe containing the HTTP payload.
+     * @param output _out_  Net response.
+     * @param ackStop _out_ Acknowledgment for forwarding.
      * @param ccm
      * @param httpSpec
      */

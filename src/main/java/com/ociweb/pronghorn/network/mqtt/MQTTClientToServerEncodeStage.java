@@ -30,6 +30,13 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
+/**
+ * _no-docs_
+ * Encodes client message for sending to server.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private final TrieParserReader READER = new TrieParserReader(true);
@@ -92,7 +99,23 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private final int ringMask;
 	
     int remainingInFlight;
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param ccm
+	 * @param maxInFlight
+	 * @param uniqueId
+	 * @param input _in_
+	 * @param inputAck _in_
+	 * @param persistBlobStoreConsumer _out_
+	 * @param persistBlobStoreProducer _in_
+	 * @param persistBlobLoadRelease _in_
+	 * @param persistBlobLoadConsumer _in_
+	 * @param persistBlobLoadProducer _in_
+	 * @param idRangeControl _out_
+	 * @param toBroker _out_
+	 */
 	public MQTTClientToServerEncodeStage(GraphManager gm, ClientCoordinator ccm, int maxInFlight, int uniqueId, 
 			                             Pipe<MQTTClientToServerSchema> input,
 			                             Pipe<MQTTClientToServerSchemaAck> inputAck,

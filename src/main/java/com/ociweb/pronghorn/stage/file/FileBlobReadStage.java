@@ -18,7 +18,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 /**
- * Reads files as blobs based on an input path.
+ * Reads files from disk as blobs based on an input path.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -40,7 +41,7 @@ public class FileBlobReadStage extends PronghornStage {
     /**
      *
      * @param graphManager
-     * @param output _out_ File from inputPathString will be written to this RawDataSchema pipe.
+     * @param output _out_ Pipe that file from inputPathString will be written to.
      * @param inputPathString
      */
     public FileBlobReadStage(GraphManager graphManager, 

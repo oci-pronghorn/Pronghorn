@@ -6,6 +6,7 @@ import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
+ * _no-docs_
  * Converts data in matrix to decimal data onto the matrix.
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>

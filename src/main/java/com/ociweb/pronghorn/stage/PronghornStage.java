@@ -8,7 +8,9 @@ import com.ociweb.pronghorn.stage.scheduling.DidWorkMonitor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
-
+/**
+ * _no-docs_
+ */
 public abstract class PronghornStage {
 	
 	private static final Logger logger = LoggerFactory.getLogger(PronghornStage.class);

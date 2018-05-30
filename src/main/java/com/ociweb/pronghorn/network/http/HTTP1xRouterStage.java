@@ -32,11 +32,13 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
- * Routes HTTP 1x requests.
+ * Main HTTP router. Quickly redirects any incoming traffic to corresponding routes.
+ *
  * @param <T>
  * @param <R>
  * @param <V>
  * @param <H>
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -148,6 +150,19 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				ackStop, config, coordinator, catchAll); 
 	}
 
+	/**
+	 *
+	 * @param gm
+	 * @param parallelId
+	 * @param input _in_ The payload that will be routed.
+	 * @param outputs _out_ The HTTP request parsed from the NetPayloadSchema.
+	 * @param errorResponsePipe _out If error occurs, it will be written to this pipe.
+	 * @param log _out_ Logging output.
+	 * @param ackStop _out_ Acknowledgment for ReleaseSchema.
+	 * @param config
+	 * @param coordinator
+	 * @param catchAll
+	 */
 	public HTTP1xRouterStage(GraphManager gm, 
 			int parallelId,
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
@@ -167,7 +182,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
 	}
-	
+
 	public HTTP1xRouterStage(GraphManager gm, 
 			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 

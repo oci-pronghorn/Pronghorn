@@ -6,6 +6,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines how a connection to a server is established.
+ */
 public class ServerConnectionSchema extends MessageSchema<ServerConnectionSchema> {
 
     public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

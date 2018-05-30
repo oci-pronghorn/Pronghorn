@@ -25,7 +25,11 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
- * Stage that acts as a client for sockets
+ * Client-side stage that reads sockets using a ClientCoordinator
+ * based on a release acknowledgment.
+ * Accepts only expected calls (unlike ServerSocketReaderStage), since
+ * it is a client.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -49,8 +53,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	 *
 	 * @param graphManager
 	 * @param coordinator
-	 * @param parseAck _in_ The parse acknowledgment input pipes
-	 * @param output _out_ Writes payload to multiple output pipes
+	 * @param parseAck _in_ The release acknowledgment input pipes.
+	 * @param output _out_ The read payload from the socket.
 	 */
 	public ClientSocketReaderStage(GraphManager graphManager,
 			                       ClientCoordinator coordinator, 

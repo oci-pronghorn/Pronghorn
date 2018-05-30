@@ -11,7 +11,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
- * Dummy REST stage that does nothing.
+ * Dummy REST stage that simply returns <strong>501</strong>. Use this to quickly build yourself a web server without
+ * worrying about implementation, or to test concurrent behavior.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -32,7 +34,7 @@ public class DummyRestStage extends PronghornStage {
 	 *
 	 * @param graphManager
 	 * @param inputPipes _in_ Input pipes containing the HTTP request
-	 * @param outputs _out_ Output pipes will contain the server response
+	 * @param outputs _out_ No output except 501 error.
 	 * @param httpSpec
 	 */
 	public DummyRestStage(GraphManager graphManager,

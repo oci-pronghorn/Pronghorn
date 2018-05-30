@@ -24,7 +24,8 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
- * Fetches resources as HTTP response based on request.
+ * Fetches resources as HTTP responses based on request.
+ *
  * @param <T>
  * @param <R>
  * @param <V>
@@ -72,8 +73,8 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	/**
 	 *
 	 * @param graphManager
-	 * @param inputs _in_ The HTTPRequest input that is requesting a resource.
-	 * @param outputs _out_ Responds with the resource if it exists.
+	 * @param inputs _in_ Multiple HTTPRequest that are requesting resource(s).
+	 * @param outputs _out_ Responds with the resource(s) if it/they exists.
 	 * @param httpSpec
 	 * @param prefix
 	 * @param resourceName

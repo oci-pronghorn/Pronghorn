@@ -9,6 +9,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * _no-docs_
+ */
 public class TwitterEventDumpStage extends PronghornStage {
 
 	private final Pipe<TwitterEventSchema> input;

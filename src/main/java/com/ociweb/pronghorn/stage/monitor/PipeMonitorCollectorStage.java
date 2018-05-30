@@ -13,7 +13,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 /**
- * Listens to all the pipe monitoring data and collects them into a single list. This is needed for the telemetry.
+ * _no-docs_
+ * Listens to all the pipe monitoring data and collects them into a single list.
+ * This is needed for the telemetry.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class PipeMonitorCollectorStage extends PronghornStage {
 
@@ -44,6 +49,11 @@ public class PipeMonitorCollectorStage extends PronghornStage {
     private final int batchSize;
 	private int reportSlowSpeed = 10;
 
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Pipes to be monitored.
+	 */
 	private PipeMonitorCollectorStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;

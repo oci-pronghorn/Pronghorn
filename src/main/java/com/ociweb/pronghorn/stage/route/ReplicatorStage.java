@@ -8,11 +8,10 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Given n ring buffers with the same FROM/Schema
- * 
  * Does not require schema knowledge for copy but does ensure targets and source have the same FROM.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
- *
  */
 public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage {
 
@@ -45,9 +44,9 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	/**
 	 *
 	 * @param gm
-	 * @param source _in_ Input pipe
-	 * @param a _out_ Will be joined with b.
-	 * @param b _out_ Will be joined with a.
+	 * @param source _in_ Any input pipe that will be replicated.
+	 * @param a _out_ Target pipe; will be joined with b.
+	 * @param b _out_ Target pipe; will be joined with a.
 	 */
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> a, Pipe<T> b) {
 		this(gm,source,join(a,b));
@@ -56,8 +55,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	/**
 	 *
 	 * @param gm
-	 * @param source _in_ Any input pipe
-	 * @param targets _out_ Outputs (todo desc)
+	 * @param source _in_ Any input pipe that will be replicated.
+	 * @param targets _out_ Multiple targets to which the source pipe is replicated.
 	 */
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);

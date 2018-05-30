@@ -4,6 +4,11 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ *
+ * @param <M>
+ */
 public class RowsToColumnRouteStage<M extends MatrixSchema<M>> extends PronghornStage {
 
 	private final Pipe<RowSchema<M>> rowPipeInput; 

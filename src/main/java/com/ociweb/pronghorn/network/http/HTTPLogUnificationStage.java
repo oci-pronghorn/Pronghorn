@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.util.Appendables;
 /**
  * Takes multiple HTTP log requests and responses and turns them into a RawDataSchema for
  * easier output.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -40,9 +41,9 @@ public class HTTPLogUnificationStage extends PronghornStage {
 	/**
 	 *
 	 * @param graphManager
-	 * @param requestInputs _in_ HTTP Request logs
-	 * @param responseInputs _in_ HTTP Response logs
-	 * @param output _out_ All the request and response logs combined onto the output pipe as a RawDataSchema
+	 * @param requestInputs _in_ All HTTP request logs.
+	 * @param responseInputs _in_ All HTTP response logs.
+	 * @param output _out_ All the request and response logs combined onto the output pipe as a RawDataSchema.
 	 */
 	public HTTPLogUnificationStage(GraphManager graphManager, 
 			                          Pipe<HTTPLogRequestSchema>[] requestInputs,

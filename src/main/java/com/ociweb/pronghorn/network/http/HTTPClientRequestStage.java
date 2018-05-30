@@ -17,7 +17,8 @@ import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
- * Takes a HTTP client request and responds with a net payload.
+ * Takes a HTTP client request and responds with a net payload using a TrieParserReader.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */

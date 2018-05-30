@@ -10,6 +10,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 /**
  * For some schema T distributes the records across N output streams of the same
  * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class RoundRobinRouteStage<T extends MessageSchema<T>> extends PronghornStage {
 

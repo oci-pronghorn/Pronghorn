@@ -25,7 +25,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 //TODO: update to use byteBuffer array...
 
 /**
- * Writes data to file.
+ * Writes data to file on disk (in blobs).
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */

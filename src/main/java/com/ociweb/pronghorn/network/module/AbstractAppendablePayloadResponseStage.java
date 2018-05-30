@@ -21,11 +21,18 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 /**
- * Abstraction for response payloads.
+ * Abstraction for response payloads using UTF-8 or other text encoding.
+ * See ByteArrayPayloadResponseStage to implement a custom REST responder that responds
+ * only using bytes.
+ *
+ * Use this to define custom HTTP REST behavior.
  * @param <T>
  * @param <R>
  * @param <V>
  * @param <H>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public abstract class AbstractAppendablePayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,

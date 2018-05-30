@@ -19,11 +19,13 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
 /**
- * For raw bytes schema writes data out to typical output stream.
+ * Rest service stage which responds with the dot file needed to display the telemetry.
+ * This dot file is a snapshot of the system representing its state within the last 40 ms.
  * @param <T>
  * @param <R>
  * @param <V>
  * @param <H>
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -47,8 +49,16 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
     }
 	
     private final PipeMonitorCollectorStage monitor;
-    
-	private DotModuleStage(GraphManager graphManager, 
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Pipe containing request for generated .dot file.
+	 * @param outputs _out_ Pipe that will contain HTTP response containing newly generated .dot file.
+	 * @param httpSpec
+	 * @param monitor
+	 */
+	public DotModuleStage(GraphManager graphManager,
 			Pipe<HTTPRequestSchema>[] inputs, 
 			Pipe<ServerResponseSchema>[] outputs, 
 			HTTPSpecification httpSpec, PipeMonitorCollectorStage monitor) {

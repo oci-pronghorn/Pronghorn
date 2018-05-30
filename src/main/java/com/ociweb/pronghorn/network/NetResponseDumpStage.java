@@ -14,6 +14,9 @@ import com.ociweb.pronghorn.util.Appendables;
 /**
  * Dumps a NetResponseSchema onto an Appendable target.
  * @param <A>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 

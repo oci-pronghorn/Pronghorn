@@ -16,6 +16,9 @@ import com.ociweb.pronghorn.util.Appendables;
  * Periodically reports the Number of each message type to target appendable.
  * Default target is system.out.
  * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornStage {
 
@@ -36,18 +39,12 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 	/**
 	 *
 	 * @param gm
-	 * @param input _in_ Any schema input pipe
+	 * @param input _in_ Any schema input pipe that should be summarized.
 	 */
 	public ConsoleSummaryStage(GraphManager gm, Pipe<T> input) {
 	    this(gm, input, System.out);
 	}
 
-	/**
-	 *
-	 * @param gm
-	 * @param input _in_ Any schema input pipe
-	 * @param target
-	 */
 	public ConsoleSummaryStage(GraphManager gm, Pipe<T> input, Appendable target) {
 		super(gm, input, NONE);
 		this.input = input;

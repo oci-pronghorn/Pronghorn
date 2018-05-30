@@ -8,6 +8,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ */
 public class OAuth1AccessTokenStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputs; 

@@ -6,8 +6,11 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
- *  Empty stage which does no work.  It takes an output pipe and writes nothing.
+ * Empty stage which does no work.  It takes an output pipe and writes nothing.
  * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class PipeNoOp<T extends MessageSchema<T>> extends PronghornStage  {
 

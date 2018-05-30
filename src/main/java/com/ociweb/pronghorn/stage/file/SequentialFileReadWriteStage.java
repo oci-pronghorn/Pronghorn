@@ -25,6 +25,12 @@ import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Sequentially read and write to file.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class SequentialFileReadWriteStage extends PronghornStage {
 
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
@@ -56,6 +62,15 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     private FileSystem fileSystem;
     private Set<OpenOption> options;
 
+	/**
+	 *
+	 * @param graphManager
+	 * @param control _in_ Schemas defining sequential control.
+	 * @param response _out_ Schemas defining sequential response.
+	 * @param input _in_ Data being read.
+	 * @param output _out_ Data being written.
+	 * @param paths
+	 */
     public SequentialFileReadWriteStage(GraphManager graphManager,
 	    						 Pipe<SequentialCtlSchema>[] control,
 	    						 Pipe<SequentialRespSchema>[] response,

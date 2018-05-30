@@ -23,7 +23,10 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
- * Abstract stage that can be extended for dealing with payloads stored as bytes.
+ * Extend this class to write your own REST responders. Implement payload()
+ * to return a byte array. See AbstractAppendablePayloadResponseStage for implementing
+ * a UTF-8 REST responder.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */

@@ -19,7 +19,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
 /**
- * Stage that blocks storage until released.
+ * _no-docs_
+ * Stage that holds storage until release is received.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */

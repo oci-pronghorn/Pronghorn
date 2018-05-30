@@ -30,12 +30,11 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 /**
  * General base class for server construction.
  * Server should minimize garbage but unlike client may not be possible to remove it.
- * 
- * No protocol specifics are found in this class only socket usage logic
+ *
+ * No protocol specifics are found in this class, only socket usage logic.
  * 
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
- *
  */
 public class ServerNewConnectionStage extends PronghornStage{
         
@@ -62,7 +61,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
 		return new ServerNewConnectionStage(graphManager,coordinator,newClientConnections);
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param coordinator
+	 * @param newClientConnections _out_ The ServerConnectionSchema containing the newest client information.
+	 */
     public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections) {
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;

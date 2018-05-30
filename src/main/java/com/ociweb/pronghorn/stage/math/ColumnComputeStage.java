@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
+ * _no-docs_
  * Computes matrices based on columns and a single row.
  * @param <M>
  * @param <C>
@@ -219,7 +220,7 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 
 			//add one value to the output pipe
 			//value taken from full rowInput and full inputPipe input				
-			type.ComomputeColumn(rRows, colInput[i], rowInput, colOutput[i]);
+			type.computeColumn(rRows, colInput[i], rowInput, colOutput[i]);
 
 			if (remainingRows>0) {  
 				//restore for next pass but not for the very last one.

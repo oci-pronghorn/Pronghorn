@@ -16,6 +16,14 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Reads a Pronghorn "tape" from disk and writes it back onto a pipe.
+ * Tape is a file format that mimics Pronghorn pipe data format, useful for
+ * very structured formats.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class TapeReadStage extends PronghornStage {
 
     private final RandomAccessFile inputFile;
@@ -37,7 +45,13 @@ public class TapeReadStage extends PronghornStage {
     
     //TODO: add command pipe for reading from multiple channels
     //TODO: Unrelated: build stage with executor service as arg for map reduce using new random access to pipe
-        
+
+    /**
+     *
+     * @param graphManager
+     * @param inputFile
+     * @param output _out_ Writes the read tape directly back onto a RawDataSchema pipe.
+     */
     public TapeReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
         super(graphManager, NONE, output);
         this.inputFile = inputFile;

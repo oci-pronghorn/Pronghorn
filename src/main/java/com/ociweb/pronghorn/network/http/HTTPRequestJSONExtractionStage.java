@@ -19,8 +19,9 @@ import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 
 /**
- * Using a JSONExtractor, this stage takes a HTTP request with JSON and turns it into
- * a ServerResponseSchema.
+ * Using a JSONExtractor, takes a HTTP request with JSON and turns it into
+ * a ServerResponseSchema onto a ServerResponseSchema pipe.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -46,8 +47,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	 * @param graphManager
 	 * @param extractor
 	 * @param structId
-	 * @param input _in_ The HTTP request containing JSON
-	 * @param output _out_ The HTTP response
+	 * @param input _in_ The HTTP request containing JSON.
+	 * @param output _out_ The HTTP response.
 	 * @param err _out_ Contains ServerResponseSchema if error occurred
 	 */
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 

@@ -17,7 +17,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
 /**
- * Socket client with capabilities to write back
+ * Write to a socket using a client coordinator.
+ *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -59,7 +60,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	 *
 	 * @param graphManager
 	 * @param ccm
-	 * @param input _in_ Input pipe containing payload
+	 * @param input _in_ Payload that will be written to socket.
 	 */
 	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);

@@ -15,7 +15,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-
+/**
+ * _no-docs_
+ */
 public class RegulatedLoadTestStage extends PronghornStage{
 
 	private static final int HANG_TIMEOUT_MS = 120_000;//Integer.MAX_VALUE;//10_000;

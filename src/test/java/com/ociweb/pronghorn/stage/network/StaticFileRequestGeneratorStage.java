@@ -22,6 +22,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import junit.framework.Assert;
 
+/**
+ * _no-docs_
+ */
 public class StaticFileRequestGeneratorStage extends PronghornStage {
 
     private final int iterations;

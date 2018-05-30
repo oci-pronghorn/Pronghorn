@@ -24,7 +24,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * 
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
- *
  */
 public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 
@@ -60,7 +59,13 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 	private final RandomAccessFile outputFile;
 	
 	///TODO: add second pipe with commands eg (write N fields to X file then close)
-	
+
+    /**
+     *
+     * @param gm
+     * @param source _in_ The input pipe that will be written as a tape to disk.
+     * @param outputFile
+     */
 	public TapeWriteStage(GraphManager gm, Pipe<T> source, RandomAccessFile outputFile) {
 		super(gm,source,NONE);
 		

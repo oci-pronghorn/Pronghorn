@@ -8,7 +8,8 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
 /**
- * Defines how a server response is formatted.
+ * Defines how a server response is formatted, including channel information, payload,
+ * request , subscriptions, sequence, and more.
  */
 public class ServerResponseSchema extends MessageSchema<ServerResponseSchema> {
 

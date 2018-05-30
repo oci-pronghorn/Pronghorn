@@ -13,6 +13,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * Can be set to assume that bytes are UTF8.
  * The default output is System.out
  * @param <T>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornStage {
 
@@ -46,7 +49,7 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 	/**
 	 *
 	 * @param graphManager
-	 * @param input _in_ The pipe to be dumped
+	 * @param input _in_ Pipe to be dumped
 	 */
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
@@ -56,12 +59,6 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
         
 	}
 
-	/**
-	 *
-	 * @param graphManager
-	 * @param input _in_ The pipe to be dumped
-	 * @param out
-	 */
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out) {
 		this(graphManager, input, out, false);
 		
@@ -69,13 +66,6 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
         
 	}
 
-	/**
-	 *
-	 * @param graphManager
-	 * @param input _in_ The pipe to be dumped
-	 * @param out
-	 * @param showBytesAsUTF
-	 */
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out, boolean showBytesAsUTF) {
 		this(graphManager, input);
 		this.out = out;
