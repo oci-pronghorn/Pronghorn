@@ -72,7 +72,7 @@ public class PipeConverterTest {
         
         Pipe.validateVarLength(ring, 7);
                 
-        Pipe.addDecimalAsASCII(2, 123456, ring);
+        Pipe.addDecimalAsASCII(-2, 123456, ring);
         Pipe.addBytePosAndLen(ring,0,7);
         
         Pipe.publishWrites(ring);
@@ -91,7 +91,7 @@ public class PipeConverterTest {
         assertTrue(ringToString, ringToString.contains("slabTailPos 0"));
 
         
-        Pipe.addDecimalAsASCII(2, 1, ring); 
+        Pipe.addDecimalAsASCII(-2, 1, ring); 
         Pipe.addBytePosAndLen(ring,0,4);
         
         Pipe.publishWrites(ring);
@@ -109,7 +109,7 @@ public class PipeConverterTest {
         assertTrue(ringToString, ringToString.contains("blobHeadPos 0"));
         assertTrue(ringToString, ringToString.contains("blobTailPos 0"));
         
-        Pipe.addDecimalAsASCII(-2, 1, ring);
+        Pipe.addDecimalAsASCII(2, 1, ring);
         Pipe.addBytePosAndLen(ring,0,4);
         
         Pipe.publishWrites(ring);
@@ -120,7 +120,7 @@ public class PipeConverterTest {
         target.setLength(0);
         Pipe.readASCII(ring, target, meta, len);
         
-        assertEquals("100.",target.toString());
+        assertEquals("100",target.toString());
     }
     
     @Test
