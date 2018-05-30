@@ -449,7 +449,7 @@ public class PipeWriter {
 	}
 
 	/**
-	 *
+	 * Writes a long as a String in given pipe
 	 * @param pipe to be updated
 	 * @param loc for field to be updated
 	 * @param value long to write to specified location
@@ -535,7 +535,7 @@ public class PipeWriter {
 		Pipe.beginNewPublishBatch(pipe);
 	}
 
-	/*
+	/**
 	 * blocks until there is enough room for the requested fragment on the output ring.
 	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
 	 * 
@@ -549,10 +549,6 @@ public class PipeWriter {
 
 	/**
 	 * Copy message previously sent and publish it again.
-	 * 
-	 * @param pipe
-	 * @param historicSlabPosition
-	 * @param historicBlobPosition
 	 */
 	public static boolean tryReplication(Pipe pipe, 
 			                             final long historicSlabPosition, 
@@ -662,8 +658,15 @@ public class PipeWriter {
     public static void setPublishBatchSize(Pipe pipe, int size) {
 		Pipe.setPublishBatchSize(pipe, size);
 	}
-        
-    public static void writeFieldFromInputStream(Pipe pipe, int loc, InputStream inputStream, final int byteCount) throws IOException { 
+
+	/**
+	 * Writes field from data received in the input stream
+	 * @param pipe to write to
+	 * @param loc location to write field
+	 * @param inputStream to get data to write field
+	 * @param byteCount max bytes in field
+	 */
+	public static void writeFieldFromInputStream(Pipe pipe, int loc, InputStream inputStream, final int byteCount) throws IOException {
         buildFieldFromInputStream(pipe, loc, inputStream, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
     }
 
@@ -681,6 +684,13 @@ public class PipeWriter {
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
 
+	/**
+	 * Writes field from data input in given pipe and location
+	 * @param pipe to write to
+	 * @param loc location to write field
+	 * @param dataInput data used to write field
+	 * @param byteCount max bytes in field
+	 */
     public static void writeFieldFromDataInput(Pipe pipe, int loc, DataInput dataInput, final int byteCount) throws IOException { 
     	buildFieldFromDataInput(pipe, loc, dataInput, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
     }
@@ -730,6 +740,11 @@ public class PipeWriter {
 		Pipe.unstoreBlobWorkingHeadPosition(target);
 	}
 
+	/**
+	 * Specifies to close the field
+	 * @param target pipe to use
+	 * @param loc field to close
+	 */
 	public static void wrappedUnstructuredLayoutBufferClose(Pipe<?> target,	int loc, int length) {
 		assert(length>=0);
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);

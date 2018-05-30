@@ -19,6 +19,10 @@ public class StructuredWriter {
 	private int[] positions = new int[4];
 	private Object[] associations = new Object[4];
 
+	/**
+	 * 
+	 * @param assoc
+	 */
 	public void writeInt(Object assoc) {
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
 		storeAssocAndPosition(assoc);
