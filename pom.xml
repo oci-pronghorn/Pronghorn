@@ -3,8 +3,34 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.ociweb.jpgRaster</groupId>
 	<artifactId>JPGRaster</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
 
+	<name>${project.artifactId}</name>
+	<description>JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
+		It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel values.
+		It can also read an uncompressed BMP file, compress the data and output a corresponding JPG file.</description>
+	<url>https://github.com/oci-pronghorn/JPG-Raster</url>
+	<licenses>
+		<license>
+			<name>BSD-3 License</name>
+			<url>https://opensource.org/licenses/BSD-3-Clause</url>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<name>Nathan Tippy</name>
+			<email>info@objectcomputing.com</email>
+			<organization>ObjectComputing</organization>
+			<organizationUrl>http://www.ObjectComputing.com</organizationUrl>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:git://github.com/oci-pronghorn/JPG-Raster.git</connection>
+		<url>https://github.com/oci-pronghorn/JPG-Raster</url>
+		<developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/JPG-Raster.git</developerConnection>
+		<tag>HEAD</tag>
+	</scm>
 	<properties>
 		<java.bootstrap.classes>
 			${java.home}/lib/rt.jar
@@ -17,6 +43,76 @@
 		</java.secure.socket.extension.classes>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
+
+	<profiles>
+		<profile>
+			<id>cloudbees</id>
+			<distributionManagement>
+				<repository>
+					<id>cloudbees.release</id>
+					<url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+				</repository>
+			</distributionManagement>
+		</profile>
+		<profile>
+			<id>disable-java8-doclint</id>
+			<activation>
+				<jdk>[1.8,)</jdk>
+			</activation>
+			<properties>
+				<additionalparam>-Xdoclint:none</additionalparam>
+			</properties>
+		</profile>
+		<profile>
+			<id>mvn-central</id>
+			<distributionManagement>
+				<snapshotRepository>
+					<id>PronghornPipes</id>
+					<url>https://oss.sonatype.org/content/repositories/snapshots
+					</url> <!-- Maven central repos for snapshot and release -->
+				</snapshotRepository>
+				<repository>
+					<id>PronghornPipes</id>
+					<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+				</repository>
+			</distributionManagement>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-release-plugin</artifactId>
+						<version>2.5.3</version>
+					</plugin>
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<version>1.6.8</version>
+						<extensions>true</extensions>
+						<configuration>
+							<serverId>ossrh</serverId>
+							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+							<autoReleaseAfterClose>false</autoReleaseAfterClose>
+						</configuration>
+					</plugin>
+
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.5</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 	<repositories>
 
@@ -57,7 +153,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>Pronghorn</artifactId>
-            <version>[0.0.14-SNAPSHOT,1.1.0)</version>
+            <version>[1.0.0-SNAPSHOT,1.1.0)</version>
         </dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -79,20 +175,6 @@
 			<optional>false</optional>
 		</dependency>
 	</dependencies>
-
-  <scm>
-    <connection>scm:git:git://github.com/oci-pronghorn/JPG-Raster.git</connection>
-    <url>https://github.com/oci-pronghorn/JPG-Raster</url>
-    <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/JPG-Raster.git</developerConnection>
-    <tag>HEAD</tag>
-  </scm>
-    
-  <distributionManagement>
-    <repository>
-      <id>cloudbees.release</id>
-      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-    </repository>
-  </distributionManagement>
 
 	<build>
 		<extensions>
@@ -169,6 +251,12 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.5.3</version>
 			</plugin>
 
 			<plugin>
