@@ -29,8 +29,14 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 */
 	 abstract public int length();
 
+	/**
+	 * @return actual offset position in the array where you are right now
+	 */
 	 abstract public int absolutePosition();
 
+	/**
+	 * @param absolutePosition the actual offset position in the array where you want to be right now
+	 */
 	 abstract public void absolutePosition(int absolutePosition);
 
 	/**
@@ -44,7 +50,11 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * @return byte array
 	 */
 	 abstract public byte[] toByteArray();
-	 
+
+	/**
+	 * Used for debugging, to find if object is over a certain size
+	 * @return usually false; dev feature
+	 */
 	 abstract public boolean reportObjectSizes(Appendable target);
 
 	/**
@@ -88,7 +98,6 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * Writes long and byte to ChannelWriter
 	 * @param m long to be written
 	 * @param e byte to be written
-	 * //TODO: more descriptive args?
 	 */
 	 abstract public void writeDecimal(long m, byte e);
 
@@ -98,6 +107,13 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 */
 	 abstract public void writeUTFArray(String[] utfs);
 
+	/**
+	 * Writes byte[] to ChannelWriter
+	 * @param source source of byte array
+	 * @param sourceOff source offset of where to write to
+	 * @param sourceLen length of byte array
+	 * @param sourceMask mask required for looping around backing array
+	 */
 	 abstract public void write(byte[] source, int sourceOff, int sourceLen, int sourceMask);
 
 	/**
@@ -166,10 +182,22 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 */
 	 abstract public void writeBoolean(boolean v);
 
+	/**
+	 * Writes null boolean to ChannelWriter
+	 */
 	 abstract public void writeBooleanNull();
 
+	/**
+	 * Writes packedNull to ChannelWriter
+	 */
 	 abstract public void writePackedNull();
-	 
+
+	/**
+	 * Writes to ChannelWriter
+	 * @param b byte[] to be written
+	 * @param off int offset of were to write byte[]
+	 * @param len length of byte array
+	 */
 	 abstract public void write(byte b[], int off, int len);
 
 	/**
@@ -177,10 +205,26 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * @param b byte array to be written
 	 */
 	 abstract public void write(byte b[]);
-	 
+
+	/**
+	 * Writes UTF8 to ChannelWriter
+	 * @param s CharSequence to be written
+	 * @param pos position to write UTF
+	 * @param len length of CharSequence
+	 */
 	 abstract public void writeUTF8Text(CharSequence s, int pos, int len);
-	 
+
+	/**
+	 * Closes field and prevents additional data from being written
+	 * @return length of field
+	 */
 	 abstract public int closeLowLevelField();
+
+	/**
+	 * Closes field and prevents additional data from being written
+	 * @param targetFieldLoc location of field to close
+	 * @return length of field
+	 */
 	 abstract public int closeHighLevelField(int targetFieldLoc);
 		
 }

@@ -60,8 +60,10 @@ public final class StructuredReader {
 	public final int fullIndexSizeInBytes() {
 		return 4+(4*Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).totalSizeOfIndexes(DataInputBlobReader.getStructType(channelReader)));
 	}
-	
-	//set to a position for general reading unless index position is not provided
+
+	/**
+	 * 	set to a position for general reading unless index position is not provided
+	 */
 	public ChannelReader read(long fieldId) {
 		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
@@ -71,11 +73,21 @@ public final class StructuredReader {
 			return null;
 		}
 	}
-	
+
+	/**
+	 * Checks to see if field is null
+	 * @param fieldId field to check
+	 * @return <code>true</code> if null, else <code>false</code>
+	 */
 	public boolean isNull(long fieldId) {
 		return channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId)<=0;
 	}
-	
+
+	/**
+	 * Checks to see if field has value
+	 * @param fieldId field to check
+	 * @return <code>true</code> if field has value, else <code>false</code>
+	 */
 	public boolean hasValue(long fieldId) {
 		return channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId)>0;
 	}
