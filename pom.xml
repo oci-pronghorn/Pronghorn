@@ -171,7 +171,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>Pronghorn</artifactId>
-            <version>[0.0.14-SNAPSHOT,1.1.0)</version>
+            <version>[1.0.0-SNAPSHOT,1.1.0)</version>
         </dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -193,20 +193,6 @@
 			<optional>false</optional>
 		</dependency>
 	</dependencies>
-
-  <scm>
-    <connection>scm:git:git://github.com/oci-pronghorn/JPG-Raster.git</connection>
-    <url>https://github.com/oci-pronghorn/JPG-Raster</url>
-    <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/JPG-Raster.git</developerConnection>
-    <tag>HEAD</tag>
-  </scm>
-    
-  <distributionManagement>
-    <repository>
-      <id>cloudbees.release</id>
-      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-    </repository>
-  </distributionManagement>
 
 	<build>
 		<extensions>
@@ -283,6 +269,12 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.5.3</version>
 			</plugin>
 
 			<plugin>
