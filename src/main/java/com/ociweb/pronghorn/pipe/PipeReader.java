@@ -1032,7 +1032,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static void releaseAllPendingReadLock(Pipe pipe, int consumed) {
 		Pipe.releasePendingAsReadLock(pipe, consumed);
 	}
-	
+
+    /**
+     * Reads next message without allowing ReadLock to be overwritten
+     * @param pipe pipe where this message is found
+     */
 	public static boolean readNextWithoutReleasingReadLock(Pipe pipe) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumed = collectConsumedCountOfBytes(pipe); 
@@ -1060,7 +1064,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static int sizeOfFragment(Pipe input) {
         return Pipe.from(input).fragDataSize[input.ringWalker.cursor];
     }
-    
+
+    /**
+     * Prints fragment from input to the end of pipe
+     * @param input starting point from which to print fragment
+     * @param target where to print fragment
+     */
     public static void printFragment(Pipe input, Appendable target) {
         int cursor = input.ringWalker.cursor;
         try {
@@ -1078,6 +1087,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         Pipe.appendFragment(input, target, cursor);
     }
 
+    /**
+     * Reads specified field in given pipe into the OutputStream
+     * @param loc field to read to stream
+     * @param pipe to be read from
+     * @param out stream to read into
+     */
     public static void readFieldIntoOutputStream(int loc, Pipe pipe, OutputStream out) throws IOException {    
         int length    = readBytesLength(pipe, loc);
         if (length>0) {                
