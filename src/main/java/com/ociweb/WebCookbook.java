@@ -237,7 +237,7 @@ public class WebCookbook  {
 									inputPipes[i], responses[i], responses[i], 
 									timeoutNS, 
 									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%inputPipes.length;}, 
-									new DBCaller(), new DBCaller(), new DBCaller()); //TODO: is caller right? DB problems
+									new DBCaller(), new DBCaller(), new DBCaller()); //NOTE: do not do this for production since callers share db access.
 						}
 						
 						// http://172.16.10.221:8080/person/add?id=333&name=nathan
