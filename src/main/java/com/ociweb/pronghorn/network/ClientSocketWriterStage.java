@@ -16,6 +16,12 @@ import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * Write to a socket using a client coordinator.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ClientSocketWriterStage extends PronghornStage {
 	
 	//TODO: by adding access method and clearing the bufferChecked can make this grow at runtime if needed.
@@ -49,7 +55,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
 		return new ClientSocketWriterStage(graphManager, ccm, input);
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param ccm
+	 * @param input _in_ Payload that will be written to socket.
+	 */
 	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);
 		if (input.length==0) {

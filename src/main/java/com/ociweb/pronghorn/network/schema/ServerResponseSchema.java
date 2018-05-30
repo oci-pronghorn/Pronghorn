@@ -7,6 +7,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines how a server response is formatted, including channel information, payload,
+ * request , subscriptions, sequence, and more.
+ */
 public class ServerResponseSchema extends MessageSchema<ServerResponseSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

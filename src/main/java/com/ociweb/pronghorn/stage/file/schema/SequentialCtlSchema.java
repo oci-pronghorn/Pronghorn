@@ -6,6 +6,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines sequential control behavior. 
+ */
 public class SequentialCtlSchema extends MessageSchema<SequentialCtlSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

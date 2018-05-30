@@ -7,6 +7,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines a typical payload for the net. This is used by HTTP, MQTT, and more. Fields include if payload
+ * is encrypted, when it arrived, position, connection, a new route if required, and more.
+ */
 public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

@@ -10,6 +10,9 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ */
 public class OAuth1RequestTokenStage extends PronghornStage {
 
 	private final Pipe<HTTPRequestSchema>[] inputs; 

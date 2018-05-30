@@ -12,7 +12,14 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
-
+/**
+ * _no-docs_
+ * Listens to all the pipe monitoring data and collects them into a single list.
+ * This is needed for the telemetry.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class PipeMonitorCollectorStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
@@ -42,6 +49,11 @@ public class PipeMonitorCollectorStage extends PronghornStage {
     private final int batchSize;
 	private int reportSlowSpeed = 10;
 
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Pipes to be monitored.
+	 */
 	private PipeMonitorCollectorStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;

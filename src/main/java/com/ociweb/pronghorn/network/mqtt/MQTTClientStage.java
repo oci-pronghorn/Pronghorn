@@ -16,6 +16,13 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Represents a MQTT client and perfroms required client responsibilities according to specs.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class MQTTClientStage extends PronghornStage {
 
 	public static final int CON_ACK_ERR_FLAG = 1<<8;
@@ -33,7 +40,18 @@ public class MQTTClientStage extends PronghornStage {
 	private boolean brokerAcknowledgedConnection = false;
 	
 	private static final Logger logger = LoggerFactory.getLogger(MQTTClientStage.class);
-	
+
+	/**
+	 *
+	 * @param gm
+	 * @param clientRequest _in_ Defines the MQTT client request
+	 * @param idGenNew _in_ IDs for generation
+	 * @param serverToClient _in_ Server to Client schema
+	 * @param clientResponse _out_ Defines the MQTT client response
+	 * @param idGenOld _out_ Old IDs
+	 * @param clientToServer _out_ Defines client to server communication.
+	 * @param clientToServerAck _out_ Sends acknowledgment to server.
+	 */
 	public MQTTClientStage(GraphManager gm, 
 			          Pipe<MQTTClientRequestSchema> clientRequest,
 			          Pipe<MQTTIdRangeSchema> idGenNew,

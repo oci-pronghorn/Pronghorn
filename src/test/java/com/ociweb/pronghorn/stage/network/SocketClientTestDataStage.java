@@ -8,6 +8,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import org.junit.*;
 
+/**
+ * _no-docs_
+ */
 public class SocketClientTestDataStage extends PronghornStage {
 
 	private final Pipe<NetPayloadSchema>[] input; 

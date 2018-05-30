@@ -7,6 +7,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines a client hTTP request. Includes payload, headers, destination, session, port, host, path,
+ * and more required for a functioning HTTP client.
+ */
 public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(

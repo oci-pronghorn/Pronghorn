@@ -9,13 +9,25 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ * Splits lines in file.
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 
 	private final FileChannel fileChannel;
 	private final boolean showProgress;
 	private final Logger log = LoggerFactory.getLogger(LineSplitterFileChannelStage.class);
 	private boolean hasRun = false;
-	        
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param fileChannel
+	 * @param outputRing _out_ The resulting splitted file.
+	 */
 	public LineSplitterFileChannelStage(GraphManager graphManager, FileChannel fileChannel, Pipe outputRing) {
 		super(graphManager, null, outputRing);
 		

@@ -19,6 +19,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
+/**
+ * Server-side stage that writes back to the socket. Useful for building a server.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
@@ -71,7 +77,7 @@ public class ServerSocketWriterStage extends PronghornStage {
      * 
      * @param graphManager
      * @param coordinator
-     * @param dataToSend
+     * @param dataToSend _in_ The data to be written to the socket.
      */
     public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend) {
         super(graphManager, dataToSend, NONE);

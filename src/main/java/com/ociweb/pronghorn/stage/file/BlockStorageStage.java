@@ -18,6 +18,13 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * _no-docs_
+ * Stage that holds storage until release is received.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class BlockStorageStage extends PronghornStage {
 
 	private final String filePath;
@@ -43,7 +50,14 @@ public class BlockStorageStage extends PronghornStage {
 				                     new Pipe[]{input}, 
 				                     new Pipe[]{output});
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param filePath
+	 * @param input _in_ Pipes containing BlockStorageXmitSchema
+	 * @param output _out_ Pipes that will receive released blocks
+	 */
 	public BlockStorageStage(GraphManager graphManager, 
 			                    String filePath, //single file accessed by multiple pipes
 			                    Pipe<BlockStorageXmitSchema>[] input, 

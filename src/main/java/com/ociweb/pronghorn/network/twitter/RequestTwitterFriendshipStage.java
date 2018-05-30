@@ -17,6 +17,9 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
+/**
+ * _no-docs_
+ */
 public class RequestTwitterFriendshipStage extends PronghornStage {
 
 	//TODO: should be easy to make send tweet stage after this.

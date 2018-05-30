@@ -8,6 +8,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines a request to the block manager.
+ * @author Nathan Tippy
+ */
 public class BlockManagerRequestSchema extends MessageSchema<BlockManagerRequestSchema> {
 
 

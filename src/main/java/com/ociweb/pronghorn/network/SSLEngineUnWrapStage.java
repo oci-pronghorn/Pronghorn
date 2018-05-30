@@ -11,6 +11,12 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Unwraps encrypted content for HTTPS/SSL.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class SSLEngineUnWrapStage extends PronghornStage {
 
 	private final SSLConnectionHolder ccm;
@@ -30,7 +36,18 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private int shutdownCount;
 	
 	private int idx;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param ccm
+	 * @param encryptedContent _in_ Encrypted content to be unencrypted.
+	 * @param outgoingPipeLines _out_ Unencrypted content.
+	 * @param relesePipe _out_ Acknowledgment for release.
+	 * @param handshakePipe _out_ Responds with a handshake.
+	 * @param isServer
+	 * @param groupId
+	 */
 	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines,

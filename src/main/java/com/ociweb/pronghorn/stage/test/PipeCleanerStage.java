@@ -9,6 +9,13 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
 @SuppressWarnings("unchecked")
+/**
+ * For some schema T consumes all the data on the input pipes.
+ * The data is not reported anyway.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private long totalSlabCount = 0;
@@ -42,15 +49,27 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
         return new PipeCleanerStage(gm, pipes, label);
     }
     
-    //NOTE: this should be extended to produce a diagnostic stage 
+    //NOTE: this should be extended to produce a diagnostic stage
+
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ Any schema input pipe
+     */
     public PipeCleanerStage(GraphManager graphManager, Pipe<T> input) { 
     	this(graphManager, input, "");
     }
-    
+
     public PipeCleanerStage(GraphManager graphManager, Pipe<T> input, String label) {
         this(graphManager, new Pipe[]{input},label);
     }
 
+    /**
+     *
+     * @param graphManager
+     * @param input _in_ An array of any input pipe
+     * @param label
+     */
     public PipeCleanerStage(GraphManager graphManager, Pipe<T>[] input, String label) { 
     	super(graphManager, input, NONE);
     	this.input = input;

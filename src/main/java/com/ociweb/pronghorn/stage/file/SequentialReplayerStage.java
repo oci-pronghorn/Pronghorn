@@ -19,6 +19,13 @@ import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Replays a sequential read/write based on store requests and load responses.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
+
 public class SequentialReplayerStage extends PronghornStage {
 
 	private final static Logger logger = LoggerFactory.getLogger(SequentialReplayerStage.class);
@@ -65,7 +72,21 @@ public class SequentialReplayerStage extends PronghornStage {
 	private int shutdownCount = 3;//waits for all 3 files to complete before shutdown
 	
 	private boolean shutdownInProgress = false;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param storeConsumerRequests _in_
+	 * @param storeProducerRequests _in_
+	 * @param loadReleaseResponses _out_
+	 * @param loadConsumerResponses _out_
+	 * @param loadProducerResponses _out_
+	 * @param fileControl _out_
+	 * @param fileResponse _in_
+	 * @param fileWriteData _out_
+	 * @param fileReadData _in
+	 * @param noiseProducer
+	 */
 	protected SequentialReplayerStage(GraphManager graphManager, 
 			
 		            Pipe<PersistedBlobStoreConsumerSchema> storeConsumerRequests, 

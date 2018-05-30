@@ -19,6 +19,9 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONParser;
 
+/**
+ * _no-docs_
+ */
 public class RequestTwitterQueryStreamStage extends PronghornStage {
 
 	private static final int PAYLOAD_INDEX_OFFSET = 1;

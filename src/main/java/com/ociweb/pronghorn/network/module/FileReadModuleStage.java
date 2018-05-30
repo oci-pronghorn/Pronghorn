@@ -43,7 +43,13 @@ import com.ociweb.pronghorn.util.ServiceObjectValidator;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-//Minimal memory usage and leverages SSD.
+/**
+ * Minimal memory usage and leverages SSD for file reading module.
+ * Provides HTTP file transfer, i.e. browser requests file and this stage returns it.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,
                                         V extends Enum<V> & HTTPVerb,
@@ -233,7 +239,15 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
         return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
     }
-    
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Array of requests for file(s).
+	 * @param outputs _out_ Array of responses with the requested file(s).
+	 * @param httpSpec
+	 * @param rootPath
+	 */
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
                                    File rootPath) {

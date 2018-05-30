@@ -10,6 +10,9 @@ import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * _no-docs_
+ */
 public class SocketTestDataStage extends PronghornStage {
 
 	private final Pipe<NetPayloadSchema>[] input; 

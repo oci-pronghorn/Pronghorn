@@ -22,6 +22,14 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Extend this class to write your own REST responders. Implement payload()
+ * to return a byte array. See AbstractAppendablePayloadResponseStage for implementing
+ * a UTF-8 REST responder.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public abstract class ByteArrayPayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
@@ -44,7 +52,14 @@ public abstract class ByteArrayPayloadResponseStage <
 	protected int status = 200;
 	
 	private int maximumAllocation = 1<<27; //128M largest file, should expose this
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes with HTTPRequestSchema
+	 * @param outputs _out_ Output pipes as several ServerResponseSchema
+	 * @param httpSpec
+	 */
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 			 HTTPSpecification<T, R, V, H> httpSpec) {
@@ -61,7 +76,15 @@ public abstract class ByteArrayPayloadResponseStage <
 			this.supportsBatchedRelease = false;
 			
 	}
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param inputs _in_ Input pipes with HTTPRequestSchema
+	 * @param outputs _out_ Output pipes as several ServerResponseSchema
+	 * @param httpSpec
+	 * @param otherInputs _in_ Multiple other input pipes to respond to
+	 */
 	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 							 HTTPSpecification<T, R, V, H> httpSpec, Pipe[] otherInputs) {

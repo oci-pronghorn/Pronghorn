@@ -7,6 +7,13 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.RollingBloomFilter;
 
+/**
+ * _no-docs_
+ * Applies Bloom Filter. See the Pronghorn documentation for examples.
+ * @param <T>
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class BloomFilterStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private final Pipe<T> input;

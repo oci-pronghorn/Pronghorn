@@ -14,6 +14,9 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * _no-docs_
+ */
 @Deprecated
 public class FileWriteStage extends PronghornStage {
 
@@ -21,7 +24,7 @@ public class FileWriteStage extends PronghornStage {
 	private final FileChannel channel;
 
 	private final int msgSize = RawDataSchema.FROM.fragDataSize[0];
-	
+
 	public FileWriteStage(GraphManager gm, Pipe input, FileChannel channel) {
 		super(gm,input,NONE);
 		this.inputRing = input;

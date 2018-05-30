@@ -5,6 +5,14 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Takes an array and an input pipe.
+ * If the bytes match the raw bytes, wasEqual will be true.
+ * For testing RawDataSchema.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class ByteArrayEqualsStage extends PronghornStage {
 
     private Pipe<RawDataSchema> input;
@@ -12,7 +20,13 @@ public class ByteArrayEqualsStage extends PronghornStage {
     private int expectedPos;
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     boolean isEqual;
-    
+
+    /**
+     *
+     * @param gm
+     * @param input _in_ Pipe with RawDataSchema that will compares to the byte array
+     * @param expected
+     */
     public ByteArrayEqualsStage(GraphManager gm, Pipe<RawDataSchema> input, byte[] expected) {
         super(gm, input, NONE);
         this.input = input;

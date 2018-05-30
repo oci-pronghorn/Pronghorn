@@ -21,6 +21,20 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 
+/**
+ * Abstraction for response payloads using UTF-8 or other text encoding.
+ * See ByteArrayPayloadResponseStage to implement a custom REST responder that responds
+ * only using bytes.
+ *
+ * Use this to define custom HTTP REST behavior.
+ * @param <T>
+ * @param <R>
+ * @param <V>
+ * @param <H>
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public abstract class AbstractAppendablePayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
@@ -37,8 +51,15 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	
 	private final int messageFragmentsRequired;	
 	public final HTTPUtilResponse ebh = new HTTPUtilResponse();
-	
-	
+
+    /**
+     *
+     * @param graphManager
+     * @param inputs _in_ HTTP schema request inputs
+     * @param outputs _out_ Response schema outputs
+     * @param httpSpec
+     * @param payloadSizeBytes
+     */
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, 
             Pipe<ServerResponseSchema>[] outputs,
@@ -67,7 +88,16 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 			
 	}
-	
+
+    /**
+     *
+     * @param graphManager
+     * @param inputs _in_ Input request
+     * @param outputs _out_ Output response
+     * @param httpSpec
+     * @param otherInputs _in_ Other inputs
+     * @param payloadSizeBytes
+     */
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs,
 			                 Pipe<ServerResponseSchema>[] outputs,

@@ -11,6 +11,12 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+/**
+ * Wraps plain content into encrypted content for HTTPS/SSL.
+ *
+ * @author Nathan Tippy
+ * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
+ */
 public class SSLEngineWrapStage extends PronghornStage {
 
 	private final SSLConnectionHolder      ccm;
@@ -27,7 +33,15 @@ public class SSLEngineWrapStage extends PronghornStage {
 														+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
 
 	private final int min = (1<<15)-1;
-	
+
+	/**
+	 *
+	 * @param graphManager
+	 * @param ccm
+	 * @param isServer
+	 * @param plainContent _in_ Plain content payload to be encrypted.
+	 * @param encryptedContent _out_ Encrypted payload.
+	 */
 	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
 			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
 		

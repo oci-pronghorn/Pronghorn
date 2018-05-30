@@ -7,6 +7,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
+/**
+ * Defines how block storage is received.
+ * @author Nathan Tippy
+ */
 public class BlockStorageReceiveSchema extends MessageSchema<BlockStorageReceiveSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
