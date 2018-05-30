@@ -233,8 +233,8 @@ public class SSLUtil {
 		
 		assert(rolling.limit()==rolling.capacity());
 		
-		int meta = Pipe.takeRingByteMetaData(source);
-		int len = Pipe.takeRingByteLen(source);		
+		int meta = Pipe.takeByteArrayMetaData(source);
+		int len = Pipe.takeByteArrayLength(source);		
 		ByteBuffer[] inputs =  Pipe.wrappedReadingBuffers(source, meta, len);
 
 		assert(inputs[0].remaining()>0);
@@ -630,8 +630,8 @@ public class SSLUtil {
 			long positionId = Pipe.takeLong(source);
 			
 			
-			int meta = Pipe.takeRingByteMetaData(source);
-			int len = Pipe.takeRingByteLen(source);			
+			int meta = Pipe.takeByteArrayMetaData(source);
+			int len = Pipe.takeByteArrayLength(source);			
 			ByteBuffer[] soruceBuffers = Pipe.wrappedReadingBuffers(source, meta, len);									
 	
 			try {

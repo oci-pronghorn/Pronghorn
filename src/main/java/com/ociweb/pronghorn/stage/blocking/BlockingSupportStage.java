@@ -96,20 +96,26 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 						try {					
 							//needed for external timeout checking
 							times[instance] = System.nanoTime();
-							//logger.info("\n---running start {}",instance);
-							b.run();
-							//logger.info("\n---running stop {}",instance);
+							
+							try {
+								//logger.info("\n---running start {}",instance);
+								b.run();
+								//logger.info("\n---running stop {}",instance);
+							} catch (Exception e) {
+								//for SQL exceptions
+								e.printStackTrace();
+							}
+							
 							times[instance] = 0;//clear
 							
 							completedWorkWaiting[instance] = true;
 							b.wait();
 							
-							
 						} catch (InterruptedException ie) {
-							ie.printStackTrace();
 							b.timeout(timeout);
 							completedWorkWaiting[instance] = false;
-						}					
+						}			
+						
 					}
 				}				
 			}			
@@ -148,6 +154,11 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 				long duration = now - localTime;
 				if (duration>timeoutNS && Pipe.hasRoomForWrite(timeout)) {
 					logger.info("timeout task {}ns",duration);
+					
+					
+					//TODO: upon interupt we may be in the middle of a write
+					//      we must roll back what we have to allow for status response
+					//
 					threads[t].interrupt(); 
 				}		
 			}

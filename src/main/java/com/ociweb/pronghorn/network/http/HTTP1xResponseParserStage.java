@@ -282,8 +282,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						targetPipe = output[(int)cc.readDestinationRouteId()];					
 		
 						//append the new data
-						int meta = Pipe.takeRingByteMetaData(localInputPipe);
-						int len = Math.max(0, Pipe.takeRingByteLen(localInputPipe));
+						int meta = Pipe.takeByteArrayMetaData(localInputPipe);
+						int len = Math.max(0, Pipe.takeByteArrayLength(localInputPipe));
 						int pos = Pipe.bytePosition(meta, localInputPipe, len);
 						int mask = Pipe.blobMask(localInputPipe);
 						
@@ -584,10 +584,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							if (!Pipe.hasRoomForWrite(releasePipe)) {
 								break;
 							}
+							//in case targetPipe is needed must confirm room for 2 writes .
+							if (!Pipe.hasRoomForWrite(targetPipe, 2*Pipe.sizeOf(targetPipe, NetResponseSchema.MSG_CONTINUATION_102))) {
+								break;
+							}
 							if (2==state) {
-								//TODO: should we do the JSON Extraction here??
-								//      no we need to inject another stage between for that.
-								
 																
 								long lengthRemaining = payloadLengthData[i];
 													
@@ -607,26 +608,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//NOTE: if the target field is full then we must close this one and open a new
 									//      continuation.
 										
-									//TODO: add and fix this feature...
 									if (lengthRemaining>0) {
-										logger.info("incomplete feature needs to be finshed.");
-			
 										DataOutputBlobWriter.commitBackData(writer2, cc.getStructureId());
-									
-										
+																			
 										int len = writer2.closeLowLevelField();
 										//logger.trace("conform low level write of len {} ",len);
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);
 										//DO NOT consume since we still need it
-										
-										if (!Pipe.hasRoomForWrite(targetPipe)) { //TODO: fix this case
-											logger.info("ERROR MUST TRY LATER AFTER CONSUME???");
-											
-											//TODO: need to jump to new state adding the continuation message
-											//      then we can ext and return at this point.
-											
-										}
 										
 										Pipe.presumeRoomForWrite(targetPipe);
 										

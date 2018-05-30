@@ -137,14 +137,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
         		channelBits, 
         		ServerConnection.class, 
         		new SocketValidator(), false/*Do not grow*/);
-        
-        //TODO: need to allow this to be configured to larger blocks?
-        serverPipesConfig.pcm.addConfig(ServerResponseSchema.instance.newPipeConfig(8, 1024));
+
         serverPipesConfig.pcm.addConfig(NetGraphBuilder.buildRoutertoModulePipeConfig(this, serverPipesConfig));
-        serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig());
-        
-        //TODO: this is a test to fix the output... NOTE: how to set this??
-        serverPipesConfig.pcm.addConfig(NetPayloadSchema.instance.newPipeConfig(8,1<<19));
+        serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig()); 
         
 		pcm = serverPipesConfig.pcm;
         

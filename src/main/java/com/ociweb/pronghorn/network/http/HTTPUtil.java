@@ -121,8 +121,8 @@ public class HTTPUtil {
 	    Pipe.addIntValue(channelIdLow, localOutput);
 	    Pipe.addIntValue(sequence, localOutput);
 	    
-	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
-	    writer.openField();
+	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.openOutputStream(localOutput);        
+
 		boolean chunked = false;
 		boolean server = false;
 		byte[] eTagBytes = null;
@@ -264,8 +264,7 @@ public class HTTPUtil {
 	        writer.writeByte('\n');
 	        
 	        if (null!=hw) {
-	        	HeaderWriter target = HeaderWriterLocal.get().target(writer);
-				hw.write(target);
+	        	hw.write(HeaderWriterLocal.get().target(writer));
 	        }
 	                    
 	        writer.writeByte('\r');
@@ -290,7 +289,7 @@ public class HTTPUtil {
 			int totalLengthWritten,
 			HTTPUtilResponse ebh,
 			int requestContext, long channelId, int sequenceNo,
-			byte[] contentType) {
+			byte[] contentType, HeaderWritable additionalHeaderWriter) {
 		
 		final boolean isChunked = false;
 		final boolean isServer = true;
@@ -324,9 +323,6 @@ public class HTTPUtil {
 			//rotate around until length is done...
 		} while (lengthCount>0);
 		
-	
-		//NOTE: we can write custom headers here if desired..
-		HeaderWritable headerWriter = null;
 		
 		/////////////
 		//reposition to header so we can write it
@@ -342,7 +338,7 @@ public class HTTPUtil {
 		 		    isChunked, isServer,
 		 		    localOut, 
 		 		    1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT),
-		 		    headerWriter);
+		 		    additionalHeaderWriter);
 		
 		HTTPUtilResponse.finalizeLengthOfFirstBlock(ebh, localOut);
 				

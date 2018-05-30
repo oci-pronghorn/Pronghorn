@@ -106,6 +106,7 @@ public class FileBlobWriteStage extends PronghornStage{
         long LARGE_SLA_FOR_FILE_WRITE = 10_000_000_000L;
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, LARGE_SLA_FOR_FILE_WRITE, this);
         
+        GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", this);
         
     }
 
@@ -232,8 +233,8 @@ public class FileBlobWriteStage extends PronghornStage{
                     return;
                 }
                 assert(0==msgId);
-                int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
-                int len = Pipe.takeRingByteLen(input);
+                int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
+                int len = Pipe.takeByteArrayLength(input);
                                 
                 if (len < 0) {
                     Pipe.confirmLowLevelRead(input, SIZE);

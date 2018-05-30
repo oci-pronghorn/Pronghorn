@@ -332,8 +332,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							//TODO: this is a serious issue we request on 1 pipe but they come back on another....
 							int userIdx = userIdFromConnectionId[(int)conId];
 							
-							int meta = Pipe.takeRingByteMetaData(inputs[i]); //TODO: DANGER, write helper method that does this for low level users.
-							int len = Pipe.takeRingByteLen(pipe);
+							int meta = Pipe.takeByteArrayMetaData(inputs[i]); //TODO: DANGER, write helper method that does this for low level users.
+							int len = Pipe.takeByteArrayLength(pipe);
 							int pos = Pipe.bytePosition(meta, pipe, len);
 							
 							//TODO: test data is missing these values, must set...
@@ -358,8 +358,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							break;
 						case NetResponseSchema.MSG_CLOSED_10:
 							
-							int meta2 = Pipe.takeRingByteMetaData(pipe);
-							int len2 = Pipe.takeRingByteLen(pipe);
+							int meta2 = Pipe.takeByteArrayMetaData(pipe);
+							int len2 = Pipe.takeByteArrayLength(pipe);
 							Pipe.bytePosition(meta2, pipe, len2);
 							
 							Pipe.takeInt(pipe);

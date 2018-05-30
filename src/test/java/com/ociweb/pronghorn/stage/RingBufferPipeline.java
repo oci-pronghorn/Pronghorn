@@ -69,8 +69,8 @@ public class RingBufferPipeline {
 		            	return;
 		            };
 		            Pipe.confirmLowLevelRead(inputRing, msgSize);
-		        	int meta = takeRingByteMetaData(inputRing);
-		        	int len = takeRingByteLen(inputRing);
+		        	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);
+		        	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
 		        	assertEquals(testArray.length,len);
 
 		        	int pos = bytePosition(meta, inputRing, len);
@@ -199,17 +199,16 @@ public class RingBufferPipeline {
 		@Override
 		public void run() {
 			
-			while (Pipe.hasContentToRead(inputRing, msgSize) && Pipe.roomToLowLevelWrite(outputRing, msgSize)) {			
+			while (Pipe.hasContentToRead(inputRing, msgSize) && Pipe.hasRoomForWrite((Pipe<?>) outputRing, msgSize)) {			
 			        
 			        Pipe.confirmLowLevelRead(inputRing, msgSize);
 			        Pipe.confirmLowLevelWrite(outputRing, msgSize);
-	        					
-					
+	        										
 					//read the message
 		        	Pipe.takeMsgIdx(inputRing);
 	  															
-	            	int meta = takeRingByteMetaData(inputRing);
-	            	int len = takeRingByteLen(inputRing);
+	            	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);
+	            	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
 	            	//is there room to write
 	            	
 	            	Pipe.addMsgIdx(outputRing, 0);
@@ -294,7 +293,7 @@ public class RingBufferPipeline {
 		@Override
 		public void run() {
 			
-			while (Pipe.roomToLowLevelWrite(outputRing, msgSize)) {
+			while (Pipe.hasRoomForWrite((Pipe<?>) outputRing, msgSize)) {
 		        
 		        if (--messageCount>=0) {
  		        	  Pipe.confirmLowLevelWrite(outputRing, msgSize);

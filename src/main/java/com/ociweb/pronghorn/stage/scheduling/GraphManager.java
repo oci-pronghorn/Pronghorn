@@ -593,11 +593,14 @@ public class GraphManager {
 		if (gm.enableMutation) {
 					
 			//logger.info("disable mutation");
+
 			if (isTelemetryEnabled(gm)) {
 				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
-				NetGraphBuilder.telemetryServerSetup(gm.telemetryCert, gm.telemetryHost, gm.telemetryPort, gm, TELEMTRY_SERVER_RATE);
+				NetGraphBuilder.telemetryServerSetup(gm.telemetryCert, 
+						gm.telemetryHost, gm.telemetryPort, 
+						gm, TELEMTRY_SERVER_RATE);
 				logger.info("total count of stages including telemetry {} ",gm.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");
@@ -2682,8 +2685,8 @@ public class GraphManager {
 		blockUntilStageTerminated(this, stageToWatch);
 	}
 	
-    private String 			telemetryHost=null;
-    private int    			telemetryPort=-1;
+    private String 			telemetryHost = null;
+    private int    			telemetryPort = -1;
     
     //TODO: do not enable until the index.html can use https for its call back...
     private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
@@ -2691,12 +2694,14 @@ public class GraphManager {
     public String enableTelemetry(String host, int port) {
     	telemetryHost = NetGraphBuilder.bindHost(host);
     	telemetryPort = port;
+    	
     	return host;
 	}
     
     public String enableTelemetry(int port) {
     	telemetryHost = NetGraphBuilder.bindHost(telemetryHost);
     	telemetryPort = port;
+    	
     	return telemetryHost;
 	}
 

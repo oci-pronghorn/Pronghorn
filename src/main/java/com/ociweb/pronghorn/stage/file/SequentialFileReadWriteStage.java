@@ -381,8 +381,8 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	                    return ackFinishedWrite(idx);
 	                }
 	                assert(0==msgId);
-	                int meta = Pipe.takeRingByteMetaData(localInput); //for string and byte array
-	                int len = Pipe.takeRingByteLen(localInput);
+	                int meta = Pipe.takeByteArrayMetaData(localInput); //for string and byte array
+	                int len = Pipe.takeByteArrayLength(localInput);
 	
 	                if (0==len) {
 	                	logger.info("WARNING, file write of 0 bytes for the file {} has been done.",idx);

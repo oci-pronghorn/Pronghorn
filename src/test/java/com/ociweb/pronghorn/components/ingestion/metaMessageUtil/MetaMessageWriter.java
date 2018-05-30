@@ -371,7 +371,7 @@ public class MetaMessageWriter  {
             }
 			CharSequence source = (String) value;
             Pipe.validateVarLength(ring, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-			Pipe.addBytePosAndLen(ring, Pipe.getBlobWorkingHeadPosition( ring), Pipe.copyUTF8ToByte(source,0, source.length(), ring));
+			Pipe.addBytePosAndLen(ring, Pipe.getWorkingBlobHeadPosition((Pipe<?>) ring), Pipe.copyUTF8ToByte(source,0, source.length(), ring));
             Pipe.publishWrites(ring);
         }
     }

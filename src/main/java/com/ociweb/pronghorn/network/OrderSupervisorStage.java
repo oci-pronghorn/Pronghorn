@@ -452,25 +452,27 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean hangDetect(int pipeIdx, int sequenceNo, long channelId, int expected) {
-				
-		logger.info("hang detect at iteration "+failureIterations);
-		
-		if (failureIterations==10000) { //equals so we only do this once.
 
-	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
-	        
-				logger.warn("Hang detected, Critical internal error must shutdown.");
-				logger.info("looking for {} but got {} for connection {} on idx {}",
-							expected, sequenceNo, channelId, pipeIdx);
-				logger.info("jumped ahead a total of {} ",movedUpCount);
-				if (null!=recordChannelId) {
-					//we have the most recent history so do display it.
-					displayRecentRequests();
-				}
-				shutdownInProgress = true;
-		} else {
-			failureIterations++;
-		}
+		////////////
+		//disabled until we can find a better way to compute this
+		//this works but requires a long wait window and we know not how long to wait.
+		////////////
+//		if (failureIterations==100_000_000) { //equals so we only do this once.
+//
+//	            assert(recordInputs(channelId, sequenceNo, pipeIdx));
+//	        
+//				logger.warn("Hang detected, Critical internal error must shutdown.");
+//				logger.info("looking for {} but got {} for connection {} on idx {}",
+//							expected, sequenceNo, channelId, pipeIdx);
+//				logger.info("jumped ahead a total of {} ",movedUpCount);
+//				if (null!=recordChannelId) {
+//					//we have the most recent history so do display it.
+//					displayRecentRequests();
+//				}
+//				shutdownInProgress = true;
+//		} else {
+//			failureIterations++;
+//		}
 		return true;
 	}
 
@@ -584,8 +586,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(sequenceNo == expSeq);
 		 
 		 //byteVector is payload
-		 int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
-		 int len = Pipe.takeRingByteLen(input);
+		 int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
+		 int len = Pipe.takeByteArrayLength(input);
 		
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
 		 
@@ -677,8 +679,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 assert(seq == expSeq);
 					 
 					 
-					 int meta2 = Pipe.takeRingByteMetaData(input); //for string and byte array
-					 int len2 = Pipe.takeRingByteLen(input);
+					 int meta2 = Pipe.takeByteArrayMetaData(input); //for string and byte array
+					 int len2 = Pipe.takeByteArrayLength(input);
 					 len+=len2;//keep running count so we can sure not to overflow the output
 
 					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward

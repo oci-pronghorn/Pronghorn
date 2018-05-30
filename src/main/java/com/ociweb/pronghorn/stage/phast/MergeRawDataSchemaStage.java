@@ -98,15 +98,15 @@ public class MergeRawDataSchemaStage extends PronghornStage {
                 Pipe.markBytesWriteBase(localOutput);            
                 outputSlab[outputMask & (int) localHead.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;      
                 
-                int inputMeta = Pipe.takeRingByteMetaData(activeInput);
-                int inputLength    = Pipe.takeRingByteLen(activeInput);
+                int inputMeta = Pipe.takeByteArrayMetaData(activeInput);
+                int inputLength    = Pipe.takeByteArrayLength(activeInput);
                 Pipe.addByteArrayWithMask(localOutput, Pipe.blobMask(activeInput), inputLength, Pipe.blob(activeInput), Pipe.bytePosition(inputMeta, activeInput, inputLength));                  
                                 
                 outputSlab[outputMask & (int) localHead.value++] = inputLength;
                 
                 Pipe.publishHeadPositions(localOutput);
                 Pipe.markBytesReadBase(activeInput, inputSlab[inputMask & (int) localTail.value++]);
-                Pipe.batchedReleasePublish(activeInput, Pipe.getWorkingBlobRingTailPosition(activeInput), localTail.value);
+                Pipe.batchedReleasePublish(activeInput, Pipe.getWorkingBlobTailPosition(activeInput), localTail.value);
                 
                 if (++localPipeIdx >= inputsCount) {
                     localPipeIdx = 0;

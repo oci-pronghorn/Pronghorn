@@ -38,6 +38,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private TLSCertificates serverTLS = TLSCertificates.defaultCerts;
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	private int maxRequestSize = 1<<16;//default of 64K
+	private int maxResponseSize = 1<<10;//default of 10K
 	private final PipeConfigManager pcm;
     private int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	
@@ -127,6 +128,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	@Override
 	public HTTPServerConfig setMaxRequestSize(int maxRequestSize) {
 		this.maxRequestSize = maxRequestSize;
+		return this;
+	}
+	
+	@Override
+	public HTTPServerConfig setMaxResponseSize(int maxResponseSize) {
+		this.maxResponseSize = maxResponseSize;
 		return this;
 	}
 	
@@ -236,7 +243,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 				//one message might be broken into this many parts
 				incomingMsgFragCount,
 				getMaxRequestSize(),
+				getMaxResponseSize(),
 				pcm);
+	}
+
+	private int getMaxResponseSize() {
+		return maxResponseSize;
 	}
 
 	private int defaultComputedChunksCount() {
@@ -252,7 +264,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		logFile = new LogFileConfig(LogFileConfig.defaultPath(),
 				                    LogFileConfig.DEFAULT_COUNT, 
 				                    LogFileConfig.DEFAULT_SIZE,
-				                    true);
+				                    false);
+		//logging the full response often picks up binary and large data
+		//this should only be turned on with an explicit true
 		return this;
 	}
 	

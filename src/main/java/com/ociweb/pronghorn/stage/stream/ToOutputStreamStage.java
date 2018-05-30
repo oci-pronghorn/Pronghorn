@@ -64,9 +64,9 @@ public class ToOutputStreamStage extends PronghornStage {
 					    return;
 					}
   
-			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+			    	int meta = Pipe.takeByteArrayMetaData(inputRing);//side effect, this moves the pointer.
 	    					    			
-			    	int len = takeRingByteLen(inputRing);
+			    	int len = Pipe.takeByteArrayLength(inputRing);
 			    	int off = bytePosition(meta,inputRing,len)&inputRing.blobMask; 			
 			    	
 			    	if (len>=0) { 

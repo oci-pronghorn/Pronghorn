@@ -59,8 +59,8 @@ public class FileWriteStage extends PronghornStage {
 	            	return;
 	            }
 	            
-	        	int meta = takeRingByteMetaData(inputRing);
-	        	int len = takeRingByteLen(inputRing);
+	        	int meta = Pipe.takeByteArrayMetaData((Pipe<?>) inputRing);
+	        	int len = Pipe.takeByteArrayLength((Pipe<?>) inputRing);
 	        	if (len<=0) {
 	        	    //TODO: use logger!
 	        	    System.err.println("Warning we have write length of "+len+" "+inputRing);

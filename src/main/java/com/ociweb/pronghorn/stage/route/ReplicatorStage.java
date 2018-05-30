@@ -176,8 +176,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
 		
 		Pipe.markBytesReadBase(ss.source, totalBytesCopy); //record the bytes consumed so far
-		Pipe.setBytesWorkingTail(ss.source, i);
-        Pipe.setBytesTail(ss.source, i);
+		Pipe.setBlobWorkingTail(ss.source, i);
+        Pipe.setBlobTailPosition(ss.source,i);
 		Pipe.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 		
@@ -255,7 +255,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		        Pipe.blob(ringBuffer), Pipe.getBlobHeadPosition(ringBuffer), ringBuffer.blobMask, 
 									  totalBytesCopy);
 		
-		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));
+		Pipe.setBlobWorkingHead(ringBuffer, Pipe.addAndGetBlobHeadPosition(ringBuffer, totalBytesCopy));
 								
 		//copy the primary data
 		int headPosition = (int)Pipe.headPosition(ringBuffer);

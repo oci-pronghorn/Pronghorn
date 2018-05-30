@@ -104,8 +104,8 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 					
 				case NetResponseSchema.MSG_CLOSED_10:
 					
-					Pipe.takeRingByteMetaData(input);
-					Pipe.takeRingByteLen(input);
+				Pipe.takeByteArrayMetaData(input);
+				Pipe.takeByteArrayLength(input);
 					Pipe.takeInt(input);
 					
 					Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));

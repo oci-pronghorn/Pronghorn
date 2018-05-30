@@ -378,7 +378,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
 		//blob head position is moved forward
 		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
+			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
 		}
 		//record the new start and length to the slab for this blob
 		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
@@ -417,7 +417,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
 		//blob head position is moved forward
 		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBytesWorkingHeadPosition(target, (int)readCount);
+			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
 		}
 		//record the new start and length to the slab for this blob
 		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);

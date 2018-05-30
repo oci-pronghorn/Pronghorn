@@ -232,8 +232,8 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
         int totalBytesCopy = ss.totalBytesCopy;
         
         int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
-        Pipe.setBytesWorkingTail(ss.source, i);
-        Pipe.setBytesTail(ss.source, i);   
+        Pipe.setBlobWorkingTail(ss.source, i);
+        Pipe.setBlobTailPosition(ss.source,i);   
         Pipe.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
         ss.totalPrimaryCopy = 0; //clear so next time we find the next block
     }

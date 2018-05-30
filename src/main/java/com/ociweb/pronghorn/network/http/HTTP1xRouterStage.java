@@ -91,7 +91,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     private long[] inputSlabPos;
     private int[] sequences;
-    private int[] sequencesSent;
         
     public static int MAX_HEADER = 1<<15; //universal maximum header size.
     
@@ -195,7 +194,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                              boolean catchAll) {
 		
         super(gm,input,join(join(outputs,ackStop,errorResponsePipe),log));
-        
+                
         this.parallelId = parallelId;
         
         assert(outputs!=null);
@@ -240,7 +239,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         inputSlabPos = new long[inputs.length];
         sequences = new int[inputs.length];
-        sequencesSent = new int[inputs.length];
       
         trieReader = new TrieParserReader();//max fields we support capturing.
         
@@ -677,7 +675,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 	private static boolean consumedAllOfActiveFragment(Pipe<NetPayloadSchema> selectedInput, int p) {
 
-		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobRingTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) && 
+		return (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobTailPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p) && 
 		       (Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobHeadPosition(selectedInput)	) == (Pipe.blobMask(selectedInput)&p);
 		
 	}
@@ -746,18 +744,31 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     }
    // System.err.println("start at pos "+tempPos+" for "+channel);
     
+    final boolean showTheRouteMap = false;
+    if (showTheRouteMap) {
+    	config.debugURLMap();
+    }
+    
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
 	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
 	//the above URLS always end with a white space to ensure they match the spec.
 
+	//logger.info("selected path: "+pathId);
+	
+    
+    int routeId;
     if (config.UNMAPPED_ROUTE == pathId) {
 	    if (!catchAll) {
 	    	
-			//unsupported route path, send 404 error
-			sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
+			//unsupported route path, send 404 error			
+	    	sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
+	    	sequences[idx]++;
 			return SUCCESS;
 	    }
+    	routeId = config.UNMAPPED_ROUTE; 
+    } else {
+    	routeId = config.getRouteIdForPathId(pathId);
     }
     
     if (pathId<0) {
@@ -784,7 +795,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
     //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     //      if catch all is enabled use it because all outputs will be null in that mode
-    Pipe<HTTPRequestSchema> outputPipe = pathId<outputs.length ? outputs[pathId] : outputs[0];
+    Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
     if (Pipe.hasRoomForWrite(outputPipe) ) {
 
@@ -793,20 +804,19 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
         
         //route and verb
-        Pipe.addIntValue((pathId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
+        Pipe.addIntValue((routeId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
         
         
         DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
         //write 2   7
         DataOutputBlobWriter.openField(writer); //the beginning of the payload always clear all indexes
 
-        
-        int routeId;
+ 
         int structId;
         TrieParser headerMap;
         
         if (config.UNMAPPED_ROUTE != pathId) {
-        	routeId = config.getRouteIdForPathId(pathId);
+        	
         	structId = config.extractionParser(pathId).structId;
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
           	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.paramIndexArray(pathId));
@@ -814,7 +824,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	headerMap = config.headerParserRouteId( routeId );
         	        
         } else {
-        	routeId = config.UNMAPPED_ROUTE;        	
+       	
         	structId = config.UNMAPPED_STRUCT;
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
             TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos);
@@ -1088,9 +1098,7 @@ private void sendRelease(long channel, final int idx) {
 	Pipe.addLongValue(channel, releasePipe);
 	Pipe.addLongValue(inputSlabPos[idx], releasePipe);
 	Pipe.addIntValue(sequences[idx], releasePipe); //send current sequence number so others can continue at this count.
-	sequencesSent[idx] = sequences[idx];
-	
-	
+
 	Pipe.confirmLowLevelWrite(releasePipe, s);
 	Pipe.publishWrites(releasePipe);
 	this.inputSlabPos[idx]=-1;
@@ -1163,8 +1171,8 @@ private static long processPlain(
 	long slabPos;
 	that.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
         
-	final int meta       = Pipe.takeRingByteMetaData(selectedInput);
-	final int length     = Pipe.takeRingByteLen(selectedInput);
+	final int meta       = Pipe.takeByteArrayMetaData(selectedInput);
+	final int length     = Pipe.takeByteArrayLength(selectedInput);
 	final int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
 	
 	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            

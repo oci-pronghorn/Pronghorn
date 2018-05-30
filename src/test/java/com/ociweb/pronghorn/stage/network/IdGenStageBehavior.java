@@ -123,7 +123,7 @@ public class IdGenStageBehavior{
 							values[mask & (int)head++] = idx++;
 						}						
 						
-						Pipe.releaseReads(inputRing);
+						Pipe.releaseReadLock((Pipe<?>) inputRing);
 						Pipe.confirmLowLevelRead(inputRing, sizeOfFragment);
 					}
 				}

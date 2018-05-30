@@ -39,8 +39,8 @@ public class IntegrityTestFuzzConsumer extends PronghornStage {
                     StringBuilder optional = new StringBuilder();
                     StringBuilder notOptional = new StringBuilder();
 
-                    Pipe.readASCII(input, Appendables.truncate(optional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
-                    Pipe.readASCII(input, Appendables.truncate(notOptional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
+                    Pipe.readASCII(input, Appendables.truncate(optional), Pipe.takeByteArrayMetaData(input), Pipe.takeByteArrayLength(input));
+                    Pipe.readASCII(input, Appendables.truncate(notOptional), Pipe.takeByteArrayMetaData(input), Pipe.takeByteArrayLength(input));
 
                     Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, 0));
                     Pipe.releaseReadLock(input);

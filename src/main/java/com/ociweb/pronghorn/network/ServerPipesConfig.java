@@ -64,11 +64,15 @@ public class ServerPipesConfig {
 							 int concurrentChannelsPerDecryptUnit, 
 							 int partialPartsIn,  //make larger for many fragments
 							 int maxRequestSize, //make larger for large posts
+							 int maxResponseSize,
 							 PipeConfigManager pcm				 
 			) {
 	
 		if (isTLS && (maxRequestSize< (1<<15))) {
 			maxRequestSize = (1<<15);//TLS requires this larger payload size
+		}
+		if (isTLS && (maxResponseSize< (1<<15))) {
+			maxResponseSize = (1<<15);//TLS requires this larger payload size
 		}
 
 		//these may need to be exposed.. they can impact performance
@@ -106,7 +110,7 @@ public class ServerPipesConfig {
 		//defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
 
-	    this.serverBlobToWrite               = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+	    this.serverBlobToWrite               = maxResponseSize; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		int targetServerWriteBufferSize = 1<<23;
 		this.writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
 		

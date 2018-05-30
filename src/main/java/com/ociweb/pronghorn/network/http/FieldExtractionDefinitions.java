@@ -144,8 +144,8 @@ public class FieldExtractionDefinitions {
         
         Pipe.takeMsgIdx(localPipe);
         
-		int mta = Pipe.takeRingByteMetaData(localPipe);
-		int len = Pipe.takeRingByteLen(localPipe);
+		int mta = Pipe.takeByteArrayMetaData(localPipe);
+		int len = Pipe.takeByteArrayLength(localPipe);
 		int mask = blobMask(localPipe);	
     	int pos = bytePosition(mta, localPipe, len)&mask;     		
 		byte[] backing = byteBackingArray(mta, localPipe);

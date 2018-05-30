@@ -233,8 +233,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		final long channelId = Pipe.takeLong(pipe);
 		assert(chnl==channelId);
 		final long arrivalTime = Pipe.takeLong(pipe);
-		int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		int len = Pipe.takeRingByteLen(pipe);							
+		int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+		int len = Pipe.takeByteArrayLength(pipe);							
 		
 		didWork = wraupUpEncryptedToSingleWrite(didWork, i, 
 				pipe, msgIdx, channelId, meta, len,
@@ -266,8 +266,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		long workingTailPosition = Pipe.takeLong(pipe);
 					
-		int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		int len  = Pipe.takeRingByteLen(pipe);
+		int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+		int len  = Pipe.takeByteArrayLength(pipe);
 
 		if (showWrites) {
 			int pos = Pipe.bytePosition(meta, pipe, len);
@@ -331,8 +331,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		    	
 		    	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
 
-		        int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		        int len2 = Pipe.takeRingByteLen(pipe);
+		        int meta2 = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+		        int len2 = Pipe.takeByteArrayLength(pipe);
 		        ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 		        
 		        buffers[i].put(writeBuffs2[0]);
@@ -397,8 +397,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
 		        	long workingTailPosition=Pipe.takeLong(pipe);
 		        											            
-		            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		            int len2 = Pipe.takeRingByteLen(pipe);
+		            int meta2 = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+		            int len2 = Pipe.takeByteArrayLength(pipe);
 		            
 		            if (showWrittenData) {
 		            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							

@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelReader;
@@ -172,10 +173,11 @@ public abstract class AbstractAppendablePayloadResponseStage <
 							//		        	}
 					}				
 					
+					HeaderWritable additionalHeaderWriter = null;
 					
 					HTTPUtilResponse.closePayloadAndPublish(ebh, eTag(), contentType(),
 						output, activeChannelId, activeSequenceNo, activeFieldRequestContext,
-						outputStream);
+						outputStream, additionalHeaderWriter);
 		        	
 		        			        	
 		        	//must read context before calling this

@@ -90,8 +90,8 @@ public class SocketClientTestDataStage extends PronghornStage {
 					long conId = Pipe.takeLong(pipe);
 					long arrivalTime = Pipe.takeLong(pipe);
 					
-					int meta = Pipe.takeRingByteMetaData(pipe);
-					int len = Pipe.takeRingByteLen(pipe);		
+					int meta = Pipe.takeByteArrayMetaData(pipe);
+					int len = Pipe.takeByteArrayLength(pipe);		
 					int pos = Pipe.bytePosition(meta, pipe, len);
 					
 					//TODO: add test here for payload
@@ -115,8 +115,8 @@ public class SocketClientTestDataStage extends PronghornStage {
 					long position = Pipe.takeLong(pipe);
 					
 
-					int meta = Pipe.takeRingByteMetaData(pipe);
-					int len = Pipe.takeRingByteLen(pipe);					
+					int meta = Pipe.takeByteArrayMetaData(pipe);
+					int len = Pipe.takeByteArrayLength(pipe);					
 					int pos = Pipe.bytePosition(meta, pipe, len);
 					
 

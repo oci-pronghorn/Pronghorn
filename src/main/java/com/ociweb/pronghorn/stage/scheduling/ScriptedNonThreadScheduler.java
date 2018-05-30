@@ -82,8 +82,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	assert(globalStartupLockCheck=true);//yes this assigns and returns true   	
     }
     
-    private boolean recordTime;    
-    
     private long nextLongRunningCheck;
     private final long longRunningCheckFreqNS = 60_000_000_000L;//1 min
     private final StageVisitor checksForLongRuns;
@@ -110,8 +108,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
         this.stages = stages;
     	this.stateArray = GraphManager.stageStateArray(graphManager);    	
-    	this.recordTime = GraphManager.isTelemetryEnabled(graphManager);
-    	
+
     	int groupId = threadGroupIdGen.incrementAndGet();
     	
     	this.didWorkMonitor = new DidWorkMonitor();
@@ -506,7 +503,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     	}
 
                     	long start = 0;
-        		    	if (recordTime) {
+        		    	if (GraphManager.isTelemetryEnabled(graphManager)) {
         		    		start = System.nanoTime();	
         		    	}
         		    	
@@ -514,7 +511,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                         stage.startup();
                         clearCallerId();
                         
-        				if (recordTime) {
+        				if (GraphManager.isTelemetryEnabled(graphManager)) {
         					final long now = System.nanoTime();		        
         		        	long duration = now-start;
         		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
@@ -630,7 +627,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 						
 						waitBeforeRun(that, System.nanoTime());
 		
-						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, that.graphManager, that.recordTime);
+						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, that.graphManager,
+								GraphManager.isTelemetryEnabled(that.graphManager));
 		        }
 		
 				checkForLongRun(that);

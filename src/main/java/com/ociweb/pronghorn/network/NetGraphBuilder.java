@@ -297,8 +297,12 @@ public class NetGraphBuilder {
         	receivedFromNet = encryptedIncomingGroup;
         }
 		
-        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(graphManager, coordinator, handshakeIncomingGroup);
+	
+        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(
+        		                              graphManager, coordinator, 
+        		                              handshakeIncomingGroup);
         
+
         factory.buildServer(graphManager, coordinator, 
         		            releaseAfterParse,
         		            receivedFromNet, 
@@ -312,6 +316,7 @@ public class NetGraphBuilder {
 			Pipe<NetPayloadSchema>[] sendingToNet) {
 		assert(sendingToNet.length >= coordinator.moduleParallelism()) : "reduce track count since we only have "+sendingToNet.length+" pipes";
 
+		
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
@@ -324,8 +329,7 @@ public class NetGraphBuilder {
                 
         final HTTP1xRouterStageConfig routerConfig = buildModules(coordinator, graphManager,
         		 									modules, httpSpec, fromModule, toModules);
-        
-        
+		
         //logger.info("build http stages 3");
         
 		Pipe<HTTPLogRequestSchema>[] reqLog = new Pipe[coordinator.moduleParallelism()];
@@ -662,6 +666,19 @@ public class NetGraphBuilder {
 			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(
 					                moduleInstance, graphManager, routerConfig, routesTemp);
 			
+			int maxOut = coordinator.pcm.getConfig(NetPayloadSchema.class).maxVarLenSize();
+			int i = outputPipes.length;
+			while (--i>=0) {
+				if (outputPipes[i].maxVarLen>maxOut) {
+					throw new UnsupportedOperationException(
+						"Module instance "+moduleInstance+" is configured to write blocks of "+outputPipes[i].maxVarLen+
+						" but the server is set to maximum response size of "+maxOut+
+						". Either setMaxResponseSize larger or modify module to write less."
+					);
+				}
+			}
+			
+			
 			assert(validateNoNulls(outputPipes));
 		    
 		    for(int r=0; r<routerCount; r++) {
@@ -670,7 +687,6 @@ public class NetGraphBuilder {
 		    }
 		    
 		}
-		
 		
 		return routerConfig;
 	}
@@ -802,7 +818,7 @@ public class NetGraphBuilder {
 		//The graph.dot must respond in less than 40ms but 20ms is nominal
 		///////////////
 		final int serverRate = baseRate>>6;
-		
+
 		final ModuleConfig modules = buildTelemetryModuleConfig(serverRate);
 		boolean isTLS = tlsCertificates != null;
 		int maxConnectionBits = 12;
@@ -824,6 +840,7 @@ public class NetGraphBuilder {
 		c.setConcurrentChannelsPerDecryptUnit(concurrentChannelsPerDecryptUnit);
 		c.setMaxConnectionBits(maxConnectionBits);
 		c.setMaxRequestSize(maxRequestSize);
+		//c.setMaxResponseSize(1<<15);
 		c.setTracks(tracks);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
@@ -832,10 +849,11 @@ public class NetGraphBuilder {
 		//This must be large enough for both partials and new handshakes.
 		serverConfig.ensureServerCanWrite(1<<20);//1MB out
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,								
-				                                             false, 
-				                                              "Telemetry Server","", serverConfig);
+		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates,
+				        bindHost, port, scs,								
+				        false, "Telemetry Server","", serverConfig);
 
+		
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system

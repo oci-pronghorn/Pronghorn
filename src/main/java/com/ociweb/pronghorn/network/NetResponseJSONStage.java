@@ -161,8 +161,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 							//logger.info("reading new data of length "+reader.sourceLen+" "+stream.available());
 						} else {
 							//logger.info("adding more data current total is "+reader.sourceLen);
-							int meta = Pipe.takeRingByteMetaData(input);
-							int len = Pipe.takeRingByteLen(input);
+							int meta = Pipe.takeByteArrayMetaData(input);
+							int len = Pipe.takeByteArrayLength(input);
 							int pos = Pipe.bytePosition(meta, input, len);//must call for side effect
 							
 							//copy up the remaining data to make it a single block.
@@ -193,8 +193,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 				
 					//logger.info("connection closed");
 					
-					int meta = Pipe.takeRingByteMetaData(input); //host
-					int len  = Pipe.takeRingByteLen(input); //host
+					int meta = Pipe.takeByteArrayMetaData(input); //host
+					int len  = Pipe.takeByteArrayLength(input); //host
 					int pos = Pipe.bytePosition(meta, input, len);
 					byte[] backing = Pipe.blob(input);
 					int mask = Pipe.blobMask(input);

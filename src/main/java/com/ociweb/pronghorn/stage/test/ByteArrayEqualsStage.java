@@ -47,8 +47,8 @@ public class ByteArrayEqualsStage extends PronghornStage {
                 requestShutdown();
                 return;
             }
-            int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
-            int len = Pipe.takeRingByteLen(input);
+            int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
+            int len = Pipe.takeByteArrayLength(input);
                             
             if (len < 0) {
                 Pipe.releaseReadLock(input);

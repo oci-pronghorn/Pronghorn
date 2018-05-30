@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -126,9 +127,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		
 	public void debugURLMap() {
 		
-		String actual = urlMap.toDOT(new StringBuilder()).toString();
-		
-		System.err.println(actual);
+		try {
+			urlMap.toDOTFile(File.createTempFile("debugTrie", ".dot"));
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		
 	}
 

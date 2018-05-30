@@ -83,7 +83,7 @@ public abstract class PronghornStage {
     /**
      * @return the maximum variable length supported across all the pipes
      */
-    protected static int maxVarLength(Pipe<?>[] pipes) {
+    public static int maxVarLength(Pipe<?>[] pipes) {
     	int result = 0;
     	int i = pipes.length;
     	while (--i>=0) {
@@ -104,7 +104,7 @@ public abstract class PronghornStage {
     /**
      * @return the minimum variable length supported across all the pipes
      */
-	protected static int minVarLength(Pipe<?>[] pipes) {
+	public static int minVarLength(Pipe<?>[] pipes) {
 		int result = Integer.MAX_VALUE;
     	int i = pipes.length;
     	while (--i>=0) {
