@@ -41,7 +41,7 @@
           </distributionManagement>
       </profile>
 
-    <profile>gi
+    <profile>
         <id>disable-java8-doclint</id>
         <activation>
             <jdk>[1.8,)</jdk>
