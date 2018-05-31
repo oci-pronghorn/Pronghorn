@@ -41,7 +41,7 @@
           </distributionManagement>
       </profile>
 
-    <profile>
+    <profile>gi
         <id>disable-java8-doclint</id>
         <activation>
             <jdk>[1.8,)</jdk>
@@ -54,11 +54,11 @@
           <id>mvn-central</id>
           <distributionManagement>
               <snapshotRepository> <!-- maven central release repository -->
-                  <id>PronghornPipes</id>
+                  <id>ossrh</id>
                   <url>https://oss.sonatype.org/content/repositories/snapshots</url>
               </snapshotRepository>
               <repository>
-                  <id>PronghornPipes</id>
+                  <id>ossrh</id>
                   <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
               </repository>
           </distributionManagement>
