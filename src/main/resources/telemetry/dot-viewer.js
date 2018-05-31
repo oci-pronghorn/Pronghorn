@@ -6,7 +6,8 @@ const ZOOM_DELTA = 20;
 //const ZOOM_DELTA = 200;
 //const ZOOM_FROM_CENTER = false;
 const ZOOM_FROM_CENTER = true;
-const ZOOM_MAX = 800;
+const ZOOM_MAX = 500;
+const MAX_SCALE = 0.4;
 
 const speedMap = {
   'No refresh': 0,
@@ -26,7 +27,7 @@ let intervalToken, navHeight, originalWindowWidth;
 let preview, speedArea, speedDropdown, speedMs;
 let speedSpan, speedText, svg, svgRect, userDropdown, viewport, webworker;
 let zoomInBtn, zoomInBtnDisabled, zoomOutBtn, zoomOutBtnDisabled;
-let zoomCurrent = 100;
+let zoomCurrent = 100, zoomInitialScale = 1.0;
 
 const addClass = (element, name) => (element.className += ' ' + name);
 
@@ -73,10 +74,10 @@ function onExport() {
   var data = diagram.innerHTML;
 
   // Invert the graph.
-  data = data.replace(/stroke="#ffffff"/g, 'stroke="#000000"');
-  data = data.replace(/stroke="#b2b2b2"/g, 'stroke="#4d4d4d"');
-  data = data.replace(/fill="#ffffff"/g, 'fill="#000000"');
-  data = data.replace('polygon fill="#000000"', 'polygon fill="#ffffff"');
+  data = data.replace(/stroke="#ffffff"/g, 'stroke="#000000"')
+      .replace(/stroke="#b2b2b2"/g, 'stroke="#4d4d4d"')
+      .replace(/fill="#ffffff"/g, 'fill="#000000"')
+      .replace('polygon fill="#000000"', 'polygon fill="#ffffff"');
 
   const blob = new Blob([data], {type: 'octet/stream'});
   const url = window.URL.createObjectURL(blob);
@@ -106,6 +107,17 @@ function onMessage(message) {
 
   if (firstTime) {
     firstTime = false;
+
+    const diagramRect = diagram.getBoundingClientRect();
+
+    // if diagram is taller than the window, then we zoom out
+    // if it is wider, ignore and just set it to original width
+    if(diagramRect.height > window.innerHeight) {
+       zoomInitialScale = MAX_SCALE;
+       originalWindowWidth *= zoomInitialScale;
+    }
+
+    setStyle(diagram, 'width', px(originalWindowWidth));
 
     // Make the viewport start at the same size as the preview.
     onResize();
@@ -159,7 +171,8 @@ function onResize() {
     setStyle(viewport, 'y', px(pBottom - vHeight));
   }
 
-  setStyle(viewport, 'height', px(vHeight));
+  // this somewhat fixes it
+  setStyle(viewport, 'height', px(vHeight + pHeight * zoomInitialScale));
   setStyle(viewport, 'width', px(vWidth - BW2));
 }
 
@@ -200,6 +213,7 @@ function onUser(event) {
 
 function onZoom(zoomIn) {
   zoomCurrent += zoomIn ? ZOOM_DELTA : -ZOOM_DELTA;
+  console.log("new zoom: " + zoomCurrent);
 
   let newWidth = originalWindowWidth * zoomCurrent / 100;
   let newHeight = newWidth / aspectRatio;
@@ -222,7 +236,7 @@ function onZoom(zoomIn) {
 
   // Determine which zoom buttons should be displayed.
   const canZoomIn = zoomCurrent + ZOOM_DELTA <= ZOOM_MAX;
-  const canZoomOut = newWidth > window.innerWidth + 1;
+  const canZoomOut = newWidth > window.innerWidth * zoomInitialScale + 1;
   setDisplay(zoomInBtn, canZoomIn);
   setDisplay(zoomInBtnDisabled, !canZoomIn);
   setDisplay(zoomOutBtn, canZoomOut);
@@ -343,9 +357,6 @@ window.onload = () => {
   zoomOutBtn = getById('zoomOutBtn');
   zoomOutBtnDisabled = getById('zoomOutBtnDisabled');
 
-  setStyle(diagram, 'width', px(window.innerWidth));
-  setStyle(diagram, 'height', px(window.innerHeight));
-
   getById('previewBtn').onclick = togglePreview;
 
   const nav2Rect = getById('nav2').getBoundingClientRect();
@@ -374,6 +385,7 @@ window.onload = () => {
   webworker.postMessage(DOT_URL);
 
   setSpeed('1 sec');
+
 };
 
 window.onresize = onResize;
