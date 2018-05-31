@@ -103,14 +103,13 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(localInput);
 	       			        	
-		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
-		        			        		        	
+		        	//copies params and headers.
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(localOutput);
-		        	inputStream.readInto(outputStream, payloadOffset);//copies params and headers.
+		        	inputStream.readInto(outputStream, inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION));
 		    
 		        	//inputStream is now positioned to the JSON
 		        	//outputStream is now positions as the target
-		        	reader.parseSetup(inputStream);
+		        	DataInputBlobReader.setupParser(inputStream, reader);
 		    		parser.parse(reader, extractor.trieParser(), visitor);
 		    		
 		    		//if (TrieParserReader.parseHasContent(reader)) {
