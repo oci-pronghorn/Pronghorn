@@ -57,11 +57,11 @@
             <id>mvn-central</id> <!-- profile for deploying to maven central -->
             <distributionManagement>
             <snapshotRepository>
-                <id>PronghornPipes</id>
+                <id>ossrh</id>
                 <url>https://oss.sonatype.org/content/repositories/snapshots</url>
             </snapshotRepository>
             <repository>
-                <id>PronghornPipes</id>
+                <id>ossrh</id>
                 <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
             </repository>
             </distributionManagement>
