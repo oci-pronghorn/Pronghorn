@@ -2,7 +2,6 @@ package com.ociweb.jpgRaster;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
@@ -27,59 +26,21 @@ public class JPGRaster {
 		boolean verbose = hasArg("--verbose", "-v", args);
 		boolean time = hasArg("--time", "-t", args);
 		boolean encode = hasArg("--encode", "-e", args);
-
-		String defaultFiles = "";
-		ArrayList<String> inputFilePaths = getOptNArg("--file", "-f", args, defaultFiles);
+		
+		ArrayList<String> inputFilePaths = getOptNArg("--file", "-f", args);
 
 		ArrayList<String> inputFiles = new ArrayList<String>();
 		for (String file : inputFilePaths) {
-			if (file.startsWith("./")) {
-				file = file.substring(2);
-				while (file.startsWith("/")) {
-					file = file.substring(1);
+			try {
+				if (Files.isRegularFile(new File(file).toPath())) {
+					inputFiles.add(file);
 				}
 			}
-			String userdir = System.getProperty("user.dir");
-			if (!file.startsWith("/")) {
-				file = userdir + "/" + file;
-			}
-			String dir = file;
-			while (dir.contains("*") || dir.contains("?") ||
-					dir.contains("{") || dir.contains("[")) {
-				dir = dir.substring(0, dir.lastIndexOf("/"));
-			}
-			String glob = "glob:" + file;
-			FileMatcher filematcher = new FileMatcher(glob);
-			Files.walkFileTree(Paths.get(dir), filematcher);
-			for (String inputFile : filematcher.files) {
-				if (!inputFile.equals("")) {
-					if (inputFile.startsWith(userdir)) {
-						inputFiles.add(inputFile.substring(userdir.length() + 1));
-					} else {
-						inputFiles.add(inputFile);
-					}
-
-				}
-			}
+			catch (Exception e) {}
 		}
-
-		String defaultDirectory = "";
-		String inputDirectory = getOptArg("--directory", "-d", args, defaultDirectory);
-		if (!inputDirectory.equals("") && !inputDirectory.endsWith("/")) {
-			inputDirectory += "/";
-		}
-
-		File[] files = new File(inputDirectory).listFiles();
-		if (files != null) {
-			for (File file : files) {
-				if (file.isFile()) {
-					inputFiles.add(inputDirectory + file.getName());
-				}
-			}
-		}
-
+		
 		if (inputFiles.size() == 0 || hasArg("--help", "-h", args)) {
-			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] [ -f file1 [ file2 ... ] | -d directory ] [ -v ] [ -t ] [ -p port ]");
+			System.out.println("Usage: j2r [ -e [ -q 50 | 75 | 100 ] ] -f file1 [ file2 ... ] [ -v ] [ -t ] [ -p port ]");
 			return;
 		}
 		
@@ -163,8 +124,9 @@ public class JPGRaster {
         }
         return defaultValue;
     }
-
-	public static ArrayList<String> getOptNArg(String longName, String shortName, String[] args, String defaultValue) {
+	
+	public static ArrayList<String> getOptNArg(String longName, String shortName, String[] args) {
+        
 		ArrayList<String> tokens = new ArrayList<String>();
         for (int i = 0; i < args.length; ++i) {
         	String token = args[i];
@@ -179,8 +141,6 @@ public class JPGRaster {
                 return tokens;
             }
         }
-        tokens.clear();
-        tokens.add(defaultValue);
         return tokens;
     }
     

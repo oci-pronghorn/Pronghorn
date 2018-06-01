@@ -7,11 +7,6 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.ociweb.jpgRaster.JPG.ColorComponent;
-import com.ociweb.jpgRaster.JPG.Header;
-import com.ociweb.jpgRaster.JPG.MCU;
-import com.ociweb.jpgRaster.JPG.QuantizationTable;
-
 import com.ociweb.jpgRaster.JPG;
 
 public class QuantizerTest {
