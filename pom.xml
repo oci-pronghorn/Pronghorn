@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>WebCookbook</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <name>${project.artifactId}</name>
     <description>Example project of the web components of pronghorn
     </description>
@@ -25,7 +25,7 @@
         <connection>scm:git:git://github.com/oci-pronghorn/WebCookBook.git</connection>
         <url>https://github.com/oci-pronghorn/WebCookBook</url>
         <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/WebCookBook.git</developerConnection>
-        <tag>WebCookbook-1.0.0</tag>
+        <tag>HEAD</tag>
     </scm>
     <properties>
         <java.bootstrap.classes>
