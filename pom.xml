@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>WebCookbook</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <name>${project.artifactId}</name>
     <description>Example project of the web components of pronghorn
     </description>
@@ -54,12 +54,12 @@
             <id>mvn-central</id>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>PronghornPipes</id>
+                    <id>ossrh</id>
                     <url>https://oss.sonatype.org/content/repositories/snapshots
                     </url> <!-- Maven central repos for snapshot and release -->
                 </snapshotRepository>
                 <repository>
-                    <id>PronghornPipes</id>
+                    <id>ossrh</id>
                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
                 </repository>
             </distributionManagement>
@@ -76,7 +76,8 @@
                                     <goal>jar</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>javadoc</classifier> <!-- creates empty javadocs jar for maven central release compliance -->
+                                    <classifier>javadoc
+                                    </classifier> <!-- creates empty javadocs jar for maven central release compliance -->
                                     <classesDirectory>${basedir}/javadoc</classesDirectory>
                                 </configuration>
                             </execution>
@@ -157,7 +158,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>Pronghorn</artifactId>
-            <version>[1.0.0-SNAPSHOT,1.1.0)</version>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -253,6 +254,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.19</version>
+                <configuration>
+                    <argLine>-Xms1000m</argLine> <!-- needed for test to start up servers  -->
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
