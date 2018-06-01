@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>PronghornRanch</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>PronghornRanch</name>
     <description>A Maven Archetype for Pronghorn projects
     </description>
@@ -29,7 +29,7 @@
         <connection>scm:git:git://github.com/oci-pronghorn/PronghornRanch.git</connection>
         <url>https://github.com/oci-pronghorn/PronghornRanch</url>
         <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/PronghornRanch.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>PronghornRanch-1.0.0</tag>
     </scm>
 
 
