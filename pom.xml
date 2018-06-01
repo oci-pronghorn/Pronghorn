@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.ociweb.jpgRaster</groupId>
 	<artifactId>JPGRaster</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1-SNAPSHOT</version>
 
 	<name>${project.artifactId}</name>
 	<description>JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
@@ -28,7 +28,7 @@
 		<connection>scm:git:git://github.com/oci-pronghorn/JPG-Raster.git</connection>
 		<url>https://github.com/oci-pronghorn/JPG-Raster</url>
 		<developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/JPG-Raster.git</developerConnection>
-		<tag>JPGRaster-1.0.0</tag>
+		<tag>HEAD</tag>
 	</scm>
 	<properties>
 		<java.bootstrap.classes>
