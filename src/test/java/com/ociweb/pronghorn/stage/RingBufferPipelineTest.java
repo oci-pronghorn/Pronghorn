@@ -38,7 +38,7 @@ import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
-public class RingBufferPipeline {
+public class RingBufferPipelineTest {
 	
 
 	private final class DumpStageLowLevel extends PronghornStage {
