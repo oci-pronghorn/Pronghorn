@@ -70,8 +70,7 @@ public class JSONStreamParser {
 			assert(value>=0);
 			
 			trie.setUTF8Value("\"", key.getKey(), "\"", value);
-			//TODO: should we add the same key without quotes ??
-			
+						
 		}
 		populateWithJSONTokens(trie);
 		

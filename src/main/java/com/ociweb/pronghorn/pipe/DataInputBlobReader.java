@@ -162,15 +162,16 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		//WARNING: this method will carry the same exact struct forward to the destination
 		
 		final int type = getStructType(this);
-
-		//warning this must copy all the way to the very end with maxVarLen
-		final int end = (bytesLowBound + pipe.maxVarLen);
-		
-		final int copyLen = ((Pipe.structRegistry(getBackingPipe(this)).totalSizeOfIndexes(type))*4)+4;//plus the type
-		int start = end-copyLen;
-		
-		DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);
-
+		//only copy back data if it is found.
+		if (type!=-1) {
+			//warning this must copy all the way to the very end with maxVarLen
+			final int end = (bytesLowBound + pipe.maxVarLen);
+			
+			final int copyLen = ((Pipe.structRegistry(getBackingPipe(this)).totalSizeOfIndexes(type))*4)+4;//plus the type
+			int start = end-copyLen;
+			
+			DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);
+		}
 	}
 	
     
@@ -833,8 +834,31 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     @Override
+	public <A extends Appendable> A readDecimalAsText(A target) {
+		long m = readPackedLong();
+		assert(storeMostRecentPacked(m));
+		
+		return Appendables.appendDecimalValue(target, m, readByte());
+	}
+
+
+    
+    @Override
     public double readRationalAsDouble() {
     	return (double)readPackedLong()/(double)readPackedLong();
+    }
+    
+    @Override
+    public <A extends Appendable> A readRationalAsText(A target) {
+    
+    	try {
+			return (A) Appendables.appendValue(
+					Appendables.appendValue(target, readPackedLong())
+			           .append("/"), readPackedLong());
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}      
+    	
     }
     
     @Override
@@ -940,7 +964,6 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	public int length() {
 		return length;
 	}
-
 
     
 }

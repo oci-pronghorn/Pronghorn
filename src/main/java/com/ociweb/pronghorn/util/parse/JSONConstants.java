@@ -13,7 +13,9 @@ public class JSONConstants {
 	static final byte[] endObject = new byte[]{0x7D}; //       }
 	static final byte[] nameSeparator = new byte[]{0x3A}; //   :
 	static final byte[] valueSeparator = new byte[]{0x2C}; //  ,
-	static final byte[] number = "%i%.".getBytes();//WARNING: this does not match spec exactly no support TODO: yet for scientific notiation
+
+	//WARNING: this does not match spec exactly no support TODO: yet for scientific notiation
+	static final byte[] number = "%i%.".getBytes();
 	
 	static final byte[] falseLiteral = new byte[]{0x66,0x61,0x6c,0x73,0x65}; //false
 	

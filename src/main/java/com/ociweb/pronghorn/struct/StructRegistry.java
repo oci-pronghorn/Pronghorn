@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.function.Predicate;
 
 public class StructRegistry { //prong struct store  
 	
@@ -452,8 +453,7 @@ public class StructRegistry { //prong struct store
 	    	
 	public long fieldLookup(CharSequence sequence, int struct) {
 		assert ((IS_STRUCT_BIT&struct) !=0 ) : "Struct Id must be passed in";
-		TrieParserReader reader = TrieParserReaderLocal.get();
-		return TrieParserReader.query(reader, fields[STRUCT_MASK&struct], sequence);
+		return TrieParserReader.query(TrieParserReaderLocal.get(), fields[STRUCT_MASK&struct], sequence);
 	}
 	
 	public long fieldLookup(byte[] source, int pos, int len, int mask, int struct) {
@@ -578,9 +578,13 @@ public class StructRegistry { //prong struct store
 				
 		boolean result = false;
 		int structId = DataInputBlobReader.getStructType(reader);
+		long fieldIdBase = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET;
+		
 		if (structId>0) {
 			
 			Object[] locals = this.fieldLocals[StructRegistry.STRUCT_MASK & structId];
+			byte[][] names = this.fieldNames[StructRegistry.STRUCT_MASK & structId];
+			
 			for(int i = 0; i<locals.length; i++) {
 				if (attachedInstanceOf.isInstance(locals[i])) {
 					int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, i);
@@ -592,7 +596,39 @@ public class StructRegistry { //prong struct store
 						//logger.info("visit struct id {} {}",structId, Integer.toHexString(structId));
 						//logger.info("bbb reading {} from position {} pos {} from pipe {}",locals[i], readFromLastInt, i, reader.getBackingPipe(reader).id );
 												
-						visitor.read((T) locals[i], reader);
+						visitor.read((T) locals[i], reader, fieldIdBase | i);
+					}
+				}
+			}
+		}
+		return result;
+	}
+	
+	public <T> boolean visitNotClass(DataInputBlobReader<?> reader,
+						             Class<T> attachedNotInstanceOf, 
+						             StructFieldVisitor<T> visitor) {
+			
+		
+		
+		boolean result = false;
+		int structId = DataInputBlobReader.getStructType(reader);
+		long fieldIdBase = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET;
+		if (structId>0) {
+		
+			Object[] locals = this.fieldLocals[StructRegistry.STRUCT_MASK & structId];
+
+			for(int i = 0; i<locals.length; i++) {
+				if (!attachedNotInstanceOf.isInstance(locals[i])) {
+					int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, i);
+					//if no value then do not visit
+					if (readFromLastInt>=0 && readFromLastInt<reader.length()) {
+						result = true;
+						DataInputBlobReader.position(reader, readFromLastInt);	
+						
+						//logger.info("visit struct id {} {}",structId, Integer.toHexString(structId));
+						//logger.info("bbb reading {} from position {} pos {} from pipe {}",locals[i], readFromLastInt, i, reader.getBackingPipe(reader).id );
+												
+						visitor.read((T) locals[i], reader, fieldIdBase | i);
 					}
 				}
 			}
@@ -603,11 +639,12 @@ public class StructRegistry { //prong struct store
 	public <T> boolean identityVisit(DataInputBlobReader<?> reader, T attachedObject, StructFieldVisitor<T> visitor) {
 
 		int structId = DataInputBlobReader.getStructType(reader);
+		long fieldIdBase = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET;
 		
 		int idx =  StructRegistry.FIELD_MASK & (int)fieldLookupByIdentity(attachedObject, structId);
 		if (idx>=0) {
 			DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
-			visitor.read((T)(fieldLocals[structId][idx]), reader);
+			visitor.read((T)(fieldLocals[structId][idx]), reader, fieldIdBase | idx);
 			return true;
 		} else {
 			return false;

@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.IOException;
+
 import com.ociweb.pronghorn.pipe.util.IntArrayPool;
 import com.ociweb.pronghorn.pipe.util.IntArrayPoolLocal;
 import com.ociweb.pronghorn.struct.StructBlobListener;
@@ -17,17 +19,21 @@ import com.ociweb.pronghorn.struct.StructShortListener;
 import com.ociweb.pronghorn.struct.StructTextListener;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public final class StructuredReader {
 
 	public static final int PAYLOAD_INDEX_LOCATION = 0;
-	private final DataInputBlobReader<?> channelReader;
+	final DataInputBlobReader<?> channelReader;
 	private static int[] EMPTY = new int[0];
 	
 	public StructuredReader(DataInputBlobReader<?> reader) {
 		this.channelReader = reader;		
 	}
 
+	public <T> void visitNotClass(Class<T> attachedInstanceOf, StructFieldVisitor<T> visitor) {		
+		Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).visitNotClass(channelReader, attachedInstanceOf, visitor);
+	}
 
 	public <T> void visit(Class<T> attachedInstanceOf, StructFieldVisitor<T> visitor) {		
 		Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).visit(channelReader, attachedInstanceOf, visitor);
@@ -142,9 +148,21 @@ public final class StructuredReader {
      * @return String data
      */
 	public String readText(Object association) {
-		return readText(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		return readText(Pipe.structRegistry(
+				DataInputBlobReader.getBackingPipe(channelReader))
+				.fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 
+	/**
+	 * Reads text from specified field and calls setupParser for TrieParserReader to consume this data.
+	 * @param association Object associated object to find this field
+	 * @param target TrieParserReader target
+	 */
+	public void readText(Object association, TrieParserReader target) {
+	    ChannelReader textReader = read(association);
+		DataInputBlobReader.setupParser((DataInputBlobReader)textReader, target, (int) textReader.readShort());
+	}
+	
     /**
      * Checks to see if passed bytes are equal to field
      * @param fieldId field to compare
@@ -338,9 +356,28 @@ public final class StructuredReader {
 		} else {
 			return nullReadOfDouble();
 		}
+		//return NaN when field is absent
 	}
 
-	//return NaN when field is absent
+	public <A extends Appendable> A readRationalAsText(long fieldId, A target) {
+		
+		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
+				
+		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Rational);
+		final int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
+		if (index>=0) {
+			channelReader.position(index);
+			
+			return channelReader.readRationalAsText(target);
+		} else {
+			try {
+				target.append("null");
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			return target;
+		}
+	}
 
     /**
      * Reads rational as double from specified field in pipe
@@ -805,6 +842,17 @@ public final class StructuredReader {
 		}
 		visitor.value(readPackedInt, isNull, curPos, curSize, c, totalCount);
 	}
+	
+    /**
+     * Visits blob field and can add new operations without modifying the structures
+     * @param visitor used to visit blob field
+     * @param association Object associated object
+     */
+	public void visitBlob(StructBlobListener visitor, Object association) {
+		visitBlob(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+	}
+	
     /**
      * Visits blob field and can add new operations without modifying the structures
      * @param visitor used to visit blob field
@@ -1900,20 +1948,28 @@ public final class StructuredReader {
 		
 		assert(matchOneOfTypes(attachedInstance, StructType.Decimal));
 		
-		this.channelReader.position(
-		this.channelReader.readFromEndLastInt(
-				StructRegistry.FIELD_MASK &
-				(int)Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(attachedInstance, 
-						DataInputBlobReader.getStructType(this.channelReader))));
-		
-		long m = channelReader.readPackedLong();
-    	assert(channelReader.storeMostRecentPacked(m));
-    	
-    	return Appendables.appendDecimalValue(target, m, 
-    											channelReader.readByte());
+		long id = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader))
+		         .fieldLookupByIdentity(attachedInstance, 
+				     DataInputBlobReader.getStructType(this.channelReader));
+				     
+		return readDecimalAsText(id, target);
 	}
 
     /**
+     * Reads decimal as String and appends to target
+     * @param id long field association showing where to read
+     * @param target to append to
+     * @return appended data
+     */
+	public <A extends Appendable> A readDecimalAsText(long id, A target) {
+		this.channelReader.position(this.channelReader
+				          .readFromEndLastInt(StructRegistry.FIELD_MASK & (int)id));
+		
+		return channelReader.readDecimalAsText(target);
+	}
+
+
+	/**
      * Reads long from specified field in pipe
      * @param association field association showing where to read
      * @return <code>true</code> if data exists, else <code>false</code>
@@ -1973,6 +2029,7 @@ public final class StructuredReader {
     public boolean readShort(Object association, StructuredWriter output) {
 		
 		final long fieldId = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(this.channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(this.channelReader));
+		
 		assert(0==Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).dims(fieldId)) : "This method only used for non dim fields.";
 		
 		assert(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldType(fieldId) == StructType.Short ||

@@ -1333,17 +1333,19 @@ public class Pipe<T extends MessageSchema<T>> {
     		
     
 	static <S extends MessageSchema<S>> int copyFragment(
-			Pipe<S> sourcePipe, long sourceSlabPos, int sourceBlobPos,
+			Pipe<S> sourcePipe, final long sourceSlabPos, int sourceBlobPos,
 			Pipe<S> localTarget) {
 		
-		int mask = Pipe.slabMask(sourcePipe);
-		int[] slab = Pipe.slab(sourcePipe);
+		final int mask = Pipe.slabMask(sourcePipe);
+		final int[] slab = Pipe.slab(sourcePipe);
 		
-		int msgIdx = slab[mask&(int)sourceSlabPos];
+		final int msgIdx = slab[mask&(int)sourceSlabPos];
 		
 		//look up the data size to copy...
-		int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
-		int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for byte count
+		final int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
+
+		//this value also contains the full byte count for any index used by structures
+		int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for pos of byte count
 			
 		Pipe.copyFragment(localTarget,
 				slabMsgSize, blobMsgSize, 
@@ -1356,8 +1358,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		Pipe.addAndGetBlobWorkingTailPosition(sourcePipe, blobMsgSize);
 		Pipe.confirmLowLevelRead(sourcePipe, slabMsgSize);
 		Pipe.releaseReadLock(sourcePipe);		
-		
-		
+				
 		return slabMsgSize;
 		
 	}

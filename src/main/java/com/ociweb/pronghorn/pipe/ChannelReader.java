@@ -156,11 +156,26 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 */
 	public abstract double readDecimalAsDouble();
 
+    /**
+     * Reads decimal from ChannelReader and writes to target
+     * @param target Appendable target
+     * @return target Appendable
+     */
+	public abstract <A extends Appendable> A readDecimalAsText(A target);
+	
 	/**
 	 * Reads rational from ChannelReader and passes to double
 	 * @return double with data from ChannelReader
 	 */
 	public abstract double readRationalAsDouble();
+	
+	
+	/**
+	 * Reads rational from ChannelReader and writes it as text to target
+	 * @param target Appendable target
+	 * @return target Appendable
+	 */
+	public abstract <A extends Appendable> A readRationalAsText(A target);
 
 	/**
 	 * Reads decimal from ChannelReader and passes to long
