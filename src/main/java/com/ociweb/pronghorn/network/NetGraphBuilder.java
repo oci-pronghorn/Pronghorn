@@ -782,32 +782,6 @@ public class NetGraphBuilder {
 	}
 	
 
-	public static ServerCoordinator httpServerSetup(TLSCertificates tlsCertificates, String bindHost, int port, 
-													GraphManager gm,
-			                                        int processors, ModuleConfig modules) {
-			
-		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
-		if (null == tlsCertificates) {
-			c.useInsecureServer();
-		} else {
-			c.setTLS(tlsCertificates);
-		}
-		c.setTracks(processors);
-		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
-		
-		final ServerPipesConfig serverConfig = c.buildServerConfig();
-				 
-		//This must be large enough for both partials and new handshakes.
-	
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
-				   false, "Server", "", serverConfig);
-		
-		buildHTTPServerGraph(gm, modules, serverCoord);
-		
-		return serverCoord;
-	}
-	
 	public static void telemetryServerSetup(TLSCertificates tlsCertificates, String bindHost, int port,
 			                                GraphManager gm, int baseRate) {
 

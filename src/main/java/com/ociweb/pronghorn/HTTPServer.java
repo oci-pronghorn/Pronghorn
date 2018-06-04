@@ -1,7 +1,11 @@
 package com.ociweb.pronghorn;
 
+import com.ociweb.pronghorn.network.HTTPServerConfig;
+import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.config.*;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
@@ -42,12 +46,27 @@ public class HTTPServer {
 		}
 
 		
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, processors>=4 ? 20_000 : 2_000_000 );//pi needs larger values...
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, processors>=4 ? 20_000 : 2_000_000 );
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		if (null == tlsCertificates) {
+			c.useInsecureServer();
+		} else {
+			c.setTLS(tlsCertificates);
+		}
+		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		
+		final ServerPipesConfig serverConfig = c.buildServerConfig();
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator serverCoord1 = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
+				   false, "Server", "", serverConfig);
+		
+		NetGraphBuilder.buildHTTPServerGraph(gm, config, serverCoord1);//pi needs larger values...
 						
 		///////////////
 	    //BUILD THE SERVER
 	    ////////////////		
-		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, config);
+		final ServerCoordinator serverCoord = serverCoord1;
 					
 		if (debug) {
 			////////////////

@@ -23,7 +23,6 @@ import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.scheduling.ScriptedNonThreadScheduler;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
@@ -80,9 +79,23 @@ public class HTTPSRoundTripTest {
 	
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
 		
-		NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, modules);
-    	
+		c.setDecryptionUnitsPerTrack(4);
+		c.setEncryptionUnitsPerTrack(4);
+		
+		if (null == tlsCertificates) {
+			c.useInsecureServer();
+		} else {
+			c.setTLS(tlsCertificates);
+		}
+		c.setHost(bindHost);
+		
+		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
+		
 		runRoundTrip(gm, results);
     }
     
@@ -158,9 +171,23 @@ public class HTTPSRoundTripTest {
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
     	
 		String pathRoot = buildStaticFileFolderPath(testFile);
-		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, messagesToOrderingSuper, messageSizeToOrderingSuper);	
-		NetGraphBuilder.httpServerSetup(tlsCertificates, bindHost, port, gm, processors, modules);
-    	
+		ModuleConfig modules = NetGraphBuilder.simpleFileServer(pathRoot, 
+				messagesToOrderingSuper, messageSizeToOrderingSuper);
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
+		
+		c.setHost(bindHost);
+		c.setDecryptionUnitsPerTrack(4);
+		c.setEncryptionUnitsPerTrack(4);
+		
+		if (null == tlsCertificates) {
+			c.useInsecureServer();
+		} else {
+			c.setTLS(tlsCertificates);
+		}
+		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());	
 		runRoundTrip(gm, results);
 		
     }
@@ -240,19 +267,17 @@ public class HTTPSRoundTripTest {
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
 		
-		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
+		
+		c.setHost(bindHost);
+		c.setDecryptionUnitsPerTrack(4);
+		c.setEncryptionUnitsPerTrack(4);
+		
 		c.setTLS(tlsCertificates);	
 		c.setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
-		
-		final ServerPipesConfig serverConfig = c.buildServerConfig();
-			
-		
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
-				    true, "Server", "", serverConfig);
-		
-		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord);
+
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
 		
 		runRoundTrip(gm, results);
     }
