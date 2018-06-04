@@ -68,12 +68,7 @@ public class ScriptedThreadSchedulingTest {
 		c.setTracks(procssors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
-		final ServerPipesConfig serverConfig = c.buildServerConfig();
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoord = new ServerCoordinator(defaultcerts, "127.0.0.1", 8084, scs,
-				   false, "Server", "", serverConfig);
-		
-		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord); //test with TLS later.
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator()); //test with TLS later.
 		NetGraphBuilder.telemetryServerSetup(defaultcerts,"127.0.0.1",8094, gm, GraphManager.TELEMTRY_SERVER_RATE);;
 		
 		boolean threadLimitHard = false; //almost never want this to be true.

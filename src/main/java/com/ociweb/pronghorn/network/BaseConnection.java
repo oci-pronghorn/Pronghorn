@@ -26,8 +26,7 @@ public abstract class BaseConnection {
 	private int sequenceNo;
 
 	protected boolean isDisconnecting = false;
-	protected static boolean isShuttingDown =  false;
-	  
+
     private long lastUsedTimeNS = System.currentTimeMillis();
 
 	protected ChannelWriterController connectionDataWriter;
@@ -109,9 +108,9 @@ public abstract class BaseConnection {
 		} catch (SSLException e) {
 		    boolean debug = false;
 		    if (debug) {
-		    	if (!isShuttingDown) {	//if we are shutting down this is not an error.                    	
+		          	
 		    		logger.trace("This engine was forced to close inbound, without having received the proper SSL/TLS close notification message from the peer, due to end of stream.", e);
-		    	}
+		    
 		    }
 			
 		}

@@ -230,12 +230,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		assert(1+responsesReceived<=requestsSent) : "received more responses than requests were sent";
 		boolean result = (++responsesReceived)==requestsSent;
 		if (result) {
-			
-			if (isShuttingDown) {
-				close();
-			} else {
+
 				closeTimeLimit = System.currentTimeMillis()+TIME_TILL_CLOSE;
-			}
 			
 		}
 		return result;
