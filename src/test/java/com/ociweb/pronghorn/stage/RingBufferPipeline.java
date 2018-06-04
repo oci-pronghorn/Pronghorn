@@ -142,11 +142,6 @@ public class RingBufferPipeline {
 							
 							int pos = PipeReader.readBytesPosition(inputRing, FIELD_ID);
 
-							if (lastPos>=0) {
-								assertEquals(msgCount+" Expected pos to jump by length:"+len+" for mask "+inputRing.blobMask,
-								             (lastPos+len) & inputRing.blobMask, 
-								             pos           & inputRing.blobMask);
-							} 
 							lastPos = pos;
 							
 							//This block causes a dramatic slow down of the work!!
@@ -363,63 +358,63 @@ public class RingBufferPipeline {
 
 	
 	@Test
-	public void pipelineExampleHighLevelRoute() {			
+	public void pipelineExampleHighLevelRouteTest() {			
 		pipelineTest(true, false, true, true);		
 	}
 	
 	@Test
-	public void pipelineExampleLowLevelRoute() {			
+	public void pipelineExampleLowLevelRouteTest() {			
 		pipelineTest(false, false, true, true);		
 	}
 	
 	@Test
-	public void pipelineExampleHighLevelRouteWithMonitor() {			
+	public void pipelineExampleHighLevelRouteWithMonitorTest() {			
 		pipelineTest(true, true, true, true);		
 	}
 	
 	@Test
-	public void pipelineExampleLowLevelRouteWithMonitor() {			
+	public void pipelineExampleLowLevelRouteWithMonitorTest() {			
 		pipelineTest(false, true, true, true);		
 	}
 
 	
 	@Test
-	public void pipelineExampleHighLevelSplits() {			
+	public void pipelineExampleHighLevelSplitsTest() {			
 		pipelineTest(true, false, true, false);		
 	}
 	
 	@Test
-	public void pipelineExampleLowLevelSplits() {			
+	public void pipelineExampleLowLevelSplitsTest() {			
 		pipelineTest(false, false, true, false);		
 	}
 	
 	@Test
-	public void pipelineExampleHighLevelSplitsWithMonitor() {			
+	public void pipelineExampleHighLevelSplitsWithMonitorTest() {			
 		pipelineTest(true, true, true, false);		
 	}
 	
 	@Test
-	public void pipelineExampleLowLevelSplitsWithMonitor() {			
+	public void pipelineExampleLowLevelSplitsWithMonitorTest() {			
 		pipelineTest(false, true, true, false);		
 	}
 	
 	@Test
-	public void pipelineExampleHighLevel() {		
+	public void pipelineExampleHighLevelTest() {		
 		 pipelineTest(true, false, false, true);	 		 
 	}
 
 	@Test
-	public void pipelineExampleLowLevel() {			
+	public void pipelineExampleLowLevelTest() {			
 		 pipelineTest(false, false, false, true);
 	}
 
 	@Test
-	public void pipelineExampleHighLevelWithMonitor() {		
+	public void pipelineExampleHighLevelWithMonitorTest() {		
 		 pipelineTest(true, true, false, true);	 		 
 	}
 
 	@Test
-	public void pipelineExampleLowLevelWithMonitor() {			
+	public void pipelineExampleLowLevelWithMonitorTest() {			
 		 pipelineTest(false, true, false, true);	 		 
 	}
 	
