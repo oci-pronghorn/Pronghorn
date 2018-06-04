@@ -51,8 +51,8 @@ public class HTTPSRoundTripTest {
     	
     	GraphManager gm = new GraphManager();
     	
-    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
-		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1<<14)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
 		int fieldSession = 0;
@@ -133,8 +133,8 @@ public class HTTPSRoundTripTest {
     	
     	GraphManager gm = new GraphManager();
     	
-    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
-		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1<<14)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
 		int fieldSession = 0;
@@ -212,8 +212,8 @@ public class HTTPSRoundTripTest {
     	
     	GraphManager gm = new GraphManager();
     	
-    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1000)};
-		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1000)};
+    	Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe = new Pipe[]{ClientHTTPRequestSchema.instance.newPipe(10, 1<<14)};
+		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
 		int fieldSession = 0;
