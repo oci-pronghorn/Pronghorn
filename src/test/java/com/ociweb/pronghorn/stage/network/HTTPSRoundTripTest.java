@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -23,6 +24,7 @@ import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ScriptedNonThreadScheduler;
+import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class HTTPSRoundTripTest {
@@ -257,20 +259,34 @@ public class HTTPSRoundTripTest {
     
     
 	public static void runRoundTrip(GraphManager gm, StringBuilder results) {
-		ScriptedNonThreadScheduler scheduler 
-		= new ScriptedNonThreadScheduler(gm,null,false);
 		
-		scheduler.startup();
-		int i = 3000;
-		while ( --i >= 0 && results.length()==0) {
-			scheduler.run();
+		StageScheduler s = StageScheduler.defaultScheduler(gm);
+		s.startup();
+
+		int i = 20000;
+		while (--i>=0 && results.length()==0) {
+			
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
-		scheduler.shutdown();
+		try {
+			Thread.sleep(3);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		s.shutdown();
+		s.awaitTermination(10, TimeUnit.SECONDS);
+		
 		
 		// expecting  {"x":9,"y":17,"groovySum":26} in the payload
 
 		assertTrue(results.toString(),
 				results.toString().contains("0xff,0xff,0x7b,0x22,0x78,0x22,0x3a,0x39,0x2c,0x22,0x79,0x22,0x3a,0x31,0x37,0x2c,0x22,0x67,0x72,0x6f,0x6f,0x76,0x79,0x53,0x75,0x6d,0x22,0x3a,0x32,0x36,0x7d,0x0a"));
+	
+	
 	}
 
 
