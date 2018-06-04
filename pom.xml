@@ -5,7 +5,7 @@
   <name>Ph-TLS-pureJava</name>
   <artifactId>Ph-TLS-pureJava</artifactId>
   <description>pure Java TLS implementation</description>
-     <url>https://github.com/oci-pronghorn/PronghornRanch</url>
+     <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
     <licenses>
         <license>
             <name>BSD-3 License</name>
