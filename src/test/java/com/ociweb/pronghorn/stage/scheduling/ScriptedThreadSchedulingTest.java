@@ -7,7 +7,12 @@ import java.nio.file.Paths;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.HTTPServer;
+import com.ociweb.pronghorn.network.HTTPServerConfig;
+import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
+import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 
@@ -52,9 +57,23 @@ public class ScriptedThreadSchedulingTest {
 						resourcesRoot, resourcesDefault, 
 						pathRoot);
 		
-		TLSCertificates defaultcerts = TLSCertificates.defaultCerts; //test with TLS later.
-		NetGraphBuilder.httpServerSetup(defaultcerts,"127.0.0.1",8084,gm, procssors, modules);
+		TLSCertificates defaultcerts = TLSCertificates.defaultCerts;
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(8084, gm);
+		c.setHost("127.0.0.1");
+		if (null == defaultcerts) {
+			c.useInsecureServer();
+		} else {
+			c.setTLS(defaultcerts);
+		}
+		c.setTracks(procssors);
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
+		final ServerPipesConfig serverConfig = c.buildServerConfig();
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator serverCoord = new ServerCoordinator(defaultcerts, "127.0.0.1", 8084, scs,
+				   false, "Server", "", serverConfig);
+		
+		NetGraphBuilder.buildHTTPServerGraph(gm, modules, serverCoord); //test with TLS later.
 		NetGraphBuilder.telemetryServerSetup(defaultcerts,"127.0.0.1",8094, gm, GraphManager.TELEMTRY_SERVER_RATE);;
 		
 		boolean threadLimitHard = false; //almost never want this to be true.
