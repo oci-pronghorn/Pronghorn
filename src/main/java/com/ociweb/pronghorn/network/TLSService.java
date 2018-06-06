@@ -44,8 +44,7 @@ public class TLSService {
 			TrustManager[] trustManagers = null;
 			if (trustAll) {
 				trustManagers = TLSCertificateTrust.trustManagerFactoryTrustAllCerts();
-			}
-			else if (trustManagerFactory != null) {
+			} else if (trustManagerFactory != null) {
 				trustManagers = trustManagerFactory.getTrustManagers();
 			}
 	        context = SSLContext.getInstance(PROTOCOL);
