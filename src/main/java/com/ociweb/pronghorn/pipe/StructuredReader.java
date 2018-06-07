@@ -160,7 +160,7 @@ public final class StructuredReader {
 	 */
 	public void readText(Object association, TrieParserReader target) {
 	    ChannelReader textReader = read(association);
-		DataInputBlobReader.setupParser((DataInputBlobReader)textReader, target, (int) textReader.readShort());
+		DataInputBlobReader.setupParser((DataInputBlobReader<?>)textReader, target, (int) textReader.readShort());
 	}
 	
     /**
