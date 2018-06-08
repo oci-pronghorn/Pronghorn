@@ -300,6 +300,12 @@
                 <version>2.5.3</version>
             </plugin>
 
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.2-SNAPSHOT</version>
+            </plugin>
+
         </plugins>
     </build>
 </project>
