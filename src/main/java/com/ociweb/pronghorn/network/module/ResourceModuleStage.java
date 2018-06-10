@@ -159,7 +159,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			
 		    //logger.info("loading resource {} ",resourceName);
 			this.resourceURL[fileIdx] = localURL;
-			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByExtension(httpSpec, fileName).getBytes();
+			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByFullPathExtension(httpSpec, fileName).getBytes();
 
 			
 			try {

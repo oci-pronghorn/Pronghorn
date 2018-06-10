@@ -75,7 +75,7 @@ public class HTTPUtilResponse {
 			Pipe<ServerResponseSchema> output, 
 			long activeChannelId, int activeSequenceNo, int activeFieldRequestContext, 
 			ChannelWriter outputStream, 
-			HeaderWritable additionalHeaderWriter) {
+			HeaderWritable additionalHeaderWriter, int status) {
 		
 						 
 		byte[] contentType = null!=contentTypeEnum ? contentTypeEnum.getBytes() : null;
@@ -85,7 +85,8 @@ public class HTTPUtilResponse {
 		output.closeBlobFieldWrite(); //closed because we will add each part below...
 		HTTPUtil.prependBodyWithHeader(output, 
 				              eTag, totalLengthWritten, that, activeFieldRequestContext,
-				              activeChannelId,  activeSequenceNo, contentType, additionalHeaderWriter);//context
+				              activeChannelId,  activeSequenceNo, contentType, 
+				              additionalHeaderWriter, status);//context
 	}
 	
 	public static boolean isBeginningOfResponse(int flags) {

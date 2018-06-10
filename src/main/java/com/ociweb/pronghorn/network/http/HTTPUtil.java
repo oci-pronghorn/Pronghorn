@@ -289,7 +289,8 @@ public class HTTPUtil {
 			int totalLengthWritten,
 			HTTPUtilResponse ebh,
 			int requestContext, long channelId, int sequenceNo,
-			byte[] contentType, HeaderWritable additionalHeaderWriter) {
+			byte[] contentType, HeaderWritable additionalHeaderWriter, int status) {
+		
 		
 		final boolean isChunked = false;
 		final boolean isServer = true;
@@ -332,7 +333,7 @@ public class HTTPUtil {
 		
 		writeHeader(
 					HTTPRevisionDefaults.HTTP_1_1.getBytes(), //our supported revision
-		 		    200, requestContext, 
+		 		    status, requestContext, 
 		 		    etagBytes, contentType, 
 		 		    totalLengthWritten, 
 		 		    isChunked, isServer,

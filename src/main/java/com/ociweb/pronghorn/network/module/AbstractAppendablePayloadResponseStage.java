@@ -177,7 +177,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 					
 					HTTPUtilResponse.closePayloadAndPublish(ebh, eTag(), contentType(),
 						output, activeChannelId, activeSequenceNo, activeFieldRequestContext,
-						outputStream, additionalHeaderWriter);
+						outputStream, additionalHeaderWriter, 200);
 		        	
 		        			        	
 		        	//must read context before calling this
