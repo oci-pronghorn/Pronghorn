@@ -158,7 +158,7 @@ public final class StructuredReader {
 	 * @param association Object associated object to find this field
 	 * @param target TrieParserReader target
 	 */
-	public void readText(Object association, TrieParserReader target) {
+	public void readTextAsParserSource(Object association, TrieParserReader target) {
 	    ChannelReader textReader = read(association);
 		DataInputBlobReader.setupParser((DataInputBlobReader<?>)textReader, target, (int) textReader.readShort());
 	}
