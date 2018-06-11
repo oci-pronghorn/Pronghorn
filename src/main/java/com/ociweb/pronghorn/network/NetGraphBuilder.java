@@ -896,8 +896,8 @@ public class NetGraphBuilder {
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
-		//TODO: this must be large enough or we have issues in FogLight on pi getting dot lite JS
-		final int outputPipeChunk = 1 << 20;  //1M //is this too small??  
+		//TODO: when this is super small we see a problem serving large resource files.
+		final int outputPipeChunk = 1 << 22;  //must be large enough to hold js file.
 		
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
