@@ -896,7 +896,9 @@ public class NetGraphBuilder {
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
-		final int outputPipeChunk = 1<<9;//512B
+		//TODO: this must be large enough or we have issues in FogLight on pi getting dot lite JS
+		final int outputPipeChunk = 1 << 20;  //1M //is this too small??  
+		
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
 		ModuleConfig config = new ModuleConfig(){
