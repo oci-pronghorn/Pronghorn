@@ -16,13 +16,15 @@ public class HistogramSumStage extends PronghornStage {
 	private final Pipe<HistogramSchema> output;       
 	
 
-	public static HistogramSumStage newInstance(GraphManager gm, Pipe<HistogramSchema>[] inputs, Pipe<HistogramSchema> output) {
-		return new HistogramSumStage(gm, inputs, output);
+	public static HistogramSumStage newInstance(GraphManager gm, 
+			                                    Pipe<HistogramSchema> output, 
+			                                    Pipe<HistogramSchema> ... inputs) {
+		return new HistogramSumStage(gm, output, inputs);
 	}
 	
 	protected HistogramSumStage(GraphManager graphManager,
-			                    Pipe<HistogramSchema>[] inputs,
-			                    Pipe<HistogramSchema> output) {
+			                    Pipe<HistogramSchema> output,
+			                    Pipe<HistogramSchema> ... inputs) {
 		
 		super(graphManager, inputs, output);
 		this.inputs = inputs;

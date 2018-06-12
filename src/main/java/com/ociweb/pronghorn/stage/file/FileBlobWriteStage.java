@@ -60,11 +60,18 @@ public class FileBlobWriteStage extends PronghornStage{
 
     private int selectedFile = 0;
     private final long fileRotateSize;
+    private final String extension;
     
     private final boolean append;
     private StringBuilder pathBuilder;
     private ISOTimeFormatterLowGC formatter;
 
+    public FileBlobWriteStage newInstance(GraphManager graphManager,
+							              Pipe<RawDataSchema> input,
+							              String outputPathString) {
+    	return new FileBlobWriteStage(graphManager, input, false, outputPathString);
+    }
+    
     /**
      *
      * @param graphManager
@@ -83,10 +90,13 @@ public class FileBlobWriteStage extends PronghornStage{
     //fileRotateSize is ignored if there is only 1 file in the output path strings
     public FileBlobWriteStage(GraphManager graphManager,
     		                  Pipe<RawDataSchema> input,
-    		                  long fileRotateSize,
+    		                  long fileRotateSize, //ignored if file count is 1
     		                  boolean append, 
     		                  String pathBase,
     		                  int maxFileCount) {
+    	
+    	
+    	//TODO: add second constructor to add control pipe.
     	
         super(graphManager, input, NONE);
         assert(pathBase!=null);
@@ -95,11 +105,7 @@ public class FileBlobWriteStage extends PronghornStage{
         this.input = input;
         this.maxFileCount = maxFileCount;
         this.basePath = pathBase;
-    	
-    	//TODO: need to have external config of file size and count
-    	//TODO: need file names to rotate forward with timestamps when created.
-    	//TODO: refine business latency..
-        
+        this.extension = ".log";
         
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
@@ -135,7 +141,7 @@ public class FileBlobWriteStage extends PronghornStage{
         
         try {
         	assert(0==selectedFile);
-        	this.absoluteFileNames[selectedFile] =  generateFileName();
+        	this.absoluteFileNames[selectedFile] =  generateFileName(extension);
         	        	
         	fileChannel = provider.newFileChannel(
         			fileSystem.getPath(this.absoluteFileNames[selectedFile]), writeOptions);
@@ -147,7 +153,7 @@ public class FileBlobWriteStage extends PronghornStage{
     }    
     
     
-    private String generateFileName() {
+    private String generateFileName(String ext) {
     	
     	if (maxFileCount==1) {
     		return basePath;//no rotation or timestamps
@@ -155,7 +161,7 @@ public class FileBlobWriteStage extends PronghornStage{
     		pathBuilder.setLength(0);
     		pathBuilder.append(basePath);
     		formatter.write(System.currentTimeMillis(), pathBuilder);
-    		pathBuilder.append(".log");
+    		pathBuilder.append(ext);
     		return pathBuilder.toString();
     	}
     	
@@ -201,7 +207,7 @@ public class FileBlobWriteStage extends PronghornStage{
 							provider.delete(fileSystem.getPath(oldName = absoluteFileNames[selectedFile]));							
 						}
 						
-						absoluteFileNames[selectedFile] = generateFileName();
+						absoluteFileNames[selectedFile] = generateFileName(extension);
 						if (absoluteFileNames[selectedFile].equals(oldName)) {
 							logger.warn("log file names are not unique because the file sizes are too small, increase max size.");
 							//to allow for continued use modify the name to avoid collision.

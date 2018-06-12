@@ -57,7 +57,7 @@ public class HistogramTest {
 	
 		}		
 		
-		HistogramSumStage.newInstance(gm, inputs, output);
+		HistogramSumStage.newInstance(gm, output, inputs);
 		
 		StringBuilder b = new StringBuilder();
 		ConsoleJSONDumpStage watch = ConsoleJSONDumpStage.newInstance(gm, output, b, false);
