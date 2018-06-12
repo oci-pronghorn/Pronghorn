@@ -226,11 +226,13 @@ public abstract class ByteArrayPayloadResponseStage <
 		//NOTE: we can add extra headers here
 		HeaderWritable headers = null;
 		
+		int length = prefixCount()+payloadLength+suffixCount();
+		
 		HTTPUtil.writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
 				    status, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
-		 		    prefixCount()+payloadLength+suffixCount(), 
+		 		    length, 
 		 		    isChunked, isServer,
 		 		    outputStream, 
 		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT),
@@ -275,7 +277,9 @@ public abstract class ByteArrayPayloadResponseStage <
 				                   (outputStream.remaining()-suffixCount()) )) >= 1) {
 			if (sendLength>0) {
 
-				outputStream.write( outputStream, 
+				assert(Pipe.validateVarLength(output, sendLength));
+				
+				DataOutputBlobWriter.write( outputStream, 
 									payloadBacking,
 									payloadPos+workingPosition,
 									sendLength,
