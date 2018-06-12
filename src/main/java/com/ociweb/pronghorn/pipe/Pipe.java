@@ -1038,7 +1038,8 @@ public class Pipe<T extends MessageSchema<T>> {
         //base has future pos added to it so this value must be masked and kept as small as possible
         pipe.totalBlobBytesRead = pipe.totalBlobBytesRead+bytesConsumed;        
         pipe.blobReadBase = pipe.blobMask /*Pipe.BYTES_WRAP_MASK*/ & (pipe.blobReadBase+bytesConsumed);
-        assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
+        //no longer true now that we have index data...
+        //assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
     }
     
     /**
@@ -4109,7 +4110,6 @@ public class Pipe<T extends MessageSchema<T>> {
 
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
-        assert(Pipe.contentRemaining(pipe)>=0) : "value "+Pipe.contentRemaining(pipe); 
         long tail = pipe.slabRingTail.workingTailPos.value;
 		batchedReleasePublish(pipe, 
         		              pipe.blobRingTail.byteWorkingTailPos.value = pipe.blobReadBase, 
