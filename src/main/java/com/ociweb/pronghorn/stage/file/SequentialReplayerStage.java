@@ -121,10 +121,11 @@ public class SequentialReplayerStage extends PronghornStage {
 		this.fileOutput = fileWriteData;
 		this.fileInput = fileReadData;
 		
-		assert(fileControl.length == fileResponse.length);
-		assert(fileControl.length == fileReadData.length);
+		assert(fileControl.length   == fileResponse.length);
+		assert(fileControl.length   == fileReadData.length);
 		assert(fileWriteData.length == fileReadData.length);
-
+		assert(fileControl.length>0) : "no need to create since it is not used";
+		
 		this.fileSizeLimit = 10 * Math.max(storeProducerRequests.sizeOfBlobRing,
 				            	    loadConsumerResponses.sizeOfBlobRing);
 	}

@@ -65,6 +65,7 @@ public class GraphManager {
 			
 	//set to false when we see telemetry missing edges. 
 	//TODO; still debugging this not working when there are unrelated groups. switched on.
+	//TODO: this is broken for SequentialReplayer/SequentialFielWrite for MQTT
 	public static boolean combineCommonEdges = true; 
 	
 	//turn off to minimize memory and remove from profiler.
@@ -1921,10 +1922,10 @@ public class GraphManager {
 		                
 		                if (combineCommonEdges && producer>=0 && consumer>=0) {
 		                	//if this producer writes to many pipes
-		                	int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+		                	final int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
 							if (outputPipeCount >= 4) {
 								//destinations must share same destination and be of same type;	
-								if (isSameDestination(m, producer, 1, 2) 
+								if (     isSameDestination(m, producer, 1, 2) 
 									&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
 								    ) {
 									
@@ -1932,8 +1933,18 @@ public class GraphManager {
 									boolean allTheSame = allTheSame(m, producer, outputPipeCount);
 									
 									if (!allTheSame) {
-										showLabels = false;
-								    	fanOutGrouping = true;
+										//confirm all all of the same type
+										boolean isOk = true;
+										for(int p = 2;p<=outputPipeCount; p++) {
+											isOk |=		
+											Pipe.isForSameSchema((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1), 
+																 (Pipe<?>)GraphManager.getOutputPipe(m, producer, p));
+										}
+										
+										if (isOk) {
+											showLabels = false;
+								    		fanOutGrouping = true;
+										}
 									}
 								  
 								}
@@ -1941,16 +1952,26 @@ public class GraphManager {
 							
 							//already grouped so do not do it again.
 							if (showLabels) {
-			                	int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+			                	final int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
 								if (inputPipeCount >= 4) {
 									//destinations must share same destination and be of same type;	
 									if (isSameSource(m, consumer, 1, 2) &&
 									    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
 									  
-									  //if they all go to the same place that is ok for this case	
+									  //if they all go to the same place that is ok for this case
 										
-									  showLabels = false;
-									  fanInGrouping = true;
+										//confirm all all of the same type
+										boolean isOk = true;
+										for(int p = 2;p<=inputPipeCount; p++) {
+											isOk |=		
+											Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, producer, 1), 
+																 (Pipe<?>)GraphManager.getInputPipe(m, producer, p));
+										}
+											
+										if (isOk) {
+											showLabels = false;
+											fanInGrouping = true;
+										}
 									}
 			                	}
 							}
