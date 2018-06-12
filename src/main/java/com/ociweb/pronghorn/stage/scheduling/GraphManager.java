@@ -1964,8 +1964,8 @@ public class GraphManager {
 										boolean isOk = true;
 										for(int p = 2;p<=inputPipeCount; p++) {
 											isOk |=		
-											Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, producer, 1), 
-																 (Pipe<?>)GraphManager.getInputPipe(m, producer, p));
+											Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1), 
+																 (Pipe<?>)GraphManager.getInputPipe(m, consumer, p));
 										}
 											
 										if (isOk) {
