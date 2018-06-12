@@ -1936,7 +1936,7 @@ public class GraphManager {
 										//confirm all all of the same type
 										boolean isOk = true;
 										for(int p = 2;p<=outputPipeCount; p++) {
-											isOk |=		
+											isOk &=		
 											Pipe.isForSameSchema((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1), 
 																 (Pipe<?>)GraphManager.getOutputPipe(m, producer, p));
 										}
@@ -1963,7 +1963,7 @@ public class GraphManager {
 										//confirm all all of the same type
 										boolean isOk = true;
 										for(int p = 2;p<=inputPipeCount; p++) {
-											isOk |=		
+											isOk &=		
 											Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1), 
 																 (Pipe<?>)GraphManager.getInputPipe(m, consumer, p));
 										}
