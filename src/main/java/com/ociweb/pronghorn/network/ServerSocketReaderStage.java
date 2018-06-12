@@ -321,7 +321,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		try {
 			int len = socketChannel.read(ByteBuffer.allocate(3));
 			if (len>0) {
-				logger.warn("client connection is sending addional data after closing connection: {}",socketChannel);
+				logger.trace("client connection is sending addional data after closing connection: {}",socketChannel);
 			}
 		} catch (IOException e) {
 			//ignore

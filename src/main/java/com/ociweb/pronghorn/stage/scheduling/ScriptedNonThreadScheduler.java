@@ -925,7 +925,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			
 			if (duration <= that.sla[inProgressIdx]) {
 			} else {
-				that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
+		    // do not report until this feature is documented...  TODO: add feature.
+			//	that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
 			}
 
 			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){

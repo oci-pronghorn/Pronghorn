@@ -66,7 +66,7 @@ public class FileBlobWriteStage extends PronghornStage{
     private StringBuilder pathBuilder;
     private ISOTimeFormatterLowGC formatter;
 
-    public FileBlobWriteStage newInstance(GraphManager graphManager,
+    public static FileBlobWriteStage newInstance(GraphManager graphManager,
 							              Pipe<RawDataSchema> input,
 							              String outputPathString) {
     	return new FileBlobWriteStage(graphManager, input, false, outputPathString);
