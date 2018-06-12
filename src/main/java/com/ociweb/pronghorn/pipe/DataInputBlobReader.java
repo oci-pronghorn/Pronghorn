@@ -214,31 +214,33 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         return that.openLowLevelAPIField();
     }
 
-
-    
     public int accumLowLevelAPIField() {
-        if (0==this.length) {
-            int meta = Pipe.takeByteArrayMetaData(this.pipe);
-			int localLen = Pipe.takeByteArrayLength(this.pipe);
+    	return accumLowLevelAPIField(this);
+    }
+    
+    public static int accumLowLevelAPIField(DataInputBlobReader<?> that) {
+        if (0==that.length) {
+            int meta = Pipe.takeByteArrayMetaData(that.pipe);
+			int localLen = Pipe.takeByteArrayLength(that.pipe);
 			
-			this.length    = Math.max(0, localLen);
-			this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
-			this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
-			assert(this.backing!=null) : 
-				"The pipe "+(1==(meta>>31)?" constant array ": " blob ")+"must be defined before use.\n "+this.pipe;
+			that.length    = Math.max(0, localLen);
+			that.bytesLowBound = that.position = Pipe.bytePosition(meta, that.pipe, that.length);
+			that.backing   = Pipe.byteBackingArray(meta, that.pipe); 
+			assert(that.backing!=null) : 
+				"The pipe "+(1==(meta>>31)?" constant array ": " blob ")+"must be defined before use.\n "+that.pipe;
 				
-			this.bytesHighBound = this.pipe.blobMask & (this.position + this.length);
+			that.bytesHighBound = that.pipe.blobMask & (that.position + that.length);
 			
-			assert(Pipe.validatePipeBlobHasDataToRead(this.pipe, this.position, this.length));
+			assert(Pipe.validatePipeBlobHasDataToRead(that.pipe, that.position, that.length));
 			
 			return localLen;
         } else {        
         
-            Pipe.takeByteArrayMetaData(pipe);
-            int len = Pipe.takeByteArrayLength(pipe);
+            Pipe.takeByteArrayMetaData(that.pipe);
+            int len = Pipe.takeByteArrayLength(that.pipe);
             if (len>0) {//may be -1 for null values
-            	this.length += len;
-            	this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
+            	that.length += len;
+            	that.bytesHighBound = that.pipe.blobMask & (that.bytesHighBound + len);
             }
             return len;
         }
