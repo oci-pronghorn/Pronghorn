@@ -9,6 +9,14 @@ import java.io.ObjectInput;
 
 public abstract class ChannelReader extends InputStream implements ObjectInput, TextReader {
 
+	//Max bytes consumed by a packed integer
+	public static final int PACKED_INT_SIZE = 5;
+	
+	//Max bytes consumed by a packed long
+	public static final int PACKED_LONG_SIZE = 10;
+		
+	public static final int BOOLEAN_SIZE = 1;
+	
 	/**
 	 * Will give how many bytes are available right now
 	 * @return the number of bytes
