@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 
+   <template name="Selection" id="1">
+    
+     <uInt64 name="TotalSum" id="12"/>
+     <uInt32 name="TotalBuckets" id="13"/>
+     <byteVector name="OrderedSelections" id="14"/> <!-- packet count packed id etc...  -->
+      
+   </template>
+
+</templates>

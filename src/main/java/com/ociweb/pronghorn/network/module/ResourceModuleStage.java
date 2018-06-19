@@ -44,6 +44,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	private TrieParserReader parserReader;
 	private TrieParser parser = new TrieParser(100);	
 	private int fileCount = 0;
+	private final int minVar;
 	
 	private int activeFileIdx;
 	private byte[][] eTag = new byte[0][];
@@ -93,6 +94,9 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		}
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
+		this.minVar = minVarLength(outputs);
+		
+		
 	}
 
 	@Override
@@ -159,14 +163,18 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			
 		    //logger.info("loading resource {} ",resourceName);
 			this.resourceURL[fileIdx] = localURL;
-			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByExtension(httpSpec, fileName).getBytes();
+			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByFullPathExtension(httpSpec, fileName).getBytes();
 
 			
 			try {
 
 				InputStream stream = resourceURL[fileIdx].openStream();
 				
-				final int fileSize = stream.available();			
+				final int fileSize = stream.available();
+				if (fileSize > minVar) {
+					throw new UnsupportedOperationException("Pipe is too small to hold requested resource");
+				}
+				
 				resource[fileIdx] = new byte[fileSize];
 			
 				long startTime = System.currentTimeMillis();

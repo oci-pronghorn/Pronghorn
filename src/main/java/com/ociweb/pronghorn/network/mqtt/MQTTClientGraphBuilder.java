@@ -146,10 +146,7 @@ public class MQTTClientGraphBuilder {
 		Pipe<PersistedBlobLoadReleaseSchema>  perLoadRelease = PersistedBlobLoadReleaseSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		Pipe<PersistedBlobLoadConsumerSchema> perLoadConsumer = PersistedBlobLoadConsumerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
 		Pipe<PersistedBlobLoadProducerSchema> perLoadProducer = PersistedBlobLoadProducerSchema.instance.newPipe(inFlightCount, maximumLenghOfVariableLengthFields);
-		
-		
-
-		
+				
 		FileGraphBuilder.buildSequentialReplayer(gm, 
 				perLoadRelease, perLoadConsumer, perLoadProducer,
 				persistanceConsumerPipe, persistanceProducerPipe,

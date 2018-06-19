@@ -31,6 +31,12 @@ public class FileGraphBuilder {
 			File targetDirectory, NoiseProducer noiseProducer, 
 			PronghornStageProcessor stageProcessor) {
 				
+		assert(null!=fromStoreRelease);
+		assert(null!=fromStoreConsumer);
+		assert(null!=fromStoreProducer);
+		assert(null!=toStoreConsumer);
+		assert(null!=toStoreProducer);
+		
 		PipeConfig<SequentialCtlSchema> ctlConfig = SequentialCtlSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<SequentialRespSchema> respConfig = SequentialRespSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<RawDataSchema> releaseConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, 128);		

@@ -5,7 +5,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.OpenOption;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
@@ -15,7 +14,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 /**
  * Reads files from disk as blobs based on an input path.
@@ -27,9 +25,8 @@ public class FileBlobReadStage extends PronghornStage {
 
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     
-    private final String[] inputPathString;
-    private FileChannel[] fileChannel;
-    private int activeChannel = 0;
+    private final String inputPathString;
+    private FileChannel fileChannel;
     
     private final Pipe<RawDataSchema> output;
     
@@ -47,7 +44,9 @@ public class FileBlobReadStage extends PronghornStage {
     public FileBlobReadStage(GraphManager graphManager, 
     						 //add input pipe to select file to read
     		                 Pipe<RawDataSchema> output, 
-    		                 String ... inputPathString) {
+    		                 String inputPathString) {
+
+    	//TODO: add second constructor which takes input control pipe to reset position.
     	
         super(graphManager, NONE, output);
         this.inputPathString = inputPathString;
@@ -60,7 +59,8 @@ public class FileBlobReadStage extends PronghornStage {
     public static FileBlobReadStage newInstance(GraphManager graphManager,
                                                 //add input pipe to select file to read
                                                 Pipe<RawDataSchema> output,
-                                                String ... inputPathString) {
+                                                String inputPathString) {
+    	
         return new FileBlobReadStage(graphManager, output, inputPathString);
     }
 
@@ -73,24 +73,16 @@ public class FileBlobReadStage extends PronghornStage {
         this.readOptions.add(StandardOpenOption.SYNC);
         
         try {
-        	int i = inputPathString.length;
-        	fileChannel = new FileChannel[i];
-        	while (--i>=0) {
-        		fileChannel[i] = provider.newFileChannel(fileSystem.getPath(inputPathString[i]), readOptions);
-        	}
+        	fileChannel = provider.newFileChannel(fileSystem.getPath(inputPathString), readOptions);
         } catch (IOException e) {
            throw new RuntimeException(e);
         } 
     }
 
-    //This will probably never work since it requires strict state control
-    private void activeChannel(int idx) {
-    	activeChannel = idx;
-    }
 
     private void repositionToBeginning() {
     	try {
-			fileChannel[activeChannel].position(0);
+			fileChannel.position(0);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -114,7 +106,7 @@ public class FileBlobReadStage extends PronghornStage {
             try {            
                 
                 //attempt to read this many bytes but may read less
-                long len = fileChannel[activeChannel].read(Pipe.wrappedWritingBuffers(originalBlobPosition, output));
+                long len = fileChannel.read(Pipe.wrappedWritingBuffers(originalBlobPosition, output));
                 if (len>0) {
                     Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
                     Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, output);  
@@ -143,15 +135,11 @@ public class FileBlobReadStage extends PronghornStage {
 	    	    Pipe.publishEOF(output);   
 	    	}
         	
-    	    int i = fileChannel.length;
-        	while (--i>=0) {
-        		try {
-        			fileChannel[i].close();
-        		} catch (IOException e) {
-        			e.printStackTrace();
-        			throw new RuntimeException(e);
-        		}
-        	}
+	    	try {
+	    		fileChannel.close();
+	    	} catch (IOException e) {
+	    		throw new RuntimeException(e);
+	    	}
     }
 
 }

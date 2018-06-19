@@ -212,7 +212,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		return headers[headerId].consumeValue(stream);
 	}
 	
-	public static HTTPContentType lookupContentTypeByExtension(HTTPSpecification httpSpec, String resourceName) {
+	public static HTTPContentType lookupContentTypeByFullPathExtension(HTTPSpecification httpSpec, String resourceName) {
 		int idxOfDot = resourceName.lastIndexOf('.');
 		int typeIdx = 0;
 		if (idxOfDot>=0) {
@@ -222,6 +222,12 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		}
 		return (HTTPContentType)httpSpec.contentTypes[typeIdx];
 	}
+	
+	public static HTTPContentType lookupContentTypeByExtension(HTTPSpecification httpSpec, String ext) {
+		//value will be zero if not found
+		return (HTTPContentType)httpSpec.contentTypes[IntHashTable.getItem(httpSpec.fileExtHashTable, HTTPSpecification.extHash(ext))];
+	}
+	
 
 	private static < T extends Enum<T> & HTTPContentType> IntHashTable buildFileExtHashTable(Class<T> supportedHTTPContentTypes) {
 	    int hashBits = 13; //8K

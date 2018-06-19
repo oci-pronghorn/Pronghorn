@@ -19,9 +19,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
 /**
- * _no-docs_
- * Stage that holds storage until release is received.
- *
+ * Store blocks at specific positions within the backing file.
+ * 
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
@@ -86,6 +85,11 @@ public class BlockStorageStage extends PronghornStage {
 			shutdownCountdown = input.length;
 			raf = new RandomAccessFile(filePath, "rws");
 			fileChannel = raf.getChannel();
+			
+			//NOTE: add 2 new features ?
+			//   1. truncate file
+			//   2. make backup fileChannel.transferTo(position, count, target)
+			
 		} catch (FileNotFoundException e) {
 			logger.info("unable to open file {} for writing", filePath);
 			throw new RuntimeException(e);

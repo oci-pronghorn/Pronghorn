@@ -814,7 +814,8 @@ public class NetGraphBuilder {
 		c.setConcurrentChannelsPerDecryptUnit(concurrentChannelsPerDecryptUnit);
 		c.setMaxConnectionBits(maxConnectionBits);
 		c.setMaxRequestSize(maxRequestSize);
-		//c.setMaxResponseSize(1<<15);
+		c.setMaxResponseSize(1<<21);
+		
 		c.setTracks(tracks);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
@@ -896,7 +897,9 @@ public class NetGraphBuilder {
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
-		final int outputPipeChunk = 1<<9;//512B
+		//TODO: the resource server can not span fragments, but all must be in one block.
+		final int outputPipeChunk = 1 << 21;  //must be large enough to hold lite dot js file.
+		
 		final int outputPipeGraphChunk = 1<<19;//512K
 		
 		ModuleConfig config = new ModuleConfig(){
