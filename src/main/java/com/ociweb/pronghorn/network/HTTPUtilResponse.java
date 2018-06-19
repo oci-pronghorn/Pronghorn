@@ -7,21 +7,31 @@ import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 
 public class HTTPUtilResponse {
 	
 	public long block1PositionOfLen;
 	public int block1HeaderBlobPosition;
+	private long block1ConSeqSlabPos;
 
 	public HTTPUtilResponse() {
 	}
 
 	public static void holdEmptyBlock( HTTPUtilResponse that,
+            						  Pipe<ServerResponseSchema> pipe) {
+		holdEmptyBlock(that,-1,-1,pipe);		
+	}
+	
+	@Deprecated
+	public static void holdEmptyBlock( HTTPUtilResponse that,
 					            long connectionId, 
 					            final int sequenceNo,
 					            Pipe<ServerResponseSchema> pipe) {
 	
-			Pipe.addMsgIdx(pipe, ServerResponseSchema.MSG_TOCHANNEL_100);
+			Pipe.addMsgIdx(pipe, ServerResponseSchema.MSG_TOCHANNEL_100);			
+			that.block1ConSeqSlabPos = Pipe.workingHeadPosition(pipe);
+						
 			Pipe.addLongValue(connectionId, pipe);
 			Pipe.addIntValue(sequenceNo, pipe);	
 			
@@ -76,8 +86,9 @@ public class HTTPUtilResponse {
 			long activeChannelId, int activeSequenceNo, int activeFieldRequestContext, 
 			ChannelWriter outputStream, 
 			HeaderWritable additionalHeaderWriter, int status) {
+							
+		storeChnlAndSeqInHeaderFragment(that, output, activeChannelId, activeSequenceNo);
 		
-						 
 		byte[] contentType = null!=contentTypeEnum ? contentTypeEnum.getBytes() : null;
 		
 		int totalLengthWritten = outputStream.length();
@@ -87,6 +98,17 @@ public class HTTPUtilResponse {
 				              eTag, totalLengthWritten, that, activeFieldRequestContext,
 				              activeChannelId,  activeSequenceNo, contentType, 
 				              additionalHeaderWriter, status);//context
+	}
+
+	private static void storeChnlAndSeqInHeaderFragment(HTTPUtilResponse that,
+			Pipe<ServerResponseSchema> output,
+			long activeChannelId, int activeSequenceNo) {
+		PaddedLong head = Pipe.getWorkingHeadPositionObject(output);
+		long temp = head.value;		
+		head.value = that.block1ConSeqSlabPos;		
+		Pipe.addLongValue(activeChannelId, output);
+		Pipe.addIntValue(activeSequenceNo, output);	
+		head.value = temp;
 	}
 	
 	public static boolean isBeginningOfResponse(int flags) {
