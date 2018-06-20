@@ -157,6 +157,13 @@ public class PipeConfig<T extends MessageSchema<T>> {
 		return result;
 	}
 	
+	public PipeConfig<T> shrink2x(){
+		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits-1), (byte)(0==blobBits ? 0 : blobBits-1), byteConst, schema);
+		result.showLabels = showLabels;
+		return result;
+	}
+	
+	@Deprecated
 	public PipeConfig<T> blobGrow2x(){
 		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(1+blobBits), byteConst, schema);
 		result.showLabels = showLabels;
