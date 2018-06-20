@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.util.primitive;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.pipe.util.IntArrayPool;
 import com.ociweb.pronghorn.pipe.util.IntArrayPoolLocal;
 
@@ -8,8 +10,8 @@ public class LoisOpSimpleList extends LoisOperator {
 	private final int id;
 	
 	//     no block can be larger than 1<<29+2
-	private final int maxBlockSize = (1<<29)+2;
-	private final int maskCount = (1<<29)-1;
+	private static final int maxBlockSize = (1<<29)+2;
+	private static final int maskCount = (1<<29)-1;
 	
 	//first int is the next jump
 	//second int top 3 has operator id
@@ -23,8 +25,8 @@ public class LoisOpSimpleList extends LoisOperator {
 		return lois.data[idx+1]&maskCount;
 	}
 	
-	private final void setCount(int idx, int count, Lois lois) {
-		lois.data[idx+1] =   (count&maskCount) | (id<<29);
+	private static final void setCount(int idx, int count, Lois lois) {
+		lois.data[idx+1] =   (count&maskCount) | (Lois.LOISOpSimpleList<<29);
 		
 	}
 
@@ -38,7 +40,7 @@ public class LoisOpSimpleList extends LoisOperator {
 	public boolean isAfter(int idx, int value, Lois lois) {
 		assert(lois.blockSize < maxBlockSize);
 		int count = getCount(idx, lois);
-		return 0==count ? false : value > lois.data[idx+2-1+count];
+		return 0==count ? false : value > lois.data[idx+2+count-1];
 	}
 
 	@Override
@@ -73,6 +75,7 @@ public class LoisOpSimpleList extends LoisOperator {
 		assert(lois.blockSize < maxBlockSize);
 
 		if (getCount(idx, lois)<(lois.blockSize-2)) {
+
 			//we have room to add one more
 			//insert into the right place
 			return insertInOrder(idx, value, lois);
@@ -84,17 +87,23 @@ public class LoisOpSimpleList extends LoisOperator {
 
 			if (lois.supportBitMaps) {
 				//if range used here is smaller than the bit mask then do the conversion
-				if ((lois.data[limit-1] - lois.data[pos]) < LoisOpBitMap.valuesTracked(lois)) {
+				//System.err.println("first "+lois.data[pos]+" last "+lois.data[limit-1]);
+				if ( Math.abs(lois.data[limit-1] - lois.data[pos])  < LoisOpBitMap.valuesTracked(lois)) {
 					//change this block to use bit mask
 					
 					IntArrayPool that = IntArrayPoolLocal.get();
 					int id = IntArrayPool.lockInstance(that, count);
 					int[] valuesToKeep = IntArrayPool.getArray(that, count, id);
 					System.arraycopy(lois.data, pos, valuesToKeep, 0, count);
+					
+					//System.err.println("values to keep "+Arrays.toString(valuesToKeep));
+
+					
 					//the above array holds the values so we can write over this block.
 					
 					//bitmap method to format this block the right way.
 					LoisOpBitMap.reviseBlock(idx, valuesToKeep, lois);
+					
 					
 					//release temp space now that we are done
 					IntArrayPool.releaseLock(that, count, id);
@@ -105,29 +114,34 @@ public class LoisOpSimpleList extends LoisOperator {
 			}
 
 			//if we can't convert to the more efficient bit map then
-			//we will have to split this into two bocks based on 
+			//we will have to split this into two blocks based on 
 			//where we find the biggest gap
 			final int maxGapIdx = maxGapIdx(lois, pos, limit);
-			////////////////////////////			
+			////////////////////////////	
+
 			return splitOnGapAndInsert(idx, value, count, limit, maxGapIdx, lois);
 		}
 	}
 
 	private boolean splitOnGapAndInsert(int idx, int value, int count, int limit, final int maxGapIdx,
 			Lois lois) {
+
 		//new next
-		lois.data[idx] = createNewBlock(maxGapIdx, idx, limit, lois);
+		int newBlockId = createNewBlock(maxGapIdx, idx, limit, lois);
 		
 		//trim current block
 		setCount(idx, count-(limit-maxGapIdx), lois);
+		lois.data[idx] = newBlockId; 
 		
 		//now insert new value
 		
 		if (lois.data[maxGapIdx] > value) {
 			//insert here
+
 			return insertInOrder(idx, value, lois);				
 		} else {
 			//insert in new block
+
 			return insertInOrder(lois.data[idx], value, lois);				
 		}
 	}
@@ -135,7 +149,7 @@ public class LoisOpSimpleList extends LoisOperator {
 	private boolean insertInOrder(int idx, int value, Lois lois) {
 		int count = getCount(idx, lois);
 		int pos = idx+2;
-		int limit = count+pos;
+		final int limit = count+pos;
 
 		for(int i=pos; i<limit; i++) {			
 			int temp = lois.data[i];
@@ -152,24 +166,42 @@ public class LoisOpSimpleList extends LoisOperator {
 				}
 			}
 		}
+
 		//must add on the end
 		lois.data[limit] = value;
 		setCount(idx, count+1, lois);
+
 		return true;
 	}
 
 	private int createNewBlock(int maxGapIdx, int idx, int limit, Lois lois) {
 		
 		int newBlockId = lois.newBlock();
-		lois.data[newBlockId] = lois.data[idx]; //tie in next
-		int length = limit-maxGapIdx;
-		assert(length>=0) : "length "+length+" gap start "+maxGapIdx+" limit "+limit;
-		setCount(newBlockId, length, lois);
-		System.arraycopy(lois.data, maxGapIdx, lois.data, newBlockId+2, length);
+		
+		int count = limit-maxGapIdx;
+		assert(count>=0) : "length "+count+" gap start "+maxGapIdx+" limit "+limit;
+		
+		lois.data[newBlockId] = lois.data[idx]; //tie in next		
+		setCount(newBlockId, count, lois);		
+		System.arraycopy(lois.data, maxGapIdx, lois.data, newBlockId+2, count);
+
 		
 		return newBlockId;
 	}
 
+	public static int createNewBlock(int idx, Lois lois, int anchor) {
+		
+		int oldNext = lois.data[idx];
+		
+		int newBlockId = lois.newBlock();
+		lois.data[newBlockId] = oldNext; //tie in next		
+		setCount(newBlockId, 1, lois);	
+		lois.data[newBlockId+2] = anchor;
+		return newBlockId;
+	}
+	
+	
+	
 	private int maxGapIdx(Lois lois, int pos, int limit) {
 		int maxGapIdx = -1;
 		{
@@ -210,14 +242,21 @@ public class LoisOpSimpleList extends LoisOperator {
 		assert(lois.blockSize < maxBlockSize);
 
 		int count = getCount(idx, lois);
-		int pos = idx+2;
-		int limit = count+pos;
+		final int pos = idx+2;
+		final int limit = count+pos;
 		for(int i=pos; i<limit; i++) {		
 			int value = lois.data[i];
-			if (value>=startValue && value<endValue) {
-				return true;
+			if (value>=startValue) {
+				if (value<endValue) {
+					return true;
+				} else {
+
+					
+					return false;
+				}
 			}
 		}
+
 		return false;
 	}
 

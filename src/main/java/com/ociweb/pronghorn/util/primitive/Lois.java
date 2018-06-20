@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.util.primitive;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -36,7 +38,7 @@ public class Lois {
     //Internally this class behaves like an array of sets of int values 
 	//The implementation however keeps the int values ordered to support optimizations to minimize memory
 	
-	boolean supportBitMaps = false; //needed for testing
+	boolean supportBitMaps = true; //needed for testing
 	boolean supportRLE = false; //needed for testing
 	
 	int[] data; //this array contains [<block data><recycled blocks list> gap <list entries>]
@@ -47,7 +49,7 @@ public class Lois {
 	private int listCount;	
 	
 	public Lois() {
-		this(16, 1<<11);
+		this(32, 1<<8);
 	}
 	
 	public Lois(int blockSize, int initBlocks) {
@@ -70,46 +72,61 @@ public class Lois {
 			
 			ChannelReader reader = Pipe.inputStream(pipe);			
 			int startingAvailable = reader.available();
-			
-			if (loadPosition==-1) {
-				//note this value here forces us to keep init at 16 and min block at 4
-				if (reader.available()<((5 * ChannelReader.PACKED_INT_SIZE)
-						               +(2 * ChannelReader.BOOLEAN_SIZE))) {
-					return false;//not enough data yet to read header cleanly
-				}
-				
-				int loadedBlockSize = reader.readPackedInt();
-				assert(loadedBlockSize==blockSize) : "Can not load, not same block  size";
-				if (loadedBlockSize!=blockSize) {
-					throw new UnsupportedOperationException("Unable to load due to block size mismatch");
-				}			
-				supportBitMaps = reader.readBoolean();
-				supportRLE = reader.readBoolean();		
-				blockLimit = reader.readPackedInt();
-				recycledCount = reader.readPackedInt();
-				listCount = reader.readPackedInt();
-				
-				int dataLength = reader.readPackedInt();
-				if (data==null || data.length!=dataLength) {
-					data = new int[dataLength];
-				}
-				loadPosition = 0;
-			}
-			
-			//while we have lots of data or we have encountered the end of the data.
-			while (((reader.available()>=ChannelReader.PACKED_INT_SIZE) || isEnd) 
-					&& loadPosition<data.length) {
-				data[loadPosition++] = reader.readPackedInt();
-			}
 		
+			if (!readLoadData(pipe, isEnd, reader)) {
+				//did no reads, needs more data
+				return false;
+			};
 			RawDataSchemaUtil.releaseConsumed(pipe, reader, startingAvailable);
 			
 			if (loadPosition==data.length) {
 				loadPosition = -1;
+				//System.err.println("done with load..");
 				return true;
 			}
+			
 		}
+		
 		return false;
+	}
+
+	private boolean readLoadData(Pipe<RawDataSchema> pipe, boolean isEnd, ChannelReader reader) {
+		if (loadPosition==-1) {
+			//note this value here forces us to keep init at 16 and min block at 4
+			if (reader.available()<((5 * ChannelReader.PACKED_INT_SIZE)
+					               +(2 * ChannelReader.BOOLEAN_SIZE))) {
+				return false;//not enough data yet to read header cleanly
+			}
+			
+			int loadedBlockSize = reader.readPackedInt();
+			assert(loadedBlockSize==blockSize) : "Can not load, not same block  size";
+			if (loadedBlockSize!=blockSize) {
+				throw new UnsupportedOperationException("Unable to load due to block size mismatch");
+			}			
+			supportBitMaps = reader.readBoolean();
+			supportRLE = reader.readBoolean();		
+			blockLimit = reader.readPackedInt();
+			recycledCount = reader.readPackedInt();
+			listCount = reader.readPackedInt();
+			
+			final int dataLength = reader.readPackedInt();
+			if (data==null || data.length!=dataLength) {
+				data = new int[dataLength];
+			}
+			//System.err.println("load data len of  "+data.length);
+			
+			loadPosition = 0;
+		}
+		
+		//while we have lots of data or we have encountered the end of the data.
+		while (((reader.available()>=ChannelReader.PACKED_INT_SIZE) || isEnd) 
+				&& loadPosition<data.length) {
+			data[loadPosition++] = reader.readPackedInt();
+			
+			//System.err.println(data[loadPosition-1]+" at pos "+(loadPosition-1));				
+		}
+		//System.err.println("is end "+isEnd+"  "+reader.available()+" pipe "+pipe);
+		return true;
 	}
 
 	/**
@@ -133,9 +150,11 @@ public class Lois {
 				writer.writePackedInt(recycledCount);
 				writer.writePackedInt(listCount);
 				writer.writePackedInt(data.length);
+				//System.err.println("save len of  "+data.length);
 				savePosition = 0;
 			}
 			while (savePosition<data.length && writer.remaining()>=ChannelReader.PACKED_INT_SIZE) {
+				//System.err.println("save "+data[savePosition]+" at "+savePosition);
 				writer.writePackedInt(data[savePosition++]);				
 			}			
 			writer.closeLowLevelField();
@@ -165,22 +184,22 @@ public class Lois {
 	int newBlock() {
 		if (recycledCount==0) {
 			
-			if (blockLimit < data.length-listCount) {
+			blockLimit += blockSize;
+			if (blockLimit <= data.length-listCount) {
+				
 			} else {
 				growDataSpace();
 			}
-			assert(isEmpty(blockLimit));
-			int result = blockLimit;
-			blockLimit += blockSize;
-			
-			return result;
+			return blockLimit;
 		} else {
+			System.err.println("used a recycled block");
 			//use this old block we want to recycle which was stored after the block limit
 			return data[blockLimit+(--recycledCount)];
 		}
 	}
 
 	private void growDataSpace() {
+		
 		//must grow data first, must not grow larger than 29 bits
 		if (data.length > (1<<30)) {
 			throw new UnsupportedOperationException("LOIS data structure can not be larger than 8G of data.");
@@ -195,16 +214,7 @@ public class Lois {
 		
 		data = newData;
 	}
-	
-	
-	private boolean isEmpty(int idx) {
-		for(int i  = idx; i<idx+blockSize; i++) {
-			if (data[i]!=0) {
-				return false;
-			}
-		}
-		return true;
-	}
+
 
 	/**
 	 * Check if any of the values starting with startValue and less than
@@ -220,18 +230,25 @@ public class Lois {
 		int id = setId;
 		int next = 0;
 		
-		//skip over all the blocks where this value comes after
-		while ((next = data[id])!=0 && operator(id).isAfter(id, startValue, this)) {
+		//////////////////////////////////
+		//skip over all the blocks where this value comes after the full block
+		////////////////////////////////
+		while ((next = data[id])!=0 && operator(id).isAfter(id, startValue, this)) {			
 			id = next;
 		}
-		
+
 		//scan from here for value in range, once we are out of range then stop looking
         //keep going until the end value is not after this position		
-		while (operator(id).isAfter(id, endValue, this)) {
+		while (!operator(id).isBefore(id, endValue, this)) {
 			if (operator(id).containsAny(id, startValue, endValue, this)) {
 				return true;
 			}
+			id = data[id];
+			if (0==id) {
+				break;
+			}
 		}
+
 		return false;
 	}
 	
