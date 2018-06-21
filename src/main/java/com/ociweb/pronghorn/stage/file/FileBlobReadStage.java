@@ -54,6 +54,11 @@ public class FileBlobReadStage extends PronghornStage {
 
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
         
+        if (null==inputPathString || inputPathString.length()==0) {
+        	//do not bother running if we have no file.
+        	GraphManager.addNota(graphManager, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, this);
+        }
+        
     }
 
     public static FileBlobReadStage newInstance(GraphManager graphManager,
@@ -66,17 +71,19 @@ public class FileBlobReadStage extends PronghornStage {
 
     @Override
     public void startup() {
-        this.fileSystem = FileSystems.getDefault();
-        this.provider = fileSystem.provider();
-        this.readOptions = new HashSet<OpenOption>();
-        this.readOptions.add(StandardOpenOption.READ);
-        this.readOptions.add(StandardOpenOption.SYNC);
-        
-        try {
-        	fileChannel = provider.newFileChannel(fileSystem.getPath(inputPathString), readOptions);
-        } catch (IOException e) {
-           throw new RuntimeException(e);
-        } 
+    	if (null!=inputPathString && inputPathString.length()>0) {
+	        this.fileSystem = FileSystems.getDefault();
+	        this.provider = fileSystem.provider();
+	        this.readOptions = new HashSet<OpenOption>();
+	        this.readOptions.add(StandardOpenOption.READ);
+	        this.readOptions.add(StandardOpenOption.SYNC);
+	        
+	        try {
+	        	fileChannel = provider.newFileChannel(fileSystem.getPath(inputPathString), readOptions);
+	        } catch (IOException e) {
+	           throw new RuntimeException(e);
+	        } 
+    	}
     }
 
 
