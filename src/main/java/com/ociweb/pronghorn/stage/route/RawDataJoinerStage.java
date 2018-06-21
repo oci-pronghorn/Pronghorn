@@ -15,6 +15,7 @@ public class RawDataJoinerStage extends PronghornStage {
 	private final Pipe<RawDataSchema>[] inputs;
 	private boolean[] isClosed;
     	
+	//TODO: needs unit test
 	public static RawDataJoinerStage newInstance(GraphManager gm, 
 			 Pipe<RawDataSchema> output,
              Pipe<RawDataSchema> ... inputs) {
