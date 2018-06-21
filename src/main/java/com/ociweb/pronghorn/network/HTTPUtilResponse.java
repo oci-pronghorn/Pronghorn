@@ -72,6 +72,15 @@ public class HTTPUtilResponse {
 
 	public static ChannelWriter openHTTPPayload(
 			HTTPUtilResponse that, 
+			Pipe<ServerResponseSchema> output) {
+		HTTPUtilResponse.holdEmptyBlock(that, output);
+		
+		ChannelWriter outputStream = Pipe.openOutputStream(output);
+		return outputStream;
+	}
+	
+	public static ChannelWriter openHTTPPayload(
+			HTTPUtilResponse that, 
 			Pipe<ServerResponseSchema> output, long activeChannelId, int activeSequenceNo) {
 		HTTPUtilResponse.holdEmptyBlock(that, activeChannelId, activeSequenceNo, output);
 		
