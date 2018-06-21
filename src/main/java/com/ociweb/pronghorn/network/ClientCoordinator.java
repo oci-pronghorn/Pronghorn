@@ -394,7 +394,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 													structureId);
 						
 					} catch (IOException ex) {
-						logger.warn("Unable to open connection to {}:{}",host,port);				
+						logger.warn("Unable to open connection to {}:{}",host,port, ex);				
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}
