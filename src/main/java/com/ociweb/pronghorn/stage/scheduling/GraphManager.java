@@ -66,6 +66,7 @@ public class GraphManager {
 	//set to false when we see telemetry missing edges. 
 	//TODO; still debugging this not working when there are unrelated groups. switched on.
 	//TODO: this is broken for SequentialReplayer/SequentialFielWrite for MQTT
+	//      we need more than one group sometimes when we have multiple arrays of similar objects..
 	public static boolean combineCommonEdges = true; 
 	
 	//turn off to minimize memory and remove from profiler.
