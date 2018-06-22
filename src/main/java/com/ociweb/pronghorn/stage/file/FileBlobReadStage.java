@@ -92,6 +92,14 @@ public class FileBlobReadStage extends PronghornStage {
         return new FileBlobReadStage(graphManager, output, inputPathString);
     }
 
+    public static FileBlobReadStage newInstance(GraphManager graphManager,
+            //add input pipe to select file to read
+            Pipe<RawDataSchema> output,
+            String inputPathString, boolean shutDownAtEndOfFile) {
+
+    	return new FileBlobReadStage(graphManager, output, inputPathString, shutDownAtEndOfFile);
+    }
+    
     @Override
     public void startup() {
     	if (null!=inputPathString && inputPathString.length()>0) {
