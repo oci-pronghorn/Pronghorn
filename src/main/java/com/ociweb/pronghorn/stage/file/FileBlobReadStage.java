@@ -135,9 +135,7 @@ public class FileBlobReadStage extends PronghornStage {
 	               throw new RuntimeException(e);
 	            }
 	        }       
-    	} else {
-    		requestShutdown();
-    	}
+    	} 
     }
 
     @Override
