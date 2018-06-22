@@ -34,6 +34,7 @@ public class FileBlobReadStage extends PronghornStage {
     private FileSystem fileSystem;
     private Set<OpenOption> readOptions;
     private boolean shutdownInProgress;
+    private final boolean shutDownAtEndOfFile;
 
     /**
      *
@@ -58,8 +59,30 @@ public class FileBlobReadStage extends PronghornStage {
         	//do not bother running if we have no file.
         	GraphManager.addNota(graphManager, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, this);
         }
+        shutDownAtEndOfFile = true;
         
     }
+    
+    public FileBlobReadStage(GraphManager graphManager, 
+			 //add input pipe to select file to read
+            Pipe<RawDataSchema> output, 
+            String inputPathString, boolean shutDownAtEndOfFile) {
+
+		//TODO: add second constructor which takes input control pipe to reset position.
+		
+		super(graphManager, NONE, output);
+		this.inputPathString = inputPathString;
+		this.output = output;
+		
+		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "cornsilk2", this);
+		
+		if (null==inputPathString || inputPathString.length()==0) {
+		//do not bother running if we have no file.
+		GraphManager.addNota(graphManager, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, this);
+		}
+		this.shutDownAtEndOfFile = shutDownAtEndOfFile;
+		
+	}
 
     public static FileBlobReadStage newInstance(GraphManager graphManager,
                                                 //add input pipe to select file to read
@@ -103,8 +126,12 @@ public class FileBlobReadStage extends PronghornStage {
 	         		if (!Pipe.hasRoomForWrite(output, Pipe.EOF_SIZE)){ 
 	         			return;
 	         		}  
+	         	}	         	
+	         	if (shutDownAtEndOfFile) {
+	         		requestShutdown();
+	         	} else {
+	         		fileChannel=null;//do not more work
 	         	}
-		        requestShutdown();
 		        return;
 			 }
 	   	 
@@ -135,9 +162,7 @@ public class FileBlobReadStage extends PronghornStage {
 	               throw new RuntimeException(e);
 	            }
 	        }       
-    	} else {
-    		requestShutdown();
-    	}
+    	} 
     }
 
     @Override
@@ -146,11 +171,17 @@ public class FileBlobReadStage extends PronghornStage {
 	    	    Pipe.publishEOF(output);   
 	    	}
         	
-	    	try {
-	    		fileChannel.close();
-	    	} catch (IOException e) {
-	    		throw new RuntimeException(e);
+	    	if (null != fileChannel) {
+		    	try {
+		    		fileChannel.close();
+		    		fileChannel=null;//do not more work
+		    	} catch (IOException e) {
+		    		throw new RuntimeException(e);
+		    	}
 	    	}
+	    	
+	    	
+	    	
     }
 
 }
