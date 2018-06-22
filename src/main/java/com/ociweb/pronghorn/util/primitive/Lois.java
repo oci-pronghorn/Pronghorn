@@ -70,8 +70,12 @@ public class Lois {
 			
 			boolean isEnd = RawDataSchemaUtil.accumulateInputStream(pipe);
 			
+			
 			ChannelReader reader = Pipe.inputStream(pipe);			
 			int startingAvailable = reader.available();
+			if (isEnd && startingAvailable==0) {
+				return true;//no data, no file
+			}
 		
 			if (!readLoadData(pipe, isEnd, reader)) {
 				//did no reads, needs more data
