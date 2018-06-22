@@ -97,43 +97,47 @@ public class FileBlobReadStage extends PronghornStage {
     
     @Override
     public void run() {
-	   	 if(shutdownInProgress) {
-         	if (null!=output && Pipe.isInit(output)) {
-         		if (!Pipe.hasRoomForWrite(output, Pipe.EOF_SIZE)){ 
-         			return;
-         		}  
-         	}
-	        requestShutdown();
-	        return;
-		 }
-   	 
-        while (Pipe.hasRoomForWrite(output)) {
-            //System.err.println("has room for write");
-            int originalBlobPosition = Pipe.getWorkingBlobHeadPosition(output);      
-            try {            
-                
-                //attempt to read this many bytes but may read less
-                long len = fileChannel.read(Pipe.wrappedWritingBuffers(originalBlobPosition, output));
-                if (len>0) {
-                    Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-                    Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, output);  
-                    Pipe.confirmLowLevelWrite(output, SIZE);
-                    Pipe.publishWrites(output);    
-                } else if (len<0) {
-                	//signal to upstream stages that we are done with the data
-                	Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-                	Pipe.addNullByteArray(output);
-                	Pipe.confirmLowLevelWrite(output, SIZE);
-                    Pipe.publishWrites(output);
-                	                    
-                    Pipe.publishAllBatchedWrites(output);
-                    shutdownInProgress = true;
-                    return;
-                } 
-            } catch (IOException e) {
-               throw new RuntimeException(e);
-            }
-        }                
+    	if (fileChannel!=null) {
+		   	 if(shutdownInProgress) {
+	         	if (null!=output && Pipe.isInit(output)) {
+	         		if (!Pipe.hasRoomForWrite(output, Pipe.EOF_SIZE)){ 
+	         			return;
+	         		}  
+	         	}
+		        requestShutdown();
+		        return;
+			 }
+	   	 
+	        while (Pipe.hasRoomForWrite(output)) {
+	            //System.err.println("has room for write");
+	            int originalBlobPosition = Pipe.getWorkingBlobHeadPosition(output);      
+	            try {            
+	                
+	                //attempt to read this many bytes but may read less
+	                long len = fileChannel.read(Pipe.wrappedWritingBuffers(originalBlobPosition, output));
+	                if (len>0) {
+	                    Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+	                    Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, output);  
+	                    Pipe.confirmLowLevelWrite(output, SIZE);
+	                    Pipe.publishWrites(output);    
+	                } else if (len<0) {
+	                	//signal to upstream stages that we are done with the data
+	                	Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+	                	Pipe.addNullByteArray(output);
+	                	Pipe.confirmLowLevelWrite(output, SIZE);
+	                    Pipe.publishWrites(output);
+	                	                    
+	                    Pipe.publishAllBatchedWrites(output);
+	                    shutdownInProgress = true;
+	                    return;
+	                } 
+	            } catch (IOException e) {
+	               throw new RuntimeException(e);
+	            }
+	        }       
+    	} else {
+    		requestShutdown();
+    	}
     }
 
     @Override
