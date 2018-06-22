@@ -93,8 +93,8 @@ public class HistogramSelectPeakStage extends PronghornStage {
 		
 		DataOutputBlobWriter<ProbabilitySchema> writer = Pipe.openOutputStream(output);
 		for(int c=0;c<totalBuckets;c++) {
-			writer.writePackedLong(sortWorkspace[c][0]);
-			writer.writePackedLong(sortWorkspace[c][1]);
+			writer.writePackedLong(sortWorkspace[c][0]); //count for this
+			writer.writePackedLong(sortWorkspace[c][1]); //index location for this
 		}
 		DataOutputBlobWriter.closeLowLevelField(writer);
 
