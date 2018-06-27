@@ -70,6 +70,9 @@ public class RawDataJoinerStage extends PronghornStage {
 					} else {
 						zeros++;//if all the inputs copy zero then they must have no data
 					}					
+				} else {
+					zeros++;
+					break;
 				}
 			}
 		} while (zeros!=inputs.length);
