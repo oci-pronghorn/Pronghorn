@@ -5,6 +5,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.util.Appendables;
+
 public class HangDetector {
 
 	private final long timeout;
@@ -13,7 +15,7 @@ public class HangDetector {
 	
 	private String activeName;
 	private Thread thread;
-	private long activeTimeout;
+	private long activeTimeout = Long.MAX_VALUE;
 	
 	public HangDetector(long timeout) {
 		this.timeout = timeout;
@@ -28,17 +30,18 @@ public class HangDetector {
 				
 				while (globalRun.get()) {
 					
-					if (activeTimeout>0 && activeTimeout<System.nanoTime()) {
+					if (System.nanoTime()>activeTimeout) {
 						
-						logger.error("Hang detected in: {}", activeName);
-						globalRun.set(false); //stop all other detectors since they are likely to trigger with false positive.
-						break; //stop any more checks..
+							logger.error("Hang detected in: {} after timeout of "+Appendables.appendNearestTimeUnit(new StringBuilder(), timeout), activeName);
+							globalRun.set(false); //stop all other detectors since they are likely to trigger with false positive.
+							break; //stop any more checks..
+					
 					}
+					
 					try {
 						Thread.sleep(20);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						break;
 					}
 				}
 							
@@ -50,11 +53,11 @@ public class HangDetector {
 	public void begin(String name) {
 		this.activeName = name;		
 		this.activeTimeout = System.nanoTime()+timeout;
-		
+		assert(activeTimeout > System.nanoTime());
 	}
 
 	public void finish() {
-		this.activeTimeout =  -1;
+		this.activeTimeout =  Long.MAX_VALUE;
 	}
 
 }

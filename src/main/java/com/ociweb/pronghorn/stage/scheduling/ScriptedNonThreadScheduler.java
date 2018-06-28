@@ -185,7 +185,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //in cycles but under the human perception of time
         deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
         
-        assert(hangDetectInit(schedule.commonClock*10*schedule.script.length));
+        assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 2_000_000_000L)));
 
         if (null != debugStageOrder) {	
         	try {
@@ -931,12 +931,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 	
 	private boolean hangDetectBegin(PronghornStage stage) {
-		hd.begin(stage.toString());
+		if (null!=hd) {
+			hd.begin(stage.toString());
+		}
 		return true;
 	}
 
 	private boolean hangDetectFinish() {
-		hd.finish();
+		if (null!=hd) {
+			hd.finish();
+		}
 		return true;
 	}
 
