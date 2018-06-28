@@ -41,42 +41,34 @@ public class RawDataJoinerStage extends PronghornStage {
 	@Override
 	public void run() {
 		
-		int zeros = 0;
-		do {
-			zeros = 0;
-			int i = inputs.length;		
-			while (Pipe.hasRoomForWrite(output) && (--i >= 0)) {
-				Pipe<RawDataSchema> p = inputs[i];
-				if (p.hasContentToRead(p) ) {
-					//accum all the data
-					isClosed[i] = RawDataSchemaUtil.accumulateInputStream(p);				
+		int i = inputs.length;		
+		while (Pipe.hasRoomForWrite(output) && (--i >= 0)) {
+			Pipe<RawDataSchema> p = inputs[i];
+			if (p.hasContentToRead(p) ) {
+				//accum all the data
+				isClosed[i] = RawDataSchemaUtil.accumulateInputStream(p);				
+				
+				DataInputBlobReader<RawDataSchema> inputStream = Pipe.inputStream(p);
+				
+				//write what we can
+				int toCopyLength = (int)Math.min(output.maxVarLen-(ChannelReader.PACKED_INT_SIZE+ChannelReader.PACKED_LONG_SIZE), inputStream.available());
+				if (toCopyLength > 0) {
+					int size = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+					ChannelWriter outputStream = Pipe.openOutputStream(output);
+					outputStream.writePackedInt(i);
+					outputStream.writePackedLong(toCopyLength);				
+					inputStream.readInto(outputStream, toCopyLength);
 					
-					DataInputBlobReader<RawDataSchema> inputStream = Pipe.inputStream(p);
+					outputStream.closeLowLevelField();
+					Pipe.confirmLowLevelWrite(output, size);
+					Pipe.publishWrites(output);
 					
-					//write what we can
-					int toCopyLength = (int)Math.min(output.maxVarLen-(ChannelReader.PACKED_INT_SIZE+ChannelReader.PACKED_LONG_SIZE), inputStream.available());
-					if (toCopyLength > 0) {
-						int size = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-						ChannelWriter outputStream = Pipe.openOutputStream(output);
-						outputStream.writePackedInt(i);
-						outputStream.writePackedLong(toCopyLength);				
-						inputStream.readInto(outputStream, toCopyLength);
-						
-						outputStream.closeLowLevelField();
-						Pipe.confirmLowLevelWrite(output, size);
-						Pipe.publishWrites(output);
-						
-						Pipe.releasePendingAsReadLock(p, toCopyLength);
-					} else {
-						zeros++;//if all the inputs copy zero then they must have no data
-					}					
-				} else {
-					zeros++;
-					break;
-				}
+					Pipe.releasePendingAsReadLock(p, toCopyLength);
+				} 				
+			} else {
+				break;
 			}
-		} while (zeros!=inputs.length);
-		
+		}
 
 		//only close when all inputs agree to close.
 		int x = isClosed.length;

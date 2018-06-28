@@ -184,6 +184,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
         //in cycles but under the human perception of time
         deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
+        
+        assert(hangDetectInit(schedule.commonClock*10));
 
         if (null != debugStageOrder) {	
         	try {
@@ -218,7 +220,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
     }
 
-    private long threadId;
+
+	private long threadId;
 	public void setThreadId(long id) {
 		id = threadId;
 	}
@@ -899,7 +902,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 				that.setCallerId(stage.boxedStageId);		        
 		        try {
+		        	
+		        	assert(that.hangDetectBegin(stage));
+		        	
 					stage.run();
+					
+					assert(that.hangDetectFinish());
+					
 				} catch (Exception e) {			
 					that.processException(stage, e);
 					
@@ -912,6 +921,23 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    shutDownRequestedHere = true;
 		}
 		return shutDownRequestedHere;
+	}
+
+	private HangDetector hd;
+	
+    private boolean hangDetectInit(long timeout) {
+		hd = new HangDetector(timeout);
+		return true;
+	}
+	
+	private boolean hangDetectBegin(PronghornStage stage) {
+		hd.begin(stage.toString());
+		return true;
+	}
+
+	private boolean hangDetectFinish() {
+		hd.finish();
+		return true;
 	}
 
 	private static void recordRunResults(
