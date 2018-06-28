@@ -185,7 +185,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //in cycles but under the human perception of time
         deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
         
-        assert(hangDetectInit(schedule.commonClock*10));
+        assert(hangDetectInit(schedule.commonClock*10*schedule.script.length));
 
         if (null != debugStageOrder) {	
         	try {
