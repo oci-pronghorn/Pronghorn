@@ -1311,7 +1311,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 								//long names are more important and get a higher priority
 								//may want to count commas instead..
 								if (namedRunnable.name().length()>40) {
-									logger.info("priority thread {}",namedRunnable.name());
+									logger.trace("priority thread {}",namedRunnable.name());
 									prioirity = Thread.MAX_PRIORITY;
 								}
 							}
