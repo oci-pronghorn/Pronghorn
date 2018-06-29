@@ -501,9 +501,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     GraphManager.initAllPipes(graphManager, stage.stageId);
 
                     try {
-                    	if (log) {
-                    		logger.info("waiting for startup of {}", stage.toString().replace("\n",""));
-                    	}
+                    	assert(hangDetectBegin(stage));
 
                     	long start = 0;
         		    	if (GraphManager.isTelemetryEnabled(graphManager)) {
@@ -519,9 +517,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         		        	long duration = now-start;
         		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
         				}
-                        if (log) {
-                        	logger.info("finished startup of {}", stage.toString().replace("\n",""));
-                        }
+        				assert(hangDetectFinish());
+
                         
                         //client work is complete so move stage of stage to started.
                         GraphManager.setStateToStarted(graphManager, stage.stageId);
