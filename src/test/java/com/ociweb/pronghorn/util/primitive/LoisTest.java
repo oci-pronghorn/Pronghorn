@@ -25,14 +25,18 @@ public class LoisTest {
 		lois.supportBitMaps = true;
 		lois.supportRLE = false;
 		
-		int setId = lois.newSet();
 		
 		int base = 1<<23;
 		int size = 10000;
+		int iterations = 4;
 		
-		int iterations = 3;
+		
 		int j = iterations;
 		while (--j>=0) {
+			
+			int setId = lois.newSet();
+	
+			AtomicInteger count = new AtomicInteger();
 			
 			if (0==(j&1)) {
 				
@@ -40,29 +44,29 @@ public class LoisTest {
 				for(int i = base; i<(base+size); i++) {
 					lois.insert(setId, i);
 				}
+				
 			} else {
 				
 				//run down
 				int i = base+size;
 				while (--i >= base) {
-					lois.insert(setId, i);				
+					lois.insert(setId, i);	
 				}
+
 			}
-			
-			AtomicInteger count = new AtomicInteger();
+		
 			LoisVisitor visitor = new LoisVisitor() {
-	
+
 				@Override
 				public boolean visit(int value) {
 	
-					assertTrue(value>=(base-size));
+					assertTrue(value>=base);
 					assertTrue(value<=(base+size));
 					
 					
 					count.incrementAndGet();
 					return true;
 				}
-				
 			};
 			
 			lois.visitSet(setId, visitor);

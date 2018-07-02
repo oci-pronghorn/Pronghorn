@@ -76,6 +76,7 @@ public class LoisOpBitMap extends LoisOperator {
 		//System.err.println("insert "+value+"  first "+firstValue+" tracked "+tracked);
 		
 		if (value >= firstValue+tracked) {
+
 			//System.err.println("new block");
 			//insert a new next block, after idx.		
 			int newBlockId = LoisOpSimpleList.createNewBlock(idx, lois, value);			
@@ -87,13 +88,16 @@ public class LoisOpBitMap extends LoisOperator {
 			if (isBefore(idx, value, lois)) {
 				//we need to copy this full block as is to a new location
 				//then rewrite this position as a simple pointing to new position.
-				throw new UnsupportedOperationException();
-//				int newHome = lois.newBlock();			
-//				System.arraycopy(lois.data, idx, lois.data, newHome, lois.blockSize);			
-//				LoisOpSimpleList.formatNewBlock(lois, value, idx, newHome);
+		
+					int newHome = lois.newBlock();	
+					System.arraycopy(lois.data, idx, lois.data, newHome, lois.blockSize);	
+					assert(firstValue(idx, lois) == firstValue(newHome, lois));
+									
+					LoisOpSimpleList.formatNewBlock(lois, value, idx, newHome);
 
-//				return true;
+				return false;
 			} else {
+
 				int bitIdx = value - firstValue;
 			    //System.err.println("bit idx "+bitIdx);
 			    int byteOffset = 0;

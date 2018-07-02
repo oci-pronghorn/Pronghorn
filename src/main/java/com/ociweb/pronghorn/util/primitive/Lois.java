@@ -46,7 +46,7 @@ public class Lois {
 	private int listCount;	
 	
 	public Lois() {
-		this(32, 1<<8);
+		this(32, 1<<9);
 	}
 	
 	public Lois(int blockSize, int initBlocks) {
@@ -193,7 +193,7 @@ public class Lois {
 			} else {
 				growDataSpace();
 			}
-			return blockLimit;
+			return blockLimit-blockSize;//return beginning of the block not the end.
 		} else {
 			System.err.println("used a recycled block");
 			//use this old block we want to recycle which was stored after the block limit
@@ -202,7 +202,7 @@ public class Lois {
 	}
 
 	private void growDataSpace() {
-		
+		//new Exception("Grow").printStackTrace();
 		//must grow data first, must not grow larger than 29 bits
 		if (data.length > (1<<30)) {
 			throw new UnsupportedOperationException("LOIS data structure can not be larger than 8G of data.");
