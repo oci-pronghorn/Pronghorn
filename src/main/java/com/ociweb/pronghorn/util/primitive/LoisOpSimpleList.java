@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.util.primitive;
 
-import java.util.Arrays;
-
 import com.ociweb.pronghorn.pipe.util.IntArrayPool;
 import com.ociweb.pronghorn.pipe.util.IntArrayPoolLocal;
 

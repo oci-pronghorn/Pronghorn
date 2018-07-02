@@ -1,10 +1,7 @@
 package com.ociweb.pronghorn.util.primitive;
 
-import java.util.Arrays;
-
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.RawDataSchemaUtil;
@@ -258,6 +255,7 @@ public class Lois {
 	
 	
 	public boolean insert(int setId, int value) {
+		assert(setId>=0) : "bad set id "+setId;		
 		
 		int id = setId;
 		int next = 0;
