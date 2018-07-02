@@ -16,6 +16,43 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 public class LoisTest {
 
 	int[] simpleExpectedValues = new int[] {7,1000,99999};
+
+	
+	@Test
+	public void simpleRunningInsertTest() {
+		
+		Lois lois = new Lois();
+		lois.supportBitMaps = true;
+		lois.supportRLE = false;
+		
+		int setId = lois.newSet();
+		
+		int base = 1<<23;
+		int size = 10000;
+		
+		for(int i = base; i<(base+size); i++) {
+			lois.insert(setId, i);
+		}
+		
+		AtomicInteger count = new AtomicInteger();
+		LoisVisitor visitor = new LoisVisitor() {
+
+			@Override
+			public boolean visit(int value) {
+				assertTrue(value>=base);
+				count.incrementAndGet();
+				return true;
+			}
+			
+		};
+		
+		lois.visitSet(setId, visitor);
+		
+		assertEquals(size, count.get());
+		
+	}
+	
+	
 	
 	@Test
 	public void simpleInsertTest() {

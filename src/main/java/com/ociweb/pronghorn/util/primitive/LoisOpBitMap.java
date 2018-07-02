@@ -77,7 +77,7 @@ public class LoisOpBitMap extends LoisOperator {
 		int tracked = valuesTracked(lois);
 		//System.err.println("insert "+value+"  first "+firstValue+" tracked "+tracked);
 		
-		if (value>firstValue+tracked) {
+		if (value >= firstValue+tracked) {
 			//System.err.println("new block");
 			//insert a new next block, after idx.		
 			int newBlockId = LoisOpSimpleList.createNewBlock(idx, lois, value);			
