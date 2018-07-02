@@ -1387,7 +1387,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static <S extends MessageSchema<S>> Pipe<S>[] buildPipes(int count, PipeConfig<S> commonConfig) {		
 		Pipe[] result = new Pipe[count];
 		int i = count;
-		while (--i>=0) {
+		while (--i >= 0) {
 			result[i] = new Pipe<S>(commonConfig);
 		}
 		return (Pipe<S>[])result;
