@@ -184,6 +184,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
         //in cycles but under the human perception of time
         deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
+        
+        assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 2_000_000_000L)));
 
         if (null != debugStageOrder) {	
         	try {
@@ -218,7 +220,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         
     }
 
-    private long threadId;
+
+	private long threadId;
 	public void setThreadId(long id) {
 		id = threadId;
 	}
@@ -498,9 +501,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     GraphManager.initAllPipes(graphManager, stage.stageId);
 
                     try {
-                    	if (log) {
-                    		logger.info("waiting for startup of {}", stage.toString().replace("\n",""));
-                    	}
+                    	assert(hangDetectBegin(stage));
 
                     	long start = 0;
         		    	if (GraphManager.isTelemetryEnabled(graphManager)) {
@@ -516,9 +517,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         		        	long duration = now-start;
         		 			GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration, now);
         				}
-                        if (log) {
-                        	logger.info("finished startup of {}", stage.toString().replace("\n",""));
-                        }
+        				assert(hangDetectFinish());
+
                         
                         //client work is complete so move stage of stage to started.
                         GraphManager.setStateToStarted(graphManager, stage.stageId);
@@ -899,7 +899,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 				that.setCallerId(stage.boxedStageId);		        
 		        try {
+		        	
+		        	assert(that.hangDetectBegin(stage));
+		        	
 					stage.run();
+					
+					assert(that.hangDetectFinish());
+					
 				} catch (Exception e) {			
 					that.processException(stage, e);
 					
@@ -912,6 +918,27 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		    shutDownRequestedHere = true;
 		}
 		return shutDownRequestedHere;
+	}
+
+	private HangDetector hd;
+	
+    private boolean hangDetectInit(long timeout) {
+		hd = new HangDetector(timeout);
+		return true;
+	}
+	
+	private boolean hangDetectBegin(PronghornStage stage) {
+		if (null!=hd) {
+			hd.begin(stage.toString());
+		}
+		return true;
+	}
+
+	private boolean hangDetectFinish() {
+		if (null!=hd) {
+			hd.finish();
+		}
+		return true;
 	}
 
 	private static void recordRunResults(

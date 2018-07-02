@@ -277,7 +277,7 @@ public class NetGraphBuilder {
 	public static GraphManager buildServerGraph(final GraphManager graphManager,
 													final ServerCoordinator coordinator,
 													ServerFactory factory) {
-		logger.info("building server graph");
+		logger.trace("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs, coordinator.incomingDataConfig);           
            
         Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.moduleParallelism(),
