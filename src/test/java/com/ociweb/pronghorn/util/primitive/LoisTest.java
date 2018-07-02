@@ -30,12 +30,23 @@ public class LoisTest {
 		int base = 1<<23;
 		int size = 10000;
 		
-		int iterations = 3;
+		int iterations = 3;//4;
 		int j = iterations;
 		while (--j>=0) {
 			
-			for(int i = base; i<(base+size); i++) {
-				lois.insert(setId, i);
+			if (0==(j&1)) {
+				
+				//run up
+				for(int i = base; i<(base+size); i++) {
+					lois.insert(setId, i);
+				}
+			} else {
+				
+				//run down
+				int i = base+size;
+				while (--i >= base) {
+					lois.insert(setId, i);				
+				}
 			}
 			
 			AtomicInteger count = new AtomicInteger();
