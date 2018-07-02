@@ -25,6 +25,10 @@ public class LoisOpSimpleList extends LoisOperator {
 	}
 	
 	private static final void setCount(int idx, int count, Lois lois) {
+		if (count > maxBlockSize) {
+			throw new RuntimeException("Bad count "+count);
+		}		
+		
 		assert(count <= maxBlockSize) : "Count is larger than allowed max for this block";
 		lois.data[idx+1] =   (count&maskCount) | (Lois.LOISOpSimpleList<<29);
 		
