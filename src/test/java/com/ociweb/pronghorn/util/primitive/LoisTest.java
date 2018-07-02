@@ -30,26 +30,30 @@ public class LoisTest {
 		int base = 1<<23;
 		int size = 10000;
 		
-		for(int i = base; i<(base+size); i++) {
-			lois.insert(setId, i);
-		}
-		
-		AtomicInteger count = new AtomicInteger();
-		LoisVisitor visitor = new LoisVisitor() {
-
-			@Override
-			public boolean visit(int value) {
-				assertTrue(value>=base);
-				count.incrementAndGet();
-				return true;
+		int iterations = 3;
+		int j = iterations;
+		while (--j>=0) {
+			
+			for(int i = base; i<(base+size); i++) {
+				lois.insert(setId, i);
 			}
 			
-		};
-		
-		lois.visitSet(setId, visitor);
-		
-		assertEquals(size, count.get());
-		
+			AtomicInteger count = new AtomicInteger();
+			LoisVisitor visitor = new LoisVisitor() {
+	
+				@Override
+				public boolean visit(int value) {
+					assertTrue(value>=base);
+					count.incrementAndGet();
+					return true;
+				}
+				
+			};
+			
+			lois.visitSet(setId, visitor);
+			
+			assertEquals(size, count.get());
+		}
 	}
 	
 	
