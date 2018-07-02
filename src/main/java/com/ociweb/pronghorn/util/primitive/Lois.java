@@ -52,8 +52,10 @@ public class Lois {
 	public Lois(int blockSize, int initBlocks) {
 		assert(blockSize>=4) : "block size must be at least 4";
 		assert(initBlocks>=16) : "initBlocks must be at least 16";
+		assert(blockSize< (1<<19)); //512K
 		this.blockSize = blockSize;
 		this.data = new int[blockSize*initBlocks];
+		
 	}
 
 	/**
