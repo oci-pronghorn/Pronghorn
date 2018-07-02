@@ -40,7 +40,7 @@ public class LoisTest {
 	}
 
 	private void simpleInsert(Lois lois) {
-		int blockId = lois.newBlock();
+		int blockId = lois.newSet();
 		
 		boolean ok;
 		ok = lois.insert(blockId, 1000);
@@ -97,7 +97,7 @@ public class LoisTest {
 	}
 
 	private void simpleRemove(Lois lois) {
-		int blockId = lois.newBlock();
+		int blockId = lois.newSet();
 		
 		boolean ok;
 		ok = lois.insert(blockId, 1000);
