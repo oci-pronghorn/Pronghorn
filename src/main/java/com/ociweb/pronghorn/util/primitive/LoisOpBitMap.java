@@ -71,8 +71,6 @@ public class LoisOpBitMap extends LoisOperator {
 			//find longest run is > 4 ??
 		//}
 		
-		
-		
 		int firstValue = firstValue(idx, lois);
 		int tracked = valuesTracked(lois);
 		//System.err.println("insert "+value+"  first "+firstValue+" tracked "+tracked);
@@ -86,39 +84,44 @@ public class LoisOpBitMap extends LoisOperator {
 		} else {		
 		
 			assert(!isAfter(idx, value, lois)) : "Must not be AFTER this block must be inside it";
-			assert(!isBefore(idx, value, lois)) : "Must not be BEFORE this block must be inside it";
-			
-			int bitIdx = value - firstValue;
-		    //System.err.println("bit idx "+bitIdx);
-		    int byteOffset = 0;
-		    int bitOffset = 0;
-			if (bitIdx >= 29) { 
-				byteOffset = idx+2+((bitIdx-29)>>5);	
-				bitOffset = (bitIdx-29)&0x1F;
-				
-				//System.err.println("bit offset "+bitOffset);
-				
+			if (isBefore(idx, value, lois)) {
+				//we need to copy this full block as is to a new location
+				//then rewrite this position as a simple pointing to new position.
+				throw new UnsupportedOperationException();
+//				int newHome = lois.newBlock();			
+//				System.arraycopy(lois.data, idx, lois.data, newHome, lois.blockSize);			
+//				LoisOpSimpleList.formatNewBlock(lois, value, idx, newHome);
+
+//				return true;
 			} else {
-				
-				//0-28
-				byteOffset = idx+1;
-				bitOffset = bitIdx;
-			}
-			int mask = 1<<bitOffset;
-	
-			if (0 == ( lois.data[byteOffset] & mask )) {
-				
-//				System.err.println("set byte at "+byteOffset
-//						 +" to value "+Integer.toBinaryString(mask)
-//						 +" bit off "+bitOffset+" for value "+value);
-				
-				lois.data[byteOffset] |= mask;//set this bit
-				return true;			
-			} else {
-				//already inserted			
-				return false;
+				int bitIdx = value - firstValue;
+			    //System.err.println("bit idx "+bitIdx);
+			    int byteOffset = 0;
+			    int bitOffset = 0;
+				if (bitIdx >= 29) { 
+					byteOffset = idx+2+((bitIdx-29)>>5);	
+					bitOffset = (bitIdx-29)&0x1F;
+					
+					//System.err.println("bit offset "+bitOffset);
+					
+				} else {
+					
+					//0-28
+					byteOffset = idx+1;
+					bitOffset = bitIdx;
+				}
+				int mask = 1<<bitOffset;
+		
+				if (0 == ( lois.data[byteOffset] & mask )) {
+					lois.data[byteOffset] |= mask;//set this bit
+					return true;			
+				} else {
+					//already inserted			
+					return false;
+				}
 			}
 		}
+		
 	}
 
 	@Override
@@ -161,16 +164,14 @@ public class LoisOpBitMap extends LoisOperator {
 		return true;
 	}
 
-	static void reviseBlock(int idx, int[] valuesToKeep, Lois lois) {
+	static void reviseBlock(int idx, int[] valuesToKeep, int baseValue, Lois lois) {
 		//System.err.println("revise values "+Arrays.toString(valuesToKeep));
 		
 		//next will remain the same, clear the rest
 		Arrays.fill(lois.data, idx+1, idx+lois.blockSize, 0);
 		
 		lois.data[idx+1] = (Lois.LOISOpBitMap<<29);		
-		////System.err.println("a - set type at "+(idx+1));
-		int baseValue = valuesToKeep[0];
-		////System.err.println("a - set base at "+(idx+lois.blockSize-1));
+
 		lois.data[idx+lois.blockSize-1] = baseValue;
 		
 		for(int i = 0; i<valuesToKeep.length; i++) {

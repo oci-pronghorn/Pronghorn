@@ -30,7 +30,7 @@ public class LoisTest {
 		int base = 1<<23;
 		int size = 10000;
 		
-		int iterations = 3;//4;
+		int iterations = 3;
 		int j = iterations;
 		while (--j>=0) {
 			
@@ -54,7 +54,11 @@ public class LoisTest {
 	
 				@Override
 				public boolean visit(int value) {
-					assertTrue(value>=base);
+	
+					assertTrue(value>=(base-size));
+					assertTrue(value<=(base+size));
+					
+					
 					count.incrementAndGet();
 					return true;
 				}

@@ -92,7 +92,7 @@ public class LoisOpSimpleList extends LoisOperator {
 			if (lois.supportBitMaps) {
 				//if range used here is smaller than the bit mask then do the conversion
 				//System.err.println("first "+lois.data[pos]+" last "+lois.data[limit-1]);
-				if ( Math.abs(lois.data[limit-1] - lois.data[pos])  < LoisOpBitMap.valuesTracked(lois)) {
+				if ( Math.abs(lois.data[limit-1] - lois.data[pos]) < LoisOpBitMap.valuesTracked(lois)) {
 					//change this block to use bit mask
 					
 					IntArrayPool that = IntArrayPoolLocal.get();
@@ -106,7 +106,7 @@ public class LoisOpSimpleList extends LoisOperator {
 					//the above array holds the values so we can write over this block.
 					
 					//bitmap method to format this block the right way.
-					LoisOpBitMap.reviseBlock(idx, valuesToKeep, lois);
+					LoisOpBitMap.reviseBlock(idx, valuesToKeep, Math.min(value, valuesToKeep[0]), lois);
 					
 					
 					//release temp space now that we are done
@@ -195,13 +195,16 @@ public class LoisOpSimpleList extends LoisOperator {
 
 	public static int createNewBlock(int idx, Lois lois, int anchor) {
 		
-		int oldNext = lois.data[idx];
-		
-		int newBlockId = lois.newBlock();
-		lois.data[newBlockId] = oldNext; //tie in next		
-		setCount(newBlockId, 1, lois);	
-		lois.data[newBlockId+2] = anchor;
+		int newBlockId = lois.newBlock();		
+		formatNewBlock(lois, anchor, newBlockId, lois.data[idx]);		
 		return newBlockId;
+		
+	}
+
+	static void formatNewBlock(Lois lois, int anchor, int targetId, int nextId) {
+		lois.data[targetId] = nextId; //tie in next		
+		setCount(targetId, 1, lois);	
+		lois.data[targetId+2] = anchor;
 	}
 	
 	
