@@ -20,7 +20,7 @@ public class LoisOpSimpleList extends LoisOperator {
 	}
 
 	private final int getCount(int idx, Lois lois) {
-		assert((lois.data[idx+1]&maskCount) <= maxBlockSize) : "Bad count value found";		
+		assert((lois.data[idx+1]&maskCount) <= lois.blockSize) : "Bad count value found";		
 		return lois.data[idx+1]&maskCount;
 	}
 	
@@ -29,7 +29,7 @@ public class LoisOpSimpleList extends LoisOperator {
 			throw new RuntimeException("Bad count "+count);
 		}		
 		
-		assert(count <= maxBlockSize) : "Count is larger than allowed max for this block";
+		assert(count <= lois.blockSize) : "Count is larger than allowed max for this block";
 		lois.data[idx+1] =   (count&maskCount) | (Lois.LOISOpSimpleList<<29);
 		
 	}
