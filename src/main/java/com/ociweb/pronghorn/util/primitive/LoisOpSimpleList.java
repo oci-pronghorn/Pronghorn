@@ -63,12 +63,19 @@ public class LoisOpSimpleList extends LoisOperator {
 				}
 				setCount(idx, count-1, lois);
 				
-				//never remove the root.
-				if (count==1 && prev!=-1) {
-					//we removed last one
-					lois.data[prev] = lois.data[idx];//previous points to next
-					lois.recycle(idx);
+				if (count==1) {
+					if (prev!=-1) {					
+						//we removed last one
+						lois.data[prev] = lois.data[idx];//previous points to next
+						lois.recycle(idx);
+					} else {
+						//the root idx is empty so copy up the following block then recycle the following
+						int nextBlock = lois.data[idx];						
+						System.arraycopy(lois.data, nextBlock, lois.data, idx, lois.blockSize);
+						lois.recycle(nextBlock);
+					}
 				}
+				
 				return true;
 			}
 		}
