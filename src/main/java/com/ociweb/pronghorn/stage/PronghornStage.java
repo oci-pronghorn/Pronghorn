@@ -130,7 +130,7 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {
 	    assert(null!=input) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
-	    assert(noContainedNull(outputs)) : "Null disovered in array";
+	    assert(noContainedNull(outputs)) : "Null disovered in outputs array";
 		assert(input!=null);
 		
 	    this.stageId = GraphManager.newStageId(graphManager);
@@ -144,7 +144,7 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe output) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=output) : "Use NONE";
-	    assert(noContainedNull(inputs)) : "Null disovered in array";	
+	    assert(noContainedNull(inputs)) : "Null disovered in inputs array";	
 		assert(output!=null);
 	    
 	    this.stageId = GraphManager.newStageId(graphManager);
@@ -155,7 +155,7 @@ public abstract class PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this);//This provides room for assignment later
 	}
 	
-	private boolean noContainedNull(Pipe[] inputs) {
+	public static boolean noContainedNull(Pipe[] inputs) {
 		int i = inputs.length;
 		while (--i>=0) {
 			if (null==inputs[i]) {
@@ -232,6 +232,9 @@ public abstract class PronghornStage {
     		return additional;
     	}
     	
+    	//assert(noContainedNull(pipes)) : "left side has null in array";
+    	//assert(noContainedNull(additional)) : "right side has null in array of length "+additional.length;
+    	 
         int totalCount = pipes.length+additional.length;
         
         Pipe[] p = new Pipe[totalCount];
