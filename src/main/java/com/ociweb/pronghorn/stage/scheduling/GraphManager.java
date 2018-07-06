@@ -1836,7 +1836,7 @@ public class GraphManager {
 	                
 	                target.write(AQUOTE);
 
-					if (pct>=60000) {
+					if (pct>=75000) {
                 		target.append(",color=red,penwidth=5");	    
                 	} else if (pct>=40000) {
                 		target.append(",color=orange,penwidth=5");	    
@@ -2032,7 +2032,7 @@ public class GraphManager {
 						    
 						    if (null!=pipePercentileFullValues) {		                	
 						    	int pctFull = pipePercentileFullValues[pipe.id];
-						    	if (pctFull>=60) {
+						    	if (pctFull>=75) {
 						    		target.append(",color=red");	    
 						    	} else if (pctFull>=40) {
 						    		target.append(",color=orange");	    
