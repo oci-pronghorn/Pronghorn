@@ -309,7 +309,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     public static void position(DataInputBlobReader<?> reader, int byteIndexFromStart) {
     	assert(byteIndexFromStart>=0);
-    	assert(byteIndexFromStart<reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
+    	//can read up to the end so this position is the same as length yet it is excluded.
+    	assert(byteIndexFromStart<=reader.length) : "index of "+byteIndexFromStart+" is out of limit "+reader.length;
     	//logger.trace("set to position from start "+byteIndexFromStart);
     	reader.position = reader.bytesLowBound+byteIndexFromStart;
     }
