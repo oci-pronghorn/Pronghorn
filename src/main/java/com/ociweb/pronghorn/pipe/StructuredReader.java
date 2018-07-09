@@ -586,6 +586,8 @@ public final class StructuredReader {
      * @return -1 when absent, else long
      */
 	public long readLong(Object association) {
+		assert(channelReader.isStructured()) : "this data was not structured";
+		assert(DataInputBlobReader.getStructType(channelReader)!=-1) : "no type data found";
 		return readLong(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
 	
