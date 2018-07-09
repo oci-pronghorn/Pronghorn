@@ -644,7 +644,7 @@ public class StructRegistry { //prong struct store
 		int idx =  StructRegistry.FIELD_MASK & (int)fieldLookupByIdentity(attachedObject, structId);
 		if (idx>=0) {
 			DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
-			visitor.read((T)(fieldLocals[structId][idx]), reader, fieldIdBase | idx);
+			visitor.read((T)(fieldLocals[STRUCT_MASK&structId][idx]), reader, fieldIdBase | idx);
 			return true;
 		} else {
 			return false;
