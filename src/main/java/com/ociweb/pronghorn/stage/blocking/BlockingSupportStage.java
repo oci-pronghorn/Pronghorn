@@ -31,7 +31,8 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	private long timeoutNS;
 	private AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 	private Logger logger = LoggerFactory.getLogger(BlockingSupportStage.class);
-
+	private final Pipe<BlockingWorkInProgressSchema> inProgress;
+	
 	/**
 	 *
 	 * @param graphManager
@@ -43,17 +44,26 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	 * @param blockables
 	 */
 	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, long timeoutNS, Choosable<T> chooser, Blockable<T,P,Q> ... blockables) {
-		super(graphManager, input, output==timeout ? join(output) : join(output,timeout));
+		this(graphManager,input,output,timeout,workPipe(blockables.length),timeoutNS, chooser,blockables);
+	}
+	
+	private static Pipe<BlockingWorkInProgressSchema> workPipe(int length) {
+		return BlockingWorkInProgressSchema.instance.newPipe(length, 0);
+	}
+
+	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, Pipe<BlockingWorkInProgressSchema> workload, long timeoutNS, Choosable<T> chooser, Blockable<T,P,Q> ... blockables) {
+		super(graphManager, join(input, workload), join(output==timeout ? join(output) : join(output,timeout),workload));
 		this.input = input;
 		this.output = output;
 		this.timeout = timeout;
 		this.chooser = chooser;
 		this.blockables = blockables;
 		this.timeoutNS = timeoutNS;
+		this.inProgress = workload;
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lightcoral", this);
 	}
-
+	
 	@Override
 	public void startup() {
 		times = new long[blockables.length];
@@ -128,7 +138,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		//pick up as much new work as we can
 		while (Pipe.hasContentToRead(input)) {
 			int choice = chooser.choose(input);
-			if (choice>=0 && needsWorkWaiting[choice]) {
+			if (choice>=0 && needsWorkWaiting[choice] && Pipe.hasRoomForWrite(inProgress)) {
 				//logger.info("\n---selected choice {}",choice);
 				
 				Blockable<T,P,Q> b = blockables[choice];
@@ -137,7 +147,12 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 						//logger.info("\n---begin {}",choice);
 						needsWorkWaiting[choice] = false;
 						b.begin(input);
-						b.notify();					
+						b.notify();
+						
+						int size = Pipe.addMsgIdx(inProgress, BlockingWorkInProgressSchema.MSG_INFLIGHT_1);
+						Pipe.confirmLowLevelWrite(inProgress, size);
+						Pipe.publishWrites(inProgress);
+				
 					}
 				}
 			} else {
@@ -155,6 +170,9 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 				if (duration>timeoutNS && Pipe.hasRoomForWrite(timeout)) {
 					logger.info("timeout task {}ns",duration);
 					
+					if (Pipe.hasContentToRead(inProgress)) {
+						Pipe.skipNextFragment(inProgress);
+					}
 					
 					//TODO: upon interupt we may be in the middle of a write
 					//      we must roll back what we have to allow for status response
@@ -175,6 +193,11 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 						b.finish(output);
 						completedWorkWaiting[j] = false;
 						b.notify();
+						
+						if (Pipe.hasContentToRead(inProgress)) {
+							Pipe.skipNextFragment(inProgress);
+						}
+						
 					}
 				}
 			}			

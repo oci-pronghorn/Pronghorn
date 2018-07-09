@@ -2623,35 +2623,35 @@ public class GraphManager {
 		}
 	}
 
-	public static String getPipeName(GraphManager gm, Pipe pipe) {
-		
-	    final int ringId = pipe.id;
-	    String consumerName = "UnknownConsumer";
-	    {
-            int stageId = getRingConsumerId(gm, ringId);
-            if (stageId>=0) {
-                PronghornStage consumer = gm.stageIdToStage[stageId];
-                consumerName = extractName(gm, consumer)+"#"+stageId;
-            }
-	    }
-	    String producerName = "UnknownProducer";
-	    {
-            int stageId = getRingProducerId(gm, ringId);
-            if (stageId>=0) {                
-                PronghornStage producer = gm.stageIdToStage[stageId];                
-                producerName = extractName(gm, producer)+"#"+stageId;  
-            }
-	    }
-	    StringBuilder builder = new StringBuilder();
-	    builder.append(producerName).append('-');
-	    Appendables.appendValue(builder, pipe.id);
-	    builder.append('-').append(consumerName);
-	    return builder.toString();
-	}
-
-	private static String extractName(GraphManager gm, PronghornStage stage) {
-		return getNota(gm, stage, STAGE_NAME, stage.getClass().getSimpleName()).toString();
-	}
+//	public static String getPipeName(GraphManager gm, Pipe pipe) {
+//		
+//	    final int ringId = pipe.id;
+//	    String consumerName = "UnknownConsumer";
+//	    {
+//            int stageId = getRingConsumerId(gm, ringId);
+//            if (stageId>=0) {
+//                PronghornStage consumer = gm.stageIdToStage[stageId];
+//                consumerName = extractName(gm, consumer)+"#"+stageId;
+//            }
+//	    }
+//	    String producerName = "UnknownProducer";
+//	    {
+//            int stageId = getRingProducerId(gm, ringId);
+//            if (stageId>=0) {                
+//                PronghornStage producer = gm.stageIdToStage[stageId];                
+//                producerName = extractName(gm, producer)+"#"+stageId;  
+//            }
+//	    }
+//	    StringBuilder builder = new StringBuilder();
+//	    builder.append(producerName).append('-');
+//	    Appendables.appendValue(builder, pipe.id);
+//	    builder.append('-').append(consumerName);
+//	    return builder.toString();
+//	}
+//
+//	private static String extractName(GraphManager gm, PronghornStage stage) {
+//		return getNota(gm, stage, STAGE_NAME, stage.getClass().getSimpleName()).toString();
+//	}
 
 	/**
 	 * Start with ordinal selection of input stages then ordinal selection of each output ring there after.

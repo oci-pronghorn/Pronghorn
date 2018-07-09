@@ -606,6 +606,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     @Override
     public void run() {
+
     	try {
     		playScript(this);
 		} catch (InterruptedException e) {
@@ -632,6 +633,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		        }
 		
 				checkForLongRun(that);
+				
 	
 	}
 
@@ -860,11 +862,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	private final int detectShutdownScheduleIdx(int scheduleIdx, boolean shutDownRequestedHere) {
+
 		// If a shutdown is triggered in any way, shutdown and halt this scheduler.
 		return (!(shutDownRequestedHere || shutdownRequested.get())) ? scheduleIdx : triggerShutdown();
 	}
 
 	private int triggerShutdown() {
+     	
 		if (!shutdownRequested.get()) {
 			shutdown();
 		}
@@ -1029,9 +1033,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     
     @Override
     public void shutdown() {
-    	
+
         if (null!=stages && shutdownRequested.compareAndSet(false, true)) {
-        	
         	synchronized(key) {
         		
         		if (null!=sleepETL) {        			
