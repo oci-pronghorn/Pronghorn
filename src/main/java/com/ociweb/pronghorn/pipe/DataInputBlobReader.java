@@ -194,7 +194,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     public int peekLowLevelAPIField(int offset) {
-    	int meta = Pipe.peekInt(this.pipe, offset);        
+    	int meta = Pipe.peekInt(this.pipe, offset);     
+    	
+    	this.isStructured = (0!=(Pipe.STRUCTURED_POS_MASK&meta));
+    	
 		this.length    = Math.max(0, Pipe.peekInt(this.pipe, offset+1));
 		this.bytesLowBound = this.position = Pipe.convertToPosition(meta, this.pipe);
 		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
@@ -956,6 +959,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 	}
 	@Override
 	public StructuredReader structured() {
+		assert(isStructured()) : "This data is not structured";
 		return structuredReader;
 	}
 
