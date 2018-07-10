@@ -573,7 +573,9 @@ public class Pipe<T extends MessageSchema<T>> {
 			if (callerId>=0) {
 				int expected = callerLookup.getConsumerId(pipeId);
 				if (expected>=0) {
-					assert(callerId == expected) : "Check your graph construction and stage constructors.\n Pipe "+pipeId+" must only have 1 stage therefore 1 thread reading from it.";
+					assert(callerId == expected) : 
+						"Check your graph construction and stage constructors.\n Pipe "
+							+pipeId+" must only have 1 stage therefore 1 thread reading from it. CallerId:"+callerId+" Exepected:"+expected;
 				}
 			}
 		}
