@@ -218,10 +218,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				int len2 = localInputPipe.maxVarLen;
 				int len3 = Pipe.blobMask(localInputPipe);
 				
-				if (Pipe.hasContentToRead(localInputPipe)  
-					//	&& 	((positionMemoData[lenIdx]+localInputPipe.maxVarLen+Pipe.releasePendingByteCount(localInputPipe)) < (Pipe.blobMask(localInputPipe) ) ) 
-						 //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
-						) {
+				if (Pipe.hasContentToRead(localInputPipe)) {
 					
 					////////////////
 					//before taking the data

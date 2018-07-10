@@ -243,9 +243,24 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static void buildHTTP1xResponseParser(GraphManager gm, ClientCoordinator ccm, 
-			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse,
+	public static void buildHTTP1xResponseParser(
+			GraphManager gm, ClientCoordinator ccm, 
+			Pipe<NetResponseSchema>[] responses, 
+			Pipe<NetPayloadSchema>[] clearResponse,
 			Pipe<ReleaseSchema> ackRelease) {
+		
+		
+		//TODO: we can add JSON extract on these pipes but which ones for what?
+		
+		
+//		boolean isJSONExtracted = false;
+//		if (isJSONExtracted) {
+//			
+//			//for each one?? drop in stage.
+//			//
+//			
+//		}
+		
 		
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
@@ -467,7 +482,6 @@ public class NetGraphBuilder {
 					new HTTPRequestJSONExtractionStage(
 							 	graphManager, 
 							 	extractor, 
-							 	routerConfig.getStructIdForRouteId(routeId),
 							 	newFromJSON,
 							 	fromRouter[routeId],
 							 	json404Pipe
@@ -1106,7 +1120,7 @@ public class NetGraphBuilder {
 								    Pipe<NetPayloadSchema>[] clearResponse,
 								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
 				
-				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
+				buildHTTP1xResponseParser(gm, ccm, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
 			}			
 		};
 

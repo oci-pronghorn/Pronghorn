@@ -114,6 +114,9 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 							} catch (Exception e) {
 								//for SQL exceptions
 								e.printStackTrace();
+								if (!e.getClass().getSimpleName().contains("SQL")) {
+									throw e;
+								}
 							}
 							
 							times[instance] = 0;//clear
@@ -124,7 +127,10 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 						} catch (InterruptedException ie) {
 							b.timeout(timeout);
 							completedWorkWaiting[instance] = false;
-						}			
+						} catch (Exception ie) {
+							b.timeout(timeout);
+							completedWorkWaiting[instance] = false;
+						}				
 						
 					}
 				}				
@@ -159,6 +165,28 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 				break;
 			}
 		}
+
+		
+		//finish any complete jobs
+		int j = completedWorkWaiting.length;
+		while (--j>=0) {
+			if (completedWorkWaiting[j] && Pipe.hasRoomForWrite(output)) {
+				Blockable<T,P,Q> b = blockables[j];
+				synchronized(b) {
+					if (completedWorkWaiting[j]) {
+						//logger.info("\n---finish {}",j);
+						b.finish(output);
+						completedWorkWaiting[j] = false;
+						b.notify();
+						times[j] = 0;
+						if (Pipe.hasContentToRead(inProgress)) {
+							Pipe.skipNextFragment(inProgress);
+						}
+						
+					}
+				}
+			}			
+		}		
 		
 		//check for timeouts
 		long now = System.nanoTime();
@@ -173,35 +201,12 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 					if (Pipe.hasContentToRead(inProgress)) {
 						Pipe.skipNextFragment(inProgress);
 					}
-					
-					//TODO: upon interupt we may be in the middle of a write
-					//      we must roll back what we have to allow for status response
-					//
 					threads[t].interrupt(); 
 				}		
 			}
 		}	
 		
-		//finish any complete jobs
-		int j = completedWorkWaiting.length;
-		while (--j>=0) {
-			if (completedWorkWaiting[j] && Pipe.hasRoomForWrite(output)) {
-				Blockable<T,P,Q> b = blockables[j];
-				synchronized(b) {
-					if (completedWorkWaiting[j]) {
-						//logger.info("\n---finish {}",j);
-						b.finish(output);
-						completedWorkWaiting[j] = false;
-						b.notify();
-						
-						if (Pipe.hasContentToRead(inProgress)) {
-							Pipe.skipNextFragment(inProgress);
-						}
-						
-					}
-				}
-			}			
-		}
+		
 	}
 
 	@Override

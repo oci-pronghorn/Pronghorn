@@ -38,7 +38,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
 	private final StructRegistry typeData;
-	private final int structId;
+
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
 
@@ -46,14 +46,12 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	 *
 	 * @param graphManager
 	 * @param extractor
-	 * @param structId
 	 * @param input _in_ The HTTP request containing JSON.
 	 * @param output _out_ The HTTP response.
 	 * @param err _out_ Contains ServerResponseSchema if error occurred
 	 */
 	public HTTPRequestJSONExtractionStage(GraphManager graphManager, 
-											JSONExtractorCompleted extractor,  int structId,
-											Pipe<HTTPRequestSchema> input,
+											JSONExtractorCompleted extractor,  Pipe<HTTPRequestSchema> input,
 											Pipe<HTTPRequestSchema> output,
 											Pipe<ServerResponseSchema> err) {
 		
@@ -63,8 +61,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		this.output = output;
 		this.err = err;
 		this.typeData = graphManager.recordTypeData;
-		this.structId = structId;
-		
+
 		//modify the struct to add the JSON fields
 		indexPositions = extractor.getIndexPositions();
 		
@@ -157,8 +154,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(localInput);
 					
 		        	assert(inputStream.isStructured()) : "Structured stream is required for JSON";
-		        	assert(DataInputBlobReader.getStructType(inputStream) == structId) : "Only supports one JSON Strcture at a time.";
-		        
+
 		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
 		    		        			        	
 		        	int size = Pipe.addMsgIdx(localOutput, msgIdx);
