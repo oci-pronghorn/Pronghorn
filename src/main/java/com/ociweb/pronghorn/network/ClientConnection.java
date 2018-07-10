@@ -205,9 +205,17 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			//up with your local network and this machine no longer has access to that address and port.
 			
 		}
+				
+		/////////////////////////
 
-		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
-
+		boolean done = false;
+		do {		
+			done = this.getSocketChannel().finishConnect(); //call again later to confirm its done.
+			if (!done) {
+				Thread.yield();
+			}
+		} while (!done && (System.currentTimeMillis()<resolveTimeout));
+		
 	}
 	
 	public String toString() {
@@ -318,6 +326,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				return finishConnect;
 				
 			} catch (IOException io) {
+				close();
 				//logger.trace("finish connection exception ",io);
 				return false;
 			} catch (NoConnectionPendingException ncpe) {

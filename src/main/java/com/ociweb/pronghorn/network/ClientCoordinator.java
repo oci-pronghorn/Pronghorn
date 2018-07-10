@@ -386,6 +386,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
 						
 					try {
+					//	logger.info("\nnew client connection {}:{}",host,port);
 				    	//create new connection because one was not found or the old one was closed
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
@@ -394,7 +395,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 													structureId);
 						
 					} catch (IOException ex) {
-						logger.warn("Unable to open connection to {}:{}",host,port, ex);				
+						logger.warn("\nUnable to open connection to {}:{}",host,port, ex);
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}

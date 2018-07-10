@@ -347,14 +347,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			reOpenConnection(activeConnection);
 		}
 		
-		long result = (null!=activeConnection) ? activeConnection.id : -1;
-		return result;
-		
+		return ((null!=activeConnection) && activeConnection.isFinishConnect()) ? activeConnection.id : -1;
+
 	}
 
 	private void reOpenConnection(ClientConnection old) {
-		//logger.info("opening connection to broker {}:{} ",
-		//		     Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
 
 		//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
 		//only add header support for http calls..
@@ -362,7 +359,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		
 		int hostId = null!=old? old.hostId : ClientCoordinator.lookupHostId(host, READER);
-		long lookup = null!=old? old.id : ccm.lookup(hostId, hostPort, uniqueConnectionId);
+		long lookup = null!=old? old.id : ClientCoordinator.lookup(hostId, hostPort, uniqueConnectionId);
+		
+		logger.info("\nopening connection to broker {}:{} id:{} uniq:{}",host, hostPort, hostId, lookup);
+		
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker, lookup, 
@@ -556,8 +556,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private void processInput(long connectionId) {
 
-
-		
 		while ( (Pipe.peekMsg(input, MQTTClientToServerSchema.MSG_BROKERHOST_100)  				
 				|| (
 				    ((connectionId = connectionId())>=0)
@@ -573,7 +571,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 					final int msgIdx = Pipe.takeMsgIdx(input);
 					assert(msgIdx == MQTTClientToServerSchema.MSG_BROKERHOST_100);
-					//logger.info("open new broker socket connection");
 					
 					this.host.setLength(0);
 										
@@ -585,16 +582,20 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					//must establish new connection
 					ccm.releaseResponsePipeLineIdx(connectionId);
 					if (null!=activeConnection) {
-						logger.info("close old connection to make new one");
+						logger.info("\nclose old connection to make new one");
 						activeConnection.close();
 					}
 					
 					Pipe.confirmLowLevelRead(input, Pipe.sizeOf(MQTTClientToServerSchema.instance, MQTTClientToServerSchema.MSG_BROKERHOST_100 ));
 					Pipe.releaseReadLock(input);
+					
+					logger.info("\nopening new broker socket connection to "+this.host);
 				
 				break;
 			}		
-						
+				
+			//logger.info("\nconnected now sending data");
+			
 			ClientConnection clientConnection = (ClientConnection) ccm.connectionForSessionId(connectionId);
 			if (null==clientConnection || (! clientConnection.isFinishConnect())) {
 				break;
@@ -655,7 +656,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 			} else {
 				
-				//logger.trace("did not write to broker {} ", Pipe.totalWrittenFragments(server));
+				logger.info("did not write to broker {} ", Pipe.totalWrittenFragments(server));
 				
 				inPersistSize = Pipe.sizeOf(MQTTClientToServerSchema.instance,msgIdx);						
 				isInPersistWrite = true;
@@ -972,7 +973,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	private boolean writeToBrokerServer(long connectionId, Pipe<NetPayloadSchema> server, int msgIdx) {
 
-		
 		assert(FieldReferenceOffsetManager.isGroupTemplate(Pipe.from(server),NetPayloadSchema.MSG_PLAIN_210));
 	
 		long arrivalTime = 0;
