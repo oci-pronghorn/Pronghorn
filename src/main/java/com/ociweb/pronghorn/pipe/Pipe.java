@@ -4835,9 +4835,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
 	                                                +(output.llRead.llwConfirmedPosition+output.slabMask)+" workingHead:"+Pipe.workingHeadPosition(output)+
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
-	   
-	    assert(verifySize(output, size));
-	    
+
 	    return  output.llRead.llwConfirmedPosition += size;
 
 	}

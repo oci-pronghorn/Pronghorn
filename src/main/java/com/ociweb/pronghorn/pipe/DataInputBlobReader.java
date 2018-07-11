@@ -106,10 +106,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     
     
     public int readFromEndLastInt(int negativeIntOffset) {
-    	assert(readFromLastInt(this, negativeIntOffset)<this.length) :
+    	assert(readFromLastInt(this, negativeIntOffset)<=this.length) :
     		  "index position is out of bounds in pipe "+this.getBackingPipe(this).id
     		 +" at idx "+negativeIntOffset
-    		 +" bad pos "+readFromLastInt(this, negativeIntOffset)
+    		 +" bad pos of "+readFromLastInt(this, negativeIntOffset)
     		 +" full length "+this.length;
     	
     	
