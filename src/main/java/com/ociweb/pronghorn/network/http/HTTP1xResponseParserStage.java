@@ -545,7 +545,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//only case where state is not 1 so we must call save all others will call when while loops back to top.
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
 
-									//logger.info("payload position {} {}  {}",Long.toBinaryString(cc.payloadToken),cc.payloadToken,writer.position());
+									//logger.info("payload position  {}", writer.position());
 									//NOTE: payload index position is always zero 
 									DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
 																		

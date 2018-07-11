@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -382,9 +383,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	
 					//recycle from old one if it is found/given		        
-					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, TrieParserReaderLocal.get());						
-					int structureId = null!=cc? cc.structureId : HTTPUtil.newHTTPStruct(ccm.typeData);
-						
+					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, TrieParserReaderLocal.get());	
+
+					
 					try {
 					//	logger.info("\nnew client connection {}:{}",host,port);
 				    	//create new connection because one was not found or the old one was closed
@@ -392,7 +393,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 													connectionId, 
 													pipeIdx, 
 													hostId,
-													structureId);
+													structureId(sessionId, ccm.typeData));
 						
 					} catch (IOException ex) {
 						logger.warn("\nUnable to open connection to {}:{}",host,port, ex);
@@ -426,6 +427,34 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				//not registered
 				return doRegister(ccm, outputs, cc);
 
+	}
+
+
+	//we know that sessions are defined using a static counter so this is also safe. no collisions in JVM
+	private static IntHashTable sessionStructIdTable = new IntHashTable(5);
+	
+	
+	public static int structureId(int sessionId, StructRegistry typeData) {
+
+		int result = IntHashTable.getItem(ClientCoordinator.sessionStructIdTable, sessionId);
+		if (result!=0) {
+			return result;
+		} else {
+			//was zero so find if its missing
+			if (IntHashTable.hasItem(ClientCoordinator.sessionStructIdTable, sessionId)) {
+				return result; //this zero is valid
+			} else {
+				//need to add new item				
+				int newStructId = HTTPUtil.newHTTPStruct(typeData);
+				if (!IntHashTable.setItem(ClientCoordinator.sessionStructIdTable, sessionId, newStructId)) {
+					ClientCoordinator.sessionStructIdTable = IntHashTable.doubleSize(ClientCoordinator.sessionStructIdTable);
+					if (!IntHashTable.setItem(ClientCoordinator.sessionStructIdTable, sessionId, newStructId)) {
+						logger.warn("internal error, unable to store new struct id for reuse.");
+					}
+				}				
+				return newStructId;
+			}
+		}
 	}
 
 

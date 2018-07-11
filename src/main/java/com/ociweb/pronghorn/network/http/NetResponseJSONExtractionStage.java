@@ -28,7 +28,6 @@ import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 public class NetResponseJSONExtractionStage extends PronghornStage {
 	
 	private final JSONExtractorCompleted extractor;
-	private int[] indexPositions;
 	
 	private final Pipe<NetResponseSchema> input;
 	private final Pipe<NetResponseSchema> output;
@@ -46,7 +45,7 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 	 * @param input _in_ The HTTP request containing JSON.
 	 * @param output _out_ The HTTP response.
 	 */
-	public NetResponseJSONExtractionStage(GraphManager graphManager, 
+	public NetResponseJSONExtractionStage(  GraphManager graphManager, 
 											JSONExtractorCompleted extractor, 
 											Pipe<NetResponseSchema> input,
 											Pipe<NetResponseSchema> output) {
@@ -55,12 +54,8 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		this.extractor = extractor;
 		this.input = input;
 		this.output = output;
-
-		//modify the struct to add the JSON fields
-		indexPositions = extractor.getIndexPositions();
-		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		
+
 	}
 
 	@Override
@@ -117,7 +112,7 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		    			//parser is not "ready for data" and requires export to be called
 		    			//this expoert will populate the index positinos for the JSON fields
 
-		    			visitor.export(outputStream, indexPositions);
+		    			visitor.export(outputStream, extractor.getIndexPositions());
 		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 		    			
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
@@ -140,6 +135,14 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 
 		    			//do not call export since the JSON was broken
 		    			///visitor.export(outputStream, indexPositions);
+		    			
+		    			
+		    			//
+			//lazy init?? we need the connection struct ID??			
+			//	    	ex.addToStruct(builder.gm.recordTypeData, structId);
+			
+			
+		    			
 		    			
 		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 		    			
@@ -171,6 +174,9 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		        case -1:
 		           requestShutdown();
 		        break;
+		        default:
+		        	throw new UnsupportedOperationException("unknown message "+msgIdx);
+		       
 		    }
 		    Pipe.confirmLowLevelRead(localInput, Pipe.sizeOf(localInput, msgIdx));
 		    Pipe.releaseReadLock(localInput);
