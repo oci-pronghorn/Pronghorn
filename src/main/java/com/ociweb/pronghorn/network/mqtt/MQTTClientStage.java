@@ -76,7 +76,7 @@ public class MQTTClientStage extends PronghornStage {
 		this.clientToServerAck = clientToServerAck;
 				
 		Pipe.setPublishBatchSize(clientToServer, 0);
-
+		
 	}
 	
 	ByteBuffer[] inFlight;//re-send until cleared.
