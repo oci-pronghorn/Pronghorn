@@ -300,6 +300,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return connectionGUIDLength;
 	}
 	
+	public static boolean showConectionDetails = false;
 	/**
 	 * After construction this must be called until it returns true before using this connection. 
 	 */
@@ -321,17 +322,24 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			    	
 			    } else {
 			    	clearWaitingForNetwork();
+			    	if (showConectionDetails) {
+			    		logger.info("new connection completed to {}:{}",host,port);
+			    	}
 			    }
 			    
 				return finishConnect;
 				
 			} catch (IOException io) {
 				close();
-				//logger.trace("finish connection exception ",io);
+				if (showConectionDetails) {
+					logger.info("finish connection exception ",io);
+				}
 				return false;
 			} catch (NoConnectionPendingException ncpe) {
 				close();
-				//logger.trace("no pending connection ",ncpe);
+				if (showConectionDetails) {
+					logger.info("no pending connection ",ncpe);
+				}
 				return false;
 			}
 		}
