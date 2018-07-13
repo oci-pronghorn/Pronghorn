@@ -206,10 +206,6 @@ public class MQTTClientGraphBuilder {
 		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, mqttClient);
 		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, mqttClient);
-		//This stage has many relationships some are network heavy 
-		//do not attempt to connect this directly to the client usage application.
-		//to achieve this we mark this stage as ISOLATED
-		GraphManager.addNota(gm, GraphManager.ISOLATE, GraphManager.ISOLATE, mqttClient);
 		
 		int clientWriters = 1;				
 		int responseUnwrapCount = 1;

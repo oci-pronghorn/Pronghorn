@@ -20,6 +20,11 @@ import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.ServerSocketReaderStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.http.HTTPLogUnificationStage;
+import com.ociweb.pronghorn.network.mqtt.IdGenStage;
+import com.ociweb.pronghorn.network.mqtt.MQTTClientResponseStage;
+import com.ociweb.pronghorn.network.mqtt.MQTTClientStage;
+import com.ociweb.pronghorn.network.mqtt.MQTTClientToServerEncodeStage;
+import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -519,6 +524,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
 
+		
 		if (targetThreadCount>=3) {
 			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic
@@ -601,7 +607,33 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 					
 			}		
 		}
-			
+		
+		
+		if (consumerStage instanceof MQTTClientStage) {		
+		   if  ((producerStage instanceof MQTTClientResponseStage) ||
+			    (producerStage instanceof IdGenStage))
+		   {
+			   //do not block, this is part of the internal implementation	   
+			   return true;
+		   } else {
+			   return false; 
+			//block all others
+		   }
+		}
+		
+		if (producerStage instanceof MQTTClientStage) {		
+			   if  ((consumerStage instanceof MQTTClientToServerEncodeStage) ||
+				    (consumerStage instanceof IdGenStage))
+			   {
+				 //do not block, this is part of the internal implementation
+				   return true;
+			   } else {
+				   return false; 
+				//block all others
+			   }
+			}
+		
+		
 		if (consumerStage instanceof HTTPLogUnificationStage) {
 			return false;//never combine log info producer with the log unification stage
 		}
