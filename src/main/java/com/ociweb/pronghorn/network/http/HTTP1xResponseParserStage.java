@@ -220,6 +220,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				if (Pipe.hasContentToRead(localInputPipe)) {
 					
+					
+					//System.out.println("reading content off pipe "+i);
+				
+					
 					////////////////
 					//before taking the data
 					//ensure that it can be consumed 
@@ -323,18 +327,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
 	
 						TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-	
-						
 					}
 					
-					
-					
 					//done consuming this message.
-					
 					Pipe.confirmLowLevelRead(localInputPipe, sizeOf);   //release of read does not happen until the bytes are consumed...
 					
 					//WARNING: moving next without releasing lock prevents new data from arriving until after we have consumed everything.
-					//  
 					Pipe.readNextWithoutReleasingReadLock(localInputPipe);	
 														
 					
@@ -347,6 +345,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 				} else {
 		
+					//System.out.println("no content on pipe "+i);
 					
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 					
@@ -371,7 +370,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-					
+							//System.out.println("a");
 							continue;
 						}
 						
@@ -398,8 +397,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								//blockedPosition[i] = 0;	
 								blockedOpenCount[i]++;
 							} else {
-							
-								continue;// do not parse again since nothing has changed	
+								if (0 == trieReader.sourceLen) {
+									continue;// do not parse again since nothing has changed and we have no data	
+								}
 							}
 						} else {
 							//did not eq last so we have more data and should attempt parse again
@@ -440,18 +440,20 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 					//TODO: may be faster with if rather than switch.
 
-				//System.err.println("on state "+state);
+				//System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
 				
 				 switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
 						
 						if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 
+							
 							break; //critical check
 						}
 						
 						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 						
 						if (startingLength1<(revisionMap.shortestKnown()+1)) {
+							
 							break;
 						}		
 					
@@ -482,6 +484,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
 							if (trieReader.sourceLen < (revisionMap.longestKnown()+1)) {
+								
 								break;//not an error just needs more data.
 							} else {
 								//TODO: rollback the previous message write since it can not be compeleted? or just trucate it?? TODO: urgent error support
@@ -493,11 +496,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								badServerSoCloseConnection(memoIdx, cc);
 																
 							}
-		
+							
 							break;
 						}
 						
 						assert(positionMemoData[stateIdx]==1);
+						
 					case 1: ///////// HEADERS
 						
 						//TODO: look up the right headerMap...
