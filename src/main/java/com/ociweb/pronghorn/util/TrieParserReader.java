@@ -568,19 +568,16 @@ public class TrieParserReader {
 			                 byte[] source, int sourcePos, long sourceLength, int sourceMask, 
 			                 final long unfoundResult) {
 
-		if (trie.getLimit()>0) {
-		} else {
-			return unfoundResult;
-		}
+		return (TrieParser.getLimit(trie)>0) ? query2(reader, trie, source, sourcePos, sourceLength, sourceMask, unfoundResult): unfoundResult;
+		
+	}
 
+	private static long query2(TrieParserReader reader, TrieParser trie, byte[] source, int sourcePos,
+							  long sourceLength, int sourceMask, final long unfoundResult) {
+		
 		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, sourceMask, unfoundResult);        
-		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult, false, 0);
-
-		if (reader.normalExit) {
-			return exitUponParse(reader, trie);        	       	 
-		} else {
-			return reader.result;
-		}
+		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult, false, 0);	
+		return (reader.normalExit) ? exitUponParse(reader, trie) :   reader.result;
 	}
 
 	public long query(TrieParser trie, CharSequence cs) {
@@ -744,48 +741,24 @@ public class TrieParserReader {
 				final int t1 = reader.pos+run;
 				final int t2 = reader.localSourcePos+run;
 				final short[] data = trie.data;
+				final byte[] source1 = source;
 				
-				return scanBytes2(reader, source, run, srcMask, caseMask, t1, t2, data);
+				return scanBytes3(reader, source1, srcMask, caseMask, t1, t2, data, t1-run, t2-run, run);
 				
 	}
 
-	private static boolean scanBytes2(TrieParserReader reader, final byte[] source,final int run, final int srcMask,
-			final byte caseMask, final int t1, final int t2, final short[] data) {
-		
-				int t11 = t1;
-				int t21 = t2;
-				t11-=run;
-				t21-=run;
-						
-				int r = run;
-				
-				while (r>=3) {
-					
-					r -= 3;
-					boolean b1 = (caseMask & data[t11]) != (caseMask & source[srcMask & (t21)]);
-					boolean b2 = (caseMask & data[t11+1]) != (caseMask & source[srcMask & (t21+1)]);
-					boolean b3 = (caseMask & data[t11+2]) != (caseMask & source[srcMask & (t21+2)]);
-				
-
-					if (b1 | b2 | b3) {
-						return true;
-					}
-										
-					t11 += 3;
-					t21 += 3;
-				}
-				
-				while (--r >= 0) {
-					
-					if ((caseMask & data[t11++]) != (caseMask & source[srcMask & (t21++)]) ) {
-						return true;
-					}
-					
-				}
-				reader.pos = t1;
-				reader.localSourcePos = t2;
-				return false;
-	
+	private static boolean scanBytes3(TrieParserReader reader, final byte[] source, final int srcMask,
+			final byte caseMask, final int t1, final int t2, final short[] data, int t11, int t21, int r) {
+		while (--r >= 0) {
+			
+			if ((caseMask & data[t11++]) != (caseMask & source[srcMask & (t21++)]) ) {
+				return true;
+			}
+			
+		}
+		reader.pos = t1;
+		reader.localSourcePos = t2;
+		return false;
 	}
 
 	private static void processBinaryBranch(TrieParserReader reader,

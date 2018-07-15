@@ -180,6 +180,9 @@ public class TrieParser implements Serializable {
         this.caseRuleMask =  ignoreCase ? (byte)0xDF : (byte)0xFF;   
     }
     
+    public static int getLimit(TrieParser that) {
+    	return that.limit;
+    }
     
     public int getLimit() {
         return limit;
