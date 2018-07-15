@@ -896,24 +896,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			GraphManager gm, boolean shutDownRequestedHere, long start,
 			final PronghornStage stage) {
 		
+		//NOTE: if no stages have shutdown we could elminate this check with a single boolean.
 		if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
 				//////////these two are for hang detection
 				that.timeStartedRunningStage = start;
 				that.runningStage = stage;
 
 				that.setCallerId(stage.boxedStageId);		        
+				assert(that.hangDetectBegin(stage));
 		        try {
-		        	
-		        	assert(that.hangDetectBegin(stage));
-		        	
 					stage.run();
-					
-					assert(that.hangDetectFinish());
-					
 				} catch (Exception e) {			
 					that.processException(stage, e);
 					
 				}		        
+		        assert(that.hangDetectFinish());
 		        that.clearCallerId();
 		        
 		        that.timeStartedRunningStage = 0;
