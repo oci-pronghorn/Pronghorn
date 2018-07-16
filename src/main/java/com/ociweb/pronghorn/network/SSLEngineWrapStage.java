@@ -42,7 +42,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 	 * @param plainContent _in_ Plain content payload to be encrypted.
 	 * @param encryptedContent _out_ Encrypted payload.
 	 */
-	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
+	public SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
 			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
 		
 		super(graphManager, plainContent, encryptedContent);
