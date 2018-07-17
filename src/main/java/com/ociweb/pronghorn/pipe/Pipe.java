@@ -1380,6 +1380,21 @@ public class Pipe<T extends MessageSchema<T>> {
 		return result;
 	}
 
+
+	/**
+	 * Build an array of Pipe instances from a set of PipeConfig found in array of pipes.
+	 * @param configs array of PipeConfig values
+	 * @return array of new pipes
+	 */
+	public static Pipe[] buildPipes(Pipe[] pipes) {
+		int i = pipes.length;
+		Pipe[] result = new Pipe[i];
+		while (--i>=0) {
+			result[i] = new Pipe(pipes[i].config);
+		}		
+		return result;
+	}
+	
 	/**
 	 * Build and array of Pipe instances from a single PipeConfig
 	 * @param count of new Pipe instances created
