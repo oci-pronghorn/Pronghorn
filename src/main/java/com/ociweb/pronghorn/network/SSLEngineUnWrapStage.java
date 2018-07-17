@@ -32,7 +32,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private int calls;
 	private ByteBuffer secureBuffer;
 	private final boolean isServer;
-	private int groupId;
+
 	private int shutdownCount;
 	
 	private int idx;
@@ -46,13 +46,12 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	 * @param relesePipe _out_ Acknowledgment for release.
 	 * @param handshakePipe _out_ Responds with a handshake.
 	 * @param isServer
-	 * @param groupId
 	 */
 	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines,
 			                       Pipe<ReleaseSchema> relesePipe,
-			                       Pipe<NetPayloadSchema> handshakePipe, boolean isServer, int groupId) {
+			                       Pipe<NetPayloadSchema> handshakePipe, boolean isServer) {
 		super(graphManager, encryptedContent, join(outgoingPipeLines, handshakePipe, relesePipe));
 		this.ccm = ccm;
 		this.encryptedContent = encryptedContent;
@@ -76,7 +75,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.supportsBatchedPublish = false;
 		
 		this.isServer = isServer;
-		this.groupId = groupId;
+
 		this.shutdownCount = encryptedContent.length;
 		
 		GraphManager.addNota(graphManager, GraphManager.HEAVY_COMPUTE, GraphManager.HEAVY_COMPUTE, this);
@@ -145,7 +144,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 //				}
 							
 				
-				int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, groupId, isServer);			
+				int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, isServer);			
 				if (temp<0) {
 					if (--shutdownCount == 0) {
 						requestShutdown();

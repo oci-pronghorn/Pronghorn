@@ -693,7 +693,7 @@ public class SSLUtil {
 	
 	public static int engineUnWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, Pipe<ReleaseSchema> releasePipe, 
-			                        ByteBuffer secureBuffer, int groupId, boolean isServer) {
+			                        ByteBuffer secureBuffer, boolean isServer) {
 		///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
 
 		int maxEncryptedContentLength = ccm.engineFactory.maxEncryptedContentLength();

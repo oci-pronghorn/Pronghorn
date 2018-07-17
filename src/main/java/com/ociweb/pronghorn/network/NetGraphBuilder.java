@@ -184,7 +184,7 @@ public class NetGraphBuilder {
 			
 			while (--c>=0) {
 				hanshakePipes[c] = new Pipe<NetPayloadSchema>(requests[0].config(),false); 
-				SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(gm, ccm, sr[c], cr[c], acks[c], hanshakePipes[c], false, 0);
+				SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(gm, ccm, sr[c], cr[c], acks[c], hanshakePipes[c], false);
 				GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
 			}
 			
@@ -730,7 +730,7 @@ public class NetGraphBuilder {
 		
 		while (--c>=0) {
 			handshakeIncomingGroup[c] = new Pipe(handshakeDataConfig);
-			SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(graphManager, coordinator, in[c], out[c], acks[c], handshakeIncomingGroup[c], true, 0);
+			SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(graphManager, coordinator, in[c], out[c], acks[c], handshakeIncomingGroup[c], true);
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
 			coordinator.processNota(graphManager, unwrapStage);
 		}
