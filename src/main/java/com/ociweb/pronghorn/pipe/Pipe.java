@@ -1386,7 +1386,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @param configs array of PipeConfig values
 	 * @return array of new pipes
 	 */
-	public static Pipe[] buildPipes(Pipe[] pipes) {
+	public static <S extends MessageSchema<S>> Pipe<S>[] buildPipes(Pipe<S>[] pipes) {
 		int i = pipes.length;
 		Pipe[] result = new Pipe[i];
 		while (--i>=0) {
