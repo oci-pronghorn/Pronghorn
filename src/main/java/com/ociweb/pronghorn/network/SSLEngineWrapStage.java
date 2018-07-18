@@ -200,7 +200,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 	    	long totalBytesOfContent = 0;
 	    	int i = plainContent.length;
 	    	while (--i>=0) {
-	    		totalBytesOfContent += Pipe.getBlobRingTailPosition(plainContent[i]);
+	    		totalBytesOfContent += Pipe.getBlobTailPosition(plainContent[i]);
 	    	}
 	    	
 	
