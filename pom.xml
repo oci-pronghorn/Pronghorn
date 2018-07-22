@@ -34,7 +34,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tls.artifact>Ph-TLS-pureJava</tls.artifact>  <!--  Ph-TLS-boringSSL  Ph-TLS-pureJava  -->
+        <tls.artifact>ph-tls-pure-java</tls.artifact>  <!--  Ph-TLS-boringSSL  Ph-TLS-pureJava  -->
     </properties>
 
     <profiles>
@@ -111,13 +111,13 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn-pipes</artifactId>
-            <version>[1.0.1-SNAPSHOT,1.1.0)</version>
+            <version>[1.0.1]</version>
         </dependency>
 
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>ph-tls-pure-java</artifactId>
-            <version>[1.0.1-SNAPSHOT,1.1.0)</version>
+            <version>[1.0.1]</version>
         </dependency>
 
         <dependency>
@@ -303,7 +303,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.2-SNAPSHOT</version>
+                <version>0.8.1</version>
             </plugin>
 
         </plugins>
