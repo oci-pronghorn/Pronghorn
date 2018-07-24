@@ -28,6 +28,7 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreProducerSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
@@ -57,7 +58,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			
 	private final Pipe<MQTTIdRangeControllerSchema> idRangeControl;
 	
-	
+	public static boolean showAllSubscriptions = false;
 	private final int uniqueConnectionId;
 	private final ClientCoordinator ccm;
 	private boolean brokerAcknowledgedConnection;
@@ -1210,7 +1211,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						//variable header
 						output.writeShort(topicLen);
 						
+						
 						Pipe.readBytes(input, output, topicMeta, topicLen);
+						
+						if (showAllSubscriptions) {						
+							logger.info("\nsubscribed to:   {}", Appendables.appendUTF8(new StringBuilder(), Pipe.blob(input), Pipe.convertToPosition(topicMeta, input), topicLen, Pipe.blobMask(input)));
+						}
 						
 						
 						output.writeByte(subscriptionQoS);
