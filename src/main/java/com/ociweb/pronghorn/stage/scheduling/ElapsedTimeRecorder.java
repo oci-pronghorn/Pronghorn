@@ -7,8 +7,8 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ElapsedTimeRecorder {
 
-	private final int[] buckets = new int[64]; 
-	private final long[] sums   = new long[64]; 
+	private final int[] buckets = new int[65]; 
+	private final long[] sums   = new long[65]; 
 	
 	
 	private long totalCount;

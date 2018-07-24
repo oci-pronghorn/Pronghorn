@@ -13,7 +13,7 @@ public class HangDetector {
 	private final static Logger logger = LoggerFactory.getLogger(HangDetector.class);
 	private static AtomicBoolean globalRun = new AtomicBoolean(true);
 	
-	private String activeName;
+	private Object active;
 	private Thread thread;
 	private long activeTimeout = Long.MAX_VALUE;
 	
@@ -32,7 +32,7 @@ public class HangDetector {
 					
 					if (System.nanoTime()>activeTimeout) {
 						
-							logger.error("Hang detected in: {} after timeout of "+Appendables.appendNearestTimeUnit(new StringBuilder(), timeout), activeName);
+							logger.error("Hang detected in: {} after timeout of "+Appendables.appendNearestTimeUnit(new StringBuilder(), timeout), String.valueOf(active));
 							globalRun.set(false); //stop all other detectors since they are likely to trigger with false positive.
 							break; //stop any more checks..
 					
@@ -50,8 +50,8 @@ public class HangDetector {
 		};
 	}
 
-	public void begin(String name) {
-		this.activeName = name;		
+	public void begin(Object obj) {
+		this.active = obj;		
 		this.activeTimeout = System.nanoTime()+timeout;
 		assert(activeTimeout > System.nanoTime());
 	}

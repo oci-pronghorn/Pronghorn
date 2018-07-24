@@ -124,10 +124,7 @@ public class GraphManager {
 	
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
-	
-	
-	private final static Logger log = LoggerFactory.getLogger(GraphManager.class);
-				
+					
 	//Used for assigning stageId and for keeping count of all known stages
 	private final AtomicInteger stageCounter = new AtomicInteger();
 	
@@ -760,7 +757,12 @@ public class GraphManager {
 			i = 0;
 			limit = outputs.length;
 			while (i<limit) {
+				try {
 				regOutput(gm, outputs, stageId, i, outputs[i++]);
+				} catch (AssertionError e) {
+					logger.error("error in registering "+(i-1)+" pipe: "+outputs[i-1]);
+					throw e;
+				}
 			}
 			
 			endStageRegister(gm, stage);
@@ -1868,6 +1870,7 @@ public class GraphManager {
 	        	
 	        	m.cachedRanks = ranks;//keep to use this again
 	        	
+	        	//TODO: this creates an iterator which needs to be collected, NOTE: find a better way to do this...
 		        for (StringBuilder value: ranks.values()) { //removes comma on end
 		        	target.append(value, 0, value.length()-1);
 		        	target.append(" }\n");	        	
@@ -1938,8 +1941,11 @@ public class GraphManager {
 										boolean isOk = true;
 										for(int p = 2;p<=outputPipeCount; p++) {
 											isOk &=		
+													
+											((!"MessagePrivate".equals(Pipe.schemaName((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1))))
+											&&
 											Pipe.isForSameSchema((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1), 
-																 (Pipe<?>)GraphManager.getOutputPipe(m, producer, p));
+																 (Pipe<?>)GraphManager.getOutputPipe(m, producer, p)));
 										}
 										
 										if (isOk) {
@@ -1965,8 +1971,10 @@ public class GraphManager {
 										boolean isOk = true;
 										for(int p = 2;p<=inputPipeCount; p++) {
 											isOk &=		
-											Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1), 
-																 (Pipe<?>)GraphManager.getInputPipe(m, consumer, p));
+													((!"MessagePrivate".equals(Pipe.schemaName((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1))))
+													  &&
+													Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1), 
+																		 (Pipe<?>)GraphManager.getInputPipe(m, consumer, p)));
 										}
 											
 										if (isOk) {
