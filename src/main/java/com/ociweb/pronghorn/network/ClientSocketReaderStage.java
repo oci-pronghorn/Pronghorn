@@ -305,6 +305,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			//holds the pipe until we gather all the data and got the end of the parse.
 			int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
 			if (pipeIdx>=0) {
+				assert(pipeIdx<output.length) : "Bad pipe idx of "+pipeIdx+" but we only have "+output.length+" pipes";
 				didWork = readFromSocket(didWork, cc, output[pipeIdx]);
 			} else {	    	
 				consumeRelease();

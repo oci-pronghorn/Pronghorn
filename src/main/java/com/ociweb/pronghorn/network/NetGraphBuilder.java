@@ -1248,6 +1248,7 @@ public class NetGraphBuilder {
 		
 	}
 
+	//TODO:update to take StructRegistry instead of GraphManager
 	public static HTTPServerConfig serverConfig(int host, PipeConfigManager pcm, GraphManager gm) {
 		return new HTTPServerConfigImpl(host, pcm, gm.recordTypeData);				
 	}
