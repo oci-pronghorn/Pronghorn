@@ -175,7 +175,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 			throw new UnsupportedOperationException("Must support at least 1 connection");
 		}
 		if (bits>30) {
-			throw new UnsupportedOperationException("Can not support "+(1<<bits)+" connections");
+			throw new UnsupportedOperationException("Can not support "+(1L<<bits)+" connections");
 		}
 		
 		this.maxConnectionBits = bits;
