@@ -829,20 +829,11 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return String name of the schema
      */
     public static <S extends MessageSchema<S>> String schemaName(Pipe<S> pipe) {
-        return null==pipe.customSchemaName? 
-        		  (null==pipe.schema ?
+        return (null==pipe.schema ?
         		   "NoSchemaFor "+Pipe.from(pipe).name  :
-           	       pipe.schema.getClass().getSimpleName()) 
-           	      : pipe.customSchemaName;
+           	       pipe.schema.getClass().getSimpleName());
     }
-    
-    private String customSchemaName;
-    
-    public static <S extends MessageSchema<S>> void customSchemaName(Pipe<S> pipe, String value) {
-    	assert(pipe.customSchemaName==null) : "this can only be set once";
-    	pipe.customSchemaName = value;    	
-    }
-    
+   
     
     /**
      * Back up the cursor read position. So the fragments can be read again for those not yet released.
