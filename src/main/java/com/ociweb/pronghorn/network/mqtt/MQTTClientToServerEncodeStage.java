@@ -343,7 +343,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			return -1;
 		}
 		
-		if (null==activeConnection || ((!activeConnection.isValid()) && activeConnection.isFinishConnect() ) ) {
+		
+		if (null==activeConnection || connectionIsBad() ) {
 			//only do reOpen if the previous one is finished connecting and its now invalid.
 			reOpenConnection(activeConnection);
 		}
@@ -352,24 +353,39 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	}
 
+	private int badConnectionCounter;
+	private boolean connectionIsBad() {		
+		//only check once out of every 16 calls since this is expensive
+		if (0 == (0xF&badConnectionCounter++)) {		
+			return (!activeConnection.isValid()) && activeConnection.isFinishConnect();
+		} else {			
+			return false;//assumed to be ok
+		}
+	}
+
 	private void reOpenConnection(ClientConnection old) {
 
 		//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
 		//only add header support for http calls..
 		//int structureId = 
 		
+		if (old != null) {//double check if asserts are on.
+			assert(old.hostId == ClientCoordinator.lookupHostId(host, READER));
+			assert(old.id == ClientCoordinator.lookup(old.hostId, hostPort, uniqueConnectionId));
+		}
 		
 		int hostId = null!=old? old.hostId : ClientCoordinator.lookupHostId(host, READER);
 		long lookup = null!=old? old.id : ClientCoordinator.lookup(hostId, hostPort, uniqueConnectionId);
 		
-		logger.info("\nopening connection to broker {}:{} id:{} uniq:{}",host, hostPort, hostId, lookup);
+		logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, lookup,null!=old);
 		
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker, lookup, 
 				                         BasicClientConnectionFactory.instance); 
 
-		if (null!=activeConnection) {		
+		if (null!=activeConnection) {	
+			logger.info("\nbroker connection established");
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
 			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
 			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
