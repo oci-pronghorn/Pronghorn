@@ -121,9 +121,9 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		}
 
 		String fileName = defaultName;
-		if (params.available()>1) {//this is 1 so we skip the case of / alone
+		if (params.available()>0) {
 			final int len = params.readShort();	//will be zero length for plain root
-			if (len>0) {
+			if (len>1) { //this is 1 so we skip the case of / alone
 				fileName = params.readUTFOfLength(len);			
 			}
 			//logger.info("request for {} len {}",fileName,fileName.length());
