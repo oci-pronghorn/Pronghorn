@@ -121,9 +121,9 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		}
 
 		String fileName = defaultName;
-		if (params.available()>0) {
+		if (params.available()>1) {//this is 1 so we skip the case of / alone
 			final int len = params.readShort();	//will be zero length for plain root
-			if (len>0) {			
+			if (len>0) {
 				fileName = params.readUTFOfLength(len);			
 			}
 			//logger.info("request for {} len {}",fileName,fileName.length());
@@ -147,7 +147,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			if (null == localURL) {
 				definePayload();
 				status = 404;
-				logger.warn("unable to find resource: {} ",fileName);
+				logger.warn("unable to find resource: {} ",prefix+fileName);
 				return null;
 			}
 
