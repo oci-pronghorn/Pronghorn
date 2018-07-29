@@ -251,7 +251,9 @@ public class CompositeRouteImpl implements CompositeRoute {
 
 	@Override
 	public CompositeRouteFinish associatedObject(String key, Object object) {		
-		scs.registry.setAssociatedObject(scs.registry.fieldLookup(key, structId), object);
+		long fieldLookup = scs.registry.fieldLookup(key, structId);
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, object);
 		return this;
 	}
 
