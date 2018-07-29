@@ -380,6 +380,9 @@ public class StructRegistry { //prong struct store
 		int structIdx = extractStructId(id);
 		int fieldIdx = extractFieldPosition(id);
 		
+		assert(structIdx < fieldLocals.length);
+		assert(fieldIdx < fieldLocals[structIdx].length);		
+		
 		return setAssoc(localObject, structIdx, fieldIdx);
 	}
 	
