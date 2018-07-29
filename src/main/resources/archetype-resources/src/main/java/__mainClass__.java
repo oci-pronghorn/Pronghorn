@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.util.MainArgs;
 
-public class ${artifactId}  {
+public class ${mainClass}  {
 
 	// Create a new GraphManager. The GraphManager is essential and keeps track of stages (nodes) and pipes (edges).
 	final GraphManager gm = new GraphManager();
@@ -25,7 +25,7 @@ public class ${artifactId}  {
 		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./image.jpg");
 
 		// Create a new ${artifactId} instance, put the output stream on the system log
-		${artifactId} program = new ${artifactId}(inputFilePath, 7777, System.out);
+		${mainClass} program = new ${mainClass}(inputFilePath, 7777, System.out);
 
 		program.startup();
 
@@ -37,7 +37,7 @@ public class ${artifactId}  {
 	 * @param port The port on which telemetry will run
 	 * @param out An appendable in which the specified file gets written to
 	 */
-	public ${artifactId} (String inputFilePath, int port, Appendable out) {
+	public ${mainClass} (String inputFilePath, int port, Appendable out) {
 
 		// Add edges and pipes
 		populateGraph(gm, inputFilePath, out);

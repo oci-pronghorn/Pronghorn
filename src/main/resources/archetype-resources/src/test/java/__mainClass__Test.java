@@ -13,7 +13,7 @@ import com.ociweb.${artifactId};
 
 import java.io.IOException;
 
-class ${artifactId}Test {
+class ${mainClass}Test {
 
     /**
      * Creates a new demo program and starts it using the default scheduler.
@@ -26,7 +26,7 @@ class ${artifactId}Test {
 
         // Use a StringBuilder as Appendable so we can do an indexOf on the output to assert that a keyword exists
         StringBuilder sb = new StringBuilder();
-        ${artifactId} program = new ${artifactId}("./image.jpg", 7778, sb);
+        ${mainClass} program = new ${mainClass}("./image.jpg", 7778, sb);
 
         // Start the scheduler
         program.startup();
