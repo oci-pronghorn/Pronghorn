@@ -681,12 +681,12 @@ public class GraphManager {
 			result = Arrays.copyOf(target, limit); //double the array
 			Arrays.fill(result, target.length, limit, -1);
 		}
-		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check: "+obj;
+		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check: "+obj+" index:"+idx;
 		
 		result[idx] = value;
 		return result;
 	}
-		
+	
 	private static <T> T[] setValue(T[] target, int idx, T value) {		
 		T[] result = target;
 		if (idx>=target.length) {
@@ -750,7 +750,12 @@ public class GraphManager {
 			int i=0;
 			int limit = inputs.length;
 			while (i<limit) {
-				regInput(gm,inputs,stageId,i,inputs[i++]);
+				try {
+					regInput(gm, inputs, stageId, i, inputs[i++]);
+				} catch (AssertionError e) {
+					logger.error("\nError in registering input idx "+(i-1)+" of "+inputs.length+" pipe: "+inputs[i-1]);
+					throw e;
+				}
 			}
 			
 			//loop over outputs
@@ -758,9 +763,9 @@ public class GraphManager {
 			limit = outputs.length;
 			while (i<limit) {
 				try {
-				regOutput(gm, outputs, stageId, i, outputs[i++]);
+					regOutput(gm, outputs, stageId, i, outputs[i++]);
 				} catch (AssertionError e) {
-					logger.error("error in registering "+(i-1)+" pipe: "+outputs[i-1]);
+					logger.error("\nError in registering output idx "+(i-1)+" of "+outputs.length+" pipe: "+outputs[i-1]);
 					throw e;
 				}
 			}
