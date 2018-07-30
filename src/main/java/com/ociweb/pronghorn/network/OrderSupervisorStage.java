@@ -147,7 +147,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         
         if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
           	throw new UnsupportedOperationException(
-        			"All output<NetPayloadSchema> pipes must support variable length fields equal to or larger"
+        			"Increase the size of setMaxResponseSize() value.\nAll output<NetPayloadSchema> pipes must support variable length fields equal to or larger"
         			+ " than all input<ServerResponseSchema> pipes. out "+minVarLength(outgoingPipes)+" in "+maxVarLength(inputPipes));
         }
         
