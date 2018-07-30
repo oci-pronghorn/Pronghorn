@@ -5,6 +5,7 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeConfigManager;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.StructRegistry;
 
 public class HTTPServerConfigImpl implements HTTPServerConfig {
@@ -168,6 +169,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		return this;
 	}
 
+	@Override
+	public HTTPServerConfig setMinConnections(int connections) {
+		return setMaxConnectionBits((int)Math.ceil(Math.log(connections)/Math.log(2)));
+	}
+	
 	@Override
 	public HTTPServerConfig setMaxConnectionBits(int bits) {
 		configStage.throwIfNot(BridgeConfigStage.DeclareConnections);

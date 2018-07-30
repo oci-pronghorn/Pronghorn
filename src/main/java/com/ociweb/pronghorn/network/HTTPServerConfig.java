@@ -7,7 +7,10 @@ public interface HTTPServerConfig {
 	HTTPServerConfig setHost(String host);
 	HTTPServerConfig setTLS(TLSCertificates certificates);
 	HTTPServerConfig useInsecureServer();
+	
 	HTTPServerConfig setMaxConnectionBits(int bits);
+	HTTPServerConfig setMinConnections(int connections);
+		
 	HTTPServerConfig setMaxRequestSize(int maxRequestSize);
 	HTTPServerConfig setMaxResponseSize(int maxRequestSize);	
 	HTTPServerConfig setEncryptionUnitsPerTrack(int value);
