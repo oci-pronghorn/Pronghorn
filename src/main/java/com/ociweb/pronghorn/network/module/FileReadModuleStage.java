@@ -265,6 +265,8 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         this.folderRootFile = rootPath.isFile()? rootPath.getParentFile() : rootPath;       
         this.folderRootString = folderRootFile.toString();
       
+        logger.info("\nServing Files from :{}",this.folderRootString);
+        
         if (rootPath.isFile()) {
         	defaultPathFile = rootPath.toString();
         }

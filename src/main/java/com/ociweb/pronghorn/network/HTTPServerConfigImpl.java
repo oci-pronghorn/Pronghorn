@@ -32,14 +32,14 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private String bindHost = null;
 	private int bindPort = -1;
 	private int maxConnectionBits = 15; //default of 32K
-	private int encryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
-	private int decryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
-	private int concurrentChannelsPerEncryptUnit = 1; //default 1, for low memory usage
-	private int concurrentChannelsPerDecryptUnit = 1; //default 1, for low memory usage
+	private int encryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
+	private int decryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
+	private int concurrentChannelsPerEncryptUnit = 2; //default 2, for low memory usage
+	private int concurrentChannelsPerDecryptUnit = 2; //default 2, for low memory usage
 	private TLSCertificates serverTLS = TLSCertificates.defaultCerts;
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	private int maxRequestSize = 1<<16;//default of 64K
-	private int maxResponseSize = 1<<10;//default of 10K
+	private int maxResponseSize = 1<<12;//default of 4K
 	private final PipeConfigManager pcm;
     private int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	

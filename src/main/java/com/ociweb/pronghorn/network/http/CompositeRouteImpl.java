@@ -254,6 +254,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
 		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
 		scs.registry.setAssociatedObject(fieldLookup, object);
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(object, structId));
+		
 		return this;
 	}
 
