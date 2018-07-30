@@ -307,6 +307,8 @@ public class StructRegistry { //prong struct store
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
 		long fieldIdx = fieldIdLookup(this.fields[idx], fieldName, fieldPos, fieldLen, Integer.MAX_VALUE);
+		
+		
 		if (-1 == fieldIdx) {
 			//only creating copy here because we know it will be held for the run.
 			fieldIdx = growStruct(structId, fieldType, fieldDim, Arrays.copyOfRange(fieldName,fieldPos,fieldLen));
@@ -319,6 +321,7 @@ public class StructRegistry { //prong struct store
 			//keep largest dim value
 			this.fieldDims[idx][ FIELD_MASK&(int)fieldIdx] = Math.max(this.fieldDims[idx][FIELD_MASK&(int)fieldIdx], fieldDim);
 		}
+		//System.out.println("modify struct "+fieldIdx+"   "+Appendables.appendUTF8(new StringBuilder(),   fieldName, fieldPos, fieldLen, Integer.MAX_VALUE));
 		
 		return fieldIdx;
 		
@@ -646,9 +649,14 @@ public class StructRegistry { //prong struct store
 		
 		int idx =  StructRegistry.FIELD_MASK & (int)fieldLookupByIdentity(attachedObject, structId);
 		if (idx>=0) {
-			DataInputBlobReader.position(reader, DataInputBlobReader.readFromLastInt(reader, idx));
-			visitor.read((T)(fieldLocals[STRUCT_MASK&structId][idx]), reader, fieldIdBase | idx);
-			return true;
+			int readFromLastInt = DataInputBlobReader.readFromLastInt(reader, idx);
+			if (readFromLastInt>=0) {
+				DataInputBlobReader.position(reader, readFromLastInt);
+				visitor.read((T)(fieldLocals[STRUCT_MASK&structId][idx]), reader, fieldIdBase | idx);
+				return true;
+			} else {
+				return false;
+			}
 		} else {
 			return false;
 		}
