@@ -249,19 +249,6 @@ public class NetGraphBuilder {
 			Pipe<NetPayloadSchema>[] clearResponse,
 			Pipe<ReleaseSchema> ackRelease) {
 		
-		
-		//TODO: we can add JSON extract on these pipes but which ones for what?
-		
-		
-//		boolean isJSONExtracted = false;
-//		if (isJSONExtracted) {
-//			
-//			//for each one?? drop in stage.
-//			//
-//			
-//		}
-		
-		
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 		ccm.processNota(gm, parser);
