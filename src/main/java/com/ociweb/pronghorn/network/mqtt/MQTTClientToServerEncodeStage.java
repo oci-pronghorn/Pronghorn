@@ -371,17 +371,16 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		if (old != null) {//double check if asserts are on.
 			assert(old.hostId == ClientCoordinator.lookupHostId(host, READER));
-			assert(old.id == ClientCoordinator.lookup(old.hostId, hostPort, uniqueConnectionId));
 		}
 		
 		int hostId = null!=old? old.hostId : ClientCoordinator.lookupHostId(host, READER);
-		long lookup = null!=old? old.id : ClientCoordinator.lookup(hostId, hostPort, uniqueConnectionId);
+		long liveConnectionId = ClientCoordinator.lookup(hostId, hostPort, uniqueConnectionId);
 		
-		logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, lookup,null!=old);
+		logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, liveConnectionId, null!=old);
 		
 		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
-				                         toBroker, lookup, 
+				                         toBroker, liveConnectionId, 
 				                         BasicClientConnectionFactory.instance); 
 
 		if (null!=activeConnection) {	
