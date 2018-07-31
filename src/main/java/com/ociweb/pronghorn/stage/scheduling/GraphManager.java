@@ -681,6 +681,7 @@ public class GraphManager {
 			result = Arrays.copyOf(target, limit); //double the array
 			Arrays.fill(result, target.length, limit, -1);
 		}
+
 		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check: "+obj+" index:"+idx;
 		
 		result[idx] = value;
@@ -753,7 +754,7 @@ public class GraphManager {
 				try {
 					regInput(gm, inputs, stageId, i, inputs[i++]);
 				} catch (AssertionError e) {
-					logger.error("\nError in registering input idx "+(i-1)+" of "+inputs.length+" pipe: "+inputs[i-1]);
+					logger.error("\nError in registering input idx "+(i-1)+" of "+inputs.length+" pipe: "+inputs[i-1]+" stage:"+stage);
 					throw e;
 				}
 			}
@@ -765,7 +766,7 @@ public class GraphManager {
 				try {
 					regOutput(gm, outputs, stageId, i, outputs[i++]);
 				} catch (AssertionError e) {
-					logger.error("\nError in registering output idx "+(i-1)+" of "+outputs.length+" pipe: "+outputs[i-1]);
+					logger.error("\nError in registering output idx "+(i-1)+" of "+outputs.length+" pipe: "+outputs[i-1]+" stage:"+stage);
 					throw e;
 				}
 			}
@@ -851,7 +852,7 @@ public class GraphManager {
             Pipe tp = gm.pipeIdToPipe[p];
                         
             if ((null != tp) && Pipe.isForSchema(tp, targetSchemaClazz) && (getRingConsumerId(gm, tp.id)==-1)) {
-                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
+                	Pipe<T>[] result = pipesOfTypeWithNoConsumer(count+1,p,gm,targetSchemaClazz);
                 	result[(result.length-1)-count] = tp;
                     return result;
             }
@@ -865,7 +866,7 @@ public class GraphManager {
             Pipe tp = gm.pipeIdToPipe[p];
                         
             if ((null != tp) && Pipe.isForSchema(tp, targetSchemaClazz) && (getRingProducerId(gm, tp.id)==-1)) {
-                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
+                	Pipe<T>[] result = pipesOfTypeWithNoProducer(count+1,p,gm,targetSchemaClazz);
                 	result[(result.length-1)-count] = tp;
                     return result;
             }
@@ -1117,6 +1118,8 @@ public class GraphManager {
 			gm.ringIdToStages = setValue(gm.ringIdToStages, (outputId*2) , stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
 			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, outputId, output);				
 			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, outputId, output);
+			
+			assert(stageId == getRingProducerId(gm, outputId));
 		}
 	}
 	
@@ -1128,6 +1131,8 @@ public class GraphManager {
 			gm.ringIdToStages = setValue(gm.ringIdToStages, (inputId*2)+1, stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
 			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, inputId, input);
 			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, inputId, input);
+			
+			assert(stageId == getRingConsumerId(gm, inputId));
 		}
 	}
 	
