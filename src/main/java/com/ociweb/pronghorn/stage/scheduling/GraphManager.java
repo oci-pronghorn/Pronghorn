@@ -1310,6 +1310,10 @@ public class GraphManager {
         return  gm.stageIdToStage[stageId];
 	}
 
+    public static int getRingConsumerStageId(GraphManager gm, int ringId) {
+        return getRingConsumerId(gm, ringId);
+    }
+	   
     static int getRingConsumerId(GraphManager gm, int ringId) {
         int idx = (ringId*2)+1;
 		return idx < gm.ringIdToStages.length ? gm.ringIdToStages[idx] : -1;
