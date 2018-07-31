@@ -176,20 +176,23 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 
 	private void processShutdownLogic(Pipe<ClientHTTPRequestSchema> requestPipe) {
-		ClientConnection connectionToKill = ccm.nextValidConnection();
-		final ClientConnection firstToKill = connectionToKill;					
-		while (null!=connectionToKill) {								
-			connectionToKill = ccm.nextValidConnection();
-			
-			//must send handshake request down this pipe
-			int pipeId = connectionToKill.requestPipeLineIdx();
-			
-			HTTPClientUtil.cleanCloseConnection(null, connectionToKill, output[pipeId]);
-												
-			if (firstToKill == connectionToKill) {
-				break;//done
-			}
-		}
+		
+		
+		//TODO: delete this in Aug 2018 if not needed
+//		ClientConnection connectionToKill = ccm.nextValidConnection();
+//		final ClientConnection firstToKill = connectionToKill;					
+//		while (null!=connectionToKill) {								
+//			connectionToKill = ccm.nextValidConnection();
+//			
+//			//must send handshake request down this pipe
+//			int pipeId = connectionToKill.requestPipeLineIdx();
+//			
+//			HTTPClientUtil.cleanCloseConnection(null, connectionToKill, output[pipeId]);
+//												
+//			if (firstToKill == connectionToKill) {
+//				break;//done
+//			}
+//		}
 		
 		shutdownInProgress = true;
 		Pipe.confirmLowLevelRead(requestPipe, Pipe.EOF_SIZE);
