@@ -103,6 +103,7 @@ public class JSONFieldSchema {
 		int[] jsonIndexLookup = new int[length];
 						
 		int i = length;
+		assert(i>0) : "Must not add an empty extraction";
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
 			long fieldId = struct.growStruct(structId, mapTypes(mapping), mapping.dimensions(), mapping.getName().getBytes());
@@ -141,6 +142,7 @@ public class JSONFieldSchema {
 		int[] jsonIndexLoookup = new int[length];
 						
 		int i = length;
+		assert(i>0) : "Must not add an empty extraction";
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
 			structBuilder.addField(mapping.getName(), mapTypes(mapping),  mapping.dimensions(), mapping.getAssociatedObject());
