@@ -257,7 +257,7 @@ public class ServerSocketWriterStage extends PronghornStage {
                 
 		    	//we are disconnecting so we will remove the connection from the holder.
 		        ServerConnection serverConnection = socketHolder.remove(channelId);	          
-		        assert(null != serverConnection);
+		     
 		        if (null != serverConnection) {
 		        	//do not close since it is still known to sequence.
 		        	serverConnection.decompose();
