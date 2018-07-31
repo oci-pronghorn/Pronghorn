@@ -1,14 +1,18 @@
 package com.ociweb.pronghorn.network;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeConfigManager;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.StructRegistry;
 
 public class HTTPServerConfigImpl implements HTTPServerConfig {
+	
+	private final static Logger logger = LoggerFactory.getLogger(HTTPServerConfigImpl.class);
 	
 	public enum BridgeConfigStage {
 	    Construction,
@@ -134,6 +138,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	
 	@Override
 	public HTTPServerConfig setMaxResponseSize(int maxResponseSize) {
+		pcm.ensureSize(ServerResponseSchema.class, 4, maxResponseSize);	
+		//logger.info("\nsetting the max response size for {}  to {}", ServerResponseSchema.class, maxResponseSize);
+		
 		this.maxResponseSize = maxResponseSize;
 		return this;
 	}
@@ -234,8 +241,8 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		pcm.addConfig(new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 
 						Math.max(incomingMsgFragCount-2, 2), 
 						getMaxRequestSize()));
-				
-		pcm.addConfig(ServerResponseSchema.instance.newPipeConfig(4, 512));
+			
+		pcm.ensureSize(ServerResponseSchema.class, 4, 512);
 		
 		return new ServerPipesConfig(
 				logFile,

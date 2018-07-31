@@ -77,17 +77,23 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	 * @param inputs _in_ Multiple HTTPRequest that are requesting resource(s).
 	 * @param outputs _out_ Responds with the resource(s) if it/they exists.
 	 * @param httpSpec
-	 * @param prefix
+	 * @param root
 	 * @param resourceName
 	 */
 	public ResourceModuleStage(GraphManager graphManager, 
 			                   Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
-			                   HTTPSpecification httpSpec, String prefix, String resourceName) {
+			                   HTTPSpecification httpSpec, String root, String resourceName) {
 		
 		super(graphManager, inputs, outputs, httpSpec);		
 		this.httpSpec = httpSpec;
 		this.defaultName = resourceName;
-		this.prefix = prefix;
+		
+		assert(root.length()>0);
+		
+		//remove / if present on either end
+		String temp = root.endsWith("/") ?  root.substring(0, root.length()-1) :  root;
+		this.prefix = temp.startsWith("/") ?  temp.substring(1) : temp;
+		
 		
 		if (inputs.length>1) {
 			GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
@@ -95,8 +101,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
 		this.minVar = minVarLength(outputs);
-		
-		
+				
 	}
 
 	@Override
@@ -141,13 +146,20 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 				return null;//can not look this up
 			}
 			
+			String absoluteResourcePath;
+			if (fileName.startsWith("/")) {
+				absoluteResourcePath = prefix+fileName;
+			} else {
+				absoluteResourcePath = prefix+"/"+fileName;
+			}
+			
 			URL localURL = ResourceModuleStage.class.getClassLoader()
-					.getResource(prefix+fileName);
+					.getResource(absoluteResourcePath);
 			
 			if (null == localURL) {
 				definePayload();
 				status = 404;
-				logger.warn("unable to find resource: {} ",prefix+fileName);
+				logger.warn("unable to find resource: {} ",absoluteResourcePath);
 				return null;
 			}
 
@@ -165,14 +177,14 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			this.resourceURL[fileIdx] = localURL;
 			this.type[fileIdx] = HTTPSpecification.lookupContentTypeByFullPathExtension(httpSpec, fileName).getBytes();
 
-			
 			try {
 
 				InputStream stream = resourceURL[fileIdx].openStream();
 				
 				final int fileSize = stream.available();
 				if (fileSize > minVar) {
-					throw new UnsupportedOperationException("Pipe is too small to hold requested resource");
+					//TODO: we should slice up the files so this pipe need not be large.
+					throw new UnsupportedOperationException("Server maxResponse size is too small. File size is: "+fileSize+" But max server response size is: "+minVar);
 				}
 				
 				resource[fileIdx] = new byte[fileSize];
@@ -208,7 +220,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		activeFileIdx = fileIdx;
 				
 		//logger.info("request for {} sent {} ",fileName, resource[fileIdx].length);
-		definePayload(resource[fileIdx], 0, resource[fileIdx].length, Integer.MAX_VALUE);		
+		definePayload(resource[fileIdx], 0, resource[fileIdx].length, Integer.MAX_VALUE);
 		return eTag[fileIdx];
 	}
 	

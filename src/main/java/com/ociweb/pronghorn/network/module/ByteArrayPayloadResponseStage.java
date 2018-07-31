@@ -51,7 +51,6 @@ public abstract class ByteArrayPayloadResponseStage <
 	private Pipe<ServerResponseSchema> activeOutput = null;
 	protected int status = 200;
 	
-	private int maximumAllocation = 1<<27; //128M largest file, should expose this
 
 	/**
 	 *
