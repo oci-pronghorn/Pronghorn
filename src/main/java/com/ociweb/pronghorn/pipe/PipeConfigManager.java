@@ -8,7 +8,7 @@ public class PipeConfigManager {
 	private int defaultMaximumLengthOfVariableLengthFields;
 	
 	public PipeConfigManager() {
-		this(4, 32, 512);
+		this(4, 2, 512);
 	}
 	
 	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLengthOfVariableLengthFields) {
@@ -46,6 +46,10 @@ public class PipeConfigManager {
 		} else {
 			configs[idx] = newConfig;
 		}
+		
+		//show all the places where we set the config instead of ensure the size.
+		//new Exception("new config "+newConfig+"  "+newConfig.schema).printStackTrace();
+		
 		return newConfig;
 	}
 	
