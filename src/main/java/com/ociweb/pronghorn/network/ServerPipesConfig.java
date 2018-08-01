@@ -74,14 +74,14 @@ public class ServerPipesConfig {
 		if (isTLS && (maxResponseSize< (1<<15))) {
 			maxResponseSize = (1<<15);//TLS requires this larger payload size
 		}
-		
+
 		//keep the waiting packets from getting out of hand, limit this value
 		partialPartsIn = Math.min(32, partialPartsIn);
 		
 
 		//these may need to be exposed.. they can impact performance
 		this.fromRouterToModuleCount   = 4; //count of messages from router to module	    
-		this.serverOutputMsg           = 16; //count of outgoing responses to writer
+		this.serverOutputMsg           = 8; //count of outgoing responses to writer
 	    //largest file to be cached in file server
    
 		this.pcm = pcm;
@@ -141,6 +141,9 @@ public class ServerPipesConfig {
 			fromOrderWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 					                  serverOutputMsg, 
 					                  serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
+			
+			System.out.println("NetPayloadSchema.class "+serverOutputMsg+"  "+serverBlobToWrite );
+			
 		}		
 		return fromOrderWraperConfig;
 	}
