@@ -72,7 +72,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
     }
 	
 	public String toString() {
-		return "Primary:"+slabBits+" Secondary:"+blobBits;
+		return "Primary:"+slabBits+" Secondary:"+blobBits+" "+schema.getClass().getSimpleName();
 	}
 	/**
 	 * This is the constructor you are looking for.
