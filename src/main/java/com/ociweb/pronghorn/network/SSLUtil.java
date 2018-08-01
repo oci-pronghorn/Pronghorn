@@ -115,7 +115,7 @@ public class SSLUtil {
 		} catch (Throwable t) {
 			//ignore we are closing this connection
 		}
-		logger.error("Exception, in server:{} '{}'",isServer, sslex.getLocalizedMessage(), sslex);
+		logger.error("Exception, in SERVER:{} '{}'",isServer, sslex.getLocalizedMessage(), sslex);
 	}
 
 	public static Status wrapResultStatusState(Pipe<NetPayloadSchema> target, ByteBuffer buffer,
@@ -228,9 +228,8 @@ public class SSLUtil {
 		assert(!buffer.hasRemaining());
 	}
 
-	private static SSLEngineResult gatherPipeDataForUnwrap(int maxEncryptedContentLength, ByteBuffer rolling, BaseConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
-		SSLEngineResult result=null;
-		
+	private static void gatherPipeDataForUnwrap(int maxEncryptedContentLength, ByteBuffer rolling, BaseConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
+
 		assert(rolling.limit()==rolling.capacity());
 		
 		int meta = Pipe.takeByteArrayMetaData(source);
@@ -241,30 +240,9 @@ public class SSLUtil {
 		
 		cc.localRunningBytesProduced = 0;
 		if (inputs[1].remaining()==0) {
-			//if we have some rolling data from previously
-			ByteBuffer firstPartOfBuffer = inputs[0];
-			
-			if (rolling.position()==0) {			
-		//		System.err.println(source.id+"A "+firstPartOfBuffer+"  "+inputs[1]);
-				try {
-					result = unwrap(maxEncryptedContentLength, firstPartOfBuffer, targetBuffer, cc);
-				} catch (SSLException sslex) {
-					manageException(sslex, cc, isServer);	//the connection is closed
-					
-					return null; //TODO: need to continue with new connections
-					
-				}				
-				rolling.put(firstPartOfBuffer);
-				assert(0==firstPartOfBuffer.remaining());
-				
-				
-			} else {
-				//add this new content onto the end before use.				
-				rolling.put(firstPartOfBuffer);
-				assert(0==firstPartOfBuffer.remaining());
-			}
-		} else {
-			
+			rolling.put(inputs[0]);
+			assert(0==inputs[0].remaining());
+		} else {			
 			assert(inputs[0].hasRemaining());
 			assert(inputs[1].hasRemaining());
 			
@@ -272,7 +250,7 @@ public class SSLUtil {
 			rolling.put(inputs[1]);  
 	
 		}
-		return result;
+		
 	}
 
 	private static SSLEngineResult unwrap(int maxEncryptedContentLength, ByteBuffer sourceBuffer, final ByteBuffer[] targetBuffer, BaseConnection cc)
@@ -307,7 +285,9 @@ public class SSLUtil {
 	 * Consume rolling which must be positioned for reading from position up to limit.
 	 * Resturns rolling setup for appending new data so limit is at capacity and position is where we left off.		
 	 */
-	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, BaseConnection cc) throws SSLException {
+	private static SSLEngineResult unwrapRollingHandshake(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, BaseConnection cc) throws SSLException {
+		
+		SSLEngineResult result = null;
 		while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ||
 			   cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_TASK) {				
 															
@@ -320,7 +300,9 @@ public class SSLUtil {
 			} else {
 				  //  assert(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) : "found "+cc.getEngine().getHandshakeStatus();
 				
-					do {
+				while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP 
+			    		  && (result==null || result.getStatus() == Status.OK) 
+			    		  && rolling.hasRemaining()) {
 				//	    ////////////////////////
 					    ///Block needed for openSSL limitation
 					    ///////////////////////
@@ -330,8 +312,6 @@ public class SSLUtil {
 					    	rolling.limit(pos+maxEncryptedContentLength);
 					    }
 					    /////////////////////////
-				
-					 
 						result = cc.getEngine().unwrap(rolling, targetBuffer);			
 		
 						//	System.err.println("C unwrapped bytes produced "+result.bytesProduced()+"  "+result.getStatus()+"  "+"  "+rolling.hasRemaining()+" "+cc.getEngine().getHandshakeStatus() );
@@ -341,7 +321,7 @@ public class SSLUtil {
 						int bytesProduced = result.bytesProduced();
 						assert(cc.localRunningBytesProduced>=0);
 						cc.localRunningBytesProduced += bytesProduced;
-				    } while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP && result.getStatus() == Status.OK && rolling.hasRemaining()); //may need data
+				    }; //may need data
 	
 					if (result.getStatus() != Status.OK || cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) {
 						break;
@@ -446,7 +426,7 @@ public class SSLUtil {
 				 			SSLEngineResult result;
 							try { 
 								rolling.flip();
-								result = unwrapRollingHandshake(rolling, maxEncryptedContentLength, workspace, null, cc); //when done the wrapper is ready for writing more data to it
+								result = unwrapRollingHandshake(rolling, maxEncryptedContentLength, workspace, cc); //when done the wrapper is ready for writing more data to it
 								//logger.info("server {} status is now {}  for {} ",isServer, cc.getEngine().getHandshakeStatus(),cc);
 							} catch (SSLException sslex) {
 								rolling.clear();
@@ -533,19 +513,23 @@ public class SSLUtil {
 	                    long positionId = Pipe.takeLong(source);	
 	                }
 	                	                
-					SSLEngineResult result = gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, workspace, isServer, source);
+	                gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, workspace, isServer, source);
 
+	                int tp = rolling.position();
+	                int tl = rolling.limit();
 					((Buffer)rolling).flip();	
 					//logger.trace("server {} unwrap rolling data {} for {} ", isServer, rolling, cc);
-										
 					
+					
+					SSLEngineResult result;
 					try {
-						result = unwrapRollingHandshake(rolling, maxEncryptedContentLength, workspace, result, cc);
+						result = unwrapRollingHandshake(rolling, maxEncryptedContentLength, workspace, cc);
 						//logger.info("server {} status is now {}  for {} ",isServer, cc.getEngine().getHandshakeStatus(),cc);
-					} catch (SSLException sslex) {
-						rolling.clear();
-						logger.warn("UNWRAP|ERROR: needed handshake status of {} for server {}", cc.getEngine().getHandshakeStatus(), sslex, isServer,sslex);						
-						manageException(sslex, cc, isServer);
+					} catch (SSLException sslex) {						
+						//restore the rolling data since we could not process what we have so far 
+						rolling.limit(tl);
+						rolling.position(tp);
+						//try again later
 						return -1;
 					} finally {
 										
@@ -555,7 +539,6 @@ public class SSLUtil {
 					if (null==result || Status.CLOSED == result.getStatus()) {
 						 if (cc.getEngine().isOutboundDone()) {
 							 	cc.close();
-							 	logger.info("xxxxxxx was closed");
 							 	return -1;
 		                    } else {
 		                        cc.getEngine().closeOutbound();
@@ -687,10 +670,6 @@ public class SSLUtil {
 	}
 
 	
-	//TODO: urgent unwrap sequence numbers are broken?
-	//      do not know when to increement????
-	//      do not know how share with client???
-	
 	public static int engineUnWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, Pipe<ReleaseSchema> releasePipe, 
 			                        ByteBuffer secureBuffer, boolean isServer) {
@@ -733,7 +712,7 @@ public class SSLUtil {
 				
 				if (didWork<0) {
 					
-					if (rolling.position()==0) {
+					if (rolling.position()==0 ) {
 						//send release because handshake is incomplete, waiting on other side or the connection has been closed
 						sendRelease(source, releasePipe, cc, isServer);						
 					}
@@ -743,7 +722,8 @@ public class SSLUtil {
 					
 				} else if (didWork==1) {	
 					//logger.trace("finished shake");
-					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {						
+					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
+					
 						sendRelease(source, releasePipe, cc, isServer);
 					}
 					if (HandshakeStatus.NOT_HANDSHAKING !=  cc.getEngine().getHandshakeStatus()) {
@@ -781,7 +761,6 @@ public class SSLUtil {
 			
 			assert(rolling.limit()==rolling.capacity());
 				
-			SSLEngineResult result1 = null;
 			ByteBuffer[] writeHolderUnWrap;
 			
 			if (Pipe.hasContentToRead(source)) {
@@ -828,7 +807,7 @@ public class SSLUtil {
 				//////////////		
 				writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
 
-				result1 = gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, writeHolderUnWrap, isServer, source);
+				gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, writeHolderUnWrap, isServer, source);
 											
 				Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
 				Pipe.releaseReadLock(source);
@@ -837,7 +816,7 @@ public class SSLUtil {
 				writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
 			}
 			
-			SSLEngineResult result = result1;
+			SSLEngineResult result=null;
 			Status status = null==result?null:result.getStatus();			
 	
 			if ((null==status || Status.OK==status) && rolling.position()>0) { //rolling has content to consume
@@ -853,7 +832,6 @@ public class SSLUtil {
 				} catch (SSLException sslex) {
 					rolling.clear();//TODO: consume all the broken messages...
 					manageException(sslex, cc, isServer);
-					result1 = null;
 					continue;
 				}
 				
@@ -862,7 +840,7 @@ public class SSLUtil {
 			//else rolling has no data so nothing to do.
 			assert(rolling.limit()==rolling.capacity());			
 
-			publishWrittenPayloadForUnwrap(source, target, rolling, releasePipe, cc, arrivalTime);
+			publishWrittenPayloadForUnwrap(source, target, rolling, cc, arrivalTime);
 					
 		//	System.err.println("rolling for id "+cc.id+" holds "+rolling+" "+cc.getEngine().getHandshakeStatus()+"  "+cc.getEngine().getSession()+"  "+status);
 			
@@ -896,7 +874,7 @@ public class SSLUtil {
 		
 	}
 
-	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, Pipe<ReleaseSchema> releasePipe, BaseConnection cc, long arrivalTime) {
+	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, BaseConnection cc, long arrivalTime) {
 			
 		if(cc.localRunningBytesProduced>0) {
 			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
