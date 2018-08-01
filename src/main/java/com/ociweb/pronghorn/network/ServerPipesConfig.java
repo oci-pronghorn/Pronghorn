@@ -74,6 +74,10 @@ public class ServerPipesConfig {
 		if (isTLS && (maxResponseSize< (1<<15))) {
 			maxResponseSize = (1<<15);//TLS requires this larger payload size
 		}
+		
+		//keep the waiting packets from getting out of hand, limit this value
+		partialPartsIn = Math.min(32, partialPartsIn);
+		
 
 		//these may need to be exposed.. they can impact performance
 		this.fromRouterToModuleCount   = 4; //count of messages from router to module	    
