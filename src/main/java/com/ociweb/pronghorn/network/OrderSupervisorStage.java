@@ -267,9 +267,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    		//return didWork;
 		    	}
 
-		    } else {
+		    } else {		 
 		    	didWork = true;
-		    	skipData(sourcePipe, channelId);
+		    	//if this was to be skipped then do it
+		    	if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {
+		    		skipData(sourcePipe, channelId);
+		    	} else {
+		    		break;
+		    	}
 		    }
 		}
 		return didWork;
@@ -290,8 +295,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		//clear when we discover a new connection
 		///////////////////
 		if ((expectedSquenceNosChannelId[idx]!=channelId) || (sequenceNo==0)) {
+
 			expectedSquenceNos[idx] = 0;
 			expectedSquenceNosChannelId[idx] = channelId;
+			
 		}
 
 		return processInput(sourcePipe, pipeIdx, keepWorking, 
@@ -358,12 +365,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return keepWorking;
 	}
 
+    
+    public static boolean showCounts = false;
+    
+	int countOfMessages = 0;
+	int countOfBlocks = 0;
+	
 	private boolean processExpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe,
 			int pipeIdx,
 			boolean keepWorking, int peekMsgId, int myPipeIdx, int sequenceNo,
 			long channelId, int idx, int expected) {
-		
-
+	
 		//logger.trace("found expected sequence {}",sequenceNo);
 		final short expectedPipe = expectedSquenceNosPipeIdx[idx];
 		if (-1 == expectedPipe) {
@@ -552,6 +564,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	    //most common case by far so we put it first
 	    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
 	    	 	    	
+	    	 if (showCounts) {
+	    		System.out.println(++countOfMessages +" start of block "+(++countOfBlocks));
+	    	 }
 	    	 publishDataBlock(input, myPipeIdx, sequenceNo, channelId2, beginningOfResponse);
 	    	
 	    } else {
@@ -669,7 +684,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					
 			 		y++;
 			 		
-			 
+			 		 if (showCounts) {
+			 			 System.out.println(++countOfMessages +" combined message ");
+			 		 }
+			 		 
 					 int msgId = Pipe.takeMsgIdx(input); //msgIdx
 					 long conId = Pipe.takeLong(input); //connectionId;
 					 int seq = Pipe.takeInt(input);
