@@ -630,6 +630,10 @@ public class Pipe<T extends MessageSchema<T>> {
 
         debugFlags = config.debugFlags;
                 
+//        if (config.totalBytesAllocated() > (1<<24) ) {
+//        	new Exception("large pipe "+(config.totalBytesAllocated()>>20)+" mb").printStackTrace();
+//        }
+        
 
         //Assign the immutable universal id value for this specific instance
         //these values are required to keep track of all ring buffers when graphs are built
@@ -1148,6 +1152,8 @@ public class Pipe<T extends MessageSchema<T>> {
         pipe.regulatorProducer = new PipeRegulator(msgPerMs, msgSize);
     } 
     
+    //private final static AtomicLong totalBytes = new AtomicLong();
+    
 	private void buildBuffers() {
 
 	    this.pendingReleases = 
@@ -1182,6 +1188,27 @@ public class Pipe<T extends MessageSchema<T>> {
         try {
 	        this.blobRing = new byte[sizeOfBlobRing];
 	        this.slabRing = new int[sizeOfSlabRing];
+	        
+//	        int pipeBytesTotal = sizeOfBlobRing + (4*sizeOfSlabRing);
+//			int delta = pipeBytesTotal;
+//	        
+//	        String unit = "b";
+//	        if (delta > (1<<20)) {
+//	        	delta = delta>>20;
+//	    	    unit = "mb";
+//	        }
+//	        
+//			long totalMemory = totalBytes.addAndGet(delta);
+//			
+//			if (pipeBytesTotal > (1<<23)) {
+//		        if (totalMemory > (1<<20)) {
+//		        	System.out.println("total consumed "+(totalMemory>>20)+"mb  "+delta+unit+"  "+this.config()+"  "+this.config().totalBytesAllocated());
+//		        } else {
+//		        	System.out.println("total consumed "+totalMemory+"b  "+delta+unit+"  "+this.config()+"  "+this.config().totalBytesAllocated());
+//		        }
+//			}
+	        
+	        
 	        this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
         } catch (OutOfMemoryError oome) {
         	
