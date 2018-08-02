@@ -395,6 +395,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 		        	  logger.error("Unable to accept connection",e);
 		          } 
 		          doneSelectors.add(key);		          
+		      } else {
+		    	  logger.error("max connections achieved, no more connections.");
 		      }
 
 		  } else {

@@ -315,6 +315,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					didWork = readFromSocket(didWork, cc, output[pipeIdx]);
 				}				    		
 			}
+			
 		} else {
 			didWork = false;
 		}
@@ -487,7 +488,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			
 			//every connection is locked down to a single input pipe until
 			//the consumer "parser" finds a stopping point and can release the pipe for other usages.
-			
+
 			coordinator.releaseResponsePipeLineIdx(fieldConnectionId);
 
 		}

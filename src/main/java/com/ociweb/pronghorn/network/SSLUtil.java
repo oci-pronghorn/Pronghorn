@@ -479,16 +479,14 @@ public class SSLUtil {
 				 	int msgId = Pipe.takeMsgIdx(source);
 				 					 	
 				    //if closed closd
-	                if (msgId<0 || !cc.isValid) {	                	
+	                if (msgId < 0 || !cc.isValid) {	                	
 	                	
 	                	Pipe.skipNextFragment(source,msgId);
 	          	                	
 	                    if (cc.getEngine().isInboundDone() && cc.getEngine().isOutboundDone()) {
-	                    	logger.info("quite wy");
-	                        return -1;
+	                    	return -1;
 	                    }	                    
 	                    handshakeStatus = cc.closeInboundCloseOutbound(cc.getEngine());	  
-	                    logger.info("check this case?? yes we need do a clean close "); //TODO: minor fix.
 	                    return -1;
 	                }
 	             
@@ -713,8 +711,12 @@ public class SSLUtil {
 				if (didWork<0) {
 					
 					if (rolling.position()==0 ) {
-						//send release because handshake is incomplete, waiting on other side or the connection has been closed
-						sendRelease(source, releasePipe, cc, isServer);						
+						 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
+						 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
+							 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+							 //send release because handshake is incomplete, waiting on other side or the connection has been closed
+							 sendRelease(source, releasePipe, cc, isServer);						
+						 }
 					}
 					///////////
 					return 0;// this case needs more data to finish handshake so returns
@@ -723,8 +725,11 @@ public class SSLUtil {
 				} else if (didWork==1) {	
 					//logger.trace("finished shake");
 					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
-					
-						sendRelease(source, releasePipe, cc, isServer);
+						 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
+						 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
+							 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+							 sendRelease(source, releasePipe, cc, isServer);
+						 }
 					}
 					if (HandshakeStatus.NOT_HANDSHAKING !=  cc.getEngine().getHandshakeStatus()) {
 						///////////////////
