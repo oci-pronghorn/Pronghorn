@@ -2498,7 +2498,7 @@ public class GraphManager {
 		            } else {
 		                PronghornStage prodStage = getRingProducer(m, pipeId);
 		                
-		                throw new UnsupportedOperationException("Can not find stage consuming Pipe<"+schemaName+"> #"+pipeId+" Which is produced by stage "+prodStage+". "+CHECK_GRAPH_CONSTRUCTION);
+		                throw new UnsupportedOperationException("Can not find stage consuming Pipe<"+new String(m.pipeDOTSchemaNames[pipeId])+"> #"+pipeId+" Which is produced by stage "+prodStage+". "+CHECK_GRAPH_CONSTRUCTION);
 		                
 		            }
 		        }
