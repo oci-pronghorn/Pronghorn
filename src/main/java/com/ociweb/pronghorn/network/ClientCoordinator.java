@@ -325,20 +325,27 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 
-	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int activeOutIdx) {
+
+	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int seed) {
 		int result = -1;
 		//if we go around once and find nothing then stop looking
 		int i = output.length;
+		
+		//when we reverse we want all these bits at the low end.
+		int shiftForFlip = 33-Integer.highestOneBit(i);//33 because this is the length not the max value.
+		
+		//find the first one on the left most connection since we know it will share the same thread as the parent.
+		int c = seed;
 		while (--i>=0) {
-			//next idx		
-			if (++activeOutIdx == output.length) {
-				activeOutIdx = 0;
-			}
-			//does this one have room
-			if (Pipe.hasRoomForWrite(output[activeOutIdx])) {
-				result = activeOutIdx;
+			int activeIdx = Integer.reverse(c<<shiftForFlip)		
+					        % output.length; //protect against non power of 2 outputs.
+			
+			if (Pipe.hasRoomForWrite(output[activeIdx])) { //  activeOutIdx])) {
+				result = activeIdx;
 				break;
 			}
+			c++;
+			
 		}
 		return result;
 	}

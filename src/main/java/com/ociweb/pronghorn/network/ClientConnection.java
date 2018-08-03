@@ -87,7 +87,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return structureId;
 	}
 	
-	
 	public ClientConnection(SSLEngine engine, 
 			                CharSequence host, int hostId, int port, int sessionId,
 			                int pipeIdx, long conId, int structureId		                 
@@ -115,6 +114,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		this.connectionGUID = new byte[(2*host.length())+6];
 		this.connectionGUIDLength = buildGUID(connectionGUID, host, port, sessionId);
 		this.pipeIdx = pipeIdx;
+
 		this.sessionId = sessionId;
 		this.host = host instanceof String ? (String)host : host.toString();
 		this.port = port;

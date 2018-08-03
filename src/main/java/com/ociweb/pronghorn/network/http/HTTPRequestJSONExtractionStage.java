@@ -102,8 +102,12 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	       			        	
 		        	//copies params and headers.
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(localOutput);
-		        	inputStream.readInto(outputStream, inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION));
-		    
+		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
+		   
+		        	assert(payloadOffset>=0) : "offset must be positive but was "+payloadOffset;
+					inputStream.readInto(outputStream, payloadOffset);
+		        	assert(DataInputBlobReader.absolutePosition(inputStream)>=0) : "position must not be negative";
+		        	
 		        	//inputStream is now positioned to the JSON
 		        	//outputStream is now positions as the target
 		        	DataInputBlobReader.setupParser(inputStream, reader);
@@ -142,6 +146,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			localOutput.closeBlobFieldWrite();	    			
 		    			visitor.clear();//rest for next JSON
 		    		}
+		    		
+		    		
 		        }	
 				break;
 		        case HTTPRequestSchema.MSG_WEBSOCKETFRAME_100:
