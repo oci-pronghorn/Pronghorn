@@ -142,7 +142,7 @@ public class ServerPipesConfig {
 					                  serverOutputMsg, 
 					                  serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
 			
-			System.out.println("NetPayloadSchema.class "+serverOutputMsg+"  "+serverBlobToWrite );
+			//System.out.println("NetPayloadSchema.class "+serverOutputMsg+"  "+serverBlobToWrite );
 			
 		}		
 		return fromOrderWraperConfig;
