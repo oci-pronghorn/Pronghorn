@@ -3,6 +3,9 @@ package com.ociweb.pronghorn.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+
 public final class PoolIdx  {
 
     private final long[] keys;
@@ -119,7 +122,30 @@ public final class PoolIdx  {
         return startNewLock(that, key, idx);
     }
     
-
+    //TODO: rewrite this function so its can do the get logic...
+	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int seed) {
+		int result = -1;
+		//if we go around once and find nothing then stop looking
+		int i = output.length;
+		
+		//when we reverse we want all these bits at the low end.
+		int shiftForFlip = 33-Integer.highestOneBit(i);//33 because this is the length not the max value.
+		
+		//find the first one on the left most connection since we know it will share the same thread as the parent.
+		int c = seed;
+		while (--i>=0) {
+			int activeIdx = Integer.reverse(c<<shiftForFlip)		
+					        % output.length; //protect against non power of 2 outputs.
+			
+			if (Pipe.hasRoomForWrite(output[activeIdx])) { //  activeOutIdx])) {
+				result = activeIdx;
+				break;
+			}
+			c++;
+			
+		}
+		return result;
+	}
     
     /**
      * 

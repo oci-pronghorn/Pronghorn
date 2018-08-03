@@ -39,8 +39,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     private final int defaultLength = 4;
     
     private TrieParser[] headersParser = new TrieParser[4];    
-    private JSONExtractorCompleted[] requestJSONExtractor = new JSONExtractorCompleted[defaultLength];    
-    private FieldExtractionDefinitions[] pathDefinitions = new FieldExtractionDefinitions[defaultLength];
+    private JSONExtractorCompleted[] requestJSONExtractorForPath = new JSONExtractorCompleted[defaultLength];    
+    private FieldExtractionDefinitions[] pathToRoute = new FieldExtractionDefinitions[defaultLength];
     
 	private int routeCount = 0;
 	private AtomicInteger pathCount = new AtomicInteger();
@@ -159,14 +159,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	void storeRequestExtractionParsers(int pathIdx, FieldExtractionDefinitions route) {
 		
 		//////////store for lookup by path
-		if (pathIdx>=pathDefinitions.length) {
-			int i = pathDefinitions.length;
+		if (pathIdx>=pathToRoute.length) {
+			int i = pathToRoute.length;
 			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
-			System.arraycopy(pathDefinitions, 0, newArray, 0, i);
-			pathDefinitions = newArray;
+			System.arraycopy(pathToRoute, 0, newArray, 0, i);
+			pathToRoute = newArray;
 		}
-		pathDefinitions[pathIdx]=route;	
-		
+		pathToRoute[pathIdx]=route;	
+
 		//we have 1 pipe per composite route so nothing gets stuck and
 		//we have max visibility into the traffic by route type.
 		//any behavior can process multiple routes but it comes in as multiple pipes.
@@ -174,15 +174,15 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		//message contains its own structId
 	}
 
-	void storeRequestedJSONMapping(int idx, JSONExtractorCompleted extractor) {
+	void storeRequestedJSONMapping(int pathId, JSONExtractorCompleted extractor) {
 		
-		if (idx>=requestJSONExtractor.length) {
-			int i = requestJSONExtractor.length;
+		if (pathId>=requestJSONExtractorForPath.length) {
+			int i = requestJSONExtractorForPath.length;
 			JSONExtractorCompleted[] newArray = new JSONExtractorCompleted[i*2]; //only grows on startup as needed
-			System.arraycopy(requestJSONExtractor, 0, newArray, 0, i);
-			requestJSONExtractor = newArray;
+			System.arraycopy(requestJSONExtractorForPath, 0, newArray, 0, i);
+			requestJSONExtractorForPath = newArray;
 		}
-		requestJSONExtractor[idx] = extractor;
+		requestJSONExtractorForPath[pathId] = extractor;
 	}
 	
 	public int totalPathsCount() {
@@ -198,14 +198,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		
 		int result = -1;
 		if (routeId != UNMAPPED_ROUTE) {
-			int i = pathDefinitions.length;
+			int i = pathToRoute.length;
 			while (--i>=0) {
 				
-				if ((pathDefinitions[i]!=null) && (routeId == pathDefinitions[i].routeId)) {
+				if ((pathToRoute[i]!=null) && (routeId == pathToRoute[i].routeId)) {
 					if (result==-1) {
-						result = pathDefinitions[i].structId;
+						result = pathToRoute[i].structId;
 					} else {
-						assert(result == pathDefinitions[i].structId) : "route may only have 1 structure, found more";					
+						assert(result == pathToRoute[i].structId) : "route may only have 1 structure, found more";					
 					}
 				}
 			}
@@ -219,7 +219,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 	
 	public FieldExtractionDefinitions extractionParser(int pathId) {
-		return pathDefinitions[pathId];
+		return pathToRoute[pathId];
 	}
 	
 	public TrieParser headerParserRouteId(int routeId) {
@@ -227,7 +227,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	public JSONExtractorCompleted JSONExtractor(int routeId) {
-		return routeId<requestJSONExtractor.length ? requestJSONExtractor[routeId] : null;
+		return routeId<requestJSONExtractorForPath.length ? requestJSONExtractorForPath[routeId] : null;
 	}
 
     @Override
@@ -261,15 +261,15 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			int i = routeCount;
 			if (i==0) {
 				added  = true;
-				collectedHTTPRequstPipes[p][0].add(pipe); //ALL DEFAULT IN A SINGLE ROUTE
+				collectedHTTPRequstPipes[p][0].add(pipe); //ALL DEFAULT IN A SINGLE Path
 			} else {
 				while (--i>=0) {
 					added  = true;
-					if (null != pathDefinitions[i] 
-						&& UNMAPPED_ROUTE!=pathDefinitions[i].pathId
+					if (null != pathToRoute[i] 
+						&& UNMAPPED_ROUTE!=pathToRoute[i].pathId
 					   ) {
-						assert(null != collectedHTTPRequstPipes[p][pathDefinitions[i].pathId]);
-						collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);
+						assert(null != collectedHTTPRequstPipes[p][pathToRoute[i].pathId]);
+						collectedHTTPRequstPipes[p][pathToRoute[i].routeId].add(pipe);
 					}
 				}
 			}
@@ -278,16 +278,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	
 	public boolean appendPipeIdMappingForIncludedGroupIds(
 			                      Pipe<HTTPRequestSchema> pipe, 
-			                      int p, 
+			                      int track, 
 			                      ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
-			                      int ... groupsIds) {
+			                      int ... routeId) {
 		boolean added = false;
-		int i = pathDefinitions.length;
+		int i = pathToRoute.length;
 		while (--i>=0) {
-			if (null!=pathDefinitions[i]) {
-				if (contains(groupsIds, pathDefinitions[i].routeId)) {	
+			if (null!=pathToRoute[i]) {
+				if (contains(routeId, pathToRoute[i].routeId)) {	
 					added = true;
-					collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
+				    collectedHTTPRequstPipes[track][pathToRoute[i].routeId].add(pipe);	
 				}
 			}
 		}
@@ -297,16 +297,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	
 	public boolean appendPipeIdMappingForExcludedGroupIds(
             Pipe<HTTPRequestSchema> pipe, 
-            int p, 
+            int track, 
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
             int ... groupsIds) {
 			boolean added = false;
-			int i = pathDefinitions.length;
+			int i = pathToRoute.length;
 			while (--i>=0) {
-				if (null!=pathDefinitions[i]) {
-					if (!contains(groupsIds, pathDefinitions[i].routeId)) {			
+				if (null!=pathToRoute[i]) {
+					if (!contains(groupsIds, pathToRoute[i].routeId)) {			
 						added = true;
-						collectedHTTPRequstPipes[p][pathDefinitions[i].pathId].add(pipe);	
+						collectedHTTPRequstPipes[track][pathToRoute[i].routeId].add(pipe);	
 					}
 				}
 			}
@@ -324,7 +324,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	public int[] paramIndexArray(int pathId) {
-		return pathDefinitions[pathId].paramIndexArray();
+		return pathToRoute[pathId].paramIndexArray();
 	}
 
 	public int totalRoutesCount() {

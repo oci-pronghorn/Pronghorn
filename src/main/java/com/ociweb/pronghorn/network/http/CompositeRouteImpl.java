@@ -33,7 +33,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final HTTP1xRouterStageConfig<?,?,?,?> config;
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	
-	private final int structId;
+	public final int structId;
     private final ServerConnectionStruct scs;
 	
     private int[] activePathFieldIndexPosLookup;
@@ -165,6 +165,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	public int routeId(Object associatedObject) {		
 		scs.registry.registerStructAssociation(structId, associatedObject);
 		config.registerRouteAssociation(routeId, associatedObject);
+
 		return routeId;
 	}
 
@@ -252,9 +253,35 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish associatedObject(String key, Object object) {		
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
+
 		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
 		scs.registry.setAssociatedObject(fieldLookup, object);
+		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(object, structId));
+		
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue) {
+		associatedObject(key,associatedObject);
+		defaultInteger(key, defaultValue);
+		
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue) {
+		associatedObject(key,associatedObject);
+		defaultText(key, defaultValue);
+		
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long mantissa, byte exponent) {
+		associatedObject(key,associatedObject);
+		defaultDecimal(key, mantissa, exponent);
 		
 		return this;
 	}

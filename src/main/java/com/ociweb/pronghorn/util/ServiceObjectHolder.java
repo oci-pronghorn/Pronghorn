@@ -42,7 +42,7 @@ public class ServiceObjectHolder<T> {
         public final T[] serviceObjectValues;
         public final long[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
         public final long[] addTimeMS;
-        
+   
         public final Class<T> clazz; 
 
         @SuppressWarnings("unchecked")

@@ -770,7 +770,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     } else {
     	routeId = config.getRouteIdForPathId(pathId);
     }
-    
+
     if (pathId<0) {
 
     	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
@@ -796,6 +796,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     //      if catch all is enabled use it because all outputs will be null in that mode
     Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
+
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
     if (Pipe.hasRoomForWrite(outputPipe) ) {
 
