@@ -61,6 +61,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
 
+		assert(noDuplicaateTargets(targets)) : "can not replicate to the same target pipe mutiple times";
+		
 		if (targets.length == 1) {
 			new Exception("You may want to consider removing this stage. It only replicates to 1 destination.");
 		}
@@ -116,6 +118,19 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
         
 	}
 	
+	private boolean noDuplicaateTargets(Pipe<T>[] targets) {
+		int i = targets.length;
+		while (--i>=0) {
+			int j = targets.length;
+			while (--j>=0) {
+				if (i!=j && targets[i]==targets[j]) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	@Override
 	public void run() {
 		processAvailData(this);

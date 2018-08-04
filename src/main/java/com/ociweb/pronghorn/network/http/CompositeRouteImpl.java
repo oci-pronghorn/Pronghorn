@@ -188,7 +188,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup);
 		
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId
-		config.storeRequestedJSONMapping(pathsId, extractor);
+		config.storeRequestedJSONMapping(routeId, extractor);
 	
 		assert(structId == config.getStructIdForRouteId(routeId));
 		
@@ -201,10 +201,13 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish defaultInteger(String key, long value) {
 		byte[] keyBytes = key.getBytes();
+		
+		//logger.info("\nModify struct {} add key {} ", structId, key);
 		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Long, 0);
 		
 		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
+		assert(i>0);
 		while (--i>=0) {
 			defs.get(i).defaultInteger(reader, keyBytes, value);			
 		}
@@ -266,7 +269,6 @@ public class CompositeRouteImpl implements CompositeRoute {
 	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue) {
 		associatedObject(key,associatedObject);
 		defaultInteger(key, defaultValue);
-		
 		return this;
 	}
 
@@ -274,7 +276,6 @@ public class CompositeRouteImpl implements CompositeRoute {
 	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue) {
 		associatedObject(key,associatedObject);
 		defaultText(key, defaultValue);
-		
 		return this;
 	}
 
@@ -282,9 +283,32 @@ public class CompositeRouteImpl implements CompositeRoute {
 	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long mantissa, byte exponent) {
 		associatedObject(key,associatedObject);
 		defaultDecimal(key, mantissa, exponent);
-		
 		return this;
 	}
+
+//	@Override
+//	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue,
+//			ChannelReaderValidator validator) {
+//		associatedObject(key,associatedObject);
+//		defaultInteger(key, defaultValue);
+//		return this;
+//	}
+//
+//	@Override
+//	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue,
+//			ChannelReaderValidator validator) {
+//		associatedObject(key,associatedObject);
+//		defaultText(key, defaultValue);
+//		return this;
+//	}
+//
+//	@Override
+//	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa,
+//			byte defaultExponent, ChannelReaderValidator validator) {
+//		associatedObject(key,associatedObject);
+//		defaultDecimal(key, defaultMantissa, defaultExponent);
+//		return this;
+//	}
 
 
 }

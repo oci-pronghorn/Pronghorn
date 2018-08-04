@@ -174,15 +174,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		//message contains its own structId
 	}
 
-	void storeRequestedJSONMapping(int pathId, JSONExtractorCompleted extractor) {
+	void storeRequestedJSONMapping(int routeId, JSONExtractorCompleted extractor) {
 		
-		if (pathId>=requestJSONExtractorForPath.length) {
+		if (routeId>=requestJSONExtractorForPath.length) {
 			int i = requestJSONExtractorForPath.length;
 			JSONExtractorCompleted[] newArray = new JSONExtractorCompleted[i*2]; //only grows on startup as needed
 			System.arraycopy(requestJSONExtractorForPath, 0, newArray, 0, i);
 			requestJSONExtractorForPath = newArray;
 		}
-		requestJSONExtractorForPath[pathId] = extractor;
+		assert(null==requestJSONExtractorForPath[routeId] || extractor==requestJSONExtractorForPath[routeId]);
+		requestJSONExtractorForPath[routeId] = extractor;
 	}
 	
 	public int totalPathsCount() {
@@ -253,7 +254,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public boolean appendPipeIdMappingForAllGroupIds(
             Pipe<HTTPRequestSchema> pipe, 
-            int p, 
+            int track, 
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes) {
 		
 			assert(null!=collectedHTTPRequstPipes);
@@ -261,17 +262,26 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			int i = routeCount;
 			if (i==0) {
 				added  = true;
-				collectedHTTPRequstPipes[p][0].add(pipe); //ALL DEFAULT IN A SINGLE Path
+				collectedHTTPRequstPipes[track][0].add(pipe); //ALL DEFAULT IN A SINGLE Path
 			} else {
-				while (--i>=0) {
+				for(int pathId = 0; pathId<i; pathId++) {
 					added  = true;
-					if (null != pathToRoute[i] 
-						&& UNMAPPED_ROUTE!=pathToRoute[i].pathId
+					if (null != pathToRoute[pathId] 
+						&& UNMAPPED_ROUTE!=pathToRoute[pathId].pathId
 					   ) {
-						assert(null != collectedHTTPRequstPipes[p][pathToRoute[i].pathId]);
-						collectedHTTPRequstPipes[p][pathToRoute[i].routeId].add(pipe);
+						ArrayList<Pipe<HTTPRequestSchema>> targetList = collectedHTTPRequstPipes[track][pathToRoute[pathId].routeId];
+						assert(null != targetList);
+						if (!targetList.contains(pipe)) {
+							targetList.add(pipe);
+						}
+					} else {
+						
+						assert(assertRestNull(pathId));
+						
+						break;//nothing will be found past the null
 					}
 				}
+				
 			}
 			return added;
 	}
@@ -282,17 +292,37 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			                      ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
 			                      int ... routeId) {
 		boolean added = false;
-		int i = pathToRoute.length;
-		while (--i>=0) {
-			if (null!=pathToRoute[i]) {
-				if (contains(routeId, pathToRoute[i].routeId)) {	
+		
+		for(int pathId = 0; pathId<pathToRoute.length; pathId++) {			
+			if (null!=pathToRoute[pathId]) {
+				//if this pathId belongs to one of this pipes routes then add it.
+				if (contains(routeId, pathToRoute[pathId].routeId)) {	
 					added = true;
-				    collectedHTTPRequstPipes[track][pathToRoute[i].routeId].add(pipe);	
+				    ArrayList<Pipe<HTTPRequestSchema>> targetList = collectedHTTPRequstPipes[track][pathToRoute[pathId].routeId];
+				    //if this pipe is already in the list for this route do not add it again.
+				    if (!targetList.contains(pipe)) {
+				    	targetList.add(pipe);
+				    }
 				}
+			} else {
+				
+				assert(assertRestNull(pathId));
+				
+				break;//nothing will be found past the null
 			}
+			
 		}
 			
 		return added;
+	}
+
+	private boolean assertRestNull(int pathId) {
+		for(int p = pathId; p<pathToRoute.length; p++) {
+			if (null!=pathToRoute[pathId]) {
+				return false;
+			};
+		}
+		return true;
 	}
 	
 	public boolean appendPipeIdMappingForExcludedGroupIds(
@@ -301,14 +331,23 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
             ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes,
             int ... groupsIds) {
 			boolean added = false;
-			int i = pathToRoute.length;
-			while (--i>=0) {
-				if (null!=pathToRoute[i]) {
-					if (!contains(groupsIds, pathToRoute[i].routeId)) {			
+			for(int pathId = 0; pathId<pathToRoute.length; pathId++) {	
+				if (null!=pathToRoute[pathId]) {
+					if (!contains(groupsIds, pathToRoute[pathId].routeId)) {			
 						added = true;
-						collectedHTTPRequstPipes[track][pathToRoute[i].routeId].add(pipe);	
+						ArrayList<Pipe<HTTPRequestSchema>> targetList = collectedHTTPRequstPipes[track][pathToRoute[pathId].routeId];
+						if (!targetList.contains(pipe)) {
+							targetList.add(pipe);	
+						}
 					}
+				} else {
+					
+					assert(assertRestNull(pathId));
+					
+					break;//nothing will be found past the null
 				}
+				
+				
 			}
 			return added;
 	}

@@ -42,6 +42,14 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
 
+	
+	public static HTTPRequestJSONExtractionStage newInstance(GraphManager graphManager, 
+			JSONExtractorCompleted extractor,  Pipe<HTTPRequestSchema> input,
+			Pipe<HTTPRequestSchema> output,
+			Pipe<ServerResponseSchema> err) {
+		return new HTTPRequestJSONExtractionStage(graphManager, extractor, input, output,err);
+	}
+	
 	/**
 	 *
 	 * @param graphManager

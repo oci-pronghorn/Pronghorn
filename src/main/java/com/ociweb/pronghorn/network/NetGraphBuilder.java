@@ -423,9 +423,12 @@ public class NetGraphBuilder {
 	}
 
 	public static void buildRouters(GraphManager graphManager, ServerCoordinator coordinator,
-			Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<ServerResponseSchema>[][] fromModule,
-			Pipe<HTTPRequestSchema>[][] toModules, final HTTP1xRouterStageConfig routerConfig,
-			boolean captureAll, Pipe<HTTPLogRequestSchema>[] log,
+			Pipe<ReleaseSchema>[] releaseAfterParse, 
+			Pipe<ServerResponseSchema>[][] fromModule,
+			Pipe<HTTPRequestSchema>[][] toModules,
+			final HTTP1xRouterStageConfig routerConfig,
+			boolean captureAll, 
+			Pipe<HTTPLogRequestSchema>[] log,
 			Pipe[][] perTrackFromNet) {
 		/////////////////////
 		//create the routers
@@ -438,24 +441,12 @@ public class NetGraphBuilder {
 		int parallelTrack = toModules.length; 
 		while (--parallelTrack>=0) { 
 									
-			//////////////////////
-			//as needed we inject the JSON Extractor
-			//////////////////////
-			
-			Pipe<HTTPRequestSchema> prev = null;
 			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
-			int routeId = fromRouter.length;
-			while (--routeId>=0) {
+			int routeIdx = fromRouter.length;
+			while (--routeIdx>=0) {
 				
-				Pipe<HTTPRequestSchema> pipe = fromRouter[routeId];
-				if (pipe==prev){
-					//already done since we have multiple paths per route.
-					fromRouter[routeId] = fromRouter[routeId+1];
-					continue;
-				}
-				prev = fromRouter[routeId];
-				
-				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeId);
+
+				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeIdx);
 				if (null != extractor) {
 					
 					////grow from module pipes to have one more error pipe
@@ -463,18 +454,17 @@ public class NetGraphBuilder {
 					fromModule[parallelTrack] = PronghornStage.join(json404Pipe, fromModule[parallelTrack]);
 			        ////////////
 					
-					Pipe<HTTPRequestSchema> newFromJSON = 
-							new Pipe<HTTPRequestSchema>( pipe.config() );
+					Pipe<HTTPRequestSchema> newFromJSON = new Pipe<HTTPRequestSchema>( fromRouter[routeIdx].config() );
 		
-					new HTTPRequestJSONExtractionStage(
+					HTTPRequestJSONExtractionStage.newInstance(
 							 	graphManager, 
 							 	extractor, 
 							 	newFromJSON,
-							 	fromRouter[routeId],
+							 	fromRouter[routeIdx],
 							 	json404Pipe
 							);
 					
-					fromRouter[routeId] = newFromJSON;
+					fromRouter[routeIdx] = newFromJSON;
 									
 				}
 			}	
@@ -644,35 +634,34 @@ public class NetGraphBuilder {
 		
 		PipeConfig<HTTPRequestSchema> routerToModuleConfig = coordinator.pcm.getConfig(HTTPRequestSchema.class);
 		
-		final int routerCount = coordinator.moduleParallelism();
+		final int trackCount = coordinator.moduleParallelism();
 
 		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec, coordinator.connectionStruct()); 
 
-		for(int r=0; r<routerCount; r++) {
+		for(int r=0; r<trackCount; r++) {
 			toModules[r] = new Pipe[modules.moduleCount()];
 		}
 		  
 		//create each module
-		for(int moduleInstance=0; moduleInstance<modules.moduleCount(); moduleInstance++) { 
+		for(int routeId=0; routeId<modules.moduleCount(); routeId++) { 
 			
-			Pipe<HTTPRequestSchema>[] routesTemp = new Pipe[routerCount];
-			for(int r=0; r<routerCount; r++) {
+			Pipe<HTTPRequestSchema>[] routesTemp = new Pipe[trackCount];
+			for(int trackId=0; trackId<trackCount; trackId++) {
 				//TODO: change to use.. newHTTPRequestPipe
 				//TODO: this should be false but the DOT telemetry is still using the high level API...
-				routesTemp[r] = toModules[r][moduleInstance] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);//,false);
-				
-				
+				routesTemp[trackId] = toModules[trackId][routeId] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);//,false);
+								
 			}
 			//each module can unify of split across routers
 			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(
-					                moduleInstance, graphManager, routerConfig, routesTemp);
+					                routeId, graphManager, routerConfig, routesTemp);
 			
 			int maxOut = coordinator.pcm.getConfig(NetPayloadSchema.class).maxVarLenSize();
 			int i = outputPipes.length;
 			while (--i>=0) {
 				if (outputPipes[i].maxVarLen>maxOut) {
 					throw new UnsupportedOperationException(
-						"Module instance "+moduleInstance+" is configured to write blocks of "+outputPipes[i].maxVarLen+
+						"Module instance "+routeId+" is configured to write blocks of "+outputPipes[i].maxVarLen+
 						" but the server is set to maximum response size of "+maxOut+
 						". Either setMaxResponseSize larger or modify module to write less."
 					);
@@ -682,7 +671,7 @@ public class NetGraphBuilder {
 			
 			assert(validateNoNulls(outputPipes));
 		    
-		    for(int r=0; r<routerCount; r++) {
+		    for(int r=0; r<trackCount; r++) {
 		    	//accumulate all the from pipes for a given router group
 		    	fromModule[r] = PronghornStage.join(fromModule[r], outputPipes[r]);
 		    }

@@ -62,6 +62,7 @@ public class GraphManager {
 	public static boolean showScheduledRateOnTelemetry = false;
 	public static boolean showThreadIdOnTelemetry = false;
 	public static boolean showMessageCountRangeOnTelemetry = false;
+	public static boolean showPipeIdOnTelemetry = false;
 			
 	//set to false when we see telemetry missing edges. 
 	//TODO; still debugging this not working when there are unrelated groups. switched on.
@@ -2021,7 +2022,11 @@ public class GraphManager {
 			                
 			                if (pipe.config().showLabels()) {
 				                target.write(m.pipeDOTSchemaNames[pipe.id]);
-				                		                
+				                		       
+				                if (showPipeIdOnTelemetry) {
+				                	Appendables.appendValue(target, "#",pipe.id);
+				                }
+				                
 				                if (null!=pipePercentileFullValues) {
 				                	target.append(" \n");
 				                	target.write(pipeFullValues[pipePercentileFullValues[pipe.id]]);

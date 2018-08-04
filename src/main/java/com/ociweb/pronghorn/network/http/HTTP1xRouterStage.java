@@ -771,6 +771,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     	routeId = config.getRouteIdForPathId(pathId);
     }
 
+    
     if (pathId<0) {
 
     	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
@@ -819,6 +820,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         if (config.UNMAPPED_ROUTE != pathId) {
         	
         	structId = config.extractionParser(pathId).structId;
+        	assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
           	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.paramIndexArray(pathId));
             
