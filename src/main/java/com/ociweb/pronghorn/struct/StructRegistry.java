@@ -382,7 +382,7 @@ public class StructRegistry { //prong struct store
 		
 		int structIdx = extractStructId(id);
 		int fieldIdx = extractFieldPosition(id);
-		
+
 		assert(structIdx < fieldLocals.length);
 		assert(fieldIdx < fieldLocals[structIdx].length);		
 		
@@ -499,7 +499,7 @@ public class StructRegistry { //prong struct store
 		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash);
 		if (0==idx) {
 			if (!IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash)) {
-				throw new UnsupportedOperationException("Object not found: "+attachedObject);			
+				throw new UnsupportedOperationException("Object not found: "+attachedObject+" in structure "+structId+" obj hash "+hash);			
 			}
 		}
 		return idx;
