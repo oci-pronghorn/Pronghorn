@@ -267,7 +267,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 							//      slowest connection and kill it off..						
 							
 							processWork = false;
-							logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs);
+							
+							//used when we need to debug
+							logger.trace("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs);
+							
 							return false;
 						}
 						

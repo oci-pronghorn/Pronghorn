@@ -892,8 +892,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	private static boolean runStageImpl(
-			ScriptedNonThreadScheduler that, 
-			GraphManager gm, boolean shutDownRequestedHere, long start,
+			final ScriptedNonThreadScheduler that, 
+			final GraphManager gm, final boolean shutDownRequestedHere, final long start,
 			final PronghornStage stage) {
 		
 		//NOTE: if no stages have shutdown we could elminate this check with a single boolean.
@@ -914,11 +914,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		        that.clearCallerId();
 		        
 		        that.timeStartedRunningStage = 0;
+		        return shutDownRequestedHere;
 		} else {
 		    processShutdown(gm, stage);
-		    shutDownRequestedHere = true;
+		    return true;
 		}
-		return shutDownRequestedHere;
 	}
 
 	private HangDetector hd;

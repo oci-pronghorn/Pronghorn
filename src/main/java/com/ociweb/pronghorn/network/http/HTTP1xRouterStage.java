@@ -349,35 +349,36 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         if (accumRunningBytes(  that,
         		                     idx, 
 				            		 that.inputs[idx],
-				            		 that.inputChannels[idx]) >=0) {//message idx            
-        	if (that.needsData[idx]) {
+				            		 that.inputChannels[idx]) >=0) {//message idx   
+        	
+        	if (!that.needsData[idx]) {
+        	} else {        		
         		if (that.inputLengths[idx]!=start) {            			
         			that.needsData[idx]=false;
-        		} else {            			
+        		} else {
         			//we got no data so move on to the next
         			return 0;
         		}
-        	}            
-        } else {
-
-            if (that.inputLengths[idx] <= 0) {
-            	//closed so return
-            	return -1;
-            } else {
-            	//process remaining data if all the data is here
-            }             
-
-            if (that.needsData[idx]) {
-            	//got no data but we need more data
-            	logger.warn("Shutting down while doing partial consume of data");
-            	return -1;
         	}
-        }
-                
+        } else {
+        	if (that.inputLengths[idx] <= 0) {
+    			//closed so return
+    			return -1;
+    		} else {
+    			//process remaining data if all the data is here
+    		}             
+
+    		if (that.needsData[idx]) {
+    			//got no data but we need more data
+    			logger.warn("Shutting down while doing partial consume of data");
+    			return -1;
+    		}
+        }                
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
 	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
     }
+
 
 
 	private boolean parseAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel) {
