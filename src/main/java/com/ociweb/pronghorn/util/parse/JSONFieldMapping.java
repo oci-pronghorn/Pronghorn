@@ -18,6 +18,7 @@ public class JSONFieldMapping {
 	private final JSONFieldSchema schema;
 	private String name;
 	private Object association;
+	private Object validator;
 	
 	public final JSONType type;
 	
@@ -68,12 +69,19 @@ public class JSONFieldMapping {
 	}
 	
 	public void setAssociatedObject(Object optionalAssociation) {
-		this.association = optionalAssociation;
-		
+		this.association = optionalAssociation;		
 	}
 	
 	public Object getAssociatedObject() {
 		return association;
+	}
+	
+	public void setValidator(Object validator) {
+		this.validator = validator;
+	}
+	
+	public Object getValidator() {
+		return validator;
 	}
 	
 	public void setPath(JSONFieldSchema schema, CharSequence ... path) {

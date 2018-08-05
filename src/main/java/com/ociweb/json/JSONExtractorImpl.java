@@ -154,6 +154,18 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 		return this;
 	}
 
+	@Override
+	public JSONExtractorUber completePath(String extractionPath, String pathName, Object optionalAssociation, Object validator) {
+		
+		parseExtractionPath(extractionPath);
+		activeMapping.setName(pathName);
+		activeMapping.setPath(schema, path.toArray(new CharSequence[path.size()]));	
+		schema.addMappings(activeMapping);
+		activeMapping.setAssociatedObject(optionalAssociation);
+		activeMapping.setValidator(validator);
+		
+		return this;
+	}
 	
 	@Override
 	public void addToStruct(StructRegistry typeData, int structId) {
