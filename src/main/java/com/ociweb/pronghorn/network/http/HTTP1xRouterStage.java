@@ -216,7 +216,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		       
+
 		        
     }    
 	
@@ -822,16 +822,34 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	structId = config.extractionParser(pathId).structId;
         	assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-          	TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.paramIndexArray(pathId));
+          	if (!TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
+          			                                         config.paramIndexArray(pathId),
+          			                                         config.paramIndexArrayValidator(pathId)
+          													)) {
+          		
+          		//////////////////////////////////////////////////////////////////
+          		//did not pass validation so we return 404 without giving any clues why
+          		//////////////////////////////////////////////////////////////////
+    			sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
+    			trieReader.sourceLen = 0;
+    			trieReader.sourcePos = 0;
+    			
+    			BaseConnection con = coordinator.connectionForSessionId(channel);
+				if (null!=con) {
+					con.clearPoolReservation();
+				}
+				
+    			return SUCCESS;
+          	}
             
+          	
         	headerMap = config.headerParserRouteId( routeId );
         	        
         } else {
        	
         	structId = config.UNMAPPED_STRUCT;
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-            TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos);
-              
+            TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos,null);
             
         	headerMap = config.unmappedHeaders;
       
@@ -899,7 +917,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         
     	DataOutputBlobWriter.commitBackData(writer,structId);
     	DataOutputBlobWriter.closeLowLevelField(writer);
-                
+         
+    	
 		//not an error we just looked past the end and need more data
 	    if (trieReader.sourceLen<0) {
 	    	Pipe.resetHead(outputPipe);

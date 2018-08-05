@@ -12,6 +12,9 @@ import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.struct.ByteSequenceValidator;
+import com.ociweb.pronghorn.struct.DecimalValidator;
+import com.ociweb.pronghorn.struct.LongValidator;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -37,12 +40,13 @@ public class CompositeRouteImpl implements CompositeRoute {
     private final ServerConnectionStruct scs;
 	
     private int[] activePathFieldIndexPosLookup;
+    private Object[] activePathFieldValidator;
 
     
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
 		public void visit(byte[] pattern, int length, long value) {
-			int inURLOrder = (int)value&0xFFFF;
+			final int argPos = ((int)value&0xFFFF)-1;
 			
 			StructType type = null;
 			switch((int)(value>>16)) {
@@ -62,12 +66,13 @@ public class CompositeRouteImpl implements CompositeRoute {
 					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
 			}
 						
-			long fieldId = scs.registry.modifyStruct(structId, pattern, 0, length, type, 0);
-	
+			final long fieldId = scs.registry.modifyStruct(structId, pattern, 0, length, type, 0);
+			
 			//must build a list of fieldId ref in the order that these are disovered
 			//at postion inURL must store fieldId for use later... where is this held?
 			//one per path.
-			activePathFieldIndexPosLookup[inURLOrder-1] = (int)fieldId & StructRegistry.FIELD_MASK;
+			activePathFieldIndexPosLookup[argPos] = (int)fieldId & StructRegistry.FIELD_MASK;
+			activePathFieldValidator[argPos] = scs.registry.fieldValidator(fieldId);
 			
 		}
     };
@@ -182,10 +187,12 @@ public class CompositeRouteImpl implements CompositeRoute {
 		//logger.trace("pathId: {} assinged for path: {}",pathsId, path);
 		FieldExtractionDefinitions fieldExDef = parser.addPath(path, routeId, pathsId, structId);//hold for defaults..
 				
-		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];		
+		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];
+		activePathFieldValidator = new Object[fieldExDef.getIndexCount()];
+
 		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
 		
-		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup);
+		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup, activePathFieldValidator);
 		
 		config.storeRequestExtractionParsers(pathsId, fieldExDef); //this looked up by pathId
 		config.storeRequestedJSONMapping(routeId, extractor);
@@ -286,29 +293,64 @@ public class CompositeRouteImpl implements CompositeRoute {
 		return this;
 	}
 
-//	@Override
-//	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue,
-//			ChannelReaderValidator validator) {
-//		associatedObject(key,associatedObject);
-//		defaultInteger(key, defaultValue);
-//		return this;
-//	}
-//
-//	@Override
-//	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue,
-//			ChannelReaderValidator validator) {
-//		associatedObject(key,associatedObject);
-//		defaultText(key, defaultValue);
-//		return this;
-//	}
-//
-//	@Override
-//	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa,
-//			byte defaultExponent, ChannelReaderValidator validator) {
-//		associatedObject(key,associatedObject);
-//		defaultDecimal(key, defaultMantissa, defaultExponent);
-//		return this;
-//	}
+	@Override
+	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, LongValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+		
+		defaultInteger(key, defaultValue);
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue, ByteSequenceValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+		defaultText(key, defaultValue);
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, DecimalValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+		defaultDecimal(key, defaultMantissa, defaultExponent);
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish validator(String key, LongValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setValidator(fieldLookup, validator);		
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish validator(String key, ByteSequenceValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setValidator(fieldLookup, validator);		
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish validator(String key, DecimalValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setValidator(fieldLookup, validator);		
+		return this;
+	}
+
 
 
 }

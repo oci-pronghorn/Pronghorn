@@ -46,13 +46,19 @@ public class FieldExtractionDefinitions {
 	}
 	
 	private int[] pathFieldLookup;
+	private Object[] pathFieldValidator;
 	
-	public void setPathFieldLookup(int[] pathFieldLookup) {		
+	public void setPathFieldLookup(int[] pathFieldLookup, Object[] validators) {		
 		this.pathFieldLookup = pathFieldLookup;
+		this.pathFieldValidator = validators;
 	}
 	
 	public int[] paramIndexArray() {
 		return pathFieldLookup;
+	}
+	
+	public Object[] paramIndexArrayValidator() {
+		return pathFieldValidator;
 	}
 
 	
@@ -159,19 +165,19 @@ public class FieldExtractionDefinitions {
         Pipe.releaseReadLock(localPipe);
 		return result;
 	}
-	
+
 	public void defaultText(TrieParserReader reader, byte[] key, String value) {
 		//if key is not found continue
 		if (-1 == TrieParserReader.query(reader, runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
-			growDefaults(defaultsCount);
+			growAsNeeded(defaultsCount);
 			
 			defaultText[defaultValueIndex] = value;
 			setBytes(defaultValueIndex);
 			
-			long id = TrieParserReader.query(reader, numberParser, value);
+			long id = null==value ? -1 :TrieParserReader.query(reader, numberParser, value);
 						
 			if (id>=0) {
 			
@@ -204,6 +210,7 @@ public class FieldExtractionDefinitions {
 				defaultDecimalE[defaultValueIndex] = tempDecimalE;
 						
 				defaultIntegers[defaultValueIndex] = Decimal.asLong(tempDecimalM, tempDecimalE);
+				
 		
 			} else {
 				//not a recognized number so do not set			
@@ -221,7 +228,7 @@ public class FieldExtractionDefinitions {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
-			growDefaults(defaultsCount);
+			growAsNeeded(defaultsCount);
 			
 			defaultIntegers[defaultValueIndex] = value;
 			
@@ -247,7 +254,7 @@ public class FieldExtractionDefinitions {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
-			growDefaults(defaultsCount);
+			growAsNeeded(defaultsCount);
 			
 			defaultIntegers[defaultValueIndex] = Decimal.asLong(m, e);
 			
@@ -284,7 +291,7 @@ public class FieldExtractionDefinitions {
 			//get next index
 			int defaultValueIndex = defaultsCount++;
 			//grow if needed
-			growDefaults(defaultsCount);
+			growAsNeeded(defaultsCount);
 			
 			defaultIntegers[defaultValueIndex] = numerator/denominator;
 			
@@ -313,6 +320,7 @@ public class FieldExtractionDefinitions {
 	private long[] defaultNumerator = new long[initialSize];
 	private long[] defaultDenominator = new long[initialSize];
 	private double[] defaultDouble = new double[initialSize];
+
 	
 	public long getDefaultInteger(int id) {
 		return defaultIntegers[DEFAULT_VALUE_FLAG_MASK&id];
@@ -361,7 +369,8 @@ public class FieldExtractionDefinitions {
 	}
 	
 	
-	private void growDefaults(int len) {
+	
+	private void growAsNeeded(int len) {
 		if (defaultIntegers.length<len) {
 			int newLen = len*2;
 			
@@ -377,6 +386,7 @@ public class FieldExtractionDefinitions {
 		}
 	}
 
+	
 	private byte[][] growBytes(byte[][] source, int newLen) {
 		byte[][] result = new byte[newLen][];
 		System.arraycopy(source, 0, result, 0, source.length);
@@ -406,8 +416,6 @@ public class FieldExtractionDefinitions {
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
 	}
-
-
 
 
 }
