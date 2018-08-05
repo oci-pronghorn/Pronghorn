@@ -1209,31 +1209,46 @@ public class TrieParserReader {
 
 	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, 
 			                         byte[] source, int sourcePos, 
-			                         long sourceLength, int sourceMask, short numType) {
+			                         long sourceLengthIn, int sourceMask, short numTypeIn) {
 
 		//////////////support for fixed length numbers up to 1024
-		final boolean absentIsZero = 0!=(NUMERIC_ABSENT_IS_ZERO_MASK&numType);
-		final int fixedLength = (NUMERIC_LENGTH_MASK&(numType>>>NUMERIC_LENGTH_SHIFT));
+		final int fixedLength = (NUMERIC_LENGTH_MASK&(numTypeIn>>>NUMERIC_LENGTH_SHIFT));
 		assert(fixedLength == 0) : "Not yet implemented";
-		numType = (short)(numType & NUMERIC_TYPE_MASK);
-		final boolean templateLimited = (fixedLength>0 && fixedLength<=sourceLength);
-		sourceLength = templateLimited?fixedLength:sourceLength;
-		///////////////
-		final short c1 = source[sourceMask & sourcePos];
+		final boolean templateLimited = (fixedLength>0 && fixedLength<=sourceLengthIn);
+		return parseNumericImpl(
+				escapeByte, 
+				reader, 
+				source, 
+				sourcePos, 
+				sourceMask, 
+				0!=(NUMERIC_ABSENT_IS_ZERO_MASK&numTypeIn), 
+				(short)(numTypeIn & NUMERIC_TYPE_MASK),
+				templateLimited, 
+				templateLimited ? fixedLength : sourceLengthIn, 
+				(short) source[sourceMask & sourcePos]);
+	}
+
+	private static int parseNumericImpl(final byte escapeByte, final TrieParserReader reader, final byte[] source, final int sourcePos,
+			final int sourceMask, final boolean absentIsZero, final short numType, final boolean templateLimited, final long sourceLength,
+			final short c1) {
+		
 		if (escapeByte != c1) {
 			
 			//this is the most common case, normal unsigned integers
-			if (0 == ((TrieParser.NUMERIC_FLAG_DECIMAL
-					  |TrieParser.NUMERIC_FLAG_RATIONAL
-					  |TrieParser.NUMERIC_FLAG_SIGN)&numType) ) {
-								
+			if (0 == ((TrieParser.NUMERIC_FLAG_DECIMAL|TrieParser.NUMERIC_FLAG_RATIONAL|TrieParser.NUMERIC_FLAG_SIGN) & numType) ) {
 				
-				return parseNumericImpl(reader, source, sourcePos, sourceLength, 
-						sourceMask, numType, absentIsZero, templateLimited,
+				return parseNumericImpl(reader, source, sourcePos, 
+						sourceLength, 
+						sourceMask,
+						numType, 
+						absentIsZero, 
+						templateLimited,
 						(byte) 1, (long) 0, (byte) 0, 0);
 			} else {			
 			
-				return parseNumericSlow(reader, source, sourcePos, sourceLength, sourceMask, numType, absentIsZero,
+				return parseNumericSlow(reader, source, sourcePos, 
+						sourceLength, sourceMask, 
+						numType, absentIsZero,
 						templateLimited, (byte) 1, (long) 0, (byte) 0, 0, c1);
 			}			
 			
@@ -1361,26 +1376,19 @@ public class TrieParserReader {
 				break;
 			}
 		}  while (true);
-		if (intLength==0 && !absentIsZero) {
-			return -1;
-		}
-		publish(reader, sign, intValue, intLength, base, dot);
-		return sourcePos-1;
+		return parseBaseTenFinish(reader, sourcePos, absentIsZero, sign, intValue, intLength, dot, base);
 	}
 
-	private static int parseBaseTenImpl(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength,
+	private static int parseBaseTenImpl(TrieParserReader reader, byte[] source, int sourcePos, final long sourceLengthIn,
 			int sourceMask, final boolean absentIsZero, final boolean templateLimited, byte sign, long intValue,
 			byte intLength, int dot) {
 		//just to keep it from spinning on values that are way out of bounds
-		sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLength); //never scan over 32
+		final long sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLengthIn); //never scan over 32
 
-		byte base = 10;
-		short c = 0;
-		
 		do {
-			c = source[sourceMask & sourcePos++];        
 
 			if (intLength<sourceLength) {
+				short c = source[sourceMask & sourcePos++];        
 
 				if ((c>='0') && (c<='9') ) {
 					intValue = (intValue * 10)+(c-'0');
@@ -1388,18 +1396,21 @@ public class TrieParserReader {
 					continue;
 				} else {
 					break;//next char is not valid.
-					
 				}
 			} else {
 				if (reader.alwaysCompletePayloads || templateLimited) {
 					break;
-					
 				} else {
 					return -1; //we are waiting for more digits in the feed. 
 				}
 			}
 
 		}  while (true);
+		return parseBaseTenFinish(reader, sourcePos, absentIsZero, sign, intValue, intLength, dot, (byte) 10);
+	}
+
+	private static int parseBaseTenFinish(TrieParserReader reader, int sourcePos, final boolean absentIsZero, byte sign,
+			long intValue, byte intLength, int dot, byte base) {
 		if (intLength==0 && !absentIsZero) {
 			return -1;
 		}
