@@ -999,6 +999,24 @@ public class Appendables {
 		}
     }
    
+    public static boolean isEqualUTF8(byte[] backing, int pos, int len, int mask, CharSequence target) {
+    	int tPos = 0;
+    	
+		assert(len>=0) : "length: "+len;
+		assert((mask == Integer.MAX_VALUE) || (len<Integer.MAX_VALUE-mask));
+        long localPos = mask&pos;//to support streams longer than 32 bits
+        long charAndPos = ((long)localPos)<<32;
+        long limit = ((long)localPos+len)<<32;
+
+        while (charAndPos < limit) {
+            charAndPos = Pipe.decodeUTF8Fast(backing, charAndPos, mask);
+            if (tPos>=target.length() || target.charAt(tPos++) != ((char)charAndPos) ) {
+            	return false;
+            }
+        }
+        return true;
+	
+    }
     
 	public static CharSequence[] split(CharSequence text, char c) {
 		return split(0,0,0,text,c);

@@ -1,18 +1,18 @@
 package com.ociweb.pronghorn.struct;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.function.Predicate;
 
 public class StructRegistry { //prong struct store  
 	
@@ -25,9 +25,10 @@ public class StructRegistry { //prong struct store
 	private TrieParser[]     fields             = new TrieParser[4]; //grow as needed for fields
 	private byte[][][]       fieldNames         = new byte[4][][];
 	//type of the field data, its dims and how it can be parsed.
-	private StructType[][] fieldTypes           = new StructType[4][];
+	private StructType[][]   fieldTypes         = new StructType[4][];
 	private int[][]          fieldDims          = new int[4][];
 	private Object[][]       fieldLocals        = new Object[4][];
+	private Object[][]       fieldValidators    = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
 	
 	private IntHashTable structTable = new IntHashTable(3);
@@ -239,6 +240,8 @@ public class StructRegistry { //prong struct store
 		this.fieldTypes[structIdx] = fieldTypes;
 		this.fieldDims[structIdx] = null==fieldDim?new int[fieldTypes.length]:fieldDim;
 		this.fieldLocals[structIdx] = new Object[fieldNames.length];
+		this.fieldValidators[structIdx] = new Object[fieldNames.length];
+		
 		//added lots of extra space since many hash values are the same at the low digits
 		this.fieldAttachedIndex[structIdx] = new IntHashTable(5+IntHashTable.computeBits(Math.max(fieldNames.length,8)));
 				
@@ -293,6 +296,7 @@ public class StructRegistry { //prong struct store
 		this.fieldTypes[idx] = grow(this.fieldTypes[idx], fieldType);
 		this.fieldDims[idx] = grow(this.fieldDims[idx], fieldDim);
 		this.fieldLocals[idx] = grow(this.fieldLocals[idx], null);
+		this.fieldValidators[idx] = grow(this.fieldValidators[idx], null);
 						
 		long fieldId = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET | newFieldIdx;
 		this.fields[idx].setValue(name, fieldId);
@@ -377,6 +381,21 @@ public class StructRegistry { //prong struct store
 	}
 	
 	
+	public void setValidator(final long id, Object validator) {
+		assert(null!=validator && 
+				(validator instanceof LongValidator
+				|| validator instanceof ByteSequenceValidator
+				|| validator instanceof DecimalValidator )) : "unsupported validator";
+		
+		int structIdx = extractStructId(id);
+		int fieldIdx = extractFieldPosition(id);
+
+		assert(structIdx < fieldLocals.length);
+		assert(fieldIdx < fieldLocals[structIdx].length);		
+		
+		fieldValidators[structIdx][fieldIdx] = validator;
+	}
+	
 	public boolean setAssociatedObject(final long id, Object localObject) {
 		assert(null!=localObject) : "must not be null, not supported";
 		
@@ -393,6 +412,11 @@ public class StructRegistry { //prong struct store
 		assert(this.fieldLocals[structIdx][fieldIdx]==null) : "associated object may only be set once. Already set to: "+this.fieldLocals[structIdx][fieldIdx];
 		this.fieldLocals[structIdx][fieldIdx] = localObject;
 		
+		return addAssocHashToTable(localObject, structIdx, fieldIdx);
+	}
+
+
+	private boolean addAssocHashToTable(Object localObject, int structIdx, int fieldIdx) {
 		if (null==this.fieldAttachedIndex[structIdx]) {			
 			this.fieldAttachedIndex[structIdx] = new IntHashTable(
 						IntHashTable.computeBits(this.fieldLocals[structIdx].length*2)
@@ -456,7 +480,11 @@ public class StructRegistry { //prong struct store
 	public byte[] fieldName(long id) {
 		return fieldNames[extractStructId(id)][extractFieldPosition(id)];
 	}
-	    	
+	
+	public Object fieldValidator(long id) {
+		return fieldValidators[extractStructId(id)][extractFieldPosition(id)];
+	}
+		    	
 	public long fieldLookup(CharSequence sequence, int struct) {
 		assert ((IS_STRUCT_BIT&struct) !=0 ) : "Struct Id must be passed in";
 		return TrieParserReader.query(TrieParserReaderLocal.get(), fields[STRUCT_MASK&struct], sequence);
@@ -533,6 +561,8 @@ public class StructRegistry { //prong struct store
 			fieldDims          = grow(newSize, fieldDims);
 			fieldLocals        = grow(newSize, fieldLocals);
 			fieldAttachedIndex = grow(newSize, fieldAttachedIndex);	
+			fieldValidators    = grow(newSize, fieldValidators);
+			
 		}
 	}
 
@@ -667,6 +697,8 @@ public class StructRegistry { //prong struct store
 		assert (structId>=0) : "Bad Struct ID "+structId;
 		return fieldTypes[STRUCT_MASK & structId].length;
 	}
+
+
 
 	
 }

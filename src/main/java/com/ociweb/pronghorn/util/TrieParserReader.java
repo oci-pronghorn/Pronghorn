@@ -16,6 +16,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.struct.ByteSequenceValidator;
+import com.ociweb.pronghorn.struct.DecimalValidator;
+import com.ociweb.pronghorn.struct.LongValidator;
 import com.ociweb.pronghorn.util.math.Decimal;
 
 public class TrieParserReader {
@@ -1773,10 +1776,11 @@ public class TrieParserReader {
 	
 
 	
-	public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(
+	public static <S extends MessageSchema<S>> boolean writeCapturedValuesToDataOutput(
 			TrieParserReader reader, 
 			DataOutputBlobWriter<S> target, 
-			int[] indexPositions) {
+			int[] indexPositions,
+			Object[] validator) {
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		//NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
@@ -1786,7 +1790,7 @@ public class TrieParserReader {
 		int limit = reader.capturedPos;
 		int[] localCapturedValues = reader.capturedValues;
 
-
+		boolean isValid = true;
 		int fieldPosition = 0; //moves forward with each use.
 		int totalBytes = 0;
 		int i = 0;
@@ -1799,19 +1803,27 @@ public class TrieParserReader {
 			if (isCapturedByteData(type)) {
 
 				int p = localCapturedValues[i++];
-				int l = localCapturedValues[i++];
+				int len = localCapturedValues[i++];
 				int m = localCapturedValues[i++];   
 
-				totalBytes += l;
-
+				if (len>0) {
+					totalBytes += len;
+				}
+				
 				//logger.info("pipe:{} data pos {} idxPos {} captured text: {}",
 	    		//        target.getPipe().id, writePosition, indexPositions[fieldPosition], Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
 
 	      
 				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
-				target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
-				DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
+				target.writeShort(len); //write the bytes count as a short first, then the UTF-8 encoded string
+				if (len>0) {
+					DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,len,m);
+				}
 
+				if ((null!=validator) && (validator[fieldPosition] instanceof ByteSequenceValidator)) {
+					isValid &= ((ByteSequenceValidator)validator[fieldPosition]).isValid(reader.capturedBlobArray,p,len,m);
+				}
+				
 			} else {
 
 				int sign = type;
@@ -1872,16 +1884,17 @@ public class TrieParserReader {
 						writePosition = target.position();                		
 						target.writeByte(position);
 
-						//System.out.println("wrote "+value+" "+position);
-
+						if (null!=validator && validator[fieldPosition] instanceof DecimalValidator) {							
+							isValid &= ((DecimalValidator)validator[fieldPosition]).isValid(value,(byte)position);
+						}
 					} else {
 						//System.out.println("wrote "+value);
 						target.writePackedLong(value);
-						//System.err.println("B write packed long "+value);
-						//integers and rational only use normal long values, no position needed.
+						
+						if (null!=validator && validator[fieldPosition] instanceof LongValidator) {							
+							isValid &= ((LongValidator)validator[fieldPosition]).isValid(value);
+						}
 					}
-
-
 				}
 			}    
 
@@ -1892,7 +1905,7 @@ public class TrieParserReader {
 
 		}        
 		assert(fieldPosition==indexPositions.length);
-		return totalBytes;
+		return isValid;
 	}
 	
 	
