@@ -215,6 +215,23 @@ public class StructRegistry { //prong struct store
 			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
 			             Object[] fieldAssoc
 			) {
+		return addStruct(associatedObject, fieldNames, fieldTypes, fieldDim, fieldAssoc, null);	
+	}
+	/**
+	 * Add new Structure to the schema
+	 * @param associatedObject - reference object
+	 * @param fieldNames - name for each field
+	 * @param fieldTypes - type for each field
+	 * @param fieldDim - dominations for this field, should be 0 for most cases of simple data
+	 * @return the array of field identifiers in the same order as defined
+	 */
+	public int addStruct(Object associatedObject,
+			             byte[][] fieldNames, 
+			             StructType[] fieldTypes, //all fields are precede by array count byte
+			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
+			             Object[] fieldAssoc,
+			             Object[] fieldValidators
+			) {
 		
 		assert(fieldNames.length == fieldTypes.length);
 		if (null!=fieldDim) {
@@ -246,10 +263,19 @@ public class StructRegistry { //prong struct store
 		this.fieldAttachedIndex[structIdx] = new IntHashTable(5+IntHashTable.computeBits(Math.max(fieldNames.length,8)));
 				
 		if (null!=fieldAssoc) {
-			int j = fieldAssoc.length;
-			while (--j >= 0) {
-				if (null!=fieldAssoc[j]) {
-					setAssoc(fieldAssoc[j], structIdx, j);
+			int fieldId = fieldAssoc.length;
+			while (--fieldId >= 0) {
+				if (null!=fieldAssoc[fieldId]) {
+					setAssoc(fieldAssoc[fieldId], structIdx, fieldId);
+				}
+			}
+		}
+		
+		if (null!=fieldValidators) {			
+			int fieldId = fieldValidators.length;
+			while (--fieldId >= 0) {
+				if (null!=fieldValidators[fieldId]) {					
+					setValidator(fieldValidators[fieldId], structIdx, fieldId);
 				}
 			}
 		}
@@ -382,8 +408,8 @@ public class StructRegistry { //prong struct store
 	
 	
 	public void setValidator(final long id, Object validator) {
-		assert(null!=validator && 
-				(validator instanceof LongValidator
+		assert(	(null == validator
+				|| validator instanceof LongValidator
 				|| validator instanceof ByteSequenceValidator
 				|| validator instanceof DecimalValidator )) : "unsupported validator";
 		
@@ -393,6 +419,11 @@ public class StructRegistry { //prong struct store
 		assert(structIdx < fieldLocals.length);
 		assert(fieldIdx < fieldLocals[structIdx].length);		
 		
+		setValidator(validator, structIdx, fieldIdx);
+	}
+
+
+	public void setValidator(Object validator, int structIdx, int fieldIdx) {
 		fieldValidators[structIdx][fieldIdx] = validator;
 	}
 	
@@ -484,7 +515,11 @@ public class StructRegistry { //prong struct store
 	public Object fieldValidator(long id) {
 		return fieldValidators[extractStructId(id)][extractFieldPosition(id)];
 	}
-		    	
+	
+	public Object fieldValidator(int structId, int fieldId) {
+		return fieldValidators[STRUCT_MASK&structId][extractFieldPosition(FIELD_MASK&fieldId)];
+	}
+	
 	public long fieldLookup(CharSequence sequence, int struct) {
 		assert ((IS_STRUCT_BIT&struct) !=0 ) : "Struct Id must be passed in";
 		return TrieParserReader.query(TrieParserReaderLocal.get(), fields[STRUCT_MASK&struct], sequence);

@@ -18,6 +18,8 @@ public class StructBuilder {
 	private StructType[] fieldTypes;
 	private int[] fieldDims;
 	private Object[] fieldAssoc;
+	private Object[] fieldValid;
+	
 	
 	// type Store Registry,  StructRegistry
 	public StructBuilder(StructRegistry typeData) {
@@ -27,6 +29,7 @@ public class StructBuilder {
 		this.fieldTypes = new StructType[INIT_SIZE];
 		this.fieldDims  = new int[INIT_SIZE];
 		this.fieldAssoc  = new Object[INIT_SIZE];
+		this.fieldValid = new Object[INIT_SIZE];
 		
 	}
 	
@@ -37,6 +40,7 @@ public class StructBuilder {
 		this.fieldTypes = Arrays.copyOfRange(template.fieldTypes, 0, template.fieldCount); 
 		this.fieldDims  = Arrays.copyOfRange(template.fieldDims, 0, template.fieldCount); 
 		this.fieldAssoc = Arrays.copyOfRange(template.fieldAssoc, 0, template.fieldCount); 
+		this.fieldValid = Arrays.copyOfRange(template.fieldValid, 0, template.fieldCount); 
 		
 	}
 	
@@ -102,21 +106,31 @@ public class StructBuilder {
 	}
 	
 	public StructBuilder addField(CharSequence fieldName, 
+            StructType fieldType, 
+            int fieldDim, 
+            Object assoc) {
+		return addField(fieldName, fieldType, fieldDim, assoc, null);
+	};
+	
+	public StructBuilder addField(CharSequence fieldName, 
 			                 StructType fieldType, 
 			                 int fieldDim, 
-			                 Object assoc) {
+			                 Object assoc, 
+			                 Object validator) {
 		
 		if (fieldCount == fieldTypes.length) {
 			fieldNames = grow(fieldNames);
 			fieldTypes = grow(fieldTypes);
 			fieldDims = grow(fieldDims);
 			fieldAssoc = grow(fieldAssoc);
+		    fieldValid = grow(fieldValid);	
 		}
 		
 		fieldNames[fieldCount] = CharSequenceToUTF8Local.get().convert(fieldName).asBytes();
 		fieldTypes[fieldCount] = fieldType;
 		fieldDims[fieldCount] = fieldDim;
 		fieldAssoc[fieldCount] = assoc;
+		fieldValid[fieldCount] = validator;
 		
 		fieldCount++;
 		return this;
@@ -152,7 +166,8 @@ public class StructBuilder {
 				Arrays.copyOfRange(fieldNames, 0, fieldCount), 
 				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),
-				Arrays.copyOfRange(fieldAssoc, 0, fieldCount)
+				Arrays.copyOfRange(fieldAssoc, 0, fieldCount),
+				Arrays.copyOfRange(fieldValid, 0, fieldCount)				
 				);		
 	}
 	
@@ -162,7 +177,9 @@ public class StructBuilder {
 				Arrays.copyOfRange(fieldNames, 0, fieldCount), 
 				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),
-				Arrays.copyOfRange(fieldAssoc, 0, fieldCount)
+				Arrays.copyOfRange(fieldAssoc, 0, fieldCount),
+				Arrays.copyOfRange(fieldValid, 0, fieldCount)
+				
 				);		
 	}
 

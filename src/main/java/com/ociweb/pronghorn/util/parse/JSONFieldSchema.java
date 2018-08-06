@@ -13,15 +13,11 @@ public class JSONFieldSchema {
 
 	 private static final Logger logger = LoggerFactory.getLogger(JSONFieldSchema.class);
 
-	 private static final int PAYLOAD_INDEX_LOCATION = 1; //TODO: remove...
-	 
 	 private final TrieParser parser;  //immutable once established
 
 	 private int totalCount;  //immutable once established
 	 private int maxPathLength;	  //immutable once established 
-	 
-	 private final int maxFields = 5;
-	 private final boolean completeFields = true;
+
 	 private JSONFieldMapping[] mappings;  //immutable once established
 
 	 public JSONFieldSchema(int nullPosition) {
@@ -115,6 +111,8 @@ public class JSONFieldSchema {
 					throw new UnsupportedOperationException("An object with the same identity hash is already held, can not add "+assoc);
 				}
 			}
+			struct.setValidator(fieldId, mapping.getValidator());
+			
 		}
 		return jsonIndexLookup;
 	}
@@ -139,13 +137,13 @@ public class JSONFieldSchema {
 
 	public void addToStruct(StructRegistry typeData, StructBuilder structBuilder) {
 		int length = mappings.length;
-		int[] jsonIndexLoookup = new int[length];
 						
 		int i = length;
 		assert(i>0) : "Must not add an empty extraction";
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
-			structBuilder.addField(mapping.getName(), mapTypes(mapping),  mapping.dimensions(), mapping.getAssociatedObject());
+			structBuilder.addField(mapping.getName(), mapTypes(mapping),  mapping.dimensions(),
+					               mapping.getAssociatedObject(), mapping.getValidator());
 			
 		}
 	}

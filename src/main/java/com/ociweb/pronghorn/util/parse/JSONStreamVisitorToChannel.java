@@ -267,6 +267,9 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				assert(fieldIndexPositions.length==indexData.length);
 				DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)writer, writer.position(), fieldIndexPositions[i]);
 			}
+			//look up the validator 
+			
+			
 			
 			/////////////////write data			
 			final int dims = mapping.dimensions(); 
@@ -275,8 +278,6 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 			if (dims>0) {
 				//write matrix data then 
 				int[] meta = indexData[i];
-				
-				
 				//this limit assumes 4 if array data is not found past that point
 				final int limit = 1+maxDimPos(this.indexData[i], dims);
 				int idx = dims + HEADER_INDEX_FIELDS;
@@ -295,6 +296,8 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				byte[] source = encodedData[i];
 				int pos = 0;
 				int c = indexData[i][1];
+				
+				//TODO: need to validate the values....
 				
 				for(int j = 0; j<c; j++) {
 					//NOTE: if we need to add support for 2G+ strings the change should be here
@@ -315,7 +318,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				
 			} else {
 				
-				//copy data
+				//copy encoded data
 				//logger.info("for field {} wrote {} bytes ",i,encodedData[i].length);
 				writer.write(encodedData[i],0,indexData[i][0]);
 			}
