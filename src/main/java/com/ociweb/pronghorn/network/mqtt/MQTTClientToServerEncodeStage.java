@@ -176,19 +176,21 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private int countOfBlocksWaitingForPersistLoad = 0;
 	
 	@Override
-	public void run() {		
-		if (!processPersistLoad()) {
-
-			long connectionId = processPingAndReplay();
-			
-			processInputAcks(connectionId);
-									
-			processInput(connectionId);
+	public void run() {	
+		if (connectionId()>=0) {
+			if (!processPersistLoad()) {
+	
+				long connectionId = processPingAndReplay();
 				
-			
-		} else {
-			if (Integer.numberOfLeadingZeros(countOfBlocksWaitingForPersistLoad) != Integer.numberOfLeadingZeros(++countOfBlocksWaitingForPersistLoad)) {
-				logger.info("NOTE: too much volume, encoding has been blocked by waiting for persistance {} times",countOfBlocksWaitingForPersistLoad);
+				processInputAcks(connectionId);
+										
+				processInput(connectionId);
+					
+				
+			} else {
+				if (Integer.numberOfLeadingZeros(countOfBlocksWaitingForPersistLoad) != Integer.numberOfLeadingZeros(++countOfBlocksWaitingForPersistLoad)) {
+					logger.info("NOTE: too much volume, encoding has been blocked by waiting for persistance {} times",countOfBlocksWaitingForPersistLoad);
+				}
 			}
 		}
 	}
