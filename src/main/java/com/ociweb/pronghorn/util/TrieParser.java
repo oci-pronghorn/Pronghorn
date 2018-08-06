@@ -1744,7 +1744,7 @@ public class TrieParser implements Serializable {
         if (sourceLength > 0x7FFF || sourceLength < 1) {
             throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
         }
-                
+
         data[pos++] = TYPE_RUN;
         data[pos++] = (short)sourceLength;
         return pos;
@@ -1752,7 +1752,6 @@ public class TrieParser implements Serializable {
 
 	public void setValue(byte[] bytes, long value) {
 		setValue(bytes, 0, bytes.length, Integer.MAX_VALUE, value);
-		
 	}
 
 	public void toDOTFile(File targetFile) {

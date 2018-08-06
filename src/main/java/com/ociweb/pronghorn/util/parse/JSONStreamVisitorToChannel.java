@@ -11,6 +11,9 @@ import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
+import com.ociweb.pronghorn.struct.ByteSequenceValidator;
+import com.ociweb.pronghorn.struct.DecimalValidator;
+import com.ociweb.pronghorn.struct.LongValidator;
 import com.ociweb.pronghorn.util.ByteConsumer;
 import com.ociweb.pronghorn.util.PackedBits;
 
@@ -26,7 +29,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 	//rows each map to one of the selected fields
 	//////////////////
 	//NOTE: these two are populated as the data is parsed.
-	private final byte[][] encodedData; //data to be sent as assembled 
+    final byte[][] encodedData; //data to be sent as assembled 
 	private final int[][] indexData;    //0-bytes, 
 	                                    //1-count,
 	                                    //2-last count value, for null detect
@@ -40,6 +43,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 							////////////////////////////////////////////////////////
 	//these string lengths are used to hold them out of order while text is accumulated
 	private final long[][] textLengths;	
+	private final Object[] validators;
 	
 	//////////////////////////////////////////////////
 	//for this dim which rows need to be updated above (code complete)
@@ -71,6 +75,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 	private long[] uStack = new long[initSize];
 	
 	private boolean isAccumulating = true;
+	private boolean isValid = true;
 	
 	private PackedBits headerBits = new PackedBits();
 	
@@ -103,6 +108,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}
 		
 		isAccumulating = true;
+		isValid = true;
 	}
 	
 	/*
@@ -178,19 +184,21 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		//build up index arrays
 		/////////////
 		int totalDims = 0;
-		int x = schema.mappingCount();
-		this.indexData = new int[x][]; //counts and index into active dim pos
-		this.encodedData = new byte[x][]; //data to be sent
-	    this.textLengths = new long[x][];
-		while (--x >= 0) {
-			int dimensions = schema.getMapping(x).dimensions();
+		int fieldMapIdx = schema.mappingCount();
+		this.indexData = new int[fieldMapIdx][]; //counts and index into active dim pos
+		this.encodedData = new byte[fieldMapIdx][]; //data to be sent
+	    this.textLengths = new long[fieldMapIdx][];
+	    this.validators = new Object[fieldMapIdx];
+		while (--fieldMapIdx >= 0) {
+			JSONFieldMapping mapping = schema.getMapping(fieldMapIdx);
+			int dimensions = mapping.dimensions();
 			totalDims += dimensions;
-			this.indexData[x] = new int[HEADER_INDEX_FIELDS+dimensions]; //bytes, count, last-count
-			this.encodedData[x] = new byte[2];
-
+			this.indexData[fieldMapIdx] = new int[HEADER_INDEX_FIELDS+dimensions]; //bytes, count, last-count
+			this.encodedData[fieldMapIdx] = new byte[2];
+			this.validators[fieldMapIdx] = mapping.getValidator();
 		}
 				
-		x =  totalDims;
+		int x =  totalDims;
 		this.dimUsages = new int[x][];
 		while (--x >= 0) {
 			this.dimUsages[x] = new int[2]; //[fieldCount][dimDepth][n fields]
@@ -267,9 +275,6 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				assert(fieldIndexPositions.length==indexData.length);
 				DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)writer, writer.position(), fieldIndexPositions[i]);
 			}
-			//look up the validator 
-			
-			
 			
 			/////////////////write data			
 			final int dims = mapping.dimensions(); 
@@ -296,8 +301,6 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				byte[] source = encodedData[i];
 				int pos = 0;
 				int c = indexData[i][1];
-				
-				//TODO: need to validate the values....
 				
 				for(int j = 0; j<c; j++) {
 					//NOTE: if we need to add support for 2G+ strings the change should be here
@@ -345,6 +348,9 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		return isAccumulating;
 	}
 	
+	public boolean isValid() {
+		return isValid;
+	}
 	
 	@Override
 	public void beginObject() {
@@ -609,13 +615,13 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				writeNullBoolean();
 				break;
 			case TypeDecimal:
-				writeNullDecimal();
+				isValid &= writeNullDecimal();
 				break;
 			case TypeInteger:
-				writeNullInteger();
+				isValid &= writeNullInteger();
 				break;
 			case TypeString:
-				writeNullString();
+				isValid &= writeNullString();
 				break;					
 		}	
 	
@@ -656,13 +662,13 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 			if (JSONType.TypeInteger == mapping.type) {
 				if (e==0) {
 					//ok as integer
-					writeInteger(m);
+					isValid &= writeInteger(m);
 				} else {
 					recordError(mapping.type, JSONType.TypeInteger, Arrays.toString(mapping.path));					
 				}
 				
 			} else if (JSONType.TypeDecimal == mapping.type) {
-				writeDecimal(m, e);
+				isValid &= writeDecimal(m, e);
 			}
 		
 			selectedRow = -1;
@@ -673,8 +679,16 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 	}
 
 	
-	private void writeNullString() {
-
+	private boolean writeNullString() {
+		
+		Object v = validators[selectedRow];
+		if (v instanceof ByteSequenceValidator) {
+			if (! ((ByteSequenceValidator)v).isValid(null,0,-1,Integer.MAX_VALUE)) {
+				return false;				
+			}
+		}	
+		
+		
 		int idx = indexData[selectedRow][1]; 
 		if (idx>0) {	
 			//this block only happens when we have more than one value
@@ -684,17 +698,26 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 				idx = indexData[selectedRow][1] = 0;
 			} else if (JSONAccumRule.First == rule) {
 				///if we already have data skip it
-				return;
+				return true;
 			}
 		}
 		
 		addTextLength(textLengths, selectedRow, -1, idx);
 		indexData[selectedRow][1] =  idx+1;
 		
+		return true;
 	}
 
 
-	private void writeNullInteger() {
+	private boolean writeNullInteger() {
+		
+		Object v = validators[selectedRow];
+		if (v instanceof LongValidator) {
+			if (! ((LongValidator)v).isValid(true, 0)) {
+				return false;				
+			}
+		}
+		
 		int[] idx = indexData[selectedRow];
 		
 		int fieldCount = idx[1]; 
@@ -708,7 +731,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 					idx[0] = 0;
 				} else if (JSONAccumRule.First == rule) {
 					///if we already have data skip it
-					return;
+					return true;
 				}
 			}
 		}
@@ -723,10 +746,20 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		
 		idx[0] = newPos;
 		idx[1] = fieldCount + 1;
+		
+		return true;
 	}
 
 
-	private void writeNullDecimal() {
+	private boolean writeNullDecimal() {
+		
+		Object v = validators[selectedRow];
+		if (v instanceof DecimalValidator) {
+			if (! ((DecimalValidator)v).isValid(true, 0, (byte)0)) {
+				return false;				
+			}
+		}		
+		
 		int[] idx = indexData[selectedRow]; 
 		
 		int fieldCount = idx[1]; 
@@ -740,13 +773,13 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 					idx[0] = 0;
 				} else if (JSONAccumRule.First == rule) {
 					///if we already have data skip it
-					return;
+					return true;
 				}
 			}
 		}
 		
 		int newPos = idx[0];//bytes count used first
-				
+		
 		byte[] data = targetByteArray(newPos, newPos+4);
 				
 		data[newPos++] = 0;
@@ -757,6 +790,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		idx[0] = newPos;
 		idx[1] = fieldCount + 1;
 	
+		return true;
 	}
 
 
@@ -780,7 +814,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}
 		
 		int newPos = idx[0];//bytes count used first
-				
+			
 		byte[] data = targetByteArray(newPos, newPos+1);
 		
 		data[newPos++] = -1;
@@ -809,7 +843,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}
 		
 		int newPos = idx[0];//bytes count used first
-				
+
 		byte[] data = targetByteArray(newPos, newPos+1);
 		
 		data[newPos++] = b?(byte)1:(byte)0;
@@ -817,8 +851,15 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		idx[1] = fieldCount + 1;
 	}
 	
-	private void writeInteger(long m) {
-						
+	private boolean writeInteger(long m) {
+		
+		Object v = validators[selectedRow];
+		if (v instanceof LongValidator) {
+			if (! ((LongValidator)v).isValid(false, m)) {
+				return false;	
+			}
+		}	
+		
 		int[] idx = indexData[selectedRow]; 
 		
 		int fieldCount = idx[1]; 
@@ -832,21 +873,30 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 					idx[0] = 0;
 				} else if (JSONAccumRule.First == rule) {
 					///if we already have data skip it
-					return;
+					return true;
 				}
 			}
 		}
 		
 		int newPos = idx[0];//bytes count used first
-				
+			
 		byte[] data = targetByteArray(newPos, newPos+10);
-
 		idx[0] = DataOutputBlobWriter.writePackedLong(m, data, Integer.MAX_VALUE, newPos);
 		idx[1] = fieldCount + 1;
+		
+		return true;
 	}
 
 
-	private void writeDecimal(long m, byte e) {
+	private boolean writeDecimal(long m, byte e) {
+		
+		Object v = validators[selectedRow];
+		if (v instanceof DecimalValidator) {
+			if (! ((DecimalValidator)v).isValid(false, m, e)) {
+				return false;				
+			}
+		}
+
 		int[] idx = indexData[selectedRow]; 
 		
 		int fieldCount = idx[1]; 
@@ -860,22 +910,23 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 					idx[0] = 0;
 				} else if (JSONAccumRule.First == rule) {
 					///if we already have data skip it
-					return;
+					return true;
 				}
 			}
 		}
 		
 		int newPos = idx[0];//bytes count used first
 				
-		byte[] data = targetByteArray(newPos, newPos+11);
 		
+		byte[] data = targetByteArray(newPos, newPos+11);		
 		newPos = DataOutputBlobWriter.writePackedLong(m, data, Integer.MAX_VALUE, newPos);
 		data[newPos++] = e;
 		idx[0] = newPos;
 		idx[1] = fieldCount + 1;
+		
+		return true;
 	}
 	
-
 	private byte[] targetByteArray(int newPos, int maxPos) {
 		byte[] data = encodedData[selectedRow];
 		if ( maxPos > data.length) {
@@ -941,9 +992,18 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 					      utf8byteConsumer.length(),
 					      indexData[selectedRow][1] );
 			indexData[selectedRow][1]++;
+
+			Object v = validators[selectedRow];
+			if (v instanceof ByteSequenceValidator) {
+				isValid &= utf8byteConsumer.validate((ByteSequenceValidator)v);
+			}
+			
 		}
 		keyExpected = true;
 		selectedRow=-1;
+		
+		
+		
 
 	}
 

@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.struct.ByteSequenceValidator;
 import com.ociweb.pronghorn.util.ByteConsumer;
 
 public class JSONByteConsumerUTF8 implements ByteConsumer {
@@ -24,7 +24,7 @@ public class JSONByteConsumerUTF8 implements ByteConsumer {
 	
 	public void activeIndex(int activeIndex) {
 		this.activeIndex = activeIndex;
-		this.utf8Length = 0;
+		this.utf8Length = 0;		
 	}
 	
 	public long length() {
@@ -71,5 +71,21 @@ public class JSONByteConsumerUTF8 implements ByteConsumer {
 		int newPos = idx[0];//bytes count used first		
 		targetByteArray(newPos, newPos+1)[newPos++] = value;
 		idx[0] = newPos+1;
+	}
+
+	public boolean validate(ByteSequenceValidator v) {
+		
+		if (null!=v) {
+			//if we have a validation we need < 2G of text
+			if (utf8Length>Integer.MAX_VALUE) {
+				return false;
+			}
+			int len = (int)utf8Length;
+			int startPos = (indexData[activeIndex][0]) - len;			
+			return v.isValid(encodedData[activeIndex], startPos, len, Integer.MAX_VALUE);
+
+		} else {
+			return true;//no validator, all is good
+		}
 	}
 }
