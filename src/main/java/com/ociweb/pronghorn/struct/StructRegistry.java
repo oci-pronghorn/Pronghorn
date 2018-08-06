@@ -329,7 +329,7 @@ public class StructRegistry { //prong struct store
 		return fieldId;
 	
 	}
-	
+		
 	public long modifyStruct(int structId,
 						   byte[] fieldName, int fieldPos, int fieldLen,
 						   StructType fieldType,
@@ -520,14 +520,17 @@ public class StructRegistry { //prong struct store
 		return fieldValidators[STRUCT_MASK&structId][extractFieldPosition(FIELD_MASK&fieldId)];
 	}
 	
-	public long fieldLookup(CharSequence sequence, int struct) {
-		assert ((IS_STRUCT_BIT&struct) !=0 ) : "Struct Id must be passed in";
-		return TrieParserReader.query(TrieParserReaderLocal.get(), fields[STRUCT_MASK&struct], sequence);
+	public long fieldLookup(CharSequence sequence, int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		assert (structId>=0) : "Bad Struct ID "+structId;
+		return TrieParserReader.query(TrieParserReaderLocal.get(), fields[STRUCT_MASK&structId], sequence);
 	}
 	
-	public long fieldLookup(byte[] source, int pos, int len, int mask, int struct) {
+	public long fieldLookup(byte[] source, int pos, int len, int mask, int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		assert (structId>=0) : "Bad Struct ID "+structId;
 		TrieParserReader reader = TrieParserReaderLocal.get();
-		return TrieParserReader.query(reader, fields[struct], source, pos, len, mask);
+		return TrieParserReader.query(reader, fields[STRUCT_MASK&structId], source, pos, len, mask);
 	}
 	
 	public <T> long fieldLookupByIdentity(T attachedObject, int structId) {
@@ -734,6 +737,20 @@ public class StructRegistry { //prong struct store
 	}
 
 
+	public int fieldCount(int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		assert (structId>=0) : "Bad Struct ID "+structId;
+		return fieldNames[STRUCT_MASK & structId].length;
+	}
+	
+	public long buildFieldId(int structId, int fieldPosition) {
+		assert ((IS_STRUCT_BIT&structId) !=0 ) : "Struct Id must be passed in";
+		assert (structId>=0) : "Bad Struct ID "+structId;
+		if (fieldPosition>=fieldNames[STRUCT_MASK & structId].length) {
+			throw new ArrayIndexOutOfBoundsException(fieldPosition);
+		}
+		return (((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET) | fieldPosition;
+	}
 
 	
 }

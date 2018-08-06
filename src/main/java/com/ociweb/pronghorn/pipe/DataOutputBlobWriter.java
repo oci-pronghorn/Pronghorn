@@ -178,26 +178,36 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     }
 
 	public static <T extends MessageSchema<T>> int getStructType(DataOutputBlobWriter<T> writer) {
-		final int base = writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe);
-    	
-        return ( ( (       writer.byteBuffer[writer.byteMask & base]) << 24) |
+		return peekInt(writer, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe));
+	
+	}
+
+	private static <T extends MessageSchema<T>> int peekInt(DataOutputBlobWriter<T> writer, final int base) {
+		return ( (       writer.byteBuffer[writer.byteMask & base]) << 24) |
                 ( (0xFF & writer.byteBuffer[writer.byteMask & (base+1)]) << 16) |
                 ( (0xFF & writer.byteBuffer[writer.byteMask & (base+2)]) << 8) |
-                  (0xFF & writer.byteBuffer[writer.byteMask & (base+3)]) );
-	
+                  (0xFF & writer.byteBuffer[writer.byteMask & (base+3)]);
 	}
     
     public static <T extends MessageSchema<T>> void setStructType(DataOutputBlobWriter<T> writer, int value) {
     	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe), value);
     }
 
+    public static boolean isIntBackDataSet(DataOutputBlobWriter<?> writer, int pos) {
+    	return peekInt(writer, computeBackDataPos(writer, pos))!=-1;
+    }
+    
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	
     	assert(value<=writer.position()) : "wrote "+value+" but all the data is only "+writer.position();
     	
     	assert(pos>=0) : "Can not write beyond the end. Index values must be zero or positive";
-    	write32(writer.byteBuffer, writer.byteMask, writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-(4*(pos+1)), value);       
+    	write32(writer.byteBuffer, writer.byteMask, computeBackDataPos(writer, pos), value);       
     }
+
+	private static <T extends MessageSchema<T>> int computeBackDataPos(DataOutputBlobWriter<T> writer, int pos) {
+		return writer.startPosition+Pipe.blobIndexBasePosition(writer.backingPipe)-(4*(pos+1));
+	}
 
 	public static <T extends MessageSchema<T>> void writeToEndFrom(DataOutputBlobWriter<T> writer, int sizeInBytes, DataInputBlobReader<RawDataSchema> reader) {
 	

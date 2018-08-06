@@ -523,7 +523,6 @@ public final class StructuredReader {
 	}	
 	
 	
-	//returns -1 when absent
 
     /**
      * Reads int from specified field in pipe
@@ -546,7 +545,6 @@ public final class StructuredReader {
 		}
 	}
 		
-	//returns -1 when absent
     /**
      * Reads int from specified field in pipe
      * @param association field association showing where to read
@@ -555,8 +553,6 @@ public final class StructuredReader {
 	public int readInt(Object association) {
 		return readInt(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
-
-	//returns -1 when absent
 
     /**
      * Reads long from specified field in pipe
@@ -579,7 +575,6 @@ public final class StructuredReader {
 		}
 	}
 	
-	//returns -1 when absent
     /**
      * Reads long from specified field in pipe
      * @param association field association showing where to read
