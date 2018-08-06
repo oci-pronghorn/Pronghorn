@@ -28,7 +28,6 @@ import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToChannel;
 public class HTTPRequestJSONExtractionStage extends PronghornStage {
 
 	private final JSONExtractorCompleted extractor;
-	private int[] indexPositions;
 	
 	private final Pipe<HTTPRequestSchema> input;
 	private final Pipe<HTTPRequestSchema> output;
@@ -70,8 +69,6 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		this.err = err;
 		this.typeData = graphManager.recordTypeData;
 
-		//modify the struct to add the JSON fields
-		indexPositions = extractor.getIndexPositions();
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 		
@@ -137,7 +134,11 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			//parser is not "ready for data" and requires export to be called
 		    			//this expoert will populate the index positinos for the JSON fields
 
-		    			visitor.export(outputStream, indexPositions);
+		    			
+		    			//TODO: pass this in? typeData.fieldValidator(extractor.getStructId(), field)
+		    			
+		    			
+		    			visitor.export(outputStream, extractor.getIndexPositions());
 		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 		    			
 		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
@@ -194,7 +195,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		}
 		    		
 		    		//TODO: may need multiple of these for streaming..
-		    		visitor.export(outputStream, indexPositions);		
+		    		visitor.export(outputStream, extractor.getIndexPositions());		
 		    		DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 	    			
 		    		

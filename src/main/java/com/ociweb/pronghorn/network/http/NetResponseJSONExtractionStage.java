@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
@@ -35,6 +36,8 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
 
+	private final StructRegistry typeData;
+
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
 
 	/**
@@ -55,7 +58,9 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-
+		this.typeData = graphManager.recordTypeData;
+		
+		
 	}
 
 	@Override
@@ -112,6 +117,9 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		    			//parser is not "ready for data" and requires export to be called
 		    			//this expoert will populate the index positinos for the JSON fields
 
+		    			//extractor.getValidators??
+		    			
+		    			//TODO: pass in.. typeData.fieldValidator(extractor.getStructId(), fieldId)
 		    			visitor.export(outputStream, extractor.getIndexPositions());
 		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 		    			
