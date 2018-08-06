@@ -328,6 +328,39 @@ public class CompositeRouteImpl implements CompositeRoute {
 	}
 
 	@Override
+	public CompositeRouteFinish refineInteger(String key, Object associatedObject, LongValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineText(String key, Object associatedObject, ByteSequenceValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+
+		return this;
+	}
+
+	@Override
+	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, DecimalValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);		
+		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
+		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
+		scs.registry.setValidator(fieldLookup, validator);
+
+		return this;
+	}
+	
+	@Override
 	public CompositeRouteFinish validator(String key, LongValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
 		assert(-1 != fieldLookup) : "Unable to find associated key "+key;

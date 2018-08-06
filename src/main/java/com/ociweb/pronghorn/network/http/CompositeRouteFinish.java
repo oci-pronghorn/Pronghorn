@@ -34,4 +34,8 @@ public interface CompositeRouteFinish {
 	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue, ByteSequenceValidator validator);
 	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, DecimalValidator validator);
 		
+	CompositeRouteFinish refineInteger(String key, Object associatedObject, LongValidator validator);
+	CompositeRouteFinish refineText(   String key, Object associatedObject, ByteSequenceValidator validator);
+	CompositeRouteFinish refineDecimal(String key, Object associatedObject, DecimalValidator validator);
+	
 }

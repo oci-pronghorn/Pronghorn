@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ByteWriter;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
@@ -333,8 +334,8 @@ public class FieldExtractionDefinitions {
 	}
 	public <A extends Appendable> A appendDefaultText(int id, A target) {
 		
-		if (target instanceof AppendableBuilder) {//TODO: revist this may now be an interface.
-			((AppendableBuilder)target).write(defaultBytes[DEFAULT_VALUE_FLAG_MASK&id]);
+		if (target instanceof ByteWriter) {
+			((ByteWriter)target).write(defaultBytes[DEFAULT_VALUE_FLAG_MASK&id]);
 			return target;
 		}
 		

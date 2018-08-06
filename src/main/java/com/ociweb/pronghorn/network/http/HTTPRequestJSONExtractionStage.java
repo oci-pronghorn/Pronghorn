@@ -122,7 +122,7 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    		//	logger.info("calls detected with {} bytes after JSON.",TrieParserReader.parseHasContentLength(reader));
 		    		//}
 		    		
-		    		if (!visitor.isReady() ) {
+		    		if (!visitor.isReady() && visitor.isValid()) {
 		    			
 		    			final int size = Pipe.addMsgIdx(localOutput, msgIdx);
 		    			Pipe.addLongValue(channelId, localOutput); //channel
@@ -132,12 +132,8 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			//moves the index data as is and must happen before JSON updates index
 		    			inputStream.readFromEndInto(outputStream);
 		    			//parser is not "ready for data" and requires export to be called
-		    			//this expoert will populate the index positinos for the JSON fields
+		    			//this export will populate the index positions for the JSON fields
 
-		    			
-		    			//TODO: pass this in? typeData.fieldValidator(extractor.getStructId(), field)
-		    			
-		    			
 		    			visitor.export(outputStream, extractor.getIndexPositions());
 		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
 		    			
