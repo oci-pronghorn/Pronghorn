@@ -2088,6 +2088,7 @@ public class GraphManager {
                 				long sumPctFull = 0;
                 				long sumTraffic = 0;
                 				long sumMsgPerSec = 0;
+                				String pipeConstMsg = "";
                 				int count = 0;
                 				for(int c=1; c<=width; c++) {
                 					
@@ -2107,6 +2108,7 @@ public class GraphManager {
 	                					if (null!=msgPerSec) {
 	                						sumMsgPerSec += (long)msgPerSec[p.id];
 	                					}
+	                					pipeConstMsg = m.pipeDOTConst[p.id];
                 					}
                 							
                 				}
@@ -2115,7 +2117,7 @@ public class GraphManager {
 		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
 		                				pipeTraffic, msgPerSec,
 										width, sumPctFull, sumTraffic, 
-										sumMsgPerSec, count);
+										sumMsgPerSec, count, pipeConstMsg);
 		                				
 		                	}
 
@@ -2130,6 +2132,7 @@ public class GraphManager {
                 				long sumTraffic = 0;
                 				long sumMsgPerSec = 0;
                 				int count = 0;
+                				String pipeConstMsg = "";
                 				for(int c=1; c<=width; c++) {
                 					
                 					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
@@ -2147,7 +2150,9 @@ public class GraphManager {
 	                					}
 	                					if (null!=msgPerSec) {
 	                						sumMsgPerSec += (long)msgPerSec[p.id];
-	                					}
+	                					}	                					
+	                					pipeConstMsg = m.pipeDOTConst[p.id];
+	                					
                 					}
                 							
                 				}
@@ -2156,7 +2161,7 @@ public class GraphManager {
 		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
 		                				pipeTraffic, msgPerSec,
 										width, sumPctFull, sumTraffic, 
-										sumMsgPerSec, count);
+										sumMsgPerSec, count, pipeConstMsg);
 		                				
 		                	}
 		                	
@@ -2195,10 +2200,16 @@ public class GraphManager {
 
 	private static void writeAggregatedPipeLabel(AppendableByteWriter<?> target, int[] pipePercentileFullValues,
 			long[] pipeTraffic, int[] msgPerSec, final int width, long sumPctFull, long sumTraffic, long sumMsgPerSec,
-			int count) {
+			int count, String constMsg) {
 		target.write(LABEL_OPEN);
 		
 		Appendables.appendValue(target, count);
+		
+		if (null!=constMsg && constMsg.length()>0) {
+			target.append(" ");
+			target.append(constMsg);
+		}
+		
 		target.append(" Pipes\n");
 		
 		if (null!=pipePercentileFullValues) {		                	
