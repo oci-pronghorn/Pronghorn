@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.struct.StructRegistry;
@@ -108,6 +109,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 				
 		int structId = HTTPUtil.newHTTPStruct(conStruct.registry);
 		unmappedPathField = conStruct.registry.growStruct(structId,StructType.Text,0,"path".getBytes());				
+		conStruct.registry.setAssociatedObject(unmappedPathField, "path");
 		
 		unmappedIndexPos = new int[] {StructRegistry.FIELD_MASK&(int)unmappedPathField};
 		
@@ -403,6 +405,10 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 				throw new RuntimeException("internal error");
 			};
 		}		
+	}
+
+	public void processDefaults(DataOutputBlobWriter<HTTPRequestSchema> writer, int pathId) {
+		pathToRoute[pathId].processDefaults(writer);
 	}
 
 }

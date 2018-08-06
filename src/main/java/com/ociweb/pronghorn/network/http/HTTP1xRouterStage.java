@@ -823,10 +823,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	structId = config.extractionParser(pathId).structId;
         	assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-          	if (!TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
-          			                                         config.paramIndexArray(pathId),
-          			                                         config.paramIndexArrayValidator(pathId)
-          													)) {
+          	if (!captureAllArgsFromURL(trieReader, pathId, writer)) {
           		
           		//////////////////////////////////////////////////////////////////
           		//did not pass validation so we return 404 without giving any clues why
@@ -946,6 +943,21 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
    inputCounts[idx]++; 
  //  assert(validateNextByte(trieReader, idx));
    return SUCCESS;
+}
+
+
+private boolean captureAllArgsFromURL(TrieParserReader trieReader, final int pathId,
+		DataOutputBlobWriter<HTTPRequestSchema> writer) {
+
+	if (TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
+			                                         config.paramIndexArray(pathId),
+			                                         config.paramIndexArrayValidator(pathId)
+													)) {
+		//load any defaults
+		config.processDefaults(writer, pathId);
+		return true;
+	}
+	return false;
 }
 
 

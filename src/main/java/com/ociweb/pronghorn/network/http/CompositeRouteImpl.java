@@ -190,6 +190,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		activePathFieldIndexPosLookup = new int[fieldExDef.getIndexCount()];
 		activePathFieldValidator = new Object[fieldExDef.getIndexCount()];
 
+		//this visitor will populate the above 2 member arrays we just created 
 		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
 		
 		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup, activePathFieldValidator);
@@ -212,11 +213,10 @@ public class CompositeRouteImpl implements CompositeRoute {
 		//logger.info("\nModify struct {} add key {} ", structId, key);
 		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Long, 0);
 		
-		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
 		assert(i>0);
 		while (--i>=0) {
-			defs.get(i).defaultInteger(reader, keyBytes, value);			
+			defs.get(i).defaultInteger(keyBytes, value, scs.registry);			
 		}
 		return this;
 	}
@@ -226,10 +226,9 @@ public class CompositeRouteImpl implements CompositeRoute {
 		byte[] keyBytes = key.getBytes();
 		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Text, 0);
 		
-		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultText(reader, keyBytes, value);			
+			defs.get(i).defaultText(keyBytes, value, scs.registry);			
 		}
 		return this;
 	}
@@ -239,10 +238,9 @@ public class CompositeRouteImpl implements CompositeRoute {
 		byte[] keyBytes = key.getBytes();
 		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Decimal, 0);
 		
-		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultDecimal(reader, keyBytes, m, e);			
+			defs.get(i).defaultDecimal(keyBytes, m, e, scs.registry);			
 		}
 		return this;
 	}
@@ -252,10 +250,9 @@ public class CompositeRouteImpl implements CompositeRoute {
 		byte[] keyBytes = key.getBytes();
 		scs.registry.modifyStruct(structId, keyBytes, 0, keyBytes.length, StructType.Rational, 0);
 		
-		TrieParserReader reader = TrieParserReaderLocal.get();
 		int i = defs.size();
 		while (--i>=0) {
-			defs.get(i).defaultRational(reader, keyBytes, numerator, denominator);			
+			defs.get(i).defaultRational(keyBytes, numerator, denominator, scs.registry);			
 		}
 		return this;
 	}
@@ -289,7 +286,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	@Override
 	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long mantissa, byte exponent) {
 		associatedObject(key,associatedObject);
-		defaultDecimal(key, mantissa, exponent);
+		defaultDecimal(key, mantissa, exponent); 
 		return this;
 	}
 
@@ -323,7 +320,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
 		scs.registry.setValidator(fieldLookup, validator);
-		defaultDecimal(key, defaultMantissa, defaultExponent);
+		defaultDecimal(key, defaultMantissa, defaultExponent);//NOTE: we must always set the default AFTER the validator
 		return this;
 	}
 
