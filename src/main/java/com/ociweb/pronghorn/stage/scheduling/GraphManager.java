@@ -1249,7 +1249,7 @@ public class GraphManager {
 	public static Object getNota(GraphManager m, int stageId, Object key, Object defaultValue) {
 	    if (stageId>=0) {
     		int idx = m.stageIdToNotasBeginIdx[stageId];
-    		if (idx>=0) {
+    		if (idx>=0 && idx<m.multNotaIds.length) {
 	    		int notaId;
 	    		while(-1 != (notaId = m.multNotaIds[idx])) {
 	    			if (m.notaIdToKey[notaId].equals(key)) {
