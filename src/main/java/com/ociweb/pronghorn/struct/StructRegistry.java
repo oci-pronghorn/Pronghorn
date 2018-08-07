@@ -30,6 +30,7 @@ public class StructRegistry { //prong struct store
 	private Object[][]       fieldLocals        = new Object[4][];
 	private Object[][]       fieldValidators    = new Object[4][];
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
+	private Object[]         structLocals       = new Object[4];
 	
 	private IntHashTable structTable = new IntHashTable(3);
 	
@@ -284,6 +285,7 @@ public class StructRegistry { //prong struct store
 		
 		if (null!=associatedObject) {
 			registerStructAssociation(resultStructId, associatedObject);
+			structLocals[structIdx] = associatedObject;
 		}
 		
 		return resultStructId;
@@ -356,6 +358,10 @@ public class StructRegistry { //prong struct store
 		return fieldIdx;
 		
 	}
+	
+	public Object structAssociatedObject(int structId) {
+		return structLocals[STRUCT_MASK&structId];
+	}
 			 		
 
 	private int[] grow(int[] source, int newValue) {
@@ -427,11 +433,11 @@ public class StructRegistry { //prong struct store
 		fieldValidators[structIdx][fieldIdx] = validator;
 	}
 	
-	public boolean setAssociatedObject(final long id, Object localObject) {
+	public boolean setAssociatedObject(final long fieldId, Object localObject) {
 		assert(null!=localObject) : "must not be null, not supported";
 		
-		int structIdx = extractStructId(id);
-		int fieldIdx = extractFieldPosition(id);
+		int structIdx = extractStructId(fieldId);
+		int fieldIdx = extractFieldPosition(fieldId);
 
 		assert(structIdx < fieldLocals.length);
 		assert(fieldIdx < fieldLocals[structIdx].length);		
@@ -593,6 +599,8 @@ public class StructRegistry { //prong struct store
 		if (records>fields.length) {
 			int newSize = records*2;
 			
+			structLocals       = grow(newSize, structLocals);
+			
 			fields             = grow(newSize, fields);
 			fieldNames         = grow(newSize, fieldNames);
 			fieldTypes         = grow(newSize, fieldTypes);
@@ -630,6 +638,12 @@ public class StructRegistry { //prong struct store
 		return result;
 	}
 
+	private static Object[] grow(int newSize, Object[] source) {
+		Object[] result = new Object[newSize];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
+	
 	private static Object[][] grow(int newSize, Object[][] source) {
 		Object[][] result = new Object[newSize][];
 		System.arraycopy(source, 0, result, 0, source.length);
