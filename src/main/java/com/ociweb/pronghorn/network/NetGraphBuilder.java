@@ -477,10 +477,6 @@ public class NetGraphBuilder {
 			Pipe<ServerResponseSchema> router404Pipe = new Pipe<ServerResponseSchema>(config);
 			fromModule[parallelTrack] = PronghornStage.join(router404Pipe, fromModule[parallelTrack]);
 			//////////////////
-			System.out.println("FROM THE ROUTER "+Arrays.toString(fromRouter).replaceAll(",", ",\n"));
-			System.out.println("  "+router404Pipe);
-			System.out.println("  "+log[parallelTrack]);
-			System.out.println("  "+releaseAfterParse[acksBase-parallelTrack]);
 			
 			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
 					graphManager, 
