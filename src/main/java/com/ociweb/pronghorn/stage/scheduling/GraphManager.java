@@ -682,9 +682,11 @@ public class GraphManager {
 			result = Arrays.copyOf(target, limit); //double the array
 			Arrays.fill(result, target.length, limit, -1);
 		}
-
-		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check: "+obj+" index:"+idx;
-		
+		//Not an assert because this is critical and done upon startup
+		if (-1!=result[idx]) {
+			throw new UnsupportedOperationException("duplicate assignment detected, see stack and double check all the stages added to the graph. \ncheck: "+obj
+					                  +" index:"+idx+" value: "+value+" foundValue: "+result[idx]);	
+		}
 		result[idx] = value;
 		return result;
 	}
@@ -1116,10 +1118,15 @@ public class GraphManager {
 		if (null!=output) {
 			int outputId = output.id;
 			Pipe.structRegistry(output,gm.recordTypeData);
-			gm.ringIdToStages = setValue(gm.ringIdToStages, (outputId*2) , stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
-			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, outputId, output);				
-			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, outputId, output);
-			
+			try {
+				gm.ringIdToStages = setValue(gm.ringIdToStages, (outputId*2) , stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
+				gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, outputId, output);				
+				gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, outputId, output);
+			} catch (UnsupportedOperationException uoe) {
+				output.creationStack();
+				logger.info("\nRegister: "+output);
+				throw uoe;
+			}
 			assert(stageId == getRingProducerId(gm, outputId));
 		}
 	}
@@ -1129,10 +1136,15 @@ public class GraphManager {
 		if (null!=input) {
 			int inputId = input.id;
 			Pipe.structRegistry(input,gm.recordTypeData);
-			gm.ringIdToStages = setValue(gm.ringIdToStages, (inputId*2)+1, stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
-			gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, inputId, input);
-			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, inputId, input);
-			
+			try {
+				gm.ringIdToStages = setValue(gm.ringIdToStages, (inputId*2)+1, stageId, gm.stageIdToStage[stageId]); //source +0 then target +1
+				gm.pipeIdToPipe = setValue(gm.pipeIdToPipe, inputId, input);
+				gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, inputId, input);
+			} catch (UnsupportedOperationException uoe) {
+				input.creationStack();
+				logger.info("\nRegister: "+input);
+				throw uoe;
+			}
 			assert(stageId == getRingConsumerId(gm, inputId));
 		}
 	}

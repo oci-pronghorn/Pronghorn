@@ -115,21 +115,21 @@ public class MQTTClientStage extends PronghornStage {
 
 	public void processClientRequests() {
 	
-		while(  
-				(!Pipe.hasContentToRead(serverToClient)) //server response is always more important.
-				
+		while(  				
+				Pipe.hasContentToRead(clientRequest)
+				&& Pipe.hasRoomForWrite(clientToServer) //only process if we have room to write
 				&& (
 						Pipe.peekMsg(clientRequest, 
 								           MQTTClientRequestSchema.MSG_BROKERCONFIG_100, 
-								           MQTTClientRequestSchema.MSG_CONNECT_1)
+								           MQTTClientRequestSchema.MSG_CONNECT_1,
+								           -1)
 						|| 						
-						(brokerAcknowledgedConnection && //for these messages the connection must already be established.
-						 MQTTEncoder.hasPacketId(genCache, idGenNew)) //all other messsages require a packetId ready for use
+						(
+						  (!Pipe.hasContentToRead(serverToClient)) && //server response is always more important, it sets the boolean below				
+						  brokerAcknowledgedConnection && //for these messages the connection must already be established.
+						  MQTTEncoder.hasPacketId(genCache, idGenNew)) //all other messsages require a packetId ready for use
 	            )
-				&& Pipe.hasRoomForWrite(clientToServer) //only process if we have room to write
-				&& Pipe.hasContentToRead(clientRequest)  ) {
-			
-			
+			   ) {
 			
 			final int msgIdx = Pipe.takeMsgIdx(clientRequest);
 
@@ -241,6 +241,15 @@ public class MQTTClientStage extends PronghornStage {
 
 	private long[] QoS2Seen = new long[1<<16];
 	
+	private static final String[] retCodeReason = new String[] {
+			"Success",
+			"The Server does not support the level of the MQTT protocol requested by the Client",
+			"The Client identifier is correct UTF-8 but not allowed by the Server",
+			"The Network Connection has been made but the MQTT service is unavailable",
+			"The data in the user name or password is malformed",
+			"The Client is not authorized to connect"
+	};
+	
 	public void processServerResponses() {
 	
 //		System.err.println("server response "+
@@ -272,16 +281,21 @@ public class MQTTClientStage extends PronghornStage {
 					int sessionPresentFlag = Pipe.takeInt(serverToClient);
 					int retCode = Pipe.takeInt(serverToClient);
 
-					if (0==retCode) {
+					if (0==retCode) {//all other value are error codes which indicate the server did not connnect
 						//We are now connected.
 						brokerAcknowledgedConnection = true;
 
 						Pipe.presumeRoomForWrite(clientToServerAck);
 						FragmentWriter.write(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
 
+					} else {
+						//according to the spec when the return code is non zero we MUST clear the session present flag
+						sessionPresentFlag = 0;
+						
+						logger.warn("\nMQTT connection error code:{} reason:{}",retCode, retCodeReason [retCode]);
+						
 					}
-					//System.err.println("connected with id "+retCode);
-					
+										
 					Pipe.presumeRoomForWrite(clientResponse);
 					FragmentWriter.writeII(clientResponse,
 							   MQTTClientResponseSchema.MSG_CONNECTIONATTEMPT_5, 

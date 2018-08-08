@@ -57,9 +57,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     public static boolean showHeader = false; //set to true for debug to see headers in console.
     
-    private final int indexOffsetCount = 1;
-    
-    
+
     private TrieParserReader trieReader;
     private long activeChannel;
     
@@ -1172,7 +1170,6 @@ private static int accumRunningBytes(
 		    				hasReachedEndOfStream(selectedInput) 
 		    				//if we have reached the end of the stream       
 		            )
-	    		
 	          ) {
 	
 	    	messageIdx = Pipe.takeMsgIdx(selectedInput);

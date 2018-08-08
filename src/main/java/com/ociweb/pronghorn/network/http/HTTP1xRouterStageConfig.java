@@ -301,6 +301,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 				if (contains(routeId, pathToRoute[pathId].routeId)) {	
 					added = true;
 				    ArrayList<Pipe<HTTPRequestSchema>> targetList = collectedHTTPRequstPipes[track][pathToRoute[pathId].routeId];
+				    
 				    //if this pipe is already in the list for this route do not add it again.
 				    if (!targetList.contains(pipe)) {
 				    	targetList.add(pipe);

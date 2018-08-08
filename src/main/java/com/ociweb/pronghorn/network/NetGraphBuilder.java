@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
@@ -444,8 +445,7 @@ public class NetGraphBuilder {
 			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
 			int routeIdx = fromRouter.length;
 			while (--routeIdx>=0) {
-				
-
+	
 				JSONExtractorCompleted extractor = routerConfig.JSONExtractor(routeIdx);
 				if (null != extractor) {
 					
@@ -453,6 +453,8 @@ public class NetGraphBuilder {
 					Pipe<ServerResponseSchema> json404Pipe = new Pipe<ServerResponseSchema>(config);
 					fromModule[parallelTrack] = PronghornStage.join(json404Pipe, fromModule[parallelTrack]);
 			        ////////////
+					
+					System.out.println("into JSON from router "+fromRouter[routeIdx]);
 					
 					Pipe<HTTPRequestSchema> newFromJSON = new Pipe<HTTPRequestSchema>( fromRouter[routeIdx].config() );
 		
@@ -475,6 +477,10 @@ public class NetGraphBuilder {
 			Pipe<ServerResponseSchema> router404Pipe = new Pipe<ServerResponseSchema>(config);
 			fromModule[parallelTrack] = PronghornStage.join(router404Pipe, fromModule[parallelTrack]);
 			//////////////////
+			System.out.println("FROM THE ROUTER "+Arrays.toString(fromRouter).replaceAll(",", ",\n"));
+			System.out.println("  "+router404Pipe);
+			System.out.println("  "+log[parallelTrack]);
+			System.out.println("  "+releaseAfterParse[acksBase-parallelTrack]);
 			
 			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(
 					graphManager, 

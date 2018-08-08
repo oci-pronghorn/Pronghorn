@@ -145,7 +145,7 @@ public class FieldExtractionDefinitions {
 			case Integer: 
 			case Short: 
 				if (validator instanceof LongValidator) {
-					if (!((LongValidator)validator).isValid(false, value)) {
+					if (!((LongValidator)validator).isValid(value)) {
 						throw new UnsupportedOperationException("Default value "+value+" does not pass validation.");
 					}
 				} 
@@ -181,7 +181,7 @@ public class FieldExtractionDefinitions {
 				final long m = value;
 				final byte e = 0;
 				if (validator instanceof DecimalValidator) {
-					if (!((DecimalValidator)validator).isValid(false, m, e)) {
+					if (!((DecimalValidator)validator).isValid(m, e)) {
 						throw new UnsupportedOperationException("Default value "+Appendables.appendDecimalValue(new StringBuilder(), m, e)+" does not pass validation.");
 					}
 				}
@@ -242,7 +242,7 @@ public class FieldExtractionDefinitions {
 			break;	
 			case Decimal:
 				if (validator instanceof DecimalValidator) {
-					if (!((DecimalValidator)validator).isValid(false, m, e)) {
+					if (!((DecimalValidator)validator).isValid(m, e)) {
 						throw new UnsupportedOperationException("Default value "+Appendables.appendDecimalValue(new StringBuilder(), m, e)+" does not pass validation.");
 					}
 				}
@@ -261,7 +261,7 @@ public class FieldExtractionDefinitions {
 			case Short:
 				final long longValue = Decimal.asLong(m, e);				
 				if (validator instanceof LongValidator) {
-					if (!((LongValidator)validator).isValid(false, longValue)) {
+					if (!((LongValidator)validator).isValid(longValue)) {
 						throw new UnsupportedOperationException("Default value "+longValue+" does not pass validation.");
 					}
 				}
@@ -306,7 +306,7 @@ public class FieldExtractionDefinitions {
 			case Short:
 				final long intValue = numerator/denominator;
 				if (validator instanceof LongValidator) {
-					if (!((LongValidator)validator).isValid(false, intValue)) {
+					if (!((LongValidator)validator).isValid(intValue)) {
 						throw new UnsupportedOperationException("Default value "+intValue+" does not pass validation.");
 					}
 				}

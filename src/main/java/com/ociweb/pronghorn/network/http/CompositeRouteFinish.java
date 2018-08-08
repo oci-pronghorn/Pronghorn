@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.http;
 
+import com.ociweb.json.JSONRequired;
 import com.ociweb.pronghorn.struct.ByteSequenceValidator;
 import com.ociweb.pronghorn.struct.DecimalValidator;
 import com.ociweb.pronghorn.struct.LongValidator;
@@ -22,20 +23,20 @@ public interface CompositeRouteFinish {
 	CompositeRouteFinish defaultDecimal(String key, long m, byte e);	
 	CompositeRouteFinish defaultRational(String key, long numerator, long denominator); //for %{name}  ?? 1/2  in the future
 	CompositeRouteFinish associatedObject(String key, Object associatedObject);
-	CompositeRouteFinish validator(String key, LongValidator validator);
-	CompositeRouteFinish validator(String key, ByteSequenceValidator validator);	
-	CompositeRouteFinish validator(String key, DecimalValidator validator);	
+	CompositeRouteFinish validator(String key, JSONRequired required, LongValidator validator);
+	CompositeRouteFinish validator(String key, JSONRequired required, ByteSequenceValidator validator);	
+	CompositeRouteFinish validator(String key, JSONRequired required, DecimalValidator validator);	
 	
 	CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue);
 	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue);
 	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent);
 	
-	CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, LongValidator validator);
-	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue, ByteSequenceValidator validator);
-	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, DecimalValidator validator);
+	CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, JSONRequired required, LongValidator validator);
+	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue, JSONRequired required, ByteSequenceValidator validator);
+	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, JSONRequired required, DecimalValidator validator);
 		
-	CompositeRouteFinish refineInteger(String key, Object associatedObject, LongValidator validator);
-	CompositeRouteFinish refineText(   String key, Object associatedObject, ByteSequenceValidator validator);
-	CompositeRouteFinish refineDecimal(String key, Object associatedObject, DecimalValidator validator);
+	CompositeRouteFinish refineInteger(String key, Object associatedObject, JSONRequired required, LongValidator validator);
+	CompositeRouteFinish refineText(   String key, Object associatedObject, JSONRequired required, ByteSequenceValidator validator);
+	CompositeRouteFinish refineDecimal(String key, Object associatedObject, JSONRequired required, DecimalValidator validator);
 	
 }

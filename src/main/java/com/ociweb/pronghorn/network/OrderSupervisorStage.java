@@ -319,9 +319,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 						channelId, idx, expected);
 		    	
 			} else {
-				keepWorking = processUnexpectedSequenceValue(sourcePipe, pipeIdx, 
-						sequenceNo, channelId,
-						expected);
+				assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
+				assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
+				assert(Pipe.bytesReadBase(sourcePipe)>=0);
+				keepWorking = false;
 			}
 		} else {
 			keepWorking = badSequenceNumberProcessing(channelId, sequenceNo, expected);
@@ -331,7 +332,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private boolean badSequenceNumberProcessing(long channelId, int sequenceNo, int expected) {
-		boolean keepWorking;
+		
 		//we already moved past this point
 		//this sequence just read is < the expected value
 		BaseConnection con = socketHolder.get(channelId);
@@ -340,33 +341,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		}
 		logger.warn("Corrupt data detected, connection closed. Expected next sequence of {} but got {} which is too old. "
 					,expected ,sequenceNo);
-		keepWorking = false; //break out
-		//assert(quit());
-		return keepWorking;
+		return false;
 	}
 
-//	private boolean quit() {
-//		System.exit(-1);
-//		System.err.println("exit now.");
-//		return true;
-//	}
 
-	private boolean processUnexpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
-			int sequenceNo, long channelId, int expected) {
-		boolean keepWorking;
-		assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
-		//larger value and not ready yet
-		assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
-		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		//logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
-		keepWorking = false; //break out
-		
-		//return didWork;//must check the other pipes this can not be processed yet.
-		return keepWorking;
-	}
-
-    
-    public static boolean showCounts = false;
+	public static boolean showCounts = false;
     
 	int countOfMessages = 0;
 	int countOfBlocks = 0;
@@ -839,6 +818,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			//we have finished all the chunks for this request so the sequence number will now go up by one	
 		 	int idx = (int)(channelId & channelBitsMask);
 		 	//logger.info("detected end and incremented sequence number {}",expectedSquenceNos[idx]);
+		 	
+		 	//NOTE: it is critical that the only time we inc is when the end of the response is reached.
 			expectedSquenceNos[idx]++;
 		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
 		 	

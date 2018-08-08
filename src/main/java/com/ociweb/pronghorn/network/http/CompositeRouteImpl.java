@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.json.JSONRequired;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
@@ -291,93 +292,111 @@ public class CompositeRouteImpl implements CompositeRoute {
 	}
 
 	@Override
-	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, LongValidator validator) {
-		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+	public CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, JSONRequired required, LongValidator validator) {
+		long fieldLookup = scs.registry.fieldLookup(key, structId);
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 		
 		defaultInteger(key, defaultValue);
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue, ByteSequenceValidator validator) {
+	public CompositeRouteFinish refineText(String key, Object associatedObject, String defaultValue, JSONRequired required, ByteSequenceValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 		defaultText(key, defaultValue);
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, DecimalValidator validator) {
+	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, JSONRequired required, DecimalValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 		defaultDecimal(key, defaultMantissa, defaultExponent);//NOTE: we must always set the default AFTER the validator
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish refineInteger(String key, Object associatedObject, LongValidator validator) {
+	public CompositeRouteFinish refineInteger(String key, Object associatedObject, JSONRequired required, LongValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish refineText(String key, Object associatedObject, ByteSequenceValidator validator) {
+	public CompositeRouteFinish refineText(String key, Object associatedObject, JSONRequired required, ByteSequenceValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, DecimalValidator validator) {
+	public CompositeRouteFinish refineDecimal(String key, Object associatedObject, JSONRequired required, DecimalValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);		
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
 		scs.registry.setAssociatedObject(fieldLookup, associatedObject);		
 		assert(fieldLookup == scs.registry.fieldLookupByIdentity(associatedObject, structId));	
-		scs.registry.setValidator(fieldLookup, validator);
+		scs.registry.setValidator(fieldLookup, required, validator);
 
 		return this;
 	}
 	
 	@Override
-	public CompositeRouteFinish validator(String key, LongValidator validator) {
+	public CompositeRouteFinish validator(String key, JSONRequired required, LongValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
-		scs.registry.setValidator(fieldLookup, validator);		
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
+		scs.registry.setValidator(fieldLookup, required, validator);		
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish validator(String key, ByteSequenceValidator validator) {
+	public CompositeRouteFinish validator(String key, JSONRequired required, ByteSequenceValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
-		scs.registry.setValidator(fieldLookup, validator);		
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
+		scs.registry.setValidator(fieldLookup, required, validator);		
 		return this;
 	}
 
 	@Override
-	public CompositeRouteFinish validator(String key, DecimalValidator validator) {
+	public CompositeRouteFinish validator(String key, JSONRequired required, DecimalValidator validator) {
 		long fieldLookup = scs.registry.fieldLookup(key, structId);
-		assert(-1 != fieldLookup) : "Unable to find associated key "+key;
-		scs.registry.setValidator(fieldLookup, validator);		
+		if (-1 == fieldLookup) {
+			throw new UnsupportedOperationException("The field "+key+" was not found defined above");
+		}
+		scs.registry.setValidator(fieldLookup, required, validator);		
 		return this;
 	}
 
