@@ -454,8 +454,6 @@ public class NetGraphBuilder {
 					fromModule[parallelTrack] = PronghornStage.join(json404Pipe, fromModule[parallelTrack]);
 			        ////////////
 					
-					System.out.println("into JSON from router "+fromRouter[routeIdx]);
-					
 					Pipe<HTTPRequestSchema> newFromJSON = new Pipe<HTTPRequestSchema>( fromRouter[routeIdx].config() );
 		
 					HTTPRequestJSONExtractionStage.newInstance(
