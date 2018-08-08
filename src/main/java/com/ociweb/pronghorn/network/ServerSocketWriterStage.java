@@ -31,7 +31,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     public static boolean showWrites = false;
     
 	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
-	public static int MINIMUM_BUFFER_SIZE = 1<<20; //1mb default minimum
+	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
 	
     private final Pipe<NetPayloadSchema>[] input;
     private final Pipe<ReleaseSchema> releasePipe;
