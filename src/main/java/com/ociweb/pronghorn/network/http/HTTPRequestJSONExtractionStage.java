@@ -104,7 +104,6 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	int verb = Pipe.takeInt(localInput);      	
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(localInput);
-	       			        	
 		        	//copies params and headers.
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(localOutput);
 		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
@@ -145,11 +144,15 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			Pipe.confirmLowLevelWrite(localOutput,size);
 		    			Pipe.publishWrites(localOutput);
 		    		} else {
+		    			localOutput.closeBlobFieldWrite();	    			
+		    			//logger.warn("Unable to parse JSON sent 404");		    			
 		    			
 		    			HTTPUtil.publishStatus(channelId, sequenceNum, 404, err);
-		    			//logger.warn("Unable to parse JSON");		    			
-		    			localOutput.closeBlobFieldWrite();	    			
 		    			visitor.clear();//rest for next JSON
+		    					    			
+		    			Pipe.takeInt(localInput);// consume revision before release
+		    			Pipe.takeInt(localInput);// consume context before release
+		    			
 		    		}
 		    		
 		    		
