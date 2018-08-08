@@ -1896,14 +1896,14 @@ public class TrieParserReader {
 						target.writeByte(position);
 
 						if (null!=validator && validator[fieldPosition] instanceof DecimalValidator) {							
-							isValid &= ((DecimalValidator)validator[fieldPosition]).isValid(false,value,(byte)position);
+							isValid &= ((DecimalValidator)validator[fieldPosition]).isValid(value,(byte)position);
 						}
 					} else {
 						//System.out.println("wrote "+value);
 						target.writePackedLong(value);
 						
 						if (null!=validator && validator[fieldPosition] instanceof LongValidator) {							
-							isValid &= ((LongValidator)validator[fieldPosition]).isValid(false,value);
+							isValid &= ((LongValidator)validator[fieldPosition]).isValid(value);
 						}
 					}
 				}

@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.struct;
 
 import java.util.Arrays;
 
+import com.ociweb.json.JSONRequired;
 import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8;
 import com.ociweb.pronghorn.util.CharSequenceToUTF8Local;
@@ -18,6 +19,8 @@ public class StructBuilder {
 	private StructType[] fieldTypes;
 	private int[] fieldDims;
 	private Object[] fieldAssoc;
+	
+	private JSONRequired[] fieldReq;
 	private Object[] fieldValid;
 	
 	
@@ -29,6 +32,7 @@ public class StructBuilder {
 		this.fieldTypes = new StructType[INIT_SIZE];
 		this.fieldDims  = new int[INIT_SIZE];
 		this.fieldAssoc  = new Object[INIT_SIZE];
+		this.fieldReq = new JSONRequired[INIT_SIZE];
 		this.fieldValid = new Object[INIT_SIZE];
 		
 	}
@@ -40,6 +44,7 @@ public class StructBuilder {
 		this.fieldTypes = Arrays.copyOfRange(template.fieldTypes, 0, template.fieldCount); 
 		this.fieldDims  = Arrays.copyOfRange(template.fieldDims, 0, template.fieldCount); 
 		this.fieldAssoc = Arrays.copyOfRange(template.fieldAssoc, 0, template.fieldCount); 
+		this.fieldReq   = Arrays.copyOfRange(template.fieldReq, 0, template.fieldCount);		
 		this.fieldValid = Arrays.copyOfRange(template.fieldValid, 0, template.fieldCount); 
 		
 	}
@@ -109,13 +114,14 @@ public class StructBuilder {
             StructType fieldType, 
             int fieldDim, 
             Object assoc) {
-		return addField(fieldName, fieldType, fieldDim, assoc, null);
+		return addField(fieldName, fieldType, fieldDim, assoc, JSONRequired.OPTIONAL, null);
 	};
 	
 	public StructBuilder addField(CharSequence fieldName, 
 			                 StructType fieldType, 
 			                 int fieldDim, 
 			                 Object assoc, 
+			                 JSONRequired isRequired,
 			                 Object validator) {
 		
 		if (fieldCount == fieldTypes.length) {
@@ -123,6 +129,7 @@ public class StructBuilder {
 			fieldTypes = grow(fieldTypes);
 			fieldDims = grow(fieldDims);
 			fieldAssoc = grow(fieldAssoc);
+			fieldReq = grow(fieldReq);
 		    fieldValid = grow(fieldValid);	
 		}
 		
@@ -130,10 +137,17 @@ public class StructBuilder {
 		fieldTypes[fieldCount] = fieldType;
 		fieldDims[fieldCount] = fieldDim;
 		fieldAssoc[fieldCount] = assoc;
+		fieldReq[fieldCount] = isRequired;
 		fieldValid[fieldCount] = validator;
 		
 		fieldCount++;
 		return this;
+	}
+	
+	private JSONRequired[] grow(JSONRequired[] source) {
+		JSONRequired[] result = new JSONRequired[source.length*2];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
 	}
 	
 	private Object[] grow(Object[] source) {
@@ -167,6 +181,7 @@ public class StructBuilder {
 				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),
 				Arrays.copyOfRange(fieldAssoc, 0, fieldCount),
+				Arrays.copyOfRange(fieldReq, 0, fieldCount),
 				Arrays.copyOfRange(fieldValid, 0, fieldCount)				
 				);		
 	}
@@ -178,6 +193,7 @@ public class StructBuilder {
 				Arrays.copyOfRange(fieldTypes, 0, fieldCount), 
 				Arrays.copyOfRange(fieldDims, 0, fieldCount),
 				Arrays.copyOfRange(fieldAssoc, 0, fieldCount),
+				Arrays.copyOfRange(fieldReq, 0, fieldCount),
 				Arrays.copyOfRange(fieldValid, 0, fieldCount)
 				
 				);		

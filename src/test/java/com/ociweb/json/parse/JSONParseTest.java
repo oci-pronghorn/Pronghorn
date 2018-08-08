@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import com.ociweb.json.JSONAccumRule;
+import com.ociweb.json.JSONAligned;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.pronghorn.pipe.ChannelReader;
@@ -42,26 +43,20 @@ public class JSONParseTest {
 
 	private final JSONExtractor simpleExtractor = new JSONExtractor()
 			.begin()
-				.element(JSONType.TypeString, false)//set flags for first, last, all, ordered...
-					.asField("root.keyb",Field.b)
-				.element(JSONType.TypeInteger, false)
-					.asField("root.keya",Field.a)
+				.stringField("root.keyb",Field.b)
+				.integerField("root.keya",Field.a)
 			.finish();
 
 	private final JSONExtractor simpleArrayExtractor = new JSONExtractor()
 			.begin()
-				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.asField("root.[].keyb",Field.b)
-				.element(JSONType.TypeInteger, true)
-					.asField("root.[].keya",Field.a)
+				.stringField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT, "root.[].keyb",Field.b)
+				.integerField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT, "root.[].keya",Field.a)
 			.finish();
 
 	private final JSONExtractor simple2DArrayExtractor = new JSONExtractor(false)
 			.begin()
-				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.asField("root.[].[].keyb",Field.b)
-				.element(JSONType.TypeInteger, true)
-					.asField("root.[].[].keya",Field.a)
+				.stringField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT, "root.[].[].keyb",Field.b)
+				.integerField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT, "root.[].[].keya",Field.a)
 			.finish();
 
 	@Test
@@ -593,10 +588,8 @@ public class JSONParseTest {
 	//////////////////////////////////////
 	private final JSONExtractor column2DArrayExtractor = new JSONExtractor(false)
 			.begin()
-				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-					.asField("root.[].keyb",Field.b)
-				.element(JSONType.TypeInteger, true, JSONAccumRule.Collect)
-					.asField("root.[].[].keya",Field.a)
+				.stringField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT,"root.[].keyb",Field.b)
+				.integerField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT,"root.[].[].keya",Field.a)
 			.finish();
 	
 	@Test

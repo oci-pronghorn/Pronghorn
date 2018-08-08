@@ -1,5 +1,7 @@
 package com.ociweb.json.parse;
 
+import com.ociweb.json.JSONAccumRule;
+import com.ociweb.json.JSONAligned;
 import com.ociweb.json.JSONType;
 import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.json.encode.JSONRenderer;
@@ -24,14 +26,9 @@ public class JSONResponse {
 
 	private final JSONExtractor jsonExtractor = new JSONExtractor()
 			.begin()
-				.element(JSONType.TypeInteger, true)
-				.asField("status",Fields.Status)
-				
-				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-				.asField("message",Fields.Message)
-				
-				.element(JSONType.TypeString, true)//set flags for first, last, all, ordered...
-				.asField("body",Fields.Body)
+				.integerField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT,"status",Fields.Status)				
+				.stringField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT,"message",Fields.Message)				
+				.stringField(JSONAligned.ALLIGNED, JSONAccumRule.COLLECT,"body",Fields.Body)
 			.finish();
     
     public void reset() {

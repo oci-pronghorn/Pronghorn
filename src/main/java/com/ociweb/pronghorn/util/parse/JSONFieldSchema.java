@@ -111,7 +111,7 @@ public class JSONFieldSchema {
 					throw new UnsupportedOperationException("An object with the same identity hash is already held, can not add "+assoc);
 				}
 			}
-			struct.setValidator(fieldId, mapping.getValidator());
+			struct.setValidator(fieldId, mapping.isRequired(), mapping.getValidator());
 			
 		}
 		return jsonIndexLookup;
@@ -143,7 +143,9 @@ public class JSONFieldSchema {
 		while (--i>=0) {
 			JSONFieldMapping mapping = mappings[i];		
 			structBuilder.addField(mapping.getName(), mapTypes(mapping),  mapping.dimensions(),
-					               mapping.getAssociatedObject(), mapping.getValidator());
+					               mapping.getAssociatedObject(),
+					               mapping.isRequired(),
+					               mapping.getValidator());
 			
 		}
 	}

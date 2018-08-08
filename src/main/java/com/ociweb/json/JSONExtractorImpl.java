@@ -105,10 +105,10 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 	}
 	
 	public JSONExtractorActive newPath(JSONType type) {
-		return newPath(type, false);
+		return newPath(type, JSONAligned.UNPADDED);
 	}
 	
-	public JSONExtractorActive newPath(JSONType type, boolean isAligned) {
+	public JSONExtractorActive newPath(JSONType type, JSONAligned isAligned) {
 		
 		activeMapping = new JSONFieldMapping(schema, type, isAligned);
 		if (path==null) {
@@ -120,7 +120,7 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 	}
 	
 	public JSONExtractorActive newPath(JSONType type, 
-			                           boolean isAligned, 
+			                           JSONAligned isAligned, 
 			                           JSONAccumRule accumRule) {
 		
 		activeMapping = new JSONFieldMapping(schema, type, isAligned, accumRule);
@@ -155,14 +155,14 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 	}
 
 	@Override
-	public JSONExtractorUber completePath(String extractionPath, String pathName, Object optionalAssociation, Object validator) {
+	public JSONExtractorUber completePath(String extractionPath, String pathName, Object optionalAssociation, JSONRequired required, Object validator) {
 		
 		parseExtractionPath(extractionPath);
 		activeMapping.setName(pathName);
 		activeMapping.setPath(schema, path.toArray(new CharSequence[path.size()]));	
 		schema.addMappings(activeMapping);
 		activeMapping.setAssociatedObject(optionalAssociation);
-		activeMapping.setValidator(validator);
+		activeMapping.setValidator(required, validator);
 		
 		return this;
 	}

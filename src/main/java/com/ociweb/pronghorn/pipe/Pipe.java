@@ -620,7 +620,6 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @param usingHighLevelAPI boolean used to turn off high level if its not used.
 	 */
     public Pipe(PipeConfig<T> config, boolean usingHighLevelAPI) {
-    	assert(holdConstructionLocation());
     	this.config = config;
     	this.usingHighLevelAPI = usingHighLevelAPI;
         byte primaryBits = config.slabBits;
@@ -628,6 +627,8 @@ public class Pipe<T extends MessageSchema<T>> {
         byte[] byteConstants = config.byteConst;
         this.schema = config.schema;
 
+        assert(holdConstructionLocation());
+        
         debugFlags = config.debugFlags;
                 
 //        if (config.totalBytesAllocated() > (1<<24) ) {
@@ -676,7 +677,7 @@ public class Pipe<T extends MessageSchema<T>> {
     private Exception createdStack;
     
     private boolean holdConstructionLocation() {
-		createdStack = new Exception("new Pipe created");
+		createdStack = new Exception(config+" Pipe created "+config.totalBytesAllocated()+" bytes");
     	return true;
 	}
     

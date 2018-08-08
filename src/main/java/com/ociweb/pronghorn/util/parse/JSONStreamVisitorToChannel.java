@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONAccumRule;
+import com.ociweb.json.JSONRequired;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -42,7 +43,9 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 							//////////////////        4    5 6   7 8 9
 							////////////////////////////////////////////////////////
 	//these string lengths are used to hold them out of order while text is accumulated
-	private final long[][] textLengths;	
+	private final long[][] textLengths;
+	
+	private final JSONRequired[] required;
 	private final Object[] validators;
 	
 	//////////////////////////////////////////////////
@@ -188,14 +191,18 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		this.indexData = new int[fieldMapIdx][]; //counts and index into active dim pos
 		this.encodedData = new byte[fieldMapIdx][]; //data to be sent
 	    this.textLengths = new long[fieldMapIdx][];
+	    this.required = new JSONRequired[fieldMapIdx];
 	    this.validators = new Object[fieldMapIdx];
+	    
 		while (--fieldMapIdx >= 0) {
 			JSONFieldMapping mapping = schema.getMapping(fieldMapIdx);
 			int dimensions = mapping.dimensions();
 			totalDims += dimensions;
 			this.indexData[fieldMapIdx] = new int[HEADER_INDEX_FIELDS+dimensions]; //bytes, count, last-count
 			this.encodedData[fieldMapIdx] = new byte[2];
+			this.required[fieldMapIdx] = mapping.isRequired();
 			this.validators[fieldMapIdx] = mapping.getValidator();
+			
 		}
 				
 		int x =  totalDims;
@@ -612,7 +619,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		selectedRow = row;//pass row down to the member methods
 		switch(schema.getMapping(row).type) {
 			case TypeBoolean:
-				writeNullBoolean();
+				isValid &= writeNullBoolean();
 				break;
 			case TypeDecimal:
 				isValid &= writeNullDecimal();
@@ -680,23 +687,20 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 
 	
 	private boolean writeNullString() {
-		
-		Object v = validators[selectedRow];
-		if (v instanceof ByteSequenceValidator) {
-			if (! ((ByteSequenceValidator)v).isValid(null,0,-1,Integer.MAX_VALUE)) {
-				return false;				
-			}
-		}	
-		
-		
+				
+		if (required[selectedRow] == JSONRequired.REQUIRED) {
+			//was null but this field is required 
+			return false;
+		}
+				
 		int idx = indexData[selectedRow][1]; 
 		if (idx>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.LAST == rule) {
 				///if we already have data erase it to be replaced
 				idx = indexData[selectedRow][1] = 0;
-			} else if (JSONAccumRule.First == rule) {
+			} else if (JSONAccumRule.FIRST == rule) {
 				///if we already have data skip it
 				return true;
 			}
@@ -711,11 +715,9 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 
 	private boolean writeNullInteger() {
 		
-		Object v = validators[selectedRow];
-		if (v instanceof LongValidator) {
-			if (! ((LongValidator)v).isValid(true, 0)) {
-				return false;				
-			}
+		if (required[selectedRow] == JSONRequired.REQUIRED) {
+			//was null but this field is required 
+			return false;
 		}
 		
 		int[] idx = indexData[selectedRow];
@@ -724,12 +726,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
 					return true;
 				}
@@ -753,12 +755,10 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 
 	private boolean writeNullDecimal() {
 		
-		Object v = validators[selectedRow];
-		if (v instanceof DecimalValidator) {
-			if (! ((DecimalValidator)v).isValid(true, 0, (byte)0)) {
-				return false;				
-			}
-		}		
+		if (required[selectedRow] == JSONRequired.REQUIRED) {
+			//was null but this field is required 
+			return false;
+		}	
 		
 		int[] idx = indexData[selectedRow]; 
 		
@@ -766,12 +766,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
 					return true;
 				}
@@ -794,21 +794,27 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 	}
 
 
-	private void writeNullBoolean() {
+	private boolean writeNullBoolean() {
+				
+		if (required[selectedRow] == JSONRequired.REQUIRED) {
+			//was null but this field is required 
+			return false;
+		}
+		
 		int[] idx = indexData[selectedRow]; 
 		
 		int fieldCount = idx[1]; 
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
-					return;
+					return true;
 				}
 			}
 		}
@@ -820,7 +826,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		data[newPos++] = -1;
 		idx[0] = newPos;	
 		idx[1] = fieldCount + 1;
-
+		return true;
 	}
 	
 	private void writeBoolean(boolean b) {
@@ -830,12 +836,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
 					return;
 				}
@@ -855,7 +861,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		
 		Object v = validators[selectedRow];
 		if (v instanceof LongValidator) {
-			if (! ((LongValidator)v).isValid(false, m)) {
+			if (! ((LongValidator)v).isValid(m)) {
 				return false;	
 			}
 		}	
@@ -866,12 +872,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
 					return true;
 				}
@@ -892,7 +898,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		
 		Object v = validators[selectedRow];
 		if (v instanceof DecimalValidator) {
-			if (! ((DecimalValidator)v).isValid(false, m, e)) {
+			if (! ((DecimalValidator)v).isValid(m, e)) {
 				return false;				
 			}
 		}
@@ -903,12 +909,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		if (fieldCount>0) {	
 			//this block only happens when we have more than one value
 			JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-			if (JSONAccumRule.Collect != rule) {
-				if (JSONAccumRule.Last == rule) {
+			if (JSONAccumRule.COLLECT != rule) {
+				if (JSONAccumRule.LAST == rule) {
 					///if we already have data erase it to be replaced
 					fieldCount = idx[1] = 0;
 					idx[0] = 0;
-				} else if (JSONAccumRule.First == rule) {
+				} else if (JSONAccumRule.FIRST == rule) {
 					///if we already have data skip it
 					return true;
 				}
@@ -952,12 +958,12 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 			if (fieldCount>0) {	
 				//this block only happens when we have more than one value
 				JSONAccumRule rule = schema.getMapping(selectedRow).accumRule;
-				if (JSONAccumRule.Collect != rule) {
-					if (JSONAccumRule.Last == rule) {
+				if (JSONAccumRule.COLLECT != rule) {
+					if (JSONAccumRule.LAST == rule) {
 						///if we already have data erase it to be replaced
 						fieldCount = idx[1] = 0;
 						idx[0] = 0;
-					} else if (JSONAccumRule.First == rule) {
+					} else if (JSONAccumRule.FIRST == rule) {
 						///if we already have data skip it
 						selectedRow = -1;
 						return;

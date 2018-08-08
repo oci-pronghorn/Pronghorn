@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.util.parse;
 
 
 import com.ociweb.json.JSONAccumRule;
+import com.ociweb.json.JSONAligned;
+import com.ociweb.json.JSONRequired;
 import com.ociweb.json.JSONType;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
@@ -19,6 +21,7 @@ public class JSONFieldMapping {
 	private String name;
 	private Object association;
 	private Object validator;
+	private JSONRequired isRequired;
 	
 	public final JSONType type;
 	
@@ -36,27 +39,27 @@ public class JSONFieldMapping {
 	public JSONFieldMapping(
 					             JSONFieldSchema schema,
 					             JSONType type,
-					             boolean isAligned) {
+					             JSONAligned isAligned) {
 	
 		//we need all the paths first in order 
 		//to ensure that the multiplier works.
 		this.schema = schema;
 		this.type = type;
-		this.isAligned = isAligned;
+		this.isAligned = isAligned == JSONAligned.ALLIGNED;
 		this.accumRule = null;//wait to set in setPath
 	}
 
 	public JSONFieldMapping(
 					             JSONFieldSchema schema,
 					             JSONType type,
-					             boolean isAligned,
+					             JSONAligned isAligned,
 					             JSONAccumRule accumRule) {
 	
 		//we need all the paths first in order 
 		//to ensure that the multiplier works.
 		this.schema = schema;
 		this.type = type;
-		this.isAligned = isAligned;
+		this.isAligned = isAligned == JSONAligned.ALLIGNED;
 		this.accumRule = accumRule; 
 	}
 	
@@ -76,8 +79,13 @@ public class JSONFieldMapping {
 		return association;
 	}
 	
-	public void setValidator(Object validator) {
+	public void setValidator(JSONRequired required, Object validator) {
 		this.validator = validator;
+		this.isRequired = required;
+	}
+	
+	public JSONRequired isRequired() {
+		return isRequired;
 	}
 	
 	public Object getValidator() {
@@ -102,7 +110,7 @@ public class JSONFieldMapping {
 		
 		if (null == accumRule) {
 			//set default value based on if this field is dimentional or not
-			accumRule = (dimCounter==0)? JSONAccumRule.Last : JSONAccumRule.Collect;
+			accumRule = (dimCounter==0)? JSONAccumRule.LAST : JSONAccumRule.COLLECT;
 		}
 		
 	}

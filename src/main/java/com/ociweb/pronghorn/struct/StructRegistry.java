@@ -7,9 +7,11 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.json.JSONRequired;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ArrayGrow;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.TrieParserReaderLocal;
@@ -29,6 +31,7 @@ public class StructRegistry { //prong struct store
 	private int[][]          fieldDims          = new int[4][];
 	private Object[][]       fieldLocals        = new Object[4][];
 	private Object[][]       fieldValidators    = new Object[4][];
+	private boolean[][]      fieldRequired      = new boolean[4][];	
 	private IntHashTable[]   fieldAttachedIndex = new IntHashTable[4];
 	private Object[]         structLocals       = new Object[4];
 	
@@ -216,7 +219,7 @@ public class StructRegistry { //prong struct store
 			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
 			             Object[] fieldAssoc
 			) {
-		return addStruct(associatedObject, fieldNames, fieldTypes, fieldDim, fieldAssoc, null);	
+		return addStruct(associatedObject, fieldNames, fieldTypes, fieldDim, fieldAssoc, null, null);	
 	}
 	/**
 	 * Add new Structure to the schema
@@ -231,7 +234,8 @@ public class StructRegistry { //prong struct store
 			             StructType[] fieldTypes, //all fields are precede by array count byte
 			             int[] fieldDim, //Dimensionality, should be 0 for simple objects.
 			             Object[] fieldAssoc,
-			             Object[] fieldValidators
+			             JSONRequired[] fieldRequired,
+			             Object[] fieldValidators			             
 			) {
 		
 		assert(fieldNames.length == fieldTypes.length);
@@ -259,6 +263,7 @@ public class StructRegistry { //prong struct store
 		this.fieldDims[structIdx] = null==fieldDim?new int[fieldTypes.length]:fieldDim;
 		this.fieldLocals[structIdx] = new Object[fieldNames.length];
 		this.fieldValidators[structIdx] = new Object[fieldNames.length];
+		this.fieldRequired[structIdx] = new boolean[fieldNames.length];
 		
 		//added lots of extra space since many hash values are the same at the low digits
 		this.fieldAttachedIndex[structIdx] = new IntHashTable(5+IntHashTable.computeBits(Math.max(fieldNames.length,8)));
@@ -276,7 +281,7 @@ public class StructRegistry { //prong struct store
 			int fieldId = fieldValidators.length;
 			while (--fieldId >= 0) {
 				if (null!=fieldValidators[fieldId]) {					
-					setValidator(fieldValidators[fieldId], structIdx, fieldId);
+					setValidator(fieldRequired[fieldId], fieldValidators[fieldId], structIdx, fieldId);
 				}
 			}
 		}
@@ -311,6 +316,7 @@ public class StructRegistry { //prong struct store
 						   StructType fieldType,
 						   int fieldDim,
 						   byte[] name) {
+		assert(null!=fieldType);
 		//grow all the arrays with new value
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
@@ -319,12 +325,14 @@ public class StructRegistry { //prong struct store
 		//add text lookup
 		assert(isNotAlreadyDefined(this.fields[idx], name)) : "field of this name already defined.";
 
-		//only 1 name is returned, the first is considered cannonical
-		this.fieldNames[idx] = grow(this.fieldNames[idx], name); 
-		this.fieldTypes[idx] = grow(this.fieldTypes[idx], fieldType);
-		this.fieldDims[idx] = grow(this.fieldDims[idx], fieldDim);
-		this.fieldLocals[idx] = grow(this.fieldLocals[idx], null);
-		this.fieldValidators[idx] = grow(this.fieldValidators[idx], null);
+		
+		//only 1 name is returned, the first is considered canonical
+		this.fieldNames[idx] = ArrayGrow.appendToArray(this.fieldNames[idx], name); 
+		this.fieldTypes[idx] = ArrayGrow.appendToArray(this.fieldTypes[idx], fieldType, StructType.class);
+		this.fieldDims[idx] = ArrayGrow.appendToArray(this.fieldDims[idx], fieldDim);
+		this.fieldLocals[idx] = ArrayGrow.appendToArray(this.fieldLocals[idx], null, Object.class);
+		this.fieldValidators[idx] = ArrayGrow.appendToArray(this.fieldValidators[idx], null, Object.class);
+		this.fieldRequired[idx] = ArrayGrow.appendToArray(this.fieldRequired[idx], false);		
 						
 		long fieldId = ((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET | newFieldIdx;
 		this.fields[idx].setValue(name, fieldId);
@@ -363,42 +371,7 @@ public class StructRegistry { //prong struct store
 		return structLocals[STRUCT_MASK&structId];
 	}
 			 		
-
-	private int[] grow(int[] source, int newValue) {
-		int[] results = new int[source.length+1];
-		System.arraycopy(source, 0, results, 0, source.length);
-		results[source.length] = newValue;
-		return results;
-	}
-
-	private StructType[] grow(StructType[] source, StructType newValue) {
-		StructType[] results = new StructType[source.length+1];
-		System.arraycopy(source, 0, results, 0, source.length);
-		results[source.length] = newValue;
-		return results;
-	}
 	
-	private Object[] grow(Object[] source, Object newValue) {
-		Object[] results = new Object[source.length+1];
-		System.arraycopy(source, 0, results, 0, source.length);
-		results[source.length] = newValue;
-		return results;
-	}
-	
-	private IntHashTable[] grow(IntHashTable[] source, IntHashTable newValue) {
-		IntHashTable[] results = new IntHashTable[source.length+1];
-		System.arraycopy(source, 0, results, 0, source.length);
-		results[source.length] = newValue;
-		return results;
-	}
-
-	private byte[][] grow(byte[][] source, byte[] newValue) {
-		byte[][] results = new byte[source.length+1][];
-		System.arraycopy(source, 0, results, 0, source.length);
-		results[source.length] = newValue;
-		return results;
-	}
-
 	public long[] newFieldIds(int structId) {
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int c = fieldNames.length;
@@ -413,7 +386,7 @@ public class StructRegistry { //prong struct store
 	}
 	
 	
-	public void setValidator(final long id, Object validator) {
+	public void setValidator(final long id, JSONRequired isRequired, Object validator) {
 		assert(	(null == validator
 				|| validator instanceof LongValidator
 				|| validator instanceof ByteSequenceValidator
@@ -425,12 +398,13 @@ public class StructRegistry { //prong struct store
 		assert(structIdx < fieldLocals.length);
 		assert(fieldIdx < fieldLocals[structIdx].length);		
 		
-		setValidator(validator, structIdx, fieldIdx);
+		setValidator(isRequired, validator, structIdx, fieldIdx);
 	}
 
 
-	public void setValidator(Object validator, int structIdx, int fieldIdx) {
+	public void setValidator(JSONRequired isRequired, Object validator, int structIdx, int fieldIdx) {
 		fieldValidators[structIdx][fieldIdx] = validator;
+		fieldRequired[structIdx][fieldIdx] = (JSONRequired.REQUIRED == isRequired);
 	}
 	
 	public boolean setAssociatedObject(final long fieldId, Object localObject) {
@@ -608,12 +582,18 @@ public class StructRegistry { //prong struct store
 			fieldLocals        = grow(newSize, fieldLocals);
 			fieldAttachedIndex = grow(newSize, fieldAttachedIndex);	
 			fieldValidators    = grow(newSize, fieldValidators);
+			fieldRequired      = grow(newSize, fieldRequired);
 			
 		}
 	}
 
+	private static boolean[][] grow(int newSize, boolean[][] source) {
+		boolean[][] result = new boolean[newSize][];
+		System.arraycopy(source, 0, result, 0, source.length);
+		return result;
+	}
 
-	private IntHashTable[] grow(int newSize, IntHashTable[] source) {
+	private static IntHashTable[] grow(int newSize, IntHashTable[] source) {
 		IntHashTable[] result = new IntHashTable[newSize];
 		System.arraycopy(source, 0, result, 0, source.length);
 		return result;
