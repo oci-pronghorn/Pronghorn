@@ -254,39 +254,6 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return new CompositeRouteImpl(conStruct, this, extractor, routeParser(), headers, routeCount++, pathCount);
 	}
 
-	public boolean appendPipeIdMappingForAllGroupIds(
-            Pipe<HTTPRequestSchema> pipe, 
-            int track, 
-            ArrayList<Pipe<HTTPRequestSchema>>[][] collectedHTTPRequstPipes) {
-		
-			assert(null!=collectedHTTPRequstPipes);
-			boolean added = false;
-			int i = routeCount;
-			if (i==0) {
-				added  = true;
-				collectedHTTPRequstPipes[track][0].add(pipe); //ALL DEFAULT IN A SINGLE Path
-			} else {
-				for(int pathId = 0; pathId<i; pathId++) {
-					added  = true;
-					if (null != pathToRoute[pathId] 
-						&& UNMAPPED_ROUTE!=pathToRoute[pathId].pathId
-					   ) {
-						ArrayList<Pipe<HTTPRequestSchema>> targetList = collectedHTTPRequstPipes[track][pathToRoute[pathId].routeId];
-						assert(null != targetList);
-						if (!targetList.contains(pipe)) {
-							targetList.add(pipe);
-						}
-					} else {
-						
-						assert(assertRestNull(pathId));
-						
-						break;//nothing will be found past the null
-					}
-				}
-				
-			}
-			return added;
-	}
 	
 	public boolean appendPipeIdMappingForIncludedGroupIds(
 			                      Pipe<HTTPRequestSchema> pipe, 

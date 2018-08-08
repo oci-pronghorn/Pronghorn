@@ -31,7 +31,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     public static boolean showWrites = false;
     
 	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
-	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
+	public static int MINIMUM_BUFFER_SIZE = 1<<20; //1mb default minimum
 	
     private final Pipe<NetPayloadSchema>[] input;
     private final Pipe<ReleaseSchema> releasePipe;
@@ -112,8 +112,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
     	final Number rate = (Number)GraphManager.getNota(graphManager, this, GraphManager.SCHEDULE_RATE, null);
     	    	
-    	//this is 20ms for the default max limit
-    	long hardLimtNS = 20_000_000; //May revisit later.
+    	//this is 10ms for the default max limit
+    	long hardLimtNS = 10_000_000L; //May revisit later.
         //also note however data can be written earlier if:
     	//   1. the buffer has run out of space (the multiplier controls this)
     	//   2. if the pipe has no more data.

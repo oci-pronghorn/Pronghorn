@@ -31,12 +31,12 @@ public interface CompositeRouteFinish {
 	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue);
 	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent);
 	
-	CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, JSONRequired required, LongValidator validator);
-	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue, JSONRequired required, ByteSequenceValidator validator);
-	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, JSONRequired required, DecimalValidator validator);
+	CompositeRouteFinish refineInteger(String key, Object associatedObject, long defaultValue, LongValidator validator);
+	CompositeRouteFinish refineText(   String key, Object associatedObject, String defaultValue, ByteSequenceValidator validator);
+	CompositeRouteFinish refineDecimal(String key, Object associatedObject, long defaultMantissa, byte defaultExponent, DecimalValidator validator);
 		
-	CompositeRouteFinish refineInteger(String key, Object associatedObject, JSONRequired required, LongValidator validator);
-	CompositeRouteFinish refineText(   String key, Object associatedObject, JSONRequired required, ByteSequenceValidator validator);
-	CompositeRouteFinish refineDecimal(String key, Object associatedObject, JSONRequired required, DecimalValidator validator);
+	CompositeRouteFinish refineInteger(String key, Object associatedObject, LongValidator validator);
+	CompositeRouteFinish refineText(   String key, Object associatedObject, ByteSequenceValidator validator);
+	CompositeRouteFinish refineDecimal(String key, Object associatedObject, DecimalValidator validator);
 	
 }
