@@ -42,7 +42,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private int concurrentChannelsPerDecryptUnit = 2; //default 2, for low memory usage
 	private TLSCertificates serverTLS = TLSCertificates.defaultCerts;
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
-	private int maxRequestSize = 1<<16;//default of 64K
+	private int maxRequestSize = 1<<15;//default of 32K
 	private int maxResponseSize = 1<<12;//default of 4K
 	private final PipeConfigManager pcm;
     private int tracks = 1;//default 1, for low memory usage
@@ -265,7 +265,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	}
 
 	private int defaultComputedChunksCount() {
-		return 2+(getMaxRequestSize()/1500);
+		return Math.min(32, 2+(getMaxRequestSize()/1500));
 	}
 
 	public int getMaxRequestSize() {
