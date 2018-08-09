@@ -346,7 +346,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
 		      long channelId = holder.lookupInsertPosition();	        
-		     // logger.info("\nnew connection {}",channelId);
+		     
+		     //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader.
+		      		      
+		      //logger.info("\nnew connection {} holder can hold {}",channelId,holder.size());
 		      	                      
 		      if (channelId>=0) {		                    
 		          
@@ -424,10 +427,5 @@ public class ServerNewConnectionStage extends PronghornStage{
 	}
 
 
-
-    
-    private static String[] intersection(String[] a, String[] b) {
-        return a;
-    }
 
 }

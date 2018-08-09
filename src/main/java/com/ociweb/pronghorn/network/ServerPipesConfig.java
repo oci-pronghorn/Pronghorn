@@ -27,7 +27,7 @@ public class ServerPipesConfig {
 	public final int maxConnectionBitsOnServer; //max connected users
 	public final int maxConcurrentInputs; //concurrent actions count
 	public final int maxConcurrentOutputs;
-	
+
 	public final int fromRouterToModuleCount;
 	public final int fromRouterToModuleBlob; //may grow based on largest post required
 

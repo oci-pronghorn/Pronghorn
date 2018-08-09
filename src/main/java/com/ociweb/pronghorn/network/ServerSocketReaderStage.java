@@ -256,22 +256,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					
+					
 					if (-1 == responsePipeLineIdx) { 
 						//logger.trace("second check for released pipe");
 						Thread.yield();
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
-							
-							//TODO: check timeout and if its over find the
-							//      slowest connection and kill it off..						
-							
-							processWork = false;
-							
-							//used when we need to debug
+							//we can not begin this connection right now so we will try again later.
+							//we remove this selection so we can process other connections work while we wait for a pipe to open up
+							removeSelection(selection);
 							logger.trace("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs);
 							
-							return false;
+							return true;
 						}
 						
 					}
@@ -280,7 +277,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
 			
-//					logger.info("begin channel id {} pipe line idx {} out of {} ",
+//					logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
 //							channelId, 
 //							responsePipeLineIdx,
 //							output.length);
