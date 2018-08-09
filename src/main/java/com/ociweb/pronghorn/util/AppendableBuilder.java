@@ -23,6 +23,10 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		reset();
 	}
 
+	public String toString() {
+		return new String(buffer,0,byteCount);
+	}
+	
 	public int byteLength() {
 		return byteCount;
 	}
