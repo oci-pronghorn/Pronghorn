@@ -399,6 +399,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 		          } 
 		          doneSelectors.add(key);		          
 		      } else {
+		    	  
+		    	  // TODO: find old connections and recycle them if they are no longer used..
+		    	  // channelId holds the negative least used channel in case we want to close it
+		    	  // any connection object with a pool reservation of -1 is also a good candidate...
+		    	  //use this method to check
+		    	  //coordinator.connectionForSessionId(channelId).getPoolReservation()
+		    	  
 		    	  logger.error("max connections achieved, no more connections.");
 		      }
 
