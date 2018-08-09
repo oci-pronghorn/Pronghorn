@@ -2121,6 +2121,10 @@ public class GraphManager {
 	                						sumMsgPerSec += (long)msgPerSec[p.id];
 	                					}
 	                					pipeConstMsg = m.pipeDOTConst[p.id];
+	    			                    if (null==pipeConstMsg) {
+	    			                    	pipeConstMsg = buildPipeConstantText(pipe);
+	    			                    	m.pipeDOTConst[pipe.id] = pipeConstMsg;
+	    			                    }
                 					}
                 							
                 				}
@@ -2164,6 +2168,10 @@ public class GraphManager {
 	                						sumMsgPerSec += (long)msgPerSec[p.id];
 	                					}	                					
 	                					pipeConstMsg = m.pipeDOTConst[p.id];
+	    			                    if (null==pipeConstMsg) {
+	    			                    	pipeConstMsg = buildPipeConstantText(pipe);
+	    			                    	m.pipeDOTConst[pipe.id] = pipeConstMsg;
+	    			                    }
 	                					
                 					}
                 							
