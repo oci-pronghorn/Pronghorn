@@ -103,7 +103,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public void removeConnection(long id) {
 		//logger.info("\n ****** remove this connection "+id,new Exception());
 		
-		releaseResponsePipeLineIdx(id);
+		if (checkForResponsePipeLineIdx(id)>=0) {
+		   releaseResponsePipeLineIdx(id);
+		}
 		ClientConnection oldConnection = connections.remove(id);
 		if (null != oldConnection) {
 			//only decompose after removal.
