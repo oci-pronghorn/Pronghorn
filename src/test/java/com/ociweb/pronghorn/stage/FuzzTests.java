@@ -19,7 +19,7 @@ public class FuzzTests {
 	public void fuzzClientSocketReaderStage() {
 		TLSCertificates certs = TLSCertificates.defaultCerts;
 		assertTrue(StageTester.runFuzzTest(ClientSocketReaderStage.class, testDuration, generatorSeed++,
-				new Object[]{new ClientCoordinator(3, 10, certs, new StructRegistry()),false}) );
+				new Object[]{new ClientCoordinator(4, 10, certs, new StructRegistry()),false}) );
 	}
 
 //	@Test
