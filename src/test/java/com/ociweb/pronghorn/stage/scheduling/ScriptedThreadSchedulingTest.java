@@ -58,7 +58,7 @@ public class ScriptedThreadSchedulingTest {
 						pathRoot);
 		
 		TLSCertificates defaultcerts = TLSCertificates.defaultCerts;
-		HTTPServerConfig c = NetGraphBuilder.serverConfig(8084, gm);
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(7084, gm);
 		c.setHost("127.0.0.1");
 		if (null == defaultcerts) {
 			c.useInsecureServer();
