@@ -185,7 +185,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         //in cycles but under the human perception of time
         deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
         
-        assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 10_000_000_000L)));
+        assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 20_000_000_000L)));
 
         if (null != debugStageOrder) {	
         	try {
@@ -1320,7 +1320,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	//                                        ms  mi ns  must use longs!
-	private final static long hangTimeNS = 1_000_000_000L * 20L;//20 sec;
+	private final static long hangTimeNS = 1_000_000_000L * 30L;//30 sec;
 	public PronghornStage hungStage(long nowNS) {
 		final long local = timeStartedRunningStage;
 		if (((0!=timeStartedRunningStage) && (local>0)) 
