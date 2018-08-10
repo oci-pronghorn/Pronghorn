@@ -347,6 +347,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 
 		      long channelId = holder.lookupInsertPosition();	        
 		     
+		      
 		     //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader.
 		      		      
 		      //logger.info("\nnew connection {} holder can hold {}",channelId,holder.size());
@@ -404,9 +405,9 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	  // channelId holds the negative least used channel in case we want to close it
 		    	  // any connection object with a pool reservation of -1 is also a good candidate...
 		    	  //use this method to check
-		    	  //coordinator.connectionForSessionId(channelId).getPoolReservation()
+		    	//  coordinator.connectionForSessionId(channelId).getPoolReservation()
 		    	  
-		    	  logger.error("max connections achieved, no more connections.");
+		    	  logger.error("\n****max connections achieved, no more connections.****");
 		      }
 
 		  } else {

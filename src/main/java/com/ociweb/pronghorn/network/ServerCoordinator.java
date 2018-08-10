@@ -291,9 +291,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
         @Override
         public boolean isValid(ServerConnection serviceObject) { 
-        	
+
             return serviceObject.getSocketChannel().isConnectionPending() || 
-                   serviceObject.getSocketChannel().isConnected();
+            	   (serviceObject.getSocketChannel().isConnected() && serviceObject.getPoolReservation()>=0);
+                  
         }
 
         @Override

@@ -492,8 +492,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 			// if e.message is  "Broken pipe" then the connection was already lost, nothing to do here but close.
 			//logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
-						
-			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
+			
+			if (this.ccm.checkForResponsePipeLineIdx(connections[i].getId()) >=0  ) {
+				this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
+			}
+			
+			
 			connections[i].close();
 			connections[i]=null;
 			((Buffer)mappedByteBuffer).clear();
