@@ -345,12 +345,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 		  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
 		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
 
-		      long channelId = holder.lookupInsertPosition();	        
-		     
+		      //if we use an old position the old object will be decomposed to ensure there is no leak.
+		      long channelId = holder.lookupInsertPosition();	
 		      
-		     //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader.
-		      		      
-		      //logger.info("\nnew connection {} holder can hold {}",channelId,holder.size());
+		      //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader by design.
 		      	                      
 		      if (channelId>=0) {		                    
 		          
