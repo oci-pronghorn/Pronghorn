@@ -270,63 +270,67 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						boolean ok = ccId == Pipe.takeLong(localInputPipe);
 						assert(ok) : "Internal error";
 						
-						long arrivalTime = Pipe.takeLong(localInputPipe);
-						//if already set do not set again, we want the leading edge of the data arrival.
-						if (arrivalTimeAtPosition[i]<=0) {
-							arrivalTimeAtPosition[i] = arrivalTime;
-						}
-						
-						inputPosition[i] = Pipe.takeLong(localInputPipe);										
-						ccIdData[i] = ccId;
-			
-					
-						targetPipe = output[(int)cc.readDestinationRouteId()];					
-		
-						//append the new data
-						int meta = Pipe.takeByteArrayMetaData(localInputPipe);
-						int len = Math.max(0, Pipe.takeByteArrayLength(localInputPipe));
-						int pos = Pipe.bytePosition(meta, localInputPipe, len);
-						int mask = Pipe.blobMask(localInputPipe);
-						
-						///////////////////////////////////
-						//logger.info("parse new data of {} for connection {}",len,cc.getId());
-						//////////////////////////////////
-						
-						if (showData) {
-							Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(localInputPipe), pos, len, mask);
-						}
-						///////////////////////////////////////////
-						/////////////////////////////////////////
-						
-						if (positionMemoData[lenIdx]==0) {
-							positionMemoData[posIdx] = pos;						
-							positionMemoData[lenIdx] = len;
+					    if (msgIdx != NetPayloadSchema.MSG_PLAIN_210) {
 							
-							//we may hit zero in the middle of a payload so this check 
-							//is only valid for the 0 state.
-							if (len>0 && positionMemoData[stateIdx]==0) {
-								//we have new data plus we know that we have no old data
-								//because of this we know the first letter must be an H for HTTP.
-								boolean isValid = localInputPipe.blobRing[localInputPipe.blobMask&trieReader.sourcePos]=='H';
-								if (!isValid) {
-									logger.warn("invalid HTTP request from server should start with H");
-									if (null!=cc) {
-										badServerSoCloseConnection(memoIdx, cc);
-										//publish closed to notify those down stream
-										Pipe<NetResponseSchema> targetPipe1 = output[(int)cc.readDestinationRouteId()];
-										
-										publishCloseMessage(cc.host, cc.port, targetPipe1);
-									}
-								}
+					    	if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
+					    		
+					    		//publish closed to notify those down stream
+								publishCloseMessage(cc.host, cc.port, output[(int)cc.readDestinationRouteId()]);
+								Pipe.confirmLowLevelRead(localInputPipe, sizeOf);
+								Pipe.releaseReadLock(localInputPipe);
+								//this connection is closed release any pending data
+								Pipe.releaseAllPendingReadLock(localInputPipe);
+																
+								assert (cc.isDisconnecting()) : "must be marked as disconnecting so it get re-connected if requests start up again.";
+																
+								continue;
+					    		
+					    	} else {
+					    		throw new UnsupportedOperationException("unknown msgIdx: "+msgIdx);
+					    	}
+						
+					    } else {
+							
+							long arrivalTime = Pipe.takeLong(localInputPipe);
+							//if already set do not set again, we want the leading edge of the data arrival.
+							if (arrivalTimeAtPosition[i]<=0) {
+								arrivalTimeAtPosition[i] = arrivalTime;
 							}
 							
-						} else {				
-							positionMemoData[lenIdx] += len;
-						}
+							inputPosition[i] = Pipe.takeLong(localInputPipe);										
+							ccIdData[i] = ccId;
+				
 						
-						assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
-	
-						TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+							targetPipe = output[(int)cc.readDestinationRouteId()];					
+			
+							//append the new data
+							int meta = Pipe.takeByteArrayMetaData(localInputPipe);
+							int len = Math.max(0, Pipe.takeByteArrayLength(localInputPipe));
+							int pos = Pipe.bytePosition(meta, localInputPipe, len);
+							int mask = Pipe.blobMask(localInputPipe);
+							
+							///////////////////////////////////
+							//logger.info("parse new data of {} for connection {}",len,cc.getId());
+							//////////////////////////////////
+							
+							if (showData) {
+								Appendables.appendUTF8(System.out /*capturedContent*/, Pipe.blob(localInputPipe), pos, len, mask);
+							}
+							///////////////////////////////////////////
+							/////////////////////////////////////////
+							
+							if (positionMemoData[lenIdx]==0) {
+								positionMemoData[posIdx] = pos;						
+								positionMemoData[lenIdx] = len;								
+								validateFirstByteOfHeader(memoIdx, stateIdx, localInputPipe, cc, len);								
+							} else {				
+								positionMemoData[lenIdx] += len;
+							}
+							
+							assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
+		
+							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+						}
 					}
 					
 					//done consuming this message.
@@ -886,6 +890,25 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			}
 		} while(foundWork>0);//hasDataToParse()); //stay when very busy
 		
+	}
+
+	private void validateFirstByteOfHeader(final int memoIdx, final int stateIdx, Pipe<NetPayloadSchema> localInputPipe,
+			HTTPClientConnection cc, int len) {
+		//we may hit zero in the middle of a payload so this check 
+		//is only valid for the 0 state.
+		if (len>0 && positionMemoData[stateIdx]==0) {
+			//we have new data plus we know that we have no old data
+			//because of this we know the first letter must be an H for HTTP.
+			boolean isValid = localInputPipe.blobRing[localInputPipe.blobMask&trieReader.sourcePos]=='H';
+			if (!isValid) {
+				logger.warn("invalid HTTP request from server should start with H");
+				if (null!=cc) {
+					badServerSoCloseConnection(memoIdx, cc);
+					//publish closed to notify those down stream
+					publishCloseMessage(cc.host, cc.port, output[(int)cc.readDestinationRouteId()]);
+				}
+			}
+		}
 	}
 
 	private void validateNextByte(int i, final int memoIdx, HTTPClientConnection cc) {
