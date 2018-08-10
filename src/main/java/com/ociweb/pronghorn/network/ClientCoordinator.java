@@ -96,7 +96,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		this.typeData = typeData;
 		this.connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-
+		assert(maxPartialResponses <= (1<<connectionsInBits)) : "Wasted memory detected, there are fewer max users than max writers.";
 		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
@@ -127,8 +127,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			//logger.info("got null lookup {}",id);
 		}
 		
-		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-		releaseResponsePipeLineIdx(id);
+		if (checkForResponsePipeLineIdx(id)>=0) {
+			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
+			releaseResponsePipeLineIdx(id);
+		}
 		connections.resetUsageCount(id);
 	
 		return response;
@@ -148,8 +150,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				}
 			}
 		}
-		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-		releaseResponsePipeLineIdx(hostId);
+		//if the response was good we will have already returned, we know the connection is bad.
+		//ensure that the pipe is release if it is still held		
+		if (checkForResponsePipeLineIdx(hostId)>=0) {		
+			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
+			releaseResponsePipeLineIdx(hostId);
+		}
 		connections.resetUsageCount(hostId);
 		
 		return response;
@@ -178,7 +184,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	public void releaseResponsePipeLineIdx(long ccId) {
-		responsePipeLinePool.release(ccId);
+		int value = responsePipeLinePool.release(ccId);
+		assert(value>=0) : "Requested release of pipe for "+ccId+" connection however no reserved pipe could be found for this connection in the pool.";
 	}
 	
 	public int resposePoolSize() {
@@ -187,7 +194,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	@Override
 	public boolean isValid(ClientConnection connection) {
-		return null!=connection && connection.isValid();
+		return  null!=connection && connection.isValid();
 	}
 
 
@@ -471,9 +478,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				) {
 			
 			if (connectionId<0) {
-				logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());								
+				logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}"
+						,ccm.connections.size());								
 			} else {
-				logger.warn("No Free Data Pipes Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+				logger.warn("No Free Data Pipes Available, Too many simulanious transfers, consider reducing the load or increase the multiplier for pipes per connection above {}"
+						,ccm.responsePipeLinePool.length());
 			}							
 			
 		}
