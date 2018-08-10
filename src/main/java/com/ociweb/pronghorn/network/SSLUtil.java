@@ -693,7 +693,7 @@ public class SSLUtil {
 				
 				
 				cc = ccm.connectionForSessionId(connectionId); //connection id	
-				assert(cc.id==connectionId) : "returned wrong object";
+				assert(null==cc || cc.id==connectionId) : "returned wrong object";
 	
 				if (null==cc || !cc.isValid) {
 					
@@ -776,17 +776,18 @@ public class SSLUtil {
 					shutdownUnwrapper(source, target, rolling, isServer, maxEncryptedContentLength, System.currentTimeMillis(), cc);
 					return -1;
 				} else if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
-					
-					logger.info("UNWRAP FOUND DISCONNECT MESSAGE");										
-					
+
 					Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
-					Pipe.addLongValue(Pipe.takeLong(source), target); //ConnectionId
+					long conId = Pipe.takeLong(source);
+					Pipe.addLongValue(conId, target); //ConnectionId
 					Pipe.confirmLowLevelWrite(target,Pipe.sizeOf(target, NetPayloadSchema.MSG_DISCONNECT_203));
 					Pipe.publishWrites(target);
 
 					Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
 					Pipe.releaseReadLock(source);
-													
+	
+					rolling.clear();
+					 
 					return didWork;
 				} else if (msgIdx == NetPayloadSchema.MSG_BEGIN_208) {
 					
