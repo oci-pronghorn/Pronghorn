@@ -428,8 +428,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				 if (null!=eng) {
 					 eng.closeOutbound();
 				 }
-			 } else {
-				 getSocketChannel().shutdownOutput();
 			 }
 		} catch (Throwable e) {
 			logger.warn("Error closing connection ",e);
