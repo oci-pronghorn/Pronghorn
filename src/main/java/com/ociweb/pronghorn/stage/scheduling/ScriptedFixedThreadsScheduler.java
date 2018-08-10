@@ -1529,7 +1529,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	}
 
 	@Override
-	public boolean TerminateNow() {
+	public boolean terminateNow() {
 		
 		new Exception().printStackTrace();
 		

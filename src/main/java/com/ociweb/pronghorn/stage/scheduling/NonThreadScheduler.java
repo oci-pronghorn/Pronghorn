@@ -580,10 +580,10 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			}
 		} catch (AssertionError ae) {
 			recordTheException(stage, ae, that);
-			System.exit(-1); //hard stop due to assertion failure
+			that.terminateNow();//hard stop due to assertion failure
 		} catch (Throwable t) {				    
             recordTheException(stage, t, that);
-            System.exit(-1); //hard stop due to suprise
+            that.terminateNow(); //hard stop due to suprise
         } 
 		
 	}
@@ -657,7 +657,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     }
 
     @Override
-    public boolean TerminateNow() {
+    public boolean terminateNow() {
         shutdown();
         return true;
     }

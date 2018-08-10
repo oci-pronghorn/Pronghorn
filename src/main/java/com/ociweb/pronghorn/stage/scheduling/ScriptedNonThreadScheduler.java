@@ -1124,7 +1124,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     }
 
     @Override
-    public boolean TerminateNow() {
+    public boolean terminateNow() {
         shutdown();
         return true;
     }

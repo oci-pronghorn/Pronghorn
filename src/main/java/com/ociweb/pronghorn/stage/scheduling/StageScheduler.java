@@ -70,7 +70,7 @@ public abstract class StageScheduler {
 	public abstract void shutdown();
 	public abstract boolean awaitTermination(long timeout, TimeUnit unit);
 	public abstract void awaitTermination(long timeout, TimeUnit unit, Runnable clean, Runnable dirty);
-	public abstract boolean TerminateNow();
+	public abstract boolean terminateNow();
 
 	
 

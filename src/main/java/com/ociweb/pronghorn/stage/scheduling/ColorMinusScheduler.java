@@ -158,7 +158,7 @@ public class ColorMinusScheduler extends StageScheduler {
      * Do not call this method except when the system has become hung.
      * Work in the flow may be lost as a result.
      */
-    public boolean TerminateNow() {
+    public boolean terminateNow() {
 
         isShuttingDown = true;
         isShutDownNow = true;

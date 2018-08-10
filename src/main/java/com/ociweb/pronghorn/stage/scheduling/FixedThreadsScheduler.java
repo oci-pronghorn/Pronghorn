@@ -643,7 +643,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	}
 
 	@Override
-	public boolean TerminateNow() {
+	public boolean terminateNow() {
 		shutdown();
 		try {
 			//give the stages 1 full second to shut down cleanly
