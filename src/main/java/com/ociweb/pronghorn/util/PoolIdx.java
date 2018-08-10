@@ -39,14 +39,9 @@ public final class PoolIdx  {
     	
     	for(int i = 0;i<keys.length;i++) {
     		
-    		builder.append(" I:");
-    		Appendables.appendValue(builder, i);
-    		
-    		builder.append(" K:");
-    		Appendables.appendValue(builder, keys[i]);
-    		
-    		builder.append(" L:");
-    		Appendables.appendValue(builder, locked[i]);
+    		Appendables.appendValue(builder, " Idx:", i);    		
+    		Appendables.appendValue(builder, " Key:", keys[i]);    		
+    		Appendables.appendValue(builder, " Lok:", locked[i]);
     		builder.append("\n");
     	}
     	return builder.toString();
@@ -121,7 +116,7 @@ public final class PoolIdx  {
         return startNewLock(that, key, idx);
     }
     
-//    //TODO: rewrite this function so its can do the get logic...
+//    //TODO: rewrite this function so its can do the get logic... This will alow for us to no longer pass in groups count
 //	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int seed) {
 //		int result = -1;
 //		//if we go around once and find nothing then stop looking
