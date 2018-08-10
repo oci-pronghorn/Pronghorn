@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.mqtt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -25,10 +26,11 @@ public class MQTTClientResponseStage extends PronghornStage {
 
 	private static final Logger logger = LoggerFactory.getLogger(MQTTClientResponseStage.class);
 	
-	final Pipe<NetPayloadSchema>[] fromBroker;
-	final Pipe<ReleaseSchema> ackReleaseForResponseParser;
-	final Pipe<MQTTServerToClientSchema> out;
-
+	private final Pipe<NetPayloadSchema>[] fromBroker;
+	private final Pipe<ReleaseSchema> ackReleaseForResponseParser;
+	private final Pipe<MQTTServerToClientSchema> out;
+	private final ClientCoordinator ccm;
+	
 	/**
 	 *
 	 * @param gm
@@ -47,6 +49,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 		this.fromBroker = fromBroker;
 		this.ackReleaseForResponseParser = ackReleaseForResponseParser;
 		this.out = out;
+		this.ccm = ccm;
 	}
 
 	@Override
@@ -173,6 +176,14 @@ public class MQTTClientResponseStage extends PronghornStage {
 				 	    int sessionPresentFlag = inputStream.readByte();						
 				 	    int retCode = inputStream.readByte();
 					
+				 	    if (retCode!=0) {
+				 	    	//connection is bad so disconnect it so we can try again later.
+				 	    	ClientConnection cc = ((ClientConnection)ccm.connectionForSessionId(connectionId));
+				 	    	if (null!=cc) {
+				 	    		cc.beginDisconnect();
+				 	    	}
+				 	    }
+				 	    
 						Pipe.presumeRoomForWrite(out);
 						FragmentWriter.writeLII(out, MQTTServerToClientSchema.MSG_CONNACK_2, 
 													arrivalTime,
