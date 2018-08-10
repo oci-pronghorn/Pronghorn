@@ -3691,7 +3691,7 @@ public class TrieParserTest {
 			long result = TrieParserReader.query(reader, bsm, testData, testPos[i], testLen[i], 0x7FFF_FFFF);
 			if (i != result) {
 				System.err.println("unable to build expected " + i + " but got " + result);
-				System.exit(0);
+				fail();
 			}
 		}
 		// System.out.println("done building trie limit:"+bsm.getLimit()+"
