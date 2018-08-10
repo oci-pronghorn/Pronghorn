@@ -1076,7 +1076,10 @@ public class Pipe<T extends MessageSchema<T>> {
     public String toString() {
 
         int contentRem = Pipe.contentRemaining(this);
-        assert(contentRem <= sizeOfSlabRing) : "ERROR: can not have more content than the size of the pipe. content "+contentRem+" vs "+sizeOfSlabRing;
+        
+        if (contentRem > sizeOfSlabRing) {        	
+        	log.warn("ERROR: can not have more content than the size of the pipe. content {} vs {}",contentRem,sizeOfSlabRing);
+        }
         
     	StringBuilder result = new StringBuilder();
     	result.append("RingId<").append(schemaName(this));
@@ -4497,6 +4500,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @return long slab head
 	 */
 	public static <S extends MessageSchema<S>> long headPosition(Pipe<S> pipe) {
+		 assert(pipe.slabRingHead.headPos.get()>=0L) : "head position will never be negative";
 		 return pipe.slabRingHead.headPos.get();
 	}
 
