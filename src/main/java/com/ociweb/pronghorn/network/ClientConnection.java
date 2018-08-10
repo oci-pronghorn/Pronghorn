@@ -39,9 +39,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	
 	private SelectionKey key; //only registered after handshake is complete.
 
-	private final byte[] connectionGUID;
-	private final int    connectionGUIDLength;
-	
 	private final int pipeIdx;
 	
 	private long requestsSent;
@@ -67,11 +64,11 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	//TODO: if memory needs to be saved this flight time feature could be "turned off" 
 	private int inFlightTimeSentPos;
 	private int inFlightTimeRespPos;	
-	private long[] inFlightTimes;
+	private long[] inFlightTimes; //lazy create to save memory and startup connection time
 	
 	private int inFlightRoutesSentPos;
 	private int inFlightRoutesRespPos;
-	private int[] inFlightRoutes;
+	private int[] inFlightRoutes; //lazy create to save memory and startup connection time
 
 	private final long creationTimeNS;
 	
@@ -94,8 +91,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 		super(engine, SocketChannel.open(), conId);
 
-		this.inFlightTimes = new long[maxInFlight];
-		this.inFlightRoutes = new int[maxInFlight];
 		
 		//TODO: add support to hold data to be returned to client responder.
 		this.connectionDataWriter = null;
@@ -110,9 +105,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		}
 		
 		assert(port<=65535);		
-		// RFC 1035 the length of a FQDN is limited to 255 characters
-		this.connectionGUID = new byte[(2*host.length())+6];
-		this.connectionGUIDLength = buildGUID(connectionGUID, host, port, sessionId);
+
 		this.pipeIdx = pipeIdx;
 
 		this.sessionId = sessionId;
@@ -124,17 +117,10 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			logger.info("new client socket connection to {}:{} session {}",host,port,sessionId);
 		}
 				
-		SocketChannel localSocket = this.getSocketChannel();
-		initSocket(localSocket);
+		initSocket(this.getSocketChannel());
 						
 		this.recBufferSize = this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
-		
-		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
-		//logger.info("client send buffer size
-//		this.maxInFlightBits = inFlightBits;
-//		this.maxInFlight = 
-//		this.maxInFlightMask =  {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
-	
+
 		this.payloadSize = isTLS ?
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200) :
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
@@ -293,13 +279,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
     	return pos;
 	}
 	
-	public byte[] GUID() {
-		return connectionGUID;
-	}
-	public int GUIDLength() {
-		return connectionGUIDLength;
-	}
-	
 	public static boolean showConectionDetails = false;
 	/**
 	 * After construction this must be called until it returns true before using this connection. 
@@ -310,9 +289,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		} else {
 			try {
 								
-				boolean finishConnect = getSocketChannel().finishConnect();
-				isFinishedConnection |= finishConnect;
-			    				
+				boolean finishConnect = getSocketChannel().finishConnect();			    				
 			    if (!finishConnect ) {
 
 			    	if (System.nanoTime() > creationTimeNS+(resolveWithDNSTimeoutMS*1000000L)) {
@@ -321,6 +298,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			    	}
 			    	
 			    } else {
+			    	isFinishedConnection = true;			    	
 			    	clearWaitingForNetwork();
 			    	if (showConectionDetails) {
 			    		logger.info("new connection completed to {}:{}",host,port);
@@ -420,7 +398,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	public boolean isValid() {
 
 		SocketChannel socketChannel = getSocketChannel();
-		if (!socketChannel.isConnected()) {
+		if (null==socketChannel || (!socketChannel.isConnected())) {
 			if (logDisconnects) {
 				logger.info("{}:{} session {} is no longer connected. It was opened {} ago.",
 						host,port,sessionId,
@@ -450,6 +428,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				 if (null!=eng) {
 					 eng.closeOutbound();
 				 }
+			 } else {
+				 getSocketChannel().shutdownOutput();
 			 }
 		} catch (Throwable e) {
 			logger.warn("Error closing connection ",e);
@@ -463,18 +443,22 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return histRoundTrip;
 	}
 
-	public void recordSentTime(long time) {
-		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = time;		
+	public void recordSentTime(long timeNS) {
+		if (null==inFlightTimes) {
+			inFlightTimes = new long[maxInFlight];
+			inFlightRoutes = new int[maxInFlight];
+		}
+		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = timeNS;		
 	}
 
 	//important method to determine if the network was dropped while call was outstanding
-	public long outstandingCallTime(long time) {
+	public long outstandingCallTime(long timeNS) {
 		if (inFlightRoutesRespPos == inFlightTimeSentPos) {
 			return -1;
 		} else {			
 			long sentTime = inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask];
 			if (sentTime>0) {		
-				return time - sentTime;
+				return timeNS - sentTime;
 			} else {
 				return -1;//we read the value while it was being sent so discard
 			}
@@ -511,6 +495,10 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 		
 	public void recordDestinationRouteId(int id) {
+		if (null==inFlightTimes) {
+			inFlightTimes = new long[maxInFlight];
+			inFlightRoutes = new int[maxInFlight];
+		}
 		inFlightRoutes[++inFlightRoutesSentPos & maxInFlightMask] = id;
 	}
 	
