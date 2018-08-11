@@ -52,7 +52,6 @@ public class ServerNewConnectionStage extends PronghornStage{
     
     static final int connectMessageSize = ServerConnectionSchema.FROM.fragScriptSize[ServerConnectionSchema.MSG_SERVERCONNECTION_100];
 
-	private static final long CONNECTION_TTL_MS = 4_000; //may shut off any connections unused for 4 sec
     private ServerCoordinator coordinator;
     private Pipe<ServerConnectionSchema> newClientConnections;
     private final String label;
@@ -351,7 +350,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader by design.
 		      	                      
 		      if (channelId>=0) {		                    
-		          
+		     
+		    	  //TODO: remove this...
 		          int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
 		                                		          
 		          try {                          
@@ -380,9 +380,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 		            				                       coordinator)
 		            		  		  );
 		              
-		             //logger.info("\naccepting new connection {}",channelId); 
-		        		                                                                                                                
-		             // logger.info("register new data to selector for pipe {}",targetPipeIdx);
+		             // logger.info("\naccepting new connection {} registered data selector", channelId); 
+		        		           
+		                          
+		              
 		              channel.register(ServerCoordinator.getSelector(coordinator), 
 							           SelectionKey.OP_READ, 
 							           ServerCoordinator.selectorKeyContext(coordinator, channelId));
@@ -394,7 +395,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 					  
 		              
 		          } catch (IOException e) {
-		        	  logger.error("Unable to accept connection",e);
+		        	  logger.error("\nUnable to accept connection",e);
 		          } 
 		          doneSelectors.add(key);		          
 		      } else {

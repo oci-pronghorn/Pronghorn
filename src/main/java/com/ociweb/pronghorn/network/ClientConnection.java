@@ -57,7 +57,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	private long TIME_TILL_CLOSE = 10_000;
 	private ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
 
-	private final static int maxInFlightBits  = 18;//256K  about 3MB per client connection
+	private final static int maxInFlightBits  = 14;
 	public  final static int maxInFlight      = 1<<maxInFlightBits;
 	private final static int maxInFlightMask  = maxInFlight-1;
 	
@@ -126,6 +126,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 				
 		resolveAddressAndConnect(port);		
+		
+		System.gc();
 	}
 
 	public static void initSocket(SocketChannel socket) throws IOException {
@@ -424,7 +426,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		try {
 			 isDisconnecting = true;
 			 if (isTLS) {
-				 SSLEngine eng = getEngine();
+				 SSLEngine eng = getEngine(); ////TODO: is this needed and is it called too early??
 				 if (null!=eng) {
 					 eng.closeOutbound();
 				 }

@@ -98,6 +98,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
 		assert(maxPartialResponses <= (1<<connectionsInBits)) : "Wasted memory detected, there are fewer max users than max writers.";
 		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
+		abandonScanner = new ClientCoordinatorAbandonScanner(this);
 	}
 		
 	public void removeConnection(long id) {
@@ -361,7 +362,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	private int clientConnectionsErrorCounter = 0;
 
-	private ClientCoordinatorAbandonScanner abandonScanner = new ClientCoordinatorAbandonScanner();
+	private final ClientCoordinatorAbandonScanner abandonScanner;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
@@ -369,12 +370,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 		        ClientConnection cc = null;
 
-				if (-1 == connectionId || 
-					null == (cc = (ClientConnection) ccm.connections.get(connectionId)) ||
-					!cc.isValid()
-						) { 
+		        
+				if ((-1 == connectionId)
+					|| (null == (cc = (ClientConnection) ccm.connections.get(connectionId))) //not yet created
+					|| (!cc.isValid()) //was closed with notification or not yet open
+					|| cc.isDisconnecting() //was closed without notification and we need to establish a new socket
+					) { 
 					//NOTE: using direct lookup get since un finished connections may not be valid.
-										
+						
 					connectionId = ccm.lookupInsertPosition();
 					
 					if (connectionId<0) {

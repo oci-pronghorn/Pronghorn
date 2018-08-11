@@ -35,6 +35,9 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
  */
 public class ClientSocketReaderStage extends PronghornStage {	
 	
+    
+    public static boolean abandonSlowConnections = false;
+    
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private final ClientCoordinator coordinator;
 	private final Pipe<NetPayloadSchema>[] output;
@@ -158,32 +161,38 @@ public class ClientSocketReaderStage extends PronghornStage {
 			   }
 		
         }
-        
+ 
         /////////////////////////////////////////////
         //scan for abandoned connections periodically
         /////////////////////////////////////////////
         //This code still not working??
-        if (false && (++iteration&0x3FF)==0) {
+        if (abandonSlowConnections && (++iteration&0xFF)==0) { //TODO: add time trigger for this as well.
         	//only run when we have no data waiting
         	if (maxIterations>0) {
         	        	long now = System.nanoTime();
         	        	ClientConnection abandonded = coordinator.scanForAbandonedConnection();
-        	        	if (null!=abandonded) {
+        	        	if (null!=abandonded && --maxAbandon>=0) {
         	        		//formal close process
         	        		int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
-							Pipe<NetPayloadSchema> pipe = output[pipeIdx];
-        	        	
-							abandonded.beginDisconnect();
-							abandonded.close();
-							
-							Pipe.presumeRoomForWrite(pipe);
-							int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
-							Pipe.addLongValue(abandonded.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
-							Pipe.confirmLowLevelWrite(pipe, size);
-							Pipe.publishWrites(pipe);    
-							
-							coordinator.removeConnection(abandonded.getId());
-        	        		        	        		
+        	        		if (pipeIdx>=0) {
+								Pipe<NetPayloadSchema> pipe = output[pipeIdx];
+	        	        	
+								//System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+								
+								abandonded.beginDisconnect();
+								
+								Pipe.presumeRoomForWrite(pipe);
+								int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
+								Pipe.addLongValue(abandonded.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
+								Pipe.confirmLowLevelWrite(pipe, size);
+								Pipe.publishWrites(pipe);    
+								
+								coordinator.releaseResponsePipeLineIdx(abandonded.getId());
+								
+							//	coordinator.removeConnection(abandonded.getId());
+								//abandonded.close();
+								
+        	        		}   		
         	        	}
         	        	
         	        	long duration = System.nanoTime()-now;
@@ -195,6 +204,8 @@ public class ClientSocketReaderStage extends PronghornStage {
         
    	}
 
+	int maxAbandon = 1;
+	
 	boolean hasRoomForMore = true;
 	private void processSelection(SelectionKey selection) {
 		assert isReadOpsOnly(selection) : "only expected read"; 

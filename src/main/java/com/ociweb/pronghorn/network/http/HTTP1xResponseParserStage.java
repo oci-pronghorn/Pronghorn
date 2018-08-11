@@ -282,7 +282,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								Pipe.releaseAllPendingReadLock(localInputPipe);
 																
 								assert (cc.isDisconnecting()) : "must be marked as disconnecting so it get re-connected if requests start up again.";
-																
+										
+								//if this has not been released, do so since we may be in the middle of something.
+								if (inputPosition[i]>=0) {
+									//release to this last point
+									foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
+								}
 								continue;
 					    		
 					    	} else {
@@ -646,8 +651,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
 									
 										
-									Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
-														
+									if (Pipe.releasePendingByteCount(localInputPipe)>0) {
+										Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
+									}
+									
 									DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
 																	
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3

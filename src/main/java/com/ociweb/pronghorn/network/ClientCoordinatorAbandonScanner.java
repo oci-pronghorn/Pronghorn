@@ -16,7 +16,12 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 	private long maxOutstandingCallTime;
 	private ClientConnection candidate;
 	private RunningStdDev stdDev = new RunningStdDev();
+
+	private final ClientCoordinator coordinator;
 	
+	public ClientCoordinatorAbandonScanner(ClientCoordinator coordinator) {
+		this.coordinator = coordinator;
+	}
 	
 	public void reset() {
 		scanTime = System.nanoTime();
@@ -31,7 +36,9 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 		//find the single longest outstanding call
 		long callTime = t.outstandingCallTime(scanTime);
 
-		if (callTime > maxOutstandingCallTime) {
+		
+		
+		if (callTime > maxOutstandingCallTime & coordinator.checkForResponsePipeLineIdx(t.id)>0 ) {
 			
 		//	Appendables.appendNearestTimeUnit(System.out.append("Calltime: "), callTime).append("\n");
 			
@@ -46,9 +53,7 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 			RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
 		}
 	}
-	
-	StringBuilder workspace = new StringBuilder();
-	
+
 	public ClientConnection leadingCandidate() {
 
 		if (null!=candidate && (RunningStdDev.sampleCount(stdDev)>1)) {			
@@ -60,8 +65,7 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 			//Appendables.appendNearestTimeUnit(System.out.append("StdDev: "), (long)RunningStdDev.stdDeviation(stdDev) ).append("\n");
 			
 			if (maxOutstandingCallTime > limit) {
-				workspace.setLength(0);
-				logger.info("\n{} waiting connection to {} has been assumed abandonded and is the leading candidate to be closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
+				//logger.info("\n{} waiting connection to {} has been assumed abandoned and is the leading candidate to be closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
 				
 				//this is the worst offender at this time
 				return candidate;

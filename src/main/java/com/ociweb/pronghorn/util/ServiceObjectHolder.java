@@ -260,6 +260,7 @@ public class ServiceObjectHolder<T> {
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (keepLooking(data.serviceObjectValues[modIdx]));
 
+        sequenceCounter = (data.mask &localSequenceCount);
         //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }

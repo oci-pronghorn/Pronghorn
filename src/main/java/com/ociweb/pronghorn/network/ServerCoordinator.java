@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -11,9 +12,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeConfigManager;
@@ -199,6 +198,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 	}
 	
+	public void showPipeLinePool() {
+		System.out.println(responsePipeLinePool.toString());
+	}
+	
 	public int checkForResponsePipeLineIdx(long ccId) {
 		return PoolIdx.getIfReserved(responsePipeLinePool,ccId);
 	}	
@@ -292,9 +295,26 @@ public class ServerCoordinator extends SSLConnectionHolder {
         @Override
         public boolean isValid(ServerConnection serviceObject) { 
 
-            return serviceObject.getSocketChannel().isConnectionPending() || 
-            	   (serviceObject.getSocketChannel().isConnected() && serviceObject.getPoolReservation()>=0);
-                  
+        	SocketChannel socketChannel = serviceObject.getSocketChannel();
+        	if (null!=socketChannel) {
+        		//TODO: if disconnecting return false??
+				if (socketChannel.isConnected()) {
+	        		if (serviceObject.getPoolReservation()>=0) {
+	        			return true;
+	        		} else {
+
+	        			//this connection was attempted but could not be completed
+	        			//now that it is discovered we must release any resources it was using
+	        			//serviceObject.close();
+	        			//serviceObject.decompose();        			
+	        			return false;
+	        		}
+	        	}
+	        	if (socketChannel.isConnectionPending()) {
+	        		return true;
+	        	}        	
+        	}
+        	return false;
         }
 
         @Override

@@ -151,6 +151,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 	         return;
     	 }
     	
+    	/////////////////////////////
+    	//must keep this pipe from getting full or the processing will get backed up
+    	////////////////////////////
+ 		releasePipesForUse();
         ////////////////////////////////////////
         ///Read from socket
         ////////////////////////////////////////
@@ -195,12 +199,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 	private boolean processSelection(SelectionKey selection) {
 		assert isRead(selection) : "only expected read"; 
 		final SocketChannel socketChannel = (SocketChannel)selection.channel();
-    
+		
 		//get the context object so we know what the channel identifier is
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();
 		assert(channelId>=0);
 
+		//logger.info("\nnew key selection in reader for connection {}",channelId);
+		
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
 		
 		if (null!=cc) {
@@ -217,7 +223,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 		assert(cc.id == channelId);
 
-		
 		
 		boolean processWork = true;
 		if (coordinator.isTLS) {
@@ -251,11 +256,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 				final boolean newBeginning = (responsePipeLineIdx<0);
 
 				if (newBeginning) {
-	
+					
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					
+				//	System.out.println("new beginning connection:"+cc.id+" response:"+responsePipeLineIdx);
+					
+//					System.out.println("-------------------");
+//					for(SelectionKey key :selection.selector().keys()) {
+//						System.out.println("keys: "+key.interestOps());
+//					}
 					
 					if (-1 == responsePipeLineIdx) { 
 						//logger.trace("second check for released pipe");
@@ -266,7 +277,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 							//we can not begin this connection right now so we will try again later.
 							//we remove this selection so we can process other connections work while we wait for a pipe to open up
 							removeSelection(selection);
-							logger.trace("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs);
+							//logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs+" new connection "+channelId);
+							
+							
+							//System.out.println("yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+							
+							
+							//TODO: add countdown when everything else works.
+							//we want to keep this cc a couple rounds then abandon. we may be dropping this too soon.
+							cc.close();
+							cc.decompose();
 							
 							return true;
 						}
@@ -277,6 +297,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
 			
+					
+//					int i = output.length;
+//					while (--i>=0) {
+//						//What about encryption unit does it hold data we have not yet processed??
+//						System.out.println(i+" pos tail"+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i]));
+//					}
+//					
+//					coordinator.showPipeLinePool();
+//					
 //					logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
 //							channelId, 
 //							responsePipeLineIdx,
@@ -284,7 +313,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					
 				} else {
-					//logger.info("use existing return with {} is valid {} ",responsePipeLineIdx, cc.isValid);
+					//logger.info("use existing return with {} is valid {} connection {} ",responsePipeLineIdx, cc.isValid, cc.id);
 				}
 					
 				if (responsePipeLineIdx >= 0) {
@@ -305,12 +334,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            	hasOutputRoom = false;
 		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
-		            //logger.trace("pushed data out");
-		            
-		            if ((++rMask&0x3F) == 0) {
-		            	releasePipesForUse(); //must run but not on every pass
-		            }
-		            //logger.trace("finished pipe release");
+
 				}
 		}
 		return hasOutputRoom;
@@ -349,12 +373,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 		int i = releasePipes.length;
 		while (--i>=0) {
 			Pipe<ReleaseSchema> a = releasePipes[i];
-			//logger.info("release pipes from {}",a);
+			//logger.info("{}: release pipes from {}",i,a);
 			while (Pipe.hasContentToRead(a)) {
 	    						
 	    		int msgIdx = Pipe.takeMsgIdx(a);
 	    		
 	    		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
+	    			
 	    			
 	    			long connectionId = Pipe.takeLong(a);
 	    			
@@ -367,7 +392,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
 	    			
-	    			logger.info("warning, legacy (client side) release use detected in the server.");
+	    			//logger.info("warning, legacy (client side) release use detected in the server.");
 	    			
 	    			long connectionId = Pipe.takeLong(a);
 	    			
@@ -377,7 +402,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	  
 	    		} else {
 	    			logger.info("unknown or shutdown on release");
-	    			assert(-1==msgIdx);
+	    			assert(-1==msgIdx) : "unspected msgId "+msgIdx;
 	    			shutdownInProgress = true;
 	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
 	    		}
@@ -385,8 +410,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    	}
 		}
 	}
-
-	//TODO: these release ofen before opening a new oen must check priorty for this connection...		
+		
 	private void releaseIfUnused(int id, long idToClear, long pos, int seq) {
 		if (idToClear<0) {
 			throw new UnsupportedOperationException();
@@ -571,20 +595,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 			 return 1;//yes we are done
 		}
 	}
-
-    private void recordErrorAndClose(ReadableByteChannel sourceChannel, long ccId, IOException e) {
-       //   logger.error("unable to read",e);
-          //may have been closed while reading so stop
-          if (null!=sourceChannel) {
-              try {            	  
-            	  coordinator.releaseResponsePipeLineIdx(ccId);
-                  sourceChannel.close();
-               } catch (IOException e1) {
-                   logger.warn("unable to close channel",e1);
-               }
-              
-          }
-    }
 
     private void publishData(Pipe<NetPayloadSchema> targetPipe, 
     		                 long channelId, 
