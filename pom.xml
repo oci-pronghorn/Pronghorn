@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.ociweb</groupId>
+  <artifactId>open-edge-pronghorn</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+ 
+  <modules>  
+    <module>pronghorn</module>  
+  </modules>
+  
+  <reporting>
+    <plugins>
+        <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-surefire-report-plugin</artifactId>
+           <version>2.22.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>0.8.2-SNAPSHOT</version>
+           <reportSets>
+              <reportSet>
+                <reports>
+                  <!-- select non-aggregate reports -->
+                  <report>report</report>
+                </reports>
+              </reportSet>
+            </reportSets>
+        </plugin>
+    </plugins>
+  </reporting>
+
+</project>
+
+
+
+ <!-- 
+  need to pull the latest? 
+ 
+  setup workspace:
+  put this file in the root of your git folder
+  clone the following into your git folder
+  
+  git clone https://github.com/oci-pronghorn/Ph-TLS-pureJava.git
+  git clone https://github.com/oci-pronghorn/Pronghorn.git
+  git clone https://github.com/oci-pronghorn/PronghornRanch.git
+  git clone https://github.com/oci-pronghorn/PronghornPipes.git
+  git clone https://github.com/oci-pronghorn/JPG-Raster.git
+  git clone https://github.com/oci-pronghorn/WebCookbook.git
+   
+ 
+  tobuild:  
+            mvn -offline -T 1C -f open-edge-pom.xml install
+            mvn -f open-edge-pom.xml install
+            
+ -->
+
+
