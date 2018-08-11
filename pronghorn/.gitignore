@@ -1,4 +1,5 @@
 /target/
+/bin/
 /.settings/
 /LatencyResearch/
 /.classpath
@@ -26,3 +27,4 @@
 /.attach_pid*
 node_modules/
 .DS_Store
+/.gitignore
