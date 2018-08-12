@@ -159,16 +159,19 @@ public final class PoolIdx  {
 	            /////////
 	        	
 	        	//found and returned member that matches key and was locked
-	            if (key == keys[temp] && 1 == locked[temp]) {
-	            	
+	            if (key == keys[temp] && 1 == locked[temp]) {	            	
 	                return temp;
 	            } else {
-	            	
 	                //this slot was not locked so remember it
 	                //we may want to use this slot if key is not found.
-	                if (idx < 0 && 0 == locked[temp] && isOk.isOk(temp)) {
-	                    idx = temp;
-	                }
+	            	if (0 == locked[temp]) {
+		                if ((idx < 0) && isOk.isOk(temp)) {
+		                    idx = temp;
+		                } else if (key == keys[temp]) {
+		                	//if we find this key was once here take this same spot.
+		                	idx = temp;
+		                }
+	            	}
 	            }
 	        }  
         }
