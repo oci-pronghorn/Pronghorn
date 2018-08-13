@@ -421,7 +421,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 													connectionId, 
 													pipeIdx, 
 													hostId,						
-													ccm.structureId(sessionId, ccm.typeData));
+													structureId(sessionId, ccm.typeData));
 					
 					} catch (IOException ex) {
 						logger.warn("\nUnable to open connection to {}:{}",host,port, ex);
@@ -472,31 +472,21 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	}
 
-
-	private IntHashTable sessionStructIdTable = new IntHashTable(5);	
 	
-	public int structureId(int sessionId, StructRegistry typeData) {
+	public static int structureId(int sessionId, StructRegistry typeData) {
 		assert(sessionId>0) : "sessionId may not be zero";
-		int result = IntHashTable.getItem(sessionStructIdTable, sessionId);
+		int result = typeData.lookupAlias(sessionId);
 		if (result!=0) {
 			return result;
 		} else {
 			//was zero so find if its missing
-			if (IntHashTable.hasItem(sessionStructIdTable, sessionId)) {
+			if (typeData.isValidAlias(sessionId)) {
 				return result; //this zero is valid
-			} else {
-				//need to add new item				
-				int newStructId = HTTPUtil.newHTTPStruct(typeData);
-				if (!IntHashTable.setItem(sessionStructIdTable, sessionId, newStructId)) {
-					sessionStructIdTable = IntHashTable.doubleSize(sessionStructIdTable);
-					
-					if (!IntHashTable.setItem(sessionStructIdTable, sessionId, newStructId)) {
-						logger.warn("internal error, unable to store new struct id for reuse.", new Exception());
-					}
-				}				
-				return newStructId;
 			}
 		}
+		//need to add new item				
+		int newStructId = HTTPUtil.newHTTPStruct(typeData);
+		return typeData.storeAlias(sessionId, newStructId);		
 	}
 
 

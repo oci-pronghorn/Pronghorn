@@ -7,6 +7,7 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -14,9 +15,6 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPServerConfig;
 import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
-import com.ociweb.pronghorn.network.ServerConnectionStruct;
-import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -28,7 +26,8 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class HTTPSRoundTripTest {
 
-        
+    AtomicInteger sessionCounter = new AtomicInteger();    
+	
     @Test
 	public void allCertHTTPSTest() {
     
@@ -54,7 +53,7 @@ public class HTTPSRoundTripTest {
 		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
-		int fieldSession = 0;
+		int fieldSession = sessionCounter.incrementAndGet();
 		CharSequence fieldPath = "/"+testFile;
 		CharSequence fieldHeaders = null;
 		ClientCoordinator.registerDomain("127.0.0.1");
@@ -150,7 +149,7 @@ public class HTTPSRoundTripTest {
 		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
-		int fieldSession = 0;
+		int fieldSession = sessionCounter.incrementAndGet();
 		CharSequence fieldPath = "/"+testFile;
 		CharSequence fieldHeaders = null;
 		
@@ -243,7 +242,7 @@ public class HTTPSRoundTripTest {
 		Pipe<NetResponseSchema>[] httpResponsePipe = new Pipe[]{NetResponseSchema.instance.newPipe(10, 1<<14)};
 
 		int fieldDestination = 0;
-		int fieldSession = 0;
+		int fieldSession = sessionCounter.incrementAndGet();
 		CharSequence fieldPath = "/"+testFile;
 		CharSequence fieldHeaders = null;
 		

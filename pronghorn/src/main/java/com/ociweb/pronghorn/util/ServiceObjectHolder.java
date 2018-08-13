@@ -3,6 +3,8 @@ package com.ociweb.pronghorn.util;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
+import com.ociweb.pronghorn.network.ServerConnection;
+
 /**
  * Small footprint manager/holder of service objects. 
  * 
@@ -230,6 +232,7 @@ public class ServiceObjectHolder<T> {
        // System.err.println("service holder mask "+data.mask+" from "+localSequenceCount+" to "+hardStop);
         
         final long now = System.currentTimeMillis();
+        top:
         do {
 
             //if we end up passing over all the members find which is the least used.
@@ -251,17 +254,49 @@ public class ServiceObjectHolder<T> {
             modIdx = data.mask & (int)index;
           //  System.err.println("checking "+modIdx+"  "+index+"  "+data.serviceObjectValues[modIdx]);
         
+            if (data.clazz != ServerConnection.class) {
             if (index==hardStop && keepLooking(data.serviceObjectValues[modIdx])) {
             	assert(-1!=maxPeriodIdx);            	
             	//do not grow instead return the negative value of the least used object
+            	//if (data.clazz == ServerConnection.class) {
+            	//	System.out.println("found connection to kill "+maxPeriodIdx);
+            	//}
             	return -maxPeriodIdx;
             }            
+            }
             
+//            if (data.clazz == ServerConnection.class) {
+//            	ServerConnection sc = (ServerConnection)data.serviceObjectValues[modIdx];
+//            	if (null != sc) {
+//            		if (sc.getSequenceNo() > 1) {
+//            			
+//            			System.out.println(modIdx+" should be skipped "+index+" with sequence "+sc.getSequenceNo()+" con "+sc.getId()+" data mask "+data.mask+" data size "+data.size);
+//            			
+//            			continue top;//skip over this one            			
+//            		} else {
+//            			//if seq is 1 then we may not be shipping data yet... we have gone around and nothing happened.
+//            			System.out.println(modIdx+" should be NOT? skipped "+index+" with sequence "+sc.getSequenceNo()+" con "+sc.getId()+" data mask "+data.mask+" data size "+data.size);
+//            			sc.decompose();
+//            			//TODO:we keep looking for a new connnection but the 1 of 4 which was closed is still here!!
+//            			//     how do we close that connection and remove it from the pool?
+//            			break;
+//            		}
+//            	}            	
+//            }
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (keepLooking(data.serviceObjectValues[modIdx]));
 
         sequenceCounter = (data.mask &localSequenceCount);
         //Never resets the usage count, that field is use case specific and should not always be cleared.
+        
+//        if (data.clazz == ServerConnection.class) {
+//        	ServerConnection sc = (ServerConnection)data.serviceObjectValues[modIdx];
+//        	
+//        	System.out.println("lookupInsertPosition returned:"+index+" out of "+(data.size)+"  seq:"+((null==sc)?"null":sc.getSequenceNo()));
+//        	
+//        }
+        
+        //this value always goes up and can be mod to find the exact position of an object
         return index;
     }
 
@@ -274,12 +309,14 @@ public class ServiceObjectHolder<T> {
      * This can also be used to replace this value if it is still valid and not expired.
      * 
      */
-    public void setValue(long index, T object) {
+    public T setValue(long index, T object) {
     	int modIdx = data.mask & (int)index;
     	data.addTimeMS[modIdx] = System.currentTimeMillis();
     	data.serviceObjectKeys[modIdx] = index;//must be stored to make this a valid object
+    	T old = data.serviceObjectValues[modIdx];
     	data.serviceObjectValues[modIdx] = (T)object;    	
     	sequenceCounter = Math.max(sequenceCounter,index);
+    	return old;
     }
     
     

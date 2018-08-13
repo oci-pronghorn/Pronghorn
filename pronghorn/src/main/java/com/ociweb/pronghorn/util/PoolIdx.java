@@ -1,10 +1,9 @@
 package com.ociweb.pronghorn.util;
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
 
 public final class PoolIdx  {
 
@@ -19,7 +18,8 @@ public final class PoolIdx  {
     private final static Logger logger = LoggerFactory.getLogger(PoolIdx.class);
     
     public PoolIdx(int length, int groups) {
-        this.keys = new long[length];
+        this.keys = new long[length];        
+        Arrays.fill(keys, -1L);
         this.locked = new byte[length];
         this.groups = groups;
         
@@ -105,9 +105,22 @@ public final class PoolIdx  {
 	            } else {
 	                //this slot was not locked so remember it
 	                //we may want to use this slot if key is not found.
-	                if (idx < 0 && 0 == localLocked[temp]) {
-	                    idx = temp;
-	                }
+	            	if (0 == localLocked[temp]) {	            		
+	            		if (idx<0) {
+	            			//not already set
+	            			if (0 == localLocked[temp]) {
+	            				idx = temp; //if unlocked take it
+	            			}
+	            		} else {
+	            			//already set do we have something better?
+	            			if (key == localKeys[temp]) {
+	            				idx = temp; //take this one since we had it before
+	            			} else if (-1 == localKeys[temp] //never used
+ 	            					  && localKeys[idx]!=key) { //and not already assigned to previous selection
+	            				idx = temp;
+	            			}	            			            			
+	            		}	            				                
+	            	}
 	            }
 	        }
         }
@@ -162,16 +175,24 @@ public final class PoolIdx  {
 	            if (key == keys[temp] && 1 == locked[temp]) {	            	
 	                return temp;
 	            } else {
-	                //this slot was not locked so remember it
-	                //we may want to use this slot if key is not found.
-	            	if (0 == locked[temp]) {
-		                if ((idx < 0) && isOk.isOk(temp)) {
-		                    idx = temp;
-		                } else if (key == keys[temp]) {
-		                	//if we find this key was once here take this same spot.
-		                	idx = temp;
-		                }
+	            		            	
+	            	if (0 == locked[temp] && isOk.isOk(temp)) {	            		
+	            		if (idx<0) {
+	            			//not already set
+	            			if (0 == locked[temp]) {
+	            				idx = temp; //if unlocked take it
+	            			}
+	            		} else {
+	            			//already set do we have something better?
+	            			if (key == keys[temp]) {
+	            				idx = temp; //take this one since we had it before
+	            			} else if (-1 == keys[temp] //never used
+ 	            					  && keys[idx]!=key) { //and not already assigned to previous selection
+	            				idx = temp;
+	            			}          			
+	            		}	                
 	            	}
+	            	
 	            }
 	        }  
         }
