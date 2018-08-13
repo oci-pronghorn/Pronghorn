@@ -115,8 +115,12 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						
 						//TODO: should report back to telemetry screen 
 						long hangTime = localArray[c].hangTime(nowNS);
-						logger.info("{} Hung stage {}", Appendables.appendNearestTimeUnit(new StringBuilder(), hangTime), hungStage);
-						hangman.addValue(stageNname);
+						//TODO: not sure why we need to filter here, code needs review
+						if (hangTime>1_000_000_000) {
+						
+							logger.info("{} Hung stage {}", Appendables.appendNearestTimeUnit(new StringBuilder(), hangTime), hungStage);
+							hangman.addValue(stageNname);
+						}
 					}
 				}
 			}
