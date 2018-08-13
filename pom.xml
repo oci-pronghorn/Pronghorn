@@ -7,6 +7,7 @@
   <packaging>pom</packaging>
  
   <modules>  
+    <module>ph-tls-pure-java</module> 
     <module>pronghorn</module>  
   </modules>
   
