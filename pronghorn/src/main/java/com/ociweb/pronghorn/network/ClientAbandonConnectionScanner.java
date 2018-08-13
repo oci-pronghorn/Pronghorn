@@ -14,7 +14,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	
 	public static int stdDevsToAbandon = 5; //default which will close connections taking longer than expected
 	public static long absoluteNSToAbandon = 600_000_000_000L;//default of 10 minutes, not normally used since standard dev is faster.
-	public static long absoluteNSToKeep = 80_000_000; //default of 80ms for any acceptable wait.
+	public static long absoluteNSToKeep =        200_000_000; //default of 200ms for any acceptable wait.
 	
 	private long scanTime;
 	private long maxOutstandingCallTime;
