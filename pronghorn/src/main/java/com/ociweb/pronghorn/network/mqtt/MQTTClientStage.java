@@ -114,7 +114,18 @@ public class MQTTClientStage extends PronghornStage {
 	}
 
 	public void processClientRequests() {
-	
+//	
+//		System.out.println(Pipe.hasContentToRead(clientRequest)+" && "
+//				         + Pipe.hasRoomForWrite(clientToServer)+" && "
+//				         +Pipe.peekMsg(clientRequest, 
+//						           MQTTClientRequestSchema.MSG_BROKERCONFIG_100, 
+//						           MQTTClientRequestSchema.MSG_CONNECT_1,
+//						           -1)+" && "
+//				         +brokerAcknowledgedConnection
+//				         
+//				
+//				);
+		
 		while(  				
 				Pipe.hasContentToRead(clientRequest)
 				&& Pipe.hasRoomForWrite(clientToServer) //only process if we have room to write

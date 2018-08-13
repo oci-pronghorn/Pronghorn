@@ -137,8 +137,6 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void run() {
 
-    //	long now = System.currentTimeMillis();
-    	
     	 if(shutdownInProgress) {
 	    	 int i = output.length;
 	         while (--i >= 0) {
@@ -160,7 +158,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         ////////////////////////////////////////
         ///Read from socket
         ////////////////////////////////////////
-    	int maxIterations = 1000;//TODO: test, also how are things unconsumed??
+    	int maxIterations = 1000;
     	 
         while (--maxIterations>=0 &&
         		
@@ -210,27 +208,25 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
-		
+
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
 		} else {
-			//System.out.println("was null and closed for "+channelId);
 			assert(validateClose(socketChannel, channelId));
 			try {
 				socketChannel.close();
 			} catch (IOException e) {				
 			}
 			//if this selection was closed then remove it from the selections
+
 			removeSelection(selection);
-			
 			if (coordinator.checkForResponsePipeLineIdx(channelId)>=0) {
 				coordinator.releaseResponsePipeLineIdx(channelId);
 			}			
-			
+
 			return true;
 		}
 
-		
 		boolean processWork = true;
 		if (coordinator.isTLS) {
 				
@@ -251,7 +247,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				 }
 			}
 		}
-			
+		
 		boolean hasOutputRoom = true;
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (processWork && (null!=cc)) {
@@ -295,11 +291,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 							//we remove this selection so we can process other connections work while we wait for a pipe to open up
 							removeSelection(selection);
 							//logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs+" new connection "+channelId);
-							
-							
-						//	System.out.println("Too many reqeusts, drop... yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
-							
-							
+
 							//TODO: add countdown when everything else works.
 							//we want to keep this cc a couple rounds then abandon. we may be dropping this too soon.
 							cc.close();
@@ -332,7 +324,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					
 				} else {
-					//logger.info("use existing return with {} is valid {} connection {} ",responsePipeLineIdx, cc.isValid, cc.id);
+		//			logger.info("use existing return with {} is valid {} connection {} ",responsePipeLineIdx, cc.isValid, cc.id);
 				}
 					
 				if (responsePipeLineIdx >= 0) {
@@ -345,7 +337,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 							                                newBeginning, 
 							                                cc, selection); 
 
-					//System.out.println(pumpState+" pump "+responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
+					///System.out.println(pumpState+" pump "+responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
 		            					
 					if (pumpState > 0) { 
 		            	//logger.info("remove this selection "+channelId);
@@ -356,7 +348,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
 
-				}
+				} 
 		}
 		return hasOutputRoom;
 	}

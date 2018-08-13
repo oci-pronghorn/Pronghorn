@@ -8,9 +8,13 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServerObjectHolderVisitor;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
-public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<ClientConnection> {
+public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<ClientConnection> {
 
-	private final static Logger logger = LoggerFactory.getLogger(ClientCoordinatorAbandonScanner.class);
+	private final static Logger logger = LoggerFactory.getLogger(ClientAbandonConnectionScanner.class);
+	
+	public static int stdDevsToAbandon = 5; //default which will close connections taking longer than expected
+	public static long absoluteNSToAbandon = 600_000_000_000L;//default of 10 minutes, not normally used since standard dev is faster.
+	public static long absoluteNSToKeep = 80_000_000; //default of 80ms for any acceptable wait.
 	
 	private long scanTime;
 	private long maxOutstandingCallTime;
@@ -19,7 +23,7 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 
 	private final ClientCoordinator coordinator;
 	
-	public ClientCoordinatorAbandonScanner(ClientCoordinator coordinator) {
+	public ClientAbandonConnectionScanner(ClientCoordinator coordinator) {
 		this.coordinator = coordinator;
 	}
 	
@@ -36,17 +40,12 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 		//find the single longest outstanding call
 		long callTime = t.outstandingCallTime(scanTime);
 
-		
-		
 		if (callTime > maxOutstandingCallTime & coordinator.checkForResponsePipeLineIdx(t.id)>0 ) {
-			
-		//	Appendables.appendNearestTimeUnit(System.out.append("Calltime: "), callTime).append("\n");
-			
 			maxOutstandingCallTime = callTime;
 			candidate = t;
 		}
 		
-		//TODO: can, find the lest recently used connection and close it as well.
+		//TODO: can, find the lest recently used connection and close it as well ??
 		
 		if (ElapsedTimeRecorder.totalCount(t.histogram())>1) {
 			//find the std dev of the 98% of all network calls
@@ -57,14 +56,16 @@ public class ClientCoordinatorAbandonScanner extends ServerObjectHolderVisitor<C
 	public ClientConnection leadingCandidate() {
 
 		if (null!=candidate && (RunningStdDev.sampleCount(stdDev)>1)) {			
-			int stdDevs = 4;
-			long limit = (long)((stdDevs*RunningStdDev.stdDeviation(stdDev))+RunningStdDev.mean(stdDev));
+
+			long limit = (long)((stdDevsToAbandon*RunningStdDev.stdDeviation(stdDev))+RunningStdDev.mean(stdDev));
 						
-			//Appendables.appendNearestTimeUnit(System.out.append("Candidate: "), maxOutstandingCallTime).append("\n");
-			//Appendables.appendNearestTimeUnit(System.out.append("StdDev Limit: "), limit).append("\n");
-			//Appendables.appendNearestTimeUnit(System.out.append("StdDev: "), (long)RunningStdDev.stdDeviation(stdDev) ).append("\n");
-			
-			if (maxOutstandingCallTime > limit) {
+//			boolean debug = false;
+//			if (debug) {
+//			Appendables.appendNearestTimeUnit(System.out.append("Candidate: "), maxOutstandingCallTime).append("\n");
+//			Appendables.appendNearestTimeUnit(System.out.append("StdDev Limit: "), limit).append("\n");
+//			Appendables.appendNearestTimeUnit(System.out.append("StdDev: "), (long)RunningStdDev.stdDeviation(stdDev) ).append("\n");
+//			}
+			if (maxOutstandingCallTime > Math.min(Math.max(limit,absoluteNSToKeep),absoluteNSToAbandon)) {
 				//logger.info("\n{} waiting connection to {} has been assumed abandoned and is the leading candidate to be closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
 				
 				//this is the worst offender at this time

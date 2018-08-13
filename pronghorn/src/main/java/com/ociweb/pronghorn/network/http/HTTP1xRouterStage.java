@@ -309,9 +309,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            if (null != log && !Pipe.hasRoomForWrite(log)) {
 		            	return;//try later after log pipe is cleared
 		            }
-		            
+
 		            int result = singlePipe(this, localIdx);
-		            
+
 		            if (result>=0) {
 		            	didWork+=result;		            	
 		            } else {	            		            	
@@ -334,8 +334,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		        	localIdx = inputs.length;
 		        }
     		} while ((--m>=0) && (didWork!=0));
+    		
     		idx = localIdx;
-    	} while (didWork!=0);    
+    	} while (didWork!=0);
 
     }
 
@@ -361,7 +362,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         } else {
         	if (that.inputLengths[idx] <= 0) {
     			//closed so return
-    			return -1;
+    			return 0;
     		} else {
     			//process remaining data if all the data is here
     		}             
@@ -371,7 +372,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     			logger.warn("Shutting down while doing partial consume of data");
     			return -1;
     		}
-        }                
+        }       
+
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
 	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);

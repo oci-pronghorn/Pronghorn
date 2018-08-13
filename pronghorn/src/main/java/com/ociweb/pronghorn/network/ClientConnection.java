@@ -311,7 +311,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 					return finishConnect;
 				} else {
 					close();
-					return false;
+					isFinishedConnection = true;	
+					return true;
 				}
 				
 			} catch (IOException io) {

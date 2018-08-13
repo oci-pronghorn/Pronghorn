@@ -36,7 +36,7 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 public class ClientSocketReaderStage extends PronghornStage {	
 	
     
-    public static boolean abandonSlowConnections = false;
+    public static boolean abandonSlowConnections = true;
     
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private final ClientCoordinator coordinator;
@@ -164,21 +164,22 @@ public class ClientSocketReaderStage extends PronghornStage {
  
         /////////////////////////////////////////////
         //scan for abandoned connections periodically
+        //if this is called every 4micros then every 4000 is every 16 ms
+        //if this is called every 4ms then every 4000 is every 16 sec
         /////////////////////////////////////////////
-        //This code still not working??
-        if (abandonSlowConnections && (++iteration&0xFF)==0) { //TODO: add time trigger for this as well.
+        if (abandonSlowConnections && (++iteration&0xFFF)==0) {
         	//only run when we have no data waiting
         	if (maxIterations>0) {
-        	        	long now = System.nanoTime();
+        	        	//long now = System.nanoTime();
         	        	ClientConnection abandonded = coordinator.scanForAbandonedConnection();
-        	        	if (null!=abandonded && --maxAbandon>=0) {
+        	        	if (null!=abandonded) {
         	        		//formal close process
         	        		int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
         	        		if (pipeIdx>=0) {
 								Pipe<NetPayloadSchema> pipe = output[pipeIdx];
 	        	        	
-								//System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-								
+								logger.warn("\nClient disconnected {} because call was taking too long.",abandonded);
+																
 								abandonded.beginDisconnect();
 								
 								Pipe.presumeRoomForWrite(pipe);
@@ -188,23 +189,18 @@ public class ClientSocketReaderStage extends PronghornStage {
 								Pipe.publishWrites(pipe);    
 								
 								coordinator.releaseResponsePipeLineIdx(abandonded.getId());
-								
-							//	coordinator.removeConnection(abandonded.getId());
-								//abandonded.close();
-								
+									
         	        		}   		
         	        	}
         	        	
-        	        	long duration = System.nanoTime()-now;
-        	        	if (duration>10_000_000) {
-        	        		Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
-        	        	}
+        	        	//long duration = System.nanoTime()-now;
+        	        	//if (duration>10_000) {
+        	        	//	Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
+        	        	//}
         	}
-        }
-        
+        }        
    	}
 
-	int maxAbandon = 1;
 	
 	boolean hasRoomForMore = true;
 	private void processSelection(SelectionKey selection) {

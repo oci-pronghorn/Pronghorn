@@ -98,7 +98,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
 		assert(maxPartialResponses <= (1<<connectionsInBits)) : "Wasted memory detected, there are fewer max users than max writers.";
 		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
-		abandonScanner = new ClientCoordinatorAbandonScanner(this);
+		abandonScanner = new ClientAbandonConnectionScanner(this);
 	}
 		
 	public void removeConnection(long id) {
@@ -362,7 +362,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	private int clientConnectionsErrorCounter = 0;
 
-	private final ClientCoordinatorAbandonScanner abandonScanner;
+	private final ClientAbandonConnectionScanner abandonScanner;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			CharSequence host, int port, final int sessionId, Pipe<NetPayloadSchema>[] outputs,
@@ -499,8 +499,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				logger.warn("No ConnectionId Available, Too many open connections client side, consider opening fewer for raising the limit of open connections above {}"
 						,ccm.connections.size());								
 			} else {
-				logger.warn("No Free Data Pipes Available, Too many simulanious transfers, consider reducing the load or increase the multiplier for pipes per connection above {}"
-						,ccm.responsePipeLinePool.length());
+				////////////////////
+				//given a split second this will resolve itself
+				//////////////////
+				//logger.warn("No Free Data Pipes Available, Too many simulanious transfers, consider reducing the load or increase the multiplier for pipes per connection above {}"
+				//		,ccm.responsePipeLinePool.length());
 			}							
 			
 		}

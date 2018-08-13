@@ -219,11 +219,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				int len3 = Pipe.blobMask(localInputPipe);
 				
 				if (Pipe.hasContentToRead(localInputPipe)) {
-					
-					
-					//System.out.println("reading content off pipe "+i);
-				
-					
+
 					////////////////
 					//before taking the data
 					//ensure that it can be consumed 
@@ -231,12 +227,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					ccId = Pipe.peekLong(localInputPipe, 1);
 					boolean alsoReturnDisconnected = true;
 					cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId, alsoReturnDisconnected);
-				
 					if (null != cc) {
 						//do not process if an active write for a different pipe is in process
-						if (     (i != outputOwner[(int)cc.readDestinationRouteId()]) 
-								&&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
+						int owner = outputOwner[(int)cc.readDestinationRouteId()];
+						if (         (i != owner) &&  (-1 != owner)) {
 							//move to the next pipe so we get it done.
+							//logger.info("\nOutput owner {} is held but is not mine {} so conitnue to next pipe",owner,i);
 							continue;
 						}
 						outputOwner[(int)cc.readDestinationRouteId()] = i;
@@ -263,7 +259,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							positionMemoData[lenIdx] = 0;//wipe out existing data
 							positionMemoData[stateIdx] = 0;
 							
-							Pipe.skipNextFragment(localInputPipe, msgIdx);							
+							Pipe.skipNextFragment(localInputPipe, msgIdx);	
 							continue;
 						}
 										
@@ -288,6 +284,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//release to this last point
 									foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
 								}
+								outputOwner[(int)cc.readDestinationRouteId()]=-1;//release this output
+							
 								continue;
 					    		
 					    	} else {
@@ -361,6 +359,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					if (trieReader.sourceLen==0 && 0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
 						//We have no data in the local buffer and 
 						//We have no data on this pipe so go check the next one.
+						//logger.info("\nNo data found in local buffer and no data on the pipe {} so move to next. {}",i,localInputPipe);
+						//if I am the owner, clear the usage of this pipe for use again by other connections
+						//this happens when we have unexpected connection closures.
+						int k = outputOwner.length;
+						while (--k>=0) {
+							if (outputOwner[k]==i) {
+								outputOwner[k]=-1;//release since we own this one but have a null connection
+							}
+						}
 						continue;						
 					} else {
 						//else use the data we have since no new data came in.
@@ -372,7 +379,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-							//System.out.println("a");
 							continue;
 						}
 						
@@ -421,7 +427,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					    &&  (-1 != outputOwner[(int)cc.readDestinationRouteId()])) {
 						//multiple connections write to the same pipe, this keeps them organized.
 						//move to the next one because this one is blocked
-						//System.err.println("qqq");
 						continue;
 					}
 					outputOwner[(int)cc.readDestinationRouteId()] = i;
