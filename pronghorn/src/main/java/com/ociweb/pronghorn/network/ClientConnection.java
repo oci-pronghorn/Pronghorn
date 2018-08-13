@@ -291,23 +291,28 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		} else {
 			try {
 								
-				boolean finishConnect = getSocketChannel().finishConnect();			    				
-			    if (!finishConnect ) {
-
-			    	if (System.nanoTime() > creationTimeNS+(resolveWithDNSTimeoutMS*1000000L)) {
-			    		logger.info("connection timeout {} {}ms",this,resolveWithDNSTimeoutMS);
-			    		beginDisconnect();
-			    	}
-			    	
-			    } else {
-			    	isFinishedConnection = true;			    	
-			    	clearWaitingForNetwork();
-			    	if (showConectionDetails) {
-			    		logger.info("new connection completed to {}:{}",host,port);
-			    	}
-			    }
-			    
-				return finishConnect;
+				SocketChannel socketChannel = getSocketChannel();
+				if (socketChannel!=null) {
+					boolean finishConnect = socketChannel.finishConnect();			    				
+				    if (!finishConnect ) {
+	
+				    	if (System.nanoTime() > creationTimeNS+(resolveWithDNSTimeoutMS*1000000L)) {
+				    		logger.info("connection timeout {} {}ms",this,resolveWithDNSTimeoutMS);
+				    		beginDisconnect();
+				    	}
+				    	
+				    } else {
+				    	isFinishedConnection = true;			    	
+				    	clearWaitingForNetwork();
+				    	if (showConectionDetails) {
+				    		logger.info("new connection completed to {}:{}",host,port);
+				    	}
+				    }
+					return finishConnect;
+				} else {
+					close();
+					return false;
+				}
 				
 			} catch (IOException io) {
 				close();
