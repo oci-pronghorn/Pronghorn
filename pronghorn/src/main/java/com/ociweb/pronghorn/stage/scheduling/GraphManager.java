@@ -55,7 +55,7 @@ public class GraphManager {
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
 	private final static int INIT_RINGS = 32;
-	private final static int INIT_STAGES = 32;	
+	final static int INIT_STAGES = 32;	
 	
 	//will show telemetry its self
 	public static boolean monitorAll = false;
@@ -92,18 +92,6 @@ public class GraphManager {
 		percentile = value;
 	}
 	
-    private class GraphManagerStageStateData {
-    	
-		private Object lock = new Object();	
-		private byte[] stageStateArray = new byte[INIT_STAGES];
-		
-		public final static byte STAGE_NEW = 0;
-		public final static byte STAGE_STARTED = 1;
-		public final static byte STAGE_STOPPING = 2;
-		public final static byte STAGE_TERMINATED = 3;
-		
-	}
-    
     //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns - this is the delay between calls regardless of how long call takes
 	                                                        //If dependable/regular clock is required run should not return and do it internally.
@@ -340,7 +328,7 @@ public class GraphManager {
 	
 	public static GraphManager cloneStagesWithNotaKey(GraphManager m, Object key) {
 		GraphManager clone = new GraphManager(
-				m.new GraphManagerStageStateData(),
+				new GraphManagerStageStateData(),
 				m.recordTypeData, m.name);
 		
 		//register each stage
@@ -423,7 +411,7 @@ public class GraphManager {
 	
 	public static GraphManager cloneStagesWithNotaKeyValue(GraphManager m, Object key, Object value) {
 		GraphManager clone = new GraphManager(
-				m.new GraphManagerStageStateData(),
+				new GraphManagerStageStateData(),
 				m.recordTypeData, m.name);
 		
 		

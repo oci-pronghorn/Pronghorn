@@ -147,6 +147,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 					
 					BaseConnection connection = ccm.connectionForSessionId(connectionId);
 					if (null!=connection) {
+						connectionId = connection.id;
 						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
 					}				
 					

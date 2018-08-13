@@ -133,6 +133,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	};
 
+
     @Override
     public void run() {
 
@@ -154,7 +155,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     	/////////////////////////////
     	//must keep this pipe from getting full or the processing will get backed up
     	////////////////////////////
- 		releasePipesForUse();
+   		releasePipesForUse();
+   
         ////////////////////////////////////////
         ///Read from socket
         ////////////////////////////////////////
@@ -202,16 +204,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 		//get the context object so we know what the channel identifier is
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
-		final long channelId = connectionContext.getChannelId();
+		long channelId = connectionContext.getChannelId();
 		assert(channelId>=0);
 
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
 		BaseConnection cc = coordinator.connectionForSessionId(channelId);
 		
-		if (null!=cc) {
+		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
 		} else {
+			//System.out.println("was null and closed for "+channelId);
 			assert(validateClose(socketChannel, channelId));
 			try {
 				socketChannel.close();
@@ -219,9 +222,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 			//if this selection was closed then remove it from the selections
 			removeSelection(selection);
+			
+			if (coordinator.checkForResponsePipeLineIdx(channelId)>=0) {
+				coordinator.releaseResponsePipeLineIdx(channelId);
+			}			
+			
 			return true;
 		}
-		assert(cc.id == channelId);
 
 		
 		boolean processWork = true;
@@ -257,16 +264,26 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 				if (newBeginning) {
 					
+					if (cc.id != channelId) {
+						//we must release the old one?
+						int result = coordinator.checkForResponsePipeLineIdx(channelId);
+						if (result>=0) {
+							//we found the old channel so remove it before we add the new id.
+							coordinator.releaseResponsePipeLineIdx(channelId);
+						}
+					}
+					
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					
-				//	System.out.println("new beginning connection:"+cc.id+" response:"+responsePipeLineIdx);
-					
-//					System.out.println("-------------------");
-//					for(SelectionKey key :selection.selector().keys()) {
-//						System.out.println("keys: "+key.interestOps());
+//					if (cc.getSequenceNo()<1) {
+//					
+//						System.out.println("server new beginning connection:"+cc.id+" response:"+responsePipeLineIdx+" sequence: "+cc.getSequenceNo());
+//						coordinator.showPipeLinePool();
+//						
 //					}
+
 					
 					if (-1 == responsePipeLineIdx) { 
 						//logger.trace("second check for released pipe");
@@ -280,7 +297,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 							//logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs+" new connection "+channelId);
 							
 							
-							//System.out.println("yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+						//	System.out.println("Too many reqeusts, drop... yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
 							
 							
 							//TODO: add countdown when everything else works.
@@ -298,18 +315,20 @@ public class ServerSocketReaderStage extends PronghornStage {
 					}
 			
 					
+					/**
+					 * This part shows we are moving forward on this 1 pipe but never sending a response...
+					 */
 //					int i = output.length;
 //					while (--i>=0) {
 //						//What about encryption unit does it hold data we have not yet processed??
-//						System.out.println(i+" pos tail"+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i]));
-//					}
-//					
-//					coordinator.showPipeLinePool();
-//					
+//						System.out.println(i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i]));
+//					}					
+//					coordinator.showPipeLinePool();					
 //					logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
 //							channelId, 
 //							responsePipeLineIdx,
 //							output.length);
+					/////////////////////////////////////
 					
 					
 				} else {
@@ -318,13 +337,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 				if (responsePipeLineIdx >= 0) {
 					
-					//System.err.println(responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
+					//System.out.println("uuuuuuuuu "+cc.isDisconnecting+"  "+cc.isValid+"  "+cc.id);
 					
-					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, 
+					int pumpState = pumpByteChannelIntoPipe(socketChannel, cc.id, 
 															cc.getSequenceNo(),
 							                                output[responsePipeLineIdx], 
 							                                newBeginning, 
 							                                cc, selection); 
+
+					//System.out.println(pumpState+" pump "+responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
 		            					
 					if (pumpState > 0) { 
 		            	//logger.info("remove this selection "+channelId);
@@ -492,7 +513,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
                 assert(readCountMatchesLength(len, b));
                 
-                if (temp>=0) {
+                if (temp>=0) {                	
                 	return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
                 } else {
                 	if (null!=cc) {
@@ -568,8 +589,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 	
 			
-			publishData(targetPipe, channelId, len);                  	 
-			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len,targetPipe,((fullTarget&&isOpen) ? 0 : 1));
+			publishData(targetPipe, channelId, len);        
+			
+			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len, targetPipe, ((fullTarget&&isOpen) ? 0 : 1));
 			
 			return (fullTarget && isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 			

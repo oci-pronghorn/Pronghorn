@@ -308,7 +308,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
     	
         Pipe<NetPayloadSchema> pipe = input[idx];
-        final long channelId = Pipe.takeLong(pipe);
+        long channelId = Pipe.takeLong(pipe);
         final long arrivalTime = Pipe.takeLong(pipe);        
                
         activeIds[idx] = channelId;
@@ -331,7 +331,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	        
 	        //only write if this connection is still valid
 	        if (null != serverConnection) {        
-					    
+	        	channelId = serverConnection.id;
 	        	if (showWrites) {
 	        		int pos = Pipe.convertToPosition(meta, pipe);
 	        		logger.info("/////////len{}///////////\n"+

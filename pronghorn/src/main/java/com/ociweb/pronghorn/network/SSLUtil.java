@@ -603,10 +603,8 @@ public class SSLUtil {
 			int msgIdx = Pipe.takeMsgIdx(source);
 			assert( NetPayloadSchema.MSG_PLAIN_210==msgIdx);
 			
-			long connectionId = Pipe.takeLong(source);
+			Pipe.takeLong(source); //Connection Id
 			long arrivalTime = Pipe.takeLong(source);
-			
-			assert(cc.id == connectionId);
 			
 			long positionId = Pipe.takeLong(source);
 			
@@ -691,15 +689,9 @@ public class SSLUtil {
 				final long connectionId = Pipe.peekLong(source, 1);
 				assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
 				
-				
 				cc = ccm.connectionForSessionId(connectionId); //connection id	
-				assert(null==cc || cc.id==connectionId) : "returned wrong object";
-	
-				if (null==cc || !cc.isValid) {
-					
-					//logger.info("sever {} ignored closed connection {} connectionId {}",isServer,cc,connectionId);
-					//do not process this message because the connection has dropped
 
+				if (null==cc || !cc.isValid) {
 					Pipe.skipNextFragment(source);
 					continue;
 				}

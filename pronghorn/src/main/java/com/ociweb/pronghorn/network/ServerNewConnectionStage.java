@@ -374,13 +374,17 @@ public class ServerNewConnectionStage extends PronghornStage{
 		              }
 					  							  
 					  
-		              holder.setValue(channelId, 
+		              ServerConnection old = holder.setValue(channelId, 
 		            		  		  new ServerConnection(sslEngine, 
 		            		  				  		       channel, channelId,
 		            				                       coordinator)
 		            		  		  );
+		              if (null!=old) {
+							old.close();
+							old.decompose();
+						}
 		              
-		             // logger.info("\naccepting new connection {} registered data selector", channelId); 
+		            // logger.info("\naccepting new connection {} registered data selector", channelId); 
 		        		           
 		                          
 		              
@@ -388,7 +392,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 							           SelectionKey.OP_READ, 
 							           ServerCoordinator.selectorKeyContext(coordinator, channelId));
 						
-					  //logger.info("\nnew server connection attached for new id {} ",channelId);
+					//  logger.info("\nnew server connection attached for new id {} ",channelId);
 					  if (null!=newClientConnections) {								  
 		                  publishNotificationOFNewConnection(targetPipeIdx, channelId);
 					  }

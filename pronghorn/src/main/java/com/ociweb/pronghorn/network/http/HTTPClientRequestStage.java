@@ -213,7 +213,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			return hasRoomForEOF(output);
 		}
 		
-		int userId=0;
+		int sessionId=0;
 		int port=0;			
 		int hostMeta=0;
  		int hostLen=0;
@@ -232,23 +232,25 @@ public class HTTPClientRequestStage extends PronghornStage {
  
  			if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_CLOSE_104) ) {
  	 			
- 				userId = Pipe.peekInt(requestPipe,      1); //user id always after the msg idx
+ 				sessionId = Pipe.peekInt(requestPipe,      1); //user id always after the msg idx
  	 			port = Pipe.peekInt(requestPipe,        2); //port is always after the userId; 
  	 			hostMeta = Pipe.peekInt(requestPipe,    3); //host is always after port
  	 	 		hostLen  = Pipe.peekInt(requestPipe,    4); //host is always after port
+ 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
  			} else {
  				
- 	 			userId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
+ 	 			sessionId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
  	 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
  	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
  	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
+ 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
  			}
  	 		
  	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
  						
-     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, userId);
+     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
  		}
 		
  		if (null!=activeConnection
@@ -266,20 +268,26 @@ public class HTTPClientRequestStage extends PronghornStage {
  			
  			if (0==port) {
  				int routeId = Pipe.peekInt(requestPipe, 1);
- 	 			userId   = Pipe.peekInt(requestPipe,    2); //user id always after the msg idx
+ 	 			sessionId   = Pipe.peekInt(requestPipe,    2); //user id always after the msg idx
  	 			port     = Pipe.peekInt(requestPipe,    3); //port is always after the userId; 
  	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
  	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
  	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 	 		hostMask = Pipe.blobMask(requestPipe);
+ 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
  			}
  			
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
- 					 port, userId, output, connectionId, ccf);
- 	
+ 					 port, sessionId, output, connectionId, ccf);
+
+ 			//System.out.println("old "+connectionId+" new "+activeConnection.id);
+ 			//TODO: if the connectionId requests are in pipe they will keep coming in and each will cause a new call??
+ 			
+ 			
+ 			
  		}
  		
 		if (null != activeConnection) {

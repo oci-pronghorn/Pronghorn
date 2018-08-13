@@ -358,17 +358,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 					
-					if (trieReader.sourceLen==0 &&        //we have no old data
-						0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
+					if (trieReader.sourceLen==0 && 0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
 						//We have no data in the local buffer and 
 						//We have no data on this pipe so go check the next one.
-						if (Pipe.contentRemaining(localInputPipe)>(localInputPipe.slabMask*.75)) {
-							logger.warn("Can not read content because old data has not been released.");
-							logger.warn("exited");
-							System.exit(-1);
-						}
-						continue;
-						
+						continue;						
 					} else {
 						//else use the data we have since no new data came in.
 						

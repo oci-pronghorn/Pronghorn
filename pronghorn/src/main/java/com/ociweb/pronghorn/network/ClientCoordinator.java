@@ -119,7 +119,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		
 		if (null != response) {			
 			if (response.isValid()) {
-				connections.incUsageCount(id);
+				connections.incUsageCount(response.id);
 				return response;
 			} else {
 				//logger.info("connection was disconnected {}",id);
@@ -139,12 +139,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return response;
 	}
 	
-	public BaseConnection connectionForSessionId(long hostId, boolean alsoReturnDisconnected) {
-		ClientConnection response = connections.get(hostId);
+	public BaseConnection connectionForSessionId(long connectionId, boolean alsoReturnDisconnected) {
+		ClientConnection response = connections.get(connectionId);
 		
 		if (null != response) {			
 			if (response.isValid()) {
-				connections.incUsageCount(hostId);
+				connections.incUsageCount(response.id);
 				return response;
 			} else {
 				//the connection has been disconnected
@@ -155,11 +155,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		//if the response was good we will have already returned, we know the connection is bad.
 		//ensure that the pipe is release if it is still held		
-		if (checkForResponsePipeLineIdx(hostId)>=0) {		
+		if (checkForResponsePipeLineIdx(connectionId)>=0) {		
 			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-			releaseResponsePipeLineIdx(hostId);
+			releaseResponsePipeLineIdx(connectionId);
 		}
-		connections.resetUsageCount(hostId);
+		connections.resetUsageCount(connectionId);
 		
 		return response;
 	}
@@ -324,7 +324,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 
-	public static int lookupHostId(byte[] hostBytes) {
+	public static int lookupHostId(byte[] hostBytes) {		
 		return lookupHostId(hostBytes, 0, hostBytes.length, Integer.MAX_VALUE);
 	}
 	
@@ -365,7 +365,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private final ClientCoordinatorAbandonScanner abandonScanner;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
-			CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
+			CharSequence host, int port, final int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId, AbstractClientConnectionFactory ccf) {
 				
 		        ClientConnection cc = null;
@@ -377,8 +377,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					|| cc.isDisconnecting() //was closed without notification and we need to establish a new socket
 					) { 
 					//NOTE: using direct lookup get since un finished connections may not be valid.
-						
-					connectionId = ccm.lookupInsertPosition();
+					
+					long originalId = connectionId;
+					connectionId = ccm.lookupInsertPosition();		
 					
 					if (connectionId<0) {
 						long leastUsedId = (-connectionId);
@@ -391,6 +392,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						   ) {							
 							connectionId = leastUsedId;
 							//logger.trace("client will reuse connection id {} ",leastUsedId);
+						} else {
+							connectionId = tempCC.id;
 						}
 					}
 					
@@ -406,21 +409,42 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 					
 					try {
-					//	logger.info("\nnew client connection {}:{}",host,port);
-				    	//create new connection because one was not found or the old one was closed
+						//TODO: need to check why we keep opening new connections..
+//						if (cc==null) {
+//							logger.info("\n{} bcc was null so new client connection ",connectionId);
+//						} else {
+//							logger.info("\n{} nnew client connection {}:{}  disc:{} valid:{}",connectionId, host,port,cc.isDisconnecting,cc.isValid);
+//						}
+						
+						//create new connection because one was not found or the old one was closed
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
 													pipeIdx, 
-													hostId,
-													structureId(sessionId, ccm.typeData));
-						
+													hostId,						
+													ccm.structureId(sessionId, ccm.typeData));
+					
 					} catch (IOException ex) {
 						logger.warn("\nUnable to open connection to {}:{}",host,port, ex);
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}
 					
-					ccm.connections.setValue(connectionId, cc);	
+					//System.out.println("store new connection under "+connectionId+" and "+originalId);
+					
+					//need to store under both old and new positions so we can find the new connection
+					//for any new requests which are backed up in the pipe.
+					if (originalId>=0 && originalId!=cc.id) {
+						ClientConnection old = ccm.connections.setValue(originalId, cc);
+						if (null!=old) {
+							old.close();
+							old.decompose();
+						}
+					}
+					ClientConnection old2 = ccm.connections.setValue(cc.id, cc);	
+					if (null!=old2) {
+						old2.close();
+						old2.decompose();
+					}
 				
 					long key = computePortSessionKey(cc.port, cc.sessionId);
 					LongLongHashTable table = conTables[cc.hostId];					
@@ -449,26 +473,25 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 
-	//we know that sessions are defined using a static counter so this is also safe. no collisions in JVM
-	private static IntHashTable sessionStructIdTable = new IntHashTable(5);
+	private IntHashTable sessionStructIdTable = new IntHashTable(5);	
 	
-	
-	public static int structureId(int sessionId, StructRegistry typeData) {
-
-		int result = IntHashTable.getItem(ClientCoordinator.sessionStructIdTable, sessionId);
+	public int structureId(int sessionId, StructRegistry typeData) {
+		assert(sessionId>0) : "sessionId may not be zero";
+		int result = IntHashTable.getItem(sessionStructIdTable, sessionId);
 		if (result!=0) {
 			return result;
 		} else {
 			//was zero so find if its missing
-			if (IntHashTable.hasItem(ClientCoordinator.sessionStructIdTable, sessionId)) {
+			if (IntHashTable.hasItem(sessionStructIdTable, sessionId)) {
 				return result; //this zero is valid
 			} else {
 				//need to add new item				
 				int newStructId = HTTPUtil.newHTTPStruct(typeData);
-				if (!IntHashTable.setItem(ClientCoordinator.sessionStructIdTable, sessionId, newStructId)) {
-					ClientCoordinator.sessionStructIdTable = IntHashTable.doubleSize(ClientCoordinator.sessionStructIdTable);
-					if (!IntHashTable.setItem(ClientCoordinator.sessionStructIdTable, sessionId, newStructId)) {
-						logger.warn("internal error, unable to store new struct id for reuse.");
+				if (!IntHashTable.setItem(sessionStructIdTable, sessionId, newStructId)) {
+					sessionStructIdTable = IntHashTable.doubleSize(sessionStructIdTable);
+					
+					if (!IntHashTable.setItem(sessionStructIdTable, sessionId, newStructId)) {
+						logger.warn("internal error, unable to store new struct id for reuse.", new Exception());
 					}
 				}				
 				return newStructId;

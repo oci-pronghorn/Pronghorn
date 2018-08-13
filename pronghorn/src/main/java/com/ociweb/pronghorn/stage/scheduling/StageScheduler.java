@@ -48,6 +48,10 @@ public abstract class StageScheduler {
 		assert(setC(caller)); //only do with assertions on
 	}
 	
+	protected final void setCallerId(PronghornStage stage) {
+		assert(setC(stage.boxedStageId)); //only do with assertions on
+	}
+	
 	public boolean checkForException() {
 		return true;//for specific implementations can throw exception if one was captured.
 	}

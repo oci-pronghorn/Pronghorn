@@ -597,7 +597,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int routeId = -1;
 		 
 		 if (null!=con) {
-			 
+			 channelId = con.id;
 			 connectionDataReader = con.connectionDataReader;
 			 ChannelReader reader = connectionDataReader.beginRead();
 			 if (null!=reader && conStruct!=null) {

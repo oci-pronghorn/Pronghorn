@@ -628,7 +628,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 						
 						waitBeforeRun(that, System.nanoTime());
 		
-						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, that.graphManager,
+						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, 
 								GraphManager.isTelemetryEnabled(that.graphManager));
 		        }
 		
@@ -825,7 +825,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	
 	private int runBlock(int scheduleIdx, int[] script, 
 			             PronghornStage[] stages,
-			             GraphManager gm, final boolean recordTime) {
+			             final boolean recordTime) {
 			
 		final long startNow = System.nanoTime();
 		boolean shutDownRequestedHere = false;
@@ -847,9 +847,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				SLAStartNano = System.nanoTime();
 			}			
 	
-			shutDownRequestedHere = runStage(gm, recordTime, 
+			shutDownRequestedHere |= runStage(recordTime, 
 					didWorkMonitor, 
-			        shutDownRequestedHere,
 			        inProgressIdx, SLAStart, start,
 			        stages[inProgressIdx]);		
 			
@@ -875,17 +874,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return Integer.MAX_VALUE;
 	}
 
-	private boolean runStage(GraphManager gm, final boolean recordTime,
-			final DidWorkMonitor localDidWork, boolean shutDownRequestedHere,
+	private boolean runStage(final boolean recordTime,
+			final DidWorkMonitor localDidWork, 
 			int inProgressIdx, long SLAStart,
 			long start, final PronghornStage stage) {
 		
+        //////////these two are for hang detection
+		runningStage = stage;	
+		timeStartedRunningStage = start;
+		
 		DidWorkMonitor.begin(localDidWork, start);		
-		shutDownRequestedHere = runStageImpl(this, gm, shutDownRequestedHere, start, stage);		
+		boolean shutDownRequestedHere = runStageImpl(this, stage);		
 		if (!DidWorkMonitor.didWork(localDidWork)) {		
 		} else {
 			ScriptedNonThreadScheduler.recordRunResults(
-					         this, gm, recordTime, 
+					         this, recordTime, 
 					         inProgressIdx, start, SLAStart, stage);
 		}
 		return shutDownRequestedHere;
@@ -893,32 +896,35 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private static boolean runStageImpl(
 			final ScriptedNonThreadScheduler that, 
-			final GraphManager gm, final boolean shutDownRequestedHere, final long start,
 			final PronghornStage stage) {
-		
-		//NOTE: if no stages have shutdown we could elminate this check with a single boolean.
-		if (!GraphManager.isStageShuttingDown(that.stateArray, stage.stageId)) {
-				//////////these two are for hang detection
-				that.timeStartedRunningStage = start;
-				that.runningStage = stage;
-
-				that.setCallerId(stage.boxedStageId);		        
-				assert(that.hangDetectBegin(stage));
-		        try {
-					stage.run();
-				} catch (Exception e) {			
-					that.processException(stage, e);
+		try {		
+			//NOTE: if no stages have shutdown we could elminate this check with a single boolean. TODO: if this shows up in profiler again.
+			if (!(that.stateArray[stage.stageId] >= GraphManagerStageStateData.STAGE_STOPPING)) {
 					
-				}		        
-		        assert(that.hangDetectFinish());
-		        that.clearCallerId();
-		        
-		        that.timeStartedRunningStage = 0;
-		        return shutDownRequestedHere;
-		} else {
-		    processShutdown(gm, stage);
-		    return true;
-		}
+					that.setCallerId(stage);		        
+					assert(that.hangDetectBegin(stage));
+					stage.run();
+			        assert(that.hangDetectFinish());
+			        that.clearCallerId();		        
+			        that.timeStartedRunningStage = 0;
+			        return false;
+			} else {				
+			    processShutdown(that.graphManager, stage);
+			    return true;
+			}
+		} catch (Exception e) {			
+			return processExceptionAndCleanup(that, stage, e);
+		}		        
+	}
+
+	private static boolean processExceptionAndCleanup(final ScriptedNonThreadScheduler that, final PronghornStage stage,
+			Exception e) {
+		that.processException(stage, e);
+		
+		assert(that.hangDetectFinish());
+		that.clearCallerId();		        
+		that.timeStartedRunningStage = 0;
+		return false;
 	}
 
 	private HangDetector hd;
@@ -944,7 +950,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private static void recordRunResults(
 			ScriptedNonThreadScheduler that, 
-			GraphManager gm, final boolean recordTime, int inProgressIdx, long start,
+			final boolean recordTime, int inProgressIdx, long start,
 			long SLAStart, PronghornStage stage) {
 			        
 		if (recordTime) {		
@@ -957,7 +963,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			//	that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
 			}
 
-			if (!GraphManager.accumRunTimeNS(gm, stage.stageId, duration, now)){
+			if (!GraphManager.accumRunTimeNS(that.graphManager, stage.stageId, duration, now)){
 				assert(reportLowAccuracyClock(that));
 			}
 		}
