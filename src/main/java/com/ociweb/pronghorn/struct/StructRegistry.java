@@ -293,6 +293,8 @@ public class StructRegistry { //prong struct store
 			structLocals[structIdx] = associatedObject;
 		}
 		
+		assert(null!=this.fieldNames[structIdx]) : "Bad field names for struct at "+structIdx;
+		
 		return resultStructId;
 	}
 		
@@ -317,11 +319,13 @@ public class StructRegistry { //prong struct store
 						   int fieldDim,
 						   byte[] name) {
 		assert(null!=fieldType);
-		assert(null!=fieldNames);
+		assert(null!=this.fieldNames);
 		//grow all the arrays with new value
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;
-		int newFieldIdx = fieldNames[idx].length;
+		
+		assert(null!=this.fieldNames[idx]) : "Bad field names for struct at "+idx+" in "+this.hashCode();
+		int newFieldIdx = this.fieldNames[idx].length;
 		
 		//add text lookup
 		assert(isNotAlreadyDefined(this.fields[idx], name)) : "field of this name already defined.";
