@@ -37,7 +37,7 @@ public class StructRegistry { //prong struct store
 	
 	private IntHashTable structTable = new IntHashTable(3);
 	
-	
+
 	//TODO: future feature
 	//private Class<Enum<?>>[][] fieldOptionalEnum = new Class[4][]; //TODO: add method to set this on a field.
 
@@ -750,6 +750,27 @@ public class StructRegistry { //prong struct store
 		}
 		return (((long)(IS_STRUCT_BIT|(STRUCT_MASK & structId)))<<STRUCT_OFFSET) | fieldPosition;
 	}
+//////////////
 
+	
+	private IntHashTable aliasStructIdTable = new IntHashTable(5);//alias values....
+	
+	public boolean isValidAlias(int sessionId) {
+		return IntHashTable.hasItem(aliasStructIdTable, sessionId);
+	}
+
+	public int lookupAlias(int sessionId) {
+		return IntHashTable.getItem(aliasStructIdTable, sessionId);
+	}
+
+	public int storeAlias(int sessionId, int newStructId) {
+		if (!IntHashTable.setItem(aliasStructIdTable, sessionId, newStructId)) {
+			aliasStructIdTable = IntHashTable.doubleSize(aliasStructIdTable);					
+			if (!IntHashTable.setItem(aliasStructIdTable, sessionId, newStructId)) {
+				logger.warn("internal error, unable to store new struct id for reuse.", new Exception());
+			}
+		}				
+		return newStructId;
+	}
 	
 }
