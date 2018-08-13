@@ -177,7 +177,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	@Override
 	public void run() {	
-		if (connectionId()>=0) {
+				
+		if (connectionId()>=0 || Pipe.hasContentToRead(input)) {
 			if (!processPersistLoad()) {
 	
 				long connectionId = processPingAndReplay();
@@ -574,6 +575,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private void processInput(long connectionId) {
 
+		
+		
+		
 		while ( (Pipe.peekMsg(input, MQTTClientToServerSchema.MSG_BROKERHOST_100)  				
 				|| (
 				    ((connectionId = connectionId())>=0)
@@ -619,6 +623,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 			}
 					
+						
 			Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
 			
 //			long count1 = Pipe.totalWrittenFragments(server);
