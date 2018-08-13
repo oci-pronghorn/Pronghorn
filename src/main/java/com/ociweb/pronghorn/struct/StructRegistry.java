@@ -317,6 +317,7 @@ public class StructRegistry { //prong struct store
 						   int fieldDim,
 						   byte[] name) {
 		assert(null!=fieldType);
+		assert(null!=fieldNames);
 		//grow all the arrays with new value
 		assert((IS_STRUCT_BIT&structId)!=0) : "must be valid struct";
 		int idx = STRUCT_MASK & structId;

@@ -164,6 +164,7 @@ public class IntHashTable {
 			   setItem(newHT, key, value);
 		   }		   
 	   }	   
+	   assert(newHT.space>0);
 	   return newHT;
    }
 	
