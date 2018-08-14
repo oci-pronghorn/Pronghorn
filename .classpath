@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="pronghorn/src/main/java"/>
+	<classpathentry kind="src" path="pronghorn/src/test/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/pronghorn-pipes"/>
+	<classpathentry kind="output" path="pronghorn/bin"/>
+</classpath>

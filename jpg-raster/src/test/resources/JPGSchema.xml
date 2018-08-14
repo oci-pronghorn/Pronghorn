@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+	<template name="HeaderMessage" id="1">
+		<int32 name="height" id="101"/>
+		<int32 name="width" id="201"/>
+		<string name="filename" id="301"/>
+		<int32 name="final" id="401"/>
+	</template>
+	
+	<template name="ColorComponentMessage" id="2">
+		<int32 name="componentID" id="102"/>
+		<int32 name="horizontalSamplingFactor" id="202"/>
+		<int32 name="verticalSamplingFactor" id="302"/>
+		<int32 name="quantizationTableID" id="402"/>
+	</template>
+
+	<template name="QuantizationTableMessage" id="3">
+		<int32 name="tableId" id="103"/>
+		<int32 name="precision" id="203"/>
+		<byteVector name="table" id="303"/>
+	</template>
+
+	<template name="MCUMessage" id="4">
+		<byteVector name="y" id="104"/>
+		<byteVector name="cb" id="204"/>
+		<byteVector name="cr" id="304"/>
+	</template>
+
+</templates>
