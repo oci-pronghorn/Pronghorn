@@ -10,6 +10,8 @@
     <module>ph-tls-pure-java</module> 
     <module>pronghorn</module> 
     <module>webcookbook</module> 
+    <module>jpg-raster</module> 
+    
   </modules>
   
   <reporting>

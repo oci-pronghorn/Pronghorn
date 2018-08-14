@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb.jpgRaster</groupId>
-    <artifactId>JPGRaster</artifactId>
+    <artifactId>jpg-raster</artifactId>
     <version>1.0.1-SNAPSHOT</version>
 
     <name>${project.artifactId}</name>
