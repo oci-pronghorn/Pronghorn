@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="ChunkedStream" id="10">
+     <byteVector name="ByteArray" id="12"/>
+   </template>
+   
+   <template name="IntAndChunkedStream" id="20">
+     <uInt32 name="IntValue" id="21"/>
+     <byteVector name="ByteArray" id="22"/>
+   </template>
+   
+   <template name="LongAndChunkedStream" id="30">
+     <uInt64 name="LongValue" id="31"/>
+     <byteVector name="ByteArray" id="32"/>
+   </template>
+ 
+    <template name="Int" id="40">
+     <uInt32 name="IntValue" id="41"/>
+   </template>
+   
+   <template name="Long" id="50">
+     <uInt64 name="LongValue" id="51"/>
+   </template>  
+   
+   <template name="ChunkedStreamAndInt" id="60">
+     <byteVector name="ByteArray" id="62"/>
+     <uInt32 name="IntValue" id="61"/>
+   </template>
+   
+   <template name="ChunkedStreamAndLong" id="70">
+     <byteVector name="ByteArray" id="72"/>
+     <uInt64 name="LongValue" id="71"/>
+   </template>
+  
+</templates>
