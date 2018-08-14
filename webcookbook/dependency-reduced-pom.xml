@@ -4,7 +4,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>WebCookbook</artifactId>
   <name>${project.artifactId}</name>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>1.0.1-SNAPSHOT</version>
   <description>Example project of the web components of pronghorn</description>
   <url>https://github.com/oci-pronghorn/WebCookBook</url>
   <developers>
