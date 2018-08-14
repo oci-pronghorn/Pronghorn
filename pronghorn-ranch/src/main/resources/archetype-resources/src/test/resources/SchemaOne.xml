@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+    <template name="SomeKindOfMessage" id="1">
+        <string name="AUTF8String" id="99" charset="unicode"/>
+        <string name="AnASCIIString" id="100"/>
+        <uInt16 name="AnUnsignedShort" id="101"/>
+        <uInt32 name="AnUnsignedInt" id="102"/>
+        <uInt64 name="AnUnsignedLong" id="201"/>
+        <byteVector name="AnArrayOfBytes" id="301"/>
+    </template>
+
+    <template name="SomeOtherMessage" id="2">
+        <int16 name="ASignedShort" id="203"/>
+        <int32 name="ASignedInt" id="103"/>
+        <int64 name="ASignedLong" id="202"/>
+    </template>
+
+</templates>
