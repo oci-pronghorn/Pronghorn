@@ -337,7 +337,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		
 	public void registerForUse(Selector selector, Pipe<NetPayloadSchema>[] handshakeBegin, boolean isTLS) throws IOException {
 
-		assert(getSocketChannel().finishConnect());
+		SocketChannel socket = getSocketChannel();		
+		assert(null==socket || socket.finishConnect());
 		
 		//logger.trace("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
