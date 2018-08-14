@@ -8,7 +8,8 @@
  
   <modules>  
     <module>ph-tls-pure-java</module> 
-    <module>pronghorn</module>  
+    <module>pronghorn</module> 
+    <module>webcookbook</module> 
   </modules>
   
   <reporting>
