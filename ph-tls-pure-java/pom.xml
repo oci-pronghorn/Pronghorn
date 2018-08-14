@@ -2,7 +2,6 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <version>1.0.2-SNAPSHOT</version>
-  <name>Ph-TLS-pureJava</name>
   <artifactId>ph-tls-pure-java</artifactId>
   <description>pure Java TLS implementation</description>
      <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
