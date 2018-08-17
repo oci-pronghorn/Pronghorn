@@ -1551,6 +1551,7 @@ public class TrieParserReader {
 
 	}
 
+	
 	public static int capturedFieldByte(TrieParserReader reader, int idx, int offset) {
 
 		int pos = idx*4;
@@ -1600,13 +1601,13 @@ public class TrieParserReader {
 
 	}
 
-	public static long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+	public static long capturedFieldQuery(TrieParserReader reader, int idx, TrieParserReader reader2, TrieParser trie) {
 		//two is the default for the stop bytes.
-		return capturedFieldQuery(reader,idx,2,trie);
+		return capturedFieldQuery(reader,idx,reader2,2,trie);
 	}
 
 	//parse the capture text as a query against yet another trie
-	public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, int stopBytesCount, TrieParser trie) {
+	public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParserReader reader2, int stopBytesCount, TrieParser trie) {
 
 		int pos = idx*4;
 		assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
@@ -1618,7 +1619,7 @@ public class TrieParserReader {
 		int bmsk = reader.capturedValues[pos++];
 
 		//we add 2 to the length to pick up the stop chars, this ensure we have enough text to match
-		return query(reader, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
+		return query(reader2, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
 
 	}
 
@@ -1637,6 +1638,17 @@ public class TrieParserReader {
 
 	}
 
+	public static boolean hasCapturedBytes(TrieParserReader reader, int idx) {
+		int pos = idx*4;
+		System.out.println((pos<reader.capturedPos)+" && "+(0==reader.capturedValues[pos])+" && "+ 
+				 (reader.capturedValues[pos+2]>=0)+" "+pos+" "+reader.capturedPos);
+		
+		return (pos<reader.capturedPos)
+				&& 0==reader.capturedValues[pos] 
+				&& reader.capturedValues[pos+2]>=0;		
+	}
+	
+	
 	public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
 
 		int pos = idx*4;

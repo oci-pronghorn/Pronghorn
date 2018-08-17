@@ -123,7 +123,7 @@ public class OAuth1RequestTokenStage extends PronghornStage {
 		    int size = Pipe.addMsgIdx(outputPipe, 
 		    		ClientHTTPRequestSchema.MSG_HTTPGET_100);
 		    Pipe.addIntValue(responseId, outputPipe); //destination
-		    Pipe.addIntValue(0, outputPipe); //session
+		    Pipe.addIntValue(1, outputPipe); //session
 		    Pipe.addIntValue(port, outputPipe); //port
 		    Pipe.addUTF8(host, outputPipe); //host
 		    Pipe.addUTF8(pathRoot, outputPipe); //path

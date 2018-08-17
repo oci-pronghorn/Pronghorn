@@ -14,6 +14,8 @@
    </template> 
       
    <template name="Closed" id="10">
+     <uInt64 name="ConnectionId" id="1"/>
+     <uInt32 name="SessionId" id="2"/>
      <string name="Host" id="4" charset="unicode"/>
      <uInt32 name="Port" id="5"/>
    </template> 

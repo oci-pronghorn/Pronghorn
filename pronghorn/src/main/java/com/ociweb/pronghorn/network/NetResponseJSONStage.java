@@ -191,7 +191,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					
 				case NetResponseSchema.MSG_CLOSED_10:
 				
-					//logger.info("connection closed");
+					Pipe.takeLong(input);
+					Pipe.takeInt(input);
 					
 					int meta = Pipe.takeByteArrayMetaData(input); //host
 					int len  = Pipe.takeByteArrayLength(input); //host

@@ -348,7 +348,7 @@ public class TrieParserTest {
 										// first map1 query
 
 		reader.query(map, "abcd1234");
-		long val1 = TrieParserReader.capturedFieldQuery(reader, 0, map2);// searches
+		long val1 = TrieParserReader.capturedFieldQuery(reader, 0, reader, map2);// searches
 																			// map2
 																			// for
 																			// saved

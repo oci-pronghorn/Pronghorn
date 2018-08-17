@@ -36,7 +36,7 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 public class ClientSocketReaderStage extends PronghornStage {	
 	
     
-    public static boolean abandonSlowConnections = true;
+    public static boolean abandonSlowConnections = false;
     
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private final ClientCoordinator coordinator;
@@ -74,6 +74,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
+		
 	}
 	
 	@Override
@@ -170,27 +171,30 @@ public class ClientSocketReaderStage extends PronghornStage {
         if (abandonSlowConnections && (++iteration&0xFFF)==0) {
         	//only run when we have no data waiting
         	if (maxIterations>0) {
-        	        	//long now = System.nanoTime();
+        	    
+        		        //long now = System.nanoTime();
+        		
         	        	ClientConnection abandonded = coordinator.scanForAbandonedConnection();
         	        	if (null!=abandonded) {
-        	        		//formal close process
-        	        		int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
+        	        		//we only close connections which are currently holding a pipe reservation open
+        	        		//never grab a new one here or it may cause a hang,  only close those already with reservation
+        	        		int pipeIdx = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
         	        		if (pipeIdx>=0) {
-								Pipe<NetPayloadSchema> pipe = output[pipeIdx];
-	        	        	
-								logger.warn("\nClient disconnected {} because call was taking too long.",abandonded);
-																
-								abandonded.beginDisconnect();
-								
-								Pipe.presumeRoomForWrite(pipe);
-								int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
-								Pipe.addLongValue(abandonded.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
-								Pipe.confirmLowLevelWrite(pipe, size);
-								Pipe.publishWrites(pipe);    
-								
-								coordinator.releaseResponsePipeLineIdx(abandonded.getId());
+								Pipe<NetPayloadSchema> pipe = output[pipeIdx];	        	        	
+								///ensure that this will not cause any stall, better to skip this than be blocked.
+								if (Pipe.hasRoomForWrite(pipe)) {
 									
-        	        		}   		
+									//logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long.",abandonded, abandonded.id, abandonded.sessionId);								
+									abandonded.beginDisconnect();
+									coordinator.releaseResponsePipeLineIdx(abandonded.getId());
+									
+									int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
+									Pipe.addLongValue(abandonded.getId(), pipe);
+									Pipe.confirmLowLevelWrite(pipe, size);
+									Pipe.publishWrites(pipe);    
+																		
+								}
+        	        		}         	        		
         	        	}
         	        	
         	        	//long duration = System.nanoTime()-now;
@@ -211,21 +215,20 @@ public class ClientSocketReaderStage extends PronghornStage {
 		ClientConnection cc = (ClientConnection)selection.attachment();
 
 		assert(cc.getSelectionKey() == selection);
-		
-		if (null!=cc.getSocketChannel()) {
-			assert(cc.getSocketChannel() == (SocketChannel)selection.channel()) : "No match "+cc.getSocketChannel();
-			
-			boolean didWork = false;
-			didWork = processConnection(didWork, cc);
-			if (didWork) {
-				doneSelectors.add(selection);
-			} else {
-				//System.err.println("skipped");
-				hasRoomForMore = false;//if any one is blocked go work elsewhere.
-			}
+
+		boolean didWork = false;
+		if (!cc.isClientClosedNotificationSent() && !cc.isDisconnecting()) {
+			didWork = processConnection(didWork, cc); // if we need the channel we can get it from selection.channel()....
 		} else {
-			doneSelectors.add(selection);//if null socket this was decomposed already
+			didWork = true;
 		}
+		if (didWork) {
+			doneSelectors.add(selection);
+		} else {
+			//System.err.println("skipped");
+			hasRoomForMore = false;//if any one is blocked go work elsewhere.
+		}
+
 		
 	}
 
@@ -245,13 +248,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
 		int c = doneSelectors.size();
 
-//		if (c>0) {
-//			long duration = System.nanoTime()- coordinator.sentTime;
-//			sum+=duration;
-//			sumc++;
-//			Appendables.appendNearestTimeUnit(System.out, sum/sumc," avg\n");
-//			//Appendables.appendNearestTimeUnit(System.out, duration," now\n");
-//		}
 		//logger.info("remove {} done selector keys out of {} ",c, selectedKeys.size());
 		while (--c>=0) {
 		    		selectedKeys.remove(doneSelectors.get(c));
@@ -331,41 +327,33 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
 		
-		assert(cc.spaceReq(target.maxVarLen) <= target.sizeOfSlabRing) : "can not fit input buffer on ring";		
-		
-		if (Pipe.hasRoomForWrite(target, cc.spaceReq(target.maxVarLen))) {
+		if (Pipe.hasRoomForWrite(target) ) {			
 	
 			//these buffers are only big enough to accept 1 target.maxAvgVarLen
-			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(
-					Pipe.storeBlobWorkingHeadPosition(target),target);
+			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target),target);
 
 			int readCount=-1; 
-			try {					    			
-				
-				SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
-				//NOTE: warning note cast to int.
-				readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-
-			} catch (IOException ioex) {
-				readCount = -1;
-				//logger.info("unable to read socket, may not be an error. ",ioex);
-				//will continue with readCount of -1;
+			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
+			if (null != socketChannel) {
+				try {
+					//NOTE: warning note cast to int.
+					readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen);
+				} catch (IOException ioex) {
+					readCount = -1;
+					//			logger.info("\nUnable to read socket, may not be an error. data was droped. ",ioex);
+				}
 			}
-   
 			
 			if (readCount>0) {
 				didWork = true;
 				totalBytes += readCount;						    		
-				//we read some data so send it		
-			
-				//logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
+				//we read some data so send it
 				
-				if (coordinator.isTLS) {
-					writeEncrypted(cc, target, readCount);
-				} else {
+				if (!coordinator.isTLS) {
 					writePlain(cc, target, readCount);
-				}						    		
-				
+				} else {
+					writeEncrypted(cc.getId(), target, readCount);
+				}
 			} else {
 				//logger.info("zero read detected client side..");
 				//nothing to send so let go of byte buffer.
@@ -376,8 +364,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 
 	private void writePlain(ClientConnection cc, Pipe<NetPayloadSchema> target, int readCount) {
-		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
-		
+
+		Pipe.presumeRoomForWrite(target);
 		Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
 		Pipe.addLongValue(cc.getId(), target);         //connection
 		Pipe.addLongValue(System.nanoTime(), target);
@@ -398,28 +386,17 @@ public class ClientSocketReaderStage extends PronghornStage {
 			   			Appendables.appendUTF8(new StringBuilder(), target.blobRing, originalBlobPosition, readCount, target.blobMask)+
 			   			"\n//////////////////////");
 		}
-
 		
 		Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
 		Pipe.publishWrites(target);
-				
-		//add dummy holders to keep ring in check
-		while ((readCount-=target.maxVarLen)>0) {
-			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
-			Pipe.addLongValue(cc.getId(), target);
-			Pipe.addLongValue(System.nanoTime(), target);
-			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
-			Pipe.addNullByteArray(target);
-			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
-			Pipe.publishWrites(target);
-		}
+
 	}
 
-	private void writeEncrypted(ClientConnection cc, Pipe<NetPayloadSchema> target, int readCount) {
+	private void writeEncrypted(long id, Pipe<NetPayloadSchema> target, int readCount) {
 		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 		
 		int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-		Pipe.addLongValue(cc.getId(), target);
+		Pipe.addLongValue(id, target);
 		Pipe.addLongValue(System.nanoTime(), target);
 		
 		int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
@@ -434,16 +411,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		Pipe.confirmLowLevelWrite(target, size);
 		Pipe.publishWrites(target);
-		
-		//add dummy holders to keep ring in check
-		while ((readCount-=target.maxVarLen)>0) {
-			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-			Pipe.addLongValue(cc.getId(), target);
-			Pipe.addLongValue(System.nanoTime(), target);
-			Pipe.addNullByteArray(target);
-			Pipe.confirmLowLevelWrite(target, size);
-			Pipe.publishWrites(target);
-		}
+
 	}
 
 	long lastTotalBytes = 0;

@@ -40,7 +40,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		//find the single longest outstanding call
 		long callTime = t.outstandingCallTime(scanTime);
 
-		if (callTime > maxOutstandingCallTime & coordinator.checkForResponsePipeLineIdx(t.id)>0 ) {
+		if (callTime > maxOutstandingCallTime) {
 			maxOutstandingCallTime = callTime;
 			candidate = t;
 		}

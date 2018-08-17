@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
@@ -294,6 +294,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 		
 	public static long lookup(int hostId, int port, int sessionId) {
+		assert(hostId>=0) : "hostID must be zero or postitive";
 		int key = computePortSessionKey(port, sessionId);
 		long result =  LongLongHashTable.getItem(conTables[hostId], key);
 		
@@ -329,9 +330,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	public static int lookupHostId(byte[] hostBytes, int pos, int length, int mask) {
-		return (int)TrieParserReader.query(TrieParserReaderLocal.get(), domainRegistry,
+		int result = (int)TrieParserReader.query(TrieParserReaderLocal.get(), domainRegistry,
 					hostBytes, pos, length, mask);
-
+		
+		if (result<0) {
+			throw new UnsupportedOperationException("Can not find host "+Appendables.appendUTF8(new StringBuilder(), hostBytes, pos, length, mask)+" pos:"+pos+" len:"+length+" mask:"+mask);
+		}
+		
+		return result;
 	}
 
 

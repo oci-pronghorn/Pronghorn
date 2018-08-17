@@ -1322,6 +1322,8 @@ public class Pipe<T extends MessageSchema<T>> {
         slabRingTail.tailPos.set(structuredPos);
         slabRingHead.headPos.set(structuredPos);
 
+        assert(Pipe.contentRemaining(this)<=sizeOfSlabRing);
+        
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = structuredPos;
             llRead.llrTailPosCache = structuredPos;
@@ -2647,6 +2649,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			pipe.slabRing[pipe.slabMask & ((int)pipe.knownPositionOfEOF+1)] = 0;
 	
 			pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
+			assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 		} else {
 			log.error("Unable to send EOF, the outgoing pipe is 100% full, downstream stages may not get closed.\n"
 					+ "To resolve this issue ensure the outgoing pipe has room for write before calling this.");
@@ -3638,8 +3641,9 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return int size of the message, this value is needed to confirm writes.
      */
     public static <S extends MessageSchema<S>> int addMsgIdx(final Pipe<S> pipe, int msgIdx) {
-         assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+ pipe.sizeOfSlabRing  /*    pipe.slabMask*/  )) : "Working position is now writing into published(unreleased) tail "+
-                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.sizeOfSlabRing /*pipe.slabMask*/+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
+         assert(Pipe.workingHeadPosition(pipe) < (Pipe.tailPosition(pipe)+ pipe.sizeOfSlabRing  /*    pipe.slabMask*/  )) : "Working position is now writing into published(unreleased) tail "+
+                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.sizeOfSlabRing /*pipe.slabMask*/
+                +" total "+((Pipe.tailPosition(pipe)+pipe.slabMask))+"  "+pipe;
         
          assert(pipe.slabRingHead.workingHeadPos.value <= ((long)pipe.sizeOfSlabRing)+Pipe.tailPosition(pipe)) : 
                 "Tail is at: "+Pipe.tailPosition(pipe)+" and Head at: "+pipe.slabRingHead.workingHeadPos.value+" but they are too far apart because the pipe is only of size: "+pipe.sizeOfSlabRing+
@@ -3734,7 +3738,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	static <S extends MessageSchema<S>> int restorePosition(Pipe<S> pipe, int pos) {
 		assert(pos>=0);
-		return pos + Pipe.bytesReadBase(pipe);
+		return pipe.blobMask & (pos + Pipe.bytesReadBase(pipe));
 	}
 		
 	/**
@@ -4215,6 +4219,7 @@ public class Pipe<T extends MessageSchema<T>> {
            //NOTE: the working tail is in use as part of the read and should not be modified
            //      this method only modifies the externally visible tail to let writers see it.
            pipe.slabRingTail.tailPos.lazySet(nextWorkingTail);
+           assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
            
            beginNewReleaseBatch(pipe); 
            
@@ -4270,6 +4275,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
         PaddedInt.set(pipe.blobRingTail.bytesTailPos, newTailBytesToPublish);
         pipe.slabRingTail.tailPos.lazySet(newTailToPublish);
+        assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
         pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
     }
 
@@ -4423,6 +4429,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	    if ((--pipe.batchPublishCountDown<=0)) {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
 	        pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value);
+	        assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 	        assert(debugHeadAssignment(pipe));
 	        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
 	    } else {
@@ -4634,6 +4641,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>> void publishWorkingHeadPosition(Pipe<S> pipe, long workingHeadPos) {
 		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = workingHeadPos);
+		assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 	}
 
 	/**
@@ -4654,6 +4662,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>> void publishWorkingTailPosition(Pipe<S> pipe, long workingTailPos) {
 		pipe.slabRingTail.tailPos.lazySet(pipe.slabRingTail.workingTailPos.value = workingTailPos);
+		assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 	}
     
 	/**
@@ -4822,8 +4831,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
     	//This is an important performance feature of the low level API and should not be modified.
  
-        long temp = pipe.llRead.llwConfirmedPosition+size;
-		return roomToLowLevelWrite(pipe, temp);
+        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+size);
     }
     
     /**
@@ -5222,7 +5230,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return int size of message as defined by FROM
      */
     public static <S extends MessageSchema<S>> int sizeOf(S schema, int msgIdx) {
-        return msgIdx>=0? schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
+        return msgIdx>=0 ? schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
     }
 
     /**
@@ -5288,6 +5296,8 @@ public class Pipe<T extends MessageSchema<T>> {
     public static void resetHead(Pipe pipe) {
         Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);
         Pipe.setBlobWorkingHead(pipe, pipe.markedHeadBlob);
+        //must always be false when we return to the beginning of the fragment
+        pipe.isInBlobFieldWrite.set(false);
     }
     
     /**

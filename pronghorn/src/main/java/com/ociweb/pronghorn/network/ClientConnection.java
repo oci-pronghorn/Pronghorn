@@ -9,6 +9,7 @@ import java.nio.channels.NoConnectionPendingException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -64,11 +65,11 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	//TODO: if memory needs to be saved this flight time feature could be "turned off" 
 	private int inFlightTimeSentPos;
 	private int inFlightTimeRespPos;	
-	private long[] inFlightTimes; //lazy create to save memory and startup connection time
+	private final long[] inFlightTimes;
 	
 	private int inFlightRoutesSentPos;
 	private int inFlightRoutesRespPos;
-	private int[] inFlightRoutes; //lazy create to save memory and startup connection time
+	private final int[] inFlightRoutes;
 
 	private final long creationTimeNS;
 	
@@ -128,6 +129,9 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		resolveAddressAndConnect(port);		
 		
 		System.gc();
+		inFlightTimes = new long[maxInFlight];
+		inFlightRoutes = new int[maxInFlight];
+		Arrays.fill(inFlightRoutes, -1);
 	}
 
 	public static void initSocket(SocketChannel socket) throws IOException {
@@ -451,10 +455,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 
 	public void recordSentTime(long timeNS) {
-		if (null==inFlightTimes) {
-			inFlightTimes = new long[maxInFlight];
-			inFlightRoutes = new int[maxInFlight];
-		}
 		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = timeNS;		
 	}
 
@@ -464,7 +464,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			return -1;
 		} else {			
 			long sentTime = inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask];
-			if (sentTime>0) {		
+			if (sentTime > 0) {		
 				return timeNS - sentTime;
 			} else {
 				return -1;//we read the value while it was being sent so discard
@@ -472,17 +472,16 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		}
 	}	
 	
-	//returns latency
-	public long recordArrivalTime(long time) {
-		
-		assert(inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask]>0);		
-		
-		long value = time - inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
-			
-		if (value>=0 && value<MAX_HIST_VALUE) {
-			ElapsedTimeRecorder.record(histRoundTrip, value);
+	public void recordArrivalTime(long time) {
+				
+		long sentTime = inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
+		if (sentTime>0) {
+			long value = time - sentTime;			
+			if (value>=0 && value<MAX_HIST_VALUE) {
+				//only record the good values
+				ElapsedTimeRecorder.record(histRoundTrip, value);
+			}
 		}
-		return value;
 	}
 		
 	
@@ -502,15 +501,15 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 		
 	public void recordDestinationRouteId(int id) {
-		if (null==inFlightTimes) {
-			inFlightTimes = new long[maxInFlight];
-			inFlightRoutes = new int[maxInFlight];
-		}
+	//	assert(-1 == inFlightRoutes[(1+inFlightRoutesSentPos) & maxInFlightMask]);
 		inFlightRoutes[++inFlightRoutesSentPos & maxInFlightMask] = id;
 	}
 	
 	public int consumeDestinationRouteId() {
-		return inFlightRoutes[++inFlightRoutesRespPos & maxInFlightMask];
+		int idx = ++inFlightRoutesRespPos & maxInFlightMask;
+		int value = inFlightRoutes[idx];
+		inFlightRoutes[idx] = -1;
+		return value;
 	}
 	
 	public int readDestinationRouteId() {
@@ -547,6 +546,16 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	@Override
 	public int skPosition() {
 		return skPos;
+	}
+	
+	private boolean clientClosedNotificationSent; //only done once per connection
+
+	public boolean isClientClosedNotificationSent() {
+		return clientClosedNotificationSent;
+	}
+
+	public void clientClosedNotificationSent() {
+		clientClosedNotificationSent= true;
 	}
 
 	

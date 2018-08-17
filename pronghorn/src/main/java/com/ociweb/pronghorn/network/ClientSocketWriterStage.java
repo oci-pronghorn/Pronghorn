@@ -225,9 +225,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean writeEncrypted(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
 		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
-		if (null==cc || !cc.isValid()) {
-			return false;//do not consume, do this later.
-		}
 				
 		final int msgIdx = Pipe.takeMsgIdx(pipe);
 		final long channelId = Pipe.takeLong(pipe);
@@ -248,17 +245,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
 		
 		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
-		if (null==cc || !cc.isValid()) {
-//			
-//			logger.info("skipped write for connection: {} {}",chnl,cc);
-//			
-//			if (++x>10) {
-//			System.err.println("exit now");
-//			System.exit(-1);
-//			}
-			return false;//do not consume, do this later.
-		}
-		
+
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);
 		assert(channelId == chnl);
@@ -294,7 +281,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 
-		checkBuffers(i, pipe, cc.getSocketChannel());
+		checkBuffers(i, pipe, cc);
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
@@ -313,8 +300,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
 //					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
 //					            		         (Pipe.peekLong(pipe, 1)==channelId) );
-		
-		cc.recordSentTime(System.nanoTime());
+		if (null!=cc) {
+			cc.recordSentTime(System.nanoTime());
+		}
 		
 		while (enableWriteBatching && 
 				Pipe.hasContentToRead(pipe) && 
@@ -341,12 +329,14 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 		        Pipe.releaseReadLock(pipe);
 		        
-		        cc.recordSentTime(System.nanoTime());
+				if (null!=cc) {
+					cc.recordSentTime(System.nanoTime());
+				}
 		    }	
 		
 		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
-		latencyRecordings[i] = cc.histogram();//keep for later
+		latencyRecordings[i] = cc!=null?cc.histogram():null;//keep for later
 		didWork |= tryWrite(i);
 		return didWork;
 	}
@@ -358,7 +348,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
-		checkBuffers(i, pipe, cc.getSocketChannel());
+		checkBuffers(i, pipe, cc);
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
@@ -373,9 +363,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		Pipe.confirmLowLevelRead(pipe, fragSize);
 		Pipe.releaseReadLock(pipe);
-		
-		cc.recordSentTime(System.nanoTime());
-		
+		if (null!=cc) {
+			cc.recordSentTime(System.nanoTime());
+		}
 //										System.err.println(enableWriteBatching+" && "+
 //								                 Pipe.hasContentToRead(pipe)+" && "+
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
@@ -412,34 +402,39 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        		
 			        Pipe.confirmLowLevelRead(pipe, fragSize);
 			        Pipe.releaseReadLock(pipe);
-			        
-			        cc.recordSentTime(System.nanoTime());
-			      
+					if (null!=cc) {
+						cc.recordSentTime(System.nanoTime());
+					}
 		}											
 		
 
 		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
-		latencyRecordings[i] = cc.histogram();//keep for later
+		latencyRecordings[i] = null!=cc?cc.histogram():null;//keep for later
 		
 		didWork |= tryWrite(i);
 		return didWork;
 	}
 
-	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
+	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, ClientConnection cc) {
 		if (!bufferChecked[i]) {
-			try {
-				int minBufSize = 
-						Math.max(pipe.maxVarLen, 
-						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
-				//logger.info("buffer is {} and must be larger than {}",buffers[i].capacity(), minBufSize);
-				if (buffers[i].capacity()<minBufSize) {
-					logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
-					buffers[i] = ByteBuffer.allocateDirect(minBufSize);
+			if (null!=cc) {
+				SocketChannel sc = cc.getSocketChannel();
+				if (null!=sc) {
+					try {
+						int minBufSize = 
+								Math.max(pipe.maxVarLen, 
+								         sc.getOption(StandardSocketOptions.SO_SNDBUF));
+						//logger.info("buffer is {} and must be larger than {}",buffers[i].capacity(), minBufSize);
+						if (buffers[i].capacity()<minBufSize) {
+							logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
+							buffers[i] = ByteBuffer.allocateDirect(minBufSize);
+						}
+						bufferChecked[i] = true;
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
 				}
-				bufferChecked[i] = true;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
 			}
 		}
 	}
@@ -447,77 +442,86 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	
 	private boolean tryWrite(int i) {
+		ClientConnection cc = connections[i];
 		ByteBuffer mappedByteBuffer = buffers[i];
-		assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write.";	
-		
-		try {
-			
-			if (!debugWithSlowWrites) {
-				assert(mappedByteBuffer.isDirect());
-				
-				while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
-					//keep writing the output buffer may be small
-				}
-								
-			} else {
-				//write only this many bytes over the network at a time
-				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
-				buf.clear();
-				
-				int j = debugMaxBlockSize;
-				int c = mappedByteBuffer.remaining();
-				int p = mappedByteBuffer.position();
-				while (--c>=0 && --j>=0) {
-					buf.put(mappedByteBuffer.get(p++));
-				}
-				mappedByteBuffer.position(p);
-				
-				buf.flip();
-				int expected = buf.limit();
-				
-				while (buf.hasRemaining()) {
-					int len = connections[i].getSocketChannel().write(buf);
-					if (len>0) {
-						expected-=len;
+		if (cc!=null && cc.isValid() && !cc.isDisconnecting()) {
+			SocketChannel sc = cc.getSocketChannel();
+			if (sc!=null) {			
+				assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write.";	
+				try {
+					
+					if (!debugWithSlowWrites) {
+						assert(mappedByteBuffer.isDirect());
+						
+						while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
+							//keep writing the output buffer may be small
+						}
+										
+					} else {
+						//write only this many bytes over the network at a time
+						ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
+						buf.clear();
+						
+						int j = debugMaxBlockSize;
+						int c = mappedByteBuffer.remaining();
+						int p = mappedByteBuffer.position();
+						while (--c>=0 && --j>=0) {
+							buf.put(mappedByteBuffer.get(p++));
+						}
+						mappedByteBuffer.position(p);
+						
+						buf.flip();
+						int expected = buf.limit();
+						
+						while (buf.hasRemaining()) {
+							int len = connections[i].getSocketChannel().write(buf);
+							if (len>0) {
+								expected-=len;
+							}
+						}
+						if (expected!=0) {
+							throw new UnsupportedOperationException();
+						}
+						
+						//logger.info("remaining to write {} for {}",buffers[i].remaining(),i);
+						
 					}
+				} catch (IOException e) {
+					
+					// if e.message is  "Broken pipe" then the connection was already lost, nothing to do here but close.
+					//logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
+					
+					if (this.ccm.checkForResponsePipeLineIdx(connections[i].getId()) >=0  ) {
+						this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
+					}
+					
+					
+					connections[i].close();
+					connections[i]=null;
+					((Buffer)mappedByteBuffer).clear();
+					return true;
 				}
-				if (expected!=0) {
-					throw new UnsupportedOperationException();
+				if (!mappedByteBuffer.hasRemaining()) {
+				
+					//logger.info("write clear {}",i);
+					((Buffer)mappedByteBuffer).clear();
+					connections[i]=null;
+					return true;
+				}  else {
+					
+		//			if (Integer.numberOfLeadingZeros(countOfUnableToFullyWrite) != 
+		//				Integer.numberOfLeadingZeros(countOfUnableToFullyWrite++)) {							
+		//				logger.info("Network overload issues on connection {} we still have {} bytes wating to write ",
+		//						i,buffers[i].remaining());				
+		//			}
+					return false;
 				}
-				
-				//logger.info("remaining to write {} for {}",buffers[i].remaining(),i);
-				
 			}
-		} catch (IOException e) {
-			
-			// if e.message is  "Broken pipe" then the connection was already lost, nothing to do here but close.
-			//logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
-			
-			if (this.ccm.checkForResponsePipeLineIdx(connections[i].getId()) >=0  ) {
-				this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
-			}
-			
-			
-			connections[i].close();
-			connections[i]=null;
-			((Buffer)mappedByteBuffer).clear();
-			return true;
 		}
-		if (!mappedByteBuffer.hasRemaining()) {
-		
-			//logger.info("write clear {}",i);
-			((Buffer)mappedByteBuffer).clear();
-			connections[i]=null;
-			return true;
-		}  else {
-			
-//			if (Integer.numberOfLeadingZeros(countOfUnableToFullyWrite) != 
-//				Integer.numberOfLeadingZeros(countOfUnableToFullyWrite++)) {							
-//				logger.info("Network overload issues on connection {} we still have {} bytes wating to write ",
-//						i,buffers[i].remaining());				
-//			}
-			return false;
-		}
+		//this connection is closed so we have noplace to write the data, dump it
+		((Buffer)mappedByteBuffer).clear();
+		connections[i]=null;
+		return true;
 	}
 
 	

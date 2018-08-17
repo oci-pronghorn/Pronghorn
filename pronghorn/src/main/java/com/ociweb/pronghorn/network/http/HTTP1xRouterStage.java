@@ -531,16 +531,25 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			            
 			if (toParseLength>0 && (null==that.log || Pipe.hasRoomForWrite(that.log))) {
 
-		        long arrivalTime = captureArrivalTime(selectedInput);
+				long arrivalTime = -1;
+		        
 		        int seqForLogging = that.sequences[idx];
 		        int posForLogging = that.trieReader.sourcePos;
 		        
-				int state = that.parseHTTP(that.trieReader, channel, idx, arrivalTime);				
+		        int state;
+		    	if (that.trieReader.sourceLen > 0) {
+		    		arrivalTime = extractArrivalTime(selectedInput);
+		    		state = that.parseHTTP(that.trieReader, channel, idx, arrivalTime);	
+
+		    	} else {
+		    		state = NEED_MORE_DATA;
+		    	}
+				
+				
 				int totalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(that.trieReader));           
 				int remainingBytes = that.trieReader.sourceLen;
 						
 				if (SUCCESS == state) {
-									
 					
 					boolean logTrafficEnabled = null != that.log;
 					
@@ -568,7 +577,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					result = consumeBlock(that, idx, selectedInput, channel,
 							              that.inputBlobPos[idx], 
 							              totalAvail, totalConsumed, 
-							              remainingBytes, arrivalTime);
+							              remainingBytes);
 				 } else if (NEED_MORE_DATA == state) {				
 					that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
 					result = false;   
@@ -594,7 +603,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 	private static boolean consumeBlock(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput,
 			final long channel, int p, int totalAvail, 
-			int totalConsumed, int remainingBytes, long arrivalTime) {
+			int totalConsumed, int remainingBytes) {
 		assert(totalConsumed>0);
 				
 		p += totalConsumed;
@@ -629,38 +638,41 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	}
 
 
-	private static long captureArrivalTime(Pipe<NetPayloadSchema> selectedInput) {
-		long arrivalTime = -1;
-		
+	private static long extractArrivalTime(Pipe<NetPayloadSchema> selectedInput) {
 		long pos = Pipe.tailPosition(selectedInput);
-		long head = Pipe.headPosition(selectedInput);
+		final long head = Pipe.headPosition(selectedInput);
 		
 		int id = Pipe.readInt(Pipe.slab(selectedInput), 
 			         		  Pipe.slabMask(selectedInput),
 			         		  pos);
-		
-		//skip over messages which do not contain any arival time.
+				
+		//skip over messages which do not contain any arrival time, should only be 1 or none.
 		while (id!=NetPayloadSchema.MSG_PLAIN_210 
 		     && id!=NetPayloadSchema.MSG_ENCRYPTED_200 
 		     && pos<head) {
 			
-			pos += Pipe.sizeOf(NetPayloadSchema.instance, id);	
-			id = Pipe.readInt(Pipe.slab(selectedInput), 
-	         		  Pipe.slabMask(selectedInput),
-	         		  pos);
-			
+			if ((NetPayloadSchema.MSG_BEGIN_208 == id)
+				|| (NetPayloadSchema.MSG_DISCONNECT_203 == id)
+				|| (NetPayloadSchema.MSG_UPGRADE_307 == id)					
+					) {
+				pos += Pipe.sizeOf(NetPayloadSchema.instance, id);			
+				id = Pipe.readInt(Pipe.slab(selectedInput), Pipe.slabMask(selectedInput), pos);
+			} else {
+				//unknown data in the pipe, this should not happen
+				logger.warn("unable to capture arrival time for {} at pipe {} ",id, selectedInput);
+				return -1;
+			}
 		}
 		
-		
-		if (pos<head) {
-			arrivalTime = Pipe.readLong(Pipe.slab(selectedInput), 
+		if (pos<head && (id==NetPayloadSchema.MSG_PLAIN_210 || id==NetPayloadSchema.MSG_ENCRYPTED_200) ) {
+			return Pipe.readLong(Pipe.slab(selectedInput), 
 											 Pipe.slabMask(selectedInput),
 											 pos + 3);
 
 		} else {
 			logger.info("unable to capture arrival time for {}",id);
+			return -1;
 		}
-		return arrivalTime;
 	}
 
 	private boolean boundsCheck(final int idx, int l) {
@@ -684,6 +696,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
  private final static int NEED_MORE_DATA = 2;
  private final static int SUCCESS = 1;
+
+ 
  
 // -1 no room on output pipe (do not call again until the pipe is clear, send back pipe to watch)
 //  2 need more data to parse (do not call again until data to parse arrives)
@@ -693,7 +707,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime) {    
 
-    if (showHeader) {
+
+
+	if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+" pos:"+trieReader.sourcePos+"///////////////////");
     	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data
     	if (trieReader.sourceLen>8192) {
@@ -705,44 +721,17 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	int tempLen = trieReader.sourceLen;
 	int tempPos = trieReader.sourcePos;
     
-	if (tempLen<=0) {
-		return NEED_MORE_DATA;
-	}
 	
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-    	
     		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
-    			//trieReader.debugAsUTF8(trieReader, System.out);
-    			logger.info("bad HTTP data recieved by server, channel will be closed. Bytes abandoned:{} looking for verb at {} ",tempLen, tempPos);
-    			sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
-    			
-    			//we have bad data we have been sent, there is enough data yet the verb was not found
-    			
-    			boolean debug = false;
-    			if(debug) {
-    				trieReader.sourceLen = tempLen;
-    				trieReader.sourcePos = tempPos;
-    				StringBuilder builder = new StringBuilder();    			    			
-    				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
-    				logger.warn("{} looking for verb but found:\n{} at position {} \n\n",channel,builder,tempPos);
-    			}
-    			
-    			trieReader.sourceLen = 0;
-    			trieReader.sourcePos = 0;    			
-    			
-    			BaseConnection con = coordinator.connectionForSessionId(channel);
-				if (null!=con) {
-					con.clearPoolReservation();
-				}
-    			//logger.info("success");
-    			return SUCCESS;
-    			    		    			
-    		}
-    		
+    			badVerbParse(trieReader, channel, idx, tempLen, tempPos);
+    			return SUCCESS;			
+    		}    		
     }
+    
    // System.err.println("start at pos "+tempPos+" for "+channel);
     
     final boolean showTheRouteMap = false;
@@ -754,10 +743,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	tempPos = trieReader.sourcePos;
 	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
 	//the above URLS always end with a white space to ensure they match the spec.
-
-	//logger.info("selected path: "+pathId);
-	
-    
     int routeId;
     if (config.UNMAPPED_ROUTE == pathId) {
 	    if (!catchAll) {
@@ -794,8 +779,40 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     	return NEED_MORE_DATA;
     }    	
     
+    return parseHTTPImpl(trieReader, channel, idx, arrivalTime, tempLen, tempPos, verbId, pathId, routeId);
+}
 
-    //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
+
+private void badVerbParse(TrieParserReader trieReader, final long channel, final int idx, int tempLen, int tempPos) {
+	//trieReader.debugAsUTF8(trieReader, System.out);
+	logger.info("bad HTTP data recieved by server, channel will be closed. Bytes abandoned:{} looking for verb at {} ",tempLen, tempPos);
+	sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
+	
+	//we have bad data we have been sent, there is enough data yet the verb was not found
+	
+	final boolean debug = false;
+	if(debug) {
+		trieReader.sourceLen = tempLen;
+		trieReader.sourcePos = tempPos;
+		StringBuilder builder = new StringBuilder();    			    			
+		TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
+		logger.warn("{} looking for verb but found:\n{} at position {} \n\n",channel,builder,tempPos);
+	}
+	
+	trieReader.sourceLen = 0;
+	trieReader.sourcePos = 0;    			
+	
+	BaseConnection con = coordinator.connectionForSessionId(channel);
+	if (null!=con) {
+		con.clearPoolReservation();
+	}
+	//logger.info("success");
+}
+
+
+private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime, int tempLen,
+		int tempPos, final int verbId, final int pathId, int routeId) {
+	//NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     //      if catch all is enabled use it because all outputs will be null in that mode
     Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
 
@@ -897,11 +914,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         //logger.info("extractions before headers count is {} ",config.extractionParser(routeId).getIndexCount());
         
 
-        ServerConnection serverConnection = coordinator.connectionForSessionId(channel);
-      	
-        
-	//	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverConnection, 
+        //	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
+		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, coordinator.<ServerConnection>connectionForSessionId(channel), 
 												httpRevisionId, config,
 												errorReporter, arrivalTime);  // Write 2   10 //if header is presen
        
@@ -1193,8 +1207,7 @@ private static int accumRunningBytes(
 }
 
 
-private static long processPlain(
-		HTTP1xRouterStage that,
+private static long processPlain( HTTP1xRouterStage that,
 		final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
 	final long channel = Pipe.takeLong(selectedInput);
 	

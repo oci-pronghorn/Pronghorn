@@ -18,7 +18,7 @@ public abstract class BaseConnection {
 
 	private SSLEngine engine;
 	private SocketChannel socketChannel;
-	public final long id;
+	public final long id;//MUST be final and never change.
 	protected boolean isValid = true;
 
 	protected int localRunningBytesProduced;

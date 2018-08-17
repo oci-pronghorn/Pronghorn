@@ -35,6 +35,7 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 public class ServerSocketReaderStage extends PronghornStage {
    
 	private final int messageType;
+	private final int reqPumpPipeSpace;
 
 	public static final Logger logger = LoggerFactory.getLogger(ServerSocketReaderStage.class);
     
@@ -86,6 +87,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         //much larger limit since nothing needs this thread back.
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
+        reqPumpPipeSpace = Pipe.sizeOf(NetPayloadSchema.instance, messageType)+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
         
     }
         
@@ -487,7 +489,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     	long len = 0;//if data is read then we build a record around it
     	ByteBuffer[] b = null;
     	long temp = 0;
-        if (Pipe.hasRoomForWrite(targetPipe)) { 
+
+		if (Pipe.hasRoomForWrite(targetPipe, reqPumpPipeSpace  )) {
         	//logger.info("write to "+targetPipe);
         	//logger.info("pump block for {} ",channelId);
             try {                
@@ -505,13 +508,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 
                 assert(readCountMatchesLength(len, b));
                 
-                if (temp>=0) {                	
+                if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
                 	return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
                 } else {
                 	if (null!=cc) {
                 		cc.clearPoolReservation();
                 	}
-                	int result = disconnected(channelId, sequenceNo, targetPipe, newBeginning, selection, len, b);                	
+					//logger.info("client disconnected, so release");
+					//client was disconnected so release all our resources to ensure they can be used by new connections.
+					selection.cancel();                	
+					coordinator.releaseResponsePipeLineIdx(channelId);
+					//to abandon this must be negative.
+					len = -1;
+                	int result = publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, false, newBeginning);                	
                 	if (null!=cc) {
                 		cc.close();
                 	}
@@ -538,16 +547,6 @@ public class ServerSocketReaderStage extends PronghornStage {
         	return -1;
         }
     }
-
-	private int disconnected(long channelId, int sequenceNo, 
-			Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, 
-			SelectionKey selection, long len, ByteBuffer[] b) {
-		//logger.info("client disconnected, so release");
-		//client was disconnected so release all our resources to ensure they can be used by new connections.
-		selection.cancel();                	
-		coordinator.releaseResponsePipeLineIdx(channelId);
-		return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, false, newBeginning);
-	}
 
 	private boolean collectRemainingCount(ByteBuffer[] b) {
 		r1 = b[0].remaining();
@@ -580,7 +579,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 	
-			
+			Pipe.presumeRoomForWrite(targetPipe);
 			publishData(targetPipe, channelId, len);        
 			
 			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len, targetPipe, ((fullTarget&&isOpen) ? 0 : 1));

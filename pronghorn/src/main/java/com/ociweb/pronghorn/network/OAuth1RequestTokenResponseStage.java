@@ -89,7 +89,8 @@ public class OAuth1RequestTokenResponseStage extends PronghornStage {
 				
 			} else if (NetResponseSchema.MSG_CLOSED_10 == msgIdx) {
 			
-				logger.info("got a closed");
+				Pipe.takeLong(input);
+				Pipe.takeInt(input);
 				DataInputBlobReader<NetResponseSchema> host = Pipe.openInputStream(input);
 				int port = Pipe.takeInt(input);
 				

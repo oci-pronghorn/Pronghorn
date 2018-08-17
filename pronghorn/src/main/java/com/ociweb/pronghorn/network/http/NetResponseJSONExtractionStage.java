@@ -152,6 +152,9 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		    	case NetResponseSchema.MSG_CONTINUATION_102:
 		    		throw new UnsupportedOperationException("Support for JSON parsing of chunked frames in the response is not yet implemented.\nPlease contact info@objectcomputing.com to request features and support this project.");
 		    	case NetResponseSchema.MSG_CLOSED_10:
+		    		
+					long conId = Pipe.takeLong(input);
+					int session = Pipe.takeInt(input);
 		    		final int size = Pipe.addMsgIdx(localOutput, msgIdx);
 		    		 
 		    		ChannelReader hostReader = Pipe.openInputStream(localInput);		    		

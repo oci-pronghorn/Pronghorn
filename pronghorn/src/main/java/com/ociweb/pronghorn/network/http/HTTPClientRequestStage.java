@@ -114,11 +114,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 			do {
 				hasWork = false;
 				int i = input.length; //TODO: monitor these pipes..
-				while (--i>=0) {
-					Pipe<ClientHTTPRequestSchema> requestPipe = input[i];						  
-					if (Pipe.hasContentToRead(requestPipe)) {						
-						
-						if (buildClientRequest(requestPipe)) {
+				while (--i>=0) {										  
+					if (Pipe.hasContentToRead(input[i])) {						
+						if (buildClientRequest(input[i])) {
 							hasWork = true;
 						} else {
 							//try again later
@@ -145,9 +143,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			activeConnection.setLastUsedTime(now);
 	       	
 		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
-		    		    
-		    //logger.info("\n ^^^^ send for active pipe {} with msg {} connection {}",requestPipe.id,msgIdx,activeConnection.id);
-		    
+	
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 				HTTPClientUtil.publishGetFast(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
 		    } else  if (ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201 == msgIdx) {
@@ -222,7 +218,6 @@ public class HTTPClientRequestStage extends PronghornStage {
  		int hostMask=0;
  		
  		long connectionId;
- 		//System.err.println("xxxxxxxxxxxx reading msg "+Pipe.peekInt(requestPipe));
  		
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
  			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
@@ -236,21 +231,31 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 			port = Pipe.peekInt(requestPipe,        2); //port is always after the userId; 
  	 			hostMeta = Pipe.peekInt(requestPipe,    3); //host is always after port
  	 	 		hostLen  = Pipe.peekInt(requestPipe,    4); //host is always after port
- 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
+ 	 	 		assert(sessionId!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);
+ 	 	 		
+ 	 	 		
+ 	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
+ 	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
+ 	 	 		hostMask = Pipe.blobMask(requestPipe);
+ 	 	 		
+ 	 	 		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
  			} else {
- 				
+ 				assert(Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100, 
+ 						                         ClientHTTPRequestSchema.MSG_HTTPPOST_101 )) : "unsupported msg "+Pipe.peekInt(requestPipe);
  	 			sessionId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
  	 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
  	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
  	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
- 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
+ 	 	 		assert(sessionId!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);
+ 	 	 		
+ 	 	 		//for post what about the payload field???
+ 	 	 		
+ 	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
+ 	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
+ 	 	 		hostMask = Pipe.blobMask(requestPipe);
+ 	 						
+ 	     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
  			}
- 	 		
- 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
- 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
- 	 		hostMask = Pipe.blobMask(requestPipe);
- 						
-     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
  		}
 		
  		if (null!=activeConnection

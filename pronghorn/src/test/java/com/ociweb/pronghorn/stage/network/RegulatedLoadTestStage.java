@@ -358,6 +358,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							break;
 						case NetResponseSchema.MSG_CLOSED_10:
 							
+							long closedConId = Pipe.takeLong(pipe);
+							int sessionId = Pipe.takeInt(pipe);
+							
 							int meta2 = Pipe.takeByteArrayMetaData(pipe);
 							int len2 = Pipe.takeByteArrayLength(pipe);
 							Pipe.bytePosition(meta2, pipe, len2);
