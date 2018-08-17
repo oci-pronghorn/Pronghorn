@@ -4219,8 +4219,7 @@ public class Pipe<T extends MessageSchema<T>> {
            //NOTE: the working tail is in use as part of the read and should not be modified
            //      this method only modifies the externally visible tail to let writers see it.
            pipe.slabRingTail.tailPos.lazySet(nextWorkingTail);
-           assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
-           
+
            beginNewReleaseBatch(pipe); 
            
            assert(validateInsideData(pipe, pipe.blobReadBase));
