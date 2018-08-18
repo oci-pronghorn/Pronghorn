@@ -536,7 +536,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				//logger.info("\n ^^^^ new connection established to {}",cc);
 				
 				BaseConnection con = ccm.connectionForSessionId(cc.id);
-				assert(con==cc) : "unable to lookup connection";
+		
+				if (cc != con) {
+					cc = null;//closed
+				}				
 				
 			}
 		} catch (IOException e) {

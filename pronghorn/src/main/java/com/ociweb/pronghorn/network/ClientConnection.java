@@ -344,12 +344,13 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		SocketChannel socket = getSocketChannel();		
 		assert(null==socket || socket.finishConnect());
 		
+		if (null==socket) {
+			return;//not valid;
+		}
 		//logger.trace("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
 		if (isTLS) {
-
 			getEngine().beginHandshake();
-			
 			HandshakeStatus handshake = getEngine().getHandshakeStatus();
 			if (HandshakeStatus.NEED_TASK == handshake) { 				
 	             Runnable task;
@@ -390,22 +391,17 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 					if (--c<0) {
 						c = handshakeBegin.length-1;
 					}
-					
-				}				
-				
-				
+				}
 				
 				if (j<0) {
 					throw new UnsupportedOperationException("unable to wrap handshake no pipes are avilable.");
-				}				
-				
-			}			
-						
+				}
+			}		
 		}
 		isValid = true;
 		//logger.info("is now valid connection {} ",this.id);
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
-		
+
 	}
 
 	public boolean isValid() {
