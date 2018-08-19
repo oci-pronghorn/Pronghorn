@@ -52,7 +52,7 @@ public class SocketIOStageTest {
         String bindHost = "127.0.0.1";
         int tracks = 1;
 
-		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
+		TLSCertificates certs = encryptedContent ? TLSCerts.define() : null;
 
 		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
 		serverConfig.setHost(bindHost)
@@ -169,7 +169,7 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int tracks = 1;
-		TLSCertificates certs = encryptedContent ? TLSCertificates.defaultCerts : null;
+		TLSCertificates certs = encryptedContent ? TLSCerts.define() : null;
 
 		
 		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);

@@ -29,7 +29,7 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 											CharSequence host, int port,
 			                                int sessionId, //unique value for this connection definition
 											long connectionId, int pipeIdx, 
-											int hostId, int structureId) throws IOException {
+											int hostId, long timeoutNS, int structureId) throws IOException {
 		
 		SSLEngine engine =  ccm.isTLS ?
 		        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
@@ -54,7 +54,7 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 				
 		return new HTTPClientConnection(engine, host, hostId, port, sessionId, pipeIdx, 
 				                    connectionId,
-				                    recordTypeData, structureId,
+				                    recordTypeData, timeoutNS, structureId,
 				                    headerParsers[sessionId]);
 
 		

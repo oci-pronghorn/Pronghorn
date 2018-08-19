@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.network.HTTPServerConfig;
 import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -39,7 +40,7 @@ public class HTTPSRoundTripTest {
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
     	int clientRequestSize = 1<<15;
-    	final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
+    	final TLSCertificates tlsCertificates = TLSCerts.define();
     	String bindHost = "127.0.0.1";
     	int port        = 8199;
     	int processors  = 1;
@@ -101,33 +102,7 @@ public class HTTPSRoundTripTest {
     @Test
 	public void certMatchHTTPSTest() {
     
-    	final TLSCertificates tlsCertificates = new TLSCertificates() {
-    		
-            @Override
-            public String keyStoreResourceName() {
-                return "/certificates/testcert.jks";
-            }
-
-            @Override
-            public String trustStroreResourceName() {
-                return "/certificates/testcert.jks";
-            }
-
-            @Override
-            public String keyStorePassword() {
-                return "testcert";
-            }
-
-            @Override
-            public String keyPassword() {
-                return "testcert";
-            }
-
-            @Override
-            public boolean trustAllCerts() {
-                return false;
-            }
-        };
+    	final TLSCertificates tlsCertificates = TLSCerts.define();
         
     	
     	int maxPartialResponses=10;
@@ -194,33 +169,7 @@ public class HTTPSRoundTripTest {
     @Test
 	public void certAuthMatchHTTPSTest() {
     
-    	final TLSCertificates tlsCertificates = new TLSCertificates() {
-    		
-            @Override
-            public String keyStoreResourceName() {
-                return "/certificates/testcert.jks";
-            }
-
-            @Override
-            public String trustStroreResourceName() {
-                return "/certificates/testcert.jks";
-            }
-
-            @Override
-            public String keyStorePassword() {
-                return "testcert";
-            }
-
-            @Override
-            public String keyPassword() {
-                return "testcert";
-            }
-
-            @Override
-            public boolean trustAllCerts() {
-                return false;
-            }
-        };
+    	final TLSCertificates tlsCertificates = TLSCerts.define();
         
     	
     	int maxPartialResponses=10;

@@ -2371,7 +2371,7 @@ public class GraphManager {
 	}
 
 	private static byte[] buildStageDOTRate(GraphManager m, PronghornStage stage) {
-		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
+		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE, null);
 		if (null!=rate) {
 			StringBuilder builder = new StringBuilder();
 			builder.append("\n Rate:");

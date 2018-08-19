@@ -35,8 +35,8 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
  */
 public class ClientSocketReaderStage extends PronghornStage {	
 	
-    
-    public static boolean abandonSlowConnections = false;
+    //if this is turned off not client requests will ever time out, turn off at your own risk.
+    public static boolean abandonSlowConnections = true;
     
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private final ClientCoordinator coordinator;
@@ -51,7 +51,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private final static int KNOWN_BLOCK_ENDING = -1;
 	private int iteration;
-
+	
+	private int rateMask;
+	private final GraphManager graphManger;
+	
+	
 	/**
 	 *
 	 * @param graphManager
@@ -74,8 +78,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
-		
+		     
+		this.graphManger = graphManager;
 	}
+
+	
 	
 	@Override
 	public void startup() {
@@ -83,6 +90,16 @@ public class ClientSocketReaderStage extends PronghornStage {
 		selectedKeyHolder = new SelectedKeyHashMapHolder();
 		start = System.currentTimeMillis();
 		
+        Number schedRate = ((Number)GraphManager.getNota(graphManger, this, GraphManager.SCHEDULE_RATE, new Long(-1)));        
+        long minimumTimeout = ClientCoordinator.minimumTimeout();
+        if (minimumTimeout<Long.MAX_VALUE) {
+        	rateMask = (1 << (int)(Math.log((int)(minimumTimeout/schedRate.longValue()))/Math.log(2)))-1;
+        } else {
+        	rateMask = 0xFFF;
+        }
+        
+        System.out.println("buildnew mask "+Integer.toHexString(rateMask)+" rate "+schedRate);
+        
 	}
 	
 	@Override
@@ -117,7 +134,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	@Override
 	public void run() { //TODO: this method is the new hot spot in the profiler.
-
+       
 	   	 if(shutdownInProgress) {
 	    	 int i = output.length;
 	         while (--i >= 0) {
@@ -163,39 +180,27 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
         }
  
-        /////////////////////////////////////////////
-        //scan for abandoned connections periodically
-        //if this is called every 4micros then every 4000 is every 16 ms
-        //if this is called every 4ms then every 4000 is every 16 sec
-        /////////////////////////////////////////////
-        if (abandonSlowConnections && (++iteration&0xFFF)==0) {
+ 		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
         	//only run when we have no data waiting
         	if (maxIterations>0) {
         	    
         		        //long now = System.nanoTime();
         		
-        	        	ClientConnection abandonded = coordinator.scanForAbandonedConnection();
+        	        	ClientAbandonConnectionScanner slowConnections = coordinator.scanForSlowConnections();
+						ClientConnection abandonded = slowConnections.leadingCandidate();
         	        	if (null!=abandonded) {
-        	        		//we only close connections which are currently holding a pipe reservation open
-        	        		//never grab a new one here or it may cause a hang,  only close those already with reservation
-        	        		int pipeIdx = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
-        	        		if (pipeIdx>=0) {
-								Pipe<NetPayloadSchema> pipe = output[pipeIdx];	        	        	
-								///ensure that this will not cause any stall, better to skip this than be blocked.
-								if (Pipe.hasRoomForWrite(pipe)) {
-									
-									//logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long.",abandonded, abandonded.id, abandonded.sessionId);								
-									abandonded.beginDisconnect();
-									coordinator.releaseResponsePipeLineIdx(abandonded.getId());
-									
-									int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
-									Pipe.addLongValue(abandonded.getId(), pipe);
-									Pipe.confirmLowLevelWrite(pipe, size);
-									Pipe.publishWrites(pipe);    
-																		
-								}
-        	        		}         	        		
+        	        		abandonNow(abandonded);         	        		
         	        	}
+        	        	ClientConnection[] timedOut = slowConnections.timedOutConnections();
+        	        	int i = timedOut.length;
+        	        	while (--i >= 0) {
+        	        		
+        	        		if (null != timedOut[i]) {
+        	        			abandonNow(timedOut[i]);
+        	        		}
+        	        		
+        	        	}
+        	        	
         	        	
         	        	//long duration = System.nanoTime()-now;
         	        	//if (duration>10_000) {
@@ -204,6 +209,28 @@ public class ClientSocketReaderStage extends PronghornStage {
         	}
         }        
    	}
+
+	private void abandonNow(ClientConnection abandonded) {
+		//we only close connections which are currently holding a pipe reservation open
+		//never grab a new one here or it may cause a hang,  only close those already with reservation
+		int pipeIdx = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
+		if (pipeIdx>=0) {
+			Pipe<NetPayloadSchema> pipe = output[pipeIdx];	        	        	
+			///ensure that this will not cause any stall, better to skip this than be blocked.
+			if (Pipe.hasRoomForWrite(pipe)) {
+				
+				//logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long.",abandonded, abandonded.id, abandonded.sessionId);								
+				abandonded.beginDisconnect();
+				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
+				
+				int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
+				Pipe.addLongValue(abandonded.getId(), pipe);
+				Pipe.confirmLowLevelWrite(pipe, size);
+				Pipe.publishWrites(pipe);    
+													
+			}
+		}
+	}
 
 	
 	boolean hasRoomForMore = true;

@@ -80,6 +80,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	protected final int structureId;
 	
 	private final int payloadSize;
+	private final long timeoutNS;
 
 	public int getStructureId() {
 		return structureId;
@@ -87,7 +88,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	
 	public ClientConnection(SSLEngine engine, 
 			                CharSequence host, int hostId, int port, int sessionId,
-			                int pipeIdx, long conId, int structureId		                 
+			                int pipeIdx, long conId, long timeoutNS, int structureId		                 
 			 			  ) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
@@ -97,7 +98,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		this.connectionDataWriter = null;
 		
 		this.structureId = structureId;
-		
+		this.timeoutNS =  timeoutNS;
 		this.creationTimeNS = System.nanoTime();
 		
 		this.isTLS = (engine!=null);
@@ -552,6 +553,10 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 	public void clientClosedNotificationSent() {
 		clientClosedNotificationSent= true;
+	}
+
+	public long getTimeoutNS() {
+		return timeoutNS;
 	}
 
 	

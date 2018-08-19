@@ -4,6 +4,7 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.schema.*;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -38,7 +39,7 @@ public class MQTTClientGraphBuilder {
 			String user, String pass, TLSCertificates tlsCertificates) {
 
 		if (tlsCertificates == null) {
-			tlsCertificates = TLSCertificates.defaultCerts;
+			tlsCertificates = TLSCerts.define();
 		}
 		int maxInFlight = 10;
 		int maximumLenghOfVariableLengthFields = 4096;
@@ -74,7 +75,7 @@ public class MQTTClientGraphBuilder {
 			noiseProducer = new NoiseProducer(sr);
 			
 			if (tlsCertificates == null) {
-				tlsCertificates = TLSCertificates.defaultCerts;
+				tlsCertificates = TLSCerts.define();
 			}
 		} else {
 			logger.info("Warning: MQTT persistance to disk is not encrypted because no user/pass provided.");

@@ -24,8 +24,18 @@ public abstract class JSONObject<R, T, P> {
 
     // Object
 
+    @Deprecated //use startObject
     public JSONObject<R, T, JSONObject<R, T, P>> beginObject(String name) {
-        return beginObject(name, new ToMemberFunction<T, T>() {
+        return startObject(name);
+    }
+
+    @Deprecated //use startObject
+    public <M> JSONObject<R, M, JSONObject<R, T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
+        return startObject(name, accessor);
+    }
+    
+    public JSONObject<R, T, JSONObject<R, T, P>> startObject(String name) {
+        return startObject(name, new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
                 return o;
@@ -33,7 +43,7 @@ public abstract class JSONObject<R, T, P> {
         });
     }
 
-    public <M> JSONObject<R, M, JSONObject<R, T, P>> beginObject(String name, ToMemberFunction<T, M> accessor) {
+    public <M> JSONObject<R, M, JSONObject<R, T, P>> startObject(String name, ToMemberFunction<T, M> accessor) {
         return new JSONObject<R, M, JSONObject<R, T, P>>(builder.addFieldPrefix(name).beginObject(accessor)) {
             @Override
             JSONObject<R, T, P> objectEnded() {

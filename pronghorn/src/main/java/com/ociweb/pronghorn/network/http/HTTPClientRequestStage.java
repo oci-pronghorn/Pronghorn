@@ -263,7 +263,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  			&& activeConnection.isValid()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
- 			
+ 		
  			if (null!=activeConnection && activeConnection.id==connectionId) {
  				//this is the only point where we can decompose since 
  				//we are creating a new active connection 				
@@ -282,8 +282,8 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  	 	 		assert(sessionId!=0) : "sessionId must not be zero";
  			}
- 			
- 			activeConnection = ClientCoordinator.openConnection(
+
+			activeConnection = ClientCoordinator.openConnection(
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
  					 port, sessionId, output, connectionId, ccf);

@@ -371,8 +371,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private final ClientAbandonConnectionScanner abandonScanner;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
-			CharSequence host, int port, final int sessionId, Pipe<NetPayloadSchema>[] outputs,
-			long connectionId, AbstractClientConnectionFactory ccf) {
+			CharSequence host, int port, 
+			final int sessionId, Pipe<NetPayloadSchema>[] outputs,
+			long connectionId,
+			AbstractClientConnectionFactory ccf) {
 				
 		        ClientConnection cc = null;
 
@@ -408,25 +410,17 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
-
 	
 					//recycle from old one if it is found/given		        
 					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, TrieParserReaderLocal.get());	
-
+				
+					long timeoutNS = ClientCoordinator.lookupSessionTimeoutNS(sessionId);
 					
 					try {
-						//TODO: need to check why we keep opening new connections..
-//						if (cc==null) {
-//							logger.info("\n{} bcc was null so new client connection ",connectionId);
-//						} else {
-//							logger.info("\n{} nnew client connection {}:{}  disc:{} valid:{}",connectionId, host,port,cc.isDisconnecting,cc.isValid);
-//						}
-						
 						//create new connection because one was not found or the old one was closed
 						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
 													connectionId, 
-													pipeIdx, 
-													hostId,						
+													pipeIdx, hostId, timeoutNS,
 													structureId(sessionId, ccm.typeData));
 					
 					} catch (IOException ex) {
@@ -478,7 +472,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	}
 
-	
+
+
 	public static int structureId(int sessionId, StructRegistry typeData) {
 		assert(sessionId>0) : "sessionId may not be zero";
 		int result = typeData.lookupAlias(sessionId);
@@ -549,12 +544,40 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 
-	public ClientConnection scanForAbandonedConnection() {
+	public ClientAbandonConnectionScanner scanForSlowConnections() {
 		abandonScanner.reset();
 		connections.visitValid(abandonScanner);
-		return abandonScanner.leadingCandidate();
+		return abandonScanner;
 	}
+	
+	///////////////
+	///////////////
+	
+	private static LongLongHashTable timeoutHash = new LongLongHashTable(5);
+	private static long minTimeout = Long.MAX_VALUE;
 
+	public static long minimumTimeout() {
+		return minTimeout;
+	}
+	
+	public static long lookupSessionTimeoutNS(int sessionId) {
+		long value = LongLongHashTable.getItem(timeoutHash, sessionId);
+		if (0!=value) {
+			return value;
+		} else {
+			return -1;
+		}
+	}
+	
+	public static synchronized void setSessionTimeoutNS(int sessionId, long timeoutNS) {
 
+		minTimeout = Math.min(minTimeout, timeoutNS);
+		
+		if (LongLongHashTable.isFull(timeoutHash)) {
+			timeoutHash = LongLongHashTable.doubleClone(timeoutHash);
+		}
+		
+		LongLongHashTable.setItem(timeoutHash, sessionId, timeoutNS);
+	}
 	
 }

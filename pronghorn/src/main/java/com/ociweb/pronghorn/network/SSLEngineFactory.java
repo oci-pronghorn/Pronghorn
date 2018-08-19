@@ -31,17 +31,17 @@ public class SSLEngineFactory {
     
     private TLSService getService() {
         if (privateService==null) {
-            InputStream keyInputStream = null;
+            InputStream identityStoreInputStream = null;
             InputStream trustInputStream = null;
             try {
-                String keyStoreResourceName = certificates.keyStoreResourceName();
-                if (keyStoreResourceName != null) {
-                    keyInputStream = TLSCertificates.class.getResourceAsStream(keyStoreResourceName);
-                    if (keyInputStream == null) {
-                        throw new RuntimeException(String.format("Resource %s not found", keyStoreResourceName));
+                String identityStoreResourceName = certificates.identityStoreResourceName();
+                if (identityStoreResourceName != null) {
+                    identityStoreInputStream = TLSCertificates.class.getResourceAsStream(identityStoreResourceName);
+                    if (identityStoreInputStream == null) {
+                        throw new RuntimeException(String.format("Resource %s not found", identityStoreResourceName));
                     }
                 }
-                String trustStroreResourceName = certificates.trustStroreResourceName();
+                String trustStroreResourceName = certificates.trustStoreResourceName();
                 if (trustStroreResourceName != null) {
                     trustInputStream = TLSCertificates.class.getResourceAsStream(trustStroreResourceName);
                     if (trustInputStream == null) {
@@ -49,17 +49,16 @@ public class SSLEngineFactory {
                     }
                 }
 
-                String keyPassword = certificates.keyPassword();
-                String keyStorePassword = certificates.keyStorePassword();
-
-                privateService = TLSService.make(keyInputStream, keyStorePassword, 
-                		                         trustInputStream, keyPassword, 
+                privateService = TLSService.make(identityStoreInputStream, 
+                		                         certificates.keyStorePassword(), 
+                		                         trustInputStream, 
+                		                         certificates.keyPassword(), 
                 		                         certificates.trustAllCerts());
             }
             finally {
-                if (keyInputStream != null ) {
+                if (identityStoreInputStream != null ) {
                     try {
-                        keyInputStream.close();
+                        identityStoreInputStream.close();
                     } catch (IOException ignored) {
                         // This is not a failure for the running system
                     }

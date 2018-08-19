@@ -1049,7 +1049,7 @@ public class NetGraphBuilder {
 		int connectionsInBits = 6;		
 		int clientRequestCount = 4;
 		int clientRequestSize = 1<<15;
-		final TLSCertificates tlsCertificates = TLSCertificates.defaultCerts;
+		final TLSCertificates tlsCertificates = TLSCerts.define();
 
 		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
 		 clientRequestCount, clientRequestSize, tlsCertificates);

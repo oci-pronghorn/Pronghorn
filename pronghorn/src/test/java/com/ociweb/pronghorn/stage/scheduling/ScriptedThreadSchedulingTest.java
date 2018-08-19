@@ -10,10 +10,8 @@ import com.ociweb.pronghorn.HTTPServer;
 import com.ociweb.pronghorn.network.HTTPServerConfig;
 import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
-import com.ociweb.pronghorn.network.ServerConnectionStruct;
-import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
 
 public class ScriptedThreadSchedulingTest {
@@ -57,7 +55,7 @@ public class ScriptedThreadSchedulingTest {
 						resourcesRoot, resourcesDefault, 
 						pathRoot);
 		
-		TLSCertificates defaultcerts = TLSCertificates.defaultCerts;
+		TLSCertificates defaultcerts = TLSCerts.define();
 		HTTPServerConfig c = NetGraphBuilder.serverConfig(7084, gm);
 		c.setHost("127.0.0.1");
 		if (null == defaultcerts) {

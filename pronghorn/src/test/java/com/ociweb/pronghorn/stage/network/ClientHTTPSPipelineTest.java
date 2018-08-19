@@ -4,6 +4,7 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -36,12 +37,11 @@ public class ClientHTTPSPipelineTest {
 		
 		int base2SimultaniousConnections = 1;//TODO: bug, why can we not set this to larger nubmer??
 		final int outputsCount = 1;//must be < connections
-		int maxPartialResponses = 2;
 		final int maxListeners = 1<<base2SimultaniousConnections;
 
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 
-		TLSCertificates certs = TLSCertificates.defaultCerts;
+		TLSCertificates certs = TLSCerts.define();
 		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,certs,gm.recordTypeData);
 
 		

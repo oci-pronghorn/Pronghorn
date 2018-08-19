@@ -22,6 +22,7 @@ public interface HTTPServerConfig {
 	HTTPServerConfig logTraffic();
 	HTTPServerConfig setTracks(int tracks);
 	
+	@Deprecated //use the the setTLS method and TLSCerts.define()... as an argument
 	HTTPServerConfig setClientAuthRequired(boolean value);
 	HTTPServerConfig setServiceName(String name);
 	

@@ -9,7 +9,7 @@ public class BasicClientConnectionFactory extends AbstractClientConnectionFactor
 	public final static BasicClientConnectionFactory instance = new BasicClientConnectionFactory();
 		
 	public ClientConnection newClientConnection(ClientCoordinator ccm, CharSequence host, int port,
-			int sessionId, long connectionId, int pipeIdx, int hostId, int structureId)
+			int sessionId, long connectionId, int pipeIdx, int hostId, long timeoutNS, int structureId)
 			throws IOException {
 		
 		SSLEngine engine =  ccm.isTLS ?
@@ -17,7 +17,7 @@ public class BasicClientConnectionFactory extends AbstractClientConnectionFactor
 		        :null;
 		   
 		return new ClientConnection(engine, host, hostId, port, sessionId, pipeIdx, 
-					                  connectionId, structureId);
+					                  connectionId, timeoutNS, structureId);
 
 	}
 }

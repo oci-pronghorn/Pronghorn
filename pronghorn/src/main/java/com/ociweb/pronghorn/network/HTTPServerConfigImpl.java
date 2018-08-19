@@ -40,14 +40,14 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private int decryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
 	private int concurrentChannelsPerEncryptUnit = 2; //default 2, for low memory usage
 	private int concurrentChannelsPerDecryptUnit = 2; //default 2, for low memory usage
-	private TLSCertificates serverTLS = TLSCertificates.defaultCerts;
+	private TLSCertificates serverTLS = TLSCerts.define();
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	private int maxRequestSize = 1<<15;//default of 32K
 	private int maxResponseSize = 1<<12;//default of 4K
 	private final PipeConfigManager pcm;
     private int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	
-	private boolean requireClientAuth = false;
+
 	private String serviceName = "Server";
 	
 	private final ServerConnectionStruct scs;
@@ -318,7 +318,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 	@Override
 	public HTTPServerConfig setClientAuthRequired(boolean value) {
-		requireClientAuth = value;
+		if (serverTLS instanceof TLSCerts) {
+			serverTLS = ((TLSCerts)serverTLS).clientAuthRequired(value);
+		} else {
+			throw new UnsupportedOperationException("This value should be set by passing TLSCertificates to setTLS ");
+		}
 		return this;
 	}
 
@@ -330,7 +334,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 	@Override
 	public boolean requireClientAuth() {
-		return requireClientAuth;
+		return serverTLS.clientAuthRequired();
 	}
 
 	@Override
