@@ -94,11 +94,11 @@ public class ClientSocketReaderStage extends PronghornStage {
         long minimumTimeout = ClientCoordinator.minimumTimeout();
         if (minimumTimeout<Long.MAX_VALUE) {
         	rateMask = (1 << (int)(Math.log((int)(minimumTimeout/schedRate.longValue()))/Math.log(2)))-1;
+        	System.out.println("testing buildnew mask "+Integer.toHexString(rateMask)+" rate "+schedRate+"   "+minimumTimeout);
         } else {
         	rateMask = 0xFFF;
         }
         
-        System.out.println("buildnew mask "+Integer.toHexString(rateMask)+" rate "+schedRate);
         
 	}
 	

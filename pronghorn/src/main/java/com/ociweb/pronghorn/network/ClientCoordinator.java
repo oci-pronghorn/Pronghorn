@@ -571,7 +571,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static synchronized void setSessionTimeoutNS(int sessionId, long timeoutNS) {
 
-		minTimeout = Math.min(minTimeout, timeoutNS);
+		if (timeoutNS>0) {
+			minTimeout = Math.min(minTimeout, timeoutNS);
+		}
 		
 		if (LongLongHashTable.isFull(timeoutHash)) {
 			timeoutHash = LongLongHashTable.doubleClone(timeoutHash);
