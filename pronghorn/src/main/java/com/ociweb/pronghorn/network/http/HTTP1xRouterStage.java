@@ -301,7 +301,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	   
     		int localIdx = idx;
 
-    		int m = 100;//max iterations before taking a break
+    		int m = 1000;//max iterations before taking a break
     		do {
     	
 		        while (--localIdx>=0 && --m>=0) {
@@ -328,6 +328,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            	return;
 		            } 
 		            
+		            //stay if we have more data?
+		            //if (Pipe.hasContentToRead(inputs[localIdx])) {
+		            //	didWork++;
+		           // }
 		            
 		        }
 		        if (localIdx<=0) {
@@ -1181,8 +1185,8 @@ private static int accumRunningBytes(
 	    while ( //NOTE has content to read looks at slab position between last read and new head.
 	   
 	    		Pipe.hasContentToRead(selectedInput) && (    //content checked first to ensure asserts pass		
+	    				    hasContinuedData(selectedInput, inChnl) ||
 		    				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
-		    				hasContinuedData(selectedInput, inChnl) ||
 		    				hasReachedEndOfStream(selectedInput) 
 		    				//if we have reached the end of the stream       
 		            )
@@ -1229,8 +1233,9 @@ private static long processPlain( HTTP1xRouterStage that,
 	if (-1 != inChnl) {
 		that.plainMatch(idx, selectedInput, channel, length);
 	} else {
-		inChnl = that.plainFreshStart(idx, selectedInput, channel, length, pos);		
+		that.plainFreshStart(idx, selectedInput, channel, length, pos);		
 	}
+	inChnl = channel; //Testing this
 
 	assert(that.inputLengths[idx]>=0) : "error negative length not supported";
 
@@ -1263,13 +1268,13 @@ private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput,
 }
 
 
-private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput, long channel, int length, int pos) {
-	long inChnl;
+private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput, long channel, int length, int pos) {
+
 	//is freshStart
 	assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
 	
 	//assign
-	inputChannels[idx]     = inChnl = channel;
+	inputChannels[idx]     = channel;
 	inputLengths[idx]      = length;
 	inputBlobPos[idx]      = pos;
 	inputBlobPosLimit[idx] = pos + length;
@@ -1278,7 +1283,7 @@ private long plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 	
 	assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
 	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
-	return inChnl;
+
 }
 
 

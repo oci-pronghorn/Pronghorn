@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
@@ -203,7 +204,15 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 		boolean done = false;
 		do {		
-			done = this.getSocketChannel().finishConnect(); //call again later to confirm its done.
+			try {
+				done = this.getSocketChannel().finishConnect(); //call again later to confirm its done.
+			} catch(ConnectException ce) {
+				if (ce.getMessage().equals("Connection refused")) {
+					break;
+				} else {
+					throw ce;
+				}
+			}
 			if (!done) {
 				Thread.yield();
 			}

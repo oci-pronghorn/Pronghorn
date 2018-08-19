@@ -59,6 +59,40 @@ public class ArrayGrow {
 		return source;
 	}
 
+	public static long[] setIntoArray(long[] source, long value, int pos) {
+		
+		int i = source.length;
+		if (pos>=i) {
+			int newSize = i>0 ? i*2 : 2;
+			if (pos>=newSize) {
+				newSize = pos>0 ? pos*2 : 2;
+			}
+			long[] newArray = new long[newSize];
+			System.arraycopy(source, 0, newArray, 0, i);
+			source = newArray;
+			
+		}
+		source[pos] = value;
+		return source;
+	}
+
+	public static int[] setIntoArray(int[] source, int value, int pos) {
+		
+		int i = source.length;
+		if (pos>=i) {
+			int newSize = i>0 ? i*2 : 2;
+			if (pos>=newSize) {
+				newSize = pos>0 ? pos*2 : 2;
+			}
+			int[] newArray = new int[newSize];
+			System.arraycopy(source, 0, newArray, 0, i);
+			source = newArray;
+			
+		}
+		source[pos] = value;
+		return source;
+	}	
+	
 	public static <T> T[] setIntoArray(T[] source, T obj, int pos) {
 		
 		int i = source.length;
