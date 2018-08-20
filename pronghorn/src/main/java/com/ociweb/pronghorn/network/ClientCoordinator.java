@@ -114,7 +114,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
-	public BaseConnection connectionForSessionId(long id) {
+	public BaseConnection lookupConnectionById(long id) {
 		ClientConnection response = connections.get(id);
 		
 		if (null != response) {			
@@ -530,7 +530,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
 				//logger.info("\n ^^^^ new connection established to {}",cc);
 				
-				BaseConnection con = ccm.connectionForSessionId(cc.id);
+				BaseConnection con = ccm.lookupConnectionById(cc.id);
 		
 				if (cc != con) {
 					cc = null;//closed

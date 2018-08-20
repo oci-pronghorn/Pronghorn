@@ -575,13 +575,21 @@ public class SSLUtil {
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
-			final BaseConnection cc = ccm.connectionForSessionId(Pipe.peekLong(source, 1));
+			long connectionId = Pipe.peekLong(source, 0xFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
+			//TODO: what if the connection changes while in flight.
+			final BaseConnection cc = ccm.lookupConnectionById(connectionId);
 						
 			if (null==cc || !cc.isValid) {
 				logger.info("connection has dropped and data with it");
-				buffer.clear();
-				//do not process this message because the connection has dropped				
+				((Buffer)buffer).clear();
+//				//do not process this message because the connection has dropped				
 				Pipe.skipNextFragment(source);
+
+				//send to target disconnect
+				int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
+				Pipe.addLongValue(connectionId, target);
+				Pipe.confirmLowLevelWrite(target);
+				Pipe.publishWrites(target);
 				continue;
 			}
 			
@@ -689,9 +697,9 @@ public class SSLUtil {
 				final long connectionId = Pipe.peekLong(source, 1);
 				assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
 				
-				cc = ccm.connectionForSessionId(connectionId); //connection id	
+				cc = ccm.lookupConnectionById(connectionId); //connection id	
 
-				if (null==cc || !cc.isValid) {
+				if (null==cc || !cc.isValid ) {
 					Pipe.skipNextFragment(source);
 					continue;
 				}

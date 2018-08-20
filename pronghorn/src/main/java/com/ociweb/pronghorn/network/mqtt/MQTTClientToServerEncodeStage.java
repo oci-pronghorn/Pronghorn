@@ -618,7 +618,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 			//logger.info("\nconnected now sending data");
 			
-			ClientConnection clientConnection = (ClientConnection) ccm.connectionForSessionId(connectionId);
+			ClientConnection clientConnection = (ClientConnection) ccm.lookupConnectionById(connectionId);
 			if (null==clientConnection || (! clientConnection.isFinishConnect())) {
 				break;
 			}

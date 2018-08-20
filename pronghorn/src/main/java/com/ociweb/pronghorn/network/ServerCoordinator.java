@@ -224,7 +224,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	@Override
-	public <B extends BaseConnection> B connectionForSessionId(long id) {
+	public <B extends BaseConnection> B lookupConnectionById(long id) {
 		return (B)socketHolder.get(id);		
 	}
 

@@ -80,6 +80,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
 		     
 		this.graphManger = graphManager;
+		
+		//if the minimum timeout is below the default rate we must lower the rate for this one stage to capture the timeouts as needed
+		Number defaultRate = (Number)GraphManager.getNota(graphManager, this, GraphManager.SCHEDULE_RATE, null);
+		if (null!=defaultRate && ClientCoordinator.minimumTimeout()<defaultRate.longValue()) {
+			GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, new Long(ClientCoordinator.minimumTimeout()), this);
+		}
 	}
 
 	
@@ -91,7 +97,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 		start = System.currentTimeMillis();
 		
         Number schedRate = ((Number)GraphManager.getNota(graphManger, this, GraphManager.SCHEDULE_RATE, new Long(-1)));        
-        long minimumTimeout = ClientCoordinator.minimumTimeout();
+        long minimumTimeout = ClientCoordinator.minimumTimeout();        
+        
         if (minimumTimeout<Long.MAX_VALUE) {
         	rateMask = (1 << (int)(Math.log((int)(minimumTimeout/schedRate.longValue()))/Math.log(2)))-1;
         	System.out.println("testing buildnew mask "+Integer.toHexString(rateMask)+" rate "+schedRate+"   "+minimumTimeout);
@@ -219,7 +226,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 			///ensure that this will not cause any stall, better to skip this than be blocked.
 			if (Pipe.hasRoomForWrite(pipe)) {
 				
-				//logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long.",abandonded, abandonded.id, abandonded.sessionId);								
+				long callTime = abandonded.outstandingCallTime(System.nanoTime());
+				logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long. Estimated:{}",
+						 abandonded, abandonded.id, abandonded.sessionId,Appendables.appendNearestTimeUnit(new StringBuilder(), callTime));								
+				
+				
 				abandonded.beginDisconnect();
 				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				

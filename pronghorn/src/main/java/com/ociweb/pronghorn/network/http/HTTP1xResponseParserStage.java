@@ -366,7 +366,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//else use the data we have since no new data came in.
 						
 						ccId = ccIdData[i];
-						cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId);					
+						cc = (HTTPClientConnection)ccm.lookupConnectionById(ccId);					
 						if (null==cc) {	//skip data the connection was closed	
 							assert(positionMemoData[stateIdx]==0) : "we have data in flight now what? state is: "+positionMemoData[stateIdx];
 							if (ccm.checkForResponsePipeLineIdx(ccId)>=0) {

@@ -209,7 +209,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
-		BaseConnection cc = coordinator.connectionForSessionId(channelId);
+		BaseConnection cc = coordinator.lookupConnectionById(channelId);
 
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
@@ -443,7 +443,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
 			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
-				BaseConnection conn = coordinator.connectionForSessionId(idToClear);
+				BaseConnection conn = coordinator.lookupConnectionById(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
 					conn.clearPoolReservation();
@@ -597,7 +597,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	 //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
-             	BaseConnection conn = coordinator.connectionForSessionId(channelId);
+             	BaseConnection conn = coordinator.lookupConnectionById(channelId);
              	if (null!=conn) {
              		conn.clearPoolReservation();
              	}

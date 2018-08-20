@@ -178,7 +178,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 					
 				 	    if (retCode!=0) {
 				 	    	//connection is bad so disconnect it so we can try again later.
-				 	    	ClientConnection cc = ((ClientConnection)ccm.connectionForSessionId(connectionId));
+				 	    	ClientConnection cc = ((ClientConnection)ccm.lookupConnectionById(connectionId));
 				 	    	if (null!=cc) {
 				 	    		cc.beginDisconnect();
 				 	    	}

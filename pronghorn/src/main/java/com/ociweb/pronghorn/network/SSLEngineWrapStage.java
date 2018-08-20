@@ -145,7 +145,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 					long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
 					long time = System.currentTimeMillis();
 					
-					BaseConnection connection = ccm.connectionForSessionId(connectionId);
+					BaseConnection connection = ccm.lookupConnectionById(connectionId);
 					if (null!=connection) {
 						connectionId = connection.id;
 						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					

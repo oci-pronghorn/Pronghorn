@@ -16,9 +16,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	
 	public static int stdDevsToAbandon = 5; //default which will close connections taking longer than expected
 	public static long absoluteNSToAbandon = 600_000_000_000L;//default of 10 minutes, not normally used since standard dev is faster.
-	public static long absoluteNSToKeep =        200_000_000; //default of 200ms for any acceptable wait.
+	public static long absoluteNSToKeep =        200_000_000L; //default of 200ms for any acceptable wait.
 	
-	private long scanTime;
 	private long maxOutstandingCallTime;
 	private ClientConnection candidate;
 	
@@ -34,7 +33,6 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	}
 	
 	public void reset() {
-		scanTime = System.nanoTime();
 		maxOutstandingCallTime = -1;
 		candidate = null;
 		absoluteTimeoutCounts = 0;
@@ -44,6 +42,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		
 	@Override
 	public void visit(ClientConnection t) {
+		long scanTime = System.nanoTime();
 		long callTime = t.outstandingCallTime(scanTime);
 				
 		long timeout = t.getTimeoutNS();
@@ -84,11 +83,14 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 //			Appendables.appendNearestTimeUnit(System.out.append("StdDev: "), (long)RunningStdDev.stdDeviation(stdDev) ).append("\n");
 //			}
 			
-			if (maxOutstandingCallTime > Math.min(Math.max(limit,absoluteNSToKeep),absoluteNSToAbandon)) {
-				//logger.info("\n{} waiting connection to {} has been assumed abandoned and is the leading candidate to be closed.",Appendables.appendNearestTimeUnit(workspace, maxOutstandingCallTime),candidate);
-				
-				//this is the worst offender at this time
-				return candidate;
+			if (maxOutstandingCallTime > absoluteNSToKeep) { //must be greater than the keep value or it is not a candidate.			
+				if (maxOutstandingCallTime > Math.min(limit, absoluteNSToAbandon)) {
+					
+					//logger.info("\n{} waiting connection to {} has been assumed abandoned and is the leading candidate to be closed.",Appendables.appendNearestTimeUnit(new StringBuilder(), maxOutstandingCallTime),candidate);
+
+					//this is the worst offender at this time
+					return candidate;
+				}
 			}
 		}
 		return null;

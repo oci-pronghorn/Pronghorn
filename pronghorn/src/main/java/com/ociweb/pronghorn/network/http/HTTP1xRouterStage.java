@@ -283,17 +283,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
-    	
-        if (waitForOutputOn>=0 && waitForOutputOn<outputs.length) {
-        	
-        	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
-        		waitForOutputOn=-1;
-        	} else {
-        		//logger.trace("wait for output on {}",waitForOutputOn);
-        		return;//output is backed up so go do something else.
-        	}
-        }
-    	
+     	
     	int didWork;
    	
     	do { 
@@ -323,16 +313,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            
 		            if (waitForOutputOn<0) {
 		            } else {
-		            	//abandon until the output pipe is cleared.
-		            	idx = localIdx;
-		            	return;
+		            	if (m>inputs.length) {
+		            		//finish this pass on each output then leave since we have a blocked pipe.
+		            		m=inputs.length-1;
+		            	}
 		            } 
-		            
-		            //stay if we have more data?
-		            //if (Pipe.hasContentToRead(inputs[localIdx])) {
-		            //	didWork++;
-		           // }
-		            
+		            		            
 		        }
 		        if (localIdx<=0) {
 		        	localIdx = inputs.length;
@@ -806,7 +792,7 @@ private void badVerbParse(TrieParserReader trieReader, final long channel, final
 	trieReader.sourceLen = 0;
 	trieReader.sourcePos = 0;    			
 	
-	BaseConnection con = coordinator.connectionForSessionId(channel);
+	BaseConnection con = coordinator.lookupConnectionById(channel);
 	if (null!=con) {
 		con.clearPoolReservation();
 	}
@@ -853,7 +839,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;
     			
-    			BaseConnection con = coordinator.connectionForSessionId(channel);
+    			BaseConnection con = coordinator.lookupConnectionById(channel);
 				if (null!=con) {
 					con.clearPoolReservation();
 				}
@@ -902,7 +888,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;
     			
-    			BaseConnection con = coordinator.connectionForSessionId(channel);
+    			BaseConnection con = coordinator.lookupConnectionById(channel);
 				if (null!=con) {
 					con.clearPoolReservation();
 				}
@@ -919,7 +905,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         
 
         //	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, coordinator.<ServerConnection>connectionForSessionId(channel), 
+		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, coordinator.<ServerConnection>lookupConnectionById(channel), 
 												httpRevisionId, config,
 												errorReporter, arrivalTime);  // Write 2   10 //if header is presen
        
@@ -1109,7 +1095,7 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 		////////////////
 		//this block is already done because sendError will close upon xmit
 		//it is doen here because the sendError failed
-		BaseConnection con = coordinator.connectionForSessionId(channel);
+		BaseConnection con = coordinator.lookupConnectionById(channel);
 		if (null!=con) {
 			con.clearPoolReservation();		
 			con.close();
@@ -1159,7 +1145,7 @@ private void sendRelease(long channel, final int idx) {
 }
 
 private void badClientError(long channel) {
-	BaseConnection con = coordinator.connectionForSessionId(channel);
+	BaseConnection con = coordinator.lookupConnectionById(channel);
 	if (null!=con) {
 		con.clearPoolReservation();		
 		con.close();

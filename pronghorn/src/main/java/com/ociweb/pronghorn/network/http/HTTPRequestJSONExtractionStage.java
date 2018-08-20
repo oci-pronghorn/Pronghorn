@@ -36,7 +36,6 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		
 	private JSONStreamParser parser;
 	private JSONStreamVisitorToChannel visitor;
-	private final StructRegistry typeData;
 
 	
 	public static final Logger logger = LoggerFactory.getLogger(HTTPRequestJSONExtractionStage.class);
@@ -67,7 +66,6 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		this.err = err;
-		this.typeData = graphManager.recordTypeData;
 
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
@@ -104,17 +102,27 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		        	int verb = Pipe.takeInt(localInput);      	
 		        	
 		        	DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(localInput);
-		        	//copies params and headers.
 		        	DataOutputBlobWriter<HTTPRequestSchema> outputStream = Pipe.openOutputStream(localOutput);
-		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);
-		   
+
+		        	/////////////////
+		        	//copies params and headers.
+		        	int payloadOffset = inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION);		   
 		        	assert(payloadOffset>=0) : "offset must be positive but was "+payloadOffset;
 					inputStream.readInto(outputStream, payloadOffset);
 		        	assert(DataInputBlobReader.absolutePosition(inputStream)>=0) : "position must not be negative";
 		        	
+		        	int avail = inputStream.available();
+		        	
 		        	//inputStream is now positioned to the JSON
 		        	//outputStream is now positions as the target
 		        	DataInputBlobReader.setupParser(inputStream, reader);
+		        	
+		        	boolean debugJSON = false;
+		        	if (debugJSON) {
+		        		reader.debugAsUTF8(reader, System.out, avail);
+		        		System.out.println();
+		        	}
+		        	
 		    		parser.parse(reader, extractor.trieParser(), visitor);
 		    		
 		    		//if (TrieParserReader.parseHasContent(reader)) {
@@ -143,11 +151,19 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    			
 		    			Pipe.confirmLowLevelWrite(localOutput,size);
 		    			Pipe.publishWrites(localOutput);
+		    					    			
 		    		} else {
 		    			localOutput.closeBlobFieldWrite();	    			
-		    			//logger.warn("Unable to parse JSON sent 404");		    			
 		    			
-		    			HTTPUtil.publishStatus(channelId, sequenceNum, 404, err);
+		    			
+		    			if (!visitor.isValid()) {
+		    				logger.warn("\nJSON was parsed but contained invalid field values.");		    			
+		    			}
+		    			
+		    			//400 - bad request, may be corrupt JSON or invalid values
+		    			HTTPUtil.publishStatus(channelId, sequenceNum, 400, err);
+		    			
+		    			
 		    			visitor.clear();//rest for next JSON
 		    					    			
 		    			Pipe.takeInt(localInput);// consume revision before release

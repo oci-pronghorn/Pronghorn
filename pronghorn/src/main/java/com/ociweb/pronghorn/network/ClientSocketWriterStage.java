@@ -182,7 +182,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	private boolean writeDisconnect(Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
 				
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);
@@ -224,7 +224,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	private boolean writeEncrypted(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
 				
 		final int msgIdx = Pipe.takeMsgIdx(pipe);
 		final long channelId = Pipe.takeLong(pipe);
@@ -244,7 +244,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean writePlain(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
 		
-		ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(chnl);
+		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
 
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);

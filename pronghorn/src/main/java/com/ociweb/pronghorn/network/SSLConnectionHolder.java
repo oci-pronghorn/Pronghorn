@@ -9,11 +9,10 @@ public abstract class SSLConnectionHolder {
 		this.isTLS = tlsCerificates != null;
 		if (tlsCerificates != null) {
 			this.engineFactory = new SSLEngineFactory(tlsCerificates);
-		}
-		else {
+		} else {
 			this.engineFactory = null;
 		}
 	}
 
-	public abstract <B extends BaseConnection> B connectionForSessionId(long hostId);
+	public abstract <B extends BaseConnection> B lookupConnectionById(long connectionId);
 }

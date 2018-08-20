@@ -50,10 +50,10 @@ public abstract class BaseConnection {
 	 */
 	public void decompose() {
 		//new Exception("decompose connection").printStackTrace();
-		socketChannel = null;
-		engine = null;
-		connectionDataWriter = null;
-		connectionDataReader = null;
+		//socketChannel = null;
+		//engine = null;
+		//connectionDataWriter = null;
+		//connectionDataReader = null;
 	}
 		
 	public ChannelWriterController connectionDataWriter() {		
