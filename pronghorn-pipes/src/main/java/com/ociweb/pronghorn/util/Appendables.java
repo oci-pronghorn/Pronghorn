@@ -1043,6 +1043,14 @@ public class Appendables {
 	public static AppendableProxy wrap(Appendable a) {
 		return new AppendableProxy(a);
 	}
+	
+	public static AppendableProxy join(Appendable ... targets) {
+		if (targets.length==1) {
+			return new AppendableProxy(targets[0]);
+		} else {
+			return new AppendablesProxy(targets);
+		}
+	}
 
 	public static <A extends Appendable> A  appendEpochTime(A target, long msTime) {
 		 try {
@@ -1091,6 +1099,7 @@ public class Appendables {
 		}
 		return target;
 	}
+
 	
 	//TODO: add nearestMemoryUnit  B, K, M, G, T, P
     

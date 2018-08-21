@@ -84,7 +84,7 @@ public class JSONSelectTests {
                 .basicArray(o->o)
                     .beginSelect()
                         .tryCase((o,i)->o[i]).integer((o,i)->o[i]?42:43)
-                        .tryCase((o,i)->!o[i]).string((o,i)->o[i]?"hello":"there")
+                        .tryCase((o,i)->!o[i]).string((o,i,t)->t.append(o[i]?"hello":"there"))
                     .endSelect();
         assertTrue(json.isLocked());
         json.render(out, new Boolean[] {true, true, false, true});

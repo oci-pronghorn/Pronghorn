@@ -244,7 +244,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		                //handshakeStatus = cc.getEngine().getHandshakeStatus();
 				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 					 releasePipesForUse();
-					 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";
+					 //NOT sure assert is right, delete: assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";
 					 processWork = false;
 				 }
 			}

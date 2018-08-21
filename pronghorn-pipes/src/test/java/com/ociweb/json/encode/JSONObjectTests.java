@@ -23,7 +23,7 @@ public class JSONObjectTests {
     @Test
     public void testObjectEmpty() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject().endObject();
+                .startObject().endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{}", out.toString());
@@ -32,7 +32,7 @@ public class JSONObjectTests {
     @Test
     public void testObjectNull_Yes() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject().integer("i", o->o.i).endObject();
+                .startObject().integer("i", o->o.i).endObject();
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -41,7 +41,7 @@ public class JSONObjectTests {
     @Test
     public void testObjectNull_No() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject().integer("i", o->o.i).endObject();
+                .startObject().integer("i", o->o.i).endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
         assertEquals("{\"i\":9}", out.toString());
@@ -52,17 +52,17 @@ public class JSONObjectTests {
         JSONRenderer<Integer> json1 = new JSONRenderer<Integer>()
                 .integer(o->o);
         JSONRenderer<BasicObj> json2 = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .beginSelect("no comma")
                         .tryCase(o->false).constantNull()
                     .endSelect()
                     .integer("y", o->o.i+6)
-                    .basicArray("bob", o-> new Integer[] {332}).string((o, i) -> o[i].toString())
-                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> o.get(i).toString())
-                    .iterArray("bob", o-> Arrays.asList(224, 213)).string((o, i) -> o.next().toString())
+                    .basicArray("bob", o-> new Integer[] {332}).string((o, i, t) -> t.append(o[i].toString()))
+                    .listArray("bob", o-> Arrays.asList(224, 213)).string((o, i, t) -> t.append(o.get(i).toString()))
+                    .iterArray("bob", o-> Arrays.asList(224, 213)).string((o, i, t) -> t.append(o.next().toString()))
                 .endObject();
         JSONRenderer<BasicObj> json3 = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .renderer("v", json1, o->o.i+5)
                     .renderer("x", json2, o->o)
                     .renderer("z", json2, o->null)
@@ -70,7 +70,7 @@ public class JSONObjectTests {
                         .tryCase(o->false).integer(o->42)
                         .tryCase(o->true).integer(o->43)
                     .endSelect()
-                    .beginObject("always", o->null)
+                    .startObject("always", o->null)
                         .empty()
                     .endObject()
                 .endObject();
@@ -82,14 +82,14 @@ public class JSONObjectTests {
     @Test
     public void testObjectPrimitives() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
                     .decimal("d", 2, o->o.d)
                     .string("s", (o,t)-> t.append(o.s))
                     .array("empty", null)
                         .empty()
-                    .beginObject("m")
+                    .startObject("m")
                         .empty()
                     .endObject()
                     .enumName("en", o->DayOfWeek.TUESDAY)
@@ -103,12 +103,12 @@ public class JSONObjectTests {
     @Test
     public void testObjectPrimitivesNull_Yes() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .nullableBool("b", o->true, o->o.b)
                     .nullableInteger("i", o->true, o->o.i)
                     .nullableDecimal("d", 2, o->true, o->o.d)
                     .nullableString("s", (o,t)-> t.append(null))
-                    .beginObject("m", o->o.m)
+                    .startObject("m", o->o.m)
                     .endObject()
                     .constantNull("always")
                 .enumName("en", o->null)
@@ -123,13 +123,13 @@ public class JSONObjectTests {
     @Test
     public void testObjectPrimitivesNull_No() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .nullableBool("b", o->false, o->o.b)
                     .nullableInteger("i", o->false, o->o.i)
                     .nullableDecimal("d", 2, o->false, o->o.d)
                     .nullableString("s", (o,t)->t.append(o.s))
-                    .beginObject("m", o->o.m)
-                        .beginObject("c", o->o.m).endObject()
+                    .startObject("m", o->o.m)
+                        .startObject("c", o->o.m).endObject()
                     .endObject()
                 .endObject();
         assertTrue(json.isLocked());
