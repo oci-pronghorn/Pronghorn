@@ -1844,7 +1844,7 @@ public class TrieParserReader {
 				}
 
 				if ((null!=validator) && (validator[fieldPosition] instanceof ByteSequenceValidator)) {
-					isValid &= ((ByteSequenceValidator)validator[fieldPosition]).isValid(reader.capturedBlobArray,p,len,m);
+					isValid &= ((ByteSequenceValidator)validator[fieldPosition]).isValid(reader.capturedBlobArray,p&m,len,m);
 				}
 				
 			} else {
