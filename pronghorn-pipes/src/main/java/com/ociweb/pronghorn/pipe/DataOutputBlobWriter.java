@@ -1002,9 +1002,4 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writePackedLong(m);	
 	}
 
-	@Override
-	public void reset() {
-		activePosition = startPosition;
-	}
-    
 }

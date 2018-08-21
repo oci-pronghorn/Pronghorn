@@ -20,7 +20,6 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		this.maximumAllocation = maximumAllocation;		
 		this.buffer = new byte[maximumAllocation<defaultSize?maximumAllocation:defaultSize];
 
-		reset();
 	}
 
 	public String toString() {
@@ -30,13 +29,7 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 	public int byteLength() {
 		return byteCount;
 	}
-	
-	@Override
-	public void reset() {
-		this.byteCount = 0;
-		this.pos = 0;
-	}
-	
+
 	public int copyTo(OutputStream target) {	
 		return copyTo(Integer.MAX_VALUE, target);
 	}
@@ -143,6 +136,14 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 			growNow(req);			
 		}
 		buffer[byteCount++] = (byte)asciiChar;
+	}
+
+	public int absolutePosition() {
+		return byteCount;
+	}
+
+	public void absolutePosition(int absolutePosition) {
+		byteCount = absolutePosition;
 	}
 
 

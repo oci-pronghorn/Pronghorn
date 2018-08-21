@@ -7,14 +7,6 @@ public class NullableAppendableByteWriterWrapper implements AppendableByteWriter
 	public boolean wasNull;
 	public AppendableByteWriter<?> externalWriter;
 	protected boolean needsQuote;
-		
-	@Override
-	public void reset() {
-		externalWriter.reset();
-		wasNull = false;
-		needsQuote = true;
-				
-	}
 
 	@Override
 	public NullableAppendableByteWriterWrapper append(CharSequence csq) {

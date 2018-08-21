@@ -600,18 +600,35 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         });
     }
 
-    <N> void addString(final IteratorFunction<T, N> iterator, boolean checkNull, final IterStringFunction<T> func) {
-        iterate(iterator, checkNull, new IterMemberFunction<T, CharSequence>() {
+    <N> void addString(final IteratorFunction<T, N> iterator,final boolean checkNull, final IterStringFunction<T> func) {
+        iterate(iterator, checkNull, new IterMemberFunction<T, T>() {
             @Override
-            public CharSequence get(T o, int i) {
-                return func.applyAsString(o, i);
+            public T get(T o, int i) {
+            	return o;                
             }
-        }, new RenderIteration<CharSequence, N>() {
+        }, new RenderIteration<T, N>() {
+        	
+        	NullableAppendableByteWriterWrapper nabww = new NullableAppendableByteWriterWrapper();
+
             @Override
-            public void render(AppendableByteWriter writer, CharSequence member, int i, N node) {
-                kw.Quote(writer);
-                writer.append(member);
-                kw.Quote(writer);
+            public void render(AppendableByteWriter writer, T o, int i, N node) {
+
+                if (!checkNull) {
+                	kw.Quote(writer);
+                	func.applyAsString(o, i, writer);
+                	kw.Quote(writer);                	
+                } else {
+                	nabww.externalWriter = writer;
+                	nabww.wasNull = false;
+                	nabww.needsQuote = true;
+                	func.applyAsString(o, i, nabww);
+                	if (!nabww.wasNull) {
+                		kw.Quote(writer);
+                	} else {
+                		//Note we are already reset to the beginning.
+                		kw.Null(writer);
+                	}
+                }
             }
         });
     }

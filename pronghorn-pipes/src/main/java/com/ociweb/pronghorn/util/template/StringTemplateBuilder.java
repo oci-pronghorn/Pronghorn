@@ -11,13 +11,6 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		this.script = new StringTemplateScript[8];
 	}
 
-
-	@Override
-	public void reset() {
-		count = 0;
-	}
-
-
 	public StringTemplateBuilder<T> add(String text) {
 		return addBytes(text.getBytes());
 	}

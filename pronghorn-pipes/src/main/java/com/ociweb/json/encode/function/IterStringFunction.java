@@ -1,6 +1,8 @@
 package com.ociweb.json.encode.function;
 
+import com.ociweb.pronghorn.util.AppendableByteWriter;
+
 //@FunctionalInterface
 public interface IterStringFunction<T> {
-    CharSequence applyAsString(T o, int i);
+    void applyAsString(T o, int i, AppendableByteWriter<?> target);
 }

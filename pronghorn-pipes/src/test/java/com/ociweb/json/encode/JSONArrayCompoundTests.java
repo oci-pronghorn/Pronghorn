@@ -46,13 +46,13 @@ public class JSONArrayCompoundTests {
     @Test
     public void testArrayObject() {
         JSONRenderer<BasicObj[]> json = new JSONRenderer<BasicObj[]>()
-                .array((o, i, n)->i<o.length?o:null)
-                .beginObject((o, i) -> o[i])
+                .array((o, i, n) -> i<o.length?o:null)
+                .startObject((o, i) -> o[i])
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
                     .decimal("d", 2, o->o.d)
                     .string("s", (o,t)-> t.append(o.s))
-                    .beginObject("m")
+                    .startObject("m")
                     .endObject()
                 .endObject();
         assertTrue(json.isLocked());

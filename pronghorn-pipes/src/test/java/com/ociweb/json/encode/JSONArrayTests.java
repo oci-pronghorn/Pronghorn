@@ -159,7 +159,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayString() {
         JSONRenderer<String[]> json = new JSONRenderer<String[]>()
-                .basicArray(o->o).string((o, i) -> o[i]);
+                .basicArray(o->o).string((o, i, t) -> t.append(o[i]));
         assertTrue(json.isLocked());
         json.render(out, new String[] {"hello", "there"});
         assertEquals("[\"hello\",\"there\"]", out.toString());
@@ -168,7 +168,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayString_Null() {
         JSONRenderer<String[]> json = new JSONRenderer<String[]>()
-                .basicArray(o->o).nullableString((o, i) -> o[i]);
+                .basicArray(o->o).nullableString((o, i, t) -> t.append(o[i]));
         assertTrue(json.isLocked());
         json.render(out, new String[] {"hello", null});
         assertEquals("[\"hello\",null]", out.toString());

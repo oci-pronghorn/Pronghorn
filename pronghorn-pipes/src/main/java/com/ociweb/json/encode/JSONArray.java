@@ -118,7 +118,17 @@ public abstract class JSONArray<R, T, P, N> {
 
     // Object
 
+    @Deprecated
     public <M> JSONObject<R, M, P> beginObject(IterMemberFunction<T, M> accessor) {
+        return new JSONObject<R, M, P>(builder.beginObject(iterator, accessor)) {
+            @Override
+            P objectEnded() {
+                return childCompleted();
+            }
+        };
+    }
+    
+    public <M> JSONObject<R, M, P> startObject(IterMemberFunction<T, M> accessor) {
         return new JSONObject<R, M, P>(builder.beginObject(iterator, accessor)) {
             @Override
             P objectEnded() {
