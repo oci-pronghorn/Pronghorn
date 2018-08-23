@@ -744,14 +744,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			long now = System.nanoTime();
 			long nowMS = now/1_000_000l;
 			
+			//int x = 0;
+			//int y = 0;
 			if (0!=(nowMS&7)) {// 1/8 of the time every 1 ms we take a break for task manager
 				long loopTop = -1;
-				while (totalRequiredSleep>400) {
+				while (totalRequiredSleep>1000) {//was 400
 					loopTop = now;
-					if (totalRequiredSleep>500_000) {
+					if (totalRequiredSleep>20_000) { //was 500_000
 						LockSupport.parkNanos(totalRequiredSleep);
+					//	x++;
 					} else {
 						Thread.yield();
+					//	y++;
 					}
 					now = System.nanoTime();
 					long duration = now-loopTop;
@@ -760,6 +764,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					}
 					totalRequiredSleep-=duration;
 				}
+				//System.out.println("loop "+x+" "+y);
 			} else {	
 				//let the task manager know we are not doing work.
 				LockSupport.parkNanos(totalRequiredSleep);

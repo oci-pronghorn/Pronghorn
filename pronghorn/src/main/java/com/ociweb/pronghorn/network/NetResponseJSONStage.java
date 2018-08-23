@@ -122,6 +122,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						//logger.info("reading response");
 						
 						long connection = Pipe.takeLong(input);
+						int userSessionId = Pipe.takeInt(input);
 						int flags = Pipe.takeInt(input);
 						 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
@@ -150,6 +151,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						//logger.info("reading continuation");
 						
 						long connection = Pipe.takeLong(input);
+						int sessionId = Pipe.takeInt(input);
 						int flags2 = Pipe.takeInt(input);
 		            	 
 						//TODO: header payload has extra space at the end we must not assume is good!

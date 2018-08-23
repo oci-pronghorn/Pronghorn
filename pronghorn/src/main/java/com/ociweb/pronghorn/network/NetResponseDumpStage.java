@@ -51,6 +51,7 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
 						long connection = Pipe.takeLong(input);
+						int userSessionId = Pipe.takeInt(input);
 						int flags = Pipe.takeInt(input);
 						 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
@@ -88,6 +89,7 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
 						long connection = Pipe.takeLong(input);
+						int session = Pipe.takeInt(input);
 						int flags2 = Pipe.takeInt(input);
 		            	 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);

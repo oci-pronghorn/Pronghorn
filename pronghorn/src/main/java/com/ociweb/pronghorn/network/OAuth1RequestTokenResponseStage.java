@@ -41,6 +41,7 @@ public class OAuth1RequestTokenResponseStage extends PronghornStage {
 			if (NetResponseSchema.MSG_RESPONSE_101 == msgIdx) {
 				
 				long fieldConnectionId = Pipe.takeLong(input);
+				int fieldSessionId = Pipe.takeInt(input);
 				int fieldContextFlags = Pipe.takeInt(input);
 				
 				DataInputBlobReader<NetResponseSchema> stream = Pipe.openInputStream(input);

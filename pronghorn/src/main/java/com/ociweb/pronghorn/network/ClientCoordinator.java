@@ -139,7 +139,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return response;
 	}
 	
-	public BaseConnection connectionForSessionId(long connectionId, boolean alsoReturnDisconnected) {
+	public BaseConnection connectionObjForConnectionId(long connectionId, boolean alsoReturnDisconnected) {
 		ClientConnection response = connections.get(connectionId);
 		
 		if (null != response) {			

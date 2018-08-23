@@ -159,6 +159,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 				int msgIdx = Pipe.takeMsgIdx(fromTwitter);
 				if (NetResponseSchema.MSG_RESPONSE_101==msgIdx) {
 					long connId = Pipe.takeLong(fromTwitter);
+					int sessionId = Pipe.takeInt(fromTwitter);
 					int flags = Pipe.takeInt(fromTwitter);
 					DataInputBlobReader<NetResponseSchema> payload = Pipe.openInputStream(fromTwitter);
 					

@@ -230,7 +230,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					///////////////
 					ccId = Pipe.peekLong(localInputPipe, 1);
 					boolean alsoReturnDisconnected = true;
-					cc = (HTTPClientConnection)ccm.connectionForSessionId(ccId, alsoReturnDisconnected);
+					cc = (HTTPClientConnection)ccm.connectionObjForConnectionId(ccId, alsoReturnDisconnected);
 					if (null!=cc && cc.readDestinationRouteId()>=0) {
 						//do not process if an active write for a different pipe is in process
 						int owner = outputOwner[(int)cc.readDestinationRouteId()];
@@ -468,7 +468,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-						
+						    Pipe.addIntValue(cc.sessionId, targetPipe);
 							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 
 							positionMemoData[stateIdx]= ++state;//state change is key
@@ -622,6 +622,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										//prep new message for next time.
 										Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
 										Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+										Pipe.addIntValue(cc.sessionId, targetPipe);
 										Pipe.addIntValue(0, targetPipe); //flags							
 										DataOutputBlobWriter.openField(writer2);
 									}								
@@ -770,6 +771,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 												//prep new message for next time.
 												Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
 												Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+												Pipe.addIntValue(cc.sessionId, targetPipe);
 												Pipe.addIntValue(0, targetPipe); //flags
 												DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
 												DataOutputBlobWriter.openField(writer1);	
@@ -841,6 +843,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//prep new message for next time.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
 							Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+							Pipe.addIntValue(cc.sessionId, targetPipe);
 							Pipe.addIntValue(0, targetPipe); //flags
 							DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
 							DataOutputBlobWriter.openField(writer1);

@@ -5,6 +5,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLEngineResult.Status;
@@ -362,10 +363,10 @@ public class SSLUtil {
 			    try {
 			    	result = cc.getEngine().unwrap(rolling, targetBuffer);		
 			    } catch (SSLException sslex) {
-			    	sslex.printStackTrace();
-			    	System.err.println("iteration "+x+" consumed "+rollingData+" for id"+cc.id+" on rolling ");
-			    	System.exit(-1);
-			    	
+			    	//logger.warn("TLS ",sslex);
+			    	((Buffer)rolling).clear();
+			    	cc.close();
+			    	break;			    	
 			    }
 				((Buffer)rolling).limit(origLimit); //return origLimit, see above openSSL issue.
 				
@@ -855,8 +856,9 @@ public class SSLUtil {
 	         if (status == Status.BUFFER_OVERFLOW) {	
 				//too much data and the buffer is not big enough
 				//this should not happen.
-				logger.info("OVERFLOW, the pipe {} is not configured to be large enough.", target.id);	
-				new Exception("target pipe is too small server:"+isServer).printStackTrace();
+				logger.info("\nOVERFLOW, the pipe {} is not configured to be large enough. {} Connection has been closed.", target.id, target.config());	
+				//((Buffer)rolling).clear();
+				//cc.close();
 				return 0;
 				
 			} else if (status==Status.CLOSED){				
@@ -967,38 +969,42 @@ public class SSLUtil {
 
 	public static boolean handshakeProcessing(Pipe<NetPayloadSchema> pipe, BaseConnection con) {
 		boolean result = true;
-		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
-		do {
-			//logger.trace("handshake status {} ",hanshakeStatus);
-		    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
-		         Runnable task;
-		         while ((task = con.getEngine().getDelegatedTask()) != null) {
-		            	task.run(); 
-		         }
-		         hanshakeStatus = con.getEngine().getHandshakeStatus();
-		    } 
-		    
-		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
-		    	if (Pipe.hasRoomForWrite(pipe)) {
-		    		//logger.trace("write handshake plain to trigger wrap");
-		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
-		    		Pipe.addLongValue(con.getId(), pipe);//connection
-		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
-		    		Pipe.addLongValue(HANDSHAKE_POS, pipe); //signal that WRAP is needed 
-		    		
-		    		Pipe.addByteArray(OrderSupervisorStage.EMPTY, 0, 0, pipe);
-		    		
-		    		Pipe.confirmLowLevelWrite(pipe, size);
-		    		Pipe.publishWrites(pipe);
-		    		//wait for this to be consumed		    		
-		    	} else {
-		    		//no room to request wrap so try again later					
-				}
-		    	result = false;
-		    	break;
-		    } 
-		} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
-
+		if (null!=con) {			
+			SSLEngine engine = con.getEngine();
+			if (null != engine) {
+				HandshakeStatus hanshakeStatus = engine.getHandshakeStatus();
+				do {
+					//logger.trace("handshake status {} ",hanshakeStatus);
+				    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
+				         Runnable task;
+				         while ((task = engine.getDelegatedTask()) != null) {
+				            	task.run(); 
+				         }
+				         hanshakeStatus = engine.getHandshakeStatus();
+				    } 
+				    
+				    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
+				    	if (Pipe.hasRoomForWrite(pipe)) {
+				    		//logger.trace("write handshake plain to trigger wrap");
+				    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+				    		Pipe.addLongValue(con.getId(), pipe);//connection
+				    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
+				    		Pipe.addLongValue(HANDSHAKE_POS, pipe); //signal that WRAP is needed 
+				    		
+				    		Pipe.addByteArray(OrderSupervisorStage.EMPTY, 0, 0, pipe);
+				    		
+				    		Pipe.confirmLowLevelWrite(pipe, size);
+				    		Pipe.publishWrites(pipe);
+				    		//wait for this to be consumed		    		
+				    	} else {
+				    		//no room to request wrap so try again later					
+						}
+				    	result = false;
+				    	break;
+				    } 
+				} while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
+			}
+		}
 		return result;
 	}
 

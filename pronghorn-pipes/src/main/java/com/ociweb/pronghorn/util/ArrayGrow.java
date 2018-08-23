@@ -59,20 +59,20 @@ public class ArrayGrow {
 		return source;
 	}
 
-	public static long[] setIntoArray(long[] source, long value, int pos) {
+	public static long[] setIntoArray(long[] source, long value, int idxPos) {
 		
 		int i = source.length;
-		if (pos>=i) {
+		if (idxPos>=i) {
 			int newSize = i>0 ? i*2 : 2;
-			if (pos>=newSize) {
-				newSize = pos>0 ? pos*2 : 2;
+			if (idxPos>=newSize) {
+				newSize = idxPos>0 ? idxPos*2 : 2;
 			}
 			long[] newArray = new long[newSize];
 			System.arraycopy(source, 0, newArray, 0, i);
 			source = newArray;
 			
 		}
-		source[pos] = value;
+		source[idxPos] = value;
 		return source;
 	}
 

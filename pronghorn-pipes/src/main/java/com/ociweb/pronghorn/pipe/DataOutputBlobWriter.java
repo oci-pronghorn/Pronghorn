@@ -1002,4 +1002,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 		writePackedLong(m);	
 	}
 
+	@Override
+	public void write(ChannelReader source) {
+		source.readInto(this, source.available());	
+	}
+
 }

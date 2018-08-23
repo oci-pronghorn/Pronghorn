@@ -3,12 +3,14 @@
    
    <template name="Response" id="101">
      <uInt64 name="ConnectionId" id="1"/>
+     <uInt32 name="SessionId" id="2"/>
      <uInt32 name="ContextFlags" id="5"/>
      <byteVector name="Payload" id="3"/>
    </template> 
    
    <template name="Continuation" id="102">
      <uInt64 name="ConnectionId" id="1"/>
+     <uInt32 name="SessionId" id="2"/>
      <uInt32 name="ContextFlags" id="5"/>
      <byteVector name="Payload" id="3"/>
    </template> 

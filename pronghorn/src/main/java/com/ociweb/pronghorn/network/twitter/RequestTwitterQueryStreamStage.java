@@ -305,6 +305,8 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 			if (PipeReader.getMsgIdx(newBearerPipe)==NetResponseSchema.MSG_RESPONSE_101) {
 				
 				long con = PipeReader.readLong(newBearerPipe, NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1);
+				long sess = PipeReader.readInt(newBearerPipe, NetResponseSchema.MSG_RESPONSE_101_FIELD_SESSIONID_2);
+				
 				int flags = PipeReader.readInt(newBearerPipe, NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5);
 				
 				DataInputBlobReader<NetResponseSchema> stream = PipeReader.inputStream(newBearerPipe,  NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3);		

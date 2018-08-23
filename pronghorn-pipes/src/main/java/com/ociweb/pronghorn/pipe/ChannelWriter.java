@@ -226,5 +226,11 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 	 * @return length of field
 	 */
 	 abstract public int closeHighLevelField(int targetFieldLoc);
+
+	 /**
+	  * Write all available data as is from a given channel reader. 
+	  * @param readPayload source data
+	  */
+	 abstract public void write(ChannelReader readPayload);
 		
 }

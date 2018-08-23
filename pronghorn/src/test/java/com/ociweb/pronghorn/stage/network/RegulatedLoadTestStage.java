@@ -327,6 +327,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 						case NetResponseSchema.MSG_CONTINUATION_102:
 								
 							long conId = Pipe.takeLong(pipe);
+							int clientSessionId = Pipe.takeInt(pipe);
 							int flags = Pipe.takeInt(pipe);
 							
 							//TODO: this is a serious issue we request on 1 pipe but they come back on another....

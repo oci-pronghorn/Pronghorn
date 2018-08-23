@@ -105,73 +105,63 @@ public class SSLEngineWrapStage extends PronghornStage {
 			int i = encryptedContent.length;
 			while (--i >= 0) {
 							
-				final Pipe<NetPayloadSchema> targetPipe = encryptedContent[i];
 				final Pipe<NetPayloadSchema> sourcePipe = plainContent[i];
 
-		        
-//				//no content to wrap on server
-//				if (Pipe.contentRemaining(sourcePipe)>0) {
-//					System.err.println(sourcePipe);
-////					System.err.println("input data to be wrapped "+isServer+" "+i+" source "+sourcePipe.contentRemaining(sourcePipe));
-//				}
-//				if (Pipe.contentRemaining(targetPipe)>0) {
-//					System.err.println("output data wrapped "+isServer+"  "+i+" target "+targetPipe.contentRemaining(targetPipe));
-//				}
-				
-				try {
+				if ((!Pipe.isEmpty(sourcePipe)) && Pipe.hasContentToRead(sourcePipe)) {
+					final Pipe<NetPayloadSchema> targetPipe = encryptedContent[i];
 					
-					didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer);	
-			
-				} catch (Throwable t) {
-					t.printStackTrace();
-					requestShutdown();
-					System.exit(0);
-					return;
-				}
-		
-				
-				/////////////////////////////////////
-				//close the connection logic
-				//if connection is open we must finish the handshake.
-				////////////////////////////////////
-				if (Pipe.hasRoomForWrite(targetPipe, SIZE_HANDSHAKE_AND_DISCONNECT)
-					&& Pipe.peekMsg(sourcePipe, NetPayloadSchema.MSG_DISCONNECT_203)) {
-					
-					//logger.info("WRAP FOUND DISCONNECT MESSAGE A server:"+isServer);
-					
-					int msgId = Pipe.takeMsgIdx(sourcePipe);
-					assert(NetPayloadSchema.MSG_DISCONNECT_203 == msgId);
-										
-					long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
-					long time = System.currentTimeMillis();
-					
-					BaseConnection connection = ccm.lookupConnectionById(connectionId);
-					if (null!=connection) {
-						connectionId = connection.id;
-						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
-					}				
-					
-					Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203);
-					Pipe.addLongValue(connectionId, targetPipe); // NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionId);
-					
-					Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203));
-					Pipe.publishWrites(targetPipe);
-										
-					Pipe.confirmLowLevelRead(sourcePipe, Pipe.sizeOf(sourcePipe, msgId));
-					Pipe.releaseReadLock(sourcePipe);
-				} 
-				
-				///////////////////////////
-				//shutdown this stage logic
-				///////////////////////////
-				if (Pipe.peekMsg(sourcePipe, -1)) {
-					int msg = Pipe.takeInt(sourcePipe);
-					assert(-1 == msg);
-					Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
-					Pipe.releaseReadLock(sourcePipe);
-					if (--shutdownCount<=0) {
+					try {					
+						didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer);			
+					} catch (Throwable t) {
+						t.printStackTrace();
 						requestShutdown();
-						break;
+						System.exit(0);
+						return;
+					}
+			
+					/////////////////////////////////////
+					//close the connection logic
+					//if connection is open we must finish the handshake.
+					////////////////////////////////////
+					if (Pipe.hasRoomForWrite(targetPipe, SIZE_HANDSHAKE_AND_DISCONNECT)
+						&& Pipe.peekMsg(sourcePipe, NetPayloadSchema.MSG_DISCONNECT_203)) {
+						
+						//logger.info("WRAP FOUND DISCONNECT MESSAGE A server:"+isServer);
+						
+						int msgId = Pipe.takeMsgIdx(sourcePipe);
+						assert(NetPayloadSchema.MSG_DISCONNECT_203 == msgId);
+											
+						long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+						long time = System.currentTimeMillis();
+						
+						BaseConnection connection = ccm.lookupConnectionById(connectionId);
+						if (null!=connection) {
+							connectionId = connection.id;
+							SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
+						}				
+						
+						Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203);
+						Pipe.addLongValue(connectionId, targetPipe); // NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionId);
+						
+						Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203));
+						Pipe.publishWrites(targetPipe);
+											
+						Pipe.confirmLowLevelRead(sourcePipe, Pipe.sizeOf(sourcePipe, msgId));
+						Pipe.releaseReadLock(sourcePipe);
+					} 
+					
+					///////////////////////////
+					//shutdown this stage logic
+					///////////////////////////
+					if (Pipe.peekMsg(sourcePipe, -1)) {
+						int msg = Pipe.takeInt(sourcePipe);
+						assert(-1 == msg);
+						Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+						Pipe.releaseReadLock(sourcePipe);
+						if (--shutdownCount<=0) {
+							requestShutdown();
+							break;
+						}
 					}
 				}
 				

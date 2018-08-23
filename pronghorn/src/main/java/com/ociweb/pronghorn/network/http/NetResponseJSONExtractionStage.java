@@ -89,6 +89,7 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		        {
 		        	//hold to pass forward
 		        	long conId = Pipe.takeLong(localInput);
+		        	int userSessionId = Pipe.takeInt(localInput);
 		        	int contextFlags = Pipe.takeInt(localInput);
 		        	DataInputBlobReader<NetResponseSchema> inputStream = Pipe.openInputStream(localInput); //payload
 	       			        	

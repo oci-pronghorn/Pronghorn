@@ -295,22 +295,20 @@ public class ServerNewConnectionStage extends PronghornStage{
     @Override
     public void run() {
   
+    	//we always do this because we always poll for new data from the OS
+    	if (null != this.didWorkMonitor) {
+    		this.didWorkMonitor.published();
+    	}
+    	
     	if (!needsToNotifyStartup) {	  
 	    	//long now = System.nanoTime();
 	    	    		  
     		   int maxIterations = 1000;
 	           while (hasNewDataToRead() && --maxIterations>=0) {
 	                //we know that there is an interesting (non zero positive) number of keys waiting.
-	        
-	        	    //we have no pipes to monitor so this must be done explicity
-	        	    if (null != this.didWorkMonitor) {
-	        	    	this.didWorkMonitor.published();
-	        	    }
-	        	    
 	        	    doneSelectors.clear();
 	        	    selectedKeys.forEach(selectionKeyAction);	                
 	                removeDoneKeys(selectedKeys);
-	                
 	            }
 	 	        
 		} else {

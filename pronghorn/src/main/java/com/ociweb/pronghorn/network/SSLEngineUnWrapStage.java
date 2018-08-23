@@ -131,30 +131,21 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			while ((--idx>=0) && (--m>=0)) {
 				
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
-				Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
-
+				if ((!Pipe.isEmpty(source)) && Pipe.hasContentToRead(source)) {
 				
-//				//TODO: is there a debug method we can write for this in general?
-//				//no content to wrap on server
-//				if (Pipe.contentRemaining(source)>0) {
-//					logger.info("input data to be unwrapped "+isServer+" "+idx+" source "+source.contentRemaining(source));
-//				}
-//				if (Pipe.contentRemaining(target)>0) { //TODO: why is this negative?
-//					logger.info("output data unwrapped "+isServer+"  "+idx+" target "+target.contentRemaining(target));
-//				}
-							
-				
-				int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, isServer);			
-				if (temp<0) {
-					if (--shutdownCount == 0) {
-						requestShutdown();
-						return;
+					Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
+	
+					int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, isServer);			
+					if (temp<0) {
+						if (--shutdownCount == 0) {
+							requestShutdown();
+							return;
+						}
+						break;
+					} else {				
+						didWork |= temp;
 					}
-					break;
-				} else {				
-					didWork |= temp;
 				}
-		
 			}			
 			
 			//loop back arround
