@@ -269,13 +269,14 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	 public static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
 		if (writer.structuredWithIndexData) {
-			
+
 			//write this field as length len but move head to the end of maxvarlen
 			writer.activePosition = writer.lastPosition;
 			Pipe.setBlobWorkingHead(writer.backingPipe, 
 					                 writer.activePosition & Pipe.BYTES_WRAP_MASK);			
 		    
 		} else { 
+
 			//do not keep index just move forward by length size
 			Pipe.addAndGetBlobWorkingHeadPosition(writer.backingPipe, len);
 		}

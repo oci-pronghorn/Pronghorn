@@ -54,9 +54,8 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 						int userSessionId = Pipe.takeInt(input);
 						int flags = Pipe.takeInt(input);
 						 
-						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						stream.openLowLevelAPIField();
-						
+						DataInputBlobReader<NetResponseSchema> stream = Pipe.openInputStream(input);
+												
 						int status = stream.readShort();
 						System.out.println("status:"+status);
 						

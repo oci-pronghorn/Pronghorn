@@ -472,10 +472,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 
 							positionMemoData[stateIdx]= ++state;//state change is key
+												
 							
 							DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
 							DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
-	
+								
+														
 							//NOTE: this is always first and not indexed...
 							TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
 										
@@ -648,7 +650,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 																	
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 									//logger.info("length of full message written {} ",length);
-									
+			
 									positionMemoData[stateIdx] = state = 5;
 									
 									//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id	

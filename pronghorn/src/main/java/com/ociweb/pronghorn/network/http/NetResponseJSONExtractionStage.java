@@ -111,6 +111,7 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		    			final int size = Pipe.addMsgIdx(localOutput, msgIdx);
 		    			
 		    			Pipe.addLongValue(conId, localOutput);
+		    			Pipe.addIntValue(userSessionId, localOutput);
 		    			Pipe.addIntValue(contextFlags, localOutput);
 		    			
 		    			//moves the index data as is and must happen before JSON updates index
@@ -132,6 +133,7 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 	    			    final int size = Pipe.addMsgIdx(localOutput, msgIdx);
 		    			
 		    			Pipe.addLongValue(conId, localOutput);
+		    			Pipe.addIntValue(userSessionId, localOutput);
 		    			Pipe.addIntValue(contextFlags, localOutput);
 		    			
 		    			//moves the index data as is and must happen before JSON updates index

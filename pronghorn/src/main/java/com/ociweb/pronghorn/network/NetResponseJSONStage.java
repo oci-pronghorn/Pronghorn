@@ -125,9 +125,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						int userSessionId = Pipe.takeInt(input);
 						int flags = Pipe.takeInt(input);
 						 
-						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						stream.openLowLevelAPIField();
-						
+						DataInputBlobReader<NetResponseSchema> stream = Pipe.openInputStream(input);
+											
 						//System.out.println("length  is "+stream.available()+" vs max of "+input.maxVarLen);
 						
 						int status = stream.readShort();
