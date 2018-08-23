@@ -283,51 +283,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
-     	
-    	int didWork;
-   	
-    	do { 
-    		didWork = 0;
-	   
-    		int localIdx = idx;
 
-    		int m = 1000;//max iterations before taking a break
-    		do {
-    	
-		        while (--localIdx>=0 && --m>=0) {
-
-		            if (null != log && !Pipe.hasRoomForWrite(log)) {
-		            	return;//try later after log pipe is cleared
-		            }
-
-		            int result = singlePipe(this, localIdx);
-
-		            if (result>=0) {
-		            	didWork+=result;		            	
-		            } else {	            		            	
-		            	if (--shutdownCount<=0) {
-		            		requestShutdown();
-		            		return;
-		            	}
-		            }
-		            
-		            if (waitForOutputOn<0) {
-		            } else {
-		            	if (m>inputs.length) {
-		            		//finish this pass on each output then leave since we have a blocked pipe.
-		            		m=inputs.length-1;
-		            	}
-		            } 
-		            		            
-		        }
-		        if (localIdx<=0) {
-		        	localIdx = inputs.length;
-		        }
-    		} while ((--m>=0) && (didWork!=0));
-    		
-    		idx = localIdx;
-    	} while (didWork!=0);
-
+    		int i = inputs.length;
+	        while (--i>=0 ) {
+	            if (singlePipe(this, i)>=0) {	            			            	
+	            } else {	            		            	
+	            	if (--shutdownCount<=0) {
+	            		requestShutdown();
+	            		return;
+	            	}
+	            } 
+	        } 
     }
 
     
@@ -364,6 +330,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		}
         }       
 
+
+        
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
 	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
@@ -373,6 +341,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 	private boolean parseAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel) {
 		
+    	
+        if (null != log && !Pipe.hasRoomForWrite(log)) {
+        	return false;//try later after log pipe is cleared
+        }
+        
 		boolean didWork = false;
 			
 		boolean webSocketUpgraded = ServerCoordinator.isWebSocketUpgraded(coordinator, channel);

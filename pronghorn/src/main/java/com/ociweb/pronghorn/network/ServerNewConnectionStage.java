@@ -102,7 +102,6 @@ public class ServerNewConnectionStage extends PronghornStage{
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
   
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
-         
     }
     
     @Override
@@ -155,11 +154,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 	    	if (se.getMessage().contains("Permission denied")) {
 	    		logger.warn("\nUnable to open {} due to {}",coordinator.port(),se.getMessage());
 	    		coordinator.shutdown();
+	    		requestShutdown();
 	    		return;
 	    	} else {
 	        	if (se.getMessage().contains("already in use")) {
 	                logger.warn("Already in use: {} {}",coordinator.host(), coordinator.port());
 	                coordinator.shutdown();
+	                requestShutdown();
 	                return;
 	            }
 	    	}
@@ -168,6 +169,7 @@ public class ServerNewConnectionStage extends PronghornStage{
            if (e.getMessage().contains("Unresolved address")) {
         	   logger.warn("\nUnresolved host address  http"+(coordinator.isTLS?"s":""));
         	   coordinator.shutdown();
+        	   requestShutdown();
                return;
            }
         	

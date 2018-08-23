@@ -81,9 +81,12 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-        
-        //can spin to pick up all the work and may starve others
-        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+
+        //if we only have 1 router then do not isolate the reader.
+        if (ack.length>1) {
+        	//can spin to pick up all the work and may starve others
+        	GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        }
         //much larger limit since nothing needs this thread back.
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
@@ -139,7 +142,51 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void run() {
 
-    	 if(shutdownInProgress) {
+    	 if(!shutdownInProgress) {
+  
+    	    	/////////////////////////////
+    	    	//must keep this pipe from getting full or the processing will get backed up
+    	    	////////////////////////////
+    	   		releasePipesForUse();
+    	   
+    	   		if (selector.keys().isEmpty()) {
+    	   			//no work
+    	   			return;
+    	   		}
+    	   		///////////////////
+    	   		//after this point we are always checking for new data work so always record this
+    	   		////////////////////
+    	    	if (null != this.didWorkMonitor) {
+    	    		this.didWorkMonitor.published();
+    	    	}
+    	   		
+    	        ////////////////////////////////////////
+    	        ///Read from socket
+    	        ////////////////////////////////////////
+    	    	int maxIterations = 1000;
+    	    	 
+    	        while (--maxIterations>=0 &&
+    	        		
+    	        		hasNewDataToRead()) { //single & to ensure we check has new data to read.
+
+    	           doneSelectors.clear();
+    	           hasRoomForMore = true; //set this up before we visit
+    	           
+    	           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+    	           if (null!=keyMap) {
+    				   keyMap.forEach(keyVisitor);
+    	           } else {
+    	        	   //fall back to old if the map can not be found.
+    	        	   selectedKeys.forEach(selectionKeyAction);
+    	           }
+    	           
+    	           removeDoneKeys(selectedKeys);
+    	           if (!hasRoomForMore) {
+    	        	   break;
+    	           }    	 
+    	        }
+    	 
+    	 } else {
 	    	 int i = output.length;
 	         while (--i >= 0) {
 	         	if (null!=output[i] && Pipe.isInit(output[i])) {
@@ -151,37 +198,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	         requestShutdown();
 	         return;
     	 }
-    	
-    	/////////////////////////////
-    	//must keep this pipe from getting full or the processing will get backed up
-    	////////////////////////////
-   		releasePipesForUse();
-   
-        ////////////////////////////////////////
-        ///Read from socket
-        ////////////////////////////////////////
-    	int maxIterations = 1000;
-    	 
-        while (--maxIterations>=0 &&
-        		
-        		hasNewDataToRead()) { //single & to ensure we check has new data to read.
-
-           doneSelectors.clear();
-           hasRoomForMore = true; //set this up before we visit
-           
-           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-           if (null!=keyMap) {
-			   keyMap.forEach(keyVisitor);
-           } else {
-        	   //fall back to old if the map can not be found.
-        	   selectedKeys.forEach(selectionKeyAction);
-           }
-           
-           removeDoneKeys(selectedKeys);
-           if (!hasRoomForMore) {
-        	   break;
-           }    	 
-        }
+        
     }
   
 
@@ -389,7 +406,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		while (--i>=0) {
 			Pipe<ReleaseSchema> a = releasePipes[i];
 			//logger.info("{}: release pipes from {}",i,a);
-			while (Pipe.hasContentToRead(a)) {
+			while ((!Pipe.isEmpty(a)) && Pipe.hasContentToRead(a)) {
 	    						
 	    		int msgIdx = Pipe.takeMsgIdx(a);
 	    		

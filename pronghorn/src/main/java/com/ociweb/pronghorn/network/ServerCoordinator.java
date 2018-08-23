@@ -161,9 +161,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     		firstStage.requestShutdown();
     		firstStage = null;
     	}
-   
-    	
-    //	logger.trace("Server pipe pool:\n {}",responsePipeLinePool);
+     //	logger.trace("Server pipe pool:\n {}",responsePipeLinePool);
     	    	
     }
     

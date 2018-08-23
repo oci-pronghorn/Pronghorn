@@ -142,7 +142,80 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void run() { //TODO: this method is the new hot spot in the profiler.
        
-	   	 if(shutdownInProgress) {
+	   	 if(!shutdownInProgress) {
+	   		 consumeRelease();
+	         ////////////////////////////////////////
+	         ///Read from socket
+	         ////////////////////////////////////////
+
+	     	Selector selector = coordinator.selector();
+	    		if (selector.keys().isEmpty()) {
+	    			//no work
+	    			return;
+	    		}
+	    		///////////////////
+	    		//after this point we are always checking for new data work so always record this
+	    		////////////////////
+	     	if (null != this.didWorkMonitor) {
+	     		this.didWorkMonitor.published();
+	     	}	
+	     	 
+	     	 //max cycles before we take a break.
+	     	int maxIterations = 100; //important or this stage will take all the resources.
+	     	
+	     	
+	     	
+	         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
+
+	 	           doneSelectors.clear();
+	 		
+	 	           hasRoomForMore = true;
+	 	           
+	 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	 	           if (null!=keyMap) {
+	 	        	   keyMap.forEach(keyVisitor);
+	 	           } else {
+	 	        	   selectedKeys.forEach(selectionKeyAction);
+	 	           }
+	 	           
+	 			   removeDoneKeys(selectedKeys);
+	 			      
+	 			   if (!hasRoomForMore) {
+	 				   return;
+	 			   }
+	 		
+	         }
+	  
+	  		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
+	         	//only run when we have no data waiting
+	         	if (maxIterations>0) {
+	         	    
+	         		        //long now = System.nanoTime();
+	         		
+	         	        	ClientAbandonConnectionScanner slowConnections = coordinator.scanForSlowConnections();
+	 						ClientConnection abandonded = slowConnections.leadingCandidate();
+	         	        	if (null!=abandonded) {
+	         	        		abandonNow(abandonded);         	        		
+	         	        	}
+	         	        	ClientConnection[] timedOut = slowConnections.timedOutConnections();
+	         	        	int i = timedOut.length;
+	         	        	while (--i >= 0) {
+	         	        		
+	         	        		if (null != timedOut[i]) {
+	         	        			abandonNow(timedOut[i]);
+	         	        		}
+	         	        		
+	         	        	}
+	         	        	
+	         	        	
+	         	        	//long duration = System.nanoTime()-now;
+	         	        	//if (duration>10_000) {
+	         	        	//	Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
+	         	        	//}
+	         	}
+	         }        
+	   		 
+	   	 } else {
 	    	 int i = output.length;
 	         while (--i >= 0) {
 	         	if (null!=output[i] && Pipe.isInit(output[i])) {
@@ -155,66 +228,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         return;
 		 }
 	   	 
-        ////////////////////////////////////////
-        ///Read from socket
-        ////////////////////////////////////////
-
-	    //max cycles before we take a break.
-    	int maxIterations = 100; //important or this stage will take all the resources.
     	
-    	Selector selector = coordinator.selector();
-    	
-    	consumeRelease();
-    	
-        while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
-
-	           doneSelectors.clear();
-		
-	           hasRoomForMore = true;
-	           
-	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-	           if (null!=keyMap) {
-	        	   keyMap.forEach(keyVisitor);
-	           } else {
-	        	   selectedKeys.forEach(selectionKeyAction);
-	           }
-	           
-			   removeDoneKeys(selectedKeys);
-			      
-			   if (!hasRoomForMore) {
-				   return;
-			   }
-		
-        }
- 
- 		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
-        	//only run when we have no data waiting
-        	if (maxIterations>0) {
-        	    
-        		        //long now = System.nanoTime();
-        		
-        	        	ClientAbandonConnectionScanner slowConnections = coordinator.scanForSlowConnections();
-						ClientConnection abandonded = slowConnections.leadingCandidate();
-        	        	if (null!=abandonded) {
-        	        		abandonNow(abandonded);         	        		
-        	        	}
-        	        	ClientConnection[] timedOut = slowConnections.timedOutConnections();
-        	        	int i = timedOut.length;
-        	        	while (--i >= 0) {
-        	        		
-        	        		if (null != timedOut[i]) {
-        	        			abandonNow(timedOut[i]);
-        	        		}
-        	        		
-        	        	}
-        	        	
-        	        	
-        	        	//long duration = System.nanoTime()-now;
-        	        	//if (duration>10_000) {
-        	        	//	Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
-        	        	//}
-        	}
-        }        
    	}
 
 	private void abandonNow(ClientConnection abandonded) {
@@ -463,7 +477,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		while (--i>=0) {			
 			Pipe<ReleaseSchema> ack = releasePipes[i];
 			
-			while (Pipe.hasContentToRead(ack)) {
+			while ((!Pipe.isEmpty(ack)) && Pipe.hasContentToRead(ack)) {
 				
 				didWork = true;
 				

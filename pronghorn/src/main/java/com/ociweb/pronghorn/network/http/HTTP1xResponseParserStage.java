@@ -444,18 +444,20 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 					//TODO: may be faster with if rather than switch.
 
-				//System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
+		//		System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
 				
 				 switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
 						
-						if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 							
+						if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 
+							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 							break; //critical check
 						}
 						Pipe.markHead(targetPipe);
 						
 						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-						if (startingLength1<(revisionMap.shortestKnown()+1)) {							
+						if (startingLength1<(revisionMap.shortestKnown()+1)) {
+							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 							break;
 						}		
 					
@@ -489,7 +491,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
 							if (trieReader.sourceLen < (revisionMap.longestKnown()+1)) {
-								
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;//not an error just needs more data.
 							} else {
 								reportCorruptStream("HTTP revision", cc);
@@ -563,7 +565,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
-							if (trieReader.sourceLen<MAX_VALID_HEADER) {		
+							if (trieReader.sourceLen<MAX_VALID_HEADER) {
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;//not an error just needs more data.
 							} else {
 							    
@@ -582,10 +585,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 2: //PAYLOAD READING WITH LENGTH
 							//if we can not release then do not finish.
 							if (!Pipe.hasRoomForWrite(releasePipe)) {
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;
 							}
 							//in case targetPipe is needed must confirm room for 2 writes .
 							if (null==targetPipe || (!Pipe.hasRoomForWrite(targetPipe, 2*Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_CONTINUATION_102)))) {
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;
 							}
 							if (2==state) {
@@ -649,7 +654,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
 																	
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-									//logger.info("length of full message written {} ",length);
 			
 									positionMemoData[stateIdx] = state = 5;
 									
@@ -674,7 +678,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 									break;
 								} else {
-									
+									foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 									assert(lengthRemaining>0);
 									break;//we have no data and need more.
 								}
@@ -687,6 +691,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 							//if we can not release then do not finish.
 							if (!Pipe.hasRoomForWrite(releasePipe)) {
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;
 							}
 
@@ -703,6 +708,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										if (trieReader.sourceLen>16) {
 											parseErrorWhileChunking(memoIdx, localInputPipe, trieReader.sourcePos);
 										}
+										foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 										//logger.info("need chunk data");
 										return;	//not enough data yet to parse try again later
 									}
