@@ -134,7 +134,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		boolean didWork = false;
 		//This check is required when TLS is in use.
 		//also must ensure connection is open before taking messages.
-		if (isConnectionReadyForUse(requestPipe) ) {
+		if (isConnectionReadyForUse(requestPipe) && null!=activeConnection ) {
 			didWork = true;	        
 			
 		    //we have already checked for connection so now send the request

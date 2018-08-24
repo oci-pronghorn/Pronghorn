@@ -2222,6 +2222,9 @@ public class GraphManager {
 		
 		if (null!=pipePercentileFullValues) {		                	
 			int pctFull = (int)(sumPctFull/width);
+			if (0==pctFull && sumPctFull>0) {
+				pctFull = 1;//never show zero if any of the pipes have data, show 1% instead.
+			}
 			target.write(pipeFullValues[pctFull]);
 			target.append("\n");			
 		}

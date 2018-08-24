@@ -103,7 +103,7 @@ public class HTTPClientUtil {
 			final int hostMask    = Pipe.blobMask(requestPipe);	
 			
 			
-			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, hostMask, activeWriter);
+			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, hostMask, port, activeWriter);
 			
 			HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 			activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe), headersPos, headersLen, Pipe.blobMask(requestPipe));
@@ -189,7 +189,7 @@ public class HTTPClientUtil {
 			final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
 			final int backingMask    = Pipe.blobMask(requestPipe);	
 			
-			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, backingMask, activeWriter);
+			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, backingMask, port, activeWriter);
 			
 			HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 			//callers custom headers are written where.
@@ -257,7 +257,7 @@ public class HTTPClientUtil {
 		//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
 		Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
 		
-		HeaderUtil.writeHeaderBeginning(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), activeWriter);
+		HeaderUtil.writeHeaderBeginning(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), port, activeWriter);
 		HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 		Pipe.readBytes(requestPipe, activeWriter, headersMeta, headersLen);
 		
@@ -353,7 +353,7 @@ public class HTTPClientUtil {
 			final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
 			final int backingMask    = Pipe.blobMask(requestPipe);	
 			
-			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, backingMask, activeWriter);
+			HeaderUtil.writeHeaderBeginning(hostBack, hostPos, hostLen, backingMask, port, activeWriter);
 			
 			HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 			//callers custom headers are written where.

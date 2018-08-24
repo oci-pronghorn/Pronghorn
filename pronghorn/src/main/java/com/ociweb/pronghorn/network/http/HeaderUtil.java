@@ -29,10 +29,11 @@ public class HeaderUtil {
 		DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
 	}
 
-	public static void writeHeaderBeginning(byte[] hostBack, int hostPos, int hostLen, int hostMask,
+	public static void writeHeaderBeginning(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port,
 			DataOutputBlobWriter<NetPayloadSchema> writer) {
 		DataOutputBlobWriter.write(writer, HeaderUtil.REV11_AND_HOST, 0, HeaderUtil.REV11_AND_HOST.length); //encodeAsUTF8(writer," HTTP/1.1\r\nHost: ");
 		DataOutputBlobWriter.write(writer, hostBack, hostPos, hostLen, hostMask);
+		Appendables.appendValue(writer, ":", port); //add port onto end of host
 	}
 
 	final static byte[] LINE_END = "\r\n".getBytes();

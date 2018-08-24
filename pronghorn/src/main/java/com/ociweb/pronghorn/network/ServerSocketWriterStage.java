@@ -56,7 +56,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private static final boolean enableWriteBatching = true;  
     
 
-	private final boolean debugWithSlowWrites = false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests
+	private final boolean debugWithSlowWrites = false;// false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests
 	private final int debugMaxBlockSize = 7;//50000;
 	
 	private GraphManager graphManager;
@@ -163,6 +163,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		
 	    		//ensure all writes are complete
 	    		if (null == writeToChannel[x]) {	
+	    	
 	    			//second check for full content is critical or the data gets copied too soon
 	    			if (Pipe.isEmpty(input[x]) || !Pipe.hasContentToRead(input[x])) {    				
 	    				//no content to read on the pipe
@@ -175,6 +176,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			}
 	    			
 	    		} else {
+	    			
 	    			Pipe<NetPayloadSchema> localInput = input[x];
 	 
 	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
@@ -333,11 +335,19 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        //only write if this connection is still valid
 	        if (null != serverConnection) {        
 	        	channelId = serverConnection.id;
+	        	
+	        	
+	        	
 	        	if (showWrites) {
-	        		int pos = Pipe.convertToPosition(meta, pipe);
-	        		logger.info("/////////len{}///////////\n"+
-	        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
-	        		+"\n////////////////////",len);
+	        	
+	        		//Do not report telemetry calls... show show up as monitor
+	        		if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+	        		
+		        		int pos = Pipe.convertToPosition(meta, pipe);
+		        		logger.info("/////////len{}///////////\n"+
+		        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
+		        		+"\n////////////////////",len);
+	        		}
 	        	}
 	        	
 	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
@@ -430,6 +440,20 @@ public class ServerSocketWriterStage extends PronghornStage {
 		}
 		int meta2 = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
 		int len2 = Pipe.takeByteArrayLength(pipe);
+		
+		
+    	if (showWrites) {
+        	
+    		//Do not report telemetry calls... show show up as monitor
+    		if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+    		
+        		int pos = Pipe.convertToPosition(meta2, pipe);
+        		logger.info("/////////len{}///////////\n"+
+        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len2, Pipe.blobMask(pipe))
+        		+"\n////////////////////",len2);
+    		}
+    	}
+    	
 		ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 		
 		workingBuffers[idx].put(writeBuffs2[0]);
@@ -538,6 +562,11 @@ public class ServerSocketWriterStage extends PronghornStage {
 							expected -= len;
 							totalBytesWritten += len;
 						}
+						
+						if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+							System.out.println("wrote bytes "+len);
+						}
+						
 					} catch (IOException e) {
 						//logger.error("unable to write to channel {} '{}'",e,e.getLocalizedMessage());
 						closeChannel(writeToChannel[idx]);
