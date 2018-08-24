@@ -960,15 +960,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			        
 		if (recordTime) {		
 			long now = System.nanoTime(); //this takes time, avoid if possible
-			long duration = now-start;
-			
-			if (duration <= that.sla[inProgressIdx]) {
-			} else {
-		    // do not report until this feature is documented...  TODO: add feature.
-			//	that.reportSLAViolation(stage.toString(), gm, inProgressIdx, SLAStart, duration);		    		
-			}
-
-			if (!GraphManager.accumRunTimeNS(that.graphManager, stage.stageId, duration, now)){
+			if (!GraphManager.accumRunTimeNS(that.graphManager, stage.stageId, now-start, now)){
 				assert(reportLowAccuracyClock(that));
 			}
 		}

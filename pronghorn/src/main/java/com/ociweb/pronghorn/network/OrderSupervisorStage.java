@@ -216,7 +216,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				int c = localPipes.length;
 				int x = 0;
 		        while (--c >= 0) {		        	
-		        	if (Pipe.isEmpty(localPipes[c]) || !Pipe.hasContentToRead(localPipes[c])) {
+		        	if (!Pipe.hasContentToRead(localPipes[c])) {
 		        		x++;		        		
 		        	} else {
 		        		//has full message
