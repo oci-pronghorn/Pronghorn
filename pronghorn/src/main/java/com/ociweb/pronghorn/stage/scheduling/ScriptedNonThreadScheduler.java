@@ -941,7 +941,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	
 	private boolean hangDetectBegin(PronghornStage stage) {
 		if (null!=hd) {
-			hd.begin(stage.toString());
+			hd.begin(stage);
 		}
 		return true;
 	}
