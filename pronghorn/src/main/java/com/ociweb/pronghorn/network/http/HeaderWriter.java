@@ -7,6 +7,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 public class HeaderWriter {
@@ -36,6 +37,16 @@ public class HeaderWriter {
 			activeTarget.writeByte('\n');
 	}
 	
+	public void write(CharSequence header, long value) {
+
+		activeTarget.append(header);
+		activeTarget.writeByte(':');
+		activeTarget.writeByte(' ');
+		Appendables.appendValue(activeTarget, value);
+		activeTarget.writeByte('\r');
+		activeTarget.writeByte('\n');
+	}
+	
 	public void writeUTF8(CharSequence header, byte[] value) {	
 			activeTarget.append(header);
 			activeTarget.writeByte(':');
@@ -57,6 +68,14 @@ public class HeaderWriter {
 			activeTarget.writeByte('\r');
 			activeTarget.writeByte('\n');
 	}
+	
+	public void write(HTTPHeader header, long value) {		
+
+	    activeTarget.write(header.rootBytes());
+	    Appendables.appendValue(activeTarget, value);
+		activeTarget.writeByte('\r');
+		activeTarget.writeByte('\n');
+}
 
 	public void writeUTF8(HTTPHeader header, byte[] value) {
 

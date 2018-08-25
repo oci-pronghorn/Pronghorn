@@ -132,9 +132,9 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		position = pos;
 	}
 
-	private static final int  MA_BITS = 7;
-	private static final int  MA_TOTAL = 1<<MA_BITS; //128;
-	private static final long MA_MULTI = MA_TOTAL-1; //127;
+	private static final int  MA_BITS = 2; //avg the last 4 items, do not increase much or results will "lag"
+	private static final int  MA_TOTAL = 1<<MA_BITS; 
+	private static final long MA_MULTI = MA_TOTAL-1; 
 	
 	
 	//TODO: for large 8K telemetry must update this:
@@ -178,6 +178,8 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 			}
 			
 			int pctFull = (int)((10000*(head-tail))/ringSize);
+			
+			//NOTE: this is a test to see if we can avoid this avg step.. This seems to slow down reaction greatly...
 			pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>>MA_BITS));
 			
 			//////////////////////////

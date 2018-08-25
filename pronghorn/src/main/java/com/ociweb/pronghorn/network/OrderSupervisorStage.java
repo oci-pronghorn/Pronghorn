@@ -285,7 +285,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		
 		int sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
-				        
+				 
 		//read the next non-blocked pipe, sequenceNo is never reset to zero
 		//every number is used even if there is an exception upon write.
      
@@ -319,12 +319,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 						channelId, idx, expected);
 		    	
 			} else {
+	
 				assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
 				assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 				assert(Pipe.bytesReadBase(sourcePipe)>=0);
 				keepWorking = false;
 			}
 		} else {
+			
+			System.out.println("B unexpected   con:"+channelId+"  seq:"+sequenceNo+" ------------");
+			System.exit(-1);
+			
 			keepWorking = badSequenceNumberProcessing(channelId, sequenceNo, expected);
 		}
 		

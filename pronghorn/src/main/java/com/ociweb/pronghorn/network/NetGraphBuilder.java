@@ -929,6 +929,7 @@ public class NetGraphBuilder {
 					PronghornStage activeStage = null;
 					switch (a) {
 						case 0:
+							
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
@@ -1024,9 +1025,13 @@ public class NetGraphBuilder {
 					routerConfig.registerCompositeRoute().path( getPathRoute(a));
 
 				} else {
-					
-					routerConfig.registerCompositeRoute().path( getPathRoute(a));
-					//no headers
+					if (a==0) {
+						//this header enables the resource module stage to reply with compressed responses.
+						routerConfig.registerCompositeRoute(HTTPHeaderDefaults.ACCEPT_ENCODING).path( getPathRoute(a));
+					} else {
+						routerConfig.registerCompositeRoute().path( getPathRoute(a));
+						//no headers
+					}
 				}
 				return staticFileOutputs;			
 			}

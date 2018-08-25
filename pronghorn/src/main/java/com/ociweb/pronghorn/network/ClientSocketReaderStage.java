@@ -200,11 +200,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         	        	ClientConnection[] timedOut = slowConnections.timedOutConnections();
 	         	        	int i = timedOut.length;
 	         	        	while (--i >= 0) {
-	         	        		
 	         	        		if (null != timedOut[i]) {
 	         	        			abandonNow(timedOut[i]);
 	         	        		}
-	         	        		
 	         	        	}
 	         	        	
 	         	        	
@@ -243,8 +241,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 				long callTime = abandonded.outstandingCallTime(System.nanoTime());
 				logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long. Estimated:{}",
 						 abandonded, abandonded.id, abandonded.sessionId,Appendables.appendNearestTimeUnit(new StringBuilder(), callTime));								
-				
-				
+
 				abandonded.beginDisconnect();
 				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				

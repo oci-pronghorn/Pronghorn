@@ -581,7 +581,7 @@ public class SSLUtil {
 			final BaseConnection cc = ccm.lookupConnectionById(connectionId);
 						
 			if (null==cc || !cc.isValid) {
-				logger.info("connection has dropped and data with it");
+				//logger.info("connection has dropped and data with it");
 				((Buffer)buffer).clear();
 //				//do not process this message because the connection has dropped				
 				Pipe.skipNextFragment(source);

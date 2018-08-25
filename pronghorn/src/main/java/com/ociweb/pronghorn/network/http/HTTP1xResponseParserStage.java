@@ -444,7 +444,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 					//TODO: may be faster with if rather than switch.
 
-		//		System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
+		//	System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
 				
 				 switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
@@ -580,7 +580,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
 				    		break;
 						}
-						
 				
 					case 2: //PAYLOAD READING WITH LENGTH
 							//if we can not release then do not finish.
@@ -929,17 +928,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 			
 			publishCloseAsNeeded(stateIdx, cc, i); 
+		} else {
+			logger.trace("connection was alread null, must already be closed");
 		}
-		
-		
-		
-	
-		if (cc==null) {
-			throw new UnsupportedOperationException("Can not closse a null");
-		}
-		
-		
-		
 	}
 
 	private void publishCloseAsNeeded(final int stateIdx, ClientConnection cc, int i) {

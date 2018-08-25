@@ -158,10 +158,15 @@ public final class StructuredReader {
 	 * @param association Object associated object to find this field
 	 * @param target TrieParserReader target
 	 */
-	public void readTextAsParserSource(Object association, TrieParserReader target) {
+	public boolean readTextAsParserSource(Object association, TrieParserReader target) {
 	    ChannelReader textReader = read(association);
-		DataInputBlobReader.setupParser((DataInputBlobReader<?>)textReader, target, (int) textReader.readShort());
-	}
+	    if (null!=textReader) {
+	    	DataInputBlobReader.setupParser((DataInputBlobReader<?>)textReader, target, (int) textReader.readShort());
+	    	return true;
+	    } else {
+	    	return false;
+	    }
+	 }
 	
     /**
      * Checks to see if passed bytes are equal to field
@@ -960,6 +965,11 @@ public final class StructuredReader {
 		
 		visitor.value(channelReader, curPos, curSize, c, totalCount);
 	
+	}
+	
+	public void visitText(StructTextListener visitor, Object association) {
+		visitText(visitor, 
+				 Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
 	}
     /**
      * Visits text field and can add new operations without modifying the structures

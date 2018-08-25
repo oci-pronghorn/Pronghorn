@@ -68,6 +68,12 @@ public class HTTPUtil {
 	protected static final byte[] CONTENT_CHUNKED = "Transfer-Encoding: chunked".getBytes();
 	
 	static final TrieParser chunkMap = buildChunkMap();
+	
+	
+	public static final int COMPRESSOIN_GZIP    = 1;
+	public static final int COMPRESSOIN_DEFLATE = 2;
+	
+	public static final TrieParser compressionEncodings = buildCompressionEncodings();
     
 	public static void publishStatus(long channelId, int sequence,
 	            					int status,
@@ -77,6 +83,18 @@ public class HTTPUtil {
 		int channelIdLow = (int)channelId;		
 		
 		publishStatus(sequence, status, channelIdHigh, channelIdLow, localOutput);
+	}
+
+	private static TrieParser buildCompressionEncodings() {
+		
+		TrieParser result = new TrieParser();
+		
+		result.setUTF8Value(",", 0);	
+		result.setUTF8Value(" ", 0);	
+		result.setUTF8Value("gzip", COMPRESSOIN_GZIP);		
+		result.setUTF8Value("deflate", COMPRESSOIN_DEFLATE);
+		
+		return result;
 	}
 
 	public static void publishStatus(int sequence, int status, int channelIdHigh, int channelIdLow,

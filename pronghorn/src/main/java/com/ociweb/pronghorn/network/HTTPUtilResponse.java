@@ -18,12 +18,7 @@ public class HTTPUtilResponse {
 	public HTTPUtilResponse() {
 	}
 
-	public static void holdEmptyBlock( HTTPUtilResponse that,
-            						  Pipe<ServerResponseSchema> pipe) {
-		holdEmptyBlock(that,-1,-1,pipe);		
-	}
-	
-	@Deprecated
+
 	public static void holdEmptyBlock( HTTPUtilResponse that,
 					            long connectionId, 
 					            final int sequenceNo,
@@ -31,7 +26,8 @@ public class HTTPUtilResponse {
 	
 			Pipe.addMsgIdx(pipe, ServerResponseSchema.MSG_TOCHANNEL_100);			
 			that.block1ConSeqSlabPos = Pipe.workingHeadPosition(pipe);
-						
+
+			//this is used by downstream tasks which may be peeking...
 			Pipe.addLongValue(connectionId, pipe);
 			Pipe.addIntValue(sequenceNo, pipe);	
 			
@@ -69,23 +65,13 @@ public class HTTPUtilResponse {
 		Pipe.setIntValue(propperLength, outputStream.getPipe(), that.block1PositionOfLen); //go back and set the right length.
 		outputStream.getPipe().closeBlobFieldWrite();
 	}
-
-	public static ChannelWriter openHTTPPayload(
-			HTTPUtilResponse that, 
-			Pipe<ServerResponseSchema> output) {
-		HTTPUtilResponse.holdEmptyBlock(that, output);
-		
-		ChannelWriter outputStream = Pipe.openOutputStream(output);
-		return outputStream;
-	}
 	
 	public static ChannelWriter openHTTPPayload(
 			HTTPUtilResponse that, 
 			Pipe<ServerResponseSchema> output, long activeChannelId, int activeSequenceNo) {
 		HTTPUtilResponse.holdEmptyBlock(that, activeChannelId, activeSequenceNo, output);
 		
-		ChannelWriter outputStream = Pipe.openOutputStream(output);
-		return outputStream;
+		return Pipe.openOutputStream(output);
 	}
 
 	public static void closePayloadAndPublish(

@@ -50,6 +50,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     //TODO: double check that this all works with ipv6.
     
+	private static final int NO_LENGTH_DEFINED = -2;
 	private static final int SIZE_OF_BEGIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private static final int MAX_URL_LENGTH = 4096;
@@ -85,8 +86,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private final Pipe<HTTPRequestSchema>[] outputs;
     
-    private int   waitForOutputOn = -1;
-
     private long[] inputSlabPos;
     private int[] sequences;
         
@@ -284,16 +283,26 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
 
+    	
     		int i = inputs.length;
 	        while (--i>=0 ) {
+	        	
 	            if (singlePipe(this, i)>=0) {	            			            	
-	            } else {	            		            	
+	            } else {	
+	            	
+	            	System.out.println("shutdown count "+shutdownCount);
+	            	
 	            	if (--shutdownCount<=0) {
 	            		requestShutdown();
 	            		return;
 	            	}
 	            } 
-	        } 
+	            
+	           //if (!Pipe.isEmpty(inputs[i])) {
+	           //  	System.out.println("ssssssssssss i "+i+"   "+inputs[i]);
+	           //}
+	           
+	      } 
     }
 
     
@@ -325,7 +334,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     		if (that.needsData[idx]) {
     			//got no data but we need more data
-    			logger.warn("Shutting down while doing partial consume of data");
     			return -1;
     		}
         }       
@@ -358,9 +366,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             final int pipeIdx = ServerCoordinator.getWebSocketPipeIdx(coordinator, channel);
             final Pipe<HTTPRequestSchema> outputPipe = outputs[pipeIdx];
             if (!Pipe.hasRoomForWrite(outputPipe) ) {
-             	final int result = -pipeIdx;
-             	//TRY AGAIN AFTER PIPE CLEARS
-             	this.waitForOutputOn = (-result);
              	return false;//exit to take a break while pipe is full.
             }
 			
@@ -416,7 +421,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            }
             } else {
             	//not even 2 so jump out now
-            	
             	this.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
             	return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 
@@ -511,7 +515,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				
 				int totalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(that.trieReader));           
 				int remainingBytes = that.trieReader.sourceLen;
-						
+		
 				if (SUCCESS == state) {
 					
 					boolean logTrafficEnabled = null != that.log;
@@ -536,7 +540,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 						Pipe.publishWrites(logOut);					
 						
 					}
-					
 					result = consumeBlock(that, idx, selectedInput, channel,
 							              that.inputBlobPos[idx], 
 							              totalAvail, totalConsumed, 
@@ -544,9 +547,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				 } else if (NEED_MORE_DATA == state) {				
 					that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
 					result = false;   
-				 } else {
-				    //TRY AGAIN AFTER PIPE CLEARS
-				    that.waitForOutputOn = (-state);
+				 } else {				
 				    result = false;
 				 }
 				
@@ -568,10 +569,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			final long channel, int p, int totalAvail, 
 			int totalConsumed, int remainingBytes) {
 		assert(totalConsumed>0);
-				
+
 		p += totalConsumed;
 		totalAvail -= totalConsumed;
-
+		
 		Pipe.releasePendingAsReadLock(selectedInput, totalConsumed);
 
 		assert(totalAvail == remainingBytes);
@@ -673,12 +674,15 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
 
 	if (showHeader) {
-    	System.out.println("///////////////// ROUTE HEADER "+channel+" pos:"+trieReader.sourcePos+"///////////////////");
-    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data
-    	if (trieReader.sourceLen>8192) {
-    		System.out.println("...");
-    	}
-    	System.out.println("\n///////////////////////////////////////////");
+		if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
+			int lenLimit = Math.min(8192, trieReader.sourceLen);
+	    	System.out.println("///////////////// DATA TO ROUTE (HEADER+) "+channel+" pos:"+trieReader.sourcePos+" len:"+lenLimit+"///////////////////");
+			TrieParserReader.debugAsUTF8(trieReader, System.out, lenLimit, false); //shows that we did not get all the data
+	    	if (trieReader.sourceLen>8192) {
+	    		System.out.println("...");
+	    	}
+	    	System.out.println("\n///////////////////////////////////////////");
+		}
     }
 
 	int tempLen = trieReader.sourceLen;
@@ -892,7 +896,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         
     	DataOutputBlobWriter.commitBackData(writer,structId);
     	DataOutputBlobWriter.closeLowLevelField(writer);
-         
+   
     	
 		//not an error we just looked past the end and need more data
 	    if (trieReader.sourceLen<0) {
@@ -912,8 +916,25 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         sequences[idx]++; //increment the sequence since we have now published the route.
         
     } else {
-    	//logger.info("No room, waiting for {} {}",channel, outputPipe);
-        //no room try again later
+
+    	final boolean showsOverload = false;
+		if (showsOverload &&  !"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor	
+			
+			if ((lastNoRoomPosition == Pipe.tailPosition(outputPipe))
+				&& (noRoomPipeId == outputPipe.id)) {	
+				
+				if (++noRoomCount == 100) {
+					logger.warn("\nNo room to route message, waiting for {} {}",channel, outputPipe);
+				}
+			} else {
+				noRoomCount = 0;
+			}
+			
+			lastNoRoomPosition = Pipe.tailPosition(outputPipe);
+			noRoomPipeId = outputPipe.id;
+		}
+		
+        //no room try again later zero or negative values are the the pipe index of which is backed up.
         return -pathId;
     }
     
@@ -922,6 +943,9 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
    return SUCCESS;
 }
 
+private int noRoomCount;
+private int noRoomPipeId;
+private long lastNoRoomPosition;
 
 private boolean captureAllArgsFromURL(TrieParserReader trieReader, final int pathId,
 		DataOutputBlobWriter<HTTPRequestSchema> writer) {
@@ -957,7 +981,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			
 			int requestContext = keepAliveOrNotContext(httpRevisionId, serverConnection.id);
 				
-			long postLength = -2;
+			long postLength = NO_LENGTH_DEFINED;
 			
 			int iteration = 0;
 			int remainingLen;
@@ -966,16 +990,21 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 				
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-			    				    	
 					if (iteration!=0) {
+									    	
 						int routeId = config.getRouteIdForPathId(pathId);
+						
+						if (NO_LENGTH_DEFINED == postLength) {
+							postLength = 0;//we explicitly set length to zero if it is not provided.
+						}
 						
 						return endOfHeadersLogic(writer, cwc, cw, 
 								serverConnection.scs,
 								errorReporter2, requestContext, 
 								trieReader, postLength, arrivalTime, routeId);
 						
-					} else {	          
+					} else {	         
+						
 						//needs more data 
 						cwc.abandonWrite();
 						return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
@@ -1192,6 +1221,7 @@ private static long processPlain( HTTP1xRouterStage that,
 	if (-1 != inChnl) {
 		that.plainMatch(idx, selectedInput, channel, length);
 	} else {
+	
 		that.plainFreshStart(idx, selectedInput, channel, length, pos);		
 	}
 	inChnl = channel; //Testing this
@@ -1303,34 +1333,36 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
 		//ALL OTHERS MUST RETURN INCOMPLETE
 		
-		if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<writer.position()) {
-				
-			logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
-			requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-		} else if (postLength>0) {
+    	if (postLength>=0) {
 			//full length is done here as a single call, the pipe must be large enough to hold the entire payload
 			
-			assert(postLength<Integer.MAX_VALUE);
+			assert(postLength<=Integer.MAX_VALUE) : "can not support posts larger than 2G at this time";
 			
 			//read data directly
 			final int writePosition = writer.position();  
 			
-			if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<(writePosition+postLength)) {
-				logger.warn("unable to take large post at this time");	
-				requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+			if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)>=(writePosition+postLength)) {
+				int cpyLen = TrieParserReader.parseCopy(trieReader, postLength, writer);
+				if (cpyLen<postLength) {
+				   //needs more data 
+					cwc.abandonWrite();
+					return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+				} else {	
+					
+					//NOTE: payload index is always found at position 0 since it is the first field.
+					DataOutputBlobWriter.setIntBackData(writer, writePosition, 0);
+	
+				}
+			} else {
+				logger.warn("pipes are too small for this many headers and payload, max size is "+writer.getPipe().maxVarLen);	
+				requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;				
 			}
-			
-			int cpyLen = TrieParserReader.parseCopy(trieReader, postLength, writer);
-			if (cpyLen<postLength) {
-			   //needs more data 
-				cwc.abandonWrite();
-				return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-			} else {	
-				
-				//NOTE: payload index is always found at position 0 since it is the first field.
-				DataOutputBlobWriter.setIntBackData(writer, writePosition, 0);
 
-			}
+		} else if (DataOutputBlobWriter.lastBackPositionOfIndex(writer)<writer.position()) {				
+			
+    		logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
+			requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+		
 		}
 				
 		cw.structured().writeInt(routeId, scs.routeIdFieldId);

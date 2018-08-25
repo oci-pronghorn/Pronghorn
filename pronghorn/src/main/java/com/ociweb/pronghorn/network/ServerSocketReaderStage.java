@@ -173,7 +173,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	           hasRoomForMore = true; //set this up before we visit
     	           
     	           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-    	           if (null!=keyMap) {
+    	           if (null!=keyMap) {   
     				   keyMap.forEach(keyVisitor);
     	           } else {
     	        	   //fall back to old if the map can not be found.
@@ -216,6 +216,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	
 	private boolean processSelection(SelectionKey selection) {
+		
 		assert isRead(selection) : "only expected read"; 
 		final SocketChannel socketChannel = (SocketChannel)selection.channel();
 		
@@ -227,6 +228,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
 		BaseConnection cc = coordinator.lookupConnectionById(channelId);
+		
 
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
@@ -237,7 +239,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 			} catch (IOException e) {				
 			}
 			//if this selection was closed then remove it from the selections
-
 			removeSelection(selection);
 			if (coordinator.checkForResponsePipeLineIdx(channelId)>=0) {
 				coordinator.releaseResponsePipeLineIdx(channelId);
@@ -326,19 +327,23 @@ public class ServerSocketReaderStage extends PronghornStage {
 					}
 			
 					
-					/**
-					 * This part shows we are moving forward on this 1 pipe but never sending a response...
-					 */
-//					int i = output.length;
-//					while (--i>=0) {
-//						//What about encryption unit does it hold data we have not yet processed??
-//						System.out.println(i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i]));
-//					}					
-//					coordinator.showPipeLinePool();					
-//					logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
-//							channelId, 
-//							responsePipeLineIdx,
-//							output.length);
+					final boolean debugPipeAssignment = false;
+					if (debugPipeAssignment) {
+						if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
+						
+							int i = output.length;
+							while (--i>=0) {
+																
+								//What about encryption unit does it hold data we have not yet processed??
+								System.out.println(i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i])+" total frags:"+Pipe.totalWrittenFragments(output[i]));
+							}					
+							coordinator.showPipeLinePool();					
+							logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
+									channelId, 
+									responsePipeLineIdx,
+									output.length);
+						}
+					}
 					/////////////////////////////////////
 					
 					
@@ -347,26 +352,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 					
 				if (responsePipeLineIdx >= 0) {
-					
-					//System.out.println("uuuuuuuuu "+cc.isDisconnecting+"  "+cc.isValid+"  "+cc.id);
-					
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, cc.id, 
 															cc.getSequenceNo(),
 							                                output[responsePipeLineIdx], 
 							                                newBeginning, 
-							                                cc, selection); 
-
-					///System.out.println(pumpState+" pump "+responsePipeLineIdx+"  "+output[responsePipeLineIdx]);
-		            					
-					if (pumpState > 0) { 
-		            	//logger.info("remove this selection "+channelId);
-		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
-		            	removeSelection(selection);
-		            } else {	
-		            	hasOutputRoom = false;
-		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
-		            }
-
+							                                cc, selection);
+					removeSelection(selection);
+					//always remove even when we could not write because we may require the data behind this selection 
+					if (pumpState<=0) {
+						hasOutputRoom = false;
+					}					
 				} 
 		}
 		return hasOutputRoom;
@@ -472,6 +467,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private boolean hasNewDataToRead() {
     	
     	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
+    		System.err.println("old selections "+selectedKeys.size());
     		return true;
     	}
     		

@@ -51,17 +51,19 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 				absoluteTimeouts = ArrayGrow.setIntoArray(absoluteTimeouts, t, absoluteTimeoutCounts++);
 			}
 		} else {
-			//find the single longest outstanding call
-			if (callTime > maxOutstandingCallTime) {
-				maxOutstandingCallTime = callTime;
-				candidate = t;
-			}
 			
 			//TODO: can, find the lest recently used connection and close it as well ??
-			
-			if (ElapsedTimeRecorder.totalCount(t.histogram())>1) {
+
+			//if no explicit limits are set wait until we have 100 data samples before limiting
+			if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
 				//find the std dev of the 98% of all network calls
 				RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
+				
+				//find the single longest outstanding call
+				if (callTime > maxOutstandingCallTime) {
+					maxOutstandingCallTime = callTime;
+					candidate = t;
+				}
 			}
 		}		
 	}
