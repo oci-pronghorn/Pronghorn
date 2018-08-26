@@ -58,8 +58,7 @@ public class SocketIOStageTest {
 		serverConfig.setHost(bindHost)
 		 .setMaxConnectionBits(maxConnBits)
 		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
-		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs)
-		 .setTracks(tracks);
+		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs);
 
 		if (null==certs) {
 			serverConfig.useInsecureServer();
@@ -67,6 +66,7 @@ public class SocketIOStageTest {
 			serverConfig.setTLS(certs);
 		}
 		
+		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
 		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
 				
 		ServerPipesConfig serverPipesConfig = serverConfig.buildServerConfig();
@@ -176,8 +176,8 @@ public class SocketIOStageTest {
 		serverConfig.setHost(bindHost)
 		 .setMaxConnectionBits(maxConnBits)
 		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
-		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs)
-		 .setTracks(tracks);
+		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs);
+		 
 		 	
 		if (null==certs) {
 			serverConfig.useInsecureServer();
@@ -185,6 +185,7 @@ public class SocketIOStageTest {
 			serverConfig.setTLS(certs);
 		}
 		
+		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
 		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
 
 		ServerCoordinator serverCoord = new ServerCoordinator(

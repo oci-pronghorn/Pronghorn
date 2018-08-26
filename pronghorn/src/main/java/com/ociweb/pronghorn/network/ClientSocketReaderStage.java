@@ -271,10 +271,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		} else {
 			didWork = true;
 		}
-		if (didWork) {
-			doneSelectors.add(selection);
-		} else {
-			//System.err.println("skipped");
+		//always remove in-case we need to get to the following
+		doneSelectors.add(selection);
+		if (!didWork) {
 			hasRoomForMore = false;//if any one is blocked go work elsewhere.
 		}
 

@@ -806,7 +806,7 @@ public class NetGraphBuilder {
 		c.setMaxRequestSize(maxRequestSize);
 		c.setMaxResponseSize(1<<21);
 		
-		c.setTracks(tracks);
+		((HTTPServerConfigImpl)c).setTracks(tracks);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
 		final ServerPipesConfig serverConfig = c.buildServerConfig();

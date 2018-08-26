@@ -53,7 +53,7 @@ public class HTTPServer {
 		} else {
 			c.setTLS(tlsCertificates);
 		}
-		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
 		final ServerPipesConfig serverConfig = c.buildServerConfig();

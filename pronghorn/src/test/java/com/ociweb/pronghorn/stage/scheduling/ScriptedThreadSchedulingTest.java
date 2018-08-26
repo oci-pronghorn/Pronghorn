@@ -63,7 +63,7 @@ public class ScriptedThreadSchedulingTest {
 		} else {
 			c.setTLS(defaultcerts);
 		}
-		c.setTracks(procssors);
+		((HTTPServerConfigImpl)c).setTracks(procssors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator()); //test with TLS later.

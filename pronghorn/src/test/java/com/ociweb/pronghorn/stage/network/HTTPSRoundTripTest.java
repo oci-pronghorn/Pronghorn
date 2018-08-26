@@ -91,7 +91,7 @@ public class HTTPSRoundTripTest {
 		}
 		c.setHost(bindHost);
 		
-		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
@@ -158,7 +158,7 @@ public class HTTPSRoundTripTest {
 		} else {
 			c.setTLS(tlsCertificates);
 		}
-		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());	
@@ -222,7 +222,7 @@ public class HTTPSRoundTripTest {
 		c.setEncryptionUnitsPerTrack(4);
 		
 		c.setTLS(tlsCertificates);	
-		c.setTracks(processors);
+		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());

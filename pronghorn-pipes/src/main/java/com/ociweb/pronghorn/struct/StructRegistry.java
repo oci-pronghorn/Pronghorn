@@ -522,8 +522,7 @@ public class StructRegistry { //prong struct store
 		
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
 
-		int idx = lookupIndexOffset(this, attachedObject, structId, attachedObject.hashCode());
-		return buildFieldId(attachedObject, structId, idx);
+		return buildFieldId(structId, lookupIndexOffset(this, attachedObject, structId));
 	}
 	
 	public int structLookupByIdentity(Object assoc) {
@@ -537,25 +536,27 @@ public class StructRegistry { //prong struct store
 		return idx;
 	}
 
-	private <T> long buildFieldId(T attachedObject, int structId, int idx) {
-		assert(this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx] == attachedObject) : "looking for "+attachedObject+" but found "+this.fieldLocals[STRUCT_MASK&structId][FIELD_MASK&idx];
-
-		return ((long)structId)<<STRUCT_OFFSET | (long)idx;
-	}
-
-	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId, int hash) {
+	public static <T> int lookupIndexOffset(StructRegistry that, T attachedObject, int structId) {
 				
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+		int hash = attachedObject.hashCode();
 		
 		int idx = IntHashTable.getItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash);
 		if (0==idx) {
 			if (!IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], hash)) {
+				
 				throw new UnsupportedOperationException("Object not found: "+attachedObject+" in structure "+structId+" obj hash "+hash);			
+			
 			}
 		}
 		return idx;
 	}
 	
+	public static <T> boolean hasAttachedObject(StructRegistry that, T attachedObject, int structId) {
+		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+		return IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], attachedObject.hashCode());
+
+	}
 	
 	public void visitAssociatedObject(int structId, AssocVisitor visitor) {
 		int structIdx = StructRegistry.STRUCT_MASK&structId;

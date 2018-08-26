@@ -20,6 +20,7 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -172,7 +173,12 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			}
 
 			TrieParserReader reader = TrieParserReaderLocal.get();			
-		    if (params.structured().readTextAsParserSource(HTTPHeaderDefaults.ACCEPT_ENCODING, reader)) {
+			
+			StructRegistry structRegistry = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(params));
+			
+			int structId = DataInputBlobReader.getStructType(params);
+		    if (StructRegistry.hasAttachedObject(structRegistry, HTTPHeaderDefaults.ACCEPT_ENCODING, structId)) {
+		//    	params.structured().readTextAsParserSource(HTTPHeaderDefaults.ACCEPT_ENCODING, reader)
 	//			//TODO: in progress development, adding compressed response support.
 //			    int id = 0;
 //			    do {		    

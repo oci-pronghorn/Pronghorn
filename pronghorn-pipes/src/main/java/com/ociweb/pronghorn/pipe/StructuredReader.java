@@ -106,7 +106,14 @@ public final class StructuredReader {
 	
 	//set to a position for general reading
 	public ChannelReader read(Object association) {
-		return read(Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).fieldLookupByIdentity(association, DataInputBlobReader.getStructType(channelReader)));
+		
+		StructRegistry structRegistry = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader));
+		int structId = DataInputBlobReader.getStructType(channelReader);
+		assert ((StructRegistry.IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
+		
+		int idx = StructRegistry.lookupIndexOffset(structRegistry, association, structId);
+		
+		return read(structRegistry.buildFieldId(structId, idx));
 	}
 		
 	public boolean isNull(Object association) {

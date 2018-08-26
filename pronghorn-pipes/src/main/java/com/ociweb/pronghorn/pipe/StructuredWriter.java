@@ -112,8 +112,7 @@ public class StructuredWriter {
 			DataOutputBlobWriter.setIntBackData(channelWriter,
 								positions[p],
 								StructRegistry.lookupIndexOffset(structRegistry,
-										              associations[p], structId, 
-										              associations[p].hashCode()) & StructRegistry.FIELD_MASK					
+										              associations[p], structId) & StructRegistry.FIELD_MASK					
 							);
 		}
 		pos = 0;//cleared for next time;
