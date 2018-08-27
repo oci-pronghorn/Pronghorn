@@ -199,9 +199,25 @@ public class StructBuilder {
 				);		
 	}
 
-	public StructBuilder add(JSONExtractor jsonDecoder) {
-		jsonDecoder.addToStruct(typeData, this);
-		return this;
-	}
+    public <T extends Enum<T>> StructBuilder longField(T field) {
+    	return addField(field, StructType.Long);
+    };
+	
+    public <T extends Enum<T>> StructBuilder integerField(T field) {
+    	return addField(field, StructType.Integer);
+    };
+    
+    public <T extends Enum<T>> StructBuilder stringField(T field) {
+    	return addField(field, StructType.Text);
+    };    
+    
+    public <T extends Enum<T>> StructBuilder decimalField(T field) {
+    	return addField(field, StructType.Decimal);
+    };
+    
+    public <T extends Enum<T>> StructBuilder booleanField(T field) {
+    	return addField(field, StructType.Boolean);
+    }; 
+	
 	
 }

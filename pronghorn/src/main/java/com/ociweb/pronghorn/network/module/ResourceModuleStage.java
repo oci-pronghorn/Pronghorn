@@ -253,7 +253,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 				final int fileSize = stream.available();
 				if (fileSize > minVar) {
 					//TODO: we should slice up the files so this pipe need not be large.
-					throw new UnsupportedOperationException("Server maxResponse size is too small. File size is: "+fileSize+" But max server response size is: "+minVar);
+					throw new UnsupportedOperationException("Server maxResponse size is too small. File "+fileName+" size is: "+fileSize+" But max server response size is: "+minVar);
 				}
 				
 				resource[fileIdx] = new byte[fileSize];
