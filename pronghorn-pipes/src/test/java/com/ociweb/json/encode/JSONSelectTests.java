@@ -66,7 +66,7 @@ public class JSONSelectTests {
     @Test
     public void testCases_Recursion_WithSomething() {
         JSONRenderer<Boolean> json = new JSONRenderer<Boolean>()
-                .beginObject()
+                .startObject()
                     .bool("value", o->o)
                     .beginSelect("recurse")
                         .tryCase(o->o).recurseRoot(o->!o)

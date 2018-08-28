@@ -319,9 +319,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	} else {        		
         		if (that.inputLengths[idx]!=start) {            			
         			that.needsData[idx]=false;
-        		} else {
-        			//we got no data so move on to the next
-        			return 0;
+        		} else {			
+        			//we got no data, if pipe also empty return 
+        			if (Pipe.isEmpty(that.inputs[idx])) {
+        				return 0;
+        			}
+        			//continue to do work because we may have enough data already but 
+        			//we had to stop due to the target pipe filling.
         		}
         	}
         } else {
@@ -337,8 +341,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     			return -1;
     		}
         }       
-
-
         
         //the common case is -1 so that is first.
         return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :

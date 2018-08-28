@@ -27,4 +27,5 @@ public class JSONRenderer<T> extends JSONRoot<T, T, JSONRenderer<T>> {
         locked = true;
         return this;
     }
+
 }

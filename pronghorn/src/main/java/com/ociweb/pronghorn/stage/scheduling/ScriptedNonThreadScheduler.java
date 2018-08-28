@@ -641,12 +641,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		final long wait = that.blockStartTime - now;
 		assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
 
-		if (Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
+		//skip wait if it is short AND if this thread has max proirity
+		if (wait<10_000 && //short is < 10 microseconds
+			Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
 			boolean isNormalCase = that.accumulateWorkHistory();
-			if (that.noWorkCounter > 100_000) { //TODO: base on time passing...
-				//System.err.println("zzzz.. "+that.noWorkCounter);
-				//System.err.println("no work for "+Thread.currentThread().toString());
-				that.deepSleep(isNormalCase); //TODO: investigate later
+			if (that.noWorkCounter > 100_000) { 
+				that.deepSleep(isNormalCase);
 				that.noWorkCounter=0;
 			}	
 		} else {

@@ -30,7 +30,15 @@ public class ServerSocketWriterStage extends PronghornStage {
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     public static boolean showWrites = false;
     
-	//TODO: by adding accessor method and clearing the bufferChecked can make this grow at runtime if needed.
+    public static boolean lowLatency = true; //only turn this off when you are willing to accept long latencies for high volume 
+
+	public static long hardLimtNS = 1_000_000L; //1MS.
+    //also note however data can be written earlier if:
+	//   1. the buffer has run out of space (the multiplier controls this)
+	//   2. if the pipe has no more data.
+    
+	
+	//TODO: by adding method and clearing the bufferChecked can make this grow at runtime if needed.
 	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
 	
     private final Pipe<NetPayloadSchema>[] input;
@@ -48,8 +56,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     private long activeTails[];
     private long activeIds[]; 
     private int activeMessageIds[];    
-  
-    private long totalBytesWritten = 0;
 
     private int maxBatchCount;
 
@@ -113,11 +119,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
     	final Number rate = (Number)GraphManager.getNota(graphManager, this, GraphManager.SCHEDULE_RATE, null);
     	    	
-    	//this is 10ms for the default max limit
-    	long hardLimtNS = 10_000_000L; //May revisit later.
-        //also note however data can be written earlier if:
-    	//   1. the buffer has run out of space (the multiplier controls this)
-    	//   2. if the pipe has no more data.
+
     	
     	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue());  	
     	
@@ -150,7 +152,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     public void shutdown() {
 
     }
-    
+
     @Override
     public void run() {
        
@@ -185,7 +187,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
 	    			if (--writeToChannelBatchCountDown[x]<=0 
 	    				|| !hasRoomToWrite
-	    				|| !Pipe.hasContentToRead(localInput) //myPipeHasNoData so fire now
+	    				||  (lowLatency & (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
 	    				) {
 	    				writeToChannelMsg[x] = -1;
 		    			if (!(doingWork = writeDataToChannel(x))) {
@@ -504,92 +506,99 @@ public class ServerSocketWriterStage extends PronghornStage {
 	}
 
     private boolean writeDataToChannel(int idx) {
-
-    		boolean done = true;
-    		if (!debugWithSlowWrites) {
-		        try {
-		        	
-		        	ByteBuffer target = workingBuffers[idx];
-		        	assert(target.isDirect());
-		        	
-		        	int bytesWritten = 0;
-		        	do {		 
-		        		bytesWritten = writeToChannel[idx].write(target);	
-		        	
-			        	if (bytesWritten>0) {
-			        		totalBytesWritten+=bytesWritten;
-			        	} else {
-			        		break;
-			        	}
-			        	//output buffer may be too small so keep writing
-		        	} while (target.hasRemaining());
-	
-		        	
-		        	if (!target.hasRemaining()) {
-		        		markDoneAndRelease(idx);
-		        	} else {
-		        		done = false;
-		        	}
-		        
-		        } catch (IOException e) {
-		        	//logger.trace("unable to write to channel",e);
-		        	closeChannel(writeToChannel[idx]);
-		            //unable to write to this socket, treat as closed
-		            markDoneAndRelease(idx);
-		        }
-    		} else {
-				
-				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
-				buf.clear();
-				
-				int j = debugMaxBlockSize;
-				int c = workingBuffers[idx].remaining();
-
-				int p = workingBuffers[idx].position();
-				while (--c>=0 && --j>=0) {
-					buf.put(workingBuffers[idx].get(p++));
-				}
-				workingBuffers[idx].position(p);
-								
-				
-				buf.flip();
-				int expected = buf.limit();
-								
-				while (buf.hasRemaining()) {
-					try {
-						int len = writeToChannel[idx].write(buf);
-						if (len>0) {
-							expected -= len;
-							totalBytesWritten += len;
-						}
-						
-						if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
-							System.out.println("wrote bytes "+len);
-						}
-						
-					} catch (IOException e) {
-						//logger.error("unable to write to channel {} '{}'",e,e.getLocalizedMessage());
-						closeChannel(writeToChannel[idx]);
-			            //unable to write to this socket, treat as closed
-			            markDoneAndRelease(idx);
-			            
-			            return false;
-					}
-				}
-
-				if (expected!=0) {
-					throw new UnsupportedOperationException();
-				}
-							
-	        	if (!workingBuffers[idx].hasRemaining()) {
-	        		markDoneAndRelease(idx);
-	        	} else {
-	        		done = false;
-	        	}
-    			
-    		}
-    		return done;
+    		return (!debugWithSlowWrites) 
+    				? writeDataToChannelQuick(idx, true)
+    			    : writeToDataChannelDebug(idx, true);   			    		
     }
+
+
+	private boolean writeDataToChannelQuick(int idx, boolean done) {
+		try {
+			
+			ByteBuffer target = workingBuffers[idx];
+			assert(target.isDirect());
+			
+			int bytesWritten = 0;
+  
+		//	int localWritten = 0;
+			do {		 
+				bytesWritten = writeToChannel[idx].write(target);	
+			
+		    	if (bytesWritten>0) {
+		  //  		localWritten += bytesWritten;
+		    	} else {
+		    		break;
+		    	}
+		    
+		    	//output buffer may be too small so keep writing
+			} while (target.hasRemaining());
+		//	System.out.println(localWritten);
+			
+			if (!target.hasRemaining()) {
+				markDoneAndRelease(idx);
+			} else {
+				done = false;
+			}
+		
+		} catch (IOException e) {
+			//logger.trace("unable to write to channel",e);
+			closeChannel(writeToChannel[idx]);
+		    //unable to write to this socket, treat as closed
+		    markDoneAndRelease(idx);
+		}
+		return done;
+	}
+
+
+	private boolean writeToDataChannelDebug(int idx, boolean done) {
+		ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
+		buf.clear();
+		
+		int j = debugMaxBlockSize;
+		int c = workingBuffers[idx].remaining();
+
+		int p = workingBuffers[idx].position();
+		while (--c>=0 && --j>=0) {
+			buf.put(workingBuffers[idx].get(p++));
+		}
+		workingBuffers[idx].position(p);
+						
+		
+		buf.flip();
+		int expected = buf.limit();
+						
+		while (buf.hasRemaining()) {
+			try {
+				int len = writeToChannel[idx].write(buf);
+				if (len>0) {
+					expected -= len;
+				}
+				
+				if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+					System.out.println("wrote bytes "+len);
+				}
+				
+			} catch (IOException e) {
+				//logger.error("unable to write to channel {} '{}'",e,e.getLocalizedMessage());
+				closeChannel(writeToChannel[idx]);
+		        //unable to write to this socket, treat as closed
+		        markDoneAndRelease(idx);
+		        
+		        return false;
+			}
+		}
+
+		if (expected!=0) {
+			throw new UnsupportedOperationException();
+		}
+					
+		if (!workingBuffers[idx].hasRemaining()) {
+			markDoneAndRelease(idx);
+		} else {
+			done = false;
+		}
+		return done;
+	}
 
     private void closeChannel(SocketChannel channel) {
         try {
@@ -614,28 +623,6 @@ public class ServerSocketWriterStage extends PronghornStage {
         			       activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(input[idx]),
         					sequenceNo);
         }
-        //logger.info("write is complete for {} ", activeIds[idx]);
-        
-        //beginSocketStart
-       // System.err.println();
-        //long now = System.nanoTime();
-        
-//        Appendables.appendNearestTimeUnit(System.err, now-ServerCoordinator.acceptConnectionStart);
-//        System.err.append(" round trip for call\n");
-//        
-//        Appendables.appendNearestTimeUnit(System.err, now-ServerCoordinator.acceptConnectionRespond);
-//        System.err.append(" round trip for data gathering\n");
-        
-        
-        
-//        long duration3 = System.nanoTime()-ServerCoordinator.newDotRequestStart;
-//        Appendables.appendNearestTimeUnit(System.err, duration3);
-//        System.err.append(" new dot trip for call\n");
-//
-//        long duration2 = System.nanoTime()-ServerCoordinator.orderSuperStart;
-//        Appendables.appendNearestTimeUnit(System.err, duration2);
-//        System.err.append(" super order trip for call\n");
-        
     }
    
 

@@ -60,7 +60,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 			throw new UnsupportedOperationException("invalid port "+bindPort);
 		}
 
-		this.pcm = pcm;			
+		this.pcm = pcm;		
+		
+		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
+		this.pcm.ensureSize(ServerResponseSchema.class, 4, 2048); //TODO: may drop this to 1024 that would be nice.		
+		
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
 

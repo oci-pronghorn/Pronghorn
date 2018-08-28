@@ -106,6 +106,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
 		this.minVar = minVarLength(outputs);
+		assert (minVar>2040) : "Minimum for the favicon.ico and other example files is 2K but found "+minVar;
 				
 	}
 	
