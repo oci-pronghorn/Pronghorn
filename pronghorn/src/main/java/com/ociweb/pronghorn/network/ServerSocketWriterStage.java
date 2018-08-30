@@ -32,7 +32,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     public static boolean lowLatency = true; //only turn this off when you are willing to accept long latencies for high volume 
 
-	public static long hardLimtNS = 1_000_000L; //1MS.
+	public static long hardLimtNS = 200_000L; //200 micros
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
 	//   2. if the pipe has no more data.

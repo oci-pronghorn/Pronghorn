@@ -5,7 +5,12 @@ import com.ociweb.pronghorn.pipe.Pipe;
 
 public abstract class Blockable<T extends MessageSchema<T>, P extends MessageSchema<P>, Q extends MessageSchema<Q>> {
 
-	public abstract void begin(Pipe<T> input);
+	/**
+	 * 
+	 * @param input Pipe of data to consume
+	 * @return true if the work was accepted
+	 */
+	public abstract boolean begin(Pipe<T> input);
 	
 	public abstract void run() throws InterruptedException;
 	

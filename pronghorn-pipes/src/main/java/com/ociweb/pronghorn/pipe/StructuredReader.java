@@ -1823,6 +1823,11 @@ public final class StructuredReader {
  	public static int structType(StructuredReader that) {
  		return DataInputBlobReader.getStructType(that.channelReader); 
  	}
+ 	
+ 	public <O extends Object> O structAssociatedObject() {
+ 		return Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)).structAssociatedObject(DataInputBlobReader.getStructType(channelReader));
+  	}
+ 	
     /**
      * Visits decimal field and can add new operations without modifying the structures
      * @param visitor used to visit decimal field
@@ -2139,8 +2144,13 @@ public final class StructuredReader {
 	    	}
 			return true;
 		}
-		return false;
-		
+		return false;		
+	}
+
+	public boolean hasAttachedObject(Object fieldIdAssoc) {		
+		return StructRegistry.hasAttachedObject(
+				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)), 
+				fieldIdAssoc, DataInputBlobReader.getStructType(channelReader));
 	}
 	
 

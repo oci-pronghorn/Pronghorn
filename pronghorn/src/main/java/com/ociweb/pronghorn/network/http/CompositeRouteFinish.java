@@ -17,7 +17,7 @@ public interface CompositeRouteFinish {
 	 * @return routeId
 	 */
 	int routeId(Object associatedObject);
-	
+		
 	CompositeRouteFinish defaultInteger(String key, long value);	
 	CompositeRouteFinish defaultText(String key, String value);
 	CompositeRouteFinish defaultDecimal(String key, long m, byte e);	

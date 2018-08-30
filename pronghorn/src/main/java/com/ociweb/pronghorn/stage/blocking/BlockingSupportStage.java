@@ -43,15 +43,15 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	 * @param chooser
 	 * @param blockables
 	 */
-	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, long timeoutNS, Choosable<T> chooser, Blockable<T,P,Q> ... blockables) {
-		this(graphManager,input,output,timeout,workPipe(blockables.length),timeoutNS, chooser,blockables);
+	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, long timeoutNS, Choosable<T> chooser, UnchosenMessage<T> unchosen, Blockable<T,P,Q> ... blockables) {
+		this(graphManager,input,output,timeout,workPipe(blockables.length),timeoutNS, chooser,unchosen,blockables);
 	}
 	
 	private static Pipe<BlockingWorkInProgressSchema> workPipe(int length) {
 		return BlockingWorkInProgressSchema.instance.newPipe(length, 0);
 	}
 
-	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, Pipe<BlockingWorkInProgressSchema> workload, long timeoutNS, Choosable<T> chooser, Blockable<T,P,Q> ... blockables) {
+	public BlockingSupportStage(GraphManager graphManager, Pipe<T> input, Pipe<P> output, Pipe<Q> timeout, Pipe<BlockingWorkInProgressSchema> workload, long timeoutNS, Choosable<T> chooser, UnchosenMessage<T> unchosen, Blockable<T,P,Q> ... blockables) {
 		super(graphManager, join(input, workload), join(output==timeout ? join(output) : join(output,timeout),workload));
 		this.input = input;
 		this.output = output;
@@ -142,30 +142,40 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	public void run() {
 		
 		//pick up as much new work as we can
+
 		while (Pipe.hasContentToRead(input)) {
 			int choice = chooser.choose(input);
-			if (choice>=0 && needsWorkWaiting[choice] && Pipe.hasRoomForWrite(inProgress)) {
-				//logger.info("\n---selected choice {}",choice);
-				
-				Blockable<T,P,Q> b = blockables[choice];
-				synchronized(b) {
-					if (needsWorkWaiting[choice]) {
-						//logger.info("\n---begin {}",choice);
-						needsWorkWaiting[choice] = false;
-						b.begin(input);
-						b.notify();
-						
-						int size = Pipe.addMsgIdx(inProgress, BlockingWorkInProgressSchema.MSG_INFLIGHT_1);
-						Pipe.confirmLowLevelWrite(inProgress, size);
-						Pipe.publishWrites(inProgress);
-				
-					}
+			if (choice>=0) {					
+				if (needsWorkWaiting[choice] && Pipe.hasRoomForWrite(inProgress)) {
+					//logger.info("\n---selected choice {}",choice);
+					
+					Blockable<T,P,Q> b = blockables[choice];
+					synchronized(b) {
+						if (needsWorkWaiting[choice]) {
+							if (b.begin(input)) {//returns true if new work was accepted
+								//logger.info("\n---begin {}",choice);
+								needsWorkWaiting[choice] = false;
+								b.notify();
+								
+								int size = Pipe.addMsgIdx(inProgress, BlockingWorkInProgressSchema.MSG_INFLIGHT_1);
+								Pipe.confirmLowLevelWrite(inProgress, size);
+								Pipe.publishWrites(inProgress);
+							}
+						}
+					} 
+				}else {
+					break;
 				}
 			} else {
+				//choice is negative so the waiting content must be sent to the producer
+				
+				Pipe.skipNextFragment(input);//placeholder...
+				
+				
 				break;
 			}
 		}
-
+	
 		
 		//finish any complete jobs
 		int j = completedWorkWaiting.length;

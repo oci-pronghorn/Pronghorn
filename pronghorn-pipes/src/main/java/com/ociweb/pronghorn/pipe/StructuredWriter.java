@@ -88,6 +88,12 @@ public class StructuredWriter {
 		storeAssocAndPosition(assoc);
 		channelWriter.writeUTF(text);
 	}
+	
+	public Appendable writeText(Object assoc) {
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		storeAssocAndPosition(assoc);
+		return channelWriter;	
+	}
 
 	/**
 	 * Defines the record after fields are defined

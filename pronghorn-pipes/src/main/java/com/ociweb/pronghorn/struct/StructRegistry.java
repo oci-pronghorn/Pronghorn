@@ -372,8 +372,8 @@ public class StructRegistry { //prong struct store
 		
 	}
 	
-	public Object structAssociatedObject(int structId) {
-		return structLocals[STRUCT_MASK&structId];
+	public <O extends Object> O structAssociatedObject(int structId) {
+		return (O)structLocals[STRUCT_MASK&structId];
 	}
 			 		
 	
