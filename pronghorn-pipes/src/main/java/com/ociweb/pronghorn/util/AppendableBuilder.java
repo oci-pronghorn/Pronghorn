@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 
 public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder> {
@@ -12,7 +13,7 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 	
     private byte[] buffer;	
 	private int byteCount;
-	private int pos;
+
     
 	//This class is allowed to grow but only up to the maximumAllocation
 	public AppendableBuilder(int maximumAllocation) {
@@ -20,6 +21,10 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		this.maximumAllocation = maximumAllocation;		
 		this.buffer = new byte[maximumAllocation<defaultSize?maximumAllocation:defaultSize];
 
+	}
+	
+	public void clear() {
+		byteCount = 0;	
 	}
 
 	public String toString() {
@@ -34,7 +39,8 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		return copyTo(Integer.MAX_VALUE, target);
 	}
 	
-	public int copyTo(int maxBytes, OutputStream target) {		
+	public int copyTo(int maxBytes, OutputStream target) {	
+		int pos = 0;
 		int len = Math.min(maxBytes, (byteCount-pos));
 		assert(len>=0);
 		try {
@@ -45,7 +51,16 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		}
 		return len;
 	}	
-	
+
+	public void copyTo(Appendable target) {
+		
+		if (target instanceof DataOutputBlobWriter) {
+			((DataOutputBlobWriter)target).write(buffer, 0, byteCount, Integer.MAX_VALUE);
+		} else {		
+			Appendables.appendUTF8(target, buffer, 0, byteCount, Integer.MAX_VALUE);
+		}
+		
+	}
 
 	
 	@Override
@@ -145,6 +160,7 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 	public void absolutePosition(int absolutePosition) {
 		byteCount = absolutePosition;
 	}
+
 
 
 }

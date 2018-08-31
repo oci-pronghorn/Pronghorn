@@ -8,6 +8,10 @@ public class StringBuilderWriter implements AppendableByteWriter<StringBuilderWr
         return builder.toString();
     }
 
+	public void clear() {
+		builder.setLength(0);
+	}
+	
     @Override
     public StringBuilderWriter append(CharSequence csq){
         builder.append(csq);

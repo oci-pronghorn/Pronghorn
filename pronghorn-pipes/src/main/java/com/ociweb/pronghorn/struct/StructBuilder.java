@@ -211,8 +211,20 @@ public class StructBuilder {
     	return addField(field, StructType.Text);
     };    
     
+    public <T extends Enum<T>> StructBuilder blobField(T field) {
+    	return addField(field, StructType.Blob);
+    };
+    
     public <T extends Enum<T>> StructBuilder decimalField(T field) {
     	return addField(field, StructType.Decimal);
+    };
+    
+    public <T extends Enum<T>> StructBuilder byteField(T field) {
+    	return addField(field, StructType.Byte);
+    };
+    
+    public <T extends Enum<T>> StructBuilder rationalField(T field) {
+    	return addField(field, StructType.Rational);
     };
     
     public <T extends Enum<T>> StructBuilder booleanField(T field) {
