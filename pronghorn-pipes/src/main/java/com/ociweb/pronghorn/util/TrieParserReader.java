@@ -442,23 +442,26 @@ public class TrieParserReader {
 	}
 
 	public static long parseNext(TrieParserReader reader, TrieParser trie) {
+		return parseNext(reader,trie,-1,-1);
+	}
+	
+	public static long parseNext(TrieParserReader reader, TrieParser trie, final long unfound, final long noMatch) {
 
 		final int originalPos = reader.sourcePos;
 		final int originalLen = reader.sourceLen;   
-		final int notFound = -1;
 
-		long result =  query(reader, trie, reader.sourceBacking, originalPos, originalLen, reader.sourceMask, notFound);
+		long result =  query(reader, trie, reader.sourceBacking, originalPos, originalLen, reader.sourceMask, unfound, noMatch);
 
 		//Hack for now
 		if (reader.sourceLen < 0) {
 			//logger.info("warning trieReader is still walking past end");
 			//TODO: URGENT FIX requred, this is an error in the trieReader the pattern "%b: %b\r\n" goes past the end and must be invalidated
-			result = notFound;//invalidate any selection
+			result = unfound;//invalidate any selection
 		}
 		//end of hack
 
 
-		if (result!=notFound) {
+		if (result!=unfound && result!=noMatch) {
 			return result;
 		} else {
 			//not found so roll the pos and len back for another try later
