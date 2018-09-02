@@ -683,199 +683,199 @@ public class SSLUtil {
 		int maxEncryptedContentLength = ccm.engineFactory.maxEncryptedContentLength();
 		int didWork = 0;
 
-		while (Pipe.hasContentToRead(source) ) {
-			
-			if (!Pipe.hasRoomForWrite(target)) {
-				return didWork;//try again later when there is room in the output
-			}			
+		while (Pipe.hasContentToRead(source) ) {			
+			if (Pipe.hasRoomForWrite(target)) {					
 
-			BaseConnection cc = null;
-			long arrivalTime = 0;
-			if ( Pipe.peekMsg(source, NetPayloadSchema.MSG_ENCRYPTED_200)) { 	
-				
-				assert(Pipe.peekInt(source) == NetPayloadSchema.MSG_ENCRYPTED_200);
-				
-				final long connectionId = Pipe.peekLong(source, 1);
-				assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
-				
-				cc = ccm.lookupConnectionById(connectionId); //connection id	
-
-				if (null==cc || !cc.isValid ) {
-					Pipe.skipNextFragment(source);
-					continue;
-				}
-
-				//need to come back in for needed wrap even without content to read but... we need the content to give use the CC !!!
-				didWork = handShakeUnWrapIfNeeded(maxEncryptedContentLength, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime=Pipe.peekLong(source, 3), cc);
-				assert(rolling.limit()==rolling.capacity());	
-				
-				if (didWork<0) {
+				BaseConnection cc = null;
+				long arrivalTime = 0;
+				if ( Pipe.peekMsg(source, NetPayloadSchema.MSG_ENCRYPTED_200)) { 	
 					
-					if (rolling.position()==0 ) {
-						 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
-						 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
-							 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
-							 //send release because handshake is incomplete, waiting on other side or the connection has been closed
-							 sendRelease(source, releasePipe, cc, isServer);						
-						 }
-					}
-					///////////
-					return 0;// this case needs more data to finish handshake so returns
-					///////////
+					assert(Pipe.peekInt(source) == NetPayloadSchema.MSG_ENCRYPTED_200);
 					
-				} else if (didWork==1) {	
-					//logger.trace("finished shake");
-					if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
-						 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
-						 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
-							 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
-							 sendRelease(source, releasePipe, cc, isServer);
-						 }
+					final long connectionId = Pipe.peekLong(source, 1);
+					assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
+					
+					cc = ccm.lookupConnectionById(connectionId); //connection id	
+	
+					if (null==cc || !cc.isValid ) {
+						Pipe.skipNextFragment(source);
+						continue;
 					}
-					if (HandshakeStatus.NOT_HANDSHAKING !=  cc.getEngine().getHandshakeStatus()) {
-						///////////////////
-						return 1;//not yet done with handshake so do not start processing data.
-						///////////////////
+	
+					//need to come back in for needed wrap even without content to read but... we need the content to give use the CC !!!
+					didWork = handShakeUnWrapIfNeeded(maxEncryptedContentLength, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime=Pipe.peekLong(source, 3), cc);
+					assert(rolling.limit()==rolling.capacity());	
+					
+					if (didWork<0) {
+						
+						if (rolling.position()==0 ) {
+							 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
+							 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
+								 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+								 //send release because handshake is incomplete, waiting on other side or the connection has been closed
+								 sendRelease(source, releasePipe, cc, isServer);						
+							 }
+						}
+						///////////
+						return 0;// this case needs more data to finish handshake so returns
+						///////////
+						
+					} else if (didWork==1) {	
+						//logger.trace("finished shake");
+						if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
+							 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
+							 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
+								 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+								 sendRelease(source, releasePipe, cc, isServer);
+							 }
+						}
+						if (HandshakeStatus.NOT_HANDSHAKING !=  cc.getEngine().getHandshakeStatus()) {
+							///////////////////
+							return 1;//not yet done with handshake so do not start processing data.
+							///////////////////
+						}
+					} else {
+						//logger.trace("finished shake2");
+						assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
+						//we can begin processing data now.
+						
+						assert(null!=cc);
+						
 					}
 				} else {
-					//logger.trace("finished shake2");
-					assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
-					//we can begin processing data now.
 					
-					assert(null!=cc);
+					//this is EOF or the Begin message to be relayed
+					if (Pipe.peekMsg(source, NetPayloadSchema.MSG_BEGIN_208)) {										
+											
+						Pipe.addMsgIdx(target, Pipe.takeMsgIdx(source));
+						Pipe.addIntValue(Pipe.takeInt(source), target); // sequence
+						
+						Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_BEGIN_208));
+						Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, NetPayloadSchema.MSG_BEGIN_208));
+						
+						Pipe.publishWrites(target);
+						Pipe.releaseReadLock(source);					
+			
+						//only need to release the read, the write has already been published to target
+						continue;
+					}
+	
+				}
+				
+				assert(rolling.limit()==rolling.capacity());
+					
+				ByteBuffer[] writeHolderUnWrap;
+				
+				if (Pipe.hasContentToRead(source)) {
+					
+					int msgIdx = Pipe.takeMsgIdx(source); 
+	
+					if (msgIdx<0) {	
+						shutdownUnwrapper(source, target, rolling, isServer, maxEncryptedContentLength, System.currentTimeMillis(), cc);
+						return -1;
+					} else if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
+	
+						Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
+						long conId = Pipe.takeLong(source);
+						Pipe.addLongValue(conId, target); //ConnectionId
+						Pipe.confirmLowLevelWrite(target,Pipe.sizeOf(target, NetPayloadSchema.MSG_DISCONNECT_203));
+						Pipe.publishWrites(target);
+	
+						Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
+						Pipe.releaseReadLock(source);
+		
+						rolling.clear();
+						 
+						return didWork;
+					} else if (msgIdx == NetPayloadSchema.MSG_BEGIN_208) {
+						
+						Pipe.addMsgIdx(target, msgIdx);
+						Pipe.addIntValue(Pipe.takeInt(source), target); // sequence
+						
+						Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_BEGIN_208));
+						Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, NetPayloadSchema.MSG_BEGIN_208));
+						
+						Pipe.publishWrites(target);
+						Pipe.releaseReadLock(source);	
+						
+						return didWork;
+					} else {
+						assert(msgIdx == NetPayloadSchema.MSG_ENCRYPTED_200) : "source provided message of "+msgIdx;					
+					
+						long connectionId = Pipe.takeLong(source);
+						arrivalTime = Pipe.takeLong(source);
+						assert(cc.id == connectionId);
+					}
+					
+					
+					//////////////		
+					writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
+	
+					gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, writeHolderUnWrap, isServer, source);
+												
+					Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
+					Pipe.releaseReadLock(source);
+					
+				} else {				
+					writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
+				}
+				
+				SSLEngineResult result=null;
+				Status status = null==result?null:result.getStatus();			
+		
+				if ((null==status || Status.OK==status) && rolling.position()>0) { //rolling has content to consume
+					((Buffer)rolling).flip();	
+					
+					try {
+						/////////////////
+						//this method will consume all it can from rolling before returning
+						//no need to worry about remaining data in rolling, it must be a partial waiting on extra data
+						////////////////
+						result = unwrapRollingNominal(rolling, maxEncryptedContentLength, writeHolderUnWrap, result, cc); //remaining data is ready for append
+						status = null==result?null:result.getStatus();	
+					} catch (SSLException sslex) {
+						rolling.clear();//TODO: consume all the broken messages...
+						manageException(sslex, cc, isServer);
+						continue;
+					}
+					
+				} 				
+							
+				//else rolling has no data so nothing to do.
+				assert(rolling.limit()==rolling.capacity());			
+	
+				publishWrittenPayloadForUnwrap(source, target, rolling, cc, arrivalTime);
+						
+			//	System.err.println("rolling for id "+cc.id+" holds "+rolling+" "+cc.getEngine().getHandshakeStatus()+"  "+cc.getEngine().getSession()+"  "+status);
+				
+				//nothing need be done for OK or null.
+				//nothing need be done for underflow, next read will get more data.
+		         if (status == Status.BUFFER_OVERFLOW) {	
+					//too much data and the buffer is not big enough
+					//this should not happen.
+					logger.info("\nOVERFLOW, the pipe {} is not configured to be large enough. {} Connection has been closed.", target.id, target.config());	
+					//((Buffer)rolling).clear();
+					//cc.close();
+					return 0;
+					
+				} else if (status==Status.CLOSED){				
+					//logger.trace("closed status detected");				
+					try {
+						 cc.getEngine().closeOutbound();
+						 handShakeUnWrapIfNeeded(maxEncryptedContentLength, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime, cc);
+					     cc.getSocketChannel().close();
+					} catch (IOException e) {
+						cc.isValid = false;
+						logger.warn("Error closing connection ",e);
+					}				
+					//clear the rolling for the next user/call since this one is closed
+					((Buffer)rolling).clear();
+					cc.close();
 					
 				}
 			} else {
-				
-				//this is EOF or the Begin message to be relayed
-				if (Pipe.peekMsg(source, NetPayloadSchema.MSG_BEGIN_208)) {										
-										
-					Pipe.addMsgIdx(target, Pipe.takeMsgIdx(source));
-					Pipe.addIntValue(Pipe.takeInt(source), target); // sequence
-					
-					Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_BEGIN_208));
-					Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, NetPayloadSchema.MSG_BEGIN_208));
-					
-					Pipe.publishWrites(target);
-					Pipe.releaseReadLock(source);					
-		
-					//only need to release the read, the write has already been published to target
-					continue;
-				}
-
-			}
-			
-			assert(rolling.limit()==rolling.capacity());
-				
-			ByteBuffer[] writeHolderUnWrap;
-			
-			if (Pipe.hasContentToRead(source)) {
-				
-				int msgIdx = Pipe.takeMsgIdx(source); 
-
-				if (msgIdx<0) {	
-					shutdownUnwrapper(source, target, rolling, isServer, maxEncryptedContentLength, System.currentTimeMillis(), cc);
-					return -1;
-				} else if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
-
-					Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
-					long conId = Pipe.takeLong(source);
-					Pipe.addLongValue(conId, target); //ConnectionId
-					Pipe.confirmLowLevelWrite(target,Pipe.sizeOf(target, NetPayloadSchema.MSG_DISCONNECT_203));
-					Pipe.publishWrites(target);
-
-					Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
-					Pipe.releaseReadLock(source);
-	
-					rolling.clear();
-					 
-					return didWork;
-				} else if (msgIdx == NetPayloadSchema.MSG_BEGIN_208) {
-					
-					Pipe.addMsgIdx(target, msgIdx);
-					Pipe.addIntValue(Pipe.takeInt(source), target); // sequence
-					
-					Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_BEGIN_208));
-					Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, NetPayloadSchema.MSG_BEGIN_208));
-					
-					Pipe.publishWrites(target);
-					Pipe.releaseReadLock(source);	
-					
-					return didWork;
-				} else {
-					assert(msgIdx == NetPayloadSchema.MSG_ENCRYPTED_200) : "source provided message of "+msgIdx;					
-				
-					long connectionId = Pipe.takeLong(source);
-					arrivalTime = Pipe.takeLong(source);
-					assert(cc.id == connectionId);
-				}
-				
-				
-				//////////////		
-				writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
-
-				gatherPipeDataForUnwrap(maxEncryptedContentLength, rolling, cc, writeHolderUnWrap, isServer, source);
-											
-				Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
-				Pipe.releaseReadLock(source);
-				
-			} else {				
-				writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
-			}
-			
-			SSLEngineResult result=null;
-			Status status = null==result?null:result.getStatus();			
-	
-			if ((null==status || Status.OK==status) && rolling.position()>0) { //rolling has content to consume
-				((Buffer)rolling).flip();	
-				
-				try {
-					/////////////////
-					//this method will consume all it can from rolling before returning
-					//no need to worry about remaining data in rolling, it must be a partial waiting on extra data
-					////////////////
-					result = unwrapRollingNominal(rolling, maxEncryptedContentLength, writeHolderUnWrap, result, cc); //remaining data is ready for append
-					status = null==result?null:result.getStatus();	
-				} catch (SSLException sslex) {
-					rolling.clear();//TODO: consume all the broken messages...
-					manageException(sslex, cc, isServer);
-					continue;
-				}
-				
-			} 				
-						
-			//else rolling has no data so nothing to do.
-			assert(rolling.limit()==rolling.capacity());			
-
-			publishWrittenPayloadForUnwrap(source, target, rolling, cc, arrivalTime);
-					
-		//	System.err.println("rolling for id "+cc.id+" holds "+rolling+" "+cc.getEngine().getHandshakeStatus()+"  "+cc.getEngine().getSession()+"  "+status);
-			
-			//nothing need be done for OK or null.
-			//nothing need be done for underflow, next read will get more data.
-	         if (status == Status.BUFFER_OVERFLOW) {	
-				//too much data and the buffer is not big enough
-				//this should not happen.
-				logger.info("\nOVERFLOW, the pipe {} is not configured to be large enough. {} Connection has been closed.", target.id, target.config());	
-				//((Buffer)rolling).clear();
-				//cc.close();
-				return 0;
-				
-			} else if (status==Status.CLOSED){				
-				//logger.trace("closed status detected");				
-				try {
-					 cc.getEngine().closeOutbound();
-					 handShakeUnWrapIfNeeded(maxEncryptedContentLength, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime, cc);
-				     cc.getSocketChannel().close();
-				} catch (IOException e) {
-					cc.isValid = false;
-					logger.warn("Error closing connection ",e);
-				}				
-				//clear the rolling for the next user/call since this one is closed
-				((Buffer)rolling).clear();
-				cc.close();
-				
-			}
+				return didWork;//try again later when there is room in the output
+			}	         
 		}
 		
 		return didWork;
@@ -888,8 +888,7 @@ public class SSLUtil {
 			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
 			Pipe.addLongValue(cc.getId(), target); //connection id	
 			Pipe.addLongValue(arrivalTime, target);
-			long releasePosition = rolling.hasRemaining()? 0 : Pipe.tailPosition(source);
-			Pipe.addLongValue(releasePosition, target); //position
+			Pipe.addLongValue(Pipe.tailPosition(source), target); //position
 			
 			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)cc.localRunningBytesProduced, target);

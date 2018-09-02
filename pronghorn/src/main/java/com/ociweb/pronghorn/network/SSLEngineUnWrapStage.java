@@ -19,6 +19,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class SSLEngineUnWrapStage extends PronghornStage {
 
+	public static boolean showRolling;
+	
 	private final SSLConnectionHolder ccm;
 	private final Pipe<NetPayloadSchema>[] encryptedContent; 
 	private final Pipe<NetPayloadSchema>[] outgoingPipeLines;

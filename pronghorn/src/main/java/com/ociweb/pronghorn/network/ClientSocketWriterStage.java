@@ -233,7 +233,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 		int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
 		int len = Pipe.takeByteArrayLength(pipe);							
 		
-		didWork = wraupUpEncryptedToSingleWrite(didWork, i, 
+		if (showWrites) {
+			logger.info("/////\n/// has connection "+((cc!=null)&&cc.isValid())+" channelId "+channelId+" write encrypted length:"+len);
+			
+		}
+		
+		didWork = wrapupUpEncryptedToSingleWrite(didWork, i, 
 				pipe, msgIdx, channelId, meta, len,
 				cc);
 	
@@ -267,7 +272,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {	 						
 				didWork = rollUpPlainsToSingleWrite(didWork, i, 
 						pipe, msgIdx, channelId, cc, meta,
-						len, showWrites);
+						len);
 	
 		} else {
 			logger.error("Hanshake not supported here, this message should not have arrived");
@@ -276,7 +281,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		return didWork;
 	}
 
-	private boolean wraupUpEncryptedToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx,
+	private boolean wrapupUpEncryptedToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx,
 			final long channelId, int meta, int len, ClientConnection cc) {
 			
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
@@ -323,6 +328,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 		        int len2 = Pipe.takeByteArrayLength(pipe);
 		        ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 		        
+		        if (showWrites) {
+					logger.info("/////\n/// has connection "+((cc!=null)&&cc.isValid())+" channelId "+channelId+" write encrypted length:"+len2);
+					
+				}
+		        
 		        buffers[i].put(writeBuffs2[0]);
 		        buffers[i].put(writeBuffs2[1]);
 		    									            
@@ -344,7 +354,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	//NOTE: if closed we can not "roll up" an can on use same cc instance!!
 	
 	private boolean rollUpPlainsToSingleWrite(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx, long channelId,
-			ClientConnection cc, int meta, int len, boolean showWrittenData) {
+			ClientConnection cc, int meta, int len) {
 
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
@@ -390,7 +400,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		            int meta2 = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
 		            int len2 = Pipe.takeByteArrayLength(pipe);
 		            
-		            if (showWrittenData) {
+		            if (showWrites) {
 		            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							
 						Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos2, len2, Pipe.blobMask(pipe));
 		            }
