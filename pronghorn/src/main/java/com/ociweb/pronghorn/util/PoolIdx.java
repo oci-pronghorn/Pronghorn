@@ -250,6 +250,15 @@ public final class PoolIdx  {
         return -1;
     }
     
+    public void visitLocked(PoolIdxKeys visitor) {
+        int i = keys.length;
+        while (--i>=0) {
+            if (0 != locked[i]) {            
+            	visitor.visit(keys[i]);
+            }
+        }
+    }
+    
     public int locks() {
         return (int)(locksTaken-locksReleased);
     }
