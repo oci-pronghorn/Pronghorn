@@ -32,6 +32,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 	private AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 	private Logger logger = LoggerFactory.getLogger(BlockingSupportStage.class);
 	private final Pipe<BlockingWorkInProgressSchema> inProgress;
+	private final UnchosenMessage<T> unchosen;
 	
 	/**
 	 *
@@ -60,6 +61,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		this.blockables = blockables;
 		this.timeoutNS = timeoutNS;
 		this.inProgress = workload;
+		this.unchosen = unchosen;
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lightcoral", this);
 	}
@@ -167,11 +169,8 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 					break;
 				}
 			} else {
-				//choice is negative so the waiting content must be sent to the producer
-				
-				Pipe.skipNextFragment(input);//placeholder...
-				
-				
+				//choice is negative so the waiting content must be sent to the unchosen
+				unchosen.message(input);				
 				break;
 			}
 		}
