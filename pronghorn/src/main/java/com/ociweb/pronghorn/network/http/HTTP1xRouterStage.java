@@ -121,7 +121,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		                               Pipe<ReleaseSchema> ackStop,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, 
                                            ServerCoordinator coordinator, boolean catchAll) {
-        
        return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, log, ackStop, config, coordinator, catchAll); 
     }
   
@@ -290,7 +289,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            if (singlePipe(this, i)>=0) {	            			            	
 	            } else {	
 	            	
-	            	System.out.println("shutdown count "+shutdownCount);
+	            	///System.out.println("shutdown count "+shutdownCount);
 	            	
 	            	if (--shutdownCount<=0) {
 	            		requestShutdown();
@@ -308,12 +307,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     //return 0, 1 work, -1 shutdown.
     private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
-
+   	
+    	
     	final int start = that.inputLengths[idx];
-        if (accumRunningBytes(  that,
-        		                     idx, 
-				            		 that.inputs[idx],
-				            		 that.inputChannels[idx]) >=0) {//message idx   
+        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx])
+        		             >=0) {//message idx   
         	
         	if (!that.needsData[idx]) {
         	} else {        		
@@ -342,9 +340,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		}
         }       
         
-        //the common case is -1 so that is first.
-        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 0 :
-	        	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
+        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 
+        			0 :	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
     }
 
 
@@ -356,15 +353,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	return false;//try later after log pipe is cleared
         }
         
-		boolean didWork = false;
-			
 		boolean webSocketUpgraded = ServerCoordinator.isWebSocketUpgraded(coordinator, channel);
 		if (!webSocketUpgraded) {			
-			didWork = parseHTTPAvail(this, idx, selectedInput, channel, didWork);
+			return parseHTTPAvail(this, idx, selectedInput, channel, false);
 		} else {
 			
-			final int totalAvail = inputLengths[idx]; 
-		    
+			final int totalAvail = inputLengths[idx];
             final int pipeIdx = ServerCoordinator.getWebSocketPipeIdx(coordinator, channel);
             final Pipe<HTTPRequestSchema> outputPipe = outputs[pipeIdx];
             if (!Pipe.hasRoomForWrite(outputPipe) ) {
@@ -413,7 +407,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            	//at this point we are committed to doing the write
 	            	//we have data and we have room
 	            	///////////////////
-	            	didWork = true;
+	            	
 	            	return commitWrite(idx, selectedInput, channel, totalAvail,
 	            			outputPipe, backing, mask, pos, finOpp,
 	            			headerSize, msk, length);
@@ -422,14 +416,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            	return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 	            }
             } else {
+            	
             	//not even 2 so jump out now
             	this.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
             	return false;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 
             }
 		}
-				
-		return didWork;
+
 	}
 
 
@@ -520,27 +514,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		
 				if (SUCCESS == state) {
 					
-					boolean logTrafficEnabled = null != that.log;
-					
-					if (logTrafficEnabled) {
-						
-						//this logs every input at this point
-						Pipe<HTTPLogRequestSchema> logOut = that.log;
-					
-						Pipe.presumeRoomForWrite(logOut);//checked above					
-						int size = Pipe.addMsgIdx(logOut, HTTPLogRequestSchema.MSG_REQUEST_1);
-						Pipe.addLongValue(arrivalTime, logOut);
-						Pipe.addLongValue(channel, logOut);
-						Pipe.addIntValue(seqForLogging, logOut);
-				
-						Pipe.addByteArray(Pipe.blob(selectedInput),
-								          posForLogging, 
-								          totalConsumed,  
-								          that.trieReader.sourceMask, logOut);
-						
-						Pipe.confirmLowLevelWrite(logOut, size);
-						Pipe.publishWrites(logOut);					
-						
+					if (null != that.log) {						
+						logTraffic(that, selectedInput, channel, arrivalTime, seqForLogging, posForLogging,
+								totalConsumed);
 					}
 					result = consumeBlock(that, idx, selectedInput, channel,
 							              that.inputBlobPos[idx], 
@@ -548,13 +524,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							              remainingBytes);
 				 } else if (NEED_MORE_DATA == state) {				
 					that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+	
 					result = false;   
-				 } else {				
+				 } else {	
+					 //we have no room to write, we need no more data but must try again
 				    result = false;
 				 }
 				
 				didWork|=result;
 			} else {
+			
+				//System.out.println("xxxx ");
 			
 				assert(that.inputLengths[idx] <= (selectedInput.blobMask+(selectedInput.blobMask>>1))) : "This data should have been parsed but was not understood, check parser and/or sender for corruption.";
 				result = false;
@@ -565,7 +545,25 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	}
 
 
+	private static void logTraffic(HTTP1xRouterStage that, Pipe<NetPayloadSchema> selectedInput, final long channel,
+			long arrivalTime, int seqForLogging, int posForLogging, int totalConsumed) {
+		//this logs every input at this point
+		Pipe<HTTPLogRequestSchema> logOut = that.log;
 
+		Pipe.presumeRoomForWrite(logOut);//checked above					
+		int size = Pipe.addMsgIdx(logOut, HTTPLogRequestSchema.MSG_REQUEST_1);
+		Pipe.addLongValue(arrivalTime, logOut);
+		Pipe.addLongValue(channel, logOut);
+		Pipe.addIntValue(seqForLogging, logOut);
+
+		Pipe.addByteArray(Pipe.blob(selectedInput),
+				          posForLogging, 
+				          totalConsumed,  
+				          that.trieReader.sourceMask, logOut);
+		
+		Pipe.confirmLowLevelWrite(logOut, size);
+		Pipe.publishWrites(logOut);
+	}
 
 	private static boolean consumeBlock(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput,
 			final long channel, int p, int totalAvail, 
@@ -574,7 +572,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 		p += totalConsumed;
 		totalAvail -= totalConsumed;
-		
+			
 		Pipe.releasePendingAsReadLock(selectedInput, totalConsumed);
 
 		assert(totalAvail == remainingBytes);
@@ -587,18 +585,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		//the release pending above should keep them in algnment and the ounstanding should match
 		assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, that.inputBlobPos[idx], that.inputLengths[idx]));
 		
-		if (totalAvail==0) {
-			that.inputChannels[idx] = -1;//must clear since we are at a safe release point
-			                        //next read will start with new postion.
-				//send release if appropriate
-      
-				if ((remainingBytes<=0) 
-					&& consumedAllOfActiveFragment(selectedInput, p)) { 
-			
+		if ((totalAvail==0) && (remainingBytes<=0) && consumedAllOfActiveFragment(selectedInput, p)) {
+						that.inputChannels[idx] = -1;
+						
+						//proposed for clearing
 						assert(0==Pipe.releasePendingByteCount(selectedInput));
-						that.sendRelease(channel, idx);
-																
-				}
+						assert(Pipe.getWorkingTailPosition(selectedInput) == Pipe.tailPosition(selectedInput));
+						that.sendRelease(channel, idx);																
+				
 		}
 		return totalConsumed>0;
 	}
@@ -691,11 +685,12 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	int tempPos = trieReader.sourcePos;
     
 	
-	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
+	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap, -1, -2);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-    		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
+    		if (-1==verbId && (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0))) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
+    			//the -2 unFound case and the case where we have too much data.
     			badVerbParse(trieReader, channel, idx, tempLen, tempPos);
     			return SUCCESS;			
     		}    		
@@ -710,7 +705,20 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
-	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
+	final int pathId = (int)TrieParserReader.parseNext(trieReader, config.urlMap, -1, -2);     //  GET /hello/x?x=3 HTTP/1.1 
+	
+	if (pathId<0) {
+		
+		if (-1==pathId && (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0)) {
+			//logger.info(routeId+" need more data C  "+tempLen+"  "+config.urlMap.longestKnown()+" "+trieReader.sourceLen);
+			return NEED_MORE_DATA;    			
+		} else {
+			//bad format route path error, could not find space after path and before route, send 404 error
+			sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
+			return SUCCESS;
+		}
+	}	
+	
 	//the above URLS always end with a white space to ensure they match the spec.
     int routeId;
     if (config.UNMAPPED_ROUTE == pathId) {
@@ -727,17 +735,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     }
 
     
-    if (pathId<0) {
-
-    	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
-    		//logger.info(routeId+" need more data C  "+tempLen+"  "+config.urlMap.longestKnown()+" "+trieReader.sourceLen);
-			return NEED_MORE_DATA;    			
-		} else {
-			//bad format route path error, could not find space after path and before route, send 404 error
-			sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
-			return SUCCESS;
-		}
-    }
 
  
    // logger.info("send this message to route {}",routeId);
@@ -842,12 +839,12 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
       
     	tempLen = trieReader.sourceLen;
     	tempPos = trieReader.sourcePos;
-        int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
+        int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap, -1, -2);  //  GET /hello/x?x=3 HTTP/1.1 
         
         if (httpRevisionId<0) { 
         	DataOutputBlobWriter.closeLowLevelField(writer);
         	Pipe.resetHead(outputPipe);
-        	if (tempLen < (config.revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) ) { //added 1 for the space which must appear after
+        	if (-1==httpRevisionId && (tempLen < (config.revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) )) { //added 1 for the space which must appear after
         		//logger.info("need more data D");        		
         		return NEED_MORE_DATA;    			
     		} else {
@@ -937,7 +934,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 		}
 		
         //no room try again later zero or negative values are the the pipe index of which is backed up.
-        return -pathId;
+        return -1;
     }
     
    inputCounts[idx]++; 
@@ -989,6 +986,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			int remainingLen;
 			while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
 			
+				//this may be an unknown header so we allow for non matching from our list.
 				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 				
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
@@ -1162,14 +1160,7 @@ private static int accumRunningBytes(
 						 final int idx, 
 		                 Pipe<NetPayloadSchema> selectedInput,
 		                 long inChnl) {
-	//    boolean debug = true;
-	//    if (debug) {
-	//		logger.info("{} accumulate data rules {} && ({} || {} || {})", idx,
-	//	    		     Pipe.hasContentToRead(selectedInput), 
-	//	    		     hasNoActiveChannel(inChnl), 
-	//	    		     hasReachedEndOfStream(selectedInput), 
-	//	    		     hasContinuedData(selectedInput, inChnl) );
-	//    }
+
 	    int messageIdx = Integer.MAX_VALUE;
 	
 	    while ( //NOTE has content to read looks at slab position between last read and new head.
@@ -1181,9 +1172,15 @@ private static int accumRunningBytes(
 		    				//if we have reached the end of the stream       
 		            )
 	          ) {
+	    	//if the old was released or this matches or this was proposed for release we set this new current channel.
 	
+	    	if (inChnl<0 && Pipe.peekMsg(selectedInput, NetPayloadSchema.MSG_PLAIN_210)) {
+	    		 that.inputChannels[idx] = Pipe.peekLong(selectedInput, 1);  
+	    		 assert(that.inputChannels[idx]>=0) : "channel must not be negative.";
+	    	}
+	    	
 	    	messageIdx = Pipe.takeMsgIdx(selectedInput);
-	        
+
 	        //logger.info("seen message id of {}",messageIdx);
 	        
 	        if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
@@ -1248,7 +1245,7 @@ private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput,
 	assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
 	
 	//grow position
-	assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
+	assert(inputLengths[idx]>=0) : "not expected to be 0 or negative but found "+inputLengths[idx];
 	inputLengths[idx] += length; 
 	inputBlobPosLimit[idx] += length;
 	
@@ -1307,12 +1304,15 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		//Pipe.releaseReadLock(selectedInput);
 		Pipe.readNextWithoutReleasingReadLock(selectedInput);
 		//do not return, we will go back arround the while again. 
+		
+		//starting a new sequence of data, all the old data including this begin must be released.
+		Pipe.releaseAllPendingReadLock(selectedInput);
 	}
 
 
     // Warning Pipe.hasContentToRead(selectedInput) must be called first.
 	private static boolean hasNoActiveChannel(long inChnl) {
-		return -1 == inChnl;
+		return inChnl<0;
 	}
 
 	// Warning Pipe.hasContentToRead(selectedInput) must be called first.

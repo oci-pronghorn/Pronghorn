@@ -461,7 +461,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							break;
 						}		
 					
-						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
+						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
 						if (revisionId>=0) {
 													
 							clearConnectionStateData(i);
@@ -490,7 +490,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
-							if (trieReader.sourceLen < (revisionMap.longestKnown()+1)) {
+							if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
 								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								break;//not an error just needs more data.
 							} else {
