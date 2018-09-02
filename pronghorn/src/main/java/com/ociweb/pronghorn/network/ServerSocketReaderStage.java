@@ -127,6 +127,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			@Override
 			public void accept(SelectionKey selection) {
 				hasRoomForMore &= processSelection(selection); 
+				doneSelectors.add(selection);//remove them all..
 			}
     };    
 
@@ -239,7 +240,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			} catch (IOException e) {				
 			}
 			//if this selection was closed then remove it from the selections
-			removeSelection(selection);
+
 			if (coordinator.checkForResponsePipeLineIdx(channelId)>=0) {
 				coordinator.releaseResponsePipeLineIdx(channelId);
 			}			
@@ -251,20 +252,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (coordinator.isTLS) {
 				
 			if (null!=cc && null!=cc.getEngine()) {
-				HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-
+				 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 				 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 		                Runnable task;//TODO: there is an opportunity to have this done by a different stage in the future.
 		                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 		                	task.run();
 		                }
-		                //TODO: delete this does not appear to be needed
-		                //handshakeStatus = cc.getEngine().getHandshakeStatus();
 				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 					 releasePipesForUse();
-					 //NOT sure assert is right, delete: assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";
 					 processWork = false;
-				 }
+				 }				 
 			}
 		}
 		
@@ -307,16 +304,31 @@ public class ServerSocketReaderStage extends PronghornStage {
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
+							
+							
+							//scan old for unrleased..
+							
+							//find the locked connections, if they are closed free them.
+							
+							//System.out.println("here are the locks ddddddddddddddddddddddddddd");
+						//	coordinator.releaseAllAbandonedPipeLineIdx();
+							
+							
+							
+							
+							
+					//////////////		
+							
 							//we can not begin this connection right now so we will try again later.
 							//we remove this selection so we can process other connections work while we wait for a pipe to open up
-							removeSelection(selection);
+
 							//logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs+" new connection "+channelId);
 
 							//TODO: add countdown when everything else works.
 							//we want to keep this cc a couple rounds then abandon. we may be dropping this too soon.
 							cc.close();
 							cc.decompose();
-							
+						//	System.out.println("killed this connection because we can not find a response pipe");
 							return true;
 						}
 						
@@ -357,7 +369,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 							                                output[responsePipeLineIdx], 
 							                                newBeginning, 
 							                                cc, selection);
-					removeSelection(selection);
+			
 					//always remove even when we could not write because we may require the data behind this selection 
 					if (pumpState<=0) {
 						hasOutputRoom = false;
@@ -365,7 +377,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				} 
 		}
 		return hasOutputRoom;
-	}
+	} 
 
 	private boolean validateClose(final SocketChannel socketChannel, final long channelId) {
 
@@ -388,11 +400,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	}
 
-	private void removeSelection(SelectionKey selection) {
-
-		doneSelectors.add(selection);//add to list for removal
-
-	}
 
 	private int rMask = 0;
 	
@@ -449,7 +456,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
-		//	logger.info("NEW RELEASE for pipe {} connection {}",pipeIdx, idToClear);
+		//	logger.info("NEW RELEASE for pipe {} connection {} at pos {}",pipeIdx, idToClear, pos);
 			coordinator.releaseResponsePipeLineIdx(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
@@ -467,7 +474,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private boolean hasNewDataToRead() {
     	
     	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
-    		System.err.println("old selections "+selectedKeys.size());
+    		System.err.println("!!!!!!!!!!!!!!!!!!!!!!!!  shoudl this happen  ?????  old selections "+selectedKeys.size());
     		return true;
     	}
     		
@@ -640,16 +647,23 @@ public class ServerSocketReaderStage extends PronghornStage {
 	        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);     
 	
 	        if (showRequests) {
-	        	//ONLY VALID FOR UTF8
-	        	logger.info("/////////////\n/////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",
-	        			channelId, originalBlobPosition, len, 
-	        			
-	        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
-	        			
-	        			Appendables.appendUTF8(new StringBuilder(), 
-	        					targetPipe.blobRing, 
-	        					originalBlobPosition, 
-	        					(int)len, targetPipe.blobMask));               
+	        	
+	        	if (!"Telemetry Server".equals(coordinator.serviceName())) {
+	        		try {
+			        	//ONLY VALID FOR UTF8
+			        	logger.info("/////////////\n/////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",
+			        			channelId, originalBlobPosition, len, 
+			        			
+			        			//TODO: the len here is wrong and must be  both the header size plus the payload size....
+			        			
+			        			Appendables.appendUTF8(new StringBuilder(), 
+			        					targetPipe.blobRing, 
+			        					originalBlobPosition, 
+			        					(int)len, targetPipe.blobMask));             
+	        		} catch (Exception e) {
+	        			//ignore we are debugging.
+	        		}
+	        	}
 	        }
 	        
 	        

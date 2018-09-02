@@ -196,8 +196,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 	}
 	
+	public int totalResponsePipeLineIdxLocks() {
+		return responsePipeLinePool.locks();
+	}
+	
 	public void showPipeLinePool() {
-		System.out.println(responsePipeLinePool.toString());
+		logger.info("PipeLinePoolLocks:\n{}",responsePipeLinePool);
 	}
 	
 	public int checkForResponsePipeLineIdx(long ccId) {
@@ -208,6 +212,28 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		responsePipeLinePool.release(ccId);	
 		//logger.info("after release we have {} locks",responsePipeLinePool.locks());
 	}
+	
+	
+//	PoolIdxKeys releaseAbandoned = new PoolIdxKeys() {
+//
+//		@Override
+//		public void visit(long key) {
+//			BaseConnection cc = socketHolder.get(key);
+//			
+//			System.out.println("conn: "+cc.id+"  "+cc.isValid+" "+cc.isDisconnecting);
+//			
+//			//cc.getLastUsedTime()
+//			
+//		}
+//		
+//	};
+//	
+//	//find all the old reservations and clear them...
+//	public void releaseAllAbandonedPipeLineIdx() {
+//
+//		responsePipeLinePool.visitLocked(releaseAbandoned);
+//		
+//	}
 	
 	public int resposePoolSize() {
 		return responsePipeLinePool.length();
