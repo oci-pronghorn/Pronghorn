@@ -4146,10 +4146,9 @@ public class Pipe<T extends MessageSchema<T>> {
      * Checks to see whether pipe has any data or not. If not empty does NOT mean it has a full message.
      * We may have data on the pipe which can not be cleared or read, in that case it is NOT empty.
      * @param pipe pipe to be checked
-     * @param <S> MessageSchema to extend
      * @return <code>true</code> if pipe has no data else <code>false</code>
      */
-    public static <S extends MessageSchema<S>> boolean isEmpty(Pipe<S> pipe) {
+    public static boolean isEmpty(Pipe<?> pipe) {
     	return (pipe.slabRingHead.workingHeadPos.value == pipe.slabRingTail.workingTailPos.value) && 
     		   (Pipe.headPosition(pipe) == Pipe.tailPosition(pipe));
     	

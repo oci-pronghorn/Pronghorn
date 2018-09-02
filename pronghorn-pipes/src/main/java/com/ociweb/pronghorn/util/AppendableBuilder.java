@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 
@@ -161,6 +162,9 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		byteCount = absolutePosition;
 	}
 
+	public boolean isEqual(ChannelReader target) {
+		return target.equalBytes(buffer, 0, byteCount);
+	}
 
 
 }
