@@ -93,7 +93,6 @@ public abstract class BaseConnection {
 			try {
 				 //this call to close will also de-register the selector key
 				 socketChannel.close();
-			
 			} catch (Throwable e) {					
 			}			
 			return true;

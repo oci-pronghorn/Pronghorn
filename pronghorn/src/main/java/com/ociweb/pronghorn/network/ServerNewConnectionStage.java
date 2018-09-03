@@ -6,12 +6,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.StandardSocketOptions;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -38,7 +38,7 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
  */
 public class ServerNewConnectionStage extends PronghornStage{
         
-    private static final int CONNECTION_TIMEOUT = 7_000; 
+    private static final int CONNECTION_TIMEOUT = 12_000; 
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
     
@@ -152,31 +152,46 @@ public class ServerNewConnectionStage extends PronghornStage{
         } catch (SocketException se) {
          
 	    	if (se.getMessage().contains("Permission denied")) {
-	    		logger.warn("\nUnable to open {} due to {}",coordinator.port(),se.getMessage());
+	    		logger.warn("\n{} Unable to open {} due to {}",coordinator.serviceName(),coordinator.port(),se.getMessage());
 	    		coordinator.shutdown();
-	    		requestShutdown();
-	    		return;
+	    		throw new RuntimeException(se);//server can not run at this point so we must have a hard stop
+
 	    	} else {
 	        	if (se.getMessage().contains("already in use")) {
-	                logger.warn("Already in use: {} {}",coordinator.host(), coordinator.port());
+	                logger.warn("\n{} Already in use {}:{}",coordinator.serviceName(),coordinator.host(), coordinator.port());
 	                coordinator.shutdown();
-	                requestShutdown();
-	                return;
+	                throw new RuntimeException(se);//server can not run at this point so we must have a hard stop
+
 	            }
 	    	}
             throw new RuntimeException(se);
         } catch (IOException e) {
            if (e.getMessage().contains("Unresolved address")) {
-        	   logger.warn("\nUnresolved host address  http"+(coordinator.isTLS?"s":""));
+        	   logger.warn("\n{} Unresolved host address  http"+(coordinator.isTLS?"s":""),coordinator.serviceName());
         	   coordinator.shutdown();
-        	   requestShutdown();
-               return;
+        	   throw new RuntimeException(e);//server can not run at this point so we must have a hard stop
+ 
            }
         	
            throw new RuntimeException(e);
            
         }
         
+    }
+    
+    @Override
+    public void shutdown() {
+        //must shut down or follow on tests may end up blocked.
+    	try {
+    		if (null!=selector) {
+    			selector.close();
+    		}
+    		if (null!=server) {
+    			server.close();
+    		}
+		} catch (IOException e) {
+		}
+    	
     }
 
 	private void extractHostString(SocketAddress endPoint) {
@@ -272,10 +287,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 
     private boolean hasNewDataToRead() {
     	
-    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
-    		return true;
-    	}
-    		
+    	assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
+    	    		
         try {
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
@@ -287,7 +300,8 @@ public class ServerNewConnectionStage extends PronghornStage{
             	return false;
             }
 
-            //    logger.info("pending new selections {} ",pendingSelections);
+        } catch (ClosedSelectorException cse) {
+        	return false;
         } catch (IOException e) {
         	logger.warn("new connections",e);
             return false;
@@ -333,6 +347,9 @@ public class ServerNewConnectionStage extends PronghornStage{
 	}
 	
 	private void processSelection(SelectionKey key) {
+		
+		
+		 doneSelectors.add(key);	
 		
 		if (null!=newClientConnections 
 			&& !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
@@ -380,11 +397,13 @@ public class ServerNewConnectionStage extends PronghornStage{
 		            				                       coordinator)
 		            		  		  );
 		              if (null!=old) {
+		            	//  logger.info("\nclosing an old connection");
 							old.close();
 							old.decompose();
-						}
+					  }
 		              
-		            // logger.info("\naccepting new connection {} registered data selector", channelId); 
+		              
+		            //  logger.info("\naccepting new connection {} registered data selector", channelId); 
 		        		           
 		                          
 		              
@@ -401,7 +420,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		          } catch (IOException e) {
 		        	  logger.error("\nUnable to accept connection",e);
 		          } 
-		          doneSelectors.add(key);		          
+		          
 		      } else {
 		    	  
 		    	  // TODO: find old connections and recycle them if they are no longer used..
@@ -417,7 +436,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      assert(0 != (SelectionKey.OP_CONNECT & readyOps)) : "only expected connect";
 		      try {
 				((SocketChannel)key.channel()).finishConnect();
-				doneSelectors.add(key);
+
 			} catch (IOException e) {
 				logger.error("Unable to finish connect",e);
 			} 

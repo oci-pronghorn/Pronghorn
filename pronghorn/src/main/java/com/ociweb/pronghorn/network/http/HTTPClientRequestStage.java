@@ -113,14 +113,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			do {
 				hasWork = false;
-				int i = input.length; //TODO: monitor these pipes..
+				int i = input.length;
 				while (--i>=0) {										  
-					if (Pipe.hasContentToRead(input[i])) {						
+					if (Pipe.hasContentToRead(input[i])) {	
 						if (buildClientRequest(input[i])) {
 							hasWork = true;
 						} else {
-							//try again later
-							return; //blocked connection, handshake wait or output pipe full
+							return;
 						}
 					}
 				}
@@ -132,17 +131,30 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	private boolean buildClientRequest(Pipe<ClientHTTPRequestSchema> requestPipe) {
 		boolean didWork = false;
+		
+
+		if (Pipe.peekMsg(requestPipe, -1)) {
+			//logger.info("\n ^^^ end of file shutdown message");
+			if (hasRoomForEOF(output)) {
+				Pipe.skipNextFragment(requestPipe);
+				shutdownInProgress = true;
+				
+			} 
+			return true;
+		}
+		
+		
 		//This check is required when TLS is in use.
 		//also must ensure connection is open before taking messages.
 		if (isConnectionReadyForUse(requestPipe) && null!=activeConnection ) {
 			didWork = true;	        
 			
+			final int msgIdx = Pipe.takeMsgIdx(requestPipe);			
 		    //we have already checked for connection so now send the request
 
 			final long now = System.nanoTime();
 			activeConnection.setLastUsedTime(now);
 	       	
-		    final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 	
 		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 				HTTPClientUtil.publishGetFast(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
@@ -155,10 +167,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    	HTTPClientUtil.processPostSlow(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
 		    } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
 		    	HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
-		    } else  if (-1 == msgIdx) {
-		    	//logger.info("Received shutdown message");								
-				processShutdownLogic(requestPipe);
-				return false;
 		    } else {
 		    	throw new UnsupportedOperationException("Unexpected Message Idx");
 		    }		
@@ -171,30 +179,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-	private void processShutdownLogic(Pipe<ClientHTTPRequestSchema> requestPipe) {
-		
-		
-		//TODO: delete this in Aug 2018 if not needed
-//		ClientConnection connectionToKill = ccm.nextValidConnection();
-//		final ClientConnection firstToKill = connectionToKill;					
-//		while (null!=connectionToKill) {								
-//			connectionToKill = ccm.nextValidConnection();
-//			
-//			//must send handshake request down this pipe
-//			int pipeId = connectionToKill.requestPipeLineIdx();
-//			
-//			HTTPClientUtil.cleanCloseConnection(null, connectionToKill, output[pipeId]);
-//												
-//			if (firstToKill == connectionToKill) {
-//				break;//done
-//			}
-//		}
-		
-		shutdownInProgress = true;
-		Pipe.confirmLowLevelRead(requestPipe, Pipe.EOF_SIZE);
-		Pipe.releaseReadLock(requestPipe);
-	}
-
 
 	private final TrieParserReader reader = new TrieParserReader(true); 
 	
@@ -204,10 +188,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
 
-		if (Pipe.peekMsg(requestPipe, -1)) {
-			//logger.info("\n ^^^ end of file shutdown message");
-			return hasRoomForEOF(output);
-		}
 		
 		int sessionId=0;
 		int port=0;			

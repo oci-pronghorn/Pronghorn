@@ -518,6 +518,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 						logTraffic(that, selectedInput, channel, arrivalTime, seqForLogging, posForLogging,
 								totalConsumed);
 					}
+				
 					result = consumeBlock(that, idx, selectedInput, channel,
 							              that.inputBlobPos[idx], 
 							              totalAvail, totalConsumed, 

@@ -87,6 +87,14 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return structureId;
 	}
 	
+	public boolean close() {
+		boolean result = super.close();
+		if (result) {
+			key.cancel();
+		}		
+		return result;
+	}
+	
 	public ClientConnection(SSLEngine engine, 
 			                CharSequence host, int hostId, int port, int sessionId,
 			                int pipeIdx, long conId, long timeoutNS, int structureId		                 

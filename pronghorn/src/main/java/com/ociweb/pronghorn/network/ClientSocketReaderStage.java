@@ -305,10 +305,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 	
     private boolean hasNewDataToRead(Selector selector) {
-    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
-    		return true;
-    	}
-    		
+    	
+    	assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
+  	      		
         try {
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called

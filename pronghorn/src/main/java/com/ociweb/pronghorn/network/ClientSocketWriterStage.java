@@ -116,18 +116,15 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		Pipe<NetPayloadSchema>[] localInput = input;
-		ClientConnection[] localConnections = connections;
-		
 		boolean doingWork;
 		boolean didWork = false;
 		do {
 			doingWork = false;	
 			
-			int i = localInput.length;
-			while (--i>=0) {
-				if (localConnections[i]==null) {
-					Pipe<NetPayloadSchema> pipe = localInput[i];
+			int i = input.length;
+			while (--i >= 0) {
+				if (connections[i]==null) {
+					Pipe<NetPayloadSchema> pipe = input[i];
 					if (Pipe.hasContentToRead(pipe)) {	
 						doingWork = writeAll(doingWork, i, pipe, Pipe.peekInt(pipe));
 					}
@@ -239,8 +236,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		}
 		
 		didWork = wrapupUpEncryptedToSingleWrite(didWork, i, 
-				pipe, msgIdx, channelId, meta, len,
-				cc);
+												pipe, msgIdx, channelId, meta, len,
+												cc);
 	
 		return didWork;
 	}

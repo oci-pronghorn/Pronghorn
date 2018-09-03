@@ -326,10 +326,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		return;
     	}
     	modificationLock.lock(); //hold the lock
-
-        startupAllStages(stages.length, globalStartupLockCheck);
-       
-        setupHousekeeping();
+    	try {
+    		startupAllStages(stages.length, globalStartupLockCheck);
+    		setupHousekeeping();
+    	} catch (RuntimeException re) {
+    		shutdown();    		
+    	}
 
     }
     

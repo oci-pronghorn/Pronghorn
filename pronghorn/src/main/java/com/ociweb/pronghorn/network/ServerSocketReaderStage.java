@@ -234,6 +234,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
 		} else {
+			//logger.info("closed connection here for channel {}",channelId);
+			
 			assert(validateClose(socketChannel, channelId));
 			try {
 				socketChannel.close();
@@ -248,7 +250,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			return true;
 		}
 
-		boolean processWork = true;
+	//	boolean processWork = true;
 		if (coordinator.isTLS) {
 				
 			if (null!=cc && null!=cc.getEngine()) {
@@ -260,14 +262,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 		                }
 				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 					 releasePipesForUse();
-					 processWork = false;
+//					 processWork = false;
 				 }				 
 			}
 		}
 		
 		boolean hasOutputRoom = true;
 		//the normal case is to do this however we do need to skip for TLS wrap
-		if (processWork && (null!=cc)) {
+		if (/*processWork &&*/ (null!=cc)) {
 			
 			  // ServerCoordinator.acceptConnectionRespond = System.nanoTime();
 						
@@ -304,31 +306,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
-							
-							
-							//scan old for unrleased..
-							
-							//find the locked connections, if they are closed free them.
-							
-							//System.out.println("here are the locks ddddddddddddddddddddddddddd");
-						//	coordinator.releaseAllAbandonedPipeLineIdx();
-							
-							
-							
-							
-							
-					//////////////		
-							
-							//we can not begin this connection right now so we will try again later.
-							//we remove this selection so we can process other connections work while we wait for a pipe to open up
-
-							//logger.info("\ntoo many concurrent requests, back off load or increase concurrent inputs. concurrent inputs set to "+coordinator.maxConcurrentInputs+" new connection "+channelId);
-
-							//TODO: add countdown when everything else works.
-							//we want to keep this cc a couple rounds then abandon. we may be dropping this too soon.
-							cc.close();
-							cc.decompose();
-						//	System.out.println("killed this connection because we can not find a response pipe");
+							//logger.info("\n too much load");
+							//try later, we can not find an open pipe right now.
 							return true;
 						}
 						
@@ -370,7 +349,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 							                                newBeginning, 
 							                                cc, selection);
 			
-					//always remove even when we could not write because we may require the data behind this selection 
 					if (pumpState<=0) {
 						hasOutputRoom = false;
 					}					
@@ -473,10 +451,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private boolean hasNewDataToRead() {
     	
-    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
-    		System.err.println("!!!!!!!!!!!!!!!!!!!!!!!!  shoudl this happen  ?????  old selections "+selectedKeys.size());
-    		return true;
-    	}
+    	assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
     		
         try {
         	////////////
@@ -521,7 +496,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 assert(collectRemainingCount(b));
                 
                 temp = sourceChannel.read(b);
-                                  	
+                  
             	if (temp>0){
             		len+=temp;
             	}            
@@ -529,8 +504,10 @@ public class ServerSocketReaderStage extends PronghornStage {
                 assert(readCountMatchesLength(len, b));
                 
                 if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
+                
                 	return publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
                 } else {
+                
                 	if (null!=cc) {
                 		cc.clearPoolReservation();
                 	}
@@ -586,7 +563,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (len>0) {
 			
 			if (newBeginning) {	
-							
+											
 				Pipe.presumeRoomForWrite(targetPipe);
 				
 				int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
@@ -637,6 +614,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 
         final int size = Pipe.addMsgIdx(targetPipe, messageType);               
         if (messageType>=0) {
+        	
+        	//System.out.println("publish bod for type "+messageType);
+        	
 	        Pipe.addLongValue(channelId, targetPipe);  
 	        Pipe.addLongValue(System.nanoTime(), targetPipe);
 			
@@ -646,8 +626,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	        
 	        int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);     
 	
-	        if (showRequests) {
-	        	
+	        if (showRequests) {	        	
 	        	if (!"Telemetry Server".equals(coordinator.serviceName())) {
 	        		try {
 			        	//ONLY VALID FOR UTF8
@@ -675,7 +654,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
         Pipe.confirmLowLevelWrite(targetPipe, size);
         Pipe.publishWrites(targetPipe);
-        //logger.info("done with publish pipe is now "+targetPipe);
+       //.info("\ndone with publish pipe is now "+targetPipe);
     }
     
      

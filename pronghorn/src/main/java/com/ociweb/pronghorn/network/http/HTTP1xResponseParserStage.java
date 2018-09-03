@@ -367,12 +367,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						ccId = ccIdData[i];
 						cc = (HTTPClientConnection)ccm.lookupConnectionById(ccId);					
-						if (null==cc) {	//skip data the connection was closed	
-							assert(positionMemoData[stateIdx]==0) : "we have data in flight now what? state is: "+positionMemoData[stateIdx];
+						if (null==cc) {	//skip data the connection was closed
+		
+							positionMemoData[stateIdx]=0;							
+							Pipe.releaseAllPendingReadLock(input[i]);
+							
 							if (ccm.checkForResponsePipeLineIdx(ccId)>=0) {
 								ccm.releaseResponsePipeLineIdx(ccId);
 							}
-							
+					
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 							continue;
