@@ -1926,7 +1926,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 	static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffersRing(Pipe<S> pipe, int len, final int position) {
-		final int endPos = position+len;
+		final int endPos = position+(len>=0?len:0);
 		
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		((Buffer)aBuf).clear();

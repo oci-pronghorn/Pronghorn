@@ -123,6 +123,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 			int i = input.length;
 			while (--i >= 0) {
+
 				if (connections[i]==null) {
 					Pipe<NetPayloadSchema> pipe = input[i];
 					if (Pipe.hasContentToRead(pipe)) {	
@@ -283,7 +284,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 		ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 
-		checkBuffers(i, pipe, cc);
+		cc = checkBuffers(i, pipe, cc);
 		
 		assert(connections[i]==null);
 		//copy done here to avoid GC and memory allocation done by socketChannel
@@ -423,7 +424,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		return didWork;
 	}
 
-	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, ClientConnection cc) {
+	private ClientConnection checkBuffers(int i, Pipe<NetPayloadSchema> pipe, ClientConnection cc) {
 		if (!bufferChecked[i]) {
 			if (null!=cc) {
 				SocketChannel sc = cc.getSocketChannel();
@@ -439,11 +440,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 						}
 						bufferChecked[i] = true;
 					} catch (IOException e) {
-						throw new RuntimeException(e);
+						return null;
 					}
 				}
 			}
 		}
+		return cc;
 	}
 
 	
