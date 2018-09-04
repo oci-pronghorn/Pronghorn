@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.BaseConnection;
+import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ServerConnection;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.ServerCoordinator;
@@ -1190,7 +1191,20 @@ private static int accumRunningBytes(
 	        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {        		
 	        		processBegin(that, idx, selectedInput);        		
 	        	} else {
-		            return processShutdown(selectedInput, messageIdx);
+	        		if (NetPayloadSchema.MSG_DISCONNECT_203 == messageIdx) {	        			
+	        			ClientConnection con = (ClientConnection)that.coordinator.lookupConnectionById(inChnl);
+	        			if (null!=con) {
+	        				con.beginDisconnect();
+	        				
+	        				con.clearPoolReservation();		
+	        				con.close();
+	        				
+	        				that.coordinator.releaseResponsePipeLineIdx(con.getId());
+	        				
+	        			}	        			
+	        		} else {	        		
+	        			return processShutdown(selectedInput, messageIdx);
+	        		}
 	        	}
 	        }        
 	    }

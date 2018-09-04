@@ -179,8 +179,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-
-	private final TrieParserReader reader = new TrieParserReader(true); 
 	
 	private ClientConnection activeConnection =  null;
 	private PipeUTF8MutableCharSquence mCharSequence = new PipeUTF8MutableCharSquence();
@@ -278,7 +276,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (null != activeConnection) {
 			
 			if (activeConnection.isBusy()) {
-				//logger.info("\n ^^^ waiting for server to respond to connection");
+				logger.info("\n ^^^ waiting for server to respond to connection");
 				return false;//must try again later when the server has responded.
 			}
 			
@@ -288,13 +286,17 @@ public class HTTPClientRequestStage extends PronghornStage {
 			assert(activeConnection.isFinishConnect());
 			
 			if (ccm.isTLS) {				
-				//If this connection needs to complete a hanshake first then do that and do not send the request content yet.
+				//If this connection needs to complete a handshake first then do that and do not send the request content yet.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus 
-						/* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
-					//logger.info("\n ^^^ doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
-					activeConnection = null;	
+				if (        HandshakeStatus.FINISHED!=handshakeStatus 
+						 && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
+					) {
+				
+							
+		//			logger.info("\n ^^^ doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id+"  "+activeConnection.isValid()+" "+(!activeConnection.isDisconnecting())+" "+(!activeConnection.isBusy()));
+					activeConnection = null;
 					return false;
+					
 				}
 			}
 			boolean result = Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
@@ -305,7 +307,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			return result;
 		} else {
 			//try again later
-			//.info("\n ^^^^ no connection available");
+			//logger.info("\n ^^^^ no connection available");
 			return false;
 		}
 		

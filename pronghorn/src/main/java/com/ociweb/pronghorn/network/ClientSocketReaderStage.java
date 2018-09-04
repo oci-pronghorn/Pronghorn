@@ -263,8 +263,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		ClientConnection cc = (ClientConnection)selection.attachment();
 
-		assert(cc.getSelectionKey() == selection);
-
 		boolean didWork = false;
 		if (!cc.isClientClosedNotificationSent() && !cc.isDisconnecting()) {
 			didWork = processConnection(didWork, cc); // if we need the channel we can get it from selection.channel()....

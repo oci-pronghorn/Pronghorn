@@ -418,8 +418,6 @@ public class SSLUtil {
 				 		
 				 		if (cc.durationWaitingForNetwork()>HANDSHAKE_TIMEOUT) {
 				 			logger.info("No data provided for unwrap. timed out after {} ",HANDSHAKE_TIMEOUT);
-				 			logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXxx no try read frament...................................",new Exception("how did we get here if there is nothing to read???"));
-				 			System.exit(-1);
 				 			cc.close();
 				 		}
 				 		
@@ -450,6 +448,8 @@ public class SSLUtil {
 				 		
 							if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {
 								if (null!=result && Status.BUFFER_UNDERFLOW == result.getStatus() ) {
+									
+									
 									return -1;//try again later when we have data								
 								} else {									
 									continue;
@@ -479,7 +479,7 @@ public class SSLUtil {
 				 	
 				 	int msgId = Pipe.takeMsgIdx(source);
 				 					 	
-				    //if closed closd
+				    //if closed close
 	                if (msgId < 0 || !cc.isValid) {	                	
 	                	
 	                	Pipe.skipNextFragment(source,msgId);
@@ -528,7 +528,16 @@ public class SSLUtil {
 						//restore the rolling data since we could not process what we have so far 
 						rolling.limit(tl);
 						rolling.position(tp);
-						//try again later
+						
+					    if (!isServer) {
+							try {
+								//must start handshake again since this round did not complete.
+								cc.getEngine().beginHandshake();
+							} catch (SSLException e) {				
+								logger.warn("bad handshake, unable to re-init",e);	
+								return -2;//special flag to kill/disconnect the connection
+							}
+					    }
 						return -1;
 					} finally {
 										
@@ -708,18 +717,26 @@ public class SSLUtil {
 					
 					if (didWork<0) {
 						
-						if (rolling.position()==0 ) {
-							 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
-							 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
-								 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
-								 //send release because handshake is incomplete, waiting on other side or the connection has been closed
-								 sendRelease(source, releasePipe, cc, isServer);						
-							 }
+						if (didWork==-2) {
+							//send disconnect
+							Pipe.presumeRoomForWrite(target);
+							publishDisconnect(target, connectionId);
+														
+							return 1;
+						} else {
+							if (rolling.position()==0 ) {
+								 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
+								 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
+									 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+									 //send release because handshake is incomplete, waiting on other side or the connection has been closed
+									 sendRelease(source, releasePipe, cc, isServer);						
+								 }
+							}
+							
+							///////////
+							return 0;// this case needs more data to finish handshake so returns
+							///////////
 						}
-						///////////
-						return 0;// this case needs more data to finish handshake so returns
-						///////////
-						
 					} else if (didWork==1) {	
 						//logger.trace("finished shake");
 						if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
@@ -775,11 +792,9 @@ public class SSLUtil {
 						return -1;
 					} else if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
 	
-						Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
 						long conId = Pipe.takeLong(source);
-						Pipe.addLongValue(conId, target); //ConnectionId
-						Pipe.confirmLowLevelWrite(target,Pipe.sizeOf(target, NetPayloadSchema.MSG_DISCONNECT_203));
-						Pipe.publishWrites(target);
+						
+						publishDisconnect(target, conId);
 	
 						Pipe.confirmLowLevelRead(source, Pipe.sizeOf(source, msgIdx));
 						Pipe.releaseReadLock(source);
@@ -880,6 +895,13 @@ public class SSLUtil {
 		
 		return didWork;
 		
+	}
+
+	private static void publishDisconnect(Pipe<NetPayloadSchema> target, long conId) {
+		Pipe.addMsgIdx(target, NetPayloadSchema.MSG_DISCONNECT_203);
+		Pipe.addLongValue(conId, target); //ConnectionId
+		Pipe.confirmLowLevelWrite(target,Pipe.sizeOf(target, NetPayloadSchema.MSG_DISCONNECT_203));
+		Pipe.publishWrites(target);
 	}
 
 	private static void publishWrittenPayloadForUnwrap(Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer rolling, BaseConnection cc, long arrivalTime) {
