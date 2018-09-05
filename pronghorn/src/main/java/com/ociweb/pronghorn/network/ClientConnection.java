@@ -229,7 +229,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 	
 	public String toString() {
-		return host+":"+port;
+		return "ConId:"+id+" "+host+":"+port;
 	}
 	
 	public void incRequestsSent() {

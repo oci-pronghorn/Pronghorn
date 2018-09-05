@@ -117,8 +117,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	
 	
 	@Override
-	public void run() {
-		
+	public void run() {	
 		
 		long start = System.nanoTime();
 		calls++;	
@@ -129,7 +128,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			didWork=0;
 
 			int m = 100;//maximum iterations before taking a short break.
-			
+
 			while ((--idx>=0) && (--m>=0)) {
 				
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
@@ -137,7 +136,9 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 				
 					Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
 	
-					int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, isServer);			
+					int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, 
+							                        secureBuffer, isServer);			
+					
 					if (temp<0) {
 						if (--shutdownCount == 0) {
 							requestShutdown();
@@ -156,8 +157,6 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			}
 			
 		} while (didWork!=0);
-		
-		
 		
 		
 		totalNS += System.nanoTime()-start;

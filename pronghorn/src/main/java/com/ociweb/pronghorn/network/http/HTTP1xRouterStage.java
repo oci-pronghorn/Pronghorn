@@ -1191,10 +1191,14 @@ private static int accumRunningBytes(
 	        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {        		
 	        		processBegin(that, idx, selectedInput);        		
 	        	} else {
-	        		if (NetPayloadSchema.MSG_DISCONNECT_203 == messageIdx) {	        			
-	        			ClientConnection con = (ClientConnection)that.coordinator.lookupConnectionById(inChnl);
+	        		if (NetPayloadSchema.MSG_DISCONNECT_203 == messageIdx) {	 
+	        			long connectionId = Pipe.takeLong(selectedInput);
+
+	        			BaseConnection con = that.coordinator.lookupConnectionById(connectionId);
 	        			if (null!=con) {
-	        				con.beginDisconnect();
+	        				if (con instanceof ClientConnection) {
+	        					((ClientConnection)con).beginDisconnect();
+	        				}
 	        				
 	        				con.clearPoolReservation();		
 	        				con.close();
@@ -1202,6 +1206,11 @@ private static int accumRunningBytes(
 	        				that.coordinator.releaseResponsePipeLineIdx(con.getId());
 	        				
 	        			}	        			
+	        			Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(selectedInput, NetPayloadSchema.MSG_DISCONNECT_203));
+	        			//Pipe.releaseReadLock(selectedInput);
+	        			Pipe.readNextWithoutReleasingReadLock(selectedInput);
+	        			Pipe.releaseAllPendingReadLock(selectedInput);
+	        			
 	        		} else {	        		
 	        			return processShutdown(selectedInput, messageIdx);
 	        		}
