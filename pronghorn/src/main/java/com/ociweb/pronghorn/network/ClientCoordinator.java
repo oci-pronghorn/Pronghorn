@@ -386,6 +386,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					) { 
 					//NOTE: using direct lookup get since un finished connections may not be valid.
 					
+					if((null!=cc) && (!cc.isClientClosedNotificationSent())) {
+						return null;//do not replace until notification sent
+					}
+					
 					long originalId = connectionId;
 					connectionId = ccm.lookupInsertPosition();		
 					
@@ -546,7 +550,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	public ClientAbandonConnectionScanner scanForSlowConnections() {
 		abandonScanner.reset();
-		connections.visitValid(abandonScanner);
+		connections.visitAll(abandonScanner); //TOOD: visit all.... not just the live ones.
 		return abandonScanner;
 	}
 	

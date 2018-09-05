@@ -228,7 +228,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//before taking the data
 					//ensure that it can be consumed 
 					///////////////
-					ccId = Pipe.peekLong(localInputPipe, 1);
+					ccId = Pipe.peekLong(localInputPipe, 1); //works for plain and disconnect.
 					boolean alsoReturnDisconnected = true;
 					cc = (HTTPClientConnection)ccm.connectionObjForConnectionId(ccId, alsoReturnDisconnected);
 					if (null!=cc && cc.readDestinationRouteId()>=0) {

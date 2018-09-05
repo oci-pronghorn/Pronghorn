@@ -350,6 +350,17 @@ public class ServiceObjectHolder<T> {
     	}
     }
     
+    public void visitAll(ServerObjectHolderVisitor<T> v) {
+    	ServiceObjectData<T> localData = data;
+    	int i = localData.serviceObjectValues.length;
+    	while (--i>=0) {
+    		final T t = localData.serviceObjectValues[i];
+    		if (null!=t) {
+    			v.visit(t);
+    		}
+    	}
+    }
+    
     public void resetUsageCount(final long index) {
         data.serviceObjectLookupCounts[data.mask & (int)index] = 0;
     }

@@ -21,8 +21,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	private long maxOutstandingCallTime;
 	private ClientConnection candidate;
 	
-	private int absoluteTimeoutCounts = 0;
-	private ClientConnection[] absoluteTimeouts = new ClientConnection[4];
+	private int absoluteCounts = 0;
+	private ClientConnection[] absoluteAbandons = new ClientConnection[4];
 	
 	private RunningStdDev stdDev = new RunningStdDev();
 
@@ -35,41 +35,55 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	public void reset() {
 		maxOutstandingCallTime = -1;
 		candidate = null;
-		absoluteTimeoutCounts = 0;
+		absoluteCounts = 0;
 		stdDev.clear();
-		Arrays.fill(absoluteTimeouts, null);
+		Arrays.fill(absoluteAbandons, null);
 	}
 		
 	@Override
 	public void visit(ClientConnection t) {
-		long scanTime = System.nanoTime();
-		long callTime = t.outstandingCallTime(scanTime);
-				
-		long timeout = t.getTimeoutNS();
-		if (timeout>0) {//overrides general behavior if set
-			if (callTime>timeout) {
-				absoluteTimeouts = ArrayGrow.setIntoArray(absoluteTimeouts, t, absoluteTimeoutCounts++);
-			}
-		} else {
+		
+		//skip those already notified.
+		if (!t.isClientClosedNotificationSent()) {	
 			
-			//TODO: can, find the lest recently used connection and close it as well ??
-
-			//if no explicit limits are set wait until we have 100 data samples before limiting
-			if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
-				//find the std dev of the 98% of all network calls
-				RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
+			if (t.isDisconnecting || !t.isValid) {
+				absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
+			} else {
 				
-				//find the single longest outstanding call
-				if (callTime > maxOutstandingCallTime) {
-					maxOutstandingCallTime = callTime;
-					candidate = t;
-				}
+				long scanTime = System.nanoTime();
+				long callTime = t.outstandingCallTime(scanTime);
+						
+				long timeout = t.getTimeoutNS();
+				if (timeout>0) {//overrides general behavior if set
+					if (callTime>timeout) {
+						absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
+					}
+				} else {
+					if (callTime>absoluteNSToAbandon) {
+						absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
+					} else {
+					
+						//TODO: can, find the lest recently used connection and close it as well ??
+			
+						//if no explicit limits are set wait until we have 100 data samples before limiting
+						if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
+							//find the std dev of the 98% of all network calls
+							RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
+							
+							//find the single longest outstanding call
+							if (callTime > maxOutstandingCallTime) {
+								maxOutstandingCallTime = callTime;
+								candidate = t;
+							}
+						}
+					}
+				}	
 			}
-		}		
+		}
 	}
 
 	public ClientConnection[] timedOutConnections() {
-		return absoluteTimeouts;		
+		return absoluteAbandons;		
 	}
 	
 	public ClientConnection leadingCandidate() {

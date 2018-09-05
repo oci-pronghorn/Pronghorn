@@ -189,8 +189,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	  		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
 	         	//only run when we have no data waiting
 	         	if (maxIterations>0) {
-	         	    
-	         		        //long now = System.nanoTime();
+
+	         		//long now = System.nanoTime();
 	         		
 	         	        	ClientAbandonConnectionScanner slowConnections = coordinator.scanForSlowConnections();
 	 						ClientConnection abandonded = slowConnections.leadingCandidate();
@@ -242,14 +242,18 @@ public class ClientSocketReaderStage extends PronghornStage {
 				logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long. Estimated:{}",
 						 abandonded, abandonded.id, abandonded.sessionId,Appendables.appendNearestTimeUnit(new StringBuilder(), callTime));								
 
-				abandonded.beginDisconnect();
+				if (!abandonded.isDisconnecting()) {
+					abandonded.beginDisconnect();
+				}
 				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				
 				int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
 				Pipe.addLongValue(abandonded.getId(), pipe);
 				Pipe.confirmLowLevelWrite(pipe, size);
 				Pipe.publishWrites(pipe);    
-													
+										
+				//Do not set notification sent this message will trigger that one later once it makes it down the pipe.
+				
 			}
 		}
 	}

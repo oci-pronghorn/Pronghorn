@@ -1051,7 +1051,7 @@ public class NetGraphBuilder {
 			  Pipe<NetResponseSchema>[] httpResponsePipe,
 			  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {		
 		
-		int connectionsInBits = 6;		
+		int connectionsInBits = 7;		
 		int clientRequestCount = 4;
 		int clientRequestSize = 1<<15;
 		final TLSCertificates tlsCertificates = TLSCerts.define();
