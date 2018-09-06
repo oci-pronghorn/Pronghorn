@@ -201,7 +201,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				long ccId = 0;
 				
 				Pipe<NetPayloadSchema> localInputPipe = input[i];
-		
 				
 				/////////////////////////////////////////////////////////////
 				//ensure we have the right backing array, and mask (no position change)
@@ -263,12 +262,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 					    if (msgIdx != NetPayloadSchema.MSG_PLAIN_210) {							
 					    	if (msgIdx == NetPayloadSchema.MSG_DISCONNECT_203) {
-					    		assert(ccId == Pipe.peekLong(localInputPipe,0));								
-					    		Pipe.skipNextFragment(localInputPipe, msgIdx);
-					    		//if this assert failed then cc was already replaced and we can't close it must already be done?
+					    		long connectionId = Pipe.takeLong(localInputPipe);
+					    		assert(ccId == connectionId);								
+					    		
+								Pipe.confirmLowLevelRead(localInputPipe, sizeOf); 
+								Pipe.readNextWithoutReleasingReadLock(localInputPipe);	
+					    		
 					    		if (cc.id == ccId) {
 					    			closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);	
 					    		}
+					    		Pipe.releaseAllPendingReadLock(localInputPipe);	
+					    		
 					    		continue;
 					    		
 					    	} else {
@@ -334,7 +338,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 					//WARNING: moving next without releasing lock prevents new data from arriving until after we have consumed everything.
 					Pipe.readNextWithoutReleasingReadLock(localInputPipe);	
-														
+							
+					if (    msgIdx == NetPayloadSchema.MSG_DISCONNECT_203 
+					    ||	msgIdx == NetPayloadSchema.MSG_BEGIN_208) {
+						//these operations have no payload bytes to cause a release plus they mark an endpoint where we can reset safely
+						Pipe.releaseAllPendingReadLock(localInputPipe);						
+					}
 					
 					if (-1==inputPosition[i]) {
 						//this may or may not be the end of a complete message, must hold it just in case it is.

@@ -1307,6 +1307,7 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		
 		Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
 		Pipe.readNextWithoutReleasingReadLock(selectedInput);
+		Pipe.releaseAllPendingReadLock(selectedInput);;
 		return messageIdx;//do not loop again just exit now
 	}
 

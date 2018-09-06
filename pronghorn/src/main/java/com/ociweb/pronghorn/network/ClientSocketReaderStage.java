@@ -187,11 +187,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         }
 	  
 	  		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
-	         	//only run when we have no data waiting
-	         	if (maxIterations>0) {
 
-	         		//long now = System.nanoTime();
-	         		
 	         	        	ClientAbandonConnectionScanner slowConnections = coordinator.scanForSlowConnections();
 	 						ClientConnection abandonded = slowConnections.leadingCandidate();
 	         	        	if (null!=abandonded) {
@@ -204,13 +200,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         	        			abandonNow(timedOut[i]);
 	         	        		}
 	         	        	}
-	         	        	
-	         	        	
-	         	        	//long duration = System.nanoTime()-now;
-	         	        	//if (duration>10_000) {
-	         	        	//	Appendables.appendNearestTimeUnit(System.out, duration).append(" scan for abandoned connections\n");
-	         	        	//}
-	         	}
+
 	         }        
 	   		 
 	   	 } else {
@@ -230,9 +220,21 @@ public class ClientSocketReaderStage extends PronghornStage {
    	}
 
 	private void abandonNow(ClientConnection abandonded) {
+		
+		
+		
+		
 		//we only close connections which are currently holding a pipe reservation open
 		//never grab a new one here or it may cause a hang,  only close those already with reservation
-		int pipeIdx = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
+		int pipeIdx;// = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
+		
+		//test because we are not closing connections which hAVE NO PIPE FOR THE DISCONNECT...
+		//if (pipeIdx<0) {
+			pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
+		//}
+		
+		
+		
 		if (pipeIdx>=0) {
 			Pipe<NetPayloadSchema> pipe = output[pipeIdx];	        	        	
 			///ensure that this will not cause any stall, better to skip this than be blocked.
@@ -245,13 +247,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 				if (!abandonded.isDisconnecting()) {
 					abandonded.beginDisconnect();
 				}
-				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				
 				int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
 				Pipe.addLongValue(abandonded.getId(), pipe);
 				Pipe.confirmLowLevelWrite(pipe, size);
 				Pipe.publishWrites(pipe);    
-										
+								
+				//only release after we populate the pipe.
+				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				//Do not set notification sent this message will trigger that one later once it makes it down the pipe.
 				
 			}

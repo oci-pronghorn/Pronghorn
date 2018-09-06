@@ -59,7 +59,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     private int maxBatchCount;
 
-	private static final boolean enableWriteBatching = true;  
+	private static final boolean enableWriteBatching = true;
     
 
 	private final boolean debugWithSlowWrites = false;// false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests

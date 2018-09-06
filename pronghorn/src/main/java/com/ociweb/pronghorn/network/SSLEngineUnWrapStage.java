@@ -132,6 +132,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			while ((--idx>=0) && (--m>=0)) {
 				
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
+
 				if ((!Pipe.isEmpty(source)) && Pipe.hasContentToRead(source)) {
 				
 					Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];

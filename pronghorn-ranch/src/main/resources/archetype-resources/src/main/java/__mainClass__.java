@@ -1,5 +1,12 @@
 package ${package};
 
+/**
+ * *******************************************************************
+ * For pronghorn support, training or feature reqeusts please contact:
+ *   info@objectcomputing.com   (314) 579-0066
+ * *******************************************************************
+ */
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.file.FileBlobReadStage;

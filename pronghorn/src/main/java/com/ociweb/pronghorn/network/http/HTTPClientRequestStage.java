@@ -12,9 +12,9 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.util.TrieParserReader;
 
 /**
  * Takes a HTTP client request and responds with a net payload using a TrieParserReader.
@@ -24,7 +24,6 @@ import com.ociweb.pronghorn.util.TrieParserReader;
  */
 public class HTTPClientRequestStage extends PronghornStage {
 
-	private final TrieParserReader READER = new TrieParserReader(true);
 
 	public static final Logger logger = LoggerFactory.getLogger(HTTPClientRequestStage.class);
 	
@@ -36,6 +35,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
 	static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
+	
+	static long CYCLE_LIMIT_HANDSHAKE = 100_000L; //10_000 is common so we want something a couple orders bigger.
 	
     private boolean shutdownInProgress;	
 	
@@ -77,7 +78,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		super.startup();		
 		ccf = new HTTPClientConnectionFactory(recordTypeData);
-
+		
 	}
 	
 	@Override
@@ -200,6 +201,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
  			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
  			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
+ 			activeConnection = (ClientConnection) ccm.connectionObjForConnectionId(connectionId, false);
  			assert(-1 != connectionId);
  		} else {
  
@@ -265,21 +267,10 @@ public class HTTPClientRequestStage extends PronghornStage {
  					 ccm, 
  					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
  					 port, sessionId, output, connectionId, ccf);
-
- 			//System.out.println("old "+connectionId+" new "+activeConnection.id);
- 			//TODO: if the connectionId requests are in pipe they will keep coming in and each will cause a new call??
- 			
- 			
- 			
  		}
  		
 		if (null != activeConnection) {
-			
-			if (activeConnection.isBusy()) {
-				logger.info("\n ^^^ waiting for server to respond to connection");
-				return false;//must try again later when the server has responded.
-			}
-			
+
 			
 			//logger.info("finish new connect {} ",activeConnection.isFinishConnect());
 			
@@ -287,34 +278,58 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			if (ccm.isTLS) {				
 				//If this connection needs to complete a handshake first then do that and do not send the request content yet.
+				//ALL the conent will be held here until the connection and its handshake is complete
+				//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (        HandshakeStatus.FINISHED!=handshakeStatus 
-						 && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
-					) {
-				
-							
-		//			logger.info("\n ^^^ doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id+"  "+activeConnection.isValid()+" "+(!activeConnection.isDisconnecting())+" "+(!activeConnection.isBusy()));
+				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
+						) {
+			
+					if (++blockedCycles>=CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
+						//if this is new connection but it is not hand shaking as expected 
+						//then we will drop the connection and try again.
+						long usageCount = ElapsedTimeRecorder.totalCount(activeConnection.histogram());
+						if (0==usageCount) {
+			
+								logger.warn("\n corrupt connection, retry");
+								
+        						///no notification needed. but we must clear this so the connection is rebuilt
+							    activeConnection.clientClosedNotificationSent();
+								activeConnection.close(); //close so next call we will get a fresh connection
+								//old message will find new connection under old connection id!
+			
+						} else {
+							//drop request and close the connection
+							Pipe.skipNextFragment(requestPipe);
+							//TODO: drop all while match??
+							activeConnection.close();
+						}
+						blockedCycles = 0;
+					}
+
 					activeConnection = null;
 					return false;
 					
+				} else {
+					blockedCycles = 0;
 				}
-			}
-			boolean result = Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
-			if (!result) {
-				//logger.info("\n ^^^ unable to use connection {} no room.",activeConnection.id);
+			} else {
+				blockedCycles = 0;
 			}
 			
-			return result;
+			//we do this later so the handshake logic above has an opportunity to 'timeout'
+			if (activeConnection.isBusy() || !Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()])) {
+				return false;//must try again later when the server has responded.
+			}
+			return true;
+			
+			
 		} else {
-			//try again later
-			//logger.info("\n ^^^^ no connection available");
 			return false;
 		}
-		
-		
 	}
 
-
+	int blockedCycles;
+	
 	public static boolean hasRoomForEOF(Pipe<NetPayloadSchema>[] output) {
 		//all outputs must have room for EOF processing
 		int i = output.length;

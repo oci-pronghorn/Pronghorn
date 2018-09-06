@@ -222,6 +222,10 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 			Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
 			Pipe.readNextWithoutReleasingReadLock(input);
 			
+			if (id == NetResponseSchema.MSG_CLOSED_10) {
+				Pipe.releaseAllPendingReadLock(input);
+			}
+			
 			assert(input.config().minimumFragmentsOnPipe()>2) : "input pipe must be large enought to hold 2 reads open while new writes continue";
 			
 			while (Pipe.releasePendingCount(input)>2) {//must always hold open 2 for the rollover.

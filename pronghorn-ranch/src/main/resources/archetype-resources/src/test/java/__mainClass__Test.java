@@ -1,5 +1,10 @@
 package ${package};
-
+/**
+ * *******************************************************************
+ * For pronghorn support, training or feature reqeusts please contact:
+ *   info@objectcomputing.com   (314) 579-0066
+ * *******************************************************************
+ */
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.ociweb.pronghorn.pipe.Pipe;

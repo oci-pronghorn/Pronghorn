@@ -46,7 +46,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 	
 	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
-	private static final boolean enableWriteBatching = true;		
+	private static final boolean enableWriteBatching = true;	
 	
 	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
 	private final boolean debugWithSlowWrites = false;
@@ -456,7 +456,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		if (cc!=null && cc.isValid() && !cc.isDisconnecting()) {
 			SocketChannel sc = cc.getSocketChannel();
 			if (sc!=null) {			
-				assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write.";	
+				//NOT Required: assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write."; 	
 				try {
 					
 					if (!debugWithSlowWrites) {

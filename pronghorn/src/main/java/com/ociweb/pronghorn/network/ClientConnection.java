@@ -14,6 +14,7 @@ import java.util.Arrays;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+import javax.net.ssl.SSLException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -367,59 +368,78 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		}
 		//logger.trace("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
-		if (isTLS) {
-			getEngine().beginHandshake();
-			HandshakeStatus handshake = getEngine().getHandshakeStatus();
-			if (HandshakeStatus.NEED_TASK == handshake) { 				
-	             Runnable task;
-	             while ((task = getEngine().getDelegatedTask()) != null) {
-	                	task.run(); 
-	             }
-			} else if (HandshakeStatus.NEED_WRAP == handshake) {
-								
-				
-				int c= (int)getId()%handshakeBegin.length;				
-				
-				int j = handshakeBegin.length;
-				while (--j>=0) {
-						
-					final Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
-					assert(null!=pipe);
-					
-					if (Pipe.hasRoomForWrite(pipe)) {
-					
-						//Warning the follow on calls should be low level...
-						//logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe, new Exception());
-						
-						////////////////////////////////////
-						//NOTE: must repeat this until the handshake is finished.
-						///////////////////////////////////
-						final int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
-						Pipe.addLongValue(getId(), pipe);
-						Pipe.addLongValue(System.currentTimeMillis(), pipe);
-						Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe);
-						Pipe.addByteArray(EMPTY, 0, 0, pipe);
-						
-						Pipe.confirmLowLevelWrite(pipe, size);
-						Pipe.publishWrites(pipe);
-						
-						break;
-					} 
-					
-					if (--c<0) {
-						c = handshakeBegin.length-1;
-					}
-				}
-				
-				if (j<0) {
-					throw new UnsupportedOperationException("unable to wrap handshake no pipes are avilable.");
-				}
-			}		
-		}
-		isValid = true;
 		//logger.info("is now valid connection {} ",this.id);
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
+		isValid = true;
 
+		//must be last
+		if (isTLS) {
+			beginHandshakeNow(handshakeBegin);		
+		}
+	}
+
+	private void beginHandshakeNow(Pipe<NetPayloadSchema>[] handshakeBegin) throws SSLException {
+
+		getEngine().beginHandshake();
+		logger.trace("\nbegin handshake for : {} pipes:{} ",getId(),handshakeBegin.length);
+		//////////////////////////////
+		HandshakeStatus handshake = getEngine().getHandshakeStatus();
+		while (HandshakeStatus.NEED_TASK == handshake) { 				
+			Runnable task;
+			while ((task = getEngine().getDelegatedTask()) != null) {
+				task.run(); 
+			}
+			handshake = getEngine().getHandshakeStatus();
+		} 
+        /////////////
+		if (HandshakeStatus.NEED_WRAP == handshake) {							
+				int c= (int)getId()%handshakeBegin.length;				
+				boolean sent = false;
+				do {
+					int j = handshakeBegin.length;
+					while (--j>=0) {//find first available pipe to send handshake
+							
+						final Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
+						assert(null!=pipe);
+						
+						if (Pipe.hasRoomForWrite(pipe)) {
+						
+							//Warning the follow on calls should be low level...
+							//logger.warn("Low-Level ClientConnection request wrap for id {} to pipe {}",getId(), pipe, new Exception());
+							
+							////////////////////////////////////
+							//NOTE: must repeat this until the handshake is finished.
+							///////////////////////////////////
+							final int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+							Pipe.addLongValue(getId(), pipe);
+							Pipe.addLongValue(System.currentTimeMillis(), pipe);
+							Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe);
+							Pipe.addByteArray(EMPTY, 0, 0, pipe);
+							
+							Pipe.confirmLowLevelWrite(pipe, size);
+							Pipe.publishWrites(pipe);
+													
+							sent = true;
+							break;
+						} else {
+							//Why so much data??
+					//		System.out.println("pipe is not long enough to begin handshake "+pipe);
+							if (--c<0) {
+								c = handshakeBegin.length-1;
+							}
+						}
+					}
+					if (j<0) {
+						//begin handshake pipe should be longer to avoid this issue...
+						logger.warn("Not enough open pipes available to begin handshake. Total pipes: "+handshakeBegin.length);
+						Thread.yield();
+					}
+				} while (!sent);
+
+		
+		} else {
+			logger.warn("need {} but this will not start the handshake.",handshake);
+		}
 	}
 
 	public boolean isValid() {
