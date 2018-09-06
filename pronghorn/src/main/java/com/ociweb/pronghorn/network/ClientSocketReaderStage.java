@@ -240,10 +240,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 			///ensure that this will not cause any stall, better to skip this than be blocked.
 			if (Pipe.hasRoomForWrite(pipe)) {
 				
-				long callTime = abandonded.outstandingCallTime(System.nanoTime());
+				long nowNS = System.nanoTime();
+				long callTime = abandonded.outstandingCallTime(nowNS);
 				logger.warn("\nClient disconnected {} con:{} session:{} because call was taking too long. Estimated:{}",
 						 abandonded, abandonded.id, abandonded.sessionId,Appendables.appendNearestTimeUnit(new StringBuilder(), callTime));								
 
+				abandonded.touchSentTime(nowNS);//rest the timeout so we do not attempt to close this again until the timeout has passed again.				
+				
 				if (!abandonded.isDisconnecting()) {
 					abandonded.beginDisconnect();
 				}

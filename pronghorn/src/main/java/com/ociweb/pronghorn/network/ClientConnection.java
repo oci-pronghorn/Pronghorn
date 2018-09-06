@@ -504,7 +504,11 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				return -1;//we read the value while it was being sent so discard
 			}
 		}
-	}	
+	}
+	
+	public void touchSentTime(long nowNS) {
+		inFlightTimes[1+inFlightTimeRespPos & maxInFlightMask] = nowNS;
+	}
 	
 	public void recordArrivalTime(long time) {
 				
