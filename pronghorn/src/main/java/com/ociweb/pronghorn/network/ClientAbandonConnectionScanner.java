@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.util.ma.RunningStdDev;
 public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<ClientConnection> {
 
 	private final static Logger logger = LoggerFactory.getLogger(ClientAbandonConnectionScanner.class);
+
 	
 	public static int stdDevsToAbandon = 5; //default which will close connections taking longer than expected
 	public static long absoluteNSToAbandon = 300_000_000_000L;//default of 5 minutes, not normally used since standard dev is faster.
@@ -23,6 +24,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	
 	private int absoluteCounts = 0;
 	private ClientConnection[] absoluteAbandons = new ClientConnection[4];
+
+	private static final long CLOSED_LINGER_NS = 200_000L; //200 mirco seconds
 	
 	private RunningStdDev stdDev = new RunningStdDev();
 
@@ -43,15 +46,18 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	@Override
 	public void visit(ClientConnection t) {
 		
+		long scanTime = System.nanoTime();
+		long callTime = t.outstandingCallTime(scanTime);
+		
 		//skip those already notified.
-		if (!t.isClientClosedNotificationSent()) {	
-			
+		if (!t.isClientClosedNotificationSent()) {			
 			if (t.isDisconnecting || !t.isValid) {
-				absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
+				if (callTime>CLOSED_LINGER_NS) {
+					//DO NOT IMMEDIATLY SEND THESE OR WE MAY END UP SENDING THE SAME ONE MULTIPLE TIMES.
+					absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
+				}
 			} else {
 				
-				long scanTime = System.nanoTime();
-				long callTime = t.outstandingCallTime(scanTime);
 						
 				long timeout = t.getTimeoutNS();
 				if (timeout>0) {//overrides general behavior if set
