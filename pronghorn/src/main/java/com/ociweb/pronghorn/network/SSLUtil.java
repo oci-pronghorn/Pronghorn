@@ -585,7 +585,7 @@ public class SSLUtil {
 		while (Pipe.hasRoomForWrite(target) && 
 			  Pipe.peekMsg(source, NetPayloadSchema.MSG_UPGRADE_307, 
 					               NetPayloadSchema.MSG_BEGIN_208,
-					               NetPayloadSchema.MSG_BEGIN_208,
+					               NetPayloadSchema.MSG_DISCONNECT_203,
 					               -1) ) {
 			
 			Pipe.copyFragment(source, target);
