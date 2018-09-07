@@ -29,7 +29,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
-	private final ServiceObjectHolder<ServerConnection> socketHolder;
+	private ServiceObjectHolder<ServerConnection> socketHolder;
     private Selector                              selectors;
     private MemberHolder                          subscriptions;
     private int[]                                 upgradePipeLookup;
@@ -161,8 +161,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
     		firstStage.requestShutdown();
     		firstStage = null;
     	}
-     //	logger.trace("Server pipe pool:\n {}",responsePipeLinePool);
-    	    	
+    	socketHolder = null;
+    	optionalStageProcessor = null;
+    	selectors = null;
     }
     
     public boolean isLogFilesEnabled() {

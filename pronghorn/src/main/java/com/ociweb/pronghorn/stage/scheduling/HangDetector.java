@@ -58,6 +58,7 @@ public class HangDetector {
 
 	public void finish() {
 		this.activeTimeout =  Long.MAX_VALUE;
+		this.active = null;//important to ensure no leak.
 	}
 
 }

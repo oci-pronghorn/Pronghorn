@@ -283,6 +283,7 @@ public class HTTPUtil {
 	        
 	        if (null!=hw) {
 	        	hw.write(HeaderWriterLocal.get().target(writer));
+	        	HeaderWriterLocal.get().target(null);
 	        }
 	                    
 	        writer.writeByte('\r');

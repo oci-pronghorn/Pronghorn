@@ -24,7 +24,6 @@ import com.ociweb.pronghorn.network.mqtt.IdGenStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientResponseStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientToServerEncodeStage;
-import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -1369,7 +1368,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				}			
 				
 				result.setPriority(prioirity);
-						
+								
 				//logger.info("new thread created for {}",r.getClass().getName());
 				return result;
 			}        	
@@ -1492,7 +1491,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				}
 			}
 		}	
- 
+
 	}
 	
 	@Override
@@ -1514,19 +1513,20 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		while (--i>=0) {			
 			cleanExit &= ntsArray[i].awaitTermination(timeout, unit);			
 		}	
-
-		if (!cleanExit) {
-			validShutdownState();
-			return false;
-		}
 		//will be null upon empty project, this is ok, just exit.
 		if (null!=executorService) {
 			//each child scheduler has already completed await termination so no need to wait for this 
 			executorService.shutdownNow();
+			executorService = null;
+			ntsArray = null;		
 		}
 	
 		if (null!=firstException) {
 		    throw new RuntimeException(firstException);
+		}
+		if (!cleanExit) {
+			validShutdownState();
+			return false;
 		}
 		return true;
 		
@@ -1534,9 +1534,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 
 	@Override
 	public boolean terminateNow() {
-		
-		new Exception().printStackTrace();
-		
+
 		shutdown();
 		try {
 			//give the stages 1 full second to shut down cleanly

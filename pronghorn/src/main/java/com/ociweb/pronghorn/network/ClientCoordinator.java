@@ -26,7 +26,7 @@ import com.ociweb.pronghorn.util.TrieParserReaderLocal;
 
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
-	private final ServiceObjectHolder<ClientConnection> connections;
+	private ServiceObjectHolder<ClientConnection> connections;
 	
 	//outstandingCallTime must be called on every object in the holder..
 	//find the timeouts and mark them closed..
@@ -43,7 +43,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static int totalKnownDomains = 0;
 	public static final TrieParser domainRegistry = new TrieParser(64, 2, false, false, true);
 
-	private static final long EXPIRE_LIMIT_MS = 200;//if not used in MS then eligible to be closed.
 	public static LongLongHashTable[] conTables = new LongLongHashTable[4];
 	///////////////////////////////////////////////
 
@@ -62,6 +61,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     		firstStage=null;
     	}
       	
+    	connections = null;
+    	optionalStageProcessor = null;
     }
     
 
