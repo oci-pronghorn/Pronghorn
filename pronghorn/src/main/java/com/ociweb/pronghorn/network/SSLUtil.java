@@ -591,9 +591,7 @@ public class SSLUtil {
 			Pipe.copyFragment(source, target);
 			
 		}
-		
-		assert(!Pipe.hasRoomForWrite(target) || !Pipe.peekMsg(target, NetPayloadSchema.MSG_ENCRYPTED_200)) : "Encrypted payload must not be passed into wrapper";
-		
+
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
