@@ -1380,7 +1380,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		final int msgIdx = slab[mask&(int)sourceSlabPos];
 		
 		//look up the data size to copy...
-		final int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
+		final int slabMsgSize = msgIdx!=-1 ? Pipe.from(sourcePipe).fragDataSize[msgIdx] : Pipe.EOF_SIZE;
 
 		//this value also contains the full byte count for any index used by structures
 		int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for pos of byte count
