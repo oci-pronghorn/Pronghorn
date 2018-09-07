@@ -369,13 +369,14 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		//logger.trace("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
 		//logger.info("is now valid connection {} ",this.id);
-		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
-		isValid = true;
+		SelectionKey tempkey = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
 
-		//must be last
 		if (isTLS) {
 			beginHandshakeNow(handshakeBegin);		
 		}
+		isValid = true;
+		//must be last, this connection can not be used until this key is not null;
+		this.key = tempkey;
 	}
 
 	private void beginHandshakeNow(Pipe<NetPayloadSchema>[] handshakeBegin) throws SSLException {
