@@ -50,8 +50,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		long callTime = t.outstandingCallTime(scanTime);
 		
 		//skip those already notified.
-		if (!t.isClientClosedNotificationSent()) {			
-			if ((t.isDisconnecting || !t.isValid) && t.isRegistered()) {//do not kill those starting up.
+		if ((!t.isClientClosedNotificationSent()) && t.isRegistered()) {			
+			if (t.isDisconnecting || !t.isValid) {//do not kill those starting up.
 				if (callTime>CLOSED_LINGER_NS) {
 					//DO NOT IMMEDIATLY SEND THESE OR WE MAY END UP SENDING THE SAME ONE MULTIPLE TIMES.
 					absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
