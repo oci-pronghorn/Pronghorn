@@ -4086,6 +4086,23 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     /**
+     * peek message and determine if it matches one of 3 potential values
+     * @param pipe Pipe source
+     * @param expected1 int message idx
+     * @param expected2 int message idx
+     * @param expected3 int message idx
+     * @param expected4 int message idx
+     * @return boolean true if there is a message and it matches one of the three expected values
+     */
+    public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2, int expected3, int expected4) {
+        return (Pipe.contentRemaining(pipe)>0) && 
+        		 (peekInt(pipe)==expected1 
+        		  || peekInt(pipe)==expected2 
+        		  || peekInt(pipe)==expected3
+        		  || peekInt(pipe)==expected4);
+    }
+    
+    /**
      * peek the int value at this position
      * @param pipe Pipe source
      * @return int value

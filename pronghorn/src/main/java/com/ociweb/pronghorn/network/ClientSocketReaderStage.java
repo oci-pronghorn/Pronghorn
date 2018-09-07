@@ -314,7 +314,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
     private boolean hasNewDataToRead(Selector selector) {
     	
-    	assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
+    	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
   	      		
         try {
         	////////////
