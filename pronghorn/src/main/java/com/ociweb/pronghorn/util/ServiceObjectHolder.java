@@ -412,29 +412,6 @@ public class ServiceObjectHolder<T> {
         	return null;
         }
     }
-    
-
-    /**
-     * Loop forever around all valid objects.
-     * Only returns null when there are no valid items to loop over.
-     */
-    @Deprecated
-    public T next() {
-        
-        ServiceObjectData<T> localData = data;
-        int index = loopPos;
-        int modIdx;
-        int hardStop = index+localData.size;
-        T result = null;
-        do {
-            modIdx = (int)(++index) & localData.mask;
-            result = localData.serviceObjectValues[modIdx];                        
-        } while ((null == result || !validator.isValid(result) ) && index<=hardStop);
-        
-        loopPos = modIdx;
-        return index<=hardStop ? result : null;    
-        
-    }
 
     public static long getSequenceCount(ServiceObjectHolder sho) {
         return sho.sequenceCounter; 

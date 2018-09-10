@@ -222,18 +222,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			throw new UnsupportedOperationException("Can not close old connection without finishing handshake.");
 		}
 	}
-
-	/**
-	 * loops over all valid connections and only returns null of there are no valid connections
-	 * 
-	 * import for shutdown which invalidates connections.
-	 * 
-	 * @return next valid open connection, or null of there are none.
-	 */
-	@Deprecated
-	public ClientConnection nextValidConnection() {
-		return connections.next();
-	}
 	
 	public int maxClientConnections() {
 		return connections.size();		
@@ -576,7 +564,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	public ClientAbandonConnectionScanner scanForSlowConnections() {
 		abandonScanner.reset();
-		connections.visitAll(abandonScanner); //TOOD: visit all.... not just the live ones.
+		connections.visitAll(abandonScanner);
 		return abandonScanner;
 	}
 	

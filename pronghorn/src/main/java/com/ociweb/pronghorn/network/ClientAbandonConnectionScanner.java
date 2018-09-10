@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ArrayGrow;
 import com.ociweb.pronghorn.util.ServerObjectHolderVisitor;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
@@ -48,6 +49,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		
 		long scanTime = System.nanoTime();
 		long callTime = t.outstandingCallTime(scanTime);
+		
+		System.out.println("visit: "+t.id+" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString());
 		
 		//skip those already notified.
 		if ((!t.isClientClosedNotificationSent()) && t.isRegistered()) {			
