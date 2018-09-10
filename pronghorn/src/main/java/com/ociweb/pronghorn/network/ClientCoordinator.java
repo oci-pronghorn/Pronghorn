@@ -564,7 +564,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 	public ClientAbandonConnectionScanner scanForSlowConnections() {
 		abandonScanner.reset();
-		connections.visitAll(abandonScanner);
+		if (null != connections) {
+			connections.visitAll(abandonScanner);
+		}
 		return abandonScanner;
 	}
 	
