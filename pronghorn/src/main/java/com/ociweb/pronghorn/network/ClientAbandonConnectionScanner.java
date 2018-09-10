@@ -17,7 +17,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 
 	
 	public static int stdDevsToAbandon = 5; //default which will close connections taking longer than expected
-	public static long absoluteNSToAbandon = 300_000_000_000L;//default of 5 minutes, not normally used since standard dev is faster.
+	public static long absoluteNSToAbandon = 180_000_000_000L;//default of 3 minutes
 	public static long absoluteNSToKeep =        200_000_000L; //default of 200ms for any acceptable wait.
 	
 	private long maxOutstandingCallTime;
@@ -71,6 +71,12 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 				}
 			} else {
 						
+				//if no explicit limits are set wait until we have 100 data samples before limiting
+				if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
+					//find the std dev of the 98% of all network calls, we are collecting this for later.
+					RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
+				}
+
 				long timeout = t.getTimeoutNS();
 				if (timeout>0) {//overrides general behavior if set
 					if (callTime>timeout) {
@@ -80,11 +86,6 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 					if (callTime>absoluteNSToAbandon) {
 						absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
 					} else {
-						//if no explicit limits are set wait until we have 100 data samples before limiting
-						if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
-							//find the std dev of the 98% of all network calls, we are collecting this for later.
-							RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
-						}
 							
 						//find the single longest outstanding call
 						if (callTime > maxOutstandingCallTime) {
