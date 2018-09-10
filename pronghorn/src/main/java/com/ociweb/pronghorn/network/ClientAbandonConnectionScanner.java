@@ -57,7 +57,8 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		if (showScan) {
 			System.out.println("scan: "+t.id
 					           +" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString()
-					           +" isValid:"+t.isValid+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting				
+					           +" isValid:"+t.isValid+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting
+					           +" sentClosedNotice:"+t.isClientClosedNotificationSent()
 							);
 		}
 		
@@ -69,7 +70,6 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 					absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
 				}
 			} else {
-				
 						
 				long timeout = t.getTimeoutNS();
 				if (timeout>0) {//overrides general behavior if set
@@ -80,19 +80,16 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 					if (callTime>absoluteNSToAbandon) {
 						absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);
 					} else {
-					
-						//TODO: can, find the lest recently used connection and close it as well ??
-			
 						//if no explicit limits are set wait until we have 100 data samples before limiting
 						if (ElapsedTimeRecorder.totalCount(t.histogram())>100) {
-							//find the std dev of the 98% of all network calls
+							//find the std dev of the 98% of all network calls, we are collecting this for later.
 							RunningStdDev.sample(stdDev, ElapsedTimeRecorder.elapsedAtPercentile(t.histogram(), .98));
+						}
 							
-							//find the single longest outstanding call
-							if (callTime > maxOutstandingCallTime) {
-								maxOutstandingCallTime = callTime;
-								candidate = t;
-							}
+						//find the single longest outstanding call
+						if (callTime > maxOutstandingCallTime) {
+							maxOutstandingCallTime = callTime;
+							candidate = t;
 						}
 					}
 				}	
