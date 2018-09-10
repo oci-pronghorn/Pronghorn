@@ -118,9 +118,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 				int i = input.length;
 				while (--i>=0) {										  
 					if (Pipe.hasContentToRead(input[i])) {	
-						
-						assert(	(!Pipe.peekMsg(input[i], -1)) && (null!=ClientCoordinator.registeredDomain(Pipe.peekInt(input[i],  3)))) : "bad hostId: "+Pipe.peekInt(input[i],  3);
-						
 						if (buildClientRequest(input[i])) {
 							hasWork = true;
 						} else {
