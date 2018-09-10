@@ -31,6 +31,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	private RunningStdDev stdDev = new RunningStdDev();
 
 	private final ClientCoordinator coordinator;
+	public static boolean showScan = false;
 	
 	public ClientAbandonConnectionScanner(ClientCoordinator coordinator) {
 		this.coordinator = coordinator;
@@ -42,6 +43,9 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		absoluteCounts = 0;
 		stdDev.clear();
 		Arrays.fill(absoluteAbandons, null);
+		if (showScan) {
+			System.out.println("--------------------------");
+		}
 	}
 		
 	@Override
@@ -50,7 +54,12 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		long scanTime = System.nanoTime();
 		long callTime = t.outstandingCallTime(scanTime);
 		
-		System.out.println("visit: "+t.id+" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString());
+		if (showScan) {
+			System.out.println("scan: "+t.id
+					           +" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString()
+					           +" isValid:"+t.isValid+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting				
+							);
+		}
 		
 		//skip those already notified.
 		if ((!t.isClientClosedNotificationSent()) && t.isRegistered()) {			
