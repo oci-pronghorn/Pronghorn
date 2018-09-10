@@ -481,7 +481,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					if (LongLongHashTable.isFull(table)) {
 						conTables[cc.hostId] = table = LongLongHashTable.doubleClone(table);
 					}
-					System.out.println("storing new connecion id "+connectionId);
+					//System.out.println("storing new connecion id "+connectionId);
 					LongLongHashTable.setItem(table, key, connectionId);
 							                	
 				}
