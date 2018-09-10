@@ -99,9 +99,8 @@ public class ClientSocketReaderStage extends PronghornStage {
         Number schedRate = ((Number)GraphManager.getNota(graphManger, this, GraphManager.SCHEDULE_RATE, new Long(-1)));        
         long minimumTimeout = ClientCoordinator.minimumTimeout();        
         
-        if (minimumTimeout<Long.MAX_VALUE) {
-        	rateMask = (1 << (int)(Math.log((int)(minimumTimeout/schedRate.longValue()))/Math.log(2)))-1;
-        	System.out.println("testing buildnew mask "+Integer.toHexString(rateMask)+" rate "+schedRate+"   "+minimumTimeout);
+        if (minimumTimeout < Long.MAX_VALUE && minimumTimeout>=0) {
+        	rateMask = (1 << (int)(Math.log((int)( minimumTimeout / schedRate.longValue() ))/Math.log(2)))-1;
         } else {
         	rateMask = 0xFFF;
         }
@@ -149,42 +148,39 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         ////////////////////////////////////////
 
 	     	Selector selector = coordinator.selector();
-	    		if (selector.keys().isEmpty()) {
-	    			//no work
-	    			return;
-	    		}
+    		if (!selector.keys().isEmpty()) {
+
 	    		///////////////////
 	    		//after this point we are always checking for new data work so always record this
 	    		////////////////////
-	     	if (null != this.didWorkMonitor) {
-	     		this.didWorkMonitor.published();
-	     	}	
-	     	 
-	     	 //max cycles before we take a break.
-	     	int maxIterations = 100; //important or this stage will take all the resources.
-	     	
-	     	
-	     	
-	         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
-
-	 	           doneSelectors.clear();
-	 		
-	 	           hasRoomForMore = true;
-	 	           
-	 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-	 	           if (null!=keyMap) {
-	 	        	   keyMap.forEach(keyVisitor);
-	 	           } else {
-	 	        	   selectedKeys.forEach(selectionKeyAction);
-	 	           }
-	 	           
-	 			   removeDoneKeys(selectedKeys);
-	 			      
-	 			   if (!hasRoomForMore) {
-	 				   return;
-	 			   }
-	 		
-	         }
+		     	if (null != this.didWorkMonitor) {
+		     		this.didWorkMonitor.published();
+		     	}	
+		     	 
+		     	 //max cycles before we take a break.
+		     	int maxIterations = 100; //important or this stage will take all the resources.
+		     	
+		         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
+	
+		 	           doneSelectors.clear();
+		 		
+		 	           hasRoomForMore = true;
+		 	           
+		 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+		 	           if (null!=keyMap) {
+		 	        	   keyMap.forEach(keyVisitor);
+		 	           } else {
+		 	        	   selectedKeys.forEach(selectionKeyAction);
+		 	           }
+		 	           
+		 			   removeDoneKeys(selectedKeys);
+		 			      
+		 			   if (!hasRoomForMore) {
+		 				   break;
+		 			   }
+		 		
+		         }
+    		}
 	  
 	  		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
 
