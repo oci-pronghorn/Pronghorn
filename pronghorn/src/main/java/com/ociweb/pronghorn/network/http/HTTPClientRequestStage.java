@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -33,8 +34,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 	
-	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
-	static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
+	static final byte[] BYTES_SPACE = " ".getBytes();
+	static final byte[] BYTES_SPACE_SLASH = " /".getBytes();
 	
 	static long CYCLE_LIMIT_HANDSHAKE = 100_000L; //10_000 is common so we want something a couple orders bigger.
 	
@@ -117,6 +118,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 				int i = input.length;
 				while (--i>=0) {										  
 					if (Pipe.hasContentToRead(input[i])) {	
+						
+						assert(	(!Pipe.peekMsg(input[i], -1)) && (null!=ClientCoordinator.registeredDomain(Pipe.peekInt(input[i],  3)))) : "bad hostId: "+Pipe.peekInt(input[i],  3);
+						
 						if (buildClientRequest(input[i])) {
 							hasWork = true;
 						} else {
@@ -149,6 +153,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		//also must ensure connection is open before taking messages.
 		if (isConnectionReadyForUse(requestPipe) && null!=activeConnection ) {
 			didWork = true;	        
+	
 			
 			final int msgIdx = Pipe.takeMsgIdx(requestPipe);			
 		    //we have already checked for connection so now send the request
@@ -156,22 +161,43 @@ public class HTTPClientRequestStage extends PronghornStage {
 			final long now = System.nanoTime();
 			activeConnection.setLastUsedTime(now);
 	       	
-	
-		    if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
-				HTTPClientUtil.publishGetFast(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
-		    } else  if (ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201 == msgIdx) {
-		    	HTTPClientUtil.processPostFast(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
-		    } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
-		    	//logger.info("Warning slower call for HTTP GET detected, clean up lazy init.");
-		    	HTTPClientUtil.processGetSlow(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
-		    } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
-		    	HTTPClientUtil.processPostSlow(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
-		    } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
-		    	HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
-		    } else {
-		    	throw new UnsupportedOperationException("Unexpected Message Idx");
-		    }		
+			if (ClientHTTPRequestSchema.MSG_GET_200 == msgIdx) {
+				HTTPClientUtil.publish(
+						HTTPVerbDefaults.GET,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);				
 			
+			} else if (ClientHTTPRequestSchema.MSG_POST_201 == msgIdx) {
+				HTTPClientUtil.publishWithPayload(
+						HTTPVerbDefaults.POST,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+			
+			} else if (ClientHTTPRequestSchema.MSG_HEAD_202 == msgIdx) {
+				HTTPClientUtil.publish(
+						HTTPVerbDefaults.HEAD,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+			
+			} else if (ClientHTTPRequestSchema.MSG_DELETE_203 == msgIdx) {
+				HTTPClientUtil.publish(
+						HTTPVerbDefaults.DELETE,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+							
+			} else if (ClientHTTPRequestSchema.MSG_PUT_204 == msgIdx) {
+				HTTPClientUtil.publishWithPayload(
+						HTTPVerbDefaults.PUT,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+							
+			} else if (ClientHTTPRequestSchema.MSG_PATCH_205 == msgIdx) {
+				HTTPClientUtil.publishWithPayload(
+						HTTPVerbDefaults.PATCH,
+						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+			
+			} else if (ClientHTTPRequestSchema.MSG_CLOSECONNECTION_104 == msgIdx) {
+				HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
+				
+			} else {				
+				throw new UnsupportedOperationException("Unexpected Message Idx:"+msgIdx);
+			}
+						
 			Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
 			Pipe.releaseReadLock(requestPipe);	
      
@@ -186,94 +212,42 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
-
 		
-		int sessionId=0;
-		int port=0;			
-		int hostMeta=0;
- 		int hostLen=0;
- 		int hostPos=0;		
- 		byte[] hostBack=null;
- 		int hostMask=0;
- 		
- 		long connectionId;
- 		
- 		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200) 
- 			||Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPPOST_201) ) {
- 			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
+		//all the message fragments hold these fields in the same positions.
+		int sessionId = Pipe.peekInt(requestPipe,  1);
+		int port = Pipe.peekInt(requestPipe,  2);
+		int hostId = Pipe.peekInt(requestPipe,  3);
+		long connectionId  = Pipe.peekLong(requestPipe, 4); 			
+		
+		if (connectionId==-1) {
+			connectionId = ClientCoordinator.lookup(hostId, port, sessionId);
+		}
+		
+ 		if (connectionId>=0 && (null==activeConnection || activeConnection.id!=connectionId)) {
  			activeConnection = (ClientConnection) ccm.connectionObjForConnectionId(connectionId, false);
- 			assert(-1 != connectionId);
- 		} else {
- 
- 			if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_CLOSE_104) ) {
- 	 			
- 				sessionId = Pipe.peekInt(requestPipe,      1); //user id always after the msg idx
- 	 			port = Pipe.peekInt(requestPipe,        2); //port is always after the userId; 
- 	 			hostMeta = Pipe.peekInt(requestPipe,    3); //host is always after port
- 	 	 		hostLen  = Pipe.peekInt(requestPipe,    4); //host is always after port
- 	 	 		assert(sessionId!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);
- 	 	 		
- 	 	 		
- 	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
- 	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
- 	 	 		hostMask = Pipe.blobMask(requestPipe);
- 	 	 		
- 	 	 		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
- 			} else {
- 				assert(Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100, 
- 						                         ClientHTTPRequestSchema.MSG_HTTPPOST_101 )) : "unsupported msg "+Pipe.peekInt(requestPipe);
- 	 			sessionId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
- 	 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
- 	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
- 	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
- 	 	 		assert(sessionId!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);
- 	 	 		
- 	 	 		//for post what about the payload field???
- 	 	 		
- 	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
- 	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
- 	 	 		hostMask = Pipe.blobMask(requestPipe);
- 	 						
- 	     		connectionId = ccm.lookup(ClientCoordinator.lookupHostId(hostBack, hostPos, hostLen, hostMask), port, sessionId);
- 			}
  		}
-		
+		 				
  		if (null!=activeConnection
- 			&& activeConnection.getId()==connectionId 
+ 			&& (activeConnection.getId()==connectionId)
  			&& activeConnection.isValid()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
- 		
- 			if (null!=activeConnection && activeConnection.id==connectionId) {
- 				//this is the only point where we can decompose since 
- 				//we are creating a new active connection 				
- 				ccm.removeConnection(activeConnection.id);
- 			}
- 			
- 			
- 			if (0==port) {
- 				int routeId = Pipe.peekInt(requestPipe, 1);
- 	 			sessionId   = Pipe.peekInt(requestPipe,    2); //user id always after the msg idx
- 	 			port     = Pipe.peekInt(requestPipe,    3); //port is always after the userId; 
- 	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
- 	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
- 	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
- 	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
- 	 	 		hostMask = Pipe.blobMask(requestPipe);
- 	 	 		assert(sessionId!=0) : "sessionId must not be zero";
- 			}
-
-			activeConnection = ClientCoordinator.openConnection(
- 					 ccm, 
- 					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
- 					 port, sessionId, output, connectionId, ccf);
+ 			assert(null!=ClientCoordinator.registeredDomain(Pipe.peekInt(requestPipe,  3))) : "bad hostId";
+ 			assert( Pipe.peekInt(requestPipe,  2)!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);		
+			activeConnection = ClientCoordinator.openConnection(ccm, 
+																hostId,  //hostId 3
+																port,  //port 2
+																sessionId,  //session 1
+																output, connectionId, ccf);
+			
  		}
  		
+		return connectionStateChecks(requestPipe);
+	}
+
+	private boolean connectionStateChecks(Pipe<ClientHTTPRequestSchema> requestPipe) {
 		if (null != activeConnection) {
 
-			
-			//logger.info("finish new connect {} ",activeConnection.isFinishConnect());
-			
 			assert(activeConnection.isFinishConnect());
 			
 			if (ccm.isTLS) {				
@@ -281,7 +255,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 				//ALL the conent will be held here until the connection and its handshake is complete
 				//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
+				if (HandshakeStatus.FINISHED!=handshakeStatus 
+					&& HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
 						) {
 			
 					if (++blockedCycles>=CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
@@ -296,22 +271,25 @@ public class HTTPClientRequestStage extends PronghornStage {
 							    activeConnection.clientClosedNotificationSent();
 								activeConnection.close(); //close so next call we will get a fresh connection
 								//old message will find new connection under old connection id!
+								activeConnection = null;
 			
 						} else {
 							//drop request and close the connection
 							Pipe.skipNextFragment(requestPipe);
 							//TODO: drop all while match??
 							activeConnection.close();
+							activeConnection = null;
 						}
 						blockedCycles = 0;
 					}
 
-					activeConnection = null;
 					return false;
 					
 				} else {
 					blockedCycles = 0;
 				}
+				
+				System.out.println(handshakeStatus+" status now");
 			} else {
 				blockedCycles = 0;
 			}

@@ -8,15 +8,15 @@ public class BasicClientConnectionFactory extends AbstractClientConnectionFactor
 
 	public final static BasicClientConnectionFactory instance = new BasicClientConnectionFactory();
 		
-	public ClientConnection newClientConnection(ClientCoordinator ccm, CharSequence host, int port,
+	public ClientConnection newClientConnection(ClientCoordinator ccm, int port,
 			int sessionId, long connectionId, int pipeIdx, int hostId, long timeoutNS, int structureId)
 			throws IOException {
 		
 		SSLEngine engine =  ccm.isTLS ?
-		        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
+		        ccm.engineFactory.createSSLEngine(ClientCoordinator.registeredDomain(hostId), port)
 		        :null;
 		   
-		return new ClientConnection(engine, host, hostId, port, sessionId, pipeIdx, 
+		return new ClientConnection(engine, hostId, port, sessionId, pipeIdx, 
 					                  connectionId, timeoutNS, structureId);
 
 	}

@@ -121,21 +121,23 @@ public class OAuth1RequestTokenStage extends PronghornStage {
 		    
 		    
 		    int size = Pipe.addMsgIdx(outputPipe, 
-		    		ClientHTTPRequestSchema.MSG_HTTPGET_100);
-		    Pipe.addIntValue(responseId, outputPipe); //destination
+		    		ClientHTTPRequestSchema.MSG_GET_200);
 		    Pipe.addIntValue(1, outputPipe); //session
 		    Pipe.addIntValue(port, outputPipe); //port
-		    Pipe.addUTF8(host, outputPipe); //host
+		    int hostId = ClientCoordinator.registerDomain(host);
+		    Pipe.addIntValue(hostId, outputPipe);
+		    Pipe.addLongValue(-1, outputPipe); 
+		    Pipe.addIntValue(responseId, outputPipe); //destination
+		    
 		    Pipe.addUTF8(pathRoot, outputPipe); //path
 		    //headers
 			DataOutputBlobWriter<ClientHTTPRequestSchema> hStream = PipeWriter.outputStream(outputPipe);
 			DataOutputBlobWriter.openField(hStream);
 			oauth.addHeaders(hStream, "GET").append("\r\n");
 			
-			oauth.addHeaders(System.out, "GET").append("\r\n");
+			//oauth.addHeaders(System.out, "GET").append("\r\n");
 			
-			DataOutputBlobWriter.closeHighLevelField(hStream,
-					ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7);
+			DataOutputBlobWriter.closeHighLevelField(hStream, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7);
 			Pipe.confirmLowLevelWrite(outputPipe, size);
 			Pipe.publishWrites(outputPipe);
 					 

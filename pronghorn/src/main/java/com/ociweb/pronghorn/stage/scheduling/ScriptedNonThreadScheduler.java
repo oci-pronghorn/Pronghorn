@@ -846,7 +846,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				&& ((inProgressIdx = script[scheduleIdx++]) >= 0)) {
 			
 			long start = System.nanoTime();
-			if (start>SLAStartNano) {
+			if (start > SLAStartNano) {
 				SLAStart = SLABase + ((start-SLAStartNano)/1_000_000);  				
 			} else {
 				SLABase = System.currentTimeMillis();
@@ -881,6 +881,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return Integer.MAX_VALUE;
 	}
 
+	//boolean noDeepAssertChecks = true;
+	
 	private boolean runStage(final boolean recordTime,
 			final DidWorkMonitor localDidWork, 
 			int inProgressIdx, long SLAStart,
@@ -891,7 +893,24 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		timeStartedRunningStage = start;
 		
 		DidWorkMonitor.begin(localDidWork, start);		
-		boolean shutDownRequestedHere = runStageImpl(this, stage);		
+		boolean shutDownRequestedHere = false;
+		
+//		if (noDeepAssertChecks) {
+//			try {		
+//				//NOTE: if no stages have shutdown we could elminate this check with a single boolean. TODO: if this shows up in profiler again.
+//				if (!(stateArray[stage.stageId] >= GraphManagerStageStateData.STAGE_STOPPING)) {
+//						stage.run();	        
+//				        timeStartedRunningStage = 0;
+//				} else {				
+//				    processShutdown(graphManager, stage);
+//				    shutDownRequestedHere = true;
+//				}
+//			} catch (Exception e) {			
+//				shutDownRequestedHere = processExceptionAndCleanup(this, stage, e);
+//			}		    
+//		} else {		
+			shutDownRequestedHere = runStageImpl(this, stage);	
+//		}
 		if (!DidWorkMonitor.didWork(localDidWork)) {		
 		} else {
 			ScriptedNonThreadScheduler.recordRunResults(
@@ -901,9 +920,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return shutDownRequestedHere;
 	}
 
-	private static boolean runStageImpl(
-			final ScriptedNonThreadScheduler that, 
-			final PronghornStage stage) {
+	private static boolean runStageImpl(final ScriptedNonThreadScheduler that, final PronghornStage stage) {
 		try {		
 			//NOTE: if no stages have shutdown we could elminate this check with a single boolean. TODO: if this shows up in profiler again.
 			if (!(that.stateArray[stage.stageId] >= GraphManagerStageStateData.STAGE_STOPPING)) {

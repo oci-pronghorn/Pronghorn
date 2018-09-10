@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.twitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.OAuth1HeaderBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
@@ -284,13 +285,16 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	private void publishRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId, long friendUserId) {
 		int sessionId = httpRequestResponseId;
 		
-		int size = Pipe.addMsgIdx(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+		int size = Pipe.addMsgIdx(pipe, ClientHTTPRequestSchema.MSG_GET_200);
 		assert(httpRequestResponseId>=0);
 		
-		Pipe.addIntValue(httpRequestResponseId, pipe);//destination
 		Pipe.addIntValue(sessionId, pipe);//session  
 		Pipe.addIntValue(port, pipe);                 //port
-		Pipe.addUTF8(host, pipe);
+		int hostId = ClientCoordinator.registerDomain(host);
+		Pipe.addIntValue(hostId, pipe);
+		Pipe.addLongValue(-1, pipe);
+		Pipe.addIntValue(httpRequestResponseId, pipe);//destination
+		
 		Pipe.addUTF8(path, pipe);
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = Pipe.openOutputStream(pipe);

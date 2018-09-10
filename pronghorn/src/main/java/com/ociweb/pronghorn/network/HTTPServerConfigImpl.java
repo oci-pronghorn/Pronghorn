@@ -337,7 +337,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 	@Override
 	public boolean requireClientAuth() {
-		return serverTLS.clientAuthRequired();
+		return null==serverTLS ? false :serverTLS.clientAuthRequired();
 	}
 
 	@Override

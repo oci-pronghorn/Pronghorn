@@ -381,7 +381,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, liveConnectionId, null!=old);
 
-		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
+		activeConnection = ClientCoordinator.openConnection(ccm, hostId, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker, liveConnectionId,
 				                         BasicClientConnectionFactory.instance); 

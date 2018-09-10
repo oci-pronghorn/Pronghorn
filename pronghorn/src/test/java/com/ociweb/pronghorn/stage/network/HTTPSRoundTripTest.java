@@ -21,6 +21,7 @@ import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -28,14 +29,15 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 public class HTTPSRoundTripTest {
 
     AtomicInteger sessionCounter = new AtomicInteger();    
-	
+    
+    @Test
+    public void demo() {
+    	assertTrue(true);
+    }
+       
     @Test
 	public void allCertHTTPSTest() {
-    
-    	//show the decrypted data which was sent to the client
-    	//HTTP1xResponseParserStage.showData = true;
-    	
-    	
+        	
     	int maxPartialResponses=10;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
@@ -60,15 +62,17 @@ public class HTTPSRoundTripTest {
 		ClientCoordinator.registerDomain("127.0.0.1");
 		
 		httpRequestsPipe[0].initBuffers();
+		Pipe<ClientHTTPRequestSchema> output = httpRequestsPipe[0];
 		
-		ClientHTTPRequestSchema.instance.publishHTTPGet(
-														httpRequestsPipe[0], 
-														fieldDestination, 
-														fieldSession, 
-														port, 
-														bindHost, 
-														fieldPath, 
-														fieldHeaders);
+		PipeWriter.presumeWriteFragment(output, ClientHTTPRequestSchema.MSG_GET_200);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10, fieldSession);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, port);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, ClientCoordinator.registerDomain(bindHost));
+		PipeWriter.writeLong(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_CONNECTIONID_20, (long) -1);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11, fieldDestination);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3, fieldPath);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7, fieldHeaders);
+		PipeWriter.publishWrites(output);
 			
 		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
 		 clientRequestCount, clientRequestSize, tlsCertificates);
@@ -81,8 +85,8 @@ public class HTTPSRoundTripTest {
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
 		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
 		
-		c.setDecryptionUnitsPerTrack(4);
-		c.setEncryptionUnitsPerTrack(4);
+		c.setDecryptionUnitsPerTrack(2);
+		c.setEncryptionUnitsPerTrack(2);
 		
 		if (null == tlsCertificates) {
 			c.useInsecureServer();
@@ -90,10 +94,12 @@ public class HTTPSRoundTripTest {
 			c.setTLS(tlsCertificates);
 		}
 		c.setHost(bindHost);
-		
+				
 		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 
+		//gm.enableTelemetry(9099);
+		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
 		
 		runRoundTrip(gm, results);
@@ -129,15 +135,17 @@ public class HTTPSRoundTripTest {
 		CharSequence fieldHeaders = null;
 		
 		httpRequestsPipe[0].initBuffers();
+		Pipe<ClientHTTPRequestSchema> output = httpRequestsPipe[0];
 		
-		ClientHTTPRequestSchema.instance.publishHTTPGet(
-														httpRequestsPipe[0], 
-														fieldDestination, 
-														fieldSession, 
-														port, 
-														bindHost, 
-														fieldPath, 
-														fieldHeaders);
+		PipeWriter.presumeWriteFragment(output, ClientHTTPRequestSchema.MSG_GET_200);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10, fieldSession);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, port);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, ClientCoordinator.registerDomain(bindHost));
+		PipeWriter.writeLong(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_CONNECTIONID_20, (long) -1);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11, fieldDestination);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3, fieldPath);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7, fieldHeaders);
+		PipeWriter.publishWrites(output);
 			
 		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
 		 clientRequestCount, clientRequestSize, tlsCertificates);
@@ -150,8 +158,8 @@ public class HTTPSRoundTripTest {
 		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
 		
 		c.setHost(bindHost);
-		c.setDecryptionUnitsPerTrack(4);
-		c.setEncryptionUnitsPerTrack(4);
+		c.setDecryptionUnitsPerTrack(2);
+		c.setEncryptionUnitsPerTrack(2);
 		
 		if (null == tlsCertificates) {
 			c.useInsecureServer();
@@ -163,6 +171,7 @@ public class HTTPSRoundTripTest {
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());	
 		runRoundTrip(gm, results);
+		
 		
     }
     
@@ -196,15 +205,17 @@ public class HTTPSRoundTripTest {
 		CharSequence fieldHeaders = null;
 		
 		httpRequestsPipe[0].initBuffers();
+		Pipe<ClientHTTPRequestSchema> output = httpRequestsPipe[0];
 		
-		ClientHTTPRequestSchema.instance.publishHTTPGet(
-														httpRequestsPipe[0], 
-														fieldDestination, 
-														fieldSession, 
-														port, 
-														bindHost, 
-														fieldPath, 
-														fieldHeaders);
+		PipeWriter.presumeWriteFragment(output, ClientHTTPRequestSchema.MSG_GET_200);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10, fieldSession);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, port);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, ClientCoordinator.registerDomain(bindHost));
+		PipeWriter.writeLong(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_CONNECTIONID_20, (long) -1);
+		PipeWriter.writeInt(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11, fieldDestination);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3, fieldPath);
+		PipeWriter.writeUTF8(output,ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7, fieldHeaders);
+		PipeWriter.publishWrites(output);
 			
 		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
 		 clientRequestCount, clientRequestSize, tlsCertificates);

@@ -136,14 +136,17 @@ public class ClientHTTPSPipelineTest {
 		while (requests>0 && System.currentTimeMillis()<timeout) {
 						
 			Pipe<ClientHTTPRequestSchema> pipe = input[0];
-			if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
+			if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_GET_200)) {
 				assert((requests%maxListeners)>=0);
-				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, requests%maxListeners);
-				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
-				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
-				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10,  requests%maxListeners);
-				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/");
-				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7, "");
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10,  requests%maxListeners);
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, 443);
+				
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, ClientCoordinator.registerDomain("encrypted.google.com"));
+				PipeWriter.writeLong(pipe, ClientHTTPRequestSchema.MSG_CLOSECONNECTION_104_FIELD_CONNECTIONID_20, -1);
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11, requests%maxListeners);
+				
+				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3, "/");
+				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7, "");
 				PipeWriter.publishWrites(pipe);
 
 				requests--;

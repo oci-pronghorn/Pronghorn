@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.twitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.OAuth2BearerExtractor;
 import com.ociweb.pronghorn.network.OAuth2BearerUtil;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -206,22 +207,25 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 			}
 			////////////////////////////////////////////
 						
-			if (-1!=targetIdx && PipeWriter.tryWriteFragment(httpRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
+			if (-1!=targetIdx && PipeWriter.tryWriteFragment(httpRequest, ClientHTTPRequestSchema.MSG_GET_200)) {
 				
 				//logger.info("wrote out request for query, all is ready...");
 
 				//if we do not recieve a finished block, do not call again for this many cycles
 				inFlightTimeoutCounter = inFlightTimeoutCycles;
 				assert(queryResponseIds[targetIdx]>=0);
+				
+				PipeWriter.writeInt(httpRequest, ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10, 0);
+				PipeWriter.writeInt(httpRequest, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, twitterQueryPort);
+				
+				int hostId = ClientCoordinator.registerDomain(twitterQueryHost);
+				PipeWriter.writeInt(httpRequest, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, hostId);
+				PipeWriter.writeLong(httpRequest, ClientHTTPRequestSchema.MSG_GET_200_FIELD_CONNECTIONID_20, -1 );
 				PipeWriter.writeInt(httpRequest, 
-						            ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11,
-						            queryResponseIds[targetIdx]);				
+										ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11,
+										queryResponseIds[targetIdx]);				
 				
-				
-				PipeWriter.writeInt(httpRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10, 0);
-				PipeWriter.writeInt(httpRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, twitterQueryPort);
-				PipeWriter.writeUTF8(httpRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, twitterQueryHost);
-				
+								
 				DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(httpRequest);
 				DataOutputBlobWriter.openField(stream);
 				stream.write(queryRoot);
@@ -237,10 +241,9 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 				
 				//stream.debugAsUTF8();
 				
-				DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3);
-						
+				DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3);
 				
-				PipeWriter.writeUTF8(httpRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7, headers);
+				PipeWriter.writeUTF8(httpRequest, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7, headers);
 						
 				PipeWriter.publishWrites(httpRequest);
 				

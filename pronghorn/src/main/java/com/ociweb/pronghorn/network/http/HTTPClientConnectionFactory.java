@@ -26,13 +26,12 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 
 	@Override
 	public ClientConnection newClientConnection(ClientCoordinator ccm, 
-											CharSequence host, int port,
-			                                int sessionId, //unique value for this connection definition
+											int port, int sessionId, //unique value for this connection definition
 											long connectionId, int pipeIdx, 
 											int hostId, long timeoutNS, int structureId) throws IOException {
 		
 		SSLEngine engine =  ccm.isTLS ?
-		        ccm.engineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port)
+		        ccm.engineFactory.createSSLEngine(ClientCoordinator.registeredDomain(hostId), port)
 		        :null;
 		        
 	    if (sessionId>=headerParsers.length) {
@@ -52,7 +51,7 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 	    
 	    }		
 				
-		return new HTTPClientConnection(engine, host, hostId, port, sessionId, pipeIdx, 
+		return new HTTPClientConnection(engine, hostId, port, sessionId, pipeIdx, 
 				                    connectionId,
 				                    recordTypeData, timeoutNS, structureId,
 				                    headerParsers[sessionId]);

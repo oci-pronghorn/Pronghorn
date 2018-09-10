@@ -96,8 +96,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return result;
 	}
 	
-	public ClientConnection(SSLEngine engine, 
-			                CharSequence host, int hostId, int port, int sessionId,
+	public ClientConnection(SSLEngine engine, int hostId, int port, int sessionId,
 			                int pipeIdx, long conId, long timeoutNS, int structureId		                 
 			 			  ) throws IOException {
 
@@ -121,7 +120,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		this.pipeIdx = pipeIdx;
 
 		this.sessionId = sessionId;
-		this.host = host instanceof String ? (String)host : host.toString();
+		this.host = ClientCoordinator.registeredDomain(hostId);
 		this.port = port;
 		this.hostId = hostId;
 		

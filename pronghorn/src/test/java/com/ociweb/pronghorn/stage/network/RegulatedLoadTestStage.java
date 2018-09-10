@@ -250,41 +250,36 @@ public class RegulatedLoadTestStage extends PronghornStage{
 				
 								if (null==cc || (toRecieve[userId]-toSend[userId]) < cc.maxInFlight ) {  //limiting in flight
 									didWork = true;
-										
-									boolean useSlow = (connectionId == -1); 
-									if (useSlow) {
-										System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
-										
-										connectionId = clientCoord.lookup(clientCoord.lookupHostId(hostBytes, 0, hostBytes.length, Integer.MAX_VALUE), port, userId);
-										
-										if (-1!=connectionIdCache[userId]) {
-											throw new UnsupportedOperationException("already set ");
-										}
-										connectionIdCache[userId] = connectionId;	
-										assert(connectionId<Integer.MAX_VALUE);
-										if (-1 != connectionId) {
-											userIdFromConnectionId[(int)connectionId] = userId;
-										}
-										msdIdx = ClientHTTPRequestSchema.MSG_HTTPGET_100;
-									} else {
-										msdIdx = ClientHTTPRequestSchema.MSG_FASTHTTPGET_200;										
-									}
 									
+									if (connectionId == -1) {
+											
+											System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
+											
+											connectionId = clientCoord.lookup(clientCoord.lookupHostId(hostBytes, 0, hostBytes.length, Integer.MAX_VALUE), port, userId);
+											
+											if (-1!=connectionIdCache[userId]) {
+												throw new UnsupportedOperationException("already set ");
+											}
+											connectionIdCache[userId] = connectionId;	
+											assert(connectionId<Integer.MAX_VALUE);
+											if (-1 != connectionId) {
+												userIdFromConnectionId[(int)connectionId] = userId;
+											}
+									}	
 									
-									
-									int size = Pipe.addMsgIdx(outputs[outputIdx], msdIdx);
+									int size = Pipe.addMsgIdx(outputs[outputIdx], ClientHTTPRequestSchema.MSG_GET_200);
 																   
 	
 									lastTime = now;
 			
-									Pipe.addIntValue(userId, outputs[outputIdx]); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
 									Pipe.addIntValue(userId, outputs[outputIdx]);  
 									Pipe.addIntValue(port, outputs[outputIdx]);
-									Pipe.addByteArray(hostBytes, 0, hostBytes.length, outputs[outputIdx]); // old	Pipe.addUTF8(host, outputs[i]);
-	
-									if (!useSlow) {
-										Pipe.addLongValue(connectionId, outputs[outputIdx]);
-									}
+									
+									int hostId = ClientCoordinator.lookupHostId(hostBytes, 0, hostBytes.length, Integer.MAX_VALUE);
+									Pipe.addIntValue(hostId, outputs[outputIdx]);
+									
+									Pipe.addLongValue(connectionId, outputs[outputIdx]);									
+									Pipe.addIntValue(userId, outputs[outputIdx]); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
 									
 									//path
 									Pipe.addByteArray(testFileBytes, 0, testFileBytes.length, outputs[outputIdx]); //Pipe.addUTF8(testFile, outputs[i]);						

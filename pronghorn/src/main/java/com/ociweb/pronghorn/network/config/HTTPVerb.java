@@ -7,5 +7,7 @@ public interface HTTPVerb {
 	
     int ordinal();
     CharSequence getKey(); 
+    byte[] getKeyBytes();
+    
     
 }

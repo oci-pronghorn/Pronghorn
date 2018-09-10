@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ArrayGrow;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
@@ -42,6 +43,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	//do not modify without sync on domainRegistry which is final
 	public static int totalKnownDomains = 0;
 	public static final TrieParser domainRegistry = new TrieParser(64, 2, false, false, true);
+	public static String[] domainLookupArray = new String[8];
+	public static byte[][] domainLookupArrayBytes = new byte[8][];
+	
 
 	public static LongLongHashTable[] conTables = new LongLongHashTable[4];
 	///////////////////////////////////////////////
@@ -289,11 +293,32 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			}
 			conTables[hostId] = new LongLongHashTable(5); //This will grow as needed
 						
+			//store list of domains so the actual connection code can use this value instead of passing it arround
+			String strDomain = host instanceof String ? (String)host : host.toString();
+			domainLookupArray = ArrayGrow.setIntoArray(domainLookupArray, 
+					           strDomain, 
+					           hostId);	
+			
+			domainLookupArrayBytes = ArrayGrow.setIntoArray(domainLookupArrayBytes, 
+					           strDomain.getBytes(), hostId);
+			
 		}
 
 		return hostId;
 	}
-		
+	
+	public static String registeredDomain(int hostId) {
+		assert(hostId>=0);
+		assert(hostId<domainLookupArray.length) : "found hostId: "+hostId+" but lookup array is of length: "+domainLookupArray.length;
+		return domainLookupArray[hostId];
+	}
+	
+	public static byte[] registeredDomainBytes(int hostId) {
+		assert(hostId>=0);
+		assert(hostId<domainLookupArrayBytes.length);
+		return domainLookupArrayBytes[hostId];
+	}
+	
 	public static long lookup(int hostId, int port, int sessionId) {
 		assert(hostId>=0) : "hostID must be zero or postitive";
 		int key = computePortSessionKey(port, sessionId);
@@ -372,10 +397,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private final ClientAbandonConnectionScanner abandonScanner;
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
-			CharSequence host, int port, 
+			final int hostId, int port, 
 			final int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId,
 			AbstractClientConnectionFactory ccf) {
+				assert(hostId>=0) : "bad hostId";
+				assert(null!=ClientCoordinator.registeredDomain(hostId)) : "bad hostId";
 				
 		        ClientConnection cc = null;
 
@@ -416,20 +443,17 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
 	
-					//recycle from old one if it is found/given		        
-					int hostId      = null!=cc? cc.hostId      : lookupHostId(host, TrieParserReaderLocal.get());	
-				
 					long timeoutNS = ClientCoordinator.lookupSessionTimeoutNS(sessionId);
 					
 					try {
 						//create new connection because one was not found or the old one was closed
-						cc = ccf.newClientConnection(ccm, host, port, sessionId, 
+						cc = ccf.newClientConnection(ccm, port, sessionId, 
 													connectionId, 
 													pipeIdx, hostId, timeoutNS,
 													structureId(sessionId, ccm.typeData));
 					
 					} catch (IOException ex) {
-						logger.warn("\nUnable to open connection to {}:{}",host,port, ex);
+						logger.warn("\nUnable to open connection to {}:{}",ClientCoordinator.registeredDomain(hostId),port, ex);
 						connectionId = Long.MIN_VALUE;
 						return null;
 					}
@@ -457,6 +481,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					if (LongLongHashTable.isFull(table)) {
 						conTables[cc.hostId] = table = LongLongHashTable.doubleClone(table);
 					}
+					System.out.println("storing new connecion id "+connectionId);
 					LongLongHashTable.setItem(table, key, connectionId);
 							                	
 				}

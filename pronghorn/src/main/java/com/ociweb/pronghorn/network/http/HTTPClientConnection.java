@@ -13,11 +13,11 @@ public class HTTPClientConnection extends ClientConnection {
 	private final StructRegistry schema;
 	public final TrieParser headerParser;
 	
-	public HTTPClientConnection(SSLEngine engine, CharSequence host, 
+	public HTTPClientConnection(SSLEngine engine, 
 			 int hostId, int port, int sessionId, int pipeIdx,
 			 long conId, 
 			 StructRegistry schema, long timeoutNS, int structId, TrieParser headerParser) throws IOException {
-		super(engine, host, hostId, port, sessionId, pipeIdx, conId, timeoutNS, structId);
+		super(engine, hostId, port, sessionId, pipeIdx, conId, timeoutNS, structId);
 		this.schema = schema;
 		this.headerParser = headerParser;
 		

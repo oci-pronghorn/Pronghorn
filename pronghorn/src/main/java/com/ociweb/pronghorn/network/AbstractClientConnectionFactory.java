@@ -4,7 +4,7 @@ import java.io.IOException;
 
 public abstract class AbstractClientConnectionFactory {
 
-	public abstract ClientConnection newClientConnection(ClientCoordinator ccm, CharSequence host, int port,
+	public abstract ClientConnection newClientConnection(ClientCoordinator ccm, int port,
 			int sessionId, long connectionId, int pipeIdx, int hostId, long timeoutNS, int structureId)
 			throws IOException;
 	

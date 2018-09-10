@@ -19,12 +19,15 @@ public class OAuth2BearerUtil {
 		
 		//logger.info("requested new bearer on port {}",port);
 		
-		PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_DESTINATION_11, httpRequestResponseId);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_SESSION_10, 0);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PORT_1, port);
-		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_HOST_2, host);
-		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3, path);
+		PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_POST_201);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_SESSION_10, 0);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_PORT_1, port);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_HOSTID_2, ClientCoordinator.registerDomain(host));
+		PipeWriter.writeLong(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_CONNECTIONID_20, -1);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_DESTINATION_11, httpRequestResponseId);
+				
+		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_PATH_3, path);
+		
 		
 		//builder.append("Accept-Encoding: gzip\r\n");//Accept: */*\r\n");	
 		//
@@ -37,16 +40,12 @@ public class OAuth2BearerUtil {
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(pipe);
 		DataOutputBlobWriter.openField(stream);		
 		writeHeaders(ck, cs, stream);
-		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_HEADERS_7);
+		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_POST_201_FIELD_HEADERS_7);
 		
 		String payload = "grant_type=client_credentials";
-		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PAYLOAD_5, payload);		
+		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_POST_201_FIELD_PAYLOAD_5, payload);		
 		PipeWriter.publishWrites(pipe);
-		
-		
-
-		
-		
+				
 	}
 
 

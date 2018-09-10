@@ -62,10 +62,11 @@ public class SocketTestGenStage extends PronghornStage {
 			//////////
 			//crazy connection open logic  (need to simplify)
 			/////////
+			int hostId = ClientCoordinator.lookupHostId(hostBytes);
+			long lookup = clientCoordinator.lookup(hostId, port, userIdx);
 			ClientConnection connection = ClientCoordinator.openConnection(
-					clientCoordinator, host, port, userIdx, pipe,	
-			        clientCoordinator.lookup(ClientCoordinator.lookupHostId(hostBytes),
-			        port, userIdx), BasicClientConnectionFactory.instance);
+					clientCoordinator, hostId, port, userIdx, pipe,	
+			        lookup, BasicClientConnectionFactory.instance);
 			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
 				return;//try again later

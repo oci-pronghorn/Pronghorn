@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.twitter;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.OAuth1HeaderBuilder;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
@@ -90,13 +91,17 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 
 	private void streamingRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId) {
 			
-		PipeWriter.presumeWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+		PipeWriter.presumeWriteFragment(pipe, ClientHTTPRequestSchema.MSG_GET_200);
 		assert(httpRequestResponseId>=0);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, httpRequestResponseId);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10, httpRequestResponseId);
-		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, port);
-		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, host);
-		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, path);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_SESSION_10, httpRequestResponseId);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PORT_1, port);
+			
+		int hostId = ClientCoordinator.registerDomain(host);
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HOSTID_2, hostId);
+		PipeWriter.writeLong(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_CONNECTIONID_20, -1 );
+		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_DESTINATION_11, httpRequestResponseId);
+		
+		PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_GET_200_FIELD_PATH_3, path);
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(pipe);
 		DataOutputBlobWriter.openField(stream);
@@ -104,7 +109,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 		
 		//myAuth.addHeaders(System.out, "GET");
 		
-		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7);
+		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_GET_200_FIELD_HEADERS_7);
 
 		PipeWriter.publishWrites(pipe);
 	}

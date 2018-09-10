@@ -12,14 +12,19 @@ public enum HTTPVerbDefaults implements HTTPVerb{
     CONNECT("CONNECT"),    
     PATCH("PATCH");   
     
-    private CharSequence key;
+    private final String key;
+    private final byte[] keyBytes;
     
-    private HTTPVerbDefaults(CharSequence headerKey) {
+    private HTTPVerbDefaults(String headerKey) {
         key = headerKey;
+        keyBytes = headerKey.getBytes();
     }
     
-    public CharSequence getKey() {
+    public String getKey() {
         return key;
     }
     
+    public byte[] getKeyBytes() {
+    	return keyBytes;
+    }
 }
