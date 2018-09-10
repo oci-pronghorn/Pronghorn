@@ -551,7 +551,7 @@ public final class StructuredReader {
 		int index = channelReader.readFromEndLastInt(StructRegistry.FIELD_MASK&(int)fieldId);
 		if (index>=0) {
 			channelReader.position(index);
-			return (int)channelReader.readPackedLong();
+			return (int)channelReader.readPackedInt();
 		} else {
 			return -1;
 		}

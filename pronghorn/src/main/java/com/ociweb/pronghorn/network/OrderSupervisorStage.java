@@ -607,13 +607,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 ChannelReader reader = connectionDataReader.beginRead();
 			 if (null!=reader && conStruct!=null) {
 				 assert(reader.isStructured()) : "connection data reader must hold structured data";
+				 
 				 arrivalTime = reader.structured().readLong(conStruct.arrivalTimeFieldId);
-				 businessTime = reader.structured().readLong(conStruct.businessStartTime);
+				 businessTime = arrivalTime+reader.structured().readLong(conStruct.businessStartTime);//relative to arrival time
+				 				 
 				 int origCon = reader.structured().readInt(conStruct.contextFieldId);				 
 				 routeId = reader.structured().readInt(conStruct.routeIdFieldId);
 				 			 				 
 				 requestContext |= origCon;
-				 
 
 				 
 				 if (beginningOfResponse) {

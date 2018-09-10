@@ -1393,7 +1393,7 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		}
 				
 		cw.structured().writeInt(routeId, scs.routeIdFieldId);
-		cw.structured().writeLong(System.nanoTime(), scs.businessStartTime);
+		cw.structured().writeLong(System.nanoTime()-arrivalTime, scs.businessStartTime); //value is relative to arrival time
 		cw.structured().writeLong(arrivalTime, scs.arrivalTimeFieldId);
 		cw.structured().writeInt(requestContext, scs.contextFieldId); 
 				

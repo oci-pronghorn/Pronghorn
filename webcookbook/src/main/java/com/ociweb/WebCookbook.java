@@ -58,7 +58,7 @@ public class WebCookbook  {
 		serverConfig.setConcurrentChannelsPerDecryptUnit(8);
 		serverConfig.setEncryptionUnitsPerTrack(2);
 		serverConfig.setMaxResponseSize(1<<14);
-		serverConfig.logTraffic();
+		//serverConfig.logTraffic(); //do not log traffic when we run on build server 
 		
 		
 		serverConfig.useInsecureServer();//TODO: turn this off later...
