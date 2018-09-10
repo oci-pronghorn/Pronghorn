@@ -285,8 +285,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 				} else {
 					blockedCycles = 0;
 				}
-				
-				System.out.println(handshakeStatus+" status now");
 			} else {
 				blockedCycles = 0;
 			}
