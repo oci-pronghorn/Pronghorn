@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
-  <version>1.0.2-SNAPSHOT</version>
+  <version>1.0.2</version>
   <artifactId>ph-tls-pure-java</artifactId>
   <description>pure Java TLS implementation</description>
      <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
@@ -41,7 +41,7 @@
 	 
   </dependencies>
   <profiles>
-        <profile>
+        <!--  profile>
             <id>cloudbees</id>
             <distributionManagement>
                 <repository>
@@ -49,7 +49,7 @@
                     <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
                 </repository>
             </distributionManagement>
-        </profile>
+        </profile -->
         <profile>
             <id>disable-java8-doclint</id>
             <activation>
@@ -133,7 +133,7 @@
     <tag>HEAD</tag>
   </scm>
   
-  <repositories>
+  <!--  repositories>
     
     <repository>
       <releases>
@@ -165,7 +165,7 @@
       <layout>default</layout>
     </repository>
         
-  </repositories>
+  </repositories -->
   
   <build>
    <extensions>

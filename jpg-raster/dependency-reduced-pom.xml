@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.ociweb.jpgRaster</groupId>
+  <groupId>com.ociweb</groupId>
   <artifactId>jpg-raster</artifactId>
   <name>${project.artifactId}</name>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.2</version>
   <description>JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
         It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel
         values.
@@ -169,15 +169,6 @@
   </build>
   <profiles>
     <profile>
-      <id>cloudbees</id>
-      <distributionManagement>
-        <repository>
-          <id>cloudbees.release</id>
-          <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-        </repository>
-      </distributionManagement>
-    </profile>
-    <profile>
       <id>disable-java8-doclint</id>
       <properties>
         <additionalparam>-Xdoclint:none</additionalparam>
@@ -261,32 +252,6 @@
       </distributionManagement>
     </profile>
   </profiles>
-  <repositories>
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
-      <name>Snapshot Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
-    </repository>
-    <repository>
-      <releases>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-release</id>
-      <name>Release Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
-    </repository>
-  </repositories>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

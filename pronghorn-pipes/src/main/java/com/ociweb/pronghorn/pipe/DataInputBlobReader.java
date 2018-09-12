@@ -181,6 +181,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         this.isStructured = (0!=(Pipe.STRUCTURED_POS_MASK&meta));
                 
 		this.length    = Math.max(0, Pipe.takeByteArrayLength(this.pipe));
+		assert(this.length<=this.pipe.sizeOfBlobRing) : "bad length "+this.length;
+		
 		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
 		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
 		assert(this.backing!=null) : 

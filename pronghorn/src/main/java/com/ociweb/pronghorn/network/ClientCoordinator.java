@@ -493,7 +493,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 
 	public static int structureId(int sessionId, StructRegistry typeData) {
-		assert(sessionId>0) : "sessionId may not be zero";
+		assert(sessionId!=0) : "sessionId may not be zero";
+		assert(sessionId>0) : "sessionId must be positive";
+		
 		int result = typeData.lookupAlias(sessionId);
 		if (result!=0) {
 			return result;

@@ -26,7 +26,7 @@ public class WebCookbookTest {
 		GraphManager gm = new GraphManager();
 				
 		int tracks = 1;
-		TLSCertificates tlsCertificates = null;//TLSCertificates.defaultCerts; 		//TODO: turn this on later..
+		TLSCertificates tlsCertificates = null;//TLSCertificates.defaultCerts; 
 		int connectionsInBits = 3;
 		int maxPartialResponses = 4;					
 		int clientRequestCount=7; 
@@ -52,52 +52,58 @@ public class WebCookbookTest {
 		clientRequests[0].initBuffers();
 		
 		//these are the test requests
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				0, //sessionId, which instance of this domain is it
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				1, //sessionId, which instance of this domain is it
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"), 
+				-1L,
+				0, //pipe destination for the response
 				"/person/add?id=333&name=nathan", 
 				null);
 		
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				0, //sessionId, which instance of this domain is it
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				1, //sessionId, which instance of this domain is it
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"),
+				-1L,
+				0, //pipe destination for the response
 				"/person/add?id=444&name=scott", 
 				null);
 		
 		//this is the last call which will have the second session id 		
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				0, //sessionId, which instance of this domain is it
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				1, //sessionId, which instance of this domain is it
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"),
+				-1L,
+				0, //pipe destination for the response
 				"/person/list", 
 				null);
 		
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				1, //sessionId, use different connection in parallel to the other requests
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				2, //sessionId, use different connection in parallel to the other requests
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"),
+				-1L, 
+				0, //pipe destination for the response
 				"/resource/reqPerSec.png", 
 				null);
 		
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				2, //sessionId, use different connection in parallel to the other requests
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				3, //sessionId, use different connection in parallel to the other requests
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"),
+				-1L,
+				0, //pipe destination for the response
 				"/proxy/person/list", 
 				null);
 		
-		ClientHTTPRequestSchema.publishHTTPGet(clientRequests[0], 
-				0, //pipe destination for the response
-				2, //sessionId, use different connection in parallel to the other requests
+		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
+				3, //sessionId, use different connection in parallel to the other requests
 				8899, 
-				"127.0.0.1", 
+				ClientCoordinator.registerDomain("127.0.0.1"),
+				-1L,
+				0, //pipe destination for the response
 				"/proxy/resource/reqPerSec.png", 
 				null);
 				

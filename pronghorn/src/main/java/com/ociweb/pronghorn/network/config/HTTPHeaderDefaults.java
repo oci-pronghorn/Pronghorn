@@ -155,6 +155,8 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     COOKIE("Cookie: %b"), //chromium
     STRICT_TRANSPORT_SECURITY("strict-transport-security: %b"), //twitter
     
+    WEBKIT_FORM_BOUNDARY("------WebKitFormBoundary%b"), //special multipart boundary, note no : in this 
+    //                    ------WebKitFormBoundary76HAQdwAOtUpDjs2    //example
     
     OAUTH_VERSION("oauth_version: %b"), //optional for all oauth1 calls    
     OAUTH_NONCE("oauth_nonce: %b"), //required for all oauth1 calls

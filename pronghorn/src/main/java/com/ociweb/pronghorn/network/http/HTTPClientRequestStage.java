@@ -212,6 +212,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		//all the message fragments hold these fields in the same positions.
 		int sessionId = Pipe.peekInt(requestPipe,  1);
+		assert(sessionId>0) : "session must be greater than zero found: "+sessionId;
 		int port = Pipe.peekInt(requestPipe,  2);
 		int hostId = Pipe.peekInt(requestPipe,  3);
 		long connectionId  = Pipe.peekLong(requestPipe, 4); 			

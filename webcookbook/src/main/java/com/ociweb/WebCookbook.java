@@ -237,6 +237,7 @@ public class WebCookbook  {
 									inputPipes[i], responses[i], responses[i], 
 									timeoutNS, 
 									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%inputPipes.length;}, 
+									(p)-> true,
 									new DBCaller(), new DBCaller(), new DBCaller()); //NOTE: do not do this for production since callers share db access.
 						}
 						
@@ -275,19 +276,13 @@ public class WebCookbook  {
 							JSONExtractorCompleted extractor =
 									new JSONExtractor()
 									 .begin()
-									 
-								     .element(JSONType.TypeString, false, JSONAccumRule.First)					 
-									 	.asField("name",WebFields.name)
-									 	
-								     .element(JSONType.TypeBoolean, false, JSONAccumRule.First)					 
-									 	.asField("happy",WebFields.happy)
-									 	
-								     .element(JSONType.TypeInteger, false, JSONAccumRule.First)					 
-									 	.asField("age",WebFields.age)	 
-									 
+									 .stringField("name", WebFields.name)
+									 .booleanField("happy", WebFields.happy)
+									 .integerField("age", WebFields.age)
 									 .finish();
 							
 							routerConfig.registerCompositeRoute(extractor).path("/hello").routeId(Routes.primary);
+							
 							return responses;
 						}
 					default:

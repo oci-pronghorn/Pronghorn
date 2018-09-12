@@ -268,6 +268,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
 	 public static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
+		assert(len<=writer.backingPipe.sizeOfBlobRing): "bad length "+len+" larger than pipe";
 		if (writer.structuredWithIndexData) {
 
 			//write this field as length len but move head to the end of maxvarlen

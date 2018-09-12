@@ -91,17 +91,18 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 			DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.openInputStream(sourceRequest);
 		
 			int fieldDestination = 0; //pipe index for the response
-			int fieldSession = 0; //value for us to know which this belongs
+			int fieldSession =1; //value for us to know which this belongs
 			
 			assert(fieldDestination>=0);
 						
-			int size = Pipe.addMsgIdx(targetClientRequest, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+			int size = Pipe.addMsgIdx(targetClientRequest, ClientHTTPRequestSchema.MSG_GET_200);
 			
-			Pipe.addIntValue(fieldDestination, targetClientRequest);
 			Pipe.addIntValue(fieldSession, targetClientRequest);
 			Pipe.addIntValue(targetPort, targetClientRequest);
-			Pipe.addUTF8(targetHost, targetClientRequest);
-			
+			Pipe.addIntValue(ClientCoordinator.registerDomain(targetHost), targetClientRequest);
+			Pipe.addLongValue(-1,  targetClientRequest);
+			Pipe.addIntValue(fieldDestination, targetClientRequest);
+						
 			StructuredReader reader = inputStream.structured();
 			
 			DataOutputBlobWriter<ClientHTTPRequestSchema> outputStream = Pipe.openOutputStream(targetClientRequest);			
@@ -112,7 +113,7 @@ public class ProxyRequestToBackEndStage extends PronghornStage {
 			//open as output stream for headers..
 			DataOutputBlobWriter<ClientHTTPRequestSchema> headerStream = Pipe.openOutputStream(targetClientRequest);			
 			final HeaderWriter headWriter = (HeaderWriterLocal.get().target(headerStream));
-			reader.visit(HTTPHeader.class, (header,hr) -> {
+			reader.visit(HTTPHeader.class, (header, hr, fId) -> {
 				if (   (header != HTTPHeaderDefaults.HOST)
 						&& (header != HTTPHeaderDefaults.CONNECTION)	){					
 					headWriter.write((HTTPHeader)header, spec, hr);

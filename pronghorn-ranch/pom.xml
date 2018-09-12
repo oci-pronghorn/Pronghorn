@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn-ranch</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.2</version>
     <name>pronghorn-ranch</name>
     <description>A Maven Archetype for Pronghorn projects
     </description>
@@ -35,7 +35,7 @@
 
 
     <profiles>
-        <profile>
+        <!-- profile>
             <id>cloudbees</id>
             <distributionManagement>
                 <repository>
@@ -43,7 +43,7 @@
                     <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
                 </repository>
             </distributionManagement>
-        </profile>
+        </profile -->
         <profile>
             <id>disable-java8-doclint</id>
             <activation>

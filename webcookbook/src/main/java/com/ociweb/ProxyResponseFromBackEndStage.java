@@ -1,22 +1,18 @@
 package com.ociweb;
 
 import com.ociweb.pronghorn.network.HTTPUtilResponse;
-import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.http.HeaderWritable;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.StructuredReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -85,6 +81,7 @@ public class ProxyResponseFromBackEndStage extends PronghornStage {
 			int respIdx = Pipe.takeMsgIdx(sourceResponse);
 			if (respIdx == NetResponseSchema.MSG_RESPONSE_101) {
 				long respChannelId = Pipe.takeLong(sourceResponse);
+				int sessionId = Pipe.takeInt(sourceResponse);
 				int flags2 = Pipe.takeInt(sourceResponse);
 								
 
@@ -105,12 +102,12 @@ public class ProxyResponseFromBackEndStage extends PronghornStage {
 				         | (flags2&ServerCoordinator.END_RESPONSE_MASK)
 						, outputStream, (w)->{
 							
-							inputStream.structured().visit(HTTPHeader.class, (header,reader)->{
+							inputStream.structured().visit(HTTPHeader.class, (header,reader,fId)->{
 						    	//write all the headers back
 						    	w.write(header, spec, reader);					   
 						    });		    
 							
-						});
+						},200);
 				
 			} else if (respIdx == NetResponseSchema.MSG_CONTINUATION_102) {
 				long channelIdx2 = Pipe.takeLong(sourceResponse);

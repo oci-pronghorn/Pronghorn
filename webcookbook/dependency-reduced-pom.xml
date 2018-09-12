@@ -4,7 +4,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>webcookbook</artifactId>
   <name>${project.artifactId}</name>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.2</version>
   <description>Example project of the web components of pronghorn</description>
   <url>https://github.com/oci-pronghorn/WebCookBook</url>
   <developers>
@@ -181,15 +181,6 @@
   </build>
   <profiles>
     <profile>
-      <id>cloudbees</id>
-      <distributionManagement>
-        <repository>
-          <id>cloudbees.release</id>
-          <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-        </repository>
-      </distributionManagement>
-    </profile>
-    <profile>
       <id>mvn-central</id>
       <build>
         <plugins>
@@ -251,32 +242,6 @@
       </distributionManagement>
     </profile>
   </profiles>
-  <repositories>
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
-      <name>Snapshot Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
-    </repository>
-    <repository>
-      <releases>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-release</id>
-      <name>Release Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
-    </repository>
-  </repositories>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

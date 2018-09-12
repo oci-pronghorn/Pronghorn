@@ -68,7 +68,7 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
 	}
 								
 	@Override
-	public void begin(Pipe<HTTPRequestSchema> input) {
+	public boolean begin(Pipe<HTTPRequestSchema> input) {
 
 		int msgIdx = Pipe.takeMsgIdx(input);
 		channelId = Pipe.takeLong(input);
@@ -89,6 +89,7 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
 		Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, msgIdx));
 		Pipe.releaseReadLock(input);
 				
+		return true;
 	}
 
 	@Override
@@ -102,7 +103,7 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
         	}
         	
         	//read all the data from the database
-        	payloadBuffer.reset();
+        	payloadBuffer.clear();
         	readData(payloadBuffer); 	
         	
         } catch (SQLException e) {
@@ -124,7 +125,7 @@ public class DBCaller extends Blockable<HTTPRequestSchema,ServerResponseSchema,S
 		HTTPUtilResponse.closePayloadAndPublish(
 				ebh, null, HTTPContentTypeDefaults.JSON, 
 				output, channelId, sequence, context, 
-				outputStream, additionalHeaderWriter);
+				outputStream, additionalHeaderWriter, 200);
 				
 		
 	}

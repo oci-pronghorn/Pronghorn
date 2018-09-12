@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>webcookbook</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.2</version>
     <name>${project.artifactId}</name>
     <description>Example project of the web components of pronghorn
     </description>
@@ -40,7 +40,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <profiles>
-        <profile>
+        <!-- profile>
             <id>cloudbees</id>
             <distributionManagement>
                 <repository>
@@ -48,7 +48,7 @@
                     <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
                 </repository>
             </distributionManagement>
-        </profile>
+        </profile -->
         <profile>
             <id>mvn-central</id>
             <distributionManagement>
@@ -118,7 +118,7 @@
         </profile>
 
     </profiles>
-    <repositories>
+    <!--  repositories>
 
         <repository>
             <releases>
@@ -150,14 +150,14 @@
             <layout>default</layout>
         </repository>
 
-    </repositories>
+    </repositories -->
 
 
     <dependencies>
         <dependency>
             <groupId>com.ociweb</groupId>
-            <artifactId>Pronghorn</artifactId>
-            <version>1.0.0</version>
+            <artifactId>pronghorn</artifactId>
+            <version>1.0.2</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
