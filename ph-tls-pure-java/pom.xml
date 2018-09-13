@@ -3,6 +3,7 @@
   <groupId>com.ociweb</groupId>
   <version>1.0.2</version>
   <artifactId>ph-tls-pure-java</artifactId>
+  <name>ph-tls-pure-java</name>
   <description>pure Java TLS implementation</description>
      <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
     <licenses>

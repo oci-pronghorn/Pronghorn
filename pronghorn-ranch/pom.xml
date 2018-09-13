@@ -2,8 +2,8 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn-ranch</artifactId>
-    <version>1.0.2</version>
     <name>pronghorn-ranch</name>
+    <version>1.0.2</version>
     <description>A Maven Archetype for Pronghorn projects
     </description>
     <url>https://github.com/oci-pronghorn/PronghornRanch</url>

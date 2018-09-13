@@ -3,6 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>open-edge-pronghorn</artifactId>
+  <name>open-edge-pronghorn</name>
   <version>1.0.2</version>
   <packaging>pom</packaging>
  

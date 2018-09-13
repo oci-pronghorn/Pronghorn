@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>jpg-raster</artifactId>
-  <name>${project.artifactId}</name>
+  <name>jpg-raster</name>
   <version>1.0.2</version>
   <description>JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
         It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel
@@ -189,7 +189,13 @@
                 </goals>
                 <configuration>
                   <classifier>javadoc</classifier>
-                  <classesDirectory>${basedir}/javadoc</classesDirectory>
+                  <classesDirectory>/home/nate/git/Pronghorn/jpg-raster/javadoc</classesDirectory>
+                  <forceCreation>true</forceCreation>
+                  <archive>
+                    <manifestEntries>
+                      <Build-Time>2018-09-13T02:33:41Z</Build-Time>
+                    </manifestEntries>
+                  </archive>
                 </configuration>
               </execution>
             </executions>
@@ -203,6 +209,20 @@
             <artifactId>nexus-staging-maven-plugin</artifactId>
             <version>1.6.8</version>
             <extensions>true</extensions>
+            <executions>
+              <execution>
+                <id>injected-nexus-deploy</id>
+                <phase>deploy</phase>
+                <goals>
+                  <goal>deploy</goal>
+                </goals>
+                <configuration>
+                  <serverId>ossrh</serverId>
+                  <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                  <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
+              </execution>
+            </executions>
             <configuration>
               <serverId>ossrh</serverId>
               <nexusUrl>https://oss.sonatype.org/</nexusUrl>
