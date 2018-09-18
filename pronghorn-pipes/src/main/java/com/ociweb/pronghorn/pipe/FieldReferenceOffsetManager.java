@@ -444,12 +444,12 @@ public class FieldReferenceOffsetManager {
 		return TypeMask.Group == TokenBuilder.extractType(from.tokens[cursor]);
 	}
 
-	public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
+	public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int totalSlabSize) {
 		if (0==from.maxVarFieldPerUnit) {
 			return 0;
 		}
 		
-		int maxVarCount = (int)Math.ceil((float)mx*from.maxVarFieldPerUnit);
+		int maxVarCount = (int)Math.ceil((float)totalSlabSize*from.maxVarFieldPerUnit);
 		//we require at least 2 fields to ensure that the average approach works in all cases
 		if (maxVarCount < 2) {
 			// 2 = size * perUnit
@@ -457,6 +457,7 @@ public class FieldReferenceOffsetManager {
 			int minBits = 32 - Integer.numberOfLeadingZeros(minSize - 1);
 			throw new UnsupportedOperationException("primary buffer is too small it must be at least "+minBits+" bits"); 
 		}
+		
 		return maxVarCount;
 	}
 

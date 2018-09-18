@@ -22,7 +22,7 @@ public class PipeConfigManager {
 		
 	}
 	
-	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(int minimumFragmentsOnPipe, int maximumLengthOfVariableLengthFields, Class<S> clazz) {
+	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(int minimumFragmentsOnPipe,final int maximumLengthOfVariableLengthFields, Class<S> clazz) {
 		
 		PipeConfig<S> newConfig = MessageSchema
 								.findInstance(clazz)
@@ -62,6 +62,7 @@ public class PipeConfigManager {
 			
 			int oldQueueLen = oldConfig.minimumFragmentsOnPipe();
 			int oldMaxVarLenSize = oldConfig.maxVarLenSize();
+
 			if (queueLength>oldQueueLen || maxMessageSize>oldMaxVarLenSize) {
 				addConfig(Math.max(oldQueueLen,queueLength), Math.max(oldMaxVarLenSize, maxMessageSize), clazz);
 			}

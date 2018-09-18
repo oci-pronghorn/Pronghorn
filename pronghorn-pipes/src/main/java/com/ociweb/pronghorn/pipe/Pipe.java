@@ -1,14 +1,5 @@
 package com.ociweb.pronghorn.pipe;
 
-import com.ociweb.pronghorn.pipe.token.OperatorMask;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
-import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
-import com.ociweb.pronghorn.struct.StructRegistry;
-import com.ociweb.pronghorn.util.Appendables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +12,17 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
+import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 /**
  *
@@ -449,7 +451,11 @@ public class Pipe<T extends MessageSchema<T>> {
     long lastReleasedSlabTail;
 
     int blobWriteLastConsumedPos = 0;
+    
     private long totalWrittenFragments = 0;
+	private long lastFragmentCount = 0;
+	private RunningStdDev fragsPerPass = new RunningStdDev();
+	
 
     //All references found in the messages/fragments to variable-length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
@@ -594,6 +600,10 @@ public class Pipe<T extends MessageSchema<T>> {
 		return p.totalWrittenFragments;
 	}
     
+	public static RunningStdDev totalWrittenFragmentStdDevperPass(Pipe<?> p) {
+		return p.fragsPerPass;
+	}
+	
 	/**
 	 * Called to accumulate total fragments written to this pipe
 	 * @param p pipe to accumulate
@@ -5359,6 +5369,15 @@ public class Pipe<T extends MessageSchema<T>> {
 		int result = target.activeBlobHead;
 		target.activeBlobHead = -1;
 		return result;
+	}
+
+	public void markConsumerPassDone() {
+		
+		long thisPass = totalWrittenFragments-lastFragmentCount;
+		if (thisPass>0) {
+			RunningStdDev.sample(fragsPerPass, thisPass);
+			lastFragmentCount = totalWrittenFragments;
+		}
 	}
 
 

@@ -1348,8 +1348,7 @@ public class TrieParserReader {
 			int sourceMask, short numType, final boolean absentIsZero, final boolean templateLimited, byte sign,
 			long intValue, byte intLength, int dot) {
 		
-		if ((  ('x'!=source[sourceMask & sourcePos+1]) 
-			|| ('0'!=source[sourceMask & sourcePos+0])) 
+		if ((  ('x'!=source[sourceMask & sourcePos+1]) || ('0'!=source[sourceMask & sourcePos+0])) 
 			&& 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
 			return parseBaseTenImpl(reader, source, 
 					sourcePos, sourceLength, sourceMask, absentIsZero, templateLimited,

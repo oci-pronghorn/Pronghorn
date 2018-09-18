@@ -16,6 +16,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	int debugFlags = 0;
 	boolean showLabels = true;
 	private static final Logger logger = LoggerFactory.getLogger(PipeConfig.class);
+	final int maximumLenghOfVariableLengthFields;
 		
    /**
      * This is NOT the constructor you are looking for.
@@ -27,6 +28,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
     	 this.slabBits = primaryBits;
     	 this.blobBits = byteBits;
     	 this.byteConst = byteConst;
+    	 this.maximumLenghOfVariableLengthFields = -1;
 
      }
     
@@ -36,7 +38,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
     	 this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(slabSize - 1));
     	 this.blobBits = 0;
     	 this.byteConst = null;
-
+    	 this.maximumLenghOfVariableLengthFields = 0;
      }
      
      
@@ -46,6 +48,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
         this.blobBits = 15;
         this.byteConst = null;
         this.schema = messageSchema;
+        this.maximumLenghOfVariableLengthFields = -1;
         //validate
         FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
      }
@@ -63,7 +66,8 @@ public class PipeConfig<T extends MessageSchema<T>> {
      }
      
      public int maxVarLenSize() {
-    	 return (1<<blobBits)/FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(schema.from, 1<<slabBits);
+    	 return maximumLenghOfVariableLengthFields>=0 ? maximumLenghOfVariableLengthFields :
+    			 (1<<blobBits)/FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(schema.from, 1<<slabBits);
      }
      
      
@@ -96,19 +100,25 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	public PipeConfig(T messageSchema, int minimumFragmentsOnRing, byte[] byteConst) {
 	    this(messageSchema, minimumFragmentsOnRing, 0, byteConst);
 	}
-    public PipeConfig(T messageSchema, byte[] byteConst, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
-        
+    public PipeConfig(T messageSchema, byte[] byteConst, int minimumFragmentsOnRing, final int maximumLenghOfVariableLengthFields) {
+    	
+    	//if (messageSchema.getClass().getSimpleName().startsWith("NetPayloadSchema") && 32768==maximumLenghOfVariableLengthFields) {
+    	//	new Exception(minimumFragmentsOnRing+" - "+maximumLenghOfVariableLengthFields).printStackTrace();
+    	//}
+    	this.maximumLenghOfVariableLengthFields = maximumLenghOfVariableLengthFields;
+    	
         FieldReferenceOffsetManager from = MessageSchema.from(messageSchema);
         
 		int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);        
-        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;  
-        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1)); 
+        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros((minimumFragmentsOnRing *  biggestFragment) - 1)); 
 
         try {
-	        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
-	        int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-	      
-	        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
+	        
+        	int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
+	        
+	        boolean noBlob = (0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce);
+			this.blobBits = noBlob ? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(
+					                                           (maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields) - 1));
 	      
 	        this.byteConst = byteConst;
 	        this.schema = messageSchema;
@@ -119,9 +129,14 @@ public class PipeConfig<T extends MessageSchema<T>> {
         	throw(t);
         }
         
+//        //this is used for tracking down large memory consumers.
+//        if (totalBytesAllocated() > (1<<25)) {
+//        	new Exception("Creating very large pipe: "+messageSchema+" "+minimumFragmentsOnRing+" "+maximumLenghOfVariableLengthFields).printStackTrace();
+//        }
+        
     }
-    
-    private void validate(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+
+	private void validate(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         //Do not change this constant, it is assumed by Pipe roll over masks and flags
     	if (blobBits>30) {
             throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
@@ -138,8 +153,9 @@ public class PipeConfig<T extends MessageSchema<T>> {
 
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields, byte[] byteConst) {
         
+    	this.maximumLenghOfVariableLengthFields = maximumLenghOfVariableLengthFields;
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
-        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
+        int primaryMinSize = minimumFragmentsOnRing *  biggestFragment;        
         this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
         
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
@@ -162,14 +178,6 @@ public class PipeConfig<T extends MessageSchema<T>> {
 		result.showLabels = showLabels;
 		return result;
 	}
-	
-	@Deprecated
-	public PipeConfig<T> blobGrow2x(){
-		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(1+blobBits), byteConst, schema);
-		result.showLabels = showLabels;
-		return result;
-	}
-	
 	
 	public PipeConfig<T> debug(int debugFlags){
 		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(blobBits), byteConst, schema);
