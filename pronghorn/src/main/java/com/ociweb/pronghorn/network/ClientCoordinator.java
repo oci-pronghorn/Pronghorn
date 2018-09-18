@@ -399,6 +399,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					|| (null == (cc = (ClientConnection) ccm.connections.get(connectionId))) //not yet created
 					|| (!cc.isValid()) //was closed with notification or not yet open
 					|| cc.isDisconnecting() //was closed without notification and we need to establish a new socket
+					|| cc.isClientClosedNotificationSent()
 					) { 
 					//NOTE: using direct lookup get since un finished connections may not be valid.
 					
@@ -428,6 +429,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					int pipeIdx = -1;
 					if (connectionId<0
 					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
+						
+						//if (ClientAbandonConnectionScanner.showScan) {
+						//	System.out.println("no new connections avail......");	
+						//}
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
 	

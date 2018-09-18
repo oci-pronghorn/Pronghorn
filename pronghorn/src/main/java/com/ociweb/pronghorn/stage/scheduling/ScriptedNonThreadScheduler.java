@@ -26,7 +26,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	
     public static Appendable debugStageOrder = null; //turn on to investigate performance issues.
 	
-    private static final int NS_OPERATOR_FLOOR = 1000; //1 micro seconds
 	private AtomicBoolean shutdownRequested = new AtomicBoolean(false);;
     private long[] rates;
     private long[] lastRun;
@@ -977,11 +976,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			final boolean recordTime, int inProgressIdx, long start,
 			long SLAStart, PronghornStage stage) {
 			        
+		
 		if (recordTime) {		
 			long now = System.nanoTime(); //this takes time, avoid if possible
 			if (!GraphManager.accumRunTimeNS(that.graphManager, stage.stageId, now-start, now)){
 				assert(reportLowAccuracyClock(that));
 			}
+
+			int c = GraphManager.getInputPipeCount(that.graphManager, stage.stageId);
+			for(int i = 1; i<=c ;i++) {
+				Pipe<?> pipe = GraphManager.getInputPipe(that.graphManager, stage.stageId, i);
+				pipe.markConsumerPassDone();
+			}		
 		}
 	}
 
@@ -1342,7 +1348,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	}
 
 	//                                        ms  mi ns  must use longs!
-	private final static long hangTimeNS = 1_000_000_000L * 30L;//30 sec;
+	private final static long hangTimeNS = 1_000_000_000L * 60L * 60L * 2L;//2 hrs;
 	public PronghornStage hungStage(long nowNS) {
 		final long local = timeStartedRunningStage;
 		if (((0!=timeStartedRunningStage) && (local>0)) 

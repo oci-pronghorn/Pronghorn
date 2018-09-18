@@ -527,7 +527,6 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
 
-		
 		if (targetThreadCount>=3) {
 			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic

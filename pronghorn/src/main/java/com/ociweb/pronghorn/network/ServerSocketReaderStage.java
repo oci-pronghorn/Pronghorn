@@ -149,11 +149,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     	    	//must keep this pipe from getting full or the processing will get backed up
     	    	////////////////////////////
     	   		releasePipesForUse();
-    	   
-    	   		if (selector.keys().isEmpty()) {
-    	   			//no work
-    	   			return;
-    	   		}
+      
+
     	   		///////////////////
     	   		//after this point we are always checking for new data work so always record this
     	   		////////////////////
@@ -164,15 +161,12 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ////////////////////////////////////////
     	        ///Read from socket
     	        ////////////////////////////////////////
-    	    	int maxIterations = 1000;
-    	    	 
-    	        while (--maxIterations>=0 &&
-    	        		
-    	        		hasNewDataToRead()) { //single & to ensure we check has new data to read.
+
+    	        while (hasNewDataToRead()) { //single & to ensure we check has new data to read.
 
     	           doneSelectors.clear();
     	           hasRoomForMore = true; //set this up before we visit
-    	           
+
     	           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
     	           if (null!=keyMap) {   
     				   keyMap.forEach(keyVisitor);

@@ -25,7 +25,7 @@ import com.ociweb.pronghorn.util.Appendables;
 public class ClientSocketWriterStage extends PronghornStage {
 	
 	//TODO: by adding access method and clearing the bufferChecked can make this grow at runtime if needed.
-	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
+	public static int MINIMUM_BUFFER_SIZE = 1<<22;//4mb default minimum to hit load tester volume.
 
 	private static final Logger logger = LoggerFactory.getLogger(ClientSocketWriterStage.class);
 		
@@ -72,6 +72,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.shutCountDown = input.length;
 
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
+		
 	}
 
 	
@@ -116,9 +117,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void run() {
+			
 		boolean doingWork;
 		boolean didWork = false;
-		do {
 			doingWork = false;	
 			
 			int i = input.length;
@@ -126,8 +127,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 				if (connections[i]==null) {
 					Pipe<NetPayloadSchema> pipe = input[i];
-					if (Pipe.hasContentToRead(pipe)) {	
-						doingWork = writeAll(doingWork, i, pipe, Pipe.peekInt(pipe));
+					while (connections[i]==null && Pipe.hasContentToRead(pipe)) {	
+						doingWork |= writeAll(doingWork, i, pipe, Pipe.peekInt(pipe));						
 					}
 				} else {
 					//we have multiple connections so one blocking does not impact others.
@@ -135,12 +136,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 				}
 			}
 			didWork |= doingWork;
-		} while (doingWork);
+
 		
 //		//we have no pipes to monitor so this must be done explicitly
 	    if (didWork && (null != this.didWorkMonitor)) {
 	    	this.didWorkMonitor.published();
 	    }
+
 	}
 
 	private boolean writeAll(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, int msgIdx) {
@@ -298,11 +300,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 		Pipe.releaseReadLock(pipe);
 		
-//								System.err.println(enableWriteBatching+" && "+
-//								                 Pipe.hasContentToRead(pipe)+" && "+
-//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
+
 		if (null!=cc) {
 			cc.recordSentTime(System.nanoTime());
 		}
@@ -341,6 +339,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 					cc.recordSentTime(System.nanoTime());
 				}
 		    }	
+//		System.err.println(enableWriteBatching+" && "+
+//                Pipe.hasContentToRead(pipe)+" && "+
+//                (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//		         (buffers[i].remaining()>pipe.maxVarLen)+" && "+ 
+//		         (Pipe.peekLong(pipe, 1)==channelId) );
 		
 		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
@@ -379,12 +382,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
 //					            		         (buffers[i].remaining()>pipe.maxVarLen)+" && "+ 
 //					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
-		 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-		            Pipe.peekInt(pipe)==msgIdx && 
-		            		buffers[i].remaining()>pipe.maxVarLen && 
-		            Pipe.peekLong(pipe, 1)==channelId ) {
+		 while (enableWriteBatching 
+				 && Pipe.hasContentToRead(pipe) 
+				 && Pipe.peekInt(pipe)==msgIdx 
+				 &&	buffers[i].remaining()>pipe.maxVarLen 
+				 && Pipe.peekLong(pipe, 1)==channelId ) {
 		        			        	
-		        	logger.trace("opportunity found to batch writes going to {} ",channelId);
+		        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
 		        	
 		        	int m = Pipe.takeMsgIdx(pipe);
 		        	assert(m==msgIdx): "internal error";
@@ -415,6 +419,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 					}
 		}											
 		
+//		 System.err.println(enableWriteBatching+" && "+
+//	                Pipe.hasContentToRead(pipe)+" && "+
+//	                (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//			         (buffers[i].remaining()>pipe.maxVarLen)+" && "+ 
+//			         (Pipe.peekLong(pipe, 1)==channelId) );
+		 
 
 		((Buffer)buffers[i]).flip();	
 		connections[i] = cc;
@@ -464,6 +474,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 						
 						while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
 							//keep writing the output buffer may be small
+							Thread.yield();
 						}
 										
 					} else {

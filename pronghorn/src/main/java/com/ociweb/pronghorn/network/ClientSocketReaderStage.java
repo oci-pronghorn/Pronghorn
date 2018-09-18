@@ -71,7 +71,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		this.coordinator = coordinator;
 		this.output = output;
 		this.releasePipes = parseAck;
-		
+
 		coordinator.setStart(this);
 		
 		//this resolves the problem of detecting this loop by the scripted fixed scheduler.
@@ -141,6 +141,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void run() { //TODO: this method is the new hot spot in the profiler.
        
+		 {
+		
 	   	 if(!shutdownInProgress) {
 	   		 consumeRelease();
 	         ////////////////////////////////////////
@@ -156,11 +158,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 		     	if (null != this.didWorkMonitor) {
 		     		this.didWorkMonitor.published();
 		     	}	
-		     	 
-		     	 //max cycles before we take a break.
-		     	int maxIterations = 100; //important or this stage will take all the resources.
-		     	
-		         while (--maxIterations>=0 & hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
+	
+		         while ( hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
 	
 		 	           doneSelectors.clear();
 		 		
@@ -176,7 +175,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		 			   removeDoneKeys(selectedKeys);
 		 			      
 		 			   if (!hasRoomForMore) {
-		 				   break;
+		 				   break; //this allows us to stop when the pipes get backed up.
 		 			   }
 		 		
 		         }
@@ -212,7 +211,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         return;
 		 }
 	   	 
-    	
+		}
    	}
 
 	private void abandonNow(ClientConnection abandonded) {

@@ -159,7 +159,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
-
          
     }
     
@@ -208,24 +207,22 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				return;
 			}
 		
-	    	boolean haveWork;
-	    	int maxIterations = 10_000;
+	    	boolean didWork;
+
 	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
 	    	do {
-		    	haveWork = false;
+		    	didWork = false;
 				int c = localPipes.length;
-				int x = 0;
-		        while (--c >= 0) {		        	
-		        	if (!Pipe.hasContentToRead(localPipes[c])) {
-		        		x++;		        		
+			
+		        while (--c >= 0) { 
+		        	if (!Pipe.hasContentToRead(localPipes[c])) {		        				        		
 		        	} else {
 		        		//has full message
-		        		haveWork |= processPipe(localPipes[c], c);		        		
-		        	}
-		        }  
-		   
+		        		didWork |= processPipe(localPipes[c], c);		        		
+		        	}		        	
+		        }
 		        
-	    	} while (--maxIterations>0 && haveWork && !shutdownInProgress);
+	    	} while ( didWork && !shutdownInProgress);
 	    	
     }
 

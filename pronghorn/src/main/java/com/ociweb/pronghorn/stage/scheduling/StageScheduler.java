@@ -90,7 +90,7 @@ public abstract class StageScheduler {
 	}
 	
 	public static StageScheduler defaultScheduler(GraphManager gm, int maxThreads, boolean threadLimitHard) {
-		return defaultSchedulerImpl(gm, threadLimitHard, maxThreads);
+		return defaultSchedulerImpl(gm, threadLimitHard, maxThreads); 
 	}
 
 	private static StageScheduler defaultSchedulerImpl(GraphManager gm, final boolean threadLimitHard, final int targetThreadCountLimit) {

@@ -90,8 +90,9 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	
 	public boolean close() {
 		boolean result = super.close();
-		if (result) {
-			key.cancel();
+		SelectionKey localKey = key;		
+		if (result && null!=localKey) {
+			localKey.cancel();
 		}		
 		return result;
 	}

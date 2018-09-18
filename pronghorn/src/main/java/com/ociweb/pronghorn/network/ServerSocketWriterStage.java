@@ -31,7 +31,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     public static boolean showWrites = false;
     
     public static boolean lowLatency = true; //only turn this off when you are willing to accept long latencies for high volume 
-
 	public static long hardLimtNS = 200_000L; //200 micros
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
@@ -95,7 +94,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
-        
+
     }
     
     
