@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>webcookbook</artifactId>
     <name>webcookbook</name>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <description>Example project of the web components of pronghorn
     </description>
     <url>https://github.com/oci-pronghorn/WebCookBook</url>
@@ -40,15 +40,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <profiles>
-        <!-- profile>
-            <id>cloudbees</id>
-            <distributionManagement>
-                <repository>
-                    <id>cloudbees.release</id>
-                    <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-                </repository>
-            </distributionManagement>
-        </profile -->
         <profile>
             <id>mvn-central</id>
             <distributionManagement>
@@ -118,46 +109,12 @@
         </profile>
 
     </profiles>
-    <!--  repositories>
-
-        <repository>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>always</updatePolicy>
-                <checksumPolicy>warn</checksumPolicy>
-            </snapshots>
-            <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
-            <name>Snapshot Repo for Pronghorn</name>
-            <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
-            <layout>default</layout>
-        </repository>
-
-        <repository>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>always</updatePolicy>
-                <checksumPolicy>warn</checksumPolicy>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>repository-pronghorn.forge.cloudbees.com-release</id>
-            <name>Release Repo for Pronghorn</name>
-            <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
-            <layout>default</layout>
-        </repository>
-
-    </repositories -->
-
 
     <dependencies>
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn</artifactId>
-            <version>1.0.3-SNAPSHOT</version>
+            <version>1.0.3</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

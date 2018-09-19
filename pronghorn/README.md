@@ -24,24 +24,8 @@ Please refer to the [wiki](https://oci-pronghorn.gitbook.io/pronghorn/chapter-0-
     <dependency>
       <groupId>com.ociweb</groupId>
       <artifactId>Pronghorn</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.3</version>
     </dependency> 
-   ```
-  Also add this public repository to your pom or settings for the SNAPSHOT:
-```xml
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com</id>
-      <name>Active Repo for PronghornPipes</name>
-      <url>http://repository-pronghorn.forge.cloudbees.com/snapshot/</url>
-      <layout>default</layout>
-    </repository>
-```
         
 
 ------------------------------------------

@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <artifactId>ph-tls-pure-java</artifactId>
   <name>ph-tls-pure-java</name>
   <description>pure Java TLS implementation</description>
@@ -42,15 +42,7 @@
 	 
   </dependencies>
   <profiles>
-        <!--  profile>
-            <id>cloudbees</id>
-            <distributionManagement>
-                <repository>
-                    <id>cloudbees.release</id>
-                    <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-                </repository>
-            </distributionManagement>
-        </profile -->
+
         <profile>
             <id>disable-java8-doclint</id>
             <activation>
@@ -133,40 +125,7 @@
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Ph-TLS-pureJava.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
-  
-  <!--  repositories>
-    
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
-      <name>Snapshot Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
-      <layout>default</layout>
-    </repository>
-    
-    <repository>
-      <releases>
-        <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com-release</id>
-      <name>Release Repo for Pronghorn</name>
-      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
-      <layout>default</layout>
-    </repository>
-        
-  </repositories -->
+ 
   
   <build>
    <extensions>

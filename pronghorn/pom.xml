@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn</artifactId>
     <name>pronghorn</name>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.3</version>
     <!-- Looking for the release jar? This project is under active development.
        Please consider getting involved and sponsoring the completion of Pronghorn.
        mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -37,15 +37,7 @@
     </properties>
 
     <profiles>
-        <!-- profile>
-            <id>cloudbees</id>
-            <distributionManagement>
-                <repository>
-                    <id>cloudbees.release</id>
-                    <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-                </repository>
-            </distributionManagement>
-        </profile -->
+
         <profile>
             <id>disable-java8-doclint</id>
             <activation>
@@ -110,13 +102,13 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn-pipes</artifactId>
-            <version>1.0.3-SNAPSHOT</version>
+            <version>1.0.3</version>
         </dependency>
 
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>ph-tls-pure-java</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
         </dependency>
 
         <dependency>
@@ -139,40 +131,6 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
-
-    <!--  repositories>
-
-        <repository>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>always</updatePolicy>
-                <checksumPolicy>warn</checksumPolicy>
-            </snapshots>
-            <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
-            <name>Snapshot Repo for Pronghorn</name>
-            <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
-            <layout>default</layout>
-        </repository>
-
-        <repository>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>always</updatePolicy>
-                <checksumPolicy>warn</checksumPolicy>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>repository-pronghorn.forge.cloudbees.com-release</id>
-            <name>Release Repo for Pronghorn</name>
-            <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
-            <layout>default</layout>
-        </repository>
-
-    </repositories -->
 
     <build>
         <extensions>
