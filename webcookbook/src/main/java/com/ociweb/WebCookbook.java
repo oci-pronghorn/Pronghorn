@@ -59,7 +59,9 @@ public class WebCookbook  {
 		serverConfig.setEncryptionUnitsPerTrack(2);
 		serverConfig.setMaxResponseSize(1<<14);
 		//serverConfig.logTraffic(); //do not log traffic when we run on build server 
-		
+		serverConfig.setMaxRequestSize(1<<10);
+		serverConfig.setMaxQueueIn(10);
+		serverConfig.setMaxQueueOut(10);
 		
 		serverConfig.useInsecureServer();//TODO: turn this off later...
 		
@@ -231,6 +233,13 @@ public class WebCookbook  {
 						long timeoutNS = 10_000_000_000L;//10sec
 														
 						for(int i = 0; i<inputPipes.length; i++) {
+							
+							DBCaller[] callers = new DBCaller[8];
+							int c = callers.length;
+							while (--c>=0) {
+								callers[c] = new DBCaller();
+							}
+							
 							//one blocking stage for each of the tracks
 							new BlockingSupportStage<HTTPRequestSchema,
 							        ServerResponseSchema,ServerResponseSchema>(graphManager, 
@@ -238,7 +247,7 @@ public class WebCookbook  {
 									timeoutNS, 
 									(t)->{return ((int)(long) Pipe.peekInt(t, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21))%inputPipes.length;}, 
 									(p)-> true,
-									new DBCaller(), new DBCaller(), new DBCaller()); //NOTE: do not do this for production since callers share db access.
+									callers); 
 						}
 						
 						// http://172.16.10.221:8080/person/add?id=333&name=nathan

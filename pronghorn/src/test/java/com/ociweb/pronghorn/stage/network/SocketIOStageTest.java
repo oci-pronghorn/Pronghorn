@@ -68,18 +68,8 @@ public class SocketIOStageTest {
 		
 		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
 		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
-				
-		ServerPipesConfig serverPipesConfig = serverConfig.buildServerConfig();
 		
-		ServerCoordinator serverCoord = new ServerCoordinator(
-				serverConfig.getCertificates(),
-				serverConfig.bindHost(), 
-				serverConfig.bindPort(),
-				serverConfig.connectionStruct(),
-				serverConfig.requireClientAuth(),
-				serverConfig.serviceName(),
-				serverConfig.defaultHostPath(), 
-				serverPipesConfig);
+		ServerCoordinator serverCoord = serverConfig.buildServerCoordinator();
 				
 		
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null,gm.recordTypeData);
@@ -188,15 +178,8 @@ public class SocketIOStageTest {
 		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
 		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
 
-		ServerCoordinator serverCoord = new ServerCoordinator(
-				serverConfig.getCertificates(),
-				serverConfig.bindHost(), 
-				serverConfig.bindPort(),
-				serverConfig.connectionStruct(),
-				serverConfig.requireClientAuth(),
-				serverConfig.serviceName(),
-				serverConfig.defaultHostPath(), 
-				serverConfig.buildServerConfig());
+		
+		ServerCoordinator serverCoord = serverConfig.buildServerCoordinator(); 
 		
 		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null,gm.recordTypeData);
 					

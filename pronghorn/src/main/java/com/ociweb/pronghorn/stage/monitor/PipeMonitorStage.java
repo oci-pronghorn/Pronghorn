@@ -1,11 +1,10 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.*;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -77,7 +76,7 @@ public class PipeMonitorStage extends PronghornStage {
 			Pipe.addIntValue(localObserved.lastMsgIdx, output);
 			Pipe.addIntValue(localObserved.sizeOfSlabRing, output);
 			Pipe.addLongValue(Pipe.totalWrittenFragments(localObserved), output);
-			
+
 			Pipe.confirmLowLevelWrite(output, size);
 			Pipe.publishWrites(output);
 						

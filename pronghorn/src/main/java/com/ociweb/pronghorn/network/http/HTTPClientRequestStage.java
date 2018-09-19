@@ -11,7 +11,6 @@ import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.ElapsedTimeRecorder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -66,8 +65,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		this.ccm = ccm;
 	
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
-		
+			
 		recordTypeData = graphManager.recordTypeData;
+		
+		//since we have many client callers this needs to be isolated to ensure on is not blocking the others.
+	//	GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+		
 		
 	}
 	
@@ -116,14 +119,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 			do {
 				hasWork = false;
 				int i = input.length;
-				while (--i>=0) {										  
-					if (Pipe.hasContentToRead(input[i])) {	
-						if (buildClientRequest(input[i])) {
-							hasWork = true;
-						} else {
-							return;
-						}
-					}
+				while (--i>=0) {	
+					//to optimize the ChannelSocketWriter we need to group work together
+					//as a result we process all the data together on a pipe before moving to the next
+					while (Pipe.hasContentToRead(input[i]) && buildClientRequest(input[i])) {
+						hasWork = true;
+					}					
 				}
 		
 			} while (hasWork);
@@ -205,7 +206,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	
 	private ClientConnection activeConnection =  null;
-	private PipeUTF8MutableCharSquence mCharSequence = new PipeUTF8MutableCharSquence();
 	
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
@@ -219,15 +219,19 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		if (connectionId==-1) {
 			connectionId = ClientCoordinator.lookup(hostId, port, sessionId);
+
 		}
 		
  		if (connectionId>=0 && (null==activeConnection || activeConnection.id!=connectionId)) {
  			activeConnection = (ClientConnection) ccm.connectionObjForConnectionId(connectionId, false);
+
  		}
 		 				
+ 		
  		if (null!=activeConnection
  			&& (activeConnection.getId()==connectionId)
- 			&& activeConnection.isValid()) {
+ 			&& activeConnection.isValid()
+ 			&& !activeConnection.isClientClosedNotificationSent()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
  			assert(null!=ClientCoordinator.registeredDomain(Pipe.peekInt(requestPipe,  3))) : "bad hostId";

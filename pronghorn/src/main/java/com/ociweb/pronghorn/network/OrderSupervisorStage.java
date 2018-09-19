@@ -220,8 +220,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		//has full message
 		        		didWork |= processPipe(localPipes[c], c);		        		
 		        	}		        	
-		        }
-		        
+		        }		       
 	    	} while ( didWork && !shutdownInProgress);
 	    	
     }
@@ -249,11 +248,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		            (log==null || Pipe.hasRoomForWrite(log))) {	
 				    	
 			    	//only after we know that we are doing something.
-					didWork = true;
-	
-			        keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
+		        	keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
 									        		peekMsgId, myPipeIdx,
 													channelId);
+		        	didWork |= keepWorking;
 		    	} else {
 			        ///////////////////////////////
 			        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
@@ -265,9 +263,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	}
 
 		    } else {		 
-		    	didWork = true;
 		    	//if this was to be skipped then do it
 		    	if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {
+		    		didWork = true;
 		    		skipData(sourcePipe, channelId);
 		    	} else {
 		    		break;
@@ -323,9 +321,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				keepWorking = false;
 			}
 		} else {
-			
-			System.out.println("B unexpected   con:"+channelId+"  seq:"+sequenceNo+" ------------");
-			System.exit(-1);
 			
 			keepWorking = badSequenceNumberProcessing(channelId, sequenceNo, expected);
 		}

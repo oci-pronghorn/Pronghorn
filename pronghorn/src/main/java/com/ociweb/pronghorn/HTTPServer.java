@@ -56,17 +56,13 @@ public class HTTPServer {
 		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 		
-		final ServerPipesConfig serverConfig = c.buildServerConfig();
-		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
-		ServerCoordinator serverCoord1 = new ServerCoordinator(tlsCertificates, bindHost, port, scs,
-				   false, "Server", "", serverConfig);
+		final ServerCoordinator serverCoord = c.buildServerCoordinator();
 		
-		NetGraphBuilder.buildHTTPServerGraph(gm, config, serverCoord1);//pi needs larger values...
+		NetGraphBuilder.buildHTTPServerGraph(gm, config, serverCoord);//pi needs larger values...
 						
 		///////////////
 	    //BUILD THE SERVER
 	    ////////////////		
-		final ServerCoordinator serverCoord = serverCoord1;
 					
 		if (debug) {
 			////////////////

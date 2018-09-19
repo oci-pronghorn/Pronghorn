@@ -69,7 +69,6 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		
 	}
 
 	@Override

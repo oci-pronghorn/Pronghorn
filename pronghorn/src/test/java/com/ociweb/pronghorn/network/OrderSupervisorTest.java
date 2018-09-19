@@ -181,17 +181,7 @@ public class OrderSupervisorTest {
 		
 		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
 				
-		ServerPipesConfig serverPipesConfig = serverConfig.buildServerConfig();
-		
-		return new ServerCoordinator(
-				serverConfig.getCertificates(),
-				serverConfig.bindHost(), 
-				serverConfig.bindPort(),
-				serverConfig.connectionStruct(),
-				serverConfig.requireClientAuth(),
-				serverConfig.serviceName(),
-				serverConfig.defaultHostPath(), 
-				serverPipesConfig);
+		return serverConfig.buildServerCoordinator();
 
 	}
 }

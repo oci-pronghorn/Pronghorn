@@ -13,12 +13,15 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class WebCookbookTest {
 
 	@Test
 	public void makeCallsTest() {
 
+		GraphManager.showThreadIdOnTelemetry = true;
+		
 	    ClientCoordinator.registerDomain("127.0.0.1");	
 	    
 		WebCookbook.main(new String[] {"-h", "127.0.0.1", "-p", "8899"});
@@ -112,7 +115,7 @@ public class WebCookbookTest {
 		Pipe.publishEOF(clientRequests[0]);
 		
 		StringBuilder results = new StringBuilder();
-		ConsoleJSONDumpStage.newInstance(gm, clientResponses[0], results);		
+		ConsoleJSONDumpStage.newInstance(gm, clientResponses[0], Appendables.join(results, System.out));		
 		
 		NonThreadScheduler scheduler = new NonThreadScheduler(gm);
 		

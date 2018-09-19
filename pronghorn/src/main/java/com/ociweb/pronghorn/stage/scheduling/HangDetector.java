@@ -14,8 +14,12 @@ public class HangDetector {
 	private static AtomicBoolean globalRun = new AtomicBoolean(true);
 	
 	private Object active;
+	private Thread activeThread;
+	
+	/////////////////////////////
 	private Thread thread;
 	private long activeTimeout = Long.MAX_VALUE;
+	
 	
 	public HangDetector(long timeout) {
 		this.timeout = timeout;
@@ -34,6 +38,17 @@ public class HangDetector {
 						
 							logger.error("Hang detected in: {} after timeout of "+Appendables.appendNearestTimeUnit(new StringBuilder(), timeout), String.valueOf(active));
 							globalRun.set(false); //stop all other detectors since they are likely to trigger with false positive.
+							
+							Thread t = activeThread;
+							if (null!=t) {
+								//
+								for(StackTraceElement s :t.getStackTrace()) {
+									System.out.println(s);
+								};
+								
+							}
+							
+							
 							break; //stop any more checks..
 					
 					}
@@ -50,13 +65,15 @@ public class HangDetector {
 		};
 	}
 
-	public void begin(Object obj) {
+	public void begin(Object obj, Thread activeThread) {
 		this.active = obj;		
+		this.activeThread = activeThread;
 		this.activeTimeout = System.nanoTime()+timeout;
 		assert(activeTimeout > System.nanoTime());
 	}
 
 	public void finish() {
+		this.activeThread = null;
 		this.activeTimeout =  Long.MAX_VALUE;
 		this.active = null;//important to ensure no leak.
 	}

@@ -23,7 +23,7 @@ import com.ociweb.pronghorn.util.AppendableByteWriter;
 public class PipeMonitorCollectorStage extends PronghornStage {
 
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
-	private final Pipe[] inputs;
+	private final Pipe<PipeMonitorSchema>[] inputs;
 
 	private int[] observedPipeId;
 	
@@ -54,7 +54,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	 * @param graphManager
 	 * @param inputs _in_ Pipes to be monitored.
 	 */
-	private PipeMonitorCollectorStage(GraphManager graphManager, Pipe ... inputs) {
+	private PipeMonitorCollectorStage(GraphManager graphManager, Pipe<PipeMonitorSchema> ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
 		this.graphManager = graphManager;
@@ -66,7 +66,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		
 	}
 
-	private void validateSchema(Pipe[] inputs) {
+	private void validateSchema(Pipe<PipeMonitorSchema>[] inputs) {
 		int i = inputs.length;
 		while (--i>=0) {
 			FieldReferenceOffsetManager from = Pipe.from(inputs[i]); 
@@ -141,11 +141,11 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	//       1. add custom histogram this loop must run very fast
 	//       2. add muliple MonitorConsoleStages, 1 per group of a few thousand??
 	
-	private void consumeSamples(int pos, Pipe[] localInputs,
+	private void consumeSamples(int pos, Pipe<PipeMonitorSchema>[] localInputs,
 			                    short[] pctFullAvg,
 			                    int[] messagesPerSecond) {
 		
-		Pipe<?> pipe = localInputs[pos];
+		Pipe<PipeMonitorSchema> pipe = localInputs[pos];
 		long fragments = -1;
 		long head = -1;
 		long tail = -1;
@@ -163,6 +163,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 			int lastMsgIdx = Pipe.takeInt(pipe);
 			ringSize = Pipe.takeInt(pipe);
 			fragments = Pipe.takeLong(pipe);
+	
 			Pipe.confirmLowLevelRead(pipe, SIZE_OF);
 			Pipe.releaseReadLock(pipe);
 		}
@@ -231,7 +232,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE); 
-	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 15, 0);
+	private static final PipeConfig<PipeMonitorSchema> defaultMonitorRingConfig = new PipeConfig<PipeMonitorSchema>(PipeMonitorSchema.instance, 15, 0);
 	
 	public static PipeMonitorCollectorStage attach(GraphManager gm) {
 		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
@@ -247,7 +248,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	 * @param monitorRate
 	 * @param ringBufferMonitorConfig
 	 */
-	public static PipeMonitorCollectorStage attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
+	public static PipeMonitorCollectorStage attach(GraphManager gm, Long monitorRate, PipeConfig<PipeMonitorSchema> ringBufferMonitorConfig) {
 
 		PipeMonitorCollectorStage stage = new PipeMonitorCollectorStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         

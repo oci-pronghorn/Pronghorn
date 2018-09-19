@@ -25,6 +25,7 @@ import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -63,6 +64,8 @@ public class GraphManager {
 	public static boolean showThreadIdOnTelemetry = false;
 	public static boolean showMessageCountRangeOnTelemetry = false;
 	public static boolean showPipeIdOnTelemetry = false;
+	
+	public static boolean experimentalStdDev = false;
 			
 	//set to false when we see telemetry missing edges. 
 	//TODO; still debugging this not working when there are unrelated groups. switched on.
@@ -2042,8 +2045,25 @@ public class GraphManager {
 				                	target.write(WHITE_SPACE);
 				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_TPS);
 				                	target.write(WHITE_SPACE);
-				                }
-				                	                    
+				                	       	
+				                	if (experimentalStdDev) {
+					        			//show the messages per pass if they have been recorded.
+					        			RunningStdDev writtenFragsStdDev = Pipe.totalWrittenFragmentStdDevperPass(pipe);			
+	
+					        			if (null!=writtenFragsStdDev && writtenFragsStdDev.sampleCount(writtenFragsStdDev)>0) {
+	
+					        				double mean = RunningStdDev.mean(writtenFragsStdDev);
+					        				double stdDev =  RunningStdDev.stdDeviation(writtenFragsStdDev);
+					        				double max =  RunningStdDev.maxSample(writtenFragsStdDev);
+					        				
+					        				//TODO: reduce compute here by using lookup.....
+					        				Appendables.appendValue(target, "", (int)mean,"pc ");
+					        				Appendables.appendValue(target, "", (int)stdDev,"std ");
+					        				Appendables.appendValue(target, "", (int)max,"max ");	        				
+					  
+					        			}
+				                	}        			
+				                }                   
 			                    
 			                    String pipeMemory = m.pipeDOTConst[pipe.id];
 			                    if (null==pipeMemory) {
@@ -2582,7 +2602,7 @@ public class GraphManager {
           }
     }  
 
-	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
+	public static Pipe<PipeMonitorSchema>[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig<PipeMonitorSchema> ringBufferMonitorConfig) {
 
 		//////////////////////////
 		//TODO: we need a limit, like 2000 or so, if we need to monitor more than this many
@@ -2615,7 +2635,7 @@ public class GraphManager {
 				) {
 
 				observedBuffers[monBufIdx] = ringBuffer;
-				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
+				monBuffers[monBufIdx] = new Pipe<PipeMonitorSchema>(ringBufferMonitorConfig);
 				
 				monBufIdx++;
 				

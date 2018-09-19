@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
-		    new int[]{0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009,0xc0400005,0x80000000,0x80000001,0x80000002,0x90000000,0xc0200005,0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0x90000001,0xb8000002,0xc0200009,0xc0400007,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xb8000002,0xc0200007},
+		    new int[]{0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009,0xc0400005,0x80000000,0x80000001,0x80000002,0x90000000,0xc0200005,0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400008,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xc0200008,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009,0xc0400009,0x80000000,0x80000001,0x80000002,0x90000000,0x80000003,0xa8000000,0xa8000001,0xb8000002,0xc0200009},
 		    (short)0,
 		    new String[]{"GET","Session","Port","HostId","ConnectionId","Destination","Path","Headers",null,
 		    "POST","Session","Port","HostId","ConnectionId","Destination","Path","Headers","Payload",
@@ -23,16 +23,13 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 		    "Port","HostId","ConnectionId","Destination","Path","Headers",null,"PUT","Session",
 		    "Port","HostId","ConnectionId","Destination","Path","Headers","Payload",null,"PATCH",
 		    "Session","Port","HostId","ConnectionId","Destination","Path","Headers","Payload",
-		    null,"POSTChunked","Session","Port","HostId","ConnectionId","Destination","Path",
-		    "TotalLength","PayloadChunk",null,"POSTChunk","Session","Port","HostId","ConnectionId",
-		    "Destination","PayloadChunk",null},
-		    new long[]{200, 10, 1, 2, 20, 11, 3, 7, 0, 201, 10, 1, 2, 20, 11, 3, 7, 5, 0, 104, 10, 1, 2, 20, 0, 202, 10, 1, 2, 20, 11, 3, 7, 0, 203, 10, 1, 2, 20, 11, 3, 7, 0, 204, 10, 1, 2, 20, 11, 3, 7, 5, 0, 205, 10, 1, 2, 20, 11, 3, 7, 5, 0, 102, 10, 1, 2, 20, 11, 3, 6, 5, 0, 103, 10, 1, 2, 20, 11, 5, 0},
+		    null},
+		    new long[]{200, 10, 1, 2, 20, 11, 3, 7, 0, 201, 10, 1, 2, 20, 11, 3, 7, 5, 0, 104, 10, 1, 2, 20, 0, 202, 10, 1, 2, 20, 11, 3, 7, 0, 203, 10, 1, 2, 20, 11, 3, 7, 0, 204, 10, 1, 2, 20, 11, 3, 7, 5, 0, 205, 10, 1, 2, 20, 11, 3, 7, 5, 0},
 		    new String[]{"global",null,null,null,null,null,null,null,null,"global",null,null,null,null,null,
 		    null,null,null,null,"global",null,null,null,null,null,"global",null,null,null,null,
 		    null,null,null,null,"global",null,null,null,null,null,null,null,null,"global",null,
 		    null,null,null,null,null,null,null,null,"global",null,null,null,null,null,null,null,
-		    null,null,"global",null,null,null,null,null,null,null,null,null,"global",null,null,
-		    null,null,null,null,null},
+		    null,null},
 		    "ClientHTTPRequest.xml",
 		    new long[]{2, 2, 0},
 		    new int[]{2, 2, 0});
@@ -104,22 +101,6 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 		public static final int MSG_PATCH_205_FIELD_PATH_3 = 0x01400007; //UTF8/None/0
 		public static final int MSG_PATCH_205_FIELD_HEADERS_7 = 0x01400009; //UTF8/None/1
 		public static final int MSG_PATCH_205_FIELD_PAYLOAD_5 = 0x01c0000b; //ByteVector/None/2
-		public static final int MSG_POSTCHUNKED_102 = 0x0000003f; //Group/OpenTempl/9
-		public static final int MSG_POSTCHUNKED_102_FIELD_SESSION_10 = 0x00000001; //IntegerUnsigned/None/0
-		public static final int MSG_POSTCHUNKED_102_FIELD_PORT_1 = 0x00000002; //IntegerUnsigned/None/1
-		public static final int MSG_POSTCHUNKED_102_FIELD_HOSTID_2 = 0x00000003; //IntegerUnsigned/None/2
-		public static final int MSG_POSTCHUNKED_102_FIELD_CONNECTIONID_20 = 0x00800004; //LongUnsigned/None/0
-		public static final int MSG_POSTCHUNKED_102_FIELD_DESTINATION_11 = 0x00000006; //IntegerUnsigned/None/3
-		public static final int MSG_POSTCHUNKED_102_FIELD_PATH_3 = 0x01400007; //UTF8/None/0
-		public static final int MSG_POSTCHUNKED_102_FIELD_TOTALLENGTH_6 = 0x00800009; //LongUnsigned/None/1
-		public static final int MSG_POSTCHUNKED_102_FIELD_PAYLOADCHUNK_5 = 0x01c0000b; //ByteVector/None/2
-		public static final int MSG_POSTCHUNK_103 = 0x00000049; //Group/OpenTempl/7
-		public static final int MSG_POSTCHUNK_103_FIELD_SESSION_10 = 0x00000001; //IntegerUnsigned/None/0
-		public static final int MSG_POSTCHUNK_103_FIELD_PORT_1 = 0x00000002; //IntegerUnsigned/None/1
-		public static final int MSG_POSTCHUNK_103_FIELD_HOSTID_2 = 0x00000003; //IntegerUnsigned/None/2
-		public static final int MSG_POSTCHUNK_103_FIELD_CONNECTIONID_20 = 0x00800004; //LongUnsigned/None/0
-		public static final int MSG_POSTCHUNK_103_FIELD_DESTINATION_11 = 0x00000006; //IntegerUnsigned/None/3
-		public static final int MSG_POSTCHUNK_103_FIELD_PAYLOADCHUNK_5 = 0x01c00007; //ByteVector/None/2
 
 		public static void consume(Pipe<ClientHTTPRequestSchema> input) {
 		    while (PipeReader.tryReadFragment(input)) {
@@ -145,12 +126,6 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 		            break;
 		            case MSG_PATCH_205:
 		                consumePATCH(input);
-		            break;
-		            case MSG_POSTCHUNKED_102:
-		                consumePOSTChunked(input);
-		            break;
-		            case MSG_POSTCHUNK_103:
-		                consumePOSTChunk(input);
 		            break;
 		            case -1:
 		               //requestShutdown();
@@ -223,28 +198,9 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 		    StringBuilder fieldHeaders = PipeReader.readUTF8(input,MSG_PATCH_205_FIELD_HEADERS_7,new StringBuilder(PipeReader.readBytesLength(input,MSG_PATCH_205_FIELD_HEADERS_7)));
 		    DataInputBlobReader<ClientHTTPRequestSchema> fieldPayload = PipeReader.inputStream(input, MSG_PATCH_205_FIELD_PAYLOAD_5);
 		}
-		public static void consumePOSTChunked(Pipe<ClientHTTPRequestSchema> input) {
-		    int fieldSession = PipeReader.readInt(input,MSG_POSTCHUNKED_102_FIELD_SESSION_10);
-		    int fieldPort = PipeReader.readInt(input,MSG_POSTCHUNKED_102_FIELD_PORT_1);
-		    int fieldHostId = PipeReader.readInt(input,MSG_POSTCHUNKED_102_FIELD_HOSTID_2);
-		    long fieldConnectionId = PipeReader.readLong(input,MSG_POSTCHUNKED_102_FIELD_CONNECTIONID_20);
-		    int fieldDestination = PipeReader.readInt(input,MSG_POSTCHUNKED_102_FIELD_DESTINATION_11);
-		    StringBuilder fieldPath = PipeReader.readUTF8(input,MSG_POSTCHUNKED_102_FIELD_PATH_3,new StringBuilder(PipeReader.readBytesLength(input,MSG_POSTCHUNKED_102_FIELD_PATH_3)));
-		    long fieldTotalLength = PipeReader.readLong(input,MSG_POSTCHUNKED_102_FIELD_TOTALLENGTH_6);
-		    DataInputBlobReader<ClientHTTPRequestSchema> fieldPayloadChunk = PipeReader.inputStream(input, MSG_POSTCHUNKED_102_FIELD_PAYLOADCHUNK_5);
-		}
-		public static void consumePOSTChunk(Pipe<ClientHTTPRequestSchema> input) {
-		    int fieldSession = PipeReader.readInt(input,MSG_POSTCHUNK_103_FIELD_SESSION_10);
-		    int fieldPort = PipeReader.readInt(input,MSG_POSTCHUNK_103_FIELD_PORT_1);
-		    int fieldHostId = PipeReader.readInt(input,MSG_POSTCHUNK_103_FIELD_HOSTID_2);
-		    long fieldConnectionId = PipeReader.readLong(input,MSG_POSTCHUNK_103_FIELD_CONNECTIONID_20);
-		    int fieldDestination = PipeReader.readInt(input,MSG_POSTCHUNK_103_FIELD_DESTINATION_11);
-		    DataInputBlobReader<ClientHTTPRequestSchema> fieldPayloadChunk = PipeReader.inputStream(input, MSG_POSTCHUNK_103_FIELD_PAYLOADCHUNK_5);
-		}
 
 		public static void publishGET(Pipe<ClientHTTPRequestSchema> output, int fieldSession, int fieldPort, int fieldHostId, long fieldConnectionId, int fieldDestination, CharSequence fieldPath, CharSequence fieldHeaders) {
 		        PipeWriter.presumeWriteFragment(output, MSG_GET_200);
-		        assert(fieldSession>0);
 		        PipeWriter.writeInt(output,MSG_GET_200_FIELD_SESSION_10, fieldSession);
 		        PipeWriter.writeInt(output,MSG_GET_200_FIELD_PORT_1, fieldPort);
 		        PipeWriter.writeInt(output,MSG_GET_200_FIELD_HOSTID_2, fieldHostId);
@@ -320,26 +276,5 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 		        PipeWriter.writeBytes(output,MSG_PATCH_205_FIELD_PAYLOAD_5, fieldPayloadBacking, fieldPayloadPosition, fieldPayloadLength);
 		        PipeWriter.publishWrites(output);
 		}
-		public static void publishPOSTChunked(Pipe<ClientHTTPRequestSchema> output, int fieldSession, int fieldPort, int fieldHostId, long fieldConnectionId, int fieldDestination, CharSequence fieldPath, long fieldTotalLength, byte[] fieldPayloadChunkBacking, int fieldPayloadChunkPosition, int fieldPayloadChunkLength) {
-		        PipeWriter.presumeWriteFragment(output, MSG_POSTCHUNKED_102);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNKED_102_FIELD_SESSION_10, fieldSession);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNKED_102_FIELD_PORT_1, fieldPort);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNKED_102_FIELD_HOSTID_2, fieldHostId);
-		        PipeWriter.writeLong(output,MSG_POSTCHUNKED_102_FIELD_CONNECTIONID_20, fieldConnectionId);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNKED_102_FIELD_DESTINATION_11, fieldDestination);
-		        PipeWriter.writeUTF8(output,MSG_POSTCHUNKED_102_FIELD_PATH_3, fieldPath);
-		        PipeWriter.writeLong(output,MSG_POSTCHUNKED_102_FIELD_TOTALLENGTH_6, fieldTotalLength);
-		        PipeWriter.writeBytes(output,MSG_POSTCHUNKED_102_FIELD_PAYLOADCHUNK_5, fieldPayloadChunkBacking, fieldPayloadChunkPosition, fieldPayloadChunkLength);
-		        PipeWriter.publishWrites(output);
-		}
-		public static void publishPOSTChunk(Pipe<ClientHTTPRequestSchema> output, int fieldSession, int fieldPort, int fieldHostId, long fieldConnectionId, int fieldDestination, byte[] fieldPayloadChunkBacking, int fieldPayloadChunkPosition, int fieldPayloadChunkLength) {
-		        PipeWriter.presumeWriteFragment(output, MSG_POSTCHUNK_103);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNK_103_FIELD_SESSION_10, fieldSession);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNK_103_FIELD_PORT_1, fieldPort);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNK_103_FIELD_HOSTID_2, fieldHostId);
-		        PipeWriter.writeLong(output,MSG_POSTCHUNK_103_FIELD_CONNECTIONID_20, fieldConnectionId);
-		        PipeWriter.writeInt(output,MSG_POSTCHUNK_103_FIELD_DESTINATION_11, fieldDestination);
-		        PipeWriter.writeBytes(output,MSG_POSTCHUNK_103_FIELD_PAYLOADCHUNK_5, fieldPayloadChunkBacking, fieldPayloadChunkPosition, fieldPayloadChunkLength);
-		        PipeWriter.publishWrites(output);
-		}
+
 }

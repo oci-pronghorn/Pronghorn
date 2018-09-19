@@ -42,10 +42,15 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private int concurrentChannelsPerDecryptUnit = 2; //default 2, for low memory usage
 	private TLSCertificates serverTLS = TLSCerts.define();
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
-	private int maxRequestSize = 1<<15;//default of 32K
-	private int maxResponseSize = 1<<12;//default of 4K
-	private final PipeConfigManager pcm;
-    private int tracks = 1;//default 1, for low memory usage
+	
+	private int maxRequestSize = 1<<9;//default of 512	
+	private int maxResponseSize = 1<<11;//default of 2k
+	
+	private int maxQueueIn = 512; ///from router to modules
+	private int maxQueueOut = 512; //from orderSuper to ChannelWriter
+	
+	public final PipeConfigManager pcm;
+    int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	
 
 	private String serviceName = "Server";
@@ -248,6 +253,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 			
 		pcm.ensureSize(ServerResponseSchema.class, 4, 512);
 		
+		int queueIn = 2; //2-1024
+		int queueOut = 4; //4-256
+		
 		return new ServerPipesConfig(
 				logFile,
 				isTLS(),
@@ -261,14 +269,16 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 				incomingMsgFragCount,
 				getMaxRequestSize(),
 				getMaxResponseSize(),
+				queueIn,
+				queueOut,
 				pcm);
 	}
 
-	private int getMaxResponseSize() {
+	public int getMaxResponseSize() {
 		return maxResponseSize;
 	}
 
-	private int defaultComputedChunksCount() {
+	public int defaultComputedChunksCount() {
 		return Math.min(32, 2+(getMaxRequestSize()/1500));
 	}
 
@@ -315,8 +325,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		} else {
 			throw new UnsupportedOperationException("Tracks must be 1 or more");
 		}
-		return this;
-		
+		return this;		
+	}
+	
+	public int tracks() {
+		return tracks;
 	}
 
 	@Override
@@ -343,6 +356,30 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	@Override
 	public String serviceName() {
 		return serviceName;
+	}
+
+	public LogFileConfig logFileConfig() {
+		return logFile;
+	}
+
+	@Override
+	public int getMaxQueueIn() {
+		return maxQueueIn;
+	}
+
+	@Override
+	public int getMaxQueueOut() {
+		return maxQueueOut;
+	}
+	
+	@Override
+	public int setMaxQueueIn(int maxQueueIn) {
+		return this.maxQueueIn = Math.max(this.maxQueueIn, maxQueueIn);
+	}
+	
+	@Override
+	public int setMaxQueueOut(int maxQueueOut) {
+		return this.maxQueueOut = Math.max(this.maxQueueOut, maxQueueOut);
 	}
 		
 }

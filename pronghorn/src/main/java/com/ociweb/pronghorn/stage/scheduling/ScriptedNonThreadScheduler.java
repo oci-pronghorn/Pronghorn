@@ -502,7 +502,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
                     GraphManager.initAllPipes(graphManager, stage.stageId);
 
                     try {
-                    	assert(hangDetectBegin(stage));
+                    	assert(hangDetectBegin(stage, Thread.currentThread()));
 
                     	long start = 0;
         		    	if (GraphManager.isTelemetryEnabled(graphManager)) {
@@ -925,7 +925,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			if (!(that.stateArray[stage.stageId] >= GraphManagerStageStateData.STAGE_STOPPING)) {
 					
 					that.setCallerId(stage);		        
-					assert(that.hangDetectBegin(stage));
+					assert(that.hangDetectBegin(stage, Thread.currentThread()));
 					stage.run();
 			        assert(that.hangDetectFinish());
 			        that.clearCallerId();		        
@@ -957,9 +957,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return true;
 	}
 	
-	private boolean hangDetectBegin(PronghornStage stage) {
+	private boolean hangDetectBegin(PronghornStage stage, Thread t) {
 		if (null!=hd) {
-			hd.begin(stage);
+			hd.begin(stage,t);
 		}
 		return true;
 	}

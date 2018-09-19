@@ -359,9 +359,9 @@ public class NetGraphBuilder {
 			ServerCoordinator coordinator,
 			ServerPipesConfig serverConfig) {
 		
-		final int maxSize = serverConfig.fromRouterToModuleBlob 
-        		          + coordinator.connectionStruct().inFlightPayloadSize();
-        
+		final int maxSize = Math.max(serverConfig.fromRouterToModuleBlob, 
+				                     coordinator.connectionStruct().inFlightPayloadSize());
+
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(
         		HTTPRequestSchema.instance, 
         		serverConfig.fromRouterToModuleCount, maxSize);///if payload is smaller than average file size will be slower
@@ -791,7 +791,7 @@ public class NetGraphBuilder {
 		int concurrentChannelsPerDecryptUnit = 4; //need large number for new requests
 		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
 				
-		int maxRequestSize = 1<<16; //for cookies sent in
+		 //for cookies sent in
 		
 		
 		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
@@ -803,16 +803,42 @@ public class NetGraphBuilder {
 		c.setDecryptionUnitsPerTrack(1);
 		c.setConcurrentChannelsPerDecryptUnit(concurrentChannelsPerDecryptUnit);
 		c.setMaxConnectionBits(maxConnectionBits);
-		c.setMaxRequestSize(maxRequestSize);
-		c.setMaxResponseSize(1<<21);
+		
+		c.setMaxRequestSize(1<<14);//NOTE: this is a little bigger in case of cookies.		
+		c.setMaxResponseSize(1<<21);//NOTE: needs to be large enough for telemetry responses...
 		
 		((HTTPServerConfigImpl)c).setTracks(tracks);
-		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
+		((HTTPServerConfigImpl)c).finalizeDeclareConnections();
 		
-		final ServerPipesConfig serverConfig = c.buildServerConfig();
+		HTTPServerConfigImpl r = ((HTTPServerConfigImpl)c);
+		int incomingMsgFragCount = r.defaultComputedChunksCount();
 		
-		//This must be large enough for both partials and new handshakes.
-		serverConfig.ensureServerCanWrite(1<<20);//1MB out
+		r.pcm.addConfig(new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 
+						Math.max(incomingMsgFragCount-2, 2), 
+						r.getMaxRequestSize()));
+			
+		r.pcm.ensureSize(ServerResponseSchema.class, 4, 512);
+		
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(
+						null,//we do not need to log the telemetry traffic, so null...
+						r.isTLS(),
+						r.getMaxConnectionBits(),
+						1, //only 1 track for telemetry
+						r.getEncryptionUnitsPerTrack(),
+						r.getConcurrentChannelsPerEncryptUnit(),
+						r.getDecryptionUnitsPerTrack(),
+						r.getConcurrentChannelsPerDecryptUnit(),				
+						//one message might be broken into this many parts
+						incomingMsgFragCount,
+						r.getMaxRequestSize(),
+						r.getMaxResponseSize(),
+						2, //incoming telemetry requests in Queue, keep small
+						4, //outgoing telemetry responses, keep small.
+						r.pcm);
+		
+		if (isTLS) {
+			serverConfig.ensureServerCanWrite(1<<15);
+		}
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates,
 				        bindHost, port, scs,								

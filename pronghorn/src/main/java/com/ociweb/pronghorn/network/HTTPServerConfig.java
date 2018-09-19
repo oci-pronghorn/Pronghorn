@@ -47,6 +47,10 @@ public interface HTTPServerConfig {
 	boolean requireClientAuth();
 	String serviceName();
 	ServerCoordinator buildServerCoordinator();
+	int getMaxQueueIn();
+	int getMaxQueueOut();
+	int setMaxQueueIn(int maxQueueIn);
+	int setMaxQueueOut(int maxQueueIn);
 
 }
 

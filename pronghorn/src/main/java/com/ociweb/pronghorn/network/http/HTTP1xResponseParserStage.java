@@ -1,9 +1,5 @@
 package com.ociweb.pronghorn.network.http;
 
-import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
-import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -180,7 +176,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	@Override
 	public void run() {
-		
+			process();		
+	}
+
+	private void process() {
 		int foundWork; //keep going until we make a pass and there is no work.
 			
 
@@ -894,7 +893,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				 
 			}
 		} while(foundWork>0);//hasDataToParse()); //stay when very busy
-		
 	}
 
 	private boolean checkPipeWriteState(final int stateIdx, Pipe<NetResponseSchema> targetPipe) {

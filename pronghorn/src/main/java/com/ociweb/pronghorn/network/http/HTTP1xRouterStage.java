@@ -193,7 +193,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         super(gm,input,join(join(outputs,ackStop,errorResponsePipe),log));
                 
         this.parallelId = parallelId;
-        
+    
         assert(outputs!=null);
         assert(outputs.length>0);
         
@@ -283,26 +283,30 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
 
+    		boolean didWork = false;
+    		do {
+    			didWork = false;
+	    		int i = inputs.length;
+		        while (--i>=0 ) {
+		        	
+		        	int z;
+		            if ((z=singlePipe(this, i))>=0) {
+		            	didWork |= (z==1);
+		            } else {	
+		            	
+		            	///System.out.println("shutdown count "+shutdownCount);
+		            	
+		            	if (--shutdownCount<=0) {
+		            		requestShutdown();
+		            		return;
+		            	}
+		            } 
+		            
+		           
+		      } 
+    	   } while (didWork);
     	
-    		int i = inputs.length;
-	        while (--i>=0 ) {
-	        	
-	            if (singlePipe(this, i)>=0) {	            			            	
-	            } else {	
-	            	
-	            	///System.out.println("shutdown count "+shutdownCount);
-	            	
-	            	if (--shutdownCount<=0) {
-	            		requestShutdown();
-	            		return;
-	            	}
-	            } 
-	            
-	           //if (!Pipe.isEmpty(inputs[i])) {
-	           //  	System.out.println("ssssssssssss i "+i+"   "+inputs[i]);
-	           //}
-	           
-	      } 
+    		
     }
 
     

@@ -65,6 +65,8 @@ public class ServerPipesConfig {
 							 int partialPartsIn,  //make larger for many fragments
 							 int maxRequestSize, //make larger for large posts
 							 int maxResponseSize,
+							 int queueLengthIn, //router to modules
+							 int queueLengthOut, // from superOrder to channel writer
 							 PipeConfigManager pcm				 
 			) {
 	
@@ -77,13 +79,10 @@ public class ServerPipesConfig {
 
 		//keep the waiting packets from getting out of hand, limit this value
 		partialPartsIn = Math.min(32, partialPartsIn);
-		
 
-		//these may need to be exposed.. they can impact performance
-		this.fromRouterToModuleCount   = 4; //count of messages from router to module	    
-		this.serverOutputMsg           = 8; //count of outgoing responses to writer
-	    //largest file to be cached in file server
-   
+		this.fromRouterToModuleCount = queueLengthIn; // 2 - 1024
+		this.serverOutputMsg         = queueLengthOut;// 4 -  256
+
 		this.pcm = pcm;
 	    this.logFile = logFile;
 	    this.moduleParallelism = tracks;
@@ -137,6 +136,8 @@ public class ServerPipesConfig {
 	
 	public PipeConfig<NetPayloadSchema> orderWrapConfig() {
 		if (null==fromOrderWraperConfig) {
+			
+			
 			//also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
 			fromOrderWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 					                  serverOutputMsg, 

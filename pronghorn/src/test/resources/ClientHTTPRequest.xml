@@ -71,7 +71,7 @@
      <byteVector name="Payload" id="5"/>
    </template>  
   
-   <template name="POSTChunked" id="102">
+   <!-- template name="POSTChunked" id="102">
      <uInt32 name="Session" id="10"/>     
      <uInt32 name="Port" id="1"/>
      <uInt32 name="HostId" id="2"/>
@@ -81,9 +81,9 @@
      <string name="Path" id="3" charset="unicode"/>
      <uInt64 name="TotalLength" id = "6"/>
      <byteVector name="PayloadChunk" id="5"/>
-   </template>   
+   </template -->   
 
-   <template name="POSTChunk" id="103">
+   <!--  template name="POSTChunk" id="103">
      <uInt32 name="Session" id="10"/>    
      <uInt32 name="Port" id="1"/>
      <uInt32 name="HostId" id="2"/>
@@ -91,6 +91,6 @@
      <uInt32 name="Destination" id="11"/>
     
      <byteVector name="PayloadChunk" id="5"/>
-   </template>     
+   </template -->     
       
 </templates>

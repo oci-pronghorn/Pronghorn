@@ -64,6 +64,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		this.unchosen = unchosen;
 		
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lightcoral", this);
+
 	}
 	
 	@Override
@@ -122,7 +123,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 							}
 							
 							times[instance] = 0;//clear
-							
+							//logger.info("\n---completedWorkWaiting {}",instance);
 							completedWorkWaiting[instance] = true;
 							b.wait();
 							
@@ -169,6 +170,7 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 					break;
 				}
 			} else {
+				//logger.info("\n choice negative so sent to unchosen");
 				//choice is negative so the waiting content must be sent to the unchosen
 				unchosen.message(input);				
 				break;
@@ -179,7 +181,9 @@ public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageS
 		//finish any complete jobs
 		int j = completedWorkWaiting.length;
 		while (--j>=0) {
+			
 			if (completedWorkWaiting[j] && Pipe.hasRoomForWrite(output)) {
+				//logger.info("\n---found completed work waiting {}",j);
 				Blockable<T,P,Q> b = blockables[j];
 				synchronized(b) {
 					if (completedWorkWaiting[j]) {
