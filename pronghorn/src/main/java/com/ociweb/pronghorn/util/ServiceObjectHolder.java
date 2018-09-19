@@ -345,7 +345,7 @@ public class ServiceObjectHolder<T> {
     	while (--i>=0) {
     		final T t = localData.serviceObjectValues[i];
     		if ((null!=t) && validator.isValid(t)) {
-    			v.visit(t);
+    			v.visit(i, t);
     		}
     	}
     }
@@ -356,7 +356,7 @@ public class ServiceObjectHolder<T> {
     	while (--i>=0) {
     		final T t = localData.serviceObjectValues[i];
     		if (null!=t) {
-    			v.visit(t);
+    			v.visit(i, t);
     		}
     	}
     }

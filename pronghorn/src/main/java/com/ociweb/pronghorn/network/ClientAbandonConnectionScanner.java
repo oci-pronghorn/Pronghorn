@@ -49,17 +49,19 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 	}
 		
 	@Override
-	public void visit(ClientConnection t) {
+	public void visit(int idx, ClientConnection t) {
 		
 		long scanTime = System.nanoTime();
 		long callTime = t.outstandingCallTime(scanTime);
 		
 		if (showScan) {
-			System.out.println("scan: "+t.id
+
+			System.out.println("pos: "+idx+" conId: "+t.id
 					           +" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString()
 					           +" isValid:"+t.isValid+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting
 					           +" sentClosedNotice:"+t.isClientClosedNotificationSent()
 							);
+			
 		}
 		
 		//skip those already notified.
