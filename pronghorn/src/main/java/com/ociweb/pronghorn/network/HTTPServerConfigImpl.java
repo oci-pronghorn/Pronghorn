@@ -46,8 +46,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private int maxRequestSize = 1<<9;//default of 512	
 	private int maxResponseSize = 1<<11;//default of 2k
 	
-	private int maxQueueIn = 512; ///from router to modules
-	private int maxQueueOut = 512; //from orderSuper to ChannelWriter
+	//smaller to use less memory default use
+	private int maxQueueIn = 128; ///from router to modules
+	private int maxQueueOut = 128; //from orderSuper to ChannelWriter
 	
 	public final PipeConfigManager pcm;
     int tracks = 1;//default 1, for low memory usage
