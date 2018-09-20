@@ -1,0 +1,29 @@
+//two step deploy to maven central
+//////////////////////////////////
+
+mvn clean deploy -s /home/nate/MavenCentral/settings.xml
+
+mvn nexus-staging:release -s /home/nate/MavenCentral/settings.xml
+
+
+
+//////////////////////////
+//move old project into subfolder of itself
+//////////////////////////
+cd old-project
+mkdir old-project
+git mv !(old-project) old-project
+git commit -a -S -m “Moving old project into its own subdirectory”
+
+//////////////////////////
+//merge old project into new project with history
+//////////////////////////
+cd ../new-project
+git remote add old-project ../old-project
+git fetch old-project
+git checkout -b feature/merge-old-project
+git merge -S --allow-unrelated-histories old-project/master
+git push origin feature/merge-old-project
+git remote rm old-project
+
+
