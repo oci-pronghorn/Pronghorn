@@ -94,6 +94,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
+        //for high volume this must be on its own
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        
 
     }
     
@@ -111,6 +114,8 @@ public class ServerSocketWriterStage extends PronghornStage {
        
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
+        //for high volume this must be on its own
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
     }
     
     @Override

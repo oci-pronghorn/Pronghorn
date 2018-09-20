@@ -159,6 +159,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
+        // GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
          
     }
     
@@ -223,6 +224,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        }		       
 	    	} while ( didWork && !shutdownInProgress);
 	    	
+		
     }
 
 

@@ -175,8 +175,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		if (outMaxVar <= inMaxVar) {
 			throw new UnsupportedOperationException("Input has field lenght of "+inMaxVar+" while output pipe is "+outMaxVar+", output must be larger");
 		}
-		GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-		
+
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
@@ -213,7 +212,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-
+       // GraphManager.addNota(gm, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
 		        
     }    
 	

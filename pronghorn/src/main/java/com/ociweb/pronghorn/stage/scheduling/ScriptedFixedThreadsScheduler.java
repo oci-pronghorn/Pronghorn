@@ -527,6 +527,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	//rules because some stages should not be combined
 	private static boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager, int targetThreadCount) {
 
+
+		
 		if (targetThreadCount>=3) {
 			//these stages must be isolated from their neighbors.
 			//  1. they may be a hub and a bottleneck for traffic
@@ -550,6 +552,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		if (GraphManager.hasNota(graphManager, consumerId, GraphManager.ISOLATE)) {
 			return false;
 		}
+
 		
 		Pipe p = GraphManager.getPipe(graphManager, ringId);
 		if (Pipe.schemaName(p).contains("Ack") || Pipe.schemaName(p).contains("Release") ) {
@@ -559,6 +562,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		PronghornStage consumerStage = GraphManager.getStage(graphManager, consumerId);
 		PronghornStage producerStage = GraphManager.getStage(graphManager, producerId);
 
+		
 		//TODO: for single thread we may need to short circut the log and return true.
 		
 		/////////////////

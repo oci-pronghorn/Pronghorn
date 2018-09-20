@@ -78,7 +78,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
-		     
+		
+		//GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+		
 		this.graphManger = graphManager;
 		
 		//if the minimum timeout is below the default rate we must lower the rate for this one stage to capture the timeouts as needed

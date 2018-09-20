@@ -110,6 +110,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
 		
+		//GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+			
 	}
 
 	  @Override
