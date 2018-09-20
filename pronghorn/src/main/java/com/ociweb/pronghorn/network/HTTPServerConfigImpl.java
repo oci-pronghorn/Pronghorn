@@ -232,6 +232,19 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		return this;
 	}
 
+	
+	@Override
+	public HTTPServerConfig setMaxQueueIn(int maxQueueIn) {
+		this.maxQueueIn = Math.max(this.maxQueueIn, maxQueueIn);
+		return this;
+	}
+	
+	@Override
+	public HTTPServerConfig setMaxQueueOut(int maxQueueOut) {
+		this.maxQueueOut = Math.max(this.maxQueueOut, maxQueueOut);
+		return this;
+	}
+	
 	public void finalizeDeclareConnections() {
 		this.bindHost = NetGraphBuilder.bindHost(this.bindHost);
 		this.configStage = BridgeConfigStage.DeclareBehavior;
@@ -371,15 +384,6 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	public int getMaxQueueOut() {
 		return maxQueueOut;
 	}
-	
-	@Override
-	public int setMaxQueueIn(int maxQueueIn) {
-		return this.maxQueueIn = Math.max(this.maxQueueIn, maxQueueIn);
-	}
-	
-	@Override
-	public int setMaxQueueOut(int maxQueueOut) {
-		return this.maxQueueOut = Math.max(this.maxQueueOut, maxQueueOut);
-	}
+
 		
 }
