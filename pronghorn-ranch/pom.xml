@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn-ranch</artifactId>
     <name>pronghorn-ranch</name>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <description>A Maven Archetype for Pronghorn projects
     </description>
     <url>https://github.com/oci-pronghorn/PronghornRanch</url>
@@ -32,18 +32,8 @@
         <tag>HEAD</tag>
     </scm>
 
-
-
     <profiles>
-        <!-- profile>
-            <id>cloudbees</id>
-            <distributionManagement>
-                <repository>
-                    <id>cloudbees.release</id>
-                    <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
-                </repository>
-            </distributionManagement>
-        </profile -->
+       
         <profile>
             <id>disable-java8-doclint</id>
             <activation>
