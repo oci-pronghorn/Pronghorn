@@ -14,7 +14,6 @@ import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import org.junit.jupiter.api.Test;
-import com.ociweb.${artifactId};
 
 import java.io.IOException;
 

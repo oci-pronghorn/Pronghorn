@@ -22,7 +22,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5</version>
         </dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

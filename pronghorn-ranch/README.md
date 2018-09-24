@@ -28,7 +28,7 @@ Next, change into the PronghornRanch directory and allow Maven to recognize and 
 
 Cd into the directory in which you want your new project to reside in, and run the following command:
 
-    mvn archetype:generate -DarchetypeGroupId=com.ociweb -DarchetypeArtifactId=PronghornRanch -DarchetypeVersion=1.0.3
+    mvn archetype:generate -DarchetypeGroupId=com.ociweb -DarchetypeArtifactId=pronghorn-ranch -DarchetypeVersion=1.0.5
 
 You will then be prompted to enter the following properties:
 
