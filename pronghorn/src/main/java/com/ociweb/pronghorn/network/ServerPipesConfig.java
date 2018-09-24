@@ -76,6 +76,7 @@ public class ServerPipesConfig {
 		if (isTLS && (maxResponseSize< (1<<15))) {
 			maxResponseSize = (1<<15);//TLS requires this larger payload size
 		}
+		
 
 		//keep the waiting packets from getting out of hand, limit this value
 		partialPartsIn = Math.min(32, partialPartsIn);
@@ -106,13 +107,13 @@ public class ServerPipesConfig {
 	    this.maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
 		////////
 		
-		// do not need multiple writers until we have giant load
-	    this.serverSocketWriters       = (moduleParallelism >= 4) ? (isTLS?1:2) : 1;
-
+		// do not need multiple writers until we have giant load and parallel tracks in play
+	    this.serverSocketWriters       = (moduleParallelism >= 2) ? ( isTLS ? 1: 2 ) : 1;
 
 		//defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
-
+	    
+	    
 	    this.serverBlobToWrite               = maxResponseSize; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		int targetServerWriteBufferSize = 1<<23;
 		this.writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
@@ -136,15 +137,12 @@ public class ServerPipesConfig {
 	
 	public PipeConfig<NetPayloadSchema> orderWrapConfig() {
 		if (null==fromOrderWraperConfig) {
-			
-			
+						
 			//also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
 			fromOrderWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 					                  serverOutputMsg, 
 					                  serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
-			
-			//System.out.println("NetPayloadSchema.class "+serverOutputMsg+"  "+serverBlobToWrite );
-			
+
 		}		
 		return fromOrderWraperConfig;
 	}

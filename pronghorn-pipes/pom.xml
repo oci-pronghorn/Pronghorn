@@ -3,7 +3,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>pronghorn-pipes</artifactId>
   <name>pronghorn-pipes</name>
-  <version>1.0.3</version>
+  <version>1.0.4-SNAPSHOT</version>
     <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -165,8 +165,8 @@
 	        <version>3.0</version>
 	        <configuration>
 	        	<fork>true</fork>
-	            <source>1.7</source>
-	            <target>1.7</target>
+	            <source>1.8</source>
+	            <target>1.8</target>
 	            <testSource>1.8</testSource>
 	            <testTarget>1.8</testTarget>
 	        </configuration>

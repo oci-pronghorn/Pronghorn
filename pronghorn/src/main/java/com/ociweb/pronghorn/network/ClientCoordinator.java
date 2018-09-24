@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -33,7 +34,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	//find the timeouts and mark them closed..
 	//
 	
-	private final PoolIdx responsePipeLinePool;
 	private Selector selector;
 	private static final Logger logger = LoggerFactory.getLogger(ClientCoordinator.class);
 	private PronghornStage firstStage;
@@ -55,6 +55,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     private PronghornStageProcessor optionalStageProcessor;
 	public final int receiveBufferSize;
 	//public long sentTime;
+
+	private int totalSessions;
     
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	
@@ -75,7 +77,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, 
+	public ClientCoordinator(int connectionsInBits, int totalSessions, 
 			                 TLSCertificates tlsCertificates, StructRegistry typeData) {
 		super(tlsCertificates);
 	
@@ -101,17 +103,19 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		this.typeData = typeData;
 		this.connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-		assert(maxPartialResponses <= (1<<connectionsInBits)) : "Wasted memory detected, there are fewer max users than max writers.";
-		this.responsePipeLinePool = new PoolIdx(maxPartialResponses,1); //NOTE: maxPartialResponses should never be greater than response listener count		
+		
+		assert(totalSessions <= (1<<connectionsInBits)) : "Wasted memory detected, there are fewer max users than max writers.";
+		this.totalSessions = totalSessions;
+				
 		abandonScanner = new ClientAbandonConnectionScanner(this);
 	}
 		
+	public int totalSessions() {
+		return totalSessions;
+	}
+	
 	public void removeConnection(long id) {
-		//logger.info("\n ****** remove this connection "+id,new Exception());
-		
-		if (checkForResponsePipeLineIdx(id)>=0) {
-		   releaseResponsePipeLineIdx(id);
-		}
+
 		ClientConnection oldConnection = connections.remove(id);
 		if (null != oldConnection) {
 			//only decompose after removal.
@@ -120,28 +124,28 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	public BaseConnection lookupConnectionById(long id) {
-		ClientConnection response = connections.get(id);
-		
-		if (null != response) {			
-			if (response.isValid()) {
-				connections.incUsageCount(response.id);
-				return response;
+		if (null!=connections) {
+			ClientConnection response = connections.get(id);
+			
+			if (null != response) {			
+				if (response.isValid()) {
+					connections.incUsageCount(response.id);
+					return response;
+				} else {
+					//logger.info("connection was disconnected {}",id);
+					//the connection has been disconnected
+					response = null;
+				}
 			} else {
-				//logger.info("connection was disconnected {}",id);
-				//the connection has been disconnected
-				response = null;
+				//logger.info("got null lookup {}",id);
 			}
-		} else {
-			//logger.info("got null lookup {}",id);
-		}
+
+			connections.resetUsageCount(id);
 		
-		if (checkForResponsePipeLineIdx(id)>=0) {
-			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-			releaseResponsePipeLineIdx(id);
+			return response;
+		} else {
+			return null;
 		}
-		connections.resetUsageCount(id);
-	
-		return response;
 	}
 	
 	public BaseConnection connectionObjForConnectionId(long connectionId, boolean alsoReturnDisconnected) {
@@ -158,12 +162,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				}
 			}
 		}
-		//if the response was good we will have already returned, we know the connection is bad.
-		//ensure that the pipe is release if it is still held		
-		if (checkForResponsePipeLineIdx(connectionId)>=0) {		
-			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-			releaseResponsePipeLineIdx(connectionId);
-		}
+
 		connections.resetUsageCount(connectionId);
 		
 		return response;
@@ -183,22 +182,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			return connections.lookupInsertPosition();
 	}
 	
-	public static int responsePipeLineIdx(ClientCoordinator that, long ccId) {
-		return PoolIdx.get(that.responsePipeLinePool, ccId);
-	}
-		
-	public int checkForResponsePipeLineIdx(long ccId) {
-		return responsePipeLinePool.getIfReserved(ccId);
-	}
-	
-	public void releaseResponsePipeLineIdx(long ccId) {
-		int value = responsePipeLinePool.release(ccId);
-		assert(value>=0) : "Requested release of pipe for "+ccId+" connection however no reserved pipe could be found for this connection in the pool.";
-	}
-	
-	public int resposePoolSize() {
-		return responsePipeLinePool.length();
-	}
 
 	@Override
 	public boolean isValid(ClientConnection connection) {
@@ -386,9 +369,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			final int hostId, int port, 
-			final int sessionId, Pipe<NetPayloadSchema>[] outputs,
-			long connectionId,
-			AbstractClientConnectionFactory ccf) {
+			final int sessionId, final int responsePipeIdx,
+			Pipe<NetPayloadSchema>[] outputs,
+			long connectionId, AbstractClientConnectionFactory ccf) {
 				assert(hostId>=0) : "bad hostId";
 				assert(null!=ClientCoordinator.registeredDomain(hostId)) : "bad hostId";
 				
@@ -427,6 +410,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					}
 					
 					int pipeIdx = -1;
+					
 					if (connectionId<0
 					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
 						
@@ -442,7 +426,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						//create new connection because one was not found or the old one was closed
 						cc = ccf.newClientConnection(ccm, port, sessionId, 
 													connectionId, 
-													pipeIdx, hostId, timeoutNS,
+													pipeIdx, responsePipeIdx, hostId, timeoutNS,
 													structureId(sessionId, ccm.typeData));
 					
 					} catch (IOException ex) {
@@ -609,4 +593,5 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		LongLongHashTable.setItem(timeoutHash, sessionId, timeoutNS);
 	}
 	
+		
 }

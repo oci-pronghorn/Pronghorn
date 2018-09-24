@@ -23,12 +23,14 @@ public class HTTPClientUtil {
 	private final static Logger logger = LoggerFactory.getLogger(HTTPClientUtil.class);
 
 	public static void cleanCloseConnection(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
-
-		if (null!=requestPipe) {
-			//required to move the position forward.
-			Pipe.skipNextFragment(requestPipe, ClientHTTPRequestSchema.MSG_CLOSECONNECTION_104);
-		}
 		
+		//must consume each field so we can move forward, this is required or the position will be off...
+		//matches ClientHTTPRequestSchema.MSG_CLOSECONNECTION_104
+		int session = Pipe.takeInt(requestPipe);
+		int port    = Pipe.takeInt(requestPipe);
+		int hostId  = Pipe.takeInt(requestPipe);
+		long conId  = Pipe.takeLong(requestPipe);
+
 		//do not close that will be done by last stage
 		//must be done first before we send the message
 		connectionToKill.beginDisconnect();
@@ -74,7 +76,6 @@ public class HTTPClientUtil {
 		  	
 		  	int routeId = Pipe.takeInt(requestPipe); //	ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
 		  	assert(routeId>=0);
-		  	clientConnection.recordDestinationRouteId(routeId);
 		  	
 			
 			int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3
@@ -159,7 +160,6 @@ public class HTTPClientUtil {
 			long connectionId = Pipe.takeLong(requestPipe);//connectionId.
 			int routeId = Pipe.takeInt(requestPipe);
 			assert(routeId>=0);
-			clientConnection.recordDestinationRouteId(routeId);
 			
 		  	int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
 			int len  = Pipe.takeByteArrayLength(requestPipe);
@@ -230,8 +230,7 @@ public class HTTPClientUtil {
 		
     	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
     	assert(routeId>=0);
-    	clientConnection.recordDestinationRouteId(routeId);
-		
+    			
 		int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
 		int len  = Pipe.takeByteArrayLength(requestPipe);
 		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[Pipe.bytePosition(meta, requestPipe, len)&Pipe.blobMask(requestPipe)]);  
@@ -317,7 +316,6 @@ public class HTTPClientUtil {
 			
 			int routeId = Pipe.takeInt(requestPipe); //destination route
 			assert(routeId>=0);
-			clientConnection.recordDestinationRouteId(routeId);
 			///////////////////
 			//path
 		  	int meta = Pipe.takeByteArrayMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
@@ -372,6 +370,8 @@ public class HTTPClientUtil {
 	public static void publish(HTTPVerbDefaults verb, Pipe<ClientHTTPRequestSchema> requestPipe,
 								ClientConnection activeConnection, Pipe<NetPayloadSchema> pipe, long now, int stageId) {
 				
+		activeConnection.recordNowInFlight();
+		
 		long conId = Pipe.peekLong(requestPipe, OFFSET_TO_CON_ID);
 		if (conId==-1) {
 			processSlow(verb, requestPipe, activeConnection, pipe, now, stageId);
@@ -384,6 +384,8 @@ public class HTTPClientUtil {
 
 	public static void publishWithPayload(HTTPVerbDefaults verb, Pipe<ClientHTTPRequestSchema> requestPipe,
 										 ClientConnection activeConnection, Pipe<NetPayloadSchema> pipe, long now, int stageId) {
+		
+		activeConnection.recordNowInFlight();
 		
 		long conId = Pipe.peekLong(requestPipe, OFFSET_TO_CON_ID);
 		if (conId==-1) {

@@ -59,7 +59,9 @@ import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class Pipe<T extends MessageSchema<T>> {
 
-    private static final AtomicInteger pipeCounter = new AtomicInteger(0);
+    public static int showPipesCreatedLargerThan = -1;
+
+	private static final AtomicInteger pipeCounter = new AtomicInteger(0);
     
     //package protected to be called by low and high level API
     PipePublishListener[] pubListeners = new PipePublishListener[0];
@@ -641,9 +643,17 @@ public class Pipe<T extends MessageSchema<T>> {
         
         debugFlags = config.debugFlags;
                 
-//        if (config.totalBytesAllocated() > (1<<24) ) {
-//        	new Exception("large pipe "+(config.totalBytesAllocated()>>20)+" mb").printStackTrace();
-//        }
+        if ((showPipesCreatedLargerThan>0) &&	(config.totalBytesAllocated() >= showPipesCreatedLargerThan) ) {
+        	if (config.totalBytesAllocated() < (1<<11)) {
+        		new Exception("large pipe "+(config.totalBytesAllocated())+" B").printStackTrace();
+        	} else {
+        		if (config.totalBytesAllocated() < (1<<21)) {
+        			new Exception("large pipe "+(config.totalBytesAllocated()>>10)+" KB").printStackTrace();
+        		} else {
+        			new Exception("large pipe "+(config.totalBytesAllocated()>>20)+" MB").printStackTrace();
+        		}
+        	}
+        }
         
 
         //Assign the immutable universal id value for this specific instance
@@ -4278,7 +4288,6 @@ public class Pipe<T extends MessageSchema<T>> {
             pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
         }
 
-        assert(debugHeadAssignment(pipe));
     }
     
     /**
@@ -4428,18 +4437,9 @@ public class Pipe<T extends MessageSchema<T>> {
     		pipe.slabRingHead.headPos.lazySet(pipe.lastPublishedSlabRingHead);
     	}
 
-		assert(debugHeadAssignment(pipe));
 		pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
     }
 
-
-	private static <S extends MessageSchema<S>> boolean debugHeadAssignment(Pipe<S> pipe) {
-
-		if (0!=(PipeConfig.SHOW_HEAD_PUBLISH&pipe.debugFlags) ) {
-			new Exception("Debug stack for assignment of published head position"+pipe.slabRingHead.headPos.get()).printStackTrace();
-		}
-		return true;
-	}
 
     /**
      * Internal method to publish head positions as part of publish writes process
@@ -4459,7 +4459,6 @@ public class Pipe<T extends MessageSchema<T>> {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
 	        pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value);
 	        assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
-	        assert(debugHeadAssignment(pipe));
 	        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
 	    } else {
 	        storeUnpublishedWrites(pipe);

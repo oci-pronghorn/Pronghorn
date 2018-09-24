@@ -217,23 +217,9 @@ public class ClientSocketReaderStage extends PronghornStage {
    	}
 
 	private void abandonNow(ClientConnection abandonded) {
-		
-		
-		
-		
-		//we only close connections which are currently holding a pipe reservation open
-		//never grab a new one here or it may cause a hang,  only close those already with reservation
-		int pipeIdx;// = coordinator.checkForResponsePipeLineIdx(abandonded.getId());
-		
-		//test because we are not closing connections which hAVE NO PIPE FOR THE DISCONNECT...
-		//if (pipeIdx<0) {
-			pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, abandonded.getId());
-		//}
-		
-		
-		
-		if (pipeIdx>=0) {
-			Pipe<NetPayloadSchema> pipe = output[pipeIdx];	        	        	
+			    
+
+			Pipe<NetPayloadSchema> pipe = output[abandonded.getResponsePipeIdx()];	        	        	
 			///ensure that this will not cause any stall, better to skip this than be blocked.
 			if (Pipe.hasRoomForWrite(pipe)) {
 				
@@ -253,12 +239,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 				Pipe.confirmLowLevelWrite(pipe, size);
 				Pipe.publishWrites(pipe);    
 								
-				//only release after we populate the pipe.
-				coordinator.releaseResponsePipeLineIdx(abandonded.getId());
 				//Do not set notification sent this message will trigger that one later once it makes it down the pipe.
 				
 			}
-		}
+	
 	}
 
 	
@@ -351,26 +335,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 				 consumeRelease();
 				 doRead = false;
 				 //one of the other pipes can do work
-			 }	    		 
-			 
+			 }
 		}
-
-		if (doRead) {
-			
+		
+		if (doRead) {			
 			//holds the pipe until we gather all the data and got the end of the parse.
-			int pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId());//picks any open pipe to keep the system busy
-			if (pipeIdx>=0) {
-				assert(pipeIdx<output.length) : "Bad pipe idx of "+pipeIdx+" but we only have "+output.length+" pipes";
-				didWork = readFromSocket(didWork, cc, output[pipeIdx]);
-			} else {	    	
-				consumeRelease();
-				pipeIdx = ClientCoordinator.responsePipeLineIdx(coordinator, cc.getId()); //try again.
-				if (pipeIdx>=0) {
-					//was able to reserve a pipe run 
-					didWork = readFromSocket(didWork, cc, output[pipeIdx]);
-				}				    		
-			}
-			
+			didWork = readFromSocket(didWork, cc, output[cc.getResponsePipeIdx()]);
+
 		} else {
 			didWork = false;
 		}
@@ -484,12 +455,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 				int id = Pipe.takeMsgIdx(ack);
 				if (id == ReleaseSchema.MSG_RELEASE_100) {
 					
-					consumeRelease(Pipe.takeLong(ack), Pipe.takeLong(ack));
+					long conId =Pipe.takeLong(ack);
+					long pos = Pipe.takeLong(ack);
 	    			
 	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
 				} else if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 					
-					consumeRelease(Pipe.takeLong(ack), Pipe.takeLong(ack));
+					long conID = Pipe.takeLong(ack);
+					long pos = Pipe.takeLong(ack);
+					
 					int fieldSequenceNo = Pipe.takeInt(ack);
 					
 					
@@ -505,20 +479,5 @@ public class ClientSocketReaderStage extends PronghornStage {
 		return didWork;
 	}
 
-	public void consumeRelease(long fieldConnectionId, long fieldPosition) {
-		///////////////////////////////////////////////////
-		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-		int pipeIdx = coordinator.checkForResponsePipeLineIdx(fieldConnectionId);
-		if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == fieldPosition) {
-			assert(Pipe.contentRemaining(output[pipeIdx])==0) : "unexpected content on pipe detected";
-			assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
-			
-			//every connection is locked down to a single input pipe until
-			//the consumer "parser" finds a stopping point and can release the pipe for other usages.
-
-			coordinator.releaseResponsePipeLineIdx(fieldConnectionId);
-
-		}
-	}
 
 }

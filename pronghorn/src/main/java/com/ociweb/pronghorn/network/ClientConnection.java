@@ -42,7 +42,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	
 	private SelectionKey key; //only registered after handshake is complete.
 
-	private final int pipeIdx;
+	private final int requestPipeIdx;
 	
 	private long requestsSent;
 	private long responsesReceived;
@@ -51,7 +51,10 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	//TODO: Store the JSON Extractor here so we can apply it when the results come in??
 	///////////////////////
 	
+	
 	public final int sessionId;
+	public final int responsePipeIdx;
+	
 	public final String host;
 	public final int port;
 	public final int hostId;
@@ -71,7 +74,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	
 	private int inFlightRoutesSentPos;
 	private int inFlightRoutesRespPos;
-	private final int[] inFlightRoutes;
+
 
 	private final long creationTimeNS;
 	
@@ -89,6 +92,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 	
 	public boolean close() {
+
 		boolean result = super.close();
 		SelectionKey localKey = key;		
 		if (result && null!=localKey) {
@@ -98,11 +102,11 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	}
 	
 	public ClientConnection(SSLEngine engine, int hostId, int port, int sessionId,
-			                int pipeIdx, long conId, long timeoutNS, int structureId		                 
+			                int requestPipeIdx, int responsePipeIdx, long conId, long timeoutNS, int structureId		                 
 			 			  ) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
-
+		
 		
 		//TODO: add support to hold data to be returned to client responder.
 		this.connectionDataWriter = null;
@@ -118,7 +122,12 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		
 		assert(port<=65535);		
 
-		this.pipeIdx = pipeIdx;
+		this.requestPipeIdx = requestPipeIdx;
+
+		this.responsePipeIdx = responsePipeIdx;
+	    if (this.responsePipeIdx<0) {
+	    	throw new UnsupportedOperationException("bad resposne pipe id");
+	    }
 
 		this.sessionId = sessionId;
 		this.host = ClientCoordinator.registeredDomain(hostId);
@@ -141,8 +150,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		
 		System.gc();
 		inFlightTimes = new long[maxInFlight];
-		inFlightRoutes = new int[maxInFlight];
-		Arrays.fill(inFlightRoutes, -1);
+
 	}
 
 	public static void initSocket(SocketChannel socket) throws IOException {
@@ -159,6 +167,10 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return recBufferSize;
 	}
 
+	public int getResponsePipeIdx() {
+		return responsePipeIdx;
+	}
+	
 	private void resolveAddressAndConnect(int port) throws IOException {
 
 				
@@ -262,7 +274,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 
 	public int requestPipeLineIdx() {
-		return pipeIdx;
+		return requestPipeIdx;
 	}
 
 	//new GUID value 16 port 48/2  24 bits for sessions/domains  16 million.
@@ -539,22 +551,13 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return ok;
 	}
 		
-	public void recordDestinationRouteId(int id) {
-	//	assert(-1 == inFlightRoutes[(1+inFlightRoutesSentPos) & maxInFlightMask]);
-		inFlightRoutes[++inFlightRoutesSentPos & maxInFlightMask] = id;
+	public void recordNowInFlight() {
+		++inFlightRoutesSentPos;
 	}
 	
-	public int consumeDestinationRouteId() {
-		int idx = ++inFlightRoutesRespPos & maxInFlightMask;
-		int value = inFlightRoutes[idx];
-		inFlightRoutes[idx] = -1;
-		return value;
+	public void consumeInFlightInstance() {
+		++inFlightRoutesRespPos;		
 	}
-	
-	public int readDestinationRouteId() {
-		return inFlightRoutes[(1+inFlightRoutesRespPos) & maxInFlightMask];
-	}
-
 	
 	/////////////////////////
 	//This is for asserting of thread safety

@@ -84,7 +84,7 @@ public class ClientHTTPSPipelineTest {
 			@Override
 			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
 								    Pipe<NetPayloadSchema>[] clearResponse,
-								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+								    Pipe<ReleaseSchema>[] ackReleaseForResponseParser) {
 				
 				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, toReactor, clearResponse, ackReleaseForResponseParser);
 			}

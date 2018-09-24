@@ -121,13 +121,20 @@ public class MQTTClientGraphBuilder {
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {			
 			@Override
 			public void buildParser(GraphManager gm, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] fromBroker,
-									Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+									Pipe<ReleaseSchema>[] ackReleaseForResponseParser) {
 	
-				//parse the socket data, determine the message and write it to the out pipe
-				MQTTClientResponseStage responseStage = new MQTTClientResponseStage(gm, ccm, fromBroker, 
-						ackReleaseForResponseParser, serverToClient); //releases Ids.	
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, responseStage);
-				GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, responseStage);
+				assert (ackReleaseForResponseParser.length==1) : "only support 1 at this time";
+			
+					
+					//parse the socket data, determine the message and write it to the out pipe
+					MQTTClientResponseStage responseStage = new MQTTClientResponseStage(gm, ccm, fromBroker, 
+																						ackReleaseForResponseParser[0], 
+																						serverToClient); //releases Ids.	
+					
+					GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, responseStage);
+					GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, BACKGROUND_COLOR, responseStage);
+				
+			
 			}
 		};
 				

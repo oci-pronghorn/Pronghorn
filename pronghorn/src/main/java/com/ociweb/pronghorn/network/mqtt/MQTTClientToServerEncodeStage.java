@@ -59,7 +59,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private final Pipe<MQTTIdRangeControllerSchema> idRangeControl;
 	
 	public static boolean showAllSubscriptions = false;
-	private final int uniqueConnectionId;
+	
+	private final int sessionId;
+	private final int responsePipeIdx = 0;
+	
 	private final ClientCoordinator ccm;
 	private boolean brokerAcknowledgedConnection;
 	
@@ -158,7 +161,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 		this.ccm = ccm;
 				
-		this.uniqueConnectionId = uniqueId;
+		this.sessionId = uniqueId;
 	}
 
 	private boolean ofSchema(Pipe<NetPayloadSchema>[] toBroker, NetPayloadSchema instance) {
@@ -338,6 +341,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	@Override
 	public void startup() {
 		host = new StringBuilder();
+		
 	}
 	
 	public long connectionId() {
@@ -349,7 +353,30 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		if (null==activeConnection || connectionIsBad() ) {
 			//only do reOpen if the previous one is finished connecting and its now invalid.
-			reOpenConnection(activeConnection);
+			if (activeConnection != null) {//double check if asserts are on.
+				assert(activeConnection.hostId == ClientCoordinator.lookupHostId(host, READER));
+			}
+			
+			int hostId = null!=activeConnection? activeConnection.hostId : ClientCoordinator.lookupHostId(host, READER);
+			long liveConnectionId = ClientCoordinator.lookup(hostId, hostPort, sessionId);
+			
+			logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, liveConnectionId, null!=activeConnection);
+			
+			
+			activeConnection = ClientCoordinator.openConnection(ccm, hostId, hostPort, 
+										                         sessionId, responsePipeIdx,
+										                         toBroker, liveConnectionId,
+										                         BasicClientConnectionFactory.instance); 
+			
+			if (null!=activeConnection) {	
+				logger.info("\nbroker connection established");
+				//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
+				//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
+				//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
+				while (!rePublish(toBroker[activeConnection.requestPipeLineIdx()])) {
+					Thread.yield();//have no choice in this corner case.
+				}
+			}
 		}
 		
 		return ((null!=activeConnection) && activeConnection.isFinishConnect()) ? activeConnection.id : -1;
@@ -366,37 +393,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 	}
 
-	private void reOpenConnection(ClientConnection old) {
-
-		//this.payloadToken = schema.growStruct(structId, BStructTypes.Blob, 0, "payload".getBytes());
-		//only add header support for http calls..
-		//int structureId = 
-		
-		if (old != null) {//double check if asserts are on.
-			assert(old.hostId == ClientCoordinator.lookupHostId(host, READER));
-		}
-		
-		int hostId = null!=old? old.hostId : ClientCoordinator.lookupHostId(host, READER);
-		long liveConnectionId = ClientCoordinator.lookup(hostId, hostPort, uniqueConnectionId);
-		
-		logger.info("\nopening connection to broker {}:{} id:{} uniq:{} hasOldConnection:{}",host, hostPort, hostId, liveConnectionId, null!=old);
-
-		activeConnection = ClientCoordinator.openConnection(ccm, hostId, hostPort, 
-				                         uniqueConnectionId, 
-				                         toBroker, liveConnectionId,
-				                         BasicClientConnectionFactory.instance); 
-
-		if (null!=activeConnection) {	
-			logger.info("\nbroker connection established");
-			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
-			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
-			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
-			while (!rePublish(toBroker[activeConnection.requestPipeLineIdx()])) {
-				Thread.yield();//have no choice in this corner case.
-			}
-		}
-	}
-	
 	public static void encodeVarLength(DataOutputBlobWriter<NetPayloadSchema> output, int x) {	
 		
 	    //little endian
@@ -602,7 +598,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 														
 					this.hostPort = Pipe.takeInt(input);
 					//must establish new connection
-					ccm.releaseResponsePipeLineIdx(connectionId);
+
 					if (null!=activeConnection) {
 						logger.info("\nclose old connection to make new one");
 						activeConnection.close();

@@ -31,7 +31,7 @@ public class WebCookbookTest {
 		int tracks = 1;
 		TLSCertificates tlsCertificates = null;//TLSCertificates.defaultCerts; 
 		int connectionsInBits = 3;
-		int maxPartialResponses = 4;					
+		int maxPartialResponses = 1;					
 		int clientRequestCount=7; 
 		int clientRequestSize=2000;
 

@@ -12,6 +12,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -137,9 +138,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
         		ServerConnection.class, 
         		new SocketValidator(), false/*Do not grow*/);
 
-        serverPipesConfig.pcm.addConfig(NetGraphBuilder.buildRoutertoModulePipeConfig(this, serverPipesConfig));
+        serverPipesConfig.pcm.ensureSize(HTTPRequestSchema.class, 
+        		Math.min(serverPipesConfig.fromRouterToModuleCount, 1<<12), //4K max queue length 
+        		this.connectionStruct().inFlightPayloadSize());
+        
         serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig()); 
-                
+
 		pcm = serverPipesConfig.pcm;
         
     }

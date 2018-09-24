@@ -18,6 +18,8 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	private static final Logger logger = LoggerFactory.getLogger(PipeConfig.class);
 	final int maximumLenghOfVariableLengthFields;
 		
+	public static int showConfigsCreatedLargerThan = -1;
+	
    /**
      * This is NOT the constructor you are looking for.
      * 
@@ -129,10 +131,17 @@ public class PipeConfig<T extends MessageSchema<T>> {
         	throw(t);
         }
         
-//        //this is used for tracking down large memory consumers.
-//        if (totalBytesAllocated() > (1<<25)) {
-//        	new Exception("Creating very large pipe: "+messageSchema+" "+minimumFragmentsOnRing+" "+maximumLenghOfVariableLengthFields).printStackTrace();
-//        }
+        if ((showConfigsCreatedLargerThan>0) &&	(totalBytesAllocated() >= showConfigsCreatedLargerThan) ) {
+        	if (totalBytesAllocated() < (1<<11)) {
+        		new Exception(schema.getClass().getSimpleName()+" large config "+(totalBytesAllocated())+" B slab:"+slabBits+" blob:"+blobBits).printStackTrace();
+        	} else {
+        		if (totalBytesAllocated() < (1<<21)) {
+        			new Exception(schema.getClass().getSimpleName()+" large config "+(totalBytesAllocated()>>10)+" KB slab:"+slabBits+" blob:"+blobBits).printStackTrace();
+        		} else {
+        			new Exception(schema.getClass().getSimpleName()+" large config "+(totalBytesAllocated()>>20)+" MB slab:"+slabBits+" blob:"+blobBits).printStackTrace();
+        		}
+        	}
+        }
         
     }
 
@@ -186,8 +195,6 @@ public class PipeConfig<T extends MessageSchema<T>> {
 		return result;
 	}
 	
-	public static final int SHOW_HEAD_PUBLISH = 1;
-
 	/**
 	 * Returns true if this configuration is of the same schema and is larger or equal to the source config.
 	 */

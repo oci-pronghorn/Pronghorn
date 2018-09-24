@@ -27,7 +27,7 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 	@Override
 	public ClientConnection newClientConnection(ClientCoordinator ccm, 
 											int port, int sessionId, //unique value for this connection definition
-											long connectionId, int pipeIdx, 
+											long connectionId, int requestPipeIdx, int responsePipeIdx,
 											int hostId, long timeoutNS, int structureId) throws IOException {
 		
 		SSLEngine engine =  ccm.isTLS ?
@@ -51,11 +51,10 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 	    
 	    }		
 				
-		return new HTTPClientConnection(engine, hostId, port, sessionId, pipeIdx, 
+		return new HTTPClientConnection(engine, hostId, port, sessionId, requestPipeIdx, responsePipeIdx,
 				                    connectionId,
 				                    recordTypeData, timeoutNS, structureId,
 				                    headerParsers[sessionId]);
-
 		
 	}
 

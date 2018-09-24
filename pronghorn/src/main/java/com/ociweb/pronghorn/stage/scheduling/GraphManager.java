@@ -675,13 +675,22 @@ public class GraphManager {
 		}
 		//Not an assert because this is critical and done upon startup
 		if (-1!=result[idx]) {
-			throw new UnsupportedOperationException("duplicate assignment detected, see stack and double check all the stages added to the graph. \ncheck: "+obj
-					                  +" index:"+idx+" value: "+value+" foundValue: "+result[idx]);	
+			throw new UnsupportedOperationException("duplicate assignment detected, see stack and double check all the stages added to the graph. \ncheck: "
+												   + stringWrap(obj)
+					                               + " index:"+idx+" value: "+value+" foundValue: "+result[idx]);	
 		}
 		result[idx] = value;
 		return result;
 	}
 	
+	private static String stringWrap(Object obj) {
+		try {
+			return obj.toString();
+		} catch (Exception e) {			
+		}
+		return obj.getClass().getSimpleName();
+	}
+
 	private static <T> T[] setValue(T[] target, int idx, T value) {		
 		T[] result = target;
 		if (idx>=target.length) {
@@ -812,15 +821,15 @@ public class GraphManager {
 	 * @param targetSchema
 	 */
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
-	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
+	    return (Pipe<T>[])pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
 	}
 	
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfTypeWithNoConsumer(GraphManager gm, T targetSchema) {
-	    return pipesOfTypeWithNoConsumer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
+	    return (Pipe<T>[])pipesOfTypeWithNoConsumer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
 	}
 	
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfTypeWithNoProducer(GraphManager gm, T targetSchema) {
-	    return pipesOfTypeWithNoProducer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
+	    return (Pipe<T>[])pipesOfTypeWithNoProducer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
 	}
 
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
@@ -1937,73 +1946,62 @@ public class GraphManager {
 	                	}
 
 		                
-		                //NOTE: special logic to turn off labels
-		                boolean showLabels = true;
-		                boolean fanOutGrouping = false;
-		                boolean fanInGrouping = false;
+		                boolean showActivePipe = true;
+		                int     fanOutGrouping = -1;
+		                int     fanInGrouping = -1;
 		                
 		                if (combineCommonEdges && producer>=0 && consumer>=0) {
-		                	//if this producer writes to many pipes
-		                	final int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
-							if (outputPipeCount >= 4) {
-								//destinations must share same destination and be of same type;	
-								if (     isSameDestination(m, producer, 1, 2) 
-									&&   isSameDestination(m, producer, outputPipeCount-1, outputPipeCount)
-								    ) {
-									
-									//Must they must not ALL go to the same place, this may be a fan in.
-									boolean allTheSame = allTheSame(m, producer, outputPipeCount);
-									
-									if (!allTheSame) {
-										//confirm all all of the same type
-										boolean isOk = true;
-										for(int p = 2;p<=outputPipeCount; p++) {
-											isOk &=		
-													
-											((!"MessagePrivate".equals(Pipe.schemaName((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1))))
-											&&
-											Pipe.isForSameSchema((Pipe<?>)GraphManager.getOutputPipe(m, producer, 1), 
-																 (Pipe<?>)GraphManager.getOutputPipe(m, producer, p)));
-										}
-										
-										if (isOk) {
-											showLabels = false;
-								    		fanOutGrouping = true;
-										}
-									}
-								  
+		                	
+		                			                	
+		                	//never combine private topics
+		                	if (!"MessagePrivate".equals(Pipe.schemaName(pipe))) {
+		                	
+		                		final int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+		                		int sum=0;
+		                		int lastPipeId=-1;
+		                		for(int p=1;p<=outputPipeCount;p++) {
+		                			
+		                			Pipe peerPipe = GraphManager.getOutputPipe(m, producer, p);
+		                			
+		                			if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
+		                				&& GraphManager.getRingConsumerId(m, pipe.id)==GraphManager.getRingConsumerId(m, peerPipe.id)	
+		                					) {
+		                				sum++;
+		                				lastPipeId = peerPipe.id;
+		                			}
+		                		}
+		                		//combine limit
+		                		if (sum>1) {
+		                			showActivePipe = false;//do not display this pipe alone it is in a group
+						    		fanOutGrouping =lastPipeId;
+		                		}
+		                		
+		                		//if not active already grouped so do not group it again.
+								if (showActivePipe) {
+									sum=0;
+			                		lastPipeId=-1;
+			                		final int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+			                		for(int p=1;p<=inputPipeCount;p++) {
+			                			
+			                			Pipe peerPipe = GraphManager.getInputPipe(m, consumer, p);
+			                			
+			                			if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
+			                				&& GraphManager.getRingProducerId(m, pipe.id)==GraphManager.getRingProducerId(m, peerPipe.id)	
+			                					) {
+			                				sum++;
+			                				lastPipeId = peerPipe.id;
+			                			}
+			                		}
+			                		//combine limit
+			                		if (sum>1) {
+			                			showActivePipe = false;//do not display this pipe alone it is in a group
+							    		fanInGrouping =lastPipeId;
+			                		}
 								}
+		                		
 		                	}
-							
-							//already grouped so do not do it again.
-							if (showLabels) {
-			                	final int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
-								if (inputPipeCount >= 4) {
-									//destinations must share same destination and be of same type;	
-									if (isSameSource(m, consumer, 1, 2) &&
-									    isSameSource(m, consumer, inputPipeCount-1, inputPipeCount)) {
-									  
-									  //if they all go to the same place that is ok for this case
-										
-										//confirm all all of the same type
-										boolean isOk = true;
-										for(int p = 2;p<=inputPipeCount; p++) {
-											isOk &=		
-													((!"MessagePrivate".equals(Pipe.schemaName((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1))))
-													  &&
-													Pipe.isForSameSchema((Pipe<?>)GraphManager.getInputPipe(m, consumer, 1), 
-																		 (Pipe<?>)GraphManager.getInputPipe(m, consumer, p)));
-										}
-											
-										if (isOk) {
-											showLabels = false;
-											fanInGrouping = true;
-										}
-									}
-			                	}
-							}
-							
-			                
+		                			
+		               			                
 			                //disables the pipe back label
 	//		                if (GraphManager.hasNota(m, consumer, GraphManager.LOAD_BALANCER)
 	//			                	) {
@@ -2015,7 +2013,7 @@ public class GraphManager {
 		                }
 		                ////////////////////////////////////////
 		                
-		                if (showLabels) {
+		                if (showActivePipe) {
 		                	
 		                	
 		                	
@@ -2094,13 +2092,10 @@ public class GraphManager {
 		                    
 		                } 
 
-		                if (!showLabels) {
+		                if (!showActivePipe) {
 		                	
 		                	//System.out.println("a consumer "+consumer);
-		                	if (fanOutGrouping
-		                	    //if this active pipe is the first pipe of any consumer
-		                		&& pipe.id == GraphManager.getInputPipe(m, consumer, 1).id
-		                		) {
+		                	if (fanOutGrouping>=0 && pipe.id == fanOutGrouping) {
 		                
                 				target.write(pipeIdBytes);
 		                		
@@ -2114,8 +2109,8 @@ public class GraphManager {
                 					
                 					Pipe<?> p = GraphManager.getOutputPipe(m, producer, c);
                 					
-                					//only pick up those pointing to this same consumer.
-                					if (GraphManager.getRingConsumerId(m, p.id) == consumer) {
+                					//only pick up those pointing to this same consumer and the same pipe schema.
+                					if ((GraphManager.getRingConsumerId(m, p.id) == consumer) && Pipe.isForSameSchema(p,pipe) ) {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
@@ -2145,8 +2140,7 @@ public class GraphManager {
 		                				
 		                	}
 
-		                	if (fanInGrouping 
-		                			&& pipe.id == GraphManager.getOutputPipe(m, producer, 1).id) {
+		                	if (fanInGrouping>=0 && pipe.id == fanInGrouping) {
 		                		//show consolidated single line
 		                				                				
                 				target.write(pipeIdBytes);
@@ -2161,8 +2155,8 @@ public class GraphManager {
                 					
                 					Pipe<?> p = GraphManager.getInputPipe(m, consumer, c);
                 					
-                					//only pick up those pointing to this same producer.
-                					if (GraphManager.getRingProducerId(m, p.id) == producer) {
+                					//only pick up those pointing to this same producer and the same pipe schema.
+                					if ((GraphManager.getRingProducerId(m, p.id) == producer) && Pipe.isForSameSchema(p,pipe) ) {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
@@ -2301,6 +2295,7 @@ public class GraphManager {
 		Pipe<?> inputPipe2 = GraphManager.getInputPipe(m, consumer, b);			
 		int prod1 = GraphManager.getRingProducerId(m, inputPipe1.id);	
 		int prod2 = GraphManager.getRingProducerId(m, inputPipe2.id);		
+		//System.out.println(prod1+" "+prod2+"  "+inputPipe1+" "+inputPipe2);
 		return (prod1==prod2 && Pipe.isForSameSchema(inputPipe1, inputPipe2));
 
 	}
@@ -2905,7 +2900,7 @@ public class GraphManager {
 		}
 	}
 
-	private static final long AVG_BITS = 12;
+	private static final long AVG_BITS = 8;
 	private static final long AVG_BASE = (1L<<AVG_BITS)-1L;
 	
 	

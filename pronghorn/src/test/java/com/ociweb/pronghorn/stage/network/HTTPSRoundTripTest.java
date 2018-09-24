@@ -37,8 +37,8 @@ public class HTTPSRoundTripTest {
        
     @Test
 	public void allCertHTTPSTest() {
-        	
-    	int maxPartialResponses=10;
+        	    	
+    	int maxPartialResponses = 1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
     	int clientRequestSize = 1<<15;
@@ -98,7 +98,7 @@ public class HTTPSRoundTripTest {
 		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 
-		//gm.enableTelemetry(9099);
+		gm.enableTelemetry(9099);
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
 		
@@ -111,7 +111,7 @@ public class HTTPSRoundTripTest {
     	final TLSCertificates tlsCertificates = TLSCerts.define();
         
     	
-    	int maxPartialResponses=10;
+    	int maxPartialResponses=1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
     	int clientRequestSize = 1<<15;
@@ -148,7 +148,7 @@ public class HTTPSRoundTripTest {
 		PipeWriter.publishWrites(output);
 			
 		NetGraphBuilder.buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
-		 clientRequestCount, clientRequestSize, tlsCertificates);
+											clientRequestCount, clientRequestSize, tlsCertificates);
 		StringBuilder results = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, httpResponsePipe[0], results);
     	
@@ -181,7 +181,7 @@ public class HTTPSRoundTripTest {
     	final TLSCertificates tlsCertificates = TLSCerts.define();
         
     	
-    	int maxPartialResponses=10;
+    	int maxPartialResponses=1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
     	int clientRequestSize = 1<<15;

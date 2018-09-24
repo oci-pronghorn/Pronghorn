@@ -67,21 +67,21 @@ public class NetGraphBuilder {
 	public static void buildHTTPClientGraph(GraphManager gm, 
 			ClientCoordinator ccm, int responseQueue,
 			final Pipe<NetPayloadSchema>[] requests, 
-			final Pipe<NetResponseSchema>[] responses,
+			final Pipe<NetResponseSchema>[] parsedResponse,
 			int netResponseCount,
 			int releaseCount, 
 			int responseUnwrapCount, 
 			int clientWrapperCount,
-			int clientWriters) {
-		
+			int clientWriters) { 
+
 		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 
 			@Override
 			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
-								    Pipe<NetPayloadSchema>[] clearResponse,
-								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+								    Pipe<NetPayloadSchema>[] rawToParse,
+								    Pipe<ReleaseSchema>[] ackReleaseForResponseParser) {
 				
-				buildHTTP1xResponseParser(gm, ccm, responses, clearResponse, ackReleaseForResponseParser);
+				buildHTTP1xResponseParser(gm, ccm, parsedResponse, rawToParse, ackReleaseForResponseParser);
 			}
 			
 		};
@@ -90,7 +90,8 @@ public class NetGraphBuilder {
 				             releaseCount, netResponseCount, factory);
 	}
 	
-	public static void buildClientGraph(GraphManager gm, ClientCoordinator ccm, 
+	public static void buildClientGraph(GraphManager gm, 
+			                            ClientCoordinator ccm, 
 										int responseQueue,
 										Pipe<NetPayloadSchema>[] requests,
 										final int responseUnwrapCount,
@@ -101,8 +102,6 @@ public class NetGraphBuilder {
 										ClientResponseParserFactory parserFactory
 										) {
 	
-		int maxPartialResponses = ccm.resposePoolSize();
-		
 		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseCount, 0);
 		
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
@@ -125,48 +124,53 @@ public class NetGraphBuilder {
 		//SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(gm, ccm, socketResponse, clearResponse, false, 0);
 		
 		Pipe<NetPayloadSchema>[] socketResponse;
-		Pipe<NetPayloadSchema>[] clearResponse;
+		Pipe<NetPayloadSchema>[] rawToParse;
 		if (ccm.isTLS) {
 			//NEED EVEN SPLIT METHOD FOR ARRAY.
-			socketResponse = new Pipe[maxPartialResponses];
-			clearResponse = new Pipe[maxPartialResponses];		
+			socketResponse = new Pipe[ccm.totalSessions()];
+			rawToParse = new Pipe[ccm.totalSessions()];		
 					
-			int k = maxPartialResponses;
+			int k = ccm.totalSessions();
 			while (--k>=0) {
 				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig, false);
-				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig); //may be consumed by high level API one does not know.
+				rawToParse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig); //may be consumed by high level API one does not know.
 			}
 		} else {
-			socketResponse = new Pipe[maxPartialResponses];
-			clearResponse = socketResponse;		
+			socketResponse = new Pipe[ccm.totalSessions()];
+			rawToParse = socketResponse;		
 			
-			int k = maxPartialResponses;
+			int k = ccm.totalSessions();
 			while (--k>=0) {
 				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);//may be consumed by high level API one does not know.
 			}
 		}
 			
-		final int responseParsers = 1;		
-		int a = responseParsers + (ccm.isTLS?responseUnwrapCount:0);
+		
+		////////////////////////
+		//Control for how many HTTP1xResponseParserStage instances we will be using
+		//This stage is NOT fast so can not support many
+		int pipesPerResponseParser = 128;//do not make much smaller or we end up with too many threads..
+		//HIGHVOLUME test
+		///////////////////////
+		final int responseParsers = Math.max(1, ccm.totalSessions()/pipesPerResponseParser);
+		
+		
+		int a = responseParsers + (ccm.isTLS ? responseUnwrapCount : 0);
 		Pipe<ReleaseSchema>[] acks = new Pipe[a];
 		while (--a>=0) {
 			acks[a] =  new Pipe<ReleaseSchema>(parseReleaseConfig); //may be consumed by high level API one does not know.	
 		}
-		Pipe<ReleaseSchema> ackReleaseForResponseParser = acks[acks.length-1];
-		
+		Pipe<ReleaseSchema>[] ackReleaseForResponseParser = Arrays.copyOfRange(acks, acks.length-responseParsers, acks.length); 
+						
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse);
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);
 		ccm.processNota(gm, socketReaderStage);
-		
-		//This makes a big difference in testing... TODO: clean this up and develop a new approach.		
-		//GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, ((Number)GraphManager.getNota(gm,socketReaderStage.stageId,GraphManager.SCHEDULE_RATE,null)).longValue()/10, socketReaderStage);
-		
-		
-		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(gm, ccm, requests, responseUnwrapCount, socketResponse, clearResponse, acks);	
+			
+		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(gm, ccm, requests, responseUnwrapCount, socketResponse, rawToParse, acks);	
 
 		buildClientWrapAndWrite(gm, ccm, requests, clientWrapperCount, clientWriters, hanshakePipes);	    
 
-		parserFactory.buildParser(gm, ccm, clearResponse, ackReleaseForResponseParser);
+		parserFactory.buildParser(gm, ccm, rawToParse, ackReleaseForResponseParser);
 	    
 	}
 
@@ -183,7 +187,7 @@ public class NetGraphBuilder {
 			
 			hanshakePipes = new Pipe[c];
 			
-			while (--c>=0) {
+			while (--c >= 0) {
 				hanshakePipes[c] = new Pipe<NetPayloadSchema>(requests[0].config(),false); 
 				SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(gm, ccm, sr[c], cr[c], acks[c], hanshakePipes[c], false);
 				GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
@@ -246,13 +250,36 @@ public class NetGraphBuilder {
 
 	public static void buildHTTP1xResponseParser(
 			GraphManager gm, ClientCoordinator ccm, 
-			Pipe<NetResponseSchema>[] responses, 
-			Pipe<NetPayloadSchema>[] clearResponse,
-			Pipe<ReleaseSchema> ackRelease) {
+			Pipe<NetResponseSchema>[] parsedResponse, 
+			Pipe<NetPayloadSchema>[] rawToParse,
+			Pipe<ReleaseSchema>[] ackRelease) {
 		
-		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, ccm, HTTPSpecification.defaultSpec());
-		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
-		ccm.processNota(gm, parser);
+		if (ackRelease.length>1) {
+			if (parsedResponse.length != rawToParse.length) {
+				throw new UnsupportedOperationException("pipes in and out must be the same count, found "
+			              +rawToParse.length+" in vs "+parsedResponse.length+" out");
+			}
+					
+				
+			int parts = ackRelease.length;
+			
+			///parts
+			final Pipe<NetPayloadSchema>[][] request = Pipe.splitPipes(parts, rawToParse);
+			final Pipe<NetResponseSchema>[][] response = Pipe.splitPipes(parts, parsedResponse);
+					
+			int p = parts;
+			while(--p >= 0) {
+			    
+				HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, request[p], response[p], ackRelease[p], ccm, HTTPSpecification.defaultSpec());
+				GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+				ccm.processNota(gm, parser);
+				
+			}
+		} else {
+			HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, rawToParse, parsedResponse, ackRelease[0], ccm, HTTPSpecification.defaultSpec());
+			GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+			ccm.processNota(gm, parser);
+		}
 		
 	}
 
@@ -353,20 +380,6 @@ public class NetGraphBuilder {
 		
 		//logger.info("build http ordering supervisors");
 		buildOrderingSupers(graphManager, coordinator, fromModule, resLog, perTrackFromSuper);
-	}
-
-	public static PipeConfig<HTTPRequestSchema> buildRoutertoModulePipeConfig(
-			ServerCoordinator coordinator,
-			ServerPipesConfig serverConfig) {
-		
-		final int maxSize = Math.max(serverConfig.fromRouterToModuleBlob, 
-				                     coordinator.connectionStruct().inFlightPayloadSize());
-
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(
-        		HTTPRequestSchema.instance, 
-        		serverConfig.fromRouterToModuleCount, maxSize);///if payload is smaller than average file size will be slower
-		
-        return routerToModuleConfig;
 	}
 
 	public static void buildLogging(GraphManager graphManager,
@@ -914,9 +927,8 @@ public class NetGraphBuilder {
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
 		//TODO: the resource server can not span fragments, but all must be in one block.
-		final int outputPipeChunk = 1 << 21;  //must be large enough to hold lite dot js file.
-		
-		final int outputPipeGraphChunk = 1<<19;//512K
+		//      also the DOT generator as teh same limit, as a result this must be large for now..
+		final int outputPipeChunk = 1<<21;
 		
 		ModuleConfig config = new ModuleConfig(){
 			PipeMonitorCollectorStage monitor;
@@ -971,17 +983,18 @@ public class NetGraphBuilder {
 						activeStage = DotModuleStage.newInstance(graphManager, monitor,
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
-										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
+										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
 						    if (null==monitor) {	
 								monitor = PipeMonitorCollectorStage.attach(graphManager);	
 						    }
+						    int maxSummarySize = 1<<14;
 							activeStage = SummaryModuleStage.newInstance(graphManager, monitor,
 									inputPipes, 
 									staticFileOutputs = Pipe.buildPipes(instances, 
-											           ServerResponseSchema.instance.newPipeConfig(2, outputPipeGraphChunk)), 
+											           ServerResponseSchema.instance.newPipeConfig(2, maxSummarySize)), 
 									((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 							break;
 //						case 3:
@@ -1125,7 +1138,7 @@ public class NetGraphBuilder {
 			@Override
 			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
 								    Pipe<NetPayloadSchema>[] clearResponse,
-								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+								    Pipe<ReleaseSchema>[] ackReleaseForResponseParser) {
 				
 				buildHTTP1xResponseParser(gm, ccm, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
 			}			

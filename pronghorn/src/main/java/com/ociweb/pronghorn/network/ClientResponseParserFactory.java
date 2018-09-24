@@ -8,6 +8,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public interface ClientResponseParserFactory {
 
 	void buildParser(GraphManager gm, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] clearResponse,
-			Pipe<ReleaseSchema> ackReleaseForResponseParser);
+			Pipe<ReleaseSchema>[] ackReleaseForResponseParser);
 
 }

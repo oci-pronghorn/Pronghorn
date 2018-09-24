@@ -26,7 +26,7 @@ public class SocketTestGenStage extends PronghornStage {
 	private final int[] testSizes;
 	private final ClientCoordinator clientCoordinator;
 	
-	private int userIdx;
+	private int sessionId;
 	private int testIdx;
 
 	private final int port;
@@ -40,7 +40,7 @@ public class SocketTestGenStage extends PronghornStage {
 		this.testSizes = testSizes;
 		this.port      = port;
 		
-		this.userIdx = testUsers-1;
+		this.sessionId = testUsers-1;
 		this.testIdx = testSeeds.length-1;
 
 		
@@ -63,9 +63,13 @@ public class SocketTestGenStage extends PronghornStage {
 			//crazy connection open logic  (need to simplify)
 			/////////
 			int hostId = ClientCoordinator.lookupHostId(hostBytes);
-			long lookup = clientCoordinator.lookup(hostId, port, userIdx);
+			long lookup = clientCoordinator.lookup(hostId, port, sessionId);
+			
+			int responsePipeIdx = 0;//
+			
+			
 			ClientConnection connection = ClientCoordinator.openConnection(
-					clientCoordinator, hostId, port, userIdx, pipe,	
+					clientCoordinator, hostId, port, sessionId, responsePipeIdx, pipe,	
 			        lookup, BasicClientConnectionFactory.instance);
 			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
@@ -85,8 +89,8 @@ public class SocketTestGenStage extends PronghornStage {
 			//inc to next test datum
 			///////////////
 			
-			if (--userIdx<0) {
-				userIdx = testUsers-1;					
+			if (--sessionId<0) {
+				sessionId = testUsers-1;					
 				if (--testIdx<0) {
 					//System.out.println("finished sending all data");
 					//all done

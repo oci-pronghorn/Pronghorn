@@ -193,7 +193,7 @@ public class WebCookbook  {
 						//TODO: turn this on later..
 						TLSCertificates tlsCertificates = null;//TLSCertificates.defaultCerts;
 						int connectionsInBits = 3;
-						int maxPartialResponses = 4;					
+						int maxPartialResponses = 1;					
 						int clientRequestCount=5; 
 						int clientRequestSize=200;
 						

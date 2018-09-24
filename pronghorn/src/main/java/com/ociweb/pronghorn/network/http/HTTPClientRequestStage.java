@@ -216,10 +216,15 @@ public class HTTPClientRequestStage extends PronghornStage {
 		int port = Pipe.peekInt(requestPipe,  2);
 		int hostId = Pipe.peekInt(requestPipe,  3);
 		long connectionId  = Pipe.peekLong(requestPipe, 4); 			
+		int targetResponsePipe = Pipe.peekInt(requestPipe, 6);
+		
+		if (targetResponsePipe<0) {
+			throw new UnsupportedOperationException("bad target response value");
+		}
+		assert(targetResponsePipe>=0) : "bad target response value";
 		
 		if (connectionId==-1) {
 			connectionId = ClientCoordinator.lookup(hostId, port, sessionId);
-
 		}
 		
  		if (connectionId>=0 && (null==activeConnection || activeConnection.id!=connectionId)) {
@@ -240,6 +245,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 																hostId,  //hostId 3
 																port,  //port 2
 																sessionId,  //session 1
+																targetResponsePipe,
 																output, connectionId, ccf);
 			
  		}
@@ -267,7 +273,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 						long usageCount = ElapsedTimeRecorder.totalCount(activeConnection.histogram());
 						if (0==usageCount) {
 			
-								logger.warn("\n corrupt connection, retry");
+								//logger.warn("\n corrupt connection, retry");
 								
         						///no notification needed. but we must clear this so the connection is rebuilt
 							    activeConnection.clientClosedNotificationSent();

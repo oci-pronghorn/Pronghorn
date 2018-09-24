@@ -363,9 +363,9 @@ public class SSLUtil {
 			    	((Buffer)rolling).clear();
 			    	cc.close();
 					if (cc instanceof ClientConnection) {
-						logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
+						logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed (A)",sslex.getLocalizedMessage(),cc);							
 					} else {							
-						logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
+						logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (A)",sslex.getLocalizedMessage(),cc);							
 					}	
 			    	break;			    	
 			    }
@@ -392,7 +392,8 @@ public class SSLUtil {
 		return result;
 	}
 	
-	public static HandShakeUnwrapState handShakeUnWrapIfNeeded(int maxEncryptedContentLength, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final BaseConnection cc) {
+	public static HandShakeUnwrapState handShakeUnWrapIfNeeded(int maxEncryptedContentLength, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, 
+			                                      final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final BaseConnection cc) {
 		
 		 assert(handshakePipe!=null);
 		 assert(source!=null);  
@@ -442,9 +443,9 @@ public class SSLUtil {
 								workspace[0].clear();
 								workspace[1].clear();
 								if (isServer) {
-									logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
+									logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (B)",sslex.getLocalizedMessage(),cc);							
 								} else {							
-									logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
+									logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed (B)",sslex.getLocalizedMessage(),cc);							
 								}				
 								return HandShakeUnwrapState.CORRUPTION;
 							}
@@ -521,21 +522,34 @@ public class SSLUtil {
 					try {
 						result = unwrapRollingHandshake(rolling, maxEncryptedContentLength, workspace, cc);
 						//logger.info("server {} status is now {}  for {} ",isServer, cc.getEngine().getHandshakeStatus(),cc);
-					} catch (SSLException sslex) {						
+					} catch (SSLException sslex) {		
 						//////////////////////////////
 						//Can not recover from this so log it and reset all the buffers
 						//////////////////////////////
 						((ByteBuffer)rolling).clear();
-						if (cc.isValid && !cc.isDisconnecting() ) {
-							cc.close();
-						}
 						workspace[0].clear();
 						workspace[1].clear();
+		
 						if (isServer) {
-							logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
-						} else {							
-							logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed",sslex.getLocalizedMessage(),cc);							
-						}				
+							//if we can tell the writer						
+							if (Pipe.hasRoomForWrite(handshakePipe)) {
+								
+								publishDisconnect(handshakePipe, cc.id);
+							} else {
+								if (cc.isValid && !cc.isDisconnecting() ) {
+									cc.close();
+								}
+							}							
+							
+							logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc);							
+						} else {
+							//do not disconnect if we are the client
+							if (cc.isValid && !cc.isDisconnecting() ) {
+								cc.close();
+							}
+							logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc);							
+						}			
+												
 						return HandShakeUnwrapState.CORRUPTION;
 					} finally {
 										
