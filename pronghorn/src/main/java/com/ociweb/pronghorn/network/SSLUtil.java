@@ -25,7 +25,9 @@ public class SSLUtil {
 	final static ByteBuffer noData = ByteBuffer.allocate(0);
 	final static ByteBuffer[] noDatas = new ByteBuffer[]{noData,noData};
 	private static final Logger logger = LoggerFactory.getLogger(SSLUtil.class);
-	
+
+	public static final int MinTLSBlock = 33305;
+
 
     public static final long HANDSHAKE_TIMEOUT = 180_000_000_000L; // 120 sec, this is a very large timeout for handshake to complete.
     public static final long HANDSHAKE_POS = -123;
@@ -90,7 +92,7 @@ public class SSLUtil {
 					
 					Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_ENCRYPTED_200));
 					Pipe.publishWrites(target);
-					
+				
 				} else {
 					//connection was closed before handshake completed 
 					//already closed, NOTE we should release this from reserved pipe pools
@@ -247,6 +249,7 @@ public class SSLUtil {
 		if (inputs[1].remaining()==0) {
 			rolling.put(inputs[0]);
 			assert(0==inputs[0].remaining());
+		
 		} else {			
 			assert(inputs[0].hasRemaining());
 			assert(inputs[1].hasRemaining());
@@ -341,23 +344,22 @@ public class SSLUtil {
 	}
 	
 	private static SSLEngineResult unwrapRollingNominal(ByteBuffer rolling, int maxEncryptedContentLength, final ByteBuffer[] targetBuffer, SSLEngineResult result, BaseConnection cc) throws SSLException {
-		int x=0;
-		String rollingData = rolling.toString();
+
 		while (rolling.hasRemaining()) {
-				x++;
-			
+							
 			    ////////////////////////
 			    ///Block needed for openSSL limitation
 			    ///////////////////////
 			    int origLimit = rolling.limit();
 			    int pos = rolling.position();
+			    	
 			    if (origLimit-pos>maxEncryptedContentLength) {
 			    	rolling.limit(pos+maxEncryptedContentLength);
 			    }
 			    /////////////////////////
   
-			    try {
-			    	result = cc.getEngine().unwrap(rolling, targetBuffer);		
+			    try {			    	
+			    	result = cc.getEngine().unwrap(rolling, targetBuffer);						    	
 			    } catch (SSLException sslex) {
 	
 			    	((Buffer)rolling).clear();
@@ -398,8 +400,19 @@ public class SSLUtil {
 		 assert(handshakePipe!=null);
 		 assert(source!=null);  
 		 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
-		 int didWork = 0;
+		 
+		 
+		 if (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus && cc instanceof ClientConnection) {
+			 ClientConnection c = (ClientConnection)cc;
+			 if (!c.isFinishConnect() || !c.isRegistered()) {				
+				 //if we are on the client side we must wait or the data may be corrupted.
+		
+				 return HandShakeUnwrapState.WAIT_FOR_ROOM;
+			 }
+		 }
+		 
 		 while (HandshakeStatus.NOT_HANDSHAKING != handshakeStatus && HandshakeStatus.FINISHED != handshakeStatus) {
+		
 			 //logger.info("\nunwrap handshake {} {}",handshakeStatus,cc.getId());
 		
 			 if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
@@ -407,13 +420,13 @@ public class SSLUtil {
 					return HandShakeUnwrapState.WAIT_FOR_ROOM;//try again later when output pipe has room.
 				};
 				handshakeStatus = cc.getEngine().getHandshakeStatus();
-				
 			 } else if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 	                Runnable task;//TODO: there is an opporuntity to have this done by a different stage in the future.
 	                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 	                	task.run();
 	                }
 	                handshakeStatus = cc.getEngine().getHandshakeStatus();
+	                
 			 } else if (HandshakeStatus.NEED_UNWRAP == handshakeStatus) {
 				    //logger.info("\nserver {} doing the unwrap now for {}  {}",isServer, cc.getId(), System.identityHashCode(cc));
 			
@@ -577,6 +590,7 @@ public class SSLUtil {
 					} else {
 						continue;
 					}
+					
 			 }
 		 }
 
@@ -847,7 +861,8 @@ public class SSLUtil {
 				} else {				
 					writeHolderUnWrap = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target); //byte buffers to write payload
 				}
-					
+				
+
 				SSLEngineResult result=null;
 				Status status = null==result?null:result.getStatus();			
 		
@@ -879,11 +894,14 @@ public class SSLUtil {
 				//nothing need be done for OK or null.
 				//nothing need be done for underflow, next read will get more data.
 		         if (status == Status.BUFFER_OVERFLOW) {	
-					//too much data and the buffer is not big enough
-					//this should not happen.
-					logger.info("\nOVERFLOW, the pipe {} is not configured to be large enough. {} Connection has been closed.", target.id, target.config());	
-					//((Buffer)rolling).clear();
-					//cc.close();
+					//too much data and the buffer is not big enough, this should not happen.
+					logger.info("\nOVERFLOW, server:{} the pipe blob field in pipe {} is not configured to be large enough. {} max var {} Connection has been closed.", isServer, target.id, target.config(), target.maxVarLen);	
+					//target.creationStack();
+					
+					((Buffer)rolling).clear();
+					target.reset();
+					cc.close();
+					
 					return 0;
 					
 				} else if (status==Status.CLOSED){				

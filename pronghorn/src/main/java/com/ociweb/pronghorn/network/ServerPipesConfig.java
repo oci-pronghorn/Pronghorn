@@ -70,11 +70,11 @@ public class ServerPipesConfig {
 							 PipeConfigManager pcm				 
 			) {
 	
-		if (isTLS && (maxRequestSize< (1<<15))) {
-			maxRequestSize = (1<<15);//TLS requires this larger payload size
+		if (isTLS && (maxRequestSize< (SSLUtil.MinTLSBlock))) {
+			maxRequestSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
 		}
-		if (isTLS && (maxResponseSize< (1<<15))) {
-			maxResponseSize = (1<<15);//TLS requires this larger payload size
+		if (isTLS && (maxResponseSize< (SSLUtil.MinTLSBlock))) {
+			maxResponseSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
 		}
 		
 

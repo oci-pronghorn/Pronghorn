@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.network;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.SSLUtil;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
@@ -51,7 +52,7 @@ public class ClientHTTPSPipelineTest {
 		PipeConfig<ClientHTTPRequestSchema> netREquestConfig = new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, 30,1<<9);
 		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,4,16000); 
 				
-		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 10, 1<<15); //if this backs up we get an error TODO: fix
+		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 10,SSLUtil.MinTLSBlock); //if this backs up we get an error TODO: fix
 
 		
 		//holds new requests

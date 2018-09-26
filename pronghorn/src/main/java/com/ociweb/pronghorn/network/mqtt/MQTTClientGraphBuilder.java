@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network.mqtt;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.SSLUtil;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.schema.*;
@@ -83,8 +84,8 @@ public class MQTTClientGraphBuilder {
 		
 		
 		
-		if (tlsCertificates != null && maximumLenghOfVariableLengthFields<(1<<15)) {
-			maximumLenghOfVariableLengthFields = (1<<15);//ensure we have enough room for TLS work.
+		if (tlsCertificates != null && maximumLenghOfVariableLengthFields<(SSLUtil.MinTLSBlock)) {
+			maximumLenghOfVariableLengthFields = (SSLUtil.MinTLSBlock);//ensure we have enough room for TLS work.
 		}
 
 		final Pipe<MQTTClientToServerSchema> clientToServer = MQTTClientToServerSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the application 

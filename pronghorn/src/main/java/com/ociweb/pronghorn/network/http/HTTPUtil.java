@@ -133,8 +133,8 @@ public class HTTPUtil {
 			int contentLength, byte[] contentBacking, int contentPosition, int contentMask) {
 		assert(contentLength>=0) : "This method does not support chunking";
 		
-		int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
-	
+		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
+		    
 	    Pipe.addIntValue(channelIdHigh, localOutput);
 	    Pipe.addIntValue(channelIdLow, localOutput);
 	    Pipe.addIntValue(sequence, localOutput);
@@ -159,7 +159,7 @@ public class HTTPUtil {
 	
 	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
 	    
-	    Pipe.confirmLowLevelWrite(localOutput, headerSize);
+	    Pipe.confirmLowLevelWrite(localOutput, size);
 	    Pipe.publishWrites(localOutput);
 	    
 	    //logger.info("published error {} ",status);

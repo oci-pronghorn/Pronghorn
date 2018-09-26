@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPServerConfig;
 import com.ociweb.pronghorn.network.HTTPServerConfigImpl;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.SSLUtil;
 import com.ociweb.pronghorn.network.TLSCertificates;
 import com.ociweb.pronghorn.network.TLSCerts;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
@@ -41,7 +42,7 @@ public class HTTPSRoundTripTest {
     	int maxPartialResponses = 1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
-    	int clientRequestSize = 1<<15;
+    	int clientRequestSize = SSLUtil.MinTLSBlock;
     	final TLSCertificates tlsCertificates = TLSCerts.define();
     	String bindHost = "127.0.0.1";
     	int port        = 8199;
@@ -114,7 +115,7 @@ public class HTTPSRoundTripTest {
     	int maxPartialResponses=1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
-    	int clientRequestSize = 1<<15;
+    	int clientRequestSize = SSLUtil.MinTLSBlock;
     	String bindHost = "127.0.0.1";
     	int port        = 8197;
     	int processors  = 1;
@@ -184,7 +185,7 @@ public class HTTPSRoundTripTest {
     	int maxPartialResponses=1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
-    	int clientRequestSize = 1<<15;
+    	int clientRequestSize = SSLUtil.MinTLSBlock;
     	String bindHost = "127.0.0.1";
     	int port        = 8198;
     	int processors  = 1;

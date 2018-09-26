@@ -850,7 +850,7 @@ public class NetGraphBuilder {
 						r.pcm);
 		
 		if (isTLS) {
-			serverConfig.ensureServerCanWrite(1<<15);
+			serverConfig.ensureServerCanWrite(SSLUtil.MinTLSBlock);
 		}
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates,
@@ -1092,7 +1092,7 @@ public class NetGraphBuilder {
 		
 		int connectionsInBits = 7;		
 		int clientRequestCount = 4;
-		int clientRequestSize = 1<<15;
+		int clientRequestSize = SSLUtil.MinTLSBlock;
 		final TLSCertificates tlsCertificates = TLSCerts.define();
 
 		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,

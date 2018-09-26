@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -315,16 +316,23 @@ public class ServerNewConnectionStage extends PronghornStage{
     	if (null != this.didWorkMonitor) {
     		this.didWorkMonitor.published();
     	}
+
+    	assert(null==selectedKeys || selectedKeys.isEmpty()) : selectedKeys.size()+" How is this even possible? All selections should be processed";
     	
     	if (!needsToNotifyStartup) {	  
 	    	//long now = System.nanoTime();
 	    	    		  
-    		   int maxIterations = 1000;
-	           while (hasNewDataToRead() && --maxIterations>=0) {
+	           while (hasNewDataToRead()) {
+	        	    doWork = true;
 	                //we know that there is an interesting (non zero positive) number of keys waiting.
 	        	    doneSelectors.clear();
 	        	    selectedKeys.forEach(selectionKeyAction);	                
 	                removeDoneKeys(selectedKeys);
+	                
+	                assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
+	                if (!doWork) {
+	                	break;
+	                }
 	            }
 	 	        
 		} else {
@@ -346,31 +354,51 @@ public class ServerNewConnectionStage extends PronghornStage{
 
 	}
 	
+	
+	public final static boolean limitHandshakeConcurrency = false; //great for testing
+	
+	public boolean doWork;	
+	private SSLEngine currentHandshake = null;
+	
 	private void processSelection(SelectionKey key) {
 		
 		
-		 doneSelectors.add(key);	
+		doneSelectors.add(key);	
 		
-		if (null!=newClientConnections 
-			&& !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+		if (null!=newClientConnections 	&& !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+			doWork = false;
 			return;
 		}
-
+		
+		
 		int readyOps = key.readyOps();
 		                    
-		  if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
-		      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
-
-		      //if we use an old position the old object will be decomposed to ensure there is no leak.
-		      long channelId = holder.lookupInsertPosition();	
+		if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
+		
+	        //for testing only:  this block limits the servder so only 1 client may handshake at a time.
+			if (limitHandshakeConcurrency && coordinator.isTLS && null!=currentHandshake) {					
+				HandshakeStatus status = currentHandshake.getHandshakeStatus();					
+				if (status == HandshakeStatus.FINISHED || status== HandshakeStatus.NOT_HANDSHAKING) {
+					currentHandshake = null;
+					//logger.trace("\nfinished one more handshake");
+					Thread.yield();
+				} else {
+					doWork = false;
+					return;//do not accept new connections until this handshake is complete.
+				}					
+			}
+			
+			
+			ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
+			
+			//if we use an old position the old object will be decomposed to ensure there is no leak.
+			long channelId = holder.lookupInsertPosition();	
+			
 		      
 		      //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader by design.
 		      	                      
 		      if (channelId>=0) {		                    
-		     
-		    	  //TODO: remove this...
-		          int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
-		                                		          
+		                		          
 		          try {                          
 		        	  SocketChannel channel = server.accept();
 		              channel.configureBlocking(false);
@@ -386,8 +414,9 @@ public class ServerNewConnectionStage extends PronghornStage{
 						  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
 						  // sslEngine.setWantClientAuth(true); //the auth is optional
 						  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
-						  
+						 
 						  sslEngine.beginHandshake();
+						  currentHandshake = sslEngine;
 		              }
 					  							  
 					  
@@ -413,7 +442,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 						
 					//  logger.info("\nnew server connection attached for new id {} ",channelId);
 					  if (null!=newClientConnections) {								  
-		                  publishNotificationOFNewConnection(targetPipeIdx, channelId);
+		                  int targetPipeIdx = 0;
+						  publishNotificationOFNewConnection(targetPipeIdx, channelId);
 					  }
 					  
 		              
@@ -430,6 +460,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	//  coordinator.connectionForSessionId(channelId).getPoolReservation()
 		    	  
 		    	  logger.error("\n****max connections achieved, no more connections.****");
+		    	  doWork = false;
 		      }
 
 		  } else {

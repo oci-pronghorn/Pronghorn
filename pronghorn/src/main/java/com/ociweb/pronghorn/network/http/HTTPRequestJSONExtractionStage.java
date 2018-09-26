@@ -164,9 +164,12 @@ public class HTTPRequestJSONExtractionStage extends PronghornStage {
 		    				logger.warn("\nJSON was parsed but contained invalid field values.");		    			
 		    			}
 		    			
-		    			//400 - bad request, may be corrupt JSON or invalid values
-		    			HTTPUtil.publishStatus(channelId, sequenceNum, 400, err);
-		    			
+		    			if (Pipe.hasRoomForWrite(err)) {
+		    				HTTPUtil.publishStatus(channelId, sequenceNum, 400, err);
+		    			} else {
+		    				//some errors are already sent, do not worry about these.
+		    				logger.trace("too many errors to send while parsing JSON");
+		    			}
 		    			
 		    			visitor.clear();//rest for next JSON
 		    					    			

@@ -96,19 +96,12 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		int c = encryptedContent.length;
 		rollings = new ByteBuffer[c];
 		while (--c>=0) {
-		//	int size = SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH;//
-			int size = encryptedContent[c].maxVarLen*2;
-			
-			rollings[c] = ByteBuffer.allocateDirect(size);
-			
-//			if (size > SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH) {
-//				throw new UnsupportedOperationException("max buffer to decrypt must be less than "+SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH+" but "+size+" was used. (Limitiation from OpenSSL)");
-//			}
-			
+			//we process every record so the max this can be is 2 blocks.
+			rollings[c] = ByteBuffer.allocateDirect(encryptedContent[c].maxVarLen*2);
 		}				
 		
 		//we use this workspace to ensure that temp data used by TLS is not exposed to the pipe.
-		this.workspace = new ByteBuffer[]{ByteBuffer.allocateDirect(1<<15),ByteBuffer.allocateDirect(0)};
+		this.workspace = new ByteBuffer[]{ByteBuffer.allocateDirect(SSLUtil.MinTLSBlock),ByteBuffer.allocateDirect(0)};
 		
 		this.secureBuffer = null==handshakePipe? null : ByteBuffer.allocate(outgoingPipeLines[0].maxVarLen*2);
 		

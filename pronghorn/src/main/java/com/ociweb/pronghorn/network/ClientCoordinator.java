@@ -547,7 +547,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 			}
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			logger.trace("unable to register because connection is already closed",e);
+			//unable to register, this connection has closed early
+			if (cc!=null) {
+				cc.close();
+				cc=null;
+			}
 		}
 		return cc;
 	}

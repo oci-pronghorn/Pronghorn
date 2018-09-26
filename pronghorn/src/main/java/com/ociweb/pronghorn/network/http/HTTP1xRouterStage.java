@@ -624,7 +624,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				id = Pipe.readInt(Pipe.slab(selectedInput), Pipe.slabMask(selectedInput), pos);
 			} else {
 				//unknown data in the pipe, this should not happen
-				logger.warn("unable to capture arrival time for {} at pipe {} ",id, selectedInput);
+				logger.trace("unable to capture arrival time for {} at pipe {} ",id, selectedInput);
 				return -1;
 			}
 		}

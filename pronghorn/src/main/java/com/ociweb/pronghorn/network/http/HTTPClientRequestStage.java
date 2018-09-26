@@ -206,9 +206,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	
 	private ClientConnection activeConnection =  null;
+
+	private ClientConnection lastHandShake = null;
 	
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
+		
+
+		
 		
 		//all the message fragments hold these fields in the same positions.
 		int sessionId = Pipe.peekInt(requestPipe,  1);
@@ -239,6 +244,18 @@ public class HTTPClientRequestStage extends PronghornStage {
  			&& !activeConnection.isClientClosedNotificationSent()) {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
+ 			
+ 			//limits wraps to only 1 at a time.
+ 			//does not appear to be the problem try unwraps.
+ 			//check previous and if it is not done shaking do not start this one.... return false
+// 			ClientConnection temp = lastHandShake; //hack test..
+// 			if (ccm.isTLS && null!=temp) {
+// 				if (needsToShake(temp.getEngine().getHandshakeStatus())) {
+// 					return false;//do not start a new one until this one is done.
+// 				}
+// 			}
+ 			
+ 			
  			assert(null!=ClientCoordinator.registeredDomain(Pipe.peekInt(requestPipe,  3))) : "bad hostId";
  			assert( Pipe.peekInt(requestPipe,  2)!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);		
 			activeConnection = ClientCoordinator.openConnection(ccm, 
@@ -247,25 +264,27 @@ public class HTTPClientRequestStage extends PronghornStage {
 																sessionId,  //session 1
 																targetResponsePipe,
 																output, connectionId, ccf);
-			
+			if (ccm.isTLS) {
+				lastHandShake = activeConnection;
+			}
  		}
  		
 		return connectionStateChecks(requestPipe);
 	}
 
+	
 	private boolean connectionStateChecks(Pipe<ClientHTTPRequestSchema> requestPipe) {
 		if (null != activeConnection) {
 
 			assert(activeConnection.isFinishConnect());
 			
-			if (ccm.isTLS) {				
+			if (ccm.isTLS) {	
+				
 				//If this connection needs to complete a handshake first then do that and do not send the request content yet.
 				//ALL the conent will be held here until the connection and its handshake is complete
 				//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (HandshakeStatus.FINISHED!=handshakeStatus 
-					&& HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus
-						) {
+				if (needsToShake(handshakeStatus)) {					
 			
 					if (++blockedCycles>=CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
 						//if this is new connection but it is not hand shaking as expected 
@@ -294,6 +313,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 					return false;
 					
 				} else {
+					lastHandShake = null;
 					blockedCycles = 0;
 				}
 			} else {
@@ -310,6 +330,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 		} else {
 			return false;
 		}
+	}
+
+	private boolean needsToShake(HandshakeStatus handshakeStatus) {
+		return HandshakeStatus.FINISHED!=handshakeStatus 
+			&& HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus;
 	}
 
 	int blockedCycles;
