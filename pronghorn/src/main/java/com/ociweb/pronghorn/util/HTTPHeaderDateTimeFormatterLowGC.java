@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.util.Appendables;
 
 public class HTTPHeaderDateTimeFormatterLowGC {
-private static final byte[] GMT_BYTES = " GMT".getBytes();
+
 //	String HTTP_RESPONSE_DATE_HEADER = "EEE, dd MMM yyyy HH:mm:ss zzz";		  
 //    Calendar calendar = Calendar.getInstance();
 //    SimpleDateFormat dateFormat = new SimpleDateFormat(HTTP_RESPONSE_DATE_HEADER, Locale.US);
@@ -63,8 +63,8 @@ private static final byte[] GMT_BYTES = " GMT".getBytes();
 		    		    
 		    //expensive call, must keep infrequent
 			formatter.formatTo(Instant.ofEpochMilli(time), targetStream);
+			targetStream.append(" GMT");
 			targetStream.replicate(writer);
-			writer.write(GMT_BYTES);
 			
 			DataOutputBlobWriter.closeLowLevelField(targetStream);
 			Pipe.confirmLowLevelWrite(temp);
@@ -106,13 +106,9 @@ private static final byte[] GMT_BYTES = " GMT".getBytes();
 		    		    
 		    //expensive call, must keep infrequent
 			formatter.formatTo(Instant.ofEpochMilli(time), targetStream);
+			targetStream.append(" GMT");
 			targetStream.replicate(target);
-			try {
-				target.append(" GMT");
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-			
+						
 			DataOutputBlobWriter.closeLowLevelField(targetStream);
 			Pipe.confirmLowLevelWrite(temp);
 			Pipe.publishWrites(temp);
