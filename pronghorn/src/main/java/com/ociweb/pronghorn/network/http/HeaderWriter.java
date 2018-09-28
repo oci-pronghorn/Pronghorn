@@ -47,7 +47,8 @@ public class HeaderWriter {
 		activeTarget.writeByte('\n');
 	}
 	
-	public void writeUTF8(CharSequence header, byte[] value) {	
+	public void writeUTF8(CharSequence header, byte[] value) {
+		
 			activeTarget.append(header);
 			activeTarget.writeByte(':');
 			activeTarget.writeByte(' ');

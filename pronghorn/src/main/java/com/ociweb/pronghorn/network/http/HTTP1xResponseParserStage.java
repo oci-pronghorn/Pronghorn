@@ -74,6 +74,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private long[] ccIdData;
 	
 	private int[] runningHeaderBytes;
+
+	private final int outputMask;
+	
 	
 	public static boolean showData = false;
 
@@ -99,8 +102,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		this.ccm = ccm;
 		this.releasePipe = ackStop;
 		this.httpSpec = httpSpec;		
-
-		
+		  
+		int bits = (int)Math.ceil(Math.log(output.length)/Math.log(2));
+		this.outputMask = (1<<bits)-1;
+		  		
 		int i = input.length;
 		while (--i>=0) {
 			assert(	input[i].sizeOfBlobRing >=  MAX_VALID_HEADER*2 ); //size of blob ring is the largest a header can ever be.			
@@ -119,8 +124,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  
 		  outputOwner = new int[output.length];
 		  Arrays.fill(outputOwner, -1);
-		  
-	        		  
+		 		  
 		  positionMemoData = new int[input.length<<2];
 		  payloadLengthData = new long[input.length];
 		  closeRequested = new boolean[input.length];
@@ -233,14 +237,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					cc = (HTTPClientConnection)ccm.connectionObjForConnectionId(ccId, alsoReturnDisconnected);
 					if (null!=cc && cc.getResponsePipeIdx()>=0) {
 						//do not process if an active write for a different pipe is in process
-						int owner = outputOwner[(int)cc.getResponsePipeIdx()];
+						assert(outputOwner.length == output.length);
+		
+						int owner = outputOwner[outputMask&(int)cc.getResponsePipeIdx()];
 						if (         (i != owner) &&  (-1 != owner)) {
 							//move to the next pipe so we get it done.
 							//logger.info("\nOutput owner {} is held but is not mine {} so conitnue to next pipe",owner,i);
 							continue;
 						}
-						outputOwner[(int)cc.getResponsePipeIdx()] = i;
-						targetPipe = output[(int)cc.getResponsePipeIdx()];
+						outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = i;
+						targetPipe = output[outputMask&(int)cc.getResponsePipeIdx()];
 					}
 
 					//////////////////////////////
@@ -284,7 +290,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					    	boolean ok = ccId == Pipe.takeLong(localInputPipe);
 					    	assert(ok) : "Internal error";
 							
-					    	targetPipe = (int)cc.getResponsePipeIdx()>=0? output[(int)cc.getResponsePipeIdx()] : null;					
+					    	targetPipe = (int)cc.getResponsePipeIdx()>=0? output[outputMask&(int)cc.getResponsePipeIdx()] : null;					
 							
 					    	
 							long arrivalTime = Pipe.takeLong(localInputPipe);
@@ -392,7 +398,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						final int routeId = (int)cc.getResponsePipeIdx();
 						if (routeId>=0) {
-							targetPipe = output[routeId];
+							targetPipe = output[outputMask&routeId];
 						} else {
 							closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
 							continue; //was closed so we can not do anything with this connection
@@ -434,13 +440,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				////////////
 				//do not process if an active write is in process
 				if (null!=cc && cc.getResponsePipeIdx()>=0) {
-					if (     (i != outputOwner[(int)cc.getResponsePipeIdx()]) 
-					    &&  (-1 != outputOwner[(int)cc.getResponsePipeIdx()])) {
+					if (     (i != outputOwner[outputMask&(int)cc.getResponsePipeIdx()]) 
+					    &&  (-1 != outputOwner[outputMask&(int)cc.getResponsePipeIdx()])) {
 						//multiple connections write to the same pipe, this keeps them organized.
 						//move to the next one because this one is blocked
 						continue;
 					}
-					outputOwner[(int)cc.getResponsePipeIdx()] = i;
+					outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = i;
 				}
 				////////////
 				////////////
@@ -674,7 +680,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.publishWrites(targetPipe);	
 									//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
 									//clear the usage of this pipe for use again by other connections
-									outputOwner[(int)cc.getResponsePipeIdx()] = -1; 
+									outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
 						
 									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 
@@ -753,8 +759,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										Pipe.publishWrites(targetPipe);	
 										
 										//clear the usage of this pipe for use again by other connections
-										outputOwner[(int)cc.getResponsePipeIdx()] = -1; 
-										long routeId = cc.getResponsePipeIdx();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
+										outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
+										//long routeId = cc.getResponsePipeIdx();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
 										//NOTE: I think this is needed but is causing a hang...
 										//TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -913,12 +919,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			//////////////////////////////////////////////////////////
 			if (positionMemoData[stateIdx]!=0) {
 				if (dest>=0) {
-					Pipe.resetHead(output[dest]);
+					Pipe.resetHead(output[outputMask&dest]);
 				}
 				positionMemoData[stateIdx]=0;
 			}
 			if (dest>=0) {
-				outputOwner[dest]=-1;//release this output
+				outputOwner[outputMask&dest]=-1;//release this output
 			}
 			
 			assert(positionMemoData[lenIdx] == trieReader.sourceLen) : positionMemoData[lenIdx]+" vs "+trieReader.sourceLen;
@@ -962,7 +968,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 			if (dest >= 0) {
 				//publish closed to notify those down stream
-				Pipe<NetResponseSchema> targetPipe1 = output[dest];
+				Pipe<NetResponseSchema> targetPipe1 = output[outputMask&dest];
 				Pipe.presumeRoomForWrite(targetPipe1);
 				
 				int size = Pipe.addMsgIdx(targetPipe1, NetResponseSchema.MSG_CLOSED_10);

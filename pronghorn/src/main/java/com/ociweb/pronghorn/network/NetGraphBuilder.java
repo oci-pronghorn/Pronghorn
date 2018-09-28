@@ -149,10 +149,11 @@ public class NetGraphBuilder {
 		////////////////////////
 		//Control for how many HTTP1xResponseParserStage instances we will be using
 		//This stage is NOT fast so can not support many
+		//TODO: must be power of 2?
 		int pipesPerResponseParser = 128;//do not make much smaller or we end up with too many threads..
 		//HIGHVOLUME test
 		///////////////////////
-		final int responseParsers = Math.max(1, ccm.totalSessions()/pipesPerResponseParser);
+		final int responseParsers = Math.max(1, rawToParse.length/pipesPerResponseParser);
 		
 		
 		int a = responseParsers + (ccm.isTLS ? responseUnwrapCount : 0);
@@ -258,15 +259,42 @@ public class NetGraphBuilder {
 			if (parsedResponse.length != rawToParse.length) {
 				throw new UnsupportedOperationException("pipes in and out must be the same count, found "
 			              +rawToParse.length+" in vs "+parsedResponse.length+" out");
-			}
-					
+			}		
 				
 			int parts = ackRelease.length;
 			
-			///parts
-			final Pipe<NetPayloadSchema>[][] request = Pipe.splitPipes(parts, rawToParse);
-			final Pipe<NetResponseSchema>[][] response = Pipe.splitPipes(parts, parsedResponse);
-					
+			///////////////////////////////////////////////////////////////
+			//these splits must be done by some power of 2
+			//it is key that each is power of 2 so the HTTP1xResponseParser can mask 
+			///////////////////////////////////////////////////////////////
+			
+			final int masterLen = rawToParse.length;
+			int perPipe = masterLen/parts;
+			int bits = (int)Math.ceil(Math.log(perPipe)/Math.log(2));
+		    perPipe = (1<<bits);//updated for next level of power of 2
+		    
+		    final Pipe<NetPayloadSchema>[][] request = new Pipe[parts][];
+		    final Pipe<NetResponseSchema>[][] response = new Pipe[parts][];
+			
+		    int remaining=masterLen;
+		    int pos = 0;
+		    for(int i=0; i<parts; i++) {
+		    	int partLen = remaining>=perPipe ? perPipe : remaining;
+		    	remaining -= partLen;
+		    	
+		    	Pipe<NetPayloadSchema>[] localReq = new Pipe[partLen];
+		    	Pipe<NetResponseSchema>[] localRes = new Pipe[partLen];
+		    	
+		    	for(int j=0; j<partLen; j++) {
+		    		localReq[j] = rawToParse[pos];
+		    	    localRes[j] = parsedResponse[pos];
+		    	    pos++;		    		
+		    	}		    	
+		    
+		    	request[i] = localReq;
+		    	response[i] = localRes;
+		    }
+		    
 			int p = parts;
 			while(--p >= 0) {
 			    
@@ -279,8 +307,7 @@ public class NetGraphBuilder {
 			HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, rawToParse, parsedResponse, ackRelease[0], ccm, HTTPSpecification.defaultSpec());
 			GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 			ccm.processNota(gm, parser);
-		}
-		
+		}		
 	}
 
 	public static GraphManager buildHTTPServerGraph(final GraphManager graphManager, 
