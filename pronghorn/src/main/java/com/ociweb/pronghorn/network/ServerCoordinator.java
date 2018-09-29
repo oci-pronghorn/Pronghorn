@@ -14,15 +14,13 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeConfigManager;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.ArrayGrow;
 import com.ociweb.pronghorn.util.MemberHolder;
-import com.ociweb.pronghorn.util.PoolIdx;
-import com.ociweb.pronghorn.util.PoolIdxPredicate;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
@@ -31,7 +29,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
 	private ServiceObjectHolder<ServerConnection> socketHolder;
-    private Selector                              selectors;
+    
+	private Selector[]                            selectors;
+	private int                                   selectedSelector = -1; //init so we hit zero first
+    
+    
     private MemberHolder                          subscriptions;
     private int[]                                 upgradePipeLookup;
     private ConnectionContext[]                   connectionContext; //NOTE: ObjectArrays would work very well here!!
@@ -57,10 +59,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
-	private final PoolIdx responsePipeLinePool;
-	private final int[] processorLookup;
-	private final int moduleParallelism;
-	private final int concurrentPerModules;
+	public final int moduleParallelism;
+
 	
 	public final int maxConcurrentInputs;
 	public final int maxConcurrentOutputs;
@@ -126,10 +126,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
           
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
-    	this.responsePipeLinePool = new PoolIdx(maxConcurrentInputs, serverResponseWrapUnitsAndOutputs); 
-    	
-    	this.processorLookup = Pipe.splitGroups(moduleParallelism, maxConcurrentInputs);
-        this.concurrentPerModules = maxConcurrentInputs/moduleParallelism;
+        
+ 
+   
     	//  0 0 0 0 1 1 1 1 
     	// 	logger.info("processorLookup to bind connections to tracks {}",Arrays.toString(processorLookup));
     	
@@ -182,75 +181,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		this.firstStage = startStage;
 	}
 	
-	
-	public void debugResponsePipeLine() {
-		logger.info(responsePipeLinePool.toString());
-	}
-	
-	private PipeLineFilter isOk = new PipeLineFilter();
-
 	public long[] routeSLALimits = new long[0];
-
-
 	
-	//NOT thread safe only called by ServerSocketReaderStage
-	public int responsePipeLineIdx(final long ccId) {
-	
-		isOk.setId(ccId); //object resuse prevents CG here
-		return responsePipeLinePool.get(ccId, isOk);
-
-	}
-	
-	public int totalResponsePipeLineIdxLocks() {
-		return responsePipeLinePool.locks();
-	}
-	
-	public void showPipeLinePool() {
-		logger.info("PipeLinePoolLocks:\n{}",responsePipeLinePool);
-	}
-	
-	public int checkForResponsePipeLineIdx(long ccId) {
-		return PoolIdx.getIfReserved(responsePipeLinePool,ccId);
-	}	
-	
-	public void releaseResponsePipeLineIdx(long ccId) {		
-		responsePipeLinePool.release(ccId);	
-		//logger.info("after release we have {} locks",responsePipeLinePool.locks());
-	}
-	
-	
-//	PoolIdxKeys releaseAbandoned = new PoolIdxKeys() {
-//
-//		@Override
-//		public void visit(long key) {
-//			BaseConnection cc = socketHolder.get(key);
-//			
-//			System.out.println("conn: "+cc.id+"  "+cc.isValid+" "+cc.isDisconnecting);
-//			
-//			//cc.getLastUsedTime()
-//			
-//		}
-//		
-//	};
-//	
-//	//find all the old reservations and clear them...
-//	public void releaseAllAbandonedPipeLineIdx() {
-//
-//		responsePipeLinePool.visitLocked(releaseAbandoned);
-//		
-//	}
-	
-	public int resposePoolSize() {
-		return responsePipeLinePool.length();
-	}
-    
-	public void setFirstUsage(Runnable run) {
-		responsePipeLinePool.setFirstUsageCallback(run);
-	}
-	
-	public void setLastUsage(Runnable run) {
-		responsePipeLinePool.setNoLocksCallback(run);
-	}
 
 	@Override
 	public <B extends BaseConnection> B lookupConnectionById(long id) {
@@ -289,31 +221,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
         return subscriptions = new MemberHolder(100);
     }
     
-    private final class PipeLineFilter implements PoolIdxPredicate {
-		
-    	private int idx;
-		private int validValue;
 
-		private PipeLineFilter() {
-			
-		}
-
-		public void setId(long ccId) {
-			assert(maxConcurrentInputs == processorLookup.length);
-
-			//each connection should be in the next modules group of input pipes.
-			this.idx = ((int)ccId*concurrentPerModules)%maxConcurrentInputs;			
-			this.validValue = processorLookup[idx];
-			
-			///logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
-			
-		}
-
-		@Override
-		public boolean isOk(final int i) {
-			return validValue == processorLookup[i]; 
-		}
-	}
     
     public int moduleParallelism() {
     	return moduleParallelism;
@@ -356,9 +264,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
         
     }
 
-//	public static AtomicInteger inServerCount = new AtomicInteger(0);
-//    public static long start;
-    
 	@Deprecated
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
         return that.upgradePipeLookup;
@@ -375,24 +280,42 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		return that.upgradePipeLookup[(int)(that.channelBitsMask & channelId)];
 	}
 	
+	public static ConnectionContext selectorKeyContext(ServerCoordinator that, long channelId) {
+		ConnectionContext context = that.connectionContext[(int)(that.channelBitsMask & channelId)];
+		context.setChannelId(channelId);
+		context.skPosition(-1);//clear in case this is reused.
+		//logger.info("\nnew selector conext for connection {}",channelId);
+		return context;
+	}
 	
     
-    public static Selector getSelector(ServerCoordinator that) {
-        return that.selectors;
+    public Selector getSelector() {
+    	//round robin selectors, we have no better way to balance the load
+    	
+    	if (null!=selectors) {
+	
+	    	if (++selectedSelector >= selectors.length) {
+	    		selectedSelector = 0;
+	    	}
+	    	
+	    	return selectors[selectedSelector];
+    	} else {
+    		return null;
+    	}
     }
-    
-    public static ConnectionContext selectorKeyContext(ServerCoordinator that, long channelId) {
-        ConnectionContext context = that.connectionContext[(int)(that.channelBitsMask & channelId)];
-        context.setChannelId(channelId);
-        context.skPosition(-1);//clear in case this is reused.
-        //logger.info("\nnew selector conext for connection {}",channelId);
-        return context;
-    }
-
 
     public void registerSelector(Selector selector) {
-    	assert(null==selectors) : "Should not already have a value";
-        selectors = selector;
+
+    	//confirm it is not already listed
+      	int i = (null==selectors) ? 0 : selectors.length;
+    	while (--i>=0) {
+    		if (selectors[i]==selector) {
+    			return;//do not add, it is already there.
+    		}
+    	}    	
+    	//grow the array
+    	selectors = ArrayGrow.appendToArray(selectors, selector);
+    	assert(null!=selectors);
     }
 
 	public String serviceName() {

@@ -99,7 +99,7 @@ public class HTTPSRoundTripTest {
 		((HTTPServerConfigImpl)c).setTracks(processors);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();		
 
-		gm.enableTelemetry(9099);
+		//gm.enableTelemetry(9099);
 		
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
 		

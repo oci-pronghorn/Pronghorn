@@ -256,8 +256,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
 		    Pipe.releaseReadLock(input[idx]);
 		    assert(Pipe.contentRemaining(input[idx])>=0);
-		 
-		    coordinator.releaseResponsePipeLineIdx(channelId);//upon disconnect let go of pipe reservation
 		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
     
 		    if (null!=socketHolder) {

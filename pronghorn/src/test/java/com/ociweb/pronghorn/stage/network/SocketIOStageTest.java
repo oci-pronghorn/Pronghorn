@@ -107,7 +107,7 @@ public class SocketIOStageTest {
 		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
 		    Pipe<ReleaseSchema>[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoord, encryptedContent);	
+			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoord);	
 	        new ServerSocketWriterStage(gm, serverCoord, output, releasePipes[0]); 
         }
 		
@@ -198,7 +198,7 @@ public class SocketIOStageTest {
 	    }
 	    
 	    Pipe[] acks = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoord, encryptedContent);
+		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoord);
         SocketTestDataStage watch = new SocketTestDataStage(gm, output, acks[0], encryptedContent, testUsers, testSeeds, testSizes); 
         
         ////

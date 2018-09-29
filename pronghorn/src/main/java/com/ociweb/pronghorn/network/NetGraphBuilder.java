@@ -337,10 +337,17 @@ public class NetGraphBuilder {
 		logger.trace("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs, coordinator.incomingDataConfig);           
            
-        Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.moduleParallelism(),
-        		                                                         encryptedIncomingGroup);
+		
+		/////////////////
+		boolean readerPerTrack = false;
+		
+        Pipe<ReleaseSchema>[] ack = buildSocketReaderStage(graphManager, 
+        		                                                         coordinator, 
+        		                                                         coordinator.moduleParallelism(),
+        		                                                         encryptedIncomingGroup, readerPerTrack);
                        
-        Pipe<NetPayloadSchema>[] handshakeIncomingGroup=null;
+        
+        Pipe<NetPayloadSchema>[] handshakeIncomingGroup = null;
         Pipe<NetPayloadSchema>[] receivedFromNet;
         
         if (coordinator.isTLS) {
@@ -349,19 +356,22 @@ public class NetGraphBuilder {
         	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, 
 							        			coordinator.serverRequestUnwrapUnits, 
 							        			coordinator.incomingDataConfig,
-        			                      encryptedIncomingGroup, receivedFromNet, releaseAfterParse);
+        			                      encryptedIncomingGroup, receivedFromNet, ack);
         } else {
         	receivedFromNet = encryptedIncomingGroup;
         }
+		Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOfServerStagesWrite(graphManager, coordinator,
+				handshakeIncomingGroup);
 		
-	
-        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(
-        		                              graphManager, coordinator, 
-        		                              handshakeIncomingGroup);
-        
+		//////////////////////
+		/////////////////////
+		ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator); 
+		coordinator.processNota(graphManager, newConStage);
+		////////////////////
+		///////////////////
 
         factory.buildServer(graphManager, coordinator, 
-        		            releaseAfterParse,
+        		            ack,
         		            receivedFromNet, 
         		            fromOrderedContent);
 
@@ -532,24 +542,49 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(GraphManager graphManager, ServerCoordinator coordinator, final int routerCount,
-			Pipe<NetPayloadSchema>[] encryptedIncomingGroup) {
-		int a = routerCount+(coordinator.isTLS?coordinator.serverRequestUnwrapUnits:0);
-		Pipe<ReleaseSchema>[] acks = new Pipe[a];
-		while (--a>=0) {
-			acks[a] =  new Pipe<ReleaseSchema>(coordinator.pcm.getConfig(ReleaseSchema.class), false);	
+	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(
+			final GraphManager graphManager, 
+			final ServerCoordinator coordinator, 
+			final int tracks,
+			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup,
+			final boolean readerPerTrack) {
+		
+		Pipe<ReleaseSchema>[] acks;
+		
+		if (!coordinator.isTLS) {
+			acks = Pipe.buildPipes(tracks, coordinator.pcm.getConfig(ReleaseSchema.class));		
+		} else {
+			///route count is messing up data
+			acks = Pipe.buildPipes(tracks + coordinator.serverRequestUnwrapUnits, 
+					               coordinator.pcm.getConfig(ReleaseSchema.class));						
 		}
-                   
-        //reads from the socket connection
-        ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, acks, encryptedIncomingGroup, coordinator);
-        GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
-        coordinator.processNota(graphManager, readerStage);
+
+		
+		if (readerPerTrack && !coordinator.isTLS) { //NO TLS because !coordinator.isTLS would need to split up
+			Pipe[][] in = Pipe.splitPipes(tracks, encryptedIncomingGroup);
+			
+			for(int x=0; x<tracks; x++) {
+						
+				ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, new Pipe[] {acks[(tracks-1)-x]}, in[x], coordinator);
+				GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
+				coordinator.processNota(graphManager, readerStage);
+	
+			} 
+			
+		} else {
+			
+			ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager,  acks, encryptedIncomingGroup, coordinator);
+			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
+			coordinator.processNota(graphManager, readerStage);
+			
+		}
+        
+        
 		return acks;
 	}
 
-	public static Pipe<NetPayloadSchema>[] buildRemainderOFServerStages(final GraphManager graphManager,
+	public static Pipe<NetPayloadSchema>[] buildRemainderOfServerStagesWrite(final GraphManager graphManager,
 			ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] handshakeIncomingGroup) {
-
 		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[
 		                       coordinator.serverResponseWrapUnitsAndOutputs 
 		                       * coordinator.serverPipesPerOutputEngine];
@@ -559,10 +594,6 @@ public class NetGraphBuilder {
 				                                                       fromOrderedContent);
                     
         buildSocketWriters(graphManager, coordinator, coordinator.serverSocketWriters, toWiterPipes);
-
-        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator); 
-        coordinator.processNota(graphManager, newConStage);
-
 		return fromOrderedContent;
 	}
 
@@ -740,6 +771,7 @@ public class NetGraphBuilder {
 			Pipe[] planIncomingGroup, Pipe[] acks) {
 		Pipe<NetPayloadSchema>[] handshakeIncomingGroup = new Pipe[requestUnwrapUnits];
 		            	
+		assert(acks.length >= requestUnwrapUnits);
 		int c = requestUnwrapUnits;
 		Pipe[][] in = Pipe.splitPipes(c, encryptedIncomingGroup);
 		Pipe[][] out = Pipe.splitPipes(c, planIncomingGroup);

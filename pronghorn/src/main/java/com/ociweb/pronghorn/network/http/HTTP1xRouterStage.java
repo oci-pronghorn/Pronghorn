@@ -1205,9 +1205,7 @@ private static int accumRunningBytes(
 	        				
 	        				con.clearPoolReservation();		
 	        				con.close();
-	        				
-	        				that.coordinator.releaseResponsePipeLineIdx(con.getId());
-	        				
+	        					        				
 	        			}	        			
 	        			Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(selectedInput, NetPayloadSchema.MSG_DISCONNECT_203));
 	        			//Pipe.releaseReadLock(selectedInput);

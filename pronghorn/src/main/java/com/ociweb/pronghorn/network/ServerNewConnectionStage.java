@@ -177,7 +177,7 @@ public class ServerNewConnectionStage extends PronghornStage{
            throw new RuntimeException(e);
            
         }
-        
+        logger.info("startup done");
     }
     
     @Override
@@ -396,60 +396,60 @@ public class ServerNewConnectionStage extends PronghornStage{
 			
 		      
 		      //NOTE: warning this can accept more connections than we have open pipes, these connections will pile up in the socket reader by design.
-		      	                      
+		      	            
 		      if (channelId>=0) {		                    
-		                		          
-		          try {                          
-		        	  SocketChannel channel = server.accept();
-		              channel.configureBlocking(false);
-		              
-		              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
-		              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
-		              channel.socket().setPerformancePreferences(1, 0, 2);
-		     
-		              SSLEngine sslEngine = null;
-		              if (coordinator.isTLS) {
-						  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
-						  sslEngine.setUseClientMode(false); //here just to be complete and clear
-						  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
-						  // sslEngine.setWantClientAuth(true); //the auth is optional
-						  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
-						 
-						  sslEngine.beginHandshake();
-						  currentHandshake = sslEngine;
-		              }
-					  							  
-					  
-		              ServerConnection old = holder.setValue(channelId, 
-		            		  		  new ServerConnection(sslEngine, 
-		            		  				  		       channel, channelId,
-		            				                       coordinator)
-		            		  		  );
-		              if (null!=old) {
-		            	//  logger.info("\nclosing an old connection");
-							old.close();
-							old.decompose();
-					  }
-		              
-		              
-		            //  logger.info("\naccepting new connection {} registered data selector", channelId); 
-		        		           
-		                          
-		              
-		              channel.register(ServerCoordinator.getSelector(coordinator), 
-							           SelectionKey.OP_READ, 
-							           ServerCoordinator.selectorKeyContext(coordinator, channelId));
-						
-					//  logger.info("\nnew server connection attached for new id {} ",channelId);
-					  if (null!=newClientConnections) {								  
-		                  int targetPipeIdx = 0;
-						  publishNotificationOFNewConnection(targetPipeIdx, channelId);
-					  }
-					  
-		              
-		          } catch (IOException e) {
-		        	  logger.error("\nUnable to accept connection",e);
-		          } 
+		    	  Selector sel = coordinator.getSelector();
+		          if (sel!=null) {      		          
+			          try {                          
+			        	  SocketChannel channel = server.accept();
+			              channel.configureBlocking(false);
+			              
+			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
+			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
+			              channel.socket().setPerformancePreferences(1, 0, 2);
+			     
+			              SSLEngine sslEngine = null;
+			              if (coordinator.isTLS) {
+							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
+							  sslEngine.setUseClientMode(false); //here just to be complete and clear
+							  // sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
+							  // sslEngine.setWantClientAuth(true); //the auth is optional
+							  sslEngine.setNeedClientAuth(coordinator.requireClientAuth); //required for openSSL/boringSSL
+							 
+							  sslEngine.beginHandshake();
+							  currentHandshake = sslEngine;
+			              }
+						  							  
+						  
+			              ServerConnection old = holder.setValue(channelId, 
+			            		  		  new ServerConnection(sslEngine, 
+			            		  				  		       channel, channelId,
+			            				                       coordinator)
+			            		  		  );
+			              if (null!=old) {
+			            	//  logger.info("\nclosing an old connection");
+								old.close();
+								old.decompose();
+						  }
+	  
+			            //  logger.info("\naccepting new connection {} registered data selector", channelId); 
+	
+			              channel.register(sel,SelectionKey.OP_READ, 
+								           ServerCoordinator.selectorKeyContext(coordinator, channelId));
+							
+						//  logger.info("\nnew server connection attached for new id {} ",channelId);
+						  if (null!=newClientConnections) {								  
+			                  int targetPipeIdx = 0;
+							  publishNotificationOFNewConnection(targetPipeIdx, channelId);
+						  }
+						  
+			              
+			          } catch (IOException e) {
+			        	  logger.error("\nUnable to accept connection",e);
+			          } 
+			      } else {
+			    	  doWork = false;
+			      }
 		          
 		      } else {
 		    	  

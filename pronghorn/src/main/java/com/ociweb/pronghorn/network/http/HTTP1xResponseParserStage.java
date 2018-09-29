@@ -455,448 +455,457 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					foundWork++;//do not leave if we are backed up
 				}
 
-				int state = positionMemoData[stateIdx];
 			
-					//TODO: may be faster with if rather than switch.
+				foundWork = parseHTTP(foundWork, i, memoIdx, posIdx, lenIdx, stateIdx, targetPipe, ccId, localInputPipe, cc);	
 
-		//	System.out.println("on state "+state+" for connection "+i+"  "+System.currentTimeMillis());
+				 
+			}
+		} while(foundWork>0);//hasDataToParse()); //stay when very busy
+	}
+
+	private int parseHTTP(int foundWork, int i, final int memoIdx, final int posIdx, final int lenIdx,
+			final int stateIdx, Pipe<NetResponseSchema> targetPipe, long ccId, Pipe<NetPayloadSchema> localInputPipe,
+			HTTPClientConnection cc) {
+		//TODO: may be faster with if rather than switch.
+
+		 switch (positionMemoData[stateIdx]) {
+			case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
+			{
+				if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 
+					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					break; //critical check
+				}
+				Pipe.markHead(targetPipe);
 				
-				 switch (state) {
-					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
-						
-						if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 
-							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-							break; //critical check
-						}
-						Pipe.markHead(targetPipe);
-						
-						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-						if (startingLength1<(revisionMap.shortestKnown()+1)) {
-							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-							break;
-						}		
+				int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+				if (startingLength1<(revisionMap.shortestKnown()+1)) {
+					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					break;
+				}		
+			
+				final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
+				if (revisionId>=0) {
+											
+					clearConnectionStateData(i);
 					
-						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
-						if (revisionId>=0) {
-													
-							clearConnectionStateData(i);
-							
-							//because we have started written the response we MUST do extra cleanup later.
+					//because we have started written the response we MUST do extra cleanup later.
 
-							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
-							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-						    Pipe.addIntValue(cc.sessionId, targetPipe);
-							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
+					Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
+					Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
+				    Pipe.addIntValue(cc.sessionId, targetPipe);
+					Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 
-							positionMemoData[stateIdx]= ++state;//state change is key
-												
-							
-							DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
-							DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
-								
-														
-							//NOTE: this is always first and not indexed...
-							TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
+					positionMemoData[stateIdx]++;//state change is key
 										
-							runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
-	
+					
+					DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
+					DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
+						
 												
+					//NOTE: this is always first and not indexed...
+					TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
+								
+					runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
+
+										
+				} else {
+					assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
+					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+					
+					if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
+						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						break;//not an error just needs more data.
+					} else {
+						reportCorruptStream("HTTP revision", cc);
+						closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
+					}
+					
+					break;
+				}
+				
+				assert(positionMemoData[stateIdx]==1);
+			}
+			case 1: ///////// HEADERS
+			{
+				//TODO: look up the right headerMap...
+				//      these are based on the headers that the client caller requests
+				//      these headers should be defined in the ClientHostPortInstance object.
+				
+				
+				//this writer was opened when we parsed the first line, now we are appending to it.
+				DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
+				
+				final int startingPosition = writer.absolutePosition();
+					
+				
+				long headerToken=0;
+				//stay here and read all the headers if possible
+				do {
+					int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
+			
+					headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
+				
+					assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
+
+					int consumed = startingLength - trieReader.sourceLen;							
+					runningHeaderBytes[i] += consumed;
+							
+					if (headerToken != -1) {											
+						
+						if (HTTPSpecification.END_OF_HEADER_ID != headerToken) {	
+							
+							headerProcessing(i, writer, headerToken, cc);
+							
+							//do not change state we want to come back here.									
 						} else {
-							assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
-							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-							
-							if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
-								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-								break;//not an error just needs more data.
-							} else {
-								reportCorruptStream("HTTP revision", cc);
-								closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
+							//logger.trace("end of headers");
+							positionMemoData[stateIdx] = endOfHeaderProcessing(i, stateIdx, writer);
+																							
+							//logger.trace("finished reading header now going to state {}",state);
+						
+							if (3==positionMemoData[stateIdx]) {
+								//release all header bytes, we will do each chunk on its own.
+								assert(runningHeaderBytes[i]>0);								
+								Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
+								runningHeaderBytes[i] = 0; 
 							}
-							
-							break;
-						}
-						
-						assert(positionMemoData[stateIdx]==1);
-						
-					case 1: ///////// HEADERS
-						
-						//TODO: look up the right headerMap...
-						//      these are based on the headers that the client caller requests
-						//      these headers should be defined in the ClientHostPortInstance object.
-						
-						
-						//this writer was opened when we parsed the first line, now we are appending to it.
-						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-						
-						final int startingPosition = writer.absolutePosition();
-							
-						
-						long headerToken=0;
-						//stay here and read all the headers if possible
-						do {
-							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-					
-							headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
-						
-							assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
-		
-							int consumed = startingLength - trieReader.sourceLen;							
-							runningHeaderBytes[i] += consumed;
-									
-							if (headerToken != -1) {											
-								
-								if (HTTPSpecification.END_OF_HEADER_ID != headerToken) {	
-									
-									headerProcessing(i, writer, headerToken, cc);
-									
-									//do not change state we want to come back here.									
-								} else {
-									//logger.trace("end of headers");
-									state = endOfHeaderProcessing(i, stateIdx, writer);
-																									
-									//logger.trace("finished reading header now going to state {}",state);
-								
-									if (3==state) {
-										//release all header bytes, we will do each chunk on its own.
-										assert(runningHeaderBytes[i]>0);								
-										Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
-										runningHeaderBytes[i] = 0; 
-									}
-									//only case where state is not 1 so we must call save all others will call when while loops back to top.
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
+							//only case where state is not 1 so we must call save all others will call when while loops back to top.
+							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
 
-									//logger.info("payload position  {}", writer.position());
-									//NOTE: payload index position is always zero 
-									DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
-																		
-								}
-							} 
-							
-						} while ((headerToken != -1) && state==1);
-						
-						if (headerToken == -1) {
-							
-							writer.absolutePosition(startingPosition);
-							
-							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-							
-							if (trieReader.sourceLen<MAX_VALID_HEADER) {
-								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-								break;//not an error just needs more data.
-							} else {
-							    
-								reportCorruptStream2(cc);
-								
-								//TODO: bad client, disconnect??  finish partial message out!!!
-								
-							}
-							
-							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
-							assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
-				    		break;
-						}
-				
-					case 2: //PAYLOAD READING WITH LENGTH
-							//if we can not release then do not finish.
-							if (!Pipe.hasRoomForWrite(releasePipe)) {
-								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-								break;
-							}
-							//in case targetPipe is needed must confirm room for 2 writes .
-							if (null==targetPipe || (!Pipe.hasRoomForWrite(targetPipe, 2*Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_CONTINUATION_102)))) {
-								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-								break;
-							}
-							if (2==state) {
+							//logger.info("payload position  {}", writer.position());
+							//NOTE: payload index position is always zero 
+							DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
 																
-								long lengthRemaining = payloadLengthData[i];
-													
-		//						logger.info("source position {} state {} length remaining to copy {} source len ",trieReader.sourcePos,state,lengthRemaining,trieReader.sourceLen);
-								
-								final DataOutputBlobWriter<NetResponseSchema> writer2 = Pipe.outputStream(targetPipe);
+						}
+					} 
+					
+				} while ((headerToken != -1) && positionMemoData[stateIdx]==1);
+				
+				if (headerToken == -1) {
+					
+					writer.absolutePosition(startingPosition);
+					
+					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+					
+					if (trieReader.sourceLen<MAX_VALID_HEADER) {
+						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						break;//not an error just needs more data.
+					} else {
+					    
+						reportCorruptStream2(cc);
+						
+						//TODO: bad client, disconnect??  finish partial message out!!!
+						
+					}
+					
+					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
+					assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
+		    		break;
+				}
+			}
+			case 2: //PAYLOAD READING WITH LENGTH
+			{
+					//if we can not release then do not finish.
+					if (!Pipe.hasRoomForWrite(releasePipe)) {
+						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						break;
+					}
+					//in case targetPipe is needed must confirm room for 2 writes .
+					if (null==targetPipe || (!Pipe.hasRoomForWrite(targetPipe, 2*Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_CONTINUATION_102)))) {
+						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						break;
+					}
+					if (2==positionMemoData[stateIdx]) {
+														
+						long lengthRemaining = payloadLengthData[i];
+											
+//						logger.info("source position {} state {} length remaining to copy {} source len ",trieReader.sourcePos,state,lengthRemaining,trieReader.sourceLen);
+						
+						final DataOutputBlobWriter<NetResponseSchema> writer2 = Pipe.outputStream(targetPipe);
+					
+						if (lengthRemaining>0 && trieReader.sourceLen>0) {
+											
+							//length is not written since this may accumulate and the full field provides the length
+							final int consumed = TrieParserReader.parseCopy(trieReader,
+									                          Math.min(lengthRemaining,
+									                        		   DataOutputBlobWriter.lastBackPositionOfIndex(writer2)),
+									                          writer2);
+							lengthRemaining -= consumed;
 							
-								if (lengthRemaining>0 && trieReader.sourceLen>0) {
-													
-									//length is not written since this may accumulate and the full field provides the length
-									final int consumed = TrieParserReader.parseCopy(trieReader,
-											                          Math.min(lengthRemaining,
-											                        		   DataOutputBlobWriter.lastBackPositionOfIndex(writer2)),
-											                          writer2);
-									lengthRemaining -= consumed;
+							//NOTE: if the target field is full then we must close this one and open a new
+							//      continuation.
+								
+							if (lengthRemaining>0) {
+								DataOutputBlobWriter.commitBackData(writer2, cc.getStructureId());
+																	
+								int len = writer2.closeLowLevelField();
+								//logger.trace("conform low level write of len {} ",len);
+								Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
+								Pipe.publishWrites(targetPipe);
+								//DO NOT consume since we still need it
+								
+								Pipe.presumeRoomForWrite(targetPipe);
+								
+								//logger.trace("begin new continuation");
+								
+								//prep new message for next time.
+								Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
+								Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+								Pipe.addIntValue(cc.sessionId, targetPipe);
+								Pipe.addIntValue(0, targetPipe); //flags							
+								DataOutputBlobWriter.openField(writer2);
+							}								
+							
+//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
+							
+							assert(runningHeaderBytes[i]>0);
+							runningHeaderBytes[i] += consumed;		
+							
+							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
+						}
+						payloadLengthData[i] = lengthRemaining;
+						
+						if (0 == lengthRemaining) {
+//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
+							
+								
+							if (Pipe.releasePendingByteCount(localInputPipe)>0) {
+								Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
+							}
+							
+							DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
+															
+							int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
+
+							positionMemoData[stateIdx] = 5;
+							
+							//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id	
+							Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+									         targetPipe, 
+									         Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
+							
+							Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
+							Pipe.publishWrites(targetPipe);	
+							//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
+							//clear the usage of this pipe for use again by other connections
+							outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
+				
+							assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+
+							foundWork += finishAndRelease(i, 
+									                        posIdx, lenIdx, stateIdx, 
+									                        localInputPipe, cc, 0); 
+							//positionMemoData[stateIdx] = positionMemoData[stateIdx];
+														
+							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+							break;
+						} else {
+							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+							assert(lengthRemaining>0);
+							break;//we have no data and need more.
+						}
+					}
+					if (3!=positionMemoData[stateIdx]) {
+						break;
+					}
+			}
+			case 3: //PAYLOAD READING WITH CHUNKS	
+			{
+					//if we can not release then do not finish.
+					if (!Pipe.hasRoomForWrite(releasePipe)) {
+						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						break;
+					}
+
+			  	    long chunkRemaining = payloadLengthData[i];
+
+					DataOutputBlobWriter<NetResponseSchema> writer3 = Pipe.outputStream(targetPipe);
+					do {
+						if (0==chunkRemaining) {
+							
+							int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
+						
+							if ((int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap) < 0) {
+								//FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
+								if (trieReader.sourceLen>16) {
+									parseErrorWhileChunking(memoIdx, localInputPipe, trieReader.sourcePos);
+								}
+								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+								//logger.info("need chunk data");
+								break;	//not enough data yet to parse try again later
+							}
+						
+							chunkRemaining = TrieParserReader.capturedLongField(trieReader,0);
+							//logger.info("reading a fresh chunk of size {}",chunkRemaining);
+							
+							if (0==chunkRemaining) {
+
+								boolean foundEnd = consumeTralingHeaders(cc);										
+								if (!foundEnd) {
+									logger.warn("unable to find end of message");
+								}
 									
-									//NOTE: if the target field is full then we must close this one and open a new
-									//      continuation.
-										
-									if (lengthRemaining>0) {
-										DataOutputBlobWriter.commitBackData(writer2, cc.getStructureId());
-																			
-										int len = writer2.closeLowLevelField();
-										//logger.trace("conform low level write of len {} ",len);
-										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
-										Pipe.publishWrites(targetPipe);
-										//DO NOT consume since we still need it
-										
-										Pipe.presumeRoomForWrite(targetPipe);
-										
+								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);											
+								int consumed = startingLength3 - trieReader.sourceLen;
+								
+								Pipe.releasePendingAsReadLock(localInputPipe, consumed);
+			
+								
+								DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
+								
+								int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
+								//logger.info("nothing remaing in this chunk moving to state 5");
+								positionMemoData[stateIdx] = 5;
+								
+								//logger.info("Detected last chunk so send the flag showing we are done\n length {}",len);
+																		
+								Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+										        targetPipe, 
+											    Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
+								
+								Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
+								Pipe.publishWrites(targetPipe);	
+								
+								//clear the usage of this pipe for use again by other connections
+								outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
+								//long routeId = cc.getResponsePipeIdx();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
+
+								//NOTE: I think this is needed but is causing a hang...
+								//TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+								assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+								
+								foundWork += finishAndRelease(i, posIdx, lenIdx, stateIdx, localInputPipe, cc, 0); 
+
+								break;
+							} else {
+									
+								payloadLengthData[i] = chunkRemaining;										
+								int consumed = startingLength3 - trieReader.sourceLen;
+								Pipe.releasePendingAsReadLock(localInputPipe, consumed);
+								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+								
+								//ensure we do not override the indexes
+								if ((DataOutputBlobWriter.lastBackPositionOfIndex(writer3)-(writer3.length() + chunkRemaining))>0) {
+									DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
+									
+									int len = writer3.closeLowLevelField();
+									//logger.trace("conform low level write of len {} ",len);
+									Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
+									Pipe.publishWrites(targetPipe);
+																				
+									//DO NOT consume route id we will still need it.
+									//state is already 3 so leave it there
+									if (Pipe.hasRoomForWrite(targetPipe)) {
 										//logger.trace("begin new continuation");
 										
 										//prep new message for next time.
 										Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
 										Pipe.addLongValue(ccId, targetPipe); //same ccId as before
 										Pipe.addIntValue(cc.sessionId, targetPipe);
-										Pipe.addIntValue(0, targetPipe); //flags							
-										DataOutputBlobWriter.openField(writer2);
-									}								
-									
-		//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
-									
-									assert(runningHeaderBytes[i]>0);
-									runningHeaderBytes[i] += consumed;		
-									
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
-								}
-								payloadLengthData[i] = lengthRemaining;
-								
-								if (0 == lengthRemaining) {
-		//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
-									
+										Pipe.addIntValue(0, targetPipe); //flags
+										DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
+										DataOutputBlobWriter.openField(writer1);	
 										
-									if (Pipe.releasePendingByteCount(localInputPipe)>0) {
-										Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
+									} else {
+										//switch to 4 until the outgoing pipe is cleared
+										//then we come back to 3
+										positionMemoData[stateIdx] = 4;												
 									}
+									//logger.info("start collecting new continuation");
 									
-									DataOutputBlobWriter.commitBackData(writer2,  cc.getStructureId());
-																	
-									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-			
-									positionMemoData[stateIdx] = state = 5;
-									
-									//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id	
-									Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
-											         targetPipe, 
-											         Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
-									
-									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
-									Pipe.publishWrites(targetPipe);	
-									//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
-									//clear the usage of this pipe for use again by other connections
-									outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
-						
-									assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-
-									foundWork += finishAndRelease(i, 
-											                        posIdx, lenIdx, stateIdx, 
-											                        localInputPipe, cc, 0); 
-									state = positionMemoData[stateIdx];
-																
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 									break;
-								} else {
-									foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-									assert(lengthRemaining>0);
-									break;//we have no data and need more.
 								}
 							}
-							if (3!=state) {
-								break;
-							}
-	
-					case 3: //PAYLOAD READING WITH CHUNKS	
+						}				
 						
-							//if we can not release then do not finish.
-							if (!Pipe.hasRoomForWrite(releasePipe)) {
-								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-								break;
+						
+						////////
+						//normal copy of data for chunk
+						////////
+						
+						if (chunkRemaining>0) {
+							int initValue = trieReader.sourceLen;
+							//can do some but not the last byte unless we have the 2 following bytes a well. must have teh \r\n in addition to the remaining byte count								
+							long maxToCopy = chunkRemaining;
+							if (trieReader.sourceLen==chunkRemaining || (trieReader.sourceLen-1)==chunkRemaining) {
+								maxToCopy = 0;
 							}
-
-					  	    long chunkRemaining = payloadLengthData[i];
-
-							DataOutputBlobWriter<NetResponseSchema> writer3 = Pipe.outputStream(targetPipe);
-							do {
-								if (0==chunkRemaining) {
-									
-									int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
-								
-									if ((int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap) < 0) {
-										//FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
-										if (trieReader.sourceLen>16) {
-											parseErrorWhileChunking(memoIdx, localInputPipe, trieReader.sourcePos);
-										}
-										foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-										//logger.info("need chunk data");
-										return;	//not enough data yet to parse try again later
-									}
-								
-									chunkRemaining = TrieParserReader.capturedLongField(trieReader,0);
-									//logger.info("reading a fresh chunk of size {}",chunkRemaining);
-									
-									if (0==chunkRemaining) {
-
-										boolean foundEnd = consumeTralingHeaders(cc);										
-										if (!foundEnd) {
-											logger.warn("unable to find end of message");
-										}
-											
-										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);											
-										int consumed = startingLength3 - trieReader.sourceLen;
-										
-										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
-					
-										
-										DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
-										
-										int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-										//logger.info("nothing remaing in this chunk moving to state 5");
-										positionMemoData[stateIdx] = state = 5;
-										
-										//logger.info("Detected last chunk so send the flag showing we are done\n length {}",len);
-																				
-										Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
-												        targetPipe, 
-													    Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
-										
-										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
-										Pipe.publishWrites(targetPipe);	
-										
-										//clear the usage of this pipe for use again by other connections
-										outputOwner[outputMask&(int)cc.getResponsePipeIdx()] = -1; 
-										//long routeId = cc.getResponsePipeIdx();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
-
-										//NOTE: I think this is needed but is causing a hang...
-										//TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-										assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-										
-										foundWork += finishAndRelease(i, posIdx, lenIdx, stateIdx, localInputPipe, cc, 0); 
-
-										break;
-									} else {
-											
-										payloadLengthData[i] = chunkRemaining;										
-										int consumed = startingLength3 - trieReader.sourceLen;
-										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
-										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-										
-										//ensure we do not override the indexes
-										if ((DataOutputBlobWriter.lastBackPositionOfIndex(writer3)-(writer3.length() + chunkRemaining))>0) {
-											DataOutputBlobWriter.commitBackData(writer3, cc.getStructureId());
-											
-											int len = writer3.closeLowLevelField();
-											//logger.trace("conform low level write of len {} ",len);
-											Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
-											Pipe.publishWrites(targetPipe);
-																						
-											//DO NOT consume route id we will still need it.
-											//state is already 3 so leave it there
-											if (Pipe.hasRoomForWrite(targetPipe)) {
-												//logger.trace("begin new continuation");
-												
-												//prep new message for next time.
-												Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
-												Pipe.addLongValue(ccId, targetPipe); //same ccId as before
-												Pipe.addIntValue(cc.sessionId, targetPipe);
-												Pipe.addIntValue(0, targetPipe); //flags
-												DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
-												DataOutputBlobWriter.openField(writer1);	
-												
-											} else {
-												//switch to 4 until the outgoing pipe is cleared
-												//then we come back to 3
-												positionMemoData[stateIdx] = state = 4;												
-											}
-											//logger.info("start collecting new continuation");
-											
-											break;
-										}
-									}
-								}				
-								
-								
-								////////
-								//normal copy of data for chunk
-								////////
-								
-								if (chunkRemaining>0) {
-									int initValue = trieReader.sourceLen;
-									//can do some but not the last byte unless we have the 2 following bytes a well. must have teh \r\n in addition to the remaining byte count								
-									long maxToCopy = chunkRemaining;
-									if (trieReader.sourceLen==chunkRemaining || (trieReader.sourceLen-1)==chunkRemaining) {
-										maxToCopy = 0;
-									}
-									
-								//	System.err.println("at copy postion is "+trieReader.sourcePos);
-								//	TrieParserReader.debugAsUTF8(trieReader, System.err, 10, false); //we know the data is here buy why not on the stream?
-									
-									int temp3 = TrieParserReader.parseCopy(trieReader, maxToCopy, writer3);
-									chunkRemaining -= temp3;
-									
-									assert(chunkRemaining>=0);
-									
-									if (chunkRemaining==0) {
-										payloadLengthData[i] = 0; //signal that we need more, in case we exit block
-										//System.err.println("ZZ copied fully over "+temp3);
-										//NOTE: assert of these 2 bytes would be a good idea right here.
-										int skipped = TrieParserReader.parseSkip(trieReader, 2); //skip \r\n which appears on the end of every chunk
-										if (skipped!=2) {//TODO: convert to assert.
-											throw new UnsupportedOperationException("Can not skip 2 bytes they are not here yet.");
-										}
-										temp3+=2;
-									} else {
-										//System.err.println("ZZ copied partial over "+temp3);
-										
-										payloadLengthData[i] = chunkRemaining;
-									}
-									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-				
-									assert((initValue-trieReader.sourceLen)==temp3);
-									
-									Pipe.releasePendingAsReadLock(localInputPipe, temp3);
+							
+						//	System.err.println("at copy postion is "+trieReader.sourcePos);
+						//	TrieParserReader.debugAsUTF8(trieReader, System.err, 10, false); //we know the data is here buy why not on the stream?
+							
+							int temp3 = TrieParserReader.parseCopy(trieReader, maxToCopy, writer3);
+							chunkRemaining -= temp3;
+							
+							assert(chunkRemaining>=0);
+							
+							if (chunkRemaining==0) {
+								payloadLengthData[i] = 0; //signal that we need more, in case we exit block
+								//System.err.println("ZZ copied fully over "+temp3);
+								//NOTE: assert of these 2 bytes would be a good idea right here.
+								int skipped = TrieParserReader.parseSkip(trieReader, 2); //skip \r\n which appears on the end of every chunk
+								if (skipped!=2) {//TODO: convert to assert.
+									throw new UnsupportedOperationException("Can not skip 2 bytes they are not here yet.");
 								}
+								temp3+=2;
+							} else {
+								//System.err.println("ZZ copied partial over "+temp3);
 								
-													
-							} while (0 == chunkRemaining);
-				
-							break;
-					case 4:
-						//if there is no room then stay on case 4 and wait
-						if (Pipe.hasRoomForWrite(targetPipe)) {
-						
-							//logger.trace("begin new continuation");
+								payloadLengthData[i] = chunkRemaining;
+							}
+							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+		
+							assert((initValue-trieReader.sourceLen)==temp3);
 							
-							//prep new message for next time.
-							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
-							Pipe.addLongValue(ccId, targetPipe); //same ccId as before
-							Pipe.addIntValue(cc.sessionId, targetPipe);
-							Pipe.addIntValue(0, targetPipe); //flags
-							DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
-							DataOutputBlobWriter.openField(writer1);
-							
-							//go back and continue roll up the data
-							positionMemoData[stateIdx] = state = 3;
-							//these two lines clear the blocks so we can come back to 4 when there is data..
-							blockedOpenCount[i] = 0;
-							blockedState[i] = positionMemoData[stateIdx];
-									
-						} 
-						break;
-					case 5: //END SEND ACK
-						if (Pipe.hasRoomForWrite(targetPipe)) {
-							//logger.info("source position {} source length {} state {} ",trieReader.sourcePos,trieReader.sourceLen,state);
-											
-							assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-	
-						    foundWork += finishAndRelease(i, posIdx, lenIdx, stateIdx, localInputPipe, cc, 0);
-					
-						    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
-						} else {
-							foundWork = 0;
+							Pipe.releasePendingAsReadLock(localInputPipe, temp3);
 						}
-						break;	
-												
-				}	
-
-				 
+						
+											
+					} while (0 == chunkRemaining);
+		
+					break;
 			}
-		} while(foundWork>0);//hasDataToParse()); //stay when very busy
+			case 4:
+			{
+				//if there is no room then stay on case 4 and wait
+				if (Pipe.hasRoomForWrite(targetPipe)) {
+				
+					//logger.trace("begin new continuation");
+					
+					//prep new message for next time.
+					Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
+					Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+					Pipe.addIntValue(cc.sessionId, targetPipe);
+					Pipe.addIntValue(0, targetPipe); //flags
+					DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
+					DataOutputBlobWriter.openField(writer1);
+					
+					//go back and continue roll up the data
+					positionMemoData[stateIdx] = 3;
+					//these two lines clear the blocks so we can come back to 4 when there is data..
+					blockedOpenCount[i] = 0;
+					blockedState[i] = positionMemoData[stateIdx];
+							
+				} 
+				break;
+			}
+			case 5: //END SEND ACK
+			{
+				if (Pipe.hasRoomForWrite(targetPipe)) {
+					//logger.info("source position {} source length {} state {} ",trieReader.sourcePos,trieReader.sourceLen,state);
+									
+					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+
+				    foundWork += finishAndRelease(i, posIdx, lenIdx, stateIdx, localInputPipe, cc, 0);
+			
+				    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
+				} else {
+					foundWork = 0;
+				}
+				break;	
+			}						
+		}
+		return foundWork;
 	}
 
 	private boolean checkPipeWriteState(final int stateIdx, Pipe<NetResponseSchema> targetPipe) {

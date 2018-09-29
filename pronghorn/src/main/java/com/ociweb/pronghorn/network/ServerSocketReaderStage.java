@@ -23,6 +23,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.PoolIdx;
+import com.ociweb.pronghorn.util.PoolIdxPredicate;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
@@ -34,6 +36,9 @@ import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
  */
 public class ServerSocketReaderStage extends PronghornStage {
    
+
+	private PipeLineFilter isOk;
+
 	private final int messageType;
 	private final int reqPumpPipeSpace;
 
@@ -54,8 +59,39 @@ public class ServerSocketReaderStage extends PronghornStage {
     private Set<SelectionKey> selectedKeys;	
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
+	private final PoolIdx responsePipeLinePool;
+	
+    private final class PipeLineFilter implements PoolIdxPredicate {
+		
+    	private int idx;
+		private int validValue;
+		private int concurrentPerModules;
+		private int[] processorLookup;
+
+		private PipeLineFilter(ServerCoordinator coordinator) {
+		     this.concurrentPerModules = coordinator.maxConcurrentInputs / coordinator.moduleParallelism;
+		     this.processorLookup = Pipe.splitGroups(coordinator.moduleParallelism, coordinator.maxConcurrentInputs);
+		}
+
+		public void setId(long ccId) {
+			assert(coordinator.maxConcurrentInputs == processorLookup.length);
+
+			//each connection should be in the next modules group of input pipes.
+			this.idx = ((int)ccId*concurrentPerModules)%coordinator.maxConcurrentInputs;			
+			this.validValue = processorLookup[idx];
+			
+			///logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
+			
+		}
+
+		@Override
+		public boolean isOk(final int i) {
+			return validValue == processorLookup[i]; 
+		}
+	}
     
-    public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean encrypted) {
+    public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, 
+    		                                          ServerCoordinator coordinator) {
         return new ServerSocketReaderStage(graphManager, ack, output, coordinator);
     }
 
@@ -66,10 +102,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 	 * @param output _out_ The read payload from the socket.
 	 * @param coordinator
 	 */
-	public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator) {
+	public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output,
+			                       ServerCoordinator coordinator) {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
-
+       
         this.label = "\n"+coordinator.host()+":"+coordinator.port()+"\n";
         
         this.output = output;
@@ -82,6 +119,9 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
+        //GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        
+        
         //if we only have 1 router then do not isolate the reader.
         if (ack.length>1) {
         	//can spin to pick up all the work and may starve others
@@ -91,7 +131,23 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
         reqPumpPipeSpace = Pipe.sizeOf(NetPayloadSchema.instance, messageType)+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
-        
+  
+        //To support single reader and reader per track
+        /////////////////////////////////////////
+        if (coordinator.maxConcurrentInputs == output.length) {
+        	 this.isOk = new PipeLineFilter(coordinator);      
+        	 this.responsePipeLinePool = new PoolIdx(
+	             		output.length,
+	             		coordinator.serverResponseWrapUnitsAndOutputs
+             		); 	
+        } else {
+        	 this.isOk = null;
+        	 this.responsePipeLinePool = new PoolIdx(
+	             		output.length,
+	             		1//no need to group tracks since we only have one
+             		);
+        }
+       
     }
         
     @Override
@@ -101,7 +157,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     @Override
     public void startup() {
-
+    	
     	selectedKeyHolder = new SelectedKeyHashMapHolder();
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
@@ -111,7 +167,6 @@ public class ServerSocketReaderStage extends PronghornStage {
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
-        //logger.debug("selector is registered for pipe {}",pipeIdx);
        
     }
     
@@ -142,7 +197,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     @Override
     public void run() {
-
+    	
     	 if(!shutdownInProgress) {
   
     	    	/////////////////////////////
@@ -178,7 +233,11 @@ public class ServerSocketReaderStage extends PronghornStage {
     	           removeDoneKeys(selectedKeys);
     	           if (!hasRoomForMore) {
     	        	   break;
-    	           }    	 
+    	           } else {
+    	        	   //do we need to detected has room for more better?
+    	        	 //  break;
+    	        	   
+    	           }
     	        }
     	 
     	 } else {
@@ -237,8 +296,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 			//if this selection was closed then remove it from the selections
 
-			if (coordinator.checkForResponsePipeLineIdx(channelId)>=0) {
-				coordinator.releaseResponsePipeLineIdx(channelId);
+			if (checkForResponsePipeLineIdx(channelId)>=0) {
+				releaseResponsePipeLineIdx(channelId);
 			}			
 
 			return true;
@@ -275,16 +334,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					if (cc.id != channelId) {
 						//we must release the old one?
-						int result = coordinator.checkForResponsePipeLineIdx(channelId);
+						int result = checkForResponsePipeLineIdx(channelId);
 						if (result>=0) {
 							//we found the old channel so remove it before we add the new id.
-							coordinator.releaseResponsePipeLineIdx(channelId);
+							releaseResponsePipeLineIdx(channelId);
 						}
 					}
 					
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
-					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+					responsePipeLineIdx = responsePipeLineIdx(channelId);
 					
 //					if (cc.getSequenceNo()<1) {
 //					
@@ -298,11 +357,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 						//logger.trace("second check for released pipe");
 						Thread.yield();
 						releasePipesForUse();
-						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+						responsePipeLineIdx = responsePipeLineIdx(channelId);
 						if (-1 == responsePipeLineIdx) {
 							//logger.info("\n too much load");
 							//try later, we can not find an open pipe right now.
-							return true;
+							return false;//must return false to ensure we leave this stage
 						}
 						
 					}
@@ -322,7 +381,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 								//What about encryption unit does it hold data we have not yet processed??
 								System.out.println(i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i])+" total frags:"+Pipe.totalWrittenFragments(output[i]));
 							}					
-							coordinator.showPipeLinePool();					
+											
 							logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
 									channelId, 
 									responsePipeLineIdx,
@@ -350,6 +409,34 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 		return hasOutputRoom;
 	} 
+
+	///////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////
+
+	
+	//NOT thread safe only called by ServerSocketReaderStage
+	private int responsePipeLineIdx(final long ccId) {
+	
+		if (null == isOk) {
+			return responsePipeLinePool.get(ccId);
+		} else {
+			isOk.setId(ccId); //key to ensure connection is sent to same track
+			return responsePipeLinePool.get(ccId, isOk);			
+		}
+
+	}
+
+	private void releaseResponsePipeLineIdx(long ccId) {		
+		responsePipeLinePool.release(ccId);	
+	}
+
+	private int checkForResponsePipeLineIdx(long ccId) {
+		return PoolIdx.getIfReserved(responsePipeLinePool,ccId);
+	}
+
+	
+	////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////
 
 	private boolean validateClose(final SocketChannel socketChannel, final long channelId) {
 
@@ -422,14 +509,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 			throw new UnsupportedOperationException();
 		}
 				
-		int pipeIdx = coordinator.checkForResponsePipeLineIdx(idToClear);
+		int pipeIdx = checkForResponsePipeLineIdx(idToClear);
 		//if we can not look it  up then we can not release it?
 				
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
 		//	logger.info("NEW RELEASE for pipe {} connection {} at pos {}",pipeIdx, idToClear, pos);
-			coordinator.releaseResponsePipeLineIdx(idToClear);
+			releaseResponsePipeLineIdx(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
@@ -508,7 +595,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					//logger.info("client disconnected, so release");
 					//client was disconnected so release all our resources to ensure they can be used by new connections.
 					selection.cancel();                	
-					coordinator.releaseResponsePipeLineIdx(channelId);
+					releaseResponsePipeLineIdx(channelId);
 					//to abandon this must be negative.
 					len = -1;
                 	int result = publishOrAbandon(channelId, sequenceNo, targetPipe, len, b, false, newBeginning);                	
@@ -523,7 +610,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	    logger.trace("client closed connection ",e.getMessage());
             	
 	             	selection.cancel();                	
-	            	coordinator.releaseResponsePipeLineIdx(cc.id);    
+	            	releaseResponsePipeLineIdx(cc.id);    
 					cc.clearPoolReservation();
             	
 					int result = publishOrAbandon(channelId, cc.getSequenceNo(), targetPipe, len, b, temp>=0, newBeginning);
@@ -587,7 +674,7 @@ public class ServerSocketReaderStage extends PronghornStage {
              if (isOpen && newBeginning) {
             	 //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
-             	coordinator.releaseResponsePipeLineIdx(channelId);
+             	releaseResponsePipeLineIdx(channelId);
              	BaseConnection conn = coordinator.lookupConnectionById(channelId);
              	if (null!=conn) {
              		conn.clearPoolReservation();
