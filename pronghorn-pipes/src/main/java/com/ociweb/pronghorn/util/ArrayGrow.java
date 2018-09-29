@@ -7,7 +7,7 @@ public class ArrayGrow {
 
 	public static boolean[] appendToArray(boolean[] array, boolean newItem) {
 		
-		int i = array.length;
+		int i = null==array?0:array.length;
 		boolean[] newArray = new boolean[i+1];
 		System.arraycopy(array, 0, newArray, 0, i);
 		newArray[i] = newItem;
@@ -16,7 +16,7 @@ public class ArrayGrow {
 	
 	public static int[] appendToArray(int[] array, int newItem) {
 		
-		int i = array.length;
+		int i = null==array?0:array.length;
 		int[] newArray = new int[i+1];
 		System.arraycopy(array, 0, newArray, 0, i);
 		newArray[i] = newItem;
@@ -25,16 +25,18 @@ public class ArrayGrow {
 
 	public static <T> T[] appendToArray(T[] source, T append) {
 		
-		int i = source.length;
+		int i = null==source?0:source.length;
 		T[] newArray = (T[]) Array.newInstance(append.getClass(), i+1);
-		System.arraycopy(source, 0, newArray, 0, i);
+		if (source!=null) {
+			System.arraycopy(source, 0, newArray, 0, i);
+		}
 		newArray[i] = append;
 		return newArray;
 	}
 	
 	public static <T> T[] appendToArray(T[] source, T append, Class<?> clazz) {
 		
-		int i = source.length;
+		int i = null==source?0:source.length;
 		T[] newArray = (T[]) Array.newInstance(clazz, i+1);
 		System.arraycopy(source, 0, newArray, 0, i);
 		newArray[i] = append;

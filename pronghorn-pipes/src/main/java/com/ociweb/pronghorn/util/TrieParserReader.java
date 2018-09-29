@@ -1205,7 +1205,7 @@ public class TrieParserReader {
 
 	private static int indexOfMatchInArray(short value, short[] data, int i) {
 		if (1==i) {
-			Branchless.ifEquals(value, data[0], 0, -1);
+			return Branchless.ifEquals(value, data[0], 0, -1);
 			//return (value==data[0]) ? 0 : -1;
 		}
 		return indexOfMatchInArrayScan(value, data, i);
