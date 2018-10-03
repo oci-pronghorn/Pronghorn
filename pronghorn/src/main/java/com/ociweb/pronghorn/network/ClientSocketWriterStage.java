@@ -226,7 +226,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean writeEncrypted(boolean didWork, int i, Pipe<NetPayloadSchema> pipe) {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
 		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
-				
+			
+		if (null==cc) {//closed or we can not get it yet, just push back till later.
+			return false;
+		}
+
 		final int msgIdx = Pipe.takeMsgIdx(pipe);
 		final long channelId = Pipe.takeLong(pipe);
 		assert(chnl==channelId);
@@ -251,6 +255,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
 		
 		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
+		if (null==cc) {
+			return false;
+		}
 
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		long channelId = Pipe.takeLong(pipe);

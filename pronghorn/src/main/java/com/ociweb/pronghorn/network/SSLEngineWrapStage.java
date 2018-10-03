@@ -1,13 +1,10 @@
 package com.ociweb.pronghorn.network;
 
-import java.nio.ByteBuffer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -22,7 +19,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private final SSLConnectionHolder      ccm;
 	private final Pipe<NetPayloadSchema>[] encryptedContent; 
 	private final Pipe<NetPayloadSchema>[] plainContent;
-	private ByteBuffer[]                   secureBuffers;
+
 	private Logger                         logger = LoggerFactory.getLogger(SSLEngineWrapStage.class);
 	
 	private long          totalNS;
@@ -55,8 +52,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 		this.isServer = isServer;
 		assert(encryptedContent.length==plainContent.length);
 		
-		int c = encryptedContent.length;
-		secureBuffers = new ByteBuffer[c];
+		int c = encryptedContent.length;		
 		while (--c>=0) {		
 						
 			int encLen = encryptedContent[c].maxVarLen;
@@ -82,15 +78,6 @@ public class SSLEngineWrapStage extends PronghornStage {
 
 	@Override
 	public void startup() {
-		
-		//must allocate buffers for the out of order content 
-		int c = encryptedContent.length;
-		secureBuffers = new ByteBuffer[c];
-		while (--c>=0) {						
-			int bufferSize = Math.max(encryptedContent[c].maxVarLen,plainContent[c].maxVarLen);			
-			secureBuffers[c] = ByteBuffer.allocateDirect(bufferSize);
-		}				
-		
 	}
 	
 	@Override
@@ -102,20 +89,20 @@ public class SSLEngineWrapStage extends PronghornStage {
 		
 		do {
 			didWork = false;
-			int i = encryptedContent.length;
-			while (--i >= 0) {
+			int r = encryptedContent.length;
+			while (--r >= 0) {
 							
-				final Pipe<NetPayloadSchema> sourcePipe = plainContent[i];
+				final Pipe<NetPayloadSchema> sourcePipe = plainContent[r];
+				final Pipe<NetPayloadSchema> targetPipe = encryptedContent[r];
 
-				if ((!Pipe.isEmpty(sourcePipe)) && Pipe.hasContentToRead(sourcePipe)) {
-					final Pipe<NetPayloadSchema> targetPipe = encryptedContent[i];
-					
+				if (Pipe.hasContentToRead(sourcePipe)) {
+								
+
 					try {					
-						didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer);			
+						didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, isServer);			
 					} catch (Throwable t) {
 						t.printStackTrace();
 						requestShutdown();
-						System.exit(0);
 						return;
 					}
 			
@@ -132,12 +119,13 @@ public class SSLEngineWrapStage extends PronghornStage {
 						assert(NetPayloadSchema.MSG_DISCONNECT_203 == msgId);
 											
 						long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+												
 						long time = System.currentTimeMillis();
 						
 						BaseConnection connection = ccm.lookupConnectionById(connectionId);
 						if (null!=connection) {
 							connectionId = connection.id;
-							SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
+							SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, isServer, time);					
 						}				
 						
 						Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203);

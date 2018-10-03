@@ -22,6 +22,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
@@ -54,6 +55,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	private int rateMask;
 	private final GraphManager graphManger;
+	
+	private final PoolIdx responsePipeLinePool;
 	
 	
 	/**
@@ -88,6 +91,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		if (null!=defaultRate && ClientCoordinator.minimumTimeout()<defaultRate.longValue()) {
 			GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, new Long(ClientCoordinator.minimumTimeout()), this);
 		}
+		
+		responsePipeLinePool = new PoolIdx(output.length, 1); //client response does not need to worry about groups; just reserve pipes.
+		
 	}
 
 	
@@ -317,8 +323,6 @@ public class ClientSocketReaderStage extends PronghornStage {
         
     }
 
-
-
 	private boolean processConnection(boolean didWork, ClientConnection cc) {
 		//process handshake before reserving one of the pipes
 		boolean doRead = true;
@@ -339,8 +343,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 		}
 		
 		if (doRead) {			
-			//holds the pipe until we gather all the data and got the end of the parse.
-			didWork = readFromSocket(didWork, cc, output[cc.getResponsePipeIdx()]);
+			
+		    int idx  = responsePipeLinePool.get(cc.id);//will assign if not found and one is available.
+		    if (idx>=0) {		    
+		    	//holds the pipe until we gather all the data and got the end of the parse.
+		    	didWork = readFromSocket(didWork, cc, output[idx]);
+		    } else {
+		    	didWork = false;//could not reserve a pipe.
+		    }
 
 		} else {
 			didWork = false;
@@ -419,6 +429,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 		
 		int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+		//System.out.println("reading encypted data on con "+id);
 		Pipe.addLongValue(id, target);
 		Pipe.addLongValue(System.nanoTime(), target);
 		
@@ -457,12 +468,26 @@ public class ClientSocketReaderStage extends PronghornStage {
 					
 					long conId =Pipe.takeLong(ack);
 					long pos = Pipe.takeLong(ack);
+					
+					int p= PoolIdx.getIfReserved(responsePipeLinePool,conId);
+					if (p>=0) {
+						if (Pipe.headPosition(output[p]) == pos) {					
+							responsePipeLinePool.release(conId);
+						}
+					}
 	    			
 	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
 				} else if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 					
 					long conID = Pipe.takeLong(ack);
 					long pos = Pipe.takeLong(ack);
+					
+					int p= PoolIdx.getIfReserved(responsePipeLinePool,conID);
+					if (p>=0) {
+						if (Pipe.headPosition(output[p]) == pos) {					
+							responsePipeLinePool.release(conID);
+						}
+					}
 					
 					int fieldSequenceNo = Pipe.takeInt(ack);
 					

@@ -177,6 +177,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	return logFile;
     }
     
+	@Override
+	public int maxConnections() {
+		return socketHolder.size();		
+	}
+    
 	public void setStart(PronghornStage startStage) {
 		this.firstStage = startStage;
 	}

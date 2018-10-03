@@ -150,7 +150,7 @@ public class NetGraphBuilder {
 		//Control for how many HTTP1xResponseParserStage instances we will be using
 		//This stage is NOT fast so can not support many
 		//TODO: must be power of 2?
-		int pipesPerResponseParser = 128;//do not make much smaller or we end up with too many threads..
+		int pipesPerResponseParser = 36;//128;//do not make much smaller or we end up with too many threads..
 		//HIGHVOLUME test
 		///////////////////////
 		final int responseParsers = Math.max(1, rawToParse.length/pipesPerResponseParser);

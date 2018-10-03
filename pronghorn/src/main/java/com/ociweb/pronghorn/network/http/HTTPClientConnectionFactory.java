@@ -30,9 +30,12 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 											long connectionId, int requestPipeIdx, int responsePipeIdx,
 											int hostId, long timeoutNS, int structureId) throws IOException {
 		
+		
+		
 		SSLEngine engine =  ccm.isTLS ?
-		        ccm.engineFactory.createSSLEngine(ClientCoordinator.registeredDomain(hostId), port)
-		        :null;
+					ccm.engineFactory.createSSLEngine(ClientCoordinator.registeredDomain(hostId), port)
+					:null;
+
 		        
 	    if (sessionId>=headerParsers.length) {
 	    	//grow both
@@ -55,7 +58,7 @@ public class HTTPClientConnectionFactory extends AbstractClientConnectionFactory
 				                    connectionId,
 				                    recordTypeData, timeoutNS, structureId,
 				                    headerParsers[sessionId]);
-		
+			
 	}
 
 	private long[] grow(long[] source, int size) {

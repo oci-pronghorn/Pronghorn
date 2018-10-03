@@ -152,6 +152,35 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (isConnectionReadyForUse(requestPipe) && null!=activeConnection ) {
 			didWork = true;	        
 	
+			//note this is a fixed pipe choice! 
+			Pipe<NetPayloadSchema> target = output[activeConnection.requestPipeLineIdx()];			
+	
+			if (!Pipe.hasRoomForWrite(target) ) {
+				return false;
+			}
+			
+ 			 int seq = activeConnection.getSequenceNo();
+
+			 if (0 == seq && ccm.isTLS) {
+				
+				 long started = activeConnection.getLastUsedTime();
+				 long duration = System.nanoTime()-started;
+				 
+				 ///////////////////////////////////////
+				 //BIG HACK for TLS handshake, we must wait 40 ms BEFORE we start sending data
+				 //This may be a problem on the server side no expecting data so quickly?
+				 //This is a problem on the server we are fixing on the client by 
+				 //waiting for the server to fully process the handshake,
+				 //TODO: urgent, must fix server ServerSocketReader -> SSLEngineUnwrap
+				 //This only happens on first TLS call
+				 
+				 if (duration < 40_000_000L) { //TODO: this needs urgent attention but the problem may be in the server..
+					 return false;
+				 }
+	
+			 }
+			
+			 activeConnection.setSequenceNo(++seq);
 			
 			final int msgIdx = Pipe.takeMsgIdx(requestPipe);			
 		    //we have already checked for connection so now send the request
@@ -162,35 +191,35 @@ public class HTTPClientRequestStage extends PronghornStage {
 			if (ClientHTTPRequestSchema.MSG_GET_200 == msgIdx) {
 				HTTPClientUtil.publish(
 						HTTPVerbDefaults.GET,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);				
+						requestPipe, activeConnection, target, now, stageId);				
 			
 			} else if (ClientHTTPRequestSchema.MSG_POST_201 == msgIdx) {
 				HTTPClientUtil.publishWithPayload(
 						HTTPVerbDefaults.POST,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+						requestPipe, activeConnection, target, now, stageId);
 			
 			} else if (ClientHTTPRequestSchema.MSG_HEAD_202 == msgIdx) {
 				HTTPClientUtil.publish(
 						HTTPVerbDefaults.HEAD,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+						requestPipe, activeConnection, target, now, stageId);
 			
 			} else if (ClientHTTPRequestSchema.MSG_DELETE_203 == msgIdx) {
 				HTTPClientUtil.publish(
 						HTTPVerbDefaults.DELETE,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+						requestPipe, activeConnection, target, now, stageId);
 							
 			} else if (ClientHTTPRequestSchema.MSG_PUT_204 == msgIdx) {
 				HTTPClientUtil.publishWithPayload(
 						HTTPVerbDefaults.PUT,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+						requestPipe, activeConnection, target, now, stageId);
 							
 			} else if (ClientHTTPRequestSchema.MSG_PATCH_205 == msgIdx) {
 				HTTPClientUtil.publishWithPayload(
 						HTTPVerbDefaults.PATCH,
-						requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
+						requestPipe, activeConnection, target, now, stageId);
 			
 			} else if (ClientHTTPRequestSchema.MSG_CLOSECONNECTION_104 == msgIdx) {
-				HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
+				HTTPClientUtil.cleanCloseConnection(requestPipe, activeConnection, target);
 				
 			} else {				
 				throw new UnsupportedOperationException("Unexpected Message Idx:"+msgIdx);
@@ -198,7 +227,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 						
 			Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
 			Pipe.releaseReadLock(requestPipe);	
-     
+		
 		}
 		return didWork;
 	}
@@ -211,8 +240,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
-		
-
 		
 		
 		//all the message fragments hold these fields in the same positions.
@@ -228,34 +255,38 @@ public class HTTPClientRequestStage extends PronghornStage {
 		}
 		assert(targetResponsePipe>=0) : "bad target response value";
 		
-		if (connectionId==-1) {
+		if (connectionId == -1) {
 			connectionId = ClientCoordinator.lookup(hostId, port, sessionId);
 		}
 		
  		if (connectionId>=0 && (null==activeConnection || activeConnection.id!=connectionId)) {
- 			activeConnection = (ClientConnection) ccm.connectionObjForConnectionId(connectionId, false);
-
+ 			activeConnection = (ClientConnection) ccm.connectionObjForConnectionId(connectionId, false); 			
  		}
+
 		 				
- 		
- 		if (null!=activeConnection
- 			&& (activeConnection.getId()==connectionId)
- 			&& activeConnection.isValid()
- 			&& !activeConnection.isClientClosedNotificationSent()) {
- 			//logger.info("this is the same connection we just used so no need to look it up");
- 		} else {
- 			
+ 		boolean singleHandShakes = false;
+ 		if (singleHandShakes) {
  			//limits wraps to only 1 at a time.
  			//does not appear to be the problem try unwraps.
  			//check previous and if it is not done shaking do not start this one.... return false
-// 			ClientConnection temp = lastHandShake; //hack test..
-// 			if (ccm.isTLS && null!=temp) {
-// 				if (needsToShake(temp.getEngine().getHandshakeStatus())) {
-// 					return false;//do not start a new one until this one is done.
-// 				}
-// 			}
+ 			ClientConnection temp = lastHandShake; //hack test..
+ 			if (ccm.isTLS && null!=temp) {
+ 				if (temp.getEngine().getHandshakeStatus() != HandshakeStatus.NOT_HANDSHAKING ) {
+ 					return false;//do not start a new one until this one is done.
+ 				}
+ 			}
+ 		}
+ 		
+ 		if (null!=activeConnection  //do not check connectionId since it can change
+ 			&& (activeConnection.sessionId==sessionId)
+ 			&& (activeConnection.hostId == hostId) 	
+ 			&& (!activeConnection.isDisconnecting())
+ 			&& (!activeConnection.isClientClosedNotificationSent())
  			
- 			
+ 				) {
+ 			//logger.info("this is the same connection we just used so no need to look it up");
+ 		} else {
+ 		 			
  			assert(null!=ClientCoordinator.registeredDomain(Pipe.peekInt(requestPipe,  3))) : "bad hostId";
  			assert( Pipe.peekInt(requestPipe,  2)!=0) : "sessionId must not be zero, MsgId:"+Pipe.peekInt(requestPipe);		
 			activeConnection = ClientCoordinator.openConnection(ccm, 
@@ -264,6 +295,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 																sessionId,  //session 1
 																targetResponsePipe,
 																output, connectionId, ccf);
+			
+
 			if (ccm.isTLS) {
 				lastHandShake = activeConnection;
 			}
@@ -279,14 +312,15 @@ public class HTTPClientRequestStage extends PronghornStage {
 			assert(activeConnection.isFinishConnect());
 			
 			if (ccm.isTLS) {	
-				
+					
 				//If this connection needs to complete a handshake first then do that and do not send the request content yet.
 				//ALL the conent will be held here until the connection and its handshake is complete
 				//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
 				if (needsToShake(handshakeStatus)) {					
-			
-					if (++blockedCycles>=CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
+					
+					
+					if (++blockedCycles >= CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
 						//if this is new connection but it is not hand shaking as expected 
 						//then we will drop the connection and try again.
 						long usageCount = ElapsedTimeRecorder.totalCount(activeConnection.histogram());
@@ -303,7 +337,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 						} else {
 							//drop request and close the connection
 							Pipe.skipNextFragment(requestPipe);
+							
 							//TODO: drop all while match??
+							
 							activeConnection.close();
 							activeConnection = null;
 						}
@@ -325,8 +361,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 				return false;//must try again later when the server has responded.
 			}
 			return true;
-			
-			
 		} else {
 			return false;
 		}

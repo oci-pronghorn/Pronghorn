@@ -15,4 +15,7 @@ public abstract class SSLConnectionHolder {
 	}
 
 	public abstract <B extends BaseConnection> B lookupConnectionById(long connectionId);
+	
+	public abstract int maxConnections();
+	
 }

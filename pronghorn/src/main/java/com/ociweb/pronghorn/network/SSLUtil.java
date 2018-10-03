@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.util.ByteBufferLocal;
 
 public class SSLUtil {
 
@@ -33,7 +34,7 @@ public class SSLUtil {
     public static final long HANDSHAKE_POS = -123;
     
 	
-	public static boolean handShakeWrapIfNeeded(BaseConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
+	public static boolean handShakeWrapIfNeeded(BaseConnection cc, Pipe<NetPayloadSchema> target,  boolean isServer, long arrivalTime) {
 						
 		 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 
@@ -51,7 +52,7 @@ public class SSLUtil {
 			 }
 			 
 			 if (HandshakeStatus.NEED_WRAP == handshakeStatus) {				 
-				 if (!SSLUtil.handshakeWrapLogic(cc, target, buffer, isServer, arrivalTime)) {
+				 if (!SSLUtil.handshakeWrapLogic(cc, target, isServer, arrivalTime)) {
 					 return false;//try later after target pipe has room.
 				 };
 				 handshakeStatus = cc.getEngine().getHandshakeStatus();				
@@ -75,18 +76,19 @@ public class SSLUtil {
 	 
 	}
 	
-	public static boolean handshakeWrapLogic(BaseConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
+	public static boolean handshakeWrapLogic(BaseConnection cc, Pipe<NetPayloadSchema> target,  boolean isServer, long arrivalTime) {
 	    
 		try {
 
 			do {
 				if (!Pipe.hasRoomForWrite(target)) {
+					
 					//unable to write right now try again later.
 					return false; //unable to complete, try again later
 				}
 				
 				final ByteBuffer[] targetBuffers = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
-				final Status status = SSLUtil.wrapResultStatusState(target, buffer, cc, noDatas, targetBuffers, isServer, arrivalTime);
+				final Status status = SSLUtil.wrapResultStatusState(target, cc, noDatas, targetBuffers, isServer, arrivalTime);
 				
 				if (Status.OK == status) {
 					
@@ -104,6 +106,8 @@ public class SSLUtil {
 				    }
 				    return true;
 				}
+				
+				
 			} while(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_WRAP); 
 			
 					
@@ -125,7 +129,7 @@ public class SSLUtil {
 		logger.error("Exception, in SERVER:{} '{}'",isServer, sslex.getLocalizedMessage(), sslex);
 	}
 
-	public static Status wrapResultStatusState(Pipe<NetPayloadSchema> target, ByteBuffer buffer,
+	public static Status wrapResultStatusState(Pipe<NetPayloadSchema> target, 
 			final BaseConnection cc, ByteBuffer[] bbHolder, final ByteBuffer[] targetBuffers, boolean isServer, long arrivalTime) throws SSLException {
 	
 		if (cc.getEngine().isOutboundDone()) {
@@ -134,27 +138,38 @@ public class SSLUtil {
 			return Status.CLOSED; 
 		}
 		
-		SSLEngineResult result = cc.getEngine().wrap(bbHolder, targetBuffers[0]); //TODO: writing to room of 12264 from hoolder target should be 16K or so.., why buffer overflow when we have so much room?
+		SSLEngineResult result;
+		if (targetBuffers[1].remaining()==0) {
+			result = cc.getEngine().wrap(bbHolder, targetBuffers[0]);
+		} else {
+			//wrap into the temp buffer since we are on the edge.
+			ByteBuffer buffer = ByteBufferLocal.get(target.maxVarLen);
+			((Buffer)buffer).clear();
+			result = cc.getEngine().wrap(bbHolder, buffer);
+			//write buffer to openA and openB
+			((Buffer)buffer).flip();					
+			copyBufferIntoTwoBuffers(buffer, targetBuffers);
+		}
 		
 		Status status = result.getStatus();
 
 		//logger.trace("status state {} wrote out {} bytges for connection {} target room {} {} ",status,result.bytesProduced(),cc.getId(), targetBuffers[0].remaining(), targetBuffers[0]);
 		
 		if (status==Status.OK) {
-					
+			
 			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
 			Pipe.addLongValue(cc.getId(), target);
 			Pipe.addLongValue(arrivalTime, target);
 			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int) result.bytesProduced(), target);
-
 			
 		} else if (status==Status.CLOSED){
-							
+			//System.out.println("tls wrap status close dddddddddd "+isServer);
+			
 			Pipe.unstoreBlobWorkingHeadPosition(target);
 			try {
-				 cc.getEngine().closeOutbound();				 
-				 handShakeWrapIfNeeded(cc, target, buffer, isServer, arrivalTime);				 
+ 				 cc.getEngine().closeOutbound();				 
+				 handShakeWrapIfNeeded(cc, target, isServer, arrivalTime);				 
 				 cc.getSocketChannel().close();
 				 cc.close();
 			} catch (IOException e) {
@@ -162,61 +177,10 @@ public class SSLUtil {
 				logger.warn("Error closing connection ",e);
 			}				
 			
-		} else if (status==Status.BUFFER_OVERFLOW) {
-		    assert(0==result.bytesProduced());
-
-			///////////
-			//This is only needed because engine.wrap does not take multiple target ByteBuffers as it should have.
-			///////////
-			try {
-				((Buffer)buffer).clear();
-				SSLEngineResult result2 = cc.getEngine().wrap(bbHolder, buffer);
-				
-				status = result2.getStatus();				
-				
-			//	logger.trace("overview processing status {} bytes produced {} for id {}",status,result2.bytesProduced(),cc.getId());
-				
-				
-				if (status == Status.OK) {
-					
-					//write buffer to openA and openB
-					((Buffer)buffer).flip();
-					
-					copyBufferIntoTwoBuffers(buffer, targetBuffers);
-															
-					Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-					Pipe.addLongValue(cc.getId(), target);	
-					Pipe.addLongValue(arrivalTime, target);
-					int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-					Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int) result2.bytesProduced(), target);
-
-				} else if (status == Status.BUFFER_OVERFLOW){
-				
-					logger.warn("wrapResultStatusState Buffer overflow {} ",buffer);
-					return status;
-					
-				} else {
-					
-					Pipe.unstoreBlobWorkingHeadPosition(target);	
-					if (status == Status.CLOSED) {
-						return status;
-					} else {
-						
-						throw new UnsupportedOperationException("unexpected status of "+status);
-						//ERROR?
-						
-					}
-				}
-				
-			} catch (SSLException sslex) {
-				manageException(sslex, cc, isServer);			
-				status = null;
-			}
-			
-			
-		} else {
-			
-			new Exception("case should not happen, we have too little data to be wrapped and sent").printStackTrace();
+		} else if (status==Status.BUFFER_OVERFLOW) { 
+			throw new RuntimeException("unexpected Buffer Overflow, the output pipe for wrap are not large enought to hold the payload.");
+		} else {			
+			new RuntimeException("case should not happen, we have too little data to be wrapped and sent").printStackTrace();
 		}
 		return status;
 	}
@@ -308,7 +272,8 @@ public class SSLUtil {
 			} else {
 				while (cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP 
 			    		  && (result==null || result.getStatus() == Status.OK) 
-			    		  && rolling.hasRemaining()) {
+			    		  && rolling.hasRemaining()
+			    		  ) {
 					    ////////////////////////
 					    ///Block needed for openSSL limitation
 					    ///////////////////////
@@ -318,11 +283,10 @@ public class SSLUtil {
 					    	rolling.limit(pos+maxEncryptedContentLength);
 					    }
 					    
-					    ////////////////////////					    
-						result = cc.getEngine().unwrap(rolling, targetBuffer);			
-		                ////////////////////////
+					    ////////////////////////	
+					   	result = cc.getEngine().unwrap(rolling, targetBuffer);			
+						////////////////////////
 						
-						((Buffer)rolling).limit(origLimit); //return origLimit, see above openSSL issue.
 						int bytesProduced = result.bytesProduced();
 						assert(cc.localRunningBytesProduced>=0);
 						cc.localRunningBytesProduced += bytesProduced;
@@ -395,7 +359,7 @@ public class SSLUtil {
 	}
 	
 	public static HandShakeUnwrapState handShakeUnWrapIfNeeded(int maxEncryptedContentLength, final Pipe<NetPayloadSchema> source, ByteBuffer rolling, 
-			                                      final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer, long arrivalTime, final BaseConnection cc) {
+			                                      final ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, /* ByteBuffer secureBuffer,*/ boolean isServer, long arrivalTime, final BaseConnection cc) {
 		
 		 assert(handshakePipe!=null);
 		 assert(source!=null);  
@@ -416,7 +380,7 @@ public class SSLUtil {
 			 //logger.info("\nunwrap handshake {} {}",handshakeStatus,cc.getId());
 		
 			 if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
-				if (!handshakeWrapLogic(cc, handshakePipe, secureBuffer, isServer, arrivalTime)) {
+				if (!handshakeWrapLogic(cc, handshakePipe, isServer, arrivalTime)) {
 					return HandShakeUnwrapState.WAIT_FOR_ROOM;//try again later when output pipe has room.
 				};
 				handshakeStatus = cc.getEngine().getHandshakeStatus();
@@ -554,7 +518,7 @@ public class SSLUtil {
 								}
 							}							
 							
-							logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc);							
+							logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc,sslex);							
 						} else {
 							//do not disconnect if we are the client
 							if (cc.isValid && !cc.isDisconnecting() ) {
@@ -605,7 +569,7 @@ public class SSLUtil {
 	 * Encrypt as much as possible based on the data available from the two pipes
 	 */
 	public static boolean engineWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, 
-			                         Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer) {
+			                         Pipe<NetPayloadSchema> target, boolean isServer) {
 		
 		boolean didWork = false;
 			
@@ -620,16 +584,16 @@ public class SSLUtil {
 			
 		}
 
+
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
 			long connectionId = Pipe.peekLong(source, 0xFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
-			//TODO: what if the connection changes while in flight.
+		
 			final BaseConnection cc = ccm.lookupConnectionById(connectionId);
 						
 			if (null==cc || !cc.isValid) {
-				//logger.info("connection has dropped and data with it");
-				((Buffer)buffer).clear();
+				//logger.info("\nconnection has dropped and data with it");
 //				//do not process this message because the connection has dropped				
 				Pipe.skipNextFragment(source);
 
@@ -641,11 +605,7 @@ public class SSLUtil {
 				continue;
 			}
 			
-			((Buffer)buffer).clear(); //buffer will not bring in ANY data.
-
-		//	logger.info("wrap data for {} ",cc.getId());
-
-			if (handShakeWrapIfNeeded(cc, target, buffer, isServer, Pipe.peekLong(source, 0xFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_ARRIVALTIME_210))) {
+			if (handShakeWrapIfNeeded(cc, target, isServer, Pipe.peekLong(source, 0xFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_ARRIVALTIME_210))) {
 			
 				//we know the message is plain but what was the position? if this is an empty message just for handshake then clear it
 				if (Pipe.peekLong(source, 0xFFFF&NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206) == HANDSHAKE_POS) {
@@ -673,7 +633,7 @@ public class SSLUtil {
 	
 			try {
 				final ByteBuffer[] targetBuffers = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
-				Status status = wrapResultStatusState(target, buffer, cc, soruceBuffers, targetBuffers, isServer, arrivalTime);
+				Status status = wrapResultStatusState(target, cc, soruceBuffers, targetBuffers, isServer, arrivalTime);
 											
 				if (status == Status.OK) {
 					didWork = true;
@@ -693,9 +653,7 @@ public class SSLUtil {
 			}
 			
 		}
-		
-		((Buffer)buffer).clear();
-		
+
 		return didWork;
 	}
 
@@ -727,9 +685,7 @@ public class SSLUtil {
 	///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
 	public static int engineUnWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target,
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, Pipe<ReleaseSchema> releasePipe, 
-			                        ByteBuffer secureBuffer, boolean isServer) {
-		
-
+			                        boolean isServer) {
 
 		while (Pipe.hasContentToRead(source) && Pipe.hasRoomForWrite(target) ) {			
 		
@@ -752,7 +708,7 @@ public class SSLUtil {
 	
 					//need to come back in for needed wrap even without content to read but... we need the content to give use the CC !!!
 					HandShakeUnwrapState unwrapResult = handShakeUnWrapIfNeeded(ccm.engineFactory.maxEncryptedContentLength(), source, 
-							                          rolling, workspace, handshakePipe, secureBuffer, 
+							                          rolling, workspace, handshakePipe,  
 							                          isServer, arrivalTime=Pipe.peekLong(source, 3), cc);
 					
 					assert(rolling.limit()==rolling.capacity());	
@@ -767,8 +723,8 @@ public class SSLUtil {
 						//logger.trace("finished shake");
 						if (null!=releasePipe && rolling.position()==0 && Pipe.contentRemaining(source)==0) {		
 							 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();	
-							 if (HandshakeStatus.NEED_UNWRAP != handshakeStatus) {
-								 //NOTE: Test to see if this avoids deadlocks: System.out.println("release: "+handshakeStatus);
+							 if (HandshakeStatus.NOT_HANDSHAKING == handshakeStatus) {
+								 assert(rolling.limit() == rolling.capacity());
 								 sendRelease(source, releasePipe, cc, isServer);
 							 }
 						}
@@ -777,6 +733,7 @@ public class SSLUtil {
 							return 1;//not yet done with handshake so do not start processing data.
 							///////////////////
 						}
+						
 					} else {
 	
 						assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
@@ -785,6 +742,7 @@ public class SSLUtil {
 						assert(null!=cc);
 						
 					}
+
 				} else {
 					//logger.info("\nBegin or EOF");
 					//this is EOF or the Begin message to be relayed
@@ -905,7 +863,7 @@ public class SSLUtil {
 					return 0;
 					
 				} else if (status==Status.CLOSED){				
-					statusClosed(ccm, source, rolling, workspace, handshakePipe, secureBuffer, isServer, cc,
+					statusClosed(ccm, source, rolling, workspace, handshakePipe, isServer, cc,
 							arrivalTime);
 					
 				}
@@ -917,12 +875,12 @@ public class SSLUtil {
 	}
 
 	private static void statusClosed(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, ByteBuffer rolling,
-			ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, ByteBuffer secureBuffer, boolean isServer,
+			ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, boolean isServer,
 			BaseConnection cc, long arrivalTime) {
 		//logger.trace("closed status detected");				
 		try {
 			 cc.getEngine().closeOutbound();
-			 handShakeUnWrapIfNeeded(ccm.engineFactory.maxEncryptedContentLength(), source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime, cc);
+			 handShakeUnWrapIfNeeded(ccm.engineFactory.maxEncryptedContentLength(), source, rolling, workspace, handshakePipe, isServer, arrivalTime, cc);
 		     cc.getSocketChannel().close();
 		} catch (IOException e) {
 			cc.isValid = false;

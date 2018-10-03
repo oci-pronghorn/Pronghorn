@@ -10,7 +10,6 @@ import java.nio.channels.NoConnectionPendingException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -106,7 +105,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			 			  ) throws IOException {
 
 		super(engine, SocketChannel.open(), conId);
-		
+
 		
 		//TODO: add support to hold data to be returned to client responder.
 		this.connectionDataWriter = null;
@@ -137,18 +136,20 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		if (logDisconnects) {
 			logger.info("new client socket connection to {}:{} session {}",host,port,sessionId);
 		}
-				
+
 		initSocket(this.getSocketChannel());
-						
+
+		
+
 		this.recBufferSize = this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
 
+		resolveAddressAndConnect(port);		
+		
 		this.payloadSize = isTLS ?
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200) :
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 				
-		resolveAddressAndConnect(port);		
-		
-		System.gc();
+
 		inFlightTimes = new long[maxInFlight];
 
 	}
@@ -343,10 +344,12 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 				    		logger.info("new connection completed to {}:{}",host,port);
 				    	}
 				    }
+				   
 					return finishConnect;
 				} else {
 					close();
 					isFinishedConnection = true;	
+					
 					return true;
 				}
 				
@@ -369,7 +372,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	public boolean isRegistered() {
 		return this.key!=null;
 	}
-		
+
 	public void registerForUse(Selector selector, Pipe<NetPayloadSchema>[] handshakeBegin, boolean isTLS) throws IOException {
 
 		SocketChannel socket = getSocketChannel();		
@@ -388,7 +391,8 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		}
 		isValid = true;
 		//must be last, this connection can not be used until this key is not null;
-		this.key = tempkey;
+		this.key = tempkey;	
+
 	}
 
 	private void beginHandshakeNow(Pipe<NetPayloadSchema>[] handshakeBegin) throws SSLException {
@@ -406,13 +410,11 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		} 
         /////////////
 		if (HandshakeStatus.NEED_WRAP == handshake) {							
-				int c= (int)getId()%handshakeBegin.length;				
+						
 				boolean sent = false;
 				do {
-					int j = handshakeBegin.length;
-					while (--j>=0) {//find first available pipe to send handshake
-							
-						final Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
+								
+						final Pipe<NetPayloadSchema> pipe = handshakeBegin[requestPipeLineIdx()];
 						assert(null!=pipe);
 						
 						if (Pipe.hasRoomForWrite(pipe)) {
@@ -435,18 +437,15 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 							sent = true;
 							break;
 						} else {
+							//begin handshake pipe should be longer to avoid this issue...
+							logger.warn("Not enough open pipes available to begin handshake. Total pipes: "+handshakeBegin.length);
+							Thread.yield();
 							//Why so much data??
-					//		System.out.println("pipe is not long enough to begin handshake "+pipe);
-							if (--c<0) {
-								c = handshakeBegin.length-1;
-							}
+					
 						}
-					}
-					if (j<0) {
-						//begin handshake pipe should be longer to avoid this issue...
-						logger.warn("Not enough open pipes available to begin handshake. Total pipes: "+handshakeBegin.length);
-						Thread.yield();
-					}
+					
+					
+					
 				} while (!sent);
 
 		
@@ -458,7 +457,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	public boolean isValid() {
 
 		SocketChannel socketChannel = getSocketChannel();
-		if (null==socketChannel || (!socketChannel.isConnected())) {
+		if (null==socketChannel || (!socketChannel.isConnected()) ) {
 			if (logDisconnects) {
 				logger.info("{}:{} session {} is no longer connected. It was opened {} ago.",
 						host,port,sessionId,

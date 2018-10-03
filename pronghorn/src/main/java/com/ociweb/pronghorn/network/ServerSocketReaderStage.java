@@ -138,7 +138,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         	 this.isOk = new PipeLineFilter(coordinator);      
         	 this.responsePipeLinePool = new PoolIdx(
 	             		output.length,
-	             		coordinator.serverResponseWrapUnitsAndOutputs
+	             		output.length<coordinator.serverResponseWrapUnitsAndOutputs?1:coordinator.serverResponseWrapUnitsAndOutputs
              		); 	
         } else {
         	 this.isOk = null;

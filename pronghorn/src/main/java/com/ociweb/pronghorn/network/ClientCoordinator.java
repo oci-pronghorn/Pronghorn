@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.LongLongHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
@@ -19,7 +18,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ArrayGrow;
-import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -37,6 +35,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private Selector selector;
 	private static final Logger logger = LoggerFactory.getLogger(ClientCoordinator.class);
 	private PronghornStage firstStage;
+	
 	
 	public static boolean TEST_RECORDS = false;
 	
@@ -206,7 +205,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
-	public int maxClientConnections() {
+	@Override
+	public int maxConnections() {
 		return connections.size();		
 	}
 	
@@ -340,6 +340,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 
 
 	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int seed) {
+		
 		int result = -1;
 		//if we go around once and find nothing then stop looking
 		int i = output.length;
@@ -376,7 +377,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				assert(null!=ClientCoordinator.registeredDomain(hostId)) : "bad hostId";
 				
 		        ClientConnection cc = null;
-
+	
 		        
 				if ((-1 == connectionId)
 					|| (null == (cc = (ClientConnection) ccm.connections.get(connectionId))) //not yet created
@@ -410,25 +411,31 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					}
 					
 					int pipeIdx = -1;
-					
+							
 					if (connectionId<0
-					    || (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
+					    || 
+					    (pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length)))<0) {
 						
 						//if (ClientAbandonConnectionScanner.showScan) {
 						//	System.out.println("no new connections avail......");	
 						//}
 						return reportNoNewConnectionsAvail(ccm, connectionId);
 					}
-	
+					
+							 			
 					long timeoutNS = ClientCoordinator.lookupSessionTimeoutNS(sessionId);
+					int structureId = structureId(sessionId, ccm.typeData);
+		
 					
 					try {
-						//create new connection because one was not found or the old one was closed
-						cc = ccf.newClientConnection(ccm, port, sessionId, 
-													connectionId, 
-													pipeIdx, responsePipeIdx, hostId, timeoutNS,
-													structureId(sessionId, ccm.typeData));
-					
+							
+								//create new connection because one was not found or the old one was closed
+								cc = ccf.newClientConnection(ccm, port, sessionId, 
+															connectionId, 
+															pipeIdx, responsePipeIdx, hostId, timeoutNS,
+															structureId);
+		
+						
 					} catch (IOException ex) {
 						logger.warn("\nUnable to open connection to {}:{}",ClientCoordinator.registeredDomain(hostId),port, ex);
 						connectionId = Long.MIN_VALUE;
@@ -529,6 +536,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
 			                                   ClientConnection cc) {
 		
+		
 		//logger.info("\n ^^^ doRegister {}",cc.id);
 		try {
 			if (!cc.isFinishConnect()) {				
@@ -536,15 +544,17 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 				cc = null; //try again later
 			} else {
+			
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
 				//logger.info("\n ^^^^ new connection established to {}",cc);
+				
 				
 				BaseConnection con = ccm.lookupConnectionById(cc.id);
 		
 				if (cc != con) {
 					cc = null;//closed
 				}				
-				
+								
 			}
 		} catch (IOException e) {
 			logger.trace("unable to register because connection is already closed",e);

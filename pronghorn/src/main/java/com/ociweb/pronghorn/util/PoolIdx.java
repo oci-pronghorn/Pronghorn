@@ -24,7 +24,7 @@ public final class PoolIdx  {
         this.groups = groups;
         
         if ((length%groups != 0) || (groups>length)) {
-        	throw new UnsupportedOperationException("length must be divisiable by groups value.");
+        	throw new UnsupportedOperationException("length must be divisiable by groups value. length:"+length+" groups:"+groups);
         }
         
         this.step = length/groups;

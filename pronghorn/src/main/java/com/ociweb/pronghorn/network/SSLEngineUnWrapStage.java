@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -26,18 +26,15 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] outgoingPipeLines;
 	private final Pipe<ReleaseSchema> handshakeRelease; //to allow for the release of the pipe when we do not need it.
 	private final Pipe<NetPayloadSchema>  handshakePipe;
-	private ByteBuffer[]                          rollings;
+
 	private ByteBuffer[]                          workspace;
 	private Logger logger = LoggerFactory.getLogger(SSLEngineUnWrapStage.class);
 	
-	private long totalNS;
-	private int calls;
-	private ByteBuffer secureBuffer;
+
 	private final boolean isServer;
 
 	private int shutdownCount;
-	
-	private int idx;
+	private final int rollingSize;
 
 	/**
 	 *
@@ -59,10 +56,10 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.encryptedContent = encryptedContent;
 		this.outgoingPipeLines = outgoingPipeLines;
 		this.handshakeRelease = relesePipe;
-				
-		assert(outgoingPipeLines.length>0);
-		assert(encryptedContent.length>0);
-		assert(encryptedContent.length == outgoingPipeLines.length);
+
+		if (encryptedContent.length != outgoingPipeLines.length) {
+			throw new UnsupportedOperationException("Must have the same count of input and output pipes");
+		};
 		
 		if (encryptedContent.length<=0) {
 			throw new UnsupportedOperationException("Must have at least 1 input pipe");		
@@ -71,7 +68,8 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 			throw new UnsupportedOperationException("Must have at least 1 output pipe");
 		}
 		
-		
+		this.rollingSize = PronghornStage.maxVarLength(encryptedContent)*2;
+				
 		this.handshakePipe = handshakePipe;
 		
 		this.supportsBatchedPublish = false;
@@ -86,25 +84,32 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		
 	}
 
+	private ByteBuffer[] rollerArray;
+
 	
 	@Override
 	public void startup() {
 		
-		idx = encryptedContent.length;
+		////////////////////////////////////////////////////////
+		//NOTE: a single output pipe may contain many client responses
+		//      as a result we need multiple rollers.
+		////////////////////////////////////////////////////////
 		
-		//must allocate buffers for the out of order content 
-		int c = encryptedContent.length;
-		rollings = new ByteBuffer[c];
-		while (--c>=0) {
-			//we process every record so the max this can be is 2 blocks.
-			rollings[c] = ByteBuffer.allocateDirect(encryptedContent[c].maxVarLen*2);
-		}				
+		//maxConnections array with a hash into these location. with session and hash..
+		//keep connection array for match..
+		
+		int len = encryptedContent.length;// : ccm.maxConnections();
+		
+		this.rollerArray = new ByteBuffer[len];
+		
+		int x = len;
+		while (--x>=0) {
+			this.rollerArray[x] = ByteBuffer.allocateDirect(rollingSize);
+		}
 		
 		//we use this workspace to ensure that temp data used by TLS is not exposed to the pipe.
 		this.workspace = new ByteBuffer[]{ByteBuffer.allocateDirect(SSLUtil.MinTLSBlock),ByteBuffer.allocateDirect(0)};
-		
-		this.secureBuffer = null==handshakePipe? null : ByteBuffer.allocate(outgoingPipeLines[0].maxVarLen*2);
-		
+
 	}
 	
 	
@@ -113,25 +118,26 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	public void run() {	
 		
 		long start = System.nanoTime();
-		calls++;	
 		
 		int didWork;
 		
 		do {
 			didWork=0;
 
-			int m = 100;//maximum iterations before taking a short break.
-
-			while ((--idx>=0) && (--m>=0)) {
-				
+			int idx = encryptedContent.length;
+			while ((--idx>=0) ) {
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
-
 				if ((!Pipe.isEmpty(source)) && Pipe.hasContentToRead(source)) {
 				
 					Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
 	
-					int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, 
-							                        secureBuffer, isServer);			
+					
+					ByteBuffer roller = rollerArray[idx];
+															
+					
+					int temp = SSLUtil.engineUnWrap(ccm, source, target, roller, 
+							                        workspace, handshakePipe, handshakeRelease, 
+							                        isServer);			
 					
 					if (temp<0) {
 						if (--shutdownCount == 0) {
@@ -144,52 +150,27 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 					}
 				}
 			}			
-			
-			//loop back arround
-			if (idx<=0) {
-				idx= encryptedContent.length;
-			}
-			
+					
 		} while (didWork!=0);
-		
-		
-		totalNS += System.nanoTime()-start;
-		
-				
+			
 	}
 	
 
 	@Override
 	public void shutdown() {
 		
-		if (null==rollings) {
+		if (null==rollerArray) {
 			//never started up so just exit
 			return;
 		}
 		
-		int i = rollings.length;
-		while (--i>=0) {
-			
-			if (rollings[i].position()>0) {
-				logger.warn("unwrap found unconsumed data in buffer {} of value {} ",i, rollings[i]);
+		int i = rollerArray.length;
+		while (--i>=0) {			
+			if (null!=rollerArray[i] && (rollerArray[i].position()>0)) {
+				logger.warn("unwrap found unconsumed data in buffer {} of value {} ",i, rollerArray[i]);
 			}
-			
 		}
-		
-		boolean debug = false;
-		if (debug) {
-			long totalBytesOfContent = 0;
-			i = outgoingPipeLines.length;
-			while (--i>=0) {
-				
-				totalBytesOfContent += Pipe.getBlobTailPosition(outgoingPipeLines[i]);
-			}
-			
-			float mbps = (float) ( (8_000d*totalBytesOfContent)/ (double)totalNS);
-			
-			logger.info("unwrapped total bytes "+totalBytesOfContent+"    "+mbps+"mbps");
-			logger.info("unwrapped total time "+totalNS+"ns total callls "+calls);
-		}
+
 	}
 	
 

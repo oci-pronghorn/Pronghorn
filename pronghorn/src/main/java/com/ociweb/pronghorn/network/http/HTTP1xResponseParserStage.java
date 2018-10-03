@@ -558,24 +558,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							//do not change state we want to come back here.									
 						} else {
-							//logger.trace("end of headers");
-							positionMemoData[stateIdx] = endOfHeaderProcessing(i, stateIdx, writer);
-																							
-							//logger.trace("finished reading header now going to state {}",state);
-						
-							if (3==positionMemoData[stateIdx]) {
-								//release all header bytes, we will do each chunk on its own.
-								assert(runningHeaderBytes[i]>0);								
-								Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
-								runningHeaderBytes[i] = 0; 
-							}
-							//only case where state is not 1 so we must call save all others will call when while loops back to top.
-							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
-
-							//logger.info("payload position  {}", writer.position());
-							//NOTE: payload index position is always zero 
-							DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
-																
+							endOfHeaderProcessing(i, memoIdx, stateIdx, localInputPipe, writer);																
 						}
 					} 
 					
@@ -584,19 +567,20 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				if (headerToken == -1) {
 					
 					writer.absolutePosition(startingPosition);
-					
-					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
+									
 					if (trieReader.sourceLen<MAX_VALID_HEADER) {
 						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 						break;//not an error just needs more data.
 					} else {
-					    
+						
+						//if this starts with HTTP/1.1 200 OK then we are just missing the end of the last header..
 						reportCorruptStream2(cc);
 						
 						//TODO: bad client, disconnect??  finish partial message out!!!
 						
 					}
+					
+					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 					
 					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
 					assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
@@ -908,6 +892,27 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return foundWork;
 	}
 
+	private void endOfHeaderProcessing(int i, final int memoIdx, final int stateIdx,
+			Pipe<NetPayloadSchema> localInputPipe, DataOutputBlobWriter<NetResponseSchema> writer) {
+		//logger.trace("end of headers");
+		positionMemoData[stateIdx] = endOfHeaderProcessing(i, stateIdx, writer);
+																		
+		//logger.trace("finished reading header now going to state {}",state);
+
+		if (3==positionMemoData[stateIdx]) {
+			//release all header bytes, we will do each chunk on its own.
+			assert(runningHeaderBytes[i]>0);								
+			Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
+			runningHeaderBytes[i] = 0; 
+		}
+		//only case where state is not 1 so we must call save all others will call when while loops back to top.
+		TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
+
+		//logger.info("payload position  {}", writer.position());
+		//NOTE: payload index position is always zero 
+		DataOutputBlobWriter.setIntBackData(writer, writer.position(), 0);
+	}
+
 	private boolean checkPipeWriteState(final int stateIdx, Pipe<NetResponseSchema> targetPipe) {
 		if (positionMemoData[stateIdx] == 0) {
 			assert (!Pipe.isInBlobFieldWrite(targetPipe)) : 
@@ -1058,13 +1063,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private void reportCorruptStream2(ClientConnection cc) {
 		StringBuilder builder = new StringBuilder();
-		TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2);
-		logger.warn("{} looking for header field but found:\n{}\n\n",cc.id,builder);
+		
+		trieReader.sourcePos -= 10;
+		TrieParserReader.debugAsUTF8(trieReader, builder, Math.min(trieReader.sourceLen,revisionMap.longestKnown()*2));
+				
+		trieReader.sourcePos += 10;
+		logger.warn("{} looking for header field but found:\n{}\nNOTE this starts 10 bytes before issue\n",cc.id,builder);
 	}
 
 	private void reportCorruptStream(String label, ClientConnection cc) {
 		StringBuilder builder = new StringBuilder();
-		TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2,false);
+		TrieParserReader.debugAsUTF8(trieReader, builder, Math.min(trieReader.sourceLen,revisionMap.longestKnown()*2),false);
 		logger.warn("{} looking for {} but found:\n{}\n\n",cc.id,label,builder);
 	}
 

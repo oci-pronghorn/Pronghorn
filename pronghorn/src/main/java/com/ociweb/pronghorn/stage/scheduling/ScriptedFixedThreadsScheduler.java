@@ -1068,11 +1068,17 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
 	    		}
 
-				//TODO: NOTE: this is optimized for low load conditions, eg the next pipe has room.
+	    		//boolean isMonitor = GraphManager.hasNota(graphManager, stageArrays[k][0].stageId, GraphManager.MONITOR);
+	    	//	System.out.println("order: "+reverseOrder+" isMonitor "+isMonitor);
+
+				//TODO: NOTE: when false this is optimized for low load conditions, eg the next pipe has room.
 				//      This boolean can be set to true IF we know the pipe will be full all the time
 				//      By setting this to true the scheduler is optimized for heavy loads
 				//      Each individual part of the graph can have its own custom setting... 
 				boolean reverseOrder = false;
+
+				//System.out.println("only seems to help if we can toggle this fast; reverse:"+reverseOrder);
+				
 	    		StageVisitor checkForLongRuns = (idxThreadCheckingForLongRuns!=k) ? null : longRunVisitor;
 	    		ntsArray[ntsIdx++] = new ScriptedNonThreadScheduler( 
 	    				             graphManager, reverseOrder, 

@@ -27,7 +27,7 @@ public abstract class BaseConnection {
 
 	protected boolean isDisconnecting = false;
 
-    private long lastUsedTimeNS = System.currentTimeMillis();
+    private long lastUsedTimeNS = System.nanoTime();
 
 	protected ChannelWriterController connectionDataWriter;
 	protected ChannelReaderController connectionDataReader;	
@@ -73,7 +73,7 @@ public abstract class BaseConnection {
 	}
 	
 	public SSLEngine getEngine() {
-		return engine;		
+			return engine;		
 	}
 	
 	public String toString() {
