@@ -150,8 +150,9 @@ public class NetGraphBuilder {
 		//Control for how many HTTP1xResponseParserStage instances we will be using
 		//This stage is NOT fast so can not support many
 		//TODO: must be power of 2?
-		int pipesPerResponseParser = 36;//128;//do not make much smaller or we end up with too many threads..
-		//HIGHVOLUME test
+		int pipesPerResponseParser = 64;//do not make much smaller or we end up with too many threads..
+		//HIGHVOLUME test TODO: urgent if the above is too small the return pipes are not attached.
+		//TODO: urgent the respones parse consumes most of the time and needs to be optimized.
 		///////////////////////
 		final int responseParsers = Math.max(1, rawToParse.length/pipesPerResponseParser);
 		
@@ -337,14 +338,10 @@ public class NetGraphBuilder {
 		logger.trace("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs, coordinator.incomingDataConfig);           
            
-		
-		/////////////////
-		boolean readerPerTrack = false;
-		
         Pipe<ReleaseSchema>[] ack = buildSocketReaderStage(graphManager, 
         		                                                         coordinator, 
         		                                                         coordinator.moduleParallelism(),
-        		                                                         encryptedIncomingGroup, readerPerTrack);
+        		                                                         encryptedIncomingGroup);
                        
         
         Pipe<NetPayloadSchema>[] handshakeIncomingGroup = null;
@@ -546,9 +543,8 @@ public class NetGraphBuilder {
 			final GraphManager graphManager, 
 			final ServerCoordinator coordinator, 
 			final int tracks,
-			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup,
-			final boolean readerPerTrack) {
-		
+			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup) {
+
 		Pipe<ReleaseSchema>[] acks;
 		
 		if (!coordinator.isTLS) {
@@ -559,19 +555,28 @@ public class NetGraphBuilder {
 					               coordinator.pcm.getConfig(ReleaseSchema.class));						
 		}
 
+	 
+		//if we have at least 4 tracks and it is divisible by 2
+		boolean needsMultipleReaders = (tracks>=4) && (tracks&1)==0;				
 		
-		if (readerPerTrack && !coordinator.isTLS) { //NO TLS because !coordinator.isTLS would need to split up
-			Pipe[][] in = Pipe.splitPipes(tracks, encryptedIncomingGroup);
+		if (needsMultipleReaders && !coordinator.isTLS) { 
+			int groups = tracks>>1; 
 			
-			for(int x=0; x<tracks; x++) {
+			Pipe[][] in  = Pipe.splitPipes(groups, encryptedIncomingGroup);
+			Pipe[][] out = Pipe.splitPipes(groups, acks);
+			
+			for(int x=0; x<groups; x++) {
 						
-				ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, new Pipe[] {acks[(tracks-1)-x]}, in[x], coordinator);
+				ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, out[(groups-x)-1], in[x], coordinator);
 				GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
 				coordinator.processNota(graphManager, readerStage);
 	
 			} 
 			
 		} else {
+			/////////////////
+			//do not split for TLS since it is already slow and the ack backs are more complex
+			/////////////////
 			
 			ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager,  acks, encryptedIncomingGroup, coordinator);
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
