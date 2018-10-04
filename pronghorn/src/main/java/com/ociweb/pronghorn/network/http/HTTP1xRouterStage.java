@@ -1087,6 +1087,8 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 
  void sendError(TrieParserReader trieReader, final long channel, final int idx, int tempLen, int tempPos,
 		int errorCode) {
+
+	BaseConnection con = coordinator.lookupConnectionById(channel);
 	boolean sent = sendError(channel, idx, errorCode); 			
 	
 	if (!sent) {
@@ -1102,16 +1104,21 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 		////////////////
 		//this block is already done because sendError will close upon xmit
 		//it is doen here because the sendError failed
-		BaseConnection con = coordinator.lookupConnectionById(channel);
 		if (null!=con) {
 			con.clearPoolReservation();		
 			con.close();
+		}
+	} else {
+		//error was sent, do clear reservation 
+		if (null!=con) {
+			con.clearPoolReservation();	
 		}
 	}
 	//in all cases clear out the reader data.
 	//this connection is now closed so do not read any more.
 	trieReader.sourceLen = 0;
 	trieReader.sourcePos = 0;
+	
 		
 }
 
@@ -1123,6 +1130,9 @@ private boolean sendError(final long channel, final int idx, int errorCode) {
 				              errorCode, errorResponsePipe);		
 		sent = true;				
 	}
+
+	sendRelease(channel, idx);
+	
 	return sent;
 }
 
@@ -1150,15 +1160,6 @@ private void sendRelease(long channel, final int idx) {
 	this.inputSlabPos[idx]=-1;
 
 }
-
-private void badClientError(long channel) {
-	BaseConnection con = coordinator.lookupConnectionById(channel);
-	if (null!=con) {
-		con.clearPoolReservation();		
-		con.close();
-	}
-}
-
 
 private static int accumRunningBytes(
 						 HTTP1xRouterStage<?, ?, ?, ?> that,
@@ -1205,6 +1206,7 @@ private static int accumRunningBytes(
 	        				
 	        				con.clearPoolReservation();		
 	        				con.close();
+	        				that.sendRelease(connectionId, idx);
 	        					        				
 	        			}	        			
 	        			Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(selectedInput, NetPayloadSchema.MSG_DISCONNECT_203));
