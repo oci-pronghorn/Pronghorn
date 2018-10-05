@@ -85,75 +85,12 @@ public final class PoolIdx  {
     	return get(this,key);
     }
     
-    public static int get(PoolIdx that, long key) {   
-    	
-        long[] localKeys = that.keys;
-        byte[] localLocked = that.locked;
-        
-        int idx = -1;
-       
-        int g = that.groups;
-        while (--g>=0) {
-        	int j = that.step;        
-	        while (--j>=0) {
-	        	///////////
-	        	int temp = (g*that.step)+j;
-	            /////////
-	            //found and returned member that matches key and was locked
-	            if (key == localKeys[temp] && 1 == localLocked[temp]) {
-	                return temp;
-	            } else {
-	                //this slot was not locked so remember it
-	                //we may want to use this slot if key is not found.
-	            	if (0 == localLocked[temp]) {	            		
-	            		if (idx<0) {
-	            			//not already set
-	            			if (0 == localLocked[temp]) {
-	            				idx = temp; //if unlocked take it
-	            			}
-	            		} else {
-	            			//already set do we have something better?
-	            			if (key == localKeys[temp]) {
-	            				idx = temp; //take this one since we had it before
-	            			} else if (-1 == localKeys[temp] //never used
- 	            					  && localKeys[idx]!=key) { //and not already assigned to previous selection
-	            				idx = temp;
-	            			}	            			            			
-	            		}	            				                
-	            	}
-	            }
-	        }
-        }
-        
-        
-        return startNewLock(that, key, idx);
+    public static int get(PoolIdx that, long key) {
+    	return that.get(key, PoolIdxPredicate.allOk);       
     }
     
-//    //TODO: rewrite this function so its can do the get logic... This will alow for us to no longer pass in groups count
-//	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int seed) {
-//		int result = -1;
-//		//if we go around once and find nothing then stop looking
-//		int i = output.length;
-//		
-//		//when we reverse we want all these bits at the low end.
-//		int shiftForFlip = 33-Integer.highestOneBit(i);//33 because this is the length not the max value.
-//		
-//		//find the first one on the left most connection since we know it will share the same thread as the parent.
-//		int c = seed;
-//		while (--i>=0) {
-//			int activeIdx = Integer.reverse(c<<shiftForFlip)		
-//					        % output.length; //protect against non power of 2 outputs.
-//			
-//			if (Pipe.hasRoomForWrite(output[activeIdx])) { //  activeOutIdx])) {
-//				result = activeIdx;
-//				break;
-//			}
-//			c++;
-//			
-//		}
-//		return result;
-//	}
     
+    int lastUsedGroup = 0;//must hold this state so each request goes to the next goup.
     /**
      * 
      * @param key
@@ -166,9 +103,14 @@ public final class PoolIdx  {
         int j = step;        
         while (--j>=0) {
         	int g = groups;
+        	int gr = lastUsedGroup;
         	while (--g>=0) {
 	        	///////////
-	        	int temp = (g*step)+j;
+        		if (--gr<0) {
+        			gr = groups-1;
+        		}
+        		
+	        	int temp = (gr*step)+j;
 	            /////////
 	        	
 	        	//found and returned member that matches key and was locked
@@ -181,14 +123,17 @@ public final class PoolIdx  {
 	            			//not already set
 	            			if (0 == locked[temp]) {
 	            				idx = temp; //if unlocked take it
+	            				lastUsedGroup = gr;	            				
 	            			}
 	            		} else {
 	            			//already set do we have something better?
 	            			if (key == keys[temp]) {
 	            				idx = temp; //take this one since we had it before
+	            				lastUsedGroup = gr;
 	            			} else if (-1 == keys[temp] //never used
  	            					  && keys[idx]!=key) { //and not already assigned to previous selection
 	            				idx = temp;
+	            				lastUsedGroup = gr;
 	            			}          			
 	            		}	                
 	            	}
@@ -196,7 +141,6 @@ public final class PoolIdx  {
 	            }
 	        }  
         }
-
         return startNewLock(this, key, idx);
     }
 

@@ -3,7 +3,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>pronghorn-pipes</artifactId>
   <name>pronghorn-pipes</name>
-  <version>1.0.5</version>
+  <version>1.0.6</version>
     <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry

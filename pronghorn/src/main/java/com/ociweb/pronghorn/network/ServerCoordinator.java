@@ -302,6 +302,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	    	if (++selectedSelector >= selectors.length) {
 	    		selectedSelector = 0;
 	    	};
+	    	//logger.info("\n slector {} in position {} out of {}", selectors[selectedSelector], selectedSelector, selectors.length);
 	    	return selectors[selectedSelector];
     	} else {
     		return null;

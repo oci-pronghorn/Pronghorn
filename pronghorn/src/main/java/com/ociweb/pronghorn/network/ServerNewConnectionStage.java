@@ -432,7 +432,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 								old.decompose();
 						  }
 	  
-			            //  logger.info("\naccepting new connection {} registered data selector", channelId); 
+			        //  logger.info("\naccepting new connection {} registered data selector {}", channelId, sel); 
 	
 			              channel.register(sel,SelectionKey.OP_READ, 
 								           ServerCoordinator.selectorKeyContext(coordinator, channelId));

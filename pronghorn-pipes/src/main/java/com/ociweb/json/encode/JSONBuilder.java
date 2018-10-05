@@ -1,8 +1,19 @@
 package com.ociweb.json.encode;
 
-import com.ociweb.json.encode.function.*;
 import com.ociweb.json.JSONType;
-import com.ociweb.pronghorn.pipe.ChannelWriter;
+import com.ociweb.json.encode.function.IterBoolFunction;
+import com.ociweb.json.encode.function.IterDoubleFunction;
+import com.ociweb.json.encode.function.IterEnumFunction;
+import com.ociweb.json.encode.function.IterLongFunction;
+import com.ociweb.json.encode.function.IterMemberFunction;
+import com.ociweb.json.encode.function.IterStringFunction;
+import com.ociweb.json.encode.function.IteratorFunction;
+import com.ociweb.json.encode.function.ToBoolFunction;
+import com.ociweb.json.encode.function.ToDoubleFunction;
+import com.ociweb.json.encode.function.ToEnumFunction;
+import com.ociweb.json.encode.function.ToLongFunction;
+import com.ociweb.json.encode.function.ToMemberFunction;
+import com.ociweb.json.encode.function.ToStringFunction;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.Appendables;
@@ -26,7 +37,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     private final StringTemplateBuilder<T> scripts;
     private final JSONKeywords kw;
     private final int depth;
-    private /*final*/ JSONBuilder<R, R> root;
+    private JSONBuilder<R, R> root;
 
     // Stored between declaration calls and consumed on use in declaration
     private byte[] declaredMemberName;
@@ -35,7 +46,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     private ThreadLocal<ObjectRenderState> ors;
 
     JSONBuilder() {
-        this(new StringTemplateBuilder<T>(), new JSONKeywords(), 0, null);
+        this(new StringTemplateBuilder<T>(), JSONKeywords.instance, 0, null);
     }
 
     JSONBuilder(JSONKeywords kw) {

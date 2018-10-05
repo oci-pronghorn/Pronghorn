@@ -73,7 +73,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 		
-		//GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
 	}
 
 	

@@ -48,8 +48,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     private final Pipe<ReleaseSchema>[] releasePipes;
     private final ServerCoordinator coordinator;
 
-    private Selector selector;
-    
+    private final Selector selector;
+    private final GraphManager gm;
     
     public static boolean showRequests = false;
     
@@ -59,34 +59,26 @@ public class ServerSocketReaderStage extends PronghornStage {
     private Set<SelectionKey> selectedKeys;	
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
-	private final PoolIdx responsePipeLinePool;
+	private PoolIdx responsePipeLinePool;
 	
     private final class PipeLineFilter implements PoolIdxPredicate {
 		
-    	private int idx;
-		private int validValue;
-		private int concurrentPerModules;
-		private int[] processorLookup;
+    	private int groups;
+    	private int groupSize;
+    	private int okGroup;
 
-		private PipeLineFilter(ServerCoordinator coordinator) {
-		     this.concurrentPerModules = coordinator.maxConcurrentInputs / coordinator.moduleParallelism;
-		     this.processorLookup = Pipe.splitGroups(coordinator.moduleParallelism, coordinator.maxConcurrentInputs);
+		private PipeLineFilter(int groups, int groupSize) {
+		     this.groups = groups;
+		     this.groupSize = groupSize;
 		}
 
 		public void setId(long ccId) {
-			assert(coordinator.maxConcurrentInputs == processorLookup.length);
-
-			//each connection should be in the next modules group of input pipes.
-			this.idx = ((int)ccId*concurrentPerModules)%coordinator.maxConcurrentInputs;			
-			this.validValue = processorLookup[idx];
-			
-			///logger.info("PipeLineFilter set ccId {} idx {} validValue {}", ccId, idx, validValue);
-			
+			okGroup = (int)(ccId%groups);			
 		}
 
 		@Override
 		public boolean isOk(final int i) {
-			return validValue == processorLookup[i]; 
+			return okGroup == (i/groupSize);
 		}
 	}
     
@@ -131,21 +123,12 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
         
         reqPumpPipeSpace = Pipe.sizeOf(NetPayloadSchema.instance, messageType)+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
-  
-        //To support single reader and reader per track
-        /////////////////////////////////////////
-        if (coordinator.maxConcurrentInputs == output.length) {
-        	 this.isOk = new PipeLineFilter(coordinator);      
-        	 this.responsePipeLinePool = new PoolIdx(
-	             		output.length,
-	             		output.length<coordinator.serverResponseWrapUnitsAndOutputs?1:coordinator.serverResponseWrapUnitsAndOutputs
-             		); 	
-        } else {
-        	 this.isOk = null;
-        	 this.responsePipeLinePool = new PoolIdx(
-	             		output.length,
-	             		1//no need to group tracks since we only have one
-             		);
+        gm = graphManager;
+        
+        try {//must be done early to ensure this is ready before the other stages startup.
+            coordinator.registerSelector(selector = Selector.open());
+        } catch (IOException e) {
+           throw new RuntimeException(e);
         }
        
     }
@@ -158,16 +141,35 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void startup() {
     	
-    	selectedKeyHolder = new SelectedKeyHashMapHolder();
+    	//find first pipes all going to the same place
+    	//we then assume we have groups of this size, this can easily be asserted
+    	int sizeOfOneGroup = output.length;
+    	int lastId = -1;
+    	int i = output.length;
+    	while (--i>=0) {
+    		
+    		int consumer = GraphManager.getRingConsumerStageId(gm, output[i].id);
+    		if (lastId!=-1 && lastId!=consumer) {;
+    			sizeOfOneGroup = (output.length-1)-i;
+    			break;
+    		}    		
+    		lastId = consumer;
+    	}
+    	///////////////////////////////////
+    	int groups = output.length/sizeOfOneGroup;
+    	if (groups*sizeOfOneGroup != output.length) {
+    		//not even so just use 1
+    		groups = 1;
+    	}
+    	
+    	this.isOk = new PipeLineFilter(groups, sizeOfOneGroup);      
+    	this.responsePipeLinePool = new PoolIdx(output.length, groups); 	
+        	
+    	this.selectedKeyHolder = new SelectedKeyHashMapHolder();
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
                 
-        try {
-            coordinator.registerSelector(selector = Selector.open());
-        } catch (IOException e) {
-           throw new RuntimeException(e);
-        }
-       
+      
     }
     
     @Override
@@ -375,14 +377,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 					if (debugPipeAssignment) {
 						if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
 						
-							int i = output.length;
-							while (--i>=0) {
-																
-								//What about encryption unit does it hold data we have not yet processed??
-								System.out.println(i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i])+" total frags:"+Pipe.totalWrittenFragments(output[i]));
-							}					
+//							int i = output.length;
+//							while (--i>=0) {
+//																
+//								//What about encryption unit does it hold data we have not yet processed??
+//								System.out.println(this.stageId+"  "+i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i])+" total frags:"+Pipe.totalWrittenFragments(output[i]));
+//							}					
 											
-							logger.info("\nbegin channel id {} pipe line idx {} out of {} ",
+							logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
+									this.stageId,
 									channelId, 
 									responsePipeLineIdx,
 									output.length);
@@ -413,16 +416,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 	///////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////
 
-	
-	//NOT thread safe only called by ServerSocketReaderStage
 	private int responsePipeLineIdx(final long ccId) {
-	
-		if (null == isOk) {
-			return responsePipeLinePool.get(ccId);
-		} else {
+
 			isOk.setId(ccId); //key to ensure connection is sent to same track
 			return responsePipeLinePool.get(ccId, isOk);			
-		}
 
 	}
 

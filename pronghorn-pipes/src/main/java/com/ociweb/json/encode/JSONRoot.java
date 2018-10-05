@@ -35,7 +35,7 @@ public abstract class JSONRoot<R, T, P> {
     }
     
     public JSONObject<R, T, P> startObject() {
-        return beginObject(new ToMemberFunction<T, T>() {
+        return startObject(new ToMemberFunction<T, T>() {
             @Override
             public T get(T o) {
                 return o;

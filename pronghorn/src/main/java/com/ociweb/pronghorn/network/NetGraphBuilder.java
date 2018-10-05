@@ -150,11 +150,12 @@ public class NetGraphBuilder {
 		//Control for how many HTTP1xResponseParserStage instances we will be using
 		//This stage is NOT fast so can not support many
 		//TODO: must be power of 2?
-		int pipesPerResponseParser = 64;//do not make much smaller or we end up with too many threads..
+		//;;int pipesPerResponseParser = 32;//do not make much smaller or we end up with too many threads..
 		//HIGHVOLUME test TODO: urgent if the above is too small the return pipes are not attached.
 		//TODO: urgent the respones parse consumes most of the time and needs to be optimized.
 		///////////////////////
-		final int responseParsers = Math.max(1, rawToParse.length/pipesPerResponseParser);
+		final int responseParsers = 1;//DISABLED UNTIL TODO: we add groups and reservations for Socket read data..
+		                           //Math.max(1, rawToParse.length/pipesPerResponseParser);
 		
 		
 		int a = responseParsers + (ccm.isTLS ? responseUnwrapCount : 0);

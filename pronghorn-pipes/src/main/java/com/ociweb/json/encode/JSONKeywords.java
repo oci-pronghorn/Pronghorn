@@ -21,6 +21,8 @@ public class JSONKeywords {
     private static final byte[] ObjectValue = "\":".getBytes();
     private static final byte[] NextArrayElement = ",".getBytes();
 
+    public static JSONKeywords instance = new JSONKeywords();
+    
     public void True(ByteWriter writer) {
         writer.write(True);
     }
