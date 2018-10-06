@@ -212,7 +212,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-       // GraphManager.addNota(gm, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+      
+        //GraphManager.addNota(gm, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
 		        
     }    
 	
@@ -278,6 +279,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 //  Accept-Encoding: gzip, deflate, sdch
 //  Accept-Language: en-US,en;q=0.8
 
+    //TODO: what if we get valid data which is incomplete and we are waiting forever.
+    //     happens across network with bad client???
     
     @Override
     public void run() {
@@ -481,6 +484,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			final int idx, Pipe<NetPayloadSchema> selectedInput, 
 			final long channel,
 			boolean didWork) {
+		
+			
 		boolean result;
 		//NOTE: we start at the same position until this gets consumed
 		TrieParserReader.parseSetup(that.trieReader, 
@@ -489,6 +494,16 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 				                    that.inputLengths[idx], 
 				                    Pipe.blobMask(selectedInput));	
 
+//		//drop closed connections
+//		ServerConnection cc = that.coordinator.lookupConnectionById(channel);
+//		if (cc!=null && !cc.isValid() && cc.getPoolReservation()!=-1) {			
+//			TrieParserReader.parseSkip(that.trieReader, that.inputLengths[idx]);			
+//			cc.clearPoolReservation();		
+//			that.sendRelease(channel, idx);
+//			return true;
+//		}
+		
+		
 		do {
 			assert(that.inputLengths[idx]>=0) : "length is "+that.inputLengths[idx];
 
@@ -1212,7 +1227,7 @@ private static int accumRunningBytes(
 	        			Pipe.confirmLowLevelRead(selectedInput, Pipe.sizeOf(selectedInput, NetPayloadSchema.MSG_DISCONNECT_203));
 	        			//Pipe.releaseReadLock(selectedInput);
 	        			Pipe.readNextWithoutReleasingReadLock(selectedInput);
-	        			Pipe.releaseAllPendingReadLock(selectedInput);
+	        			Pipe.releasePendingAsReadLock(selectedInput, 0);
 	        			
 	        		} else {	        		
 	        			return processShutdown(selectedInput, messageIdx);
@@ -1334,7 +1349,7 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		//do not return, we will go back arround the while again. 
 		
 		//starting a new sequence of data, all the old data including this begin must be released.
-		Pipe.releaseAllPendingReadLock(selectedInput);
+		Pipe.releasePendingAsReadLock(selectedInput, 0);
 	}
 
 

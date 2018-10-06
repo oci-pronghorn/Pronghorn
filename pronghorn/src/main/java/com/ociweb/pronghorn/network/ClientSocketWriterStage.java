@@ -23,9 +23,6 @@ import com.ociweb.pronghorn.util.Appendables;
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class ClientSocketWriterStage extends PronghornStage {
-	
-	//TODO: by adding access method and clearing the bufferChecked can make this grow at runtime if needed.
-	public static int MINIMUM_BUFFER_SIZE = 1<<22;//4mb default minimum to hit load tester volume.
 
 	private static final Logger logger = LoggerFactory.getLogger(ClientSocketWriterStage.class);
 		
@@ -72,7 +69,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.shutCountDown = input.length;
 
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
-		
+		GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
 	}
 
 	
@@ -84,15 +81,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		latencyRecordings = new ElapsedTimeRecorder[i];
 		buffers = new ByteBuffer[i];
 		bufferChecked = new boolean[i];
-		
-		int j = i;
-		while (--j>=0) {
-			//warning: this is the entire ring and may be too large.
-			buffers[j] = ByteBuffer.allocateDirect(
-						Math.max(MINIMUM_BUFFER_SIZE, 
-							input[j].sizeOfBlobRing)					
-					);
-		}
+
 	}
 	
 	@Override
@@ -448,11 +437,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 				if (null!=sc) {
 					try {
 						int minBufSize = 
-								Math.max(pipe.maxVarLen, 
+								Math.max(pipe.sizeOfBlobRing/4, //buffer should be as large as the full pipe so more can accumulate
 								         sc.getOption(StandardSocketOptions.SO_SNDBUF));
-						//logger.info("buffer is {} and must be larger than {}",buffers[i].capacity(), minBufSize);
-						if (buffers[i].capacity()<minBufSize) {
-							logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
+						if (null!=buffers[i]) {
+							logger.trace("buffer is {} and must be at least {}",buffers[i].capacity(), minBufSize);
+						}
+						if (null==buffers[i] || buffers[i].capacity()<minBufSize) {
+							//logger.trace("new direct buffer of size {} created old one was too small.",minBufSize);
 							buffers[i] = ByteBuffer.allocateDirect(minBufSize);
 						}
 						bufferChecked[i] = true;
@@ -479,11 +470,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 					if (!debugWithSlowWrites) {
 						assert(mappedByteBuffer.isDirect());
 						
-						while (connections[i].getSocketChannel().write(mappedByteBuffer)>0) {
-							//keep writing the output buffer may be small
-							Thread.yield();
+						//required to push large loads.
+						while (mappedByteBuffer.hasRemaining()) {
+							if (connections[i].getSocketChannel().write(mappedByteBuffer)<=0) {
+								break;//can't write now, try later.
+							};
+							Thread.yield();//this is also important for large loads
 						}
-										
 					} else {
 						//write only this many bytes over the network at a time
 						ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);

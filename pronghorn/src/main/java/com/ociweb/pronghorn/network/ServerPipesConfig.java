@@ -76,10 +76,10 @@ public class ServerPipesConfig {
 		if (isTLS && (maxResponseSize< (SSLUtil.MinTLSBlock))) {
 			maxResponseSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
 		}
-		
 
-		//keep the waiting packets from getting out of hand, limit this value
-		partialPartsIn = Math.min(32, partialPartsIn);
+		if (partialPartsIn<8) {
+			logger.warn("network buffer is very small ({}) and server is likely to drop incoming data.",partialPartsIn);
+		}
 
 		this.fromRouterToModuleCount = queueLengthIn; // 2 - 1024
 		this.serverOutputMsg         = queueLengthOut;// 4 -  256
@@ -128,7 +128,7 @@ public class ServerPipesConfig {
 		this.incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
 	    								partialPartsIn, 
 	    								maxRequestSize);
-	
+
 	}
 	
 	public void ensureServerCanWrite(int length) {

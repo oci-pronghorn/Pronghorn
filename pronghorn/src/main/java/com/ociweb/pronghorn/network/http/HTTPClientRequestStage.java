@@ -67,11 +67,10 @@ public class HTTPClientRequestStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
 			
 		recordTypeData = graphManager.recordTypeData;
-		
-		//since we have many client callers this needs to be isolated to ensure on is not blocking the others.
-	//	GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-		
-		
+
+		//hack test,  since we have many client callers this needs to be isolated to ensure on is not blocking the others.
+		GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+
 	}
 	
 	private final StructRegistry recordTypeData;
@@ -152,9 +151,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (isConnectionReadyForUse(requestPipe) && null!=activeConnection ) {
 			didWork = true;	        
 	
-			//note this is a fixed pipe choice! 
-			Pipe<NetPayloadSchema> target = output[activeConnection.requestPipeLineIdx()];			
-	
+			//note this is a fixed pipe choice! Since this may be a TLS connection we must
+			//never move to another pipe.  The Session is used to ensure we stay in the same place.
+			//as a result it is never efficient to have more output pipes than we have sessions
+			//that behavior would result in un-used pipes.
+			Pipe<NetPayloadSchema> target = output[activeConnection.sessionId%output.length];
+			
 			if (!Pipe.hasRoomForWrite(target) ) {
 				return false;
 			}

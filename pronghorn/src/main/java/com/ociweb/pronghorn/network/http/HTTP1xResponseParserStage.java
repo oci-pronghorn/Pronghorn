@@ -326,9 +326,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								positionMemoData[lenIdx] += len;
 							}
 
-							
-							
-							
 							if (positionMemoData[stateIdx] == 0) {
 								assert (null==targetPipe || !Pipe.isInBlobFieldWrite(targetPipe)) : 
 									   "for starting state expected pipe to NOT be in blob write";

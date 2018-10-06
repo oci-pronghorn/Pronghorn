@@ -49,6 +49,8 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	//smaller to use less memory default use
 	private int maxQueueIn = 8; ///from router to modules
 	private int maxQueueOut = 8; //from orderSuper to ChannelWriter
+
+	private int minMemoryInputPipe = 1<<14; // 16K default to keep it small.
 	
 	public final PipeConfigManager pcm;
     int tracks = 1;//default 1, for low memory usage
@@ -233,6 +235,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		return this;
 	}
 
+	@Override
+	public HTTPServerConfig setMinimumInputPipeMemory(int bytes) {
+		this.minMemoryInputPipe = bytes;
+		return this;
+	}
 	
 	@Override
 	public HTTPServerConfig setMaxQueueIn(int maxQueueIn) {
@@ -291,9 +298,20 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	public int getMaxResponseSize() {
 		return maxResponseSize;
 	}
-
-	public int defaultComputedChunksCount() {
-		return Math.min(32, 2+(getMaxRequestSize()/1500));
+	
+	public int defaultComputedChunksCount() {		
+		
+		///////////////////////
+		//WARNING: if this is too small the server will drop incoming work
+		//////////////////////
+		
+		//must be no more than 32 if we have very large data
+		int temp = Math.min(32, 2+(getMaxRequestSize()/1500));
+		
+		//do consume at least 1M if it is small
+		int result =  Math.max(temp, minMemoryInputPipe/getMaxRequestSize());
+		//HIGHVOLUME
+		return result;
 	}
 
 	public int getMaxRequestSize() {

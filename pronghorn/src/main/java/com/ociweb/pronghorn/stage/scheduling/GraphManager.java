@@ -50,6 +50,7 @@ public class GraphManager {
 	private static final byte[] CLOSEBRACKET_NEWLINE = "]\n".getBytes();
 	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
 	private static final byte[] LABEL_TPS = "tps".getBytes();
+	private static final byte[] LABEL_KTPS = "ktps".getBytes();
 	private static final byte[] WHITE_SPACE_NL = " \n".getBytes();
 	private static final byte[] WHITE_SPACE = " ".getBytes();
 	
@@ -2041,7 +2042,12 @@ public class GraphManager {
 				               			                
 				                if (null!=msgPerSec) {
 				                	target.write(WHITE_SPACE);
-				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_TPS);
+				                	int value = msgPerSec[pipe.id];
+				                	if (value>1024) {
+				                		fixedSpaceValue(target, value>>10, LABEL_KTPS);
+				                	} else {
+				                		fixedSpaceValue(target, value, LABEL_TPS);
+				                	}
 				                	target.write(WHITE_SPACE);
 				                	       	
 				                	if (experimentalStdDev) {
@@ -2253,7 +2259,12 @@ public class GraphManager {
 			target.write(WHITE_SPACE_NL);
 		} 
 		if (null!=msgPerSec) {
-			fixedSpaceValue(target, sumMsgPerSec, LABEL_TPS);
+			long value = sumMsgPerSec;
+        	if (value>1024) {
+        		fixedSpaceValue(target, value>>10, LABEL_KTPS);
+        	} else {
+        		fixedSpaceValue(target, value, LABEL_TPS);
+        	}
 		}
 		
 		target.write(AQUOTE);

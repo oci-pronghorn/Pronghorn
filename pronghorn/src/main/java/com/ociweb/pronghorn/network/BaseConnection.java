@@ -100,6 +100,10 @@ public abstract class BaseConnection {
 		return false;
 	}
 
+	public boolean isValid() {
+		return isValid;
+	}
+	
 	protected HandshakeStatus closeInboundCloseOutbound(SSLEngine engine) {
 		
 		try {
