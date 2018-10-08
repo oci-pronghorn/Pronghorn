@@ -40,6 +40,8 @@ public class ClientSocketReaderStage extends PronghornStage {
     public static boolean abandonSlowConnections = true;
     
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
+	private static final int SIZE_OF_ENCRYPTED = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200);
+	
 	private final ClientCoordinator coordinator;
 	private final Pipe<NetPayloadSchema>[] output;
 	private final Pipe<ReleaseSchema>[] releasePipes;
@@ -362,15 +364,25 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		if (Pipe.hasRoomForWrite(target) ) {			
 	
+			
+        	long units = Math.min(10, target.sizeOfSlabRing - (Pipe.headPosition(target)-Pipe.tailPosition(target)));
+        	int blocks = 1;
+        	if (!coordinator.isTLS) {
+        		blocks = (int)units/SIZE_OF_PLAIN;
+        	} else {
+        		blocks = (int)units/SIZE_OF_ENCRYPTED;
+        	}
+        	int len = Math.max(target.maxVarLen, blocks*target.maxVarLen);
+   
 			//these buffers are only big enough to accept 1 target.maxAvgVarLen
-			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target),target);
+			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target),
+					                                                                      target, len);
 
-			int readCount=-1; 
+			long readCount=-1; 
 			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
 			if (null != socketChannel) {
 				try {
-					//NOTE: warning note cast to int.
-					readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen);
+					readCount = socketChannel.read(wrappedUnstructuredLayoutBufferOpen);					
 				} catch (IOException ioex) {
 					readCount = -1;
 					//			logger.info("\nUnable to read socket, may not be an error. data was droped. ",ioex);
@@ -396,56 +408,71 @@ public class ClientSocketReaderStage extends PronghornStage {
 		return didWork;
 	}
 
-	private void writePlain(ClientConnection cc, Pipe<NetPayloadSchema> target, int readCount) {
+	private void writePlain(ClientConnection cc, Pipe<NetPayloadSchema> target, long remainingLen) {
 
-		Pipe.presumeRoomForWrite(target);
-		Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
-		Pipe.addLongValue(cc.getId(), target);         //connection
-		Pipe.addLongValue(System.nanoTime(), target);
-		Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
-		
-		int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
-		//blob head position is moved forward
-		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
+		int pos =  Pipe.unstoreBlobWorkingHeadPosition(target);
+
+		while (remainingLen>0) {
+			int len = (int)Math.min(target.maxVarLen, remainingLen);
+			
+			Pipe.presumeRoomForWrite(target);
+			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
+			Pipe.addLongValue(cc.getId(), target);         //connection
+			Pipe.addLongValue(System.nanoTime(), target);
+			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
+			
+			//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
+			//blob head position is moved forward
+			if ((int)len>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
+				Pipe.addAndGetBlobWorkingHeadPosition(target, len);
+			}
+			//record the new start and length to the slab for this blob
+			Pipe.addBytePosAndLen(target, pos, len);
+			////////////////////////////////////////////////////////////
+			
+			if (showResponse) {
+					logger.info("\n///ClientSocketReader////////\n"+
+				   			Appendables.appendUTF8(new StringBuilder(), target.blobRing, pos, len, target.blobMask)+
+				   			"\n//////////////////////");
+			}
+			
+			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
+			Pipe.publishWrites(target);
+			remainingLen = remainingLen-len;
+			pos+=len;
 		}
-		//record the new start and length to the slab for this blob
-		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
-		////////////////////////////////////////////////////////////
-		
-		if (showResponse) {
-				logger.info("\n///ClientSocketReader////////\n"+
-			   			Appendables.appendUTF8(new StringBuilder(), target.blobRing, originalBlobPosition, readCount, target.blobMask)+
-			   			"\n//////////////////////");
-		}
-		
-		Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
-		Pipe.publishWrites(target);
 
 	}
 
-	private void writeEncrypted(long id, Pipe<NetPayloadSchema> target, int readCount) {
-		assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+	private void writeEncrypted(long id, Pipe<NetPayloadSchema> target, long remainingLen) {
 		
-		int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
-		//System.out.println("reading encypted data on con "+id);
-		Pipe.addLongValue(id, target);
-		Pipe.addLongValue(System.nanoTime(), target);
+		int pos =  Pipe.unstoreBlobWorkingHeadPosition(target);
 		
-		int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
-		//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
-		//blob head position is moved forward
-		if ((int)readCount>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
-			Pipe.addAndGetBlobWorkingHeadPosition(target, (int)readCount);
+		while (remainingLen>0) {
+			int len = (int)Math.min(target.maxVarLen, remainingLen);
+			
+			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+			
+			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+			//System.out.println("reading encypted data on con "+id);
+			Pipe.addLongValue(id, target);
+			Pipe.addLongValue(System.nanoTime(), target);
+			
+			//NOTE: this is done manually to avoid the length validation check since we may do 2 messages worth.
+			//blob head position is moved forward
+			if ((int)len>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
+				Pipe.addAndGetBlobWorkingHeadPosition(target, (int)len);
+			}
+			//record the new start and length to the slab for this blob
+			Pipe.addBytePosAndLen(target, pos, (int)len);
+			//////////////////////////////////////////////////////////
+			
+			Pipe.confirmLowLevelWrite(target, size);
+			Pipe.publishWrites(target);
+			
+			remainingLen = remainingLen-len;
+			pos += len;
 		}
-		//record the new start and length to the slab for this blob
-		Pipe.addBytePosAndLen(target, originalBlobPosition, (int)readCount);
-		//////////////////////////////////////////////////////////
-		
-		Pipe.confirmLowLevelWrite(target, size);
-		Pipe.publishWrites(target);
-
 	}
 
 	long lastTotalBytes = 0;

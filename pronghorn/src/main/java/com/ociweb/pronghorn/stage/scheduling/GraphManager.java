@@ -50,7 +50,7 @@ public class GraphManager {
 	private static final byte[] CLOSEBRACKET_NEWLINE = "]\n".getBytes();
 	private static final byte[] LABEL_OPEN = "\"[label=\"".getBytes();
 	private static final byte[] LABEL_TPS = "tps".getBytes();
-	private static final byte[] LABEL_KTPS = "ktps".getBytes();
+
 	private static final byte[] WHITE_SPACE_NL = " \n".getBytes();
 	private static final byte[] WHITE_SPACE = " ".getBytes();
 	
@@ -2042,12 +2042,7 @@ public class GraphManager {
 				               			                
 				                if (null!=msgPerSec) {
 				                	target.write(WHITE_SPACE);
-				                	int value = msgPerSec[pipe.id];
-				                	if (value>1024) {
-				                		fixedSpaceValue(target, value>>10, LABEL_KTPS);
-				                	} else {
-				                		fixedSpaceValue(target, value, LABEL_TPS);
-				                	}
+				                	fixedSpaceValue(target, msgPerSec[pipe.id], LABEL_TPS);
 				                	target.write(WHITE_SPACE);
 				                	       	
 				                	if (experimentalStdDev) {
@@ -2259,12 +2254,7 @@ public class GraphManager {
 			target.write(WHITE_SPACE_NL);
 		} 
 		if (null!=msgPerSec) {
-			long value = sumMsgPerSec;
-        	if (value>1024) {
-        		fixedSpaceValue(target, value>>10, LABEL_KTPS);
-        	} else {
-        		fixedSpaceValue(target, value, LABEL_TPS);
-        	}
+			fixedSpaceValue(target, sumMsgPerSec, LABEL_TPS);
 		}
 		
 		target.write(AQUOTE);
@@ -2332,10 +2322,17 @@ public class GraphManager {
 		    		//use xxx.x places (5)
 		    		Appendables.appendDecimalValue(target, value/100, (byte)-1).write(msgPerSeclabel);			          
 		    	} else {
-		    		if (value<100_000_000) {
-		    			Appendables.appendFixedDecimalDigits(target, value/1000, 10_000).write(msgPerSeclabel);
+		    		if (value<10_000_000) {
+		    			Appendables.appendFixedDecimalDigits(target, value/1000, 1_000).write(msgPerSeclabel);
 		    		} else {
-		    			Appendables.appendValue(target, value/1000).write(msgPerSeclabel);
+		    			long intValue = value/1000;
+						//if (intValue>1000) {
+							AppendableByteWriter<?> t = Appendables.appendValue(target, intValue/1000);
+							t.writeByte((int)'k');
+						    t.write(msgPerSeclabel);
+						//} else {
+						//	Appendables.appendValue(target, intValue).write(msgPerSeclabel);
+						//}
 		    		}
 		    	}
 			}

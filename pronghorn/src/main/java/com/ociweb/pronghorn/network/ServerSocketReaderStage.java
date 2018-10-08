@@ -567,7 +567,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	//Read as much data as we can...
             	//We must make the writing buffers larger based on how many messages we can support
             	int readMaxSize = targetPipe.maxVarLen;
-            	long units = Pipe.headPosition(targetPipe)-Pipe.tailPosition(targetPipe);
+            	long units = targetPipe.sizeOfSlabRing - (Pipe.headPosition(targetPipe)-Pipe.tailPosition(targetPipe));
             	units -= reqPumpPipeSpace;
             	if (units>0) {
 	            	int extras = (int)units/singleMessageSpace;

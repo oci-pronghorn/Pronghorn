@@ -1162,18 +1162,18 @@ private boolean validateNextByte(TrieParserReader trieReader, int idx) {
 private void sendRelease(long channel, final int idx) {
 
 	assert(channel>=0) : "channel must exist";
-	assert(inputSlabPos[idx]>=0);
-	Pipe.presumeRoomForWrite(releasePipe);
+	if (inputSlabPos[idx]>=0) {
+		Pipe.presumeRoomForWrite(releasePipe);
+		
+		int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
+		Pipe.addLongValue(channel, releasePipe);
+		Pipe.addLongValue(inputSlabPos[idx], releasePipe);
+		Pipe.addIntValue(sequences[idx], releasePipe); //send current sequence number so others can continue at this count.
 	
-	int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
-	Pipe.addLongValue(channel, releasePipe);
-	Pipe.addLongValue(inputSlabPos[idx], releasePipe);
-	Pipe.addIntValue(sequences[idx], releasePipe); //send current sequence number so others can continue at this count.
-
-	Pipe.confirmLowLevelWrite(releasePipe, s);
-	Pipe.publishWrites(releasePipe);
-	this.inputSlabPos[idx]=-1;
-
+		Pipe.confirmLowLevelWrite(releasePipe, s);
+		Pipe.publishWrites(releasePipe);
+		this.inputSlabPos[idx]=-1;
+	}
 }
 
 private static int accumRunningBytes(

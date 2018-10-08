@@ -69,7 +69,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 		this.shutCountDown = input.length;
 
 		GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lavenderblush", this);
-		GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+		if (input.length>1) {
+			GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+		}
 	}
 
 	

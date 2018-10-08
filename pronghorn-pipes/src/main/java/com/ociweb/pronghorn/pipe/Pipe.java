@@ -4459,7 +4459,8 @@ public class Pipe<T extends MessageSchema<T>> {
 	    if ((--pipe.batchPublishCountDown<=0)) {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
 	        pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value);
-	        assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
+	        assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) :
+	        	  "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 	        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
 	    } else {
 	        storeUnpublishedWrites(pipe);

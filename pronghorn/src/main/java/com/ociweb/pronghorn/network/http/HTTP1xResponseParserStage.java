@@ -35,6 +35,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
 public class HTTP1xResponseParserStage extends PronghornStage {
+	private static final int SIZE_TO_WRITE = 2*Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_CONTINUATION_102);
 	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
@@ -463,140 +464,85 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int parseHTTP(int foundWork, int i, final int memoIdx, final int posIdx, final int lenIdx,
 			final int stateIdx, Pipe<NetResponseSchema> targetPipe, long ccId, Pipe<NetPayloadSchema> localInputPipe,
 			HTTPClientConnection cc) {
-		//TODO: may be faster with if rather than switch.
 
-		 switch (positionMemoData[stateIdx]) {
-			case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
-			{
-				if (null==targetPipe || !Pipe.hasRoomForWrite(targetPipe)) { 
-					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-					break; //critical check
-				}
+		//case 0
+		if (0 == positionMemoData[stateIdx]) {			
+			if (null!=targetPipe && Pipe.hasRoomForWrite(targetPipe)) {					
 				Pipe.markHead(targetPipe);
 				
-				int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-				if (startingLength1<(revisionMap.shortestKnown()+1)) {
-					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-					break;
-				}		
-			
-				final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
-				if (revisionId>=0) {
-											
-					clearConnectionStateData(i);
-					
-					//because we have started written the response we MUST do extra cleanup later.
-
-					Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
-					Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-				    Pipe.addIntValue(cc.sessionId, targetPipe);
-					Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
-
-					positionMemoData[stateIdx]++;//state change is key
-										
-					
-					DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
-					DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
-						
-												
-					//NOTE: this is always first and not indexed...
-					TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
-								
-					runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
-
-										
-				} else {
-					assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
-					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
-					if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
-						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-						break;//not an error just needs more data.
-					} else {
-						reportCorruptStream("HTTP revision", cc);
-						closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
-					}
-					
-					break;
-				}
-				
-				assert(positionMemoData[stateIdx]==1);
-			}
-			case 1: ///////// HEADERS
-			{
-				//TODO: look up the right headerMap...
-				//      these are based on the headers that the client caller requests
-				//      these headers should be defined in the ClientHostPortInstance object.
-				
-				
-				//this writer was opened when we parsed the first line, now we are appending to it.
-				DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-				
-				final int startingPosition = writer.absolutePosition();
-					
-				
-				long headerToken=0;
-				//stay here and read all the headers if possible
-				do {
-					int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-			
-					headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
-				
-					assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
-
-					int consumed = startingLength - trieReader.sourceLen;							
-					runningHeaderBytes[i] += consumed;
-							
-					if (headerToken != -1) {											
-						
-						if (HTTPSpecification.END_OF_HEADER_ID != headerToken) {	
-							
-							headerProcessing(i, writer, headerToken, cc);
-							
-							//do not change state we want to come back here.									
-						} else {
-							endOfHeaderProcessing(i, memoIdx, stateIdx, localInputPipe, writer);																
-						}
-					} 
-					
-				} while ((headerToken != -1) && positionMemoData[stateIdx]==1);
-				
-				if (headerToken == -1) {
-					
-					writer.absolutePosition(startingPosition);
+				int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);					
+				if (startingLength1 >= (revisionMap.shortestKnown()+1)) {
 									
-					if (trieReader.sourceLen<MAX_VALID_HEADER) {
-						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-						break;//not an error just needs more data.
+					final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
+					if (revisionId>=0) {											
+						processFoundRevision(i, stateIdx, targetPipe, ccId, cc, startingLength1);										
+						assert(positionMemoData[stateIdx]==1);
 					} else {
+						assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
+						TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 						
-						//if this starts with HTTP/1.1 200 OK then we are just missing the end of the last header..
-						reportCorruptStream2(cc);
-						
-						//TODO: bad client, disconnect??  finish partial message out!!!
-						
+						if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
+							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+						} else {
+							reportCorruptStream("HTTP revision", cc);
+							closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
+						}
+						return foundWork;
 					}
-					
-					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
-					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
-					assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
-		    		break;
+				} else {
+					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					return foundWork;					
 				}
-			}
-			case 2: //PAYLOAD READING WITH LENGTH
-			{
-					//if we can not release then do not finish.
-					if (!Pipe.hasRoomForWrite(releasePipe)) {
-						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-						break;
-					}
-					//in case targetPipe is needed must confirm room for 2 writes .
-					if (null==targetPipe || (!Pipe.hasRoomForWrite(targetPipe, 2*Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_CONTINUATION_102)))) {
-						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
-						break;
-					}
-					if (2==positionMemoData[stateIdx]) {
+			} else { 
+				foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+				return foundWork;
+			}			
+		}
+		////////////////////////////////////
+		//case 1
+		///////////////////////////////////
+		if (1 == positionMemoData[stateIdx]) {
+			//this writer was opened when we parsed the first line, now we are appending to it.
+			DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
+			
+			final int startingPosition = writer.absolutePosition();
+			long headerToken=0;
+			//stay here and read all the headers if possible
+			do {
+				headerToken = processHeaderLogic(i, memoIdx, stateIdx, localInputPipe, cc, writer);					
+			} while ((headerToken != -1) && positionMemoData[stateIdx]==1);				
+			if (headerToken == -1) {
+				
+				writer.absolutePosition(startingPosition);
+								
+				if (trieReader.sourceLen<MAX_VALID_HEADER) {
+					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					return foundWork;//not an error just needs more data.
+				} else {
+					
+					//if this starts with HTTP/1.1 200 OK then we are just missing the end of the last header..
+					reportCorruptStream2(cc);
+					
+					//TODO: bad client, disconnect??  finish partial message out!!!
+					
+				}
+				
+				TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+				
+				assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
+				assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
+				return foundWork;
+			}			
+		}
+		////////////////////////////////////
+		//case 2
+		///////////////////////////////////
+		if (2 == positionMemoData[stateIdx]) {
+			//if we can not release then do not finish.
+			if (Pipe.hasRoomForWrite(releasePipe)) {
+				//in case targetPipe is needed must confirm room for 2 writes .
+				if (null!=targetPipe && (Pipe.hasRoomForWrite(targetPipe, SIZE_TO_WRITE))) {
+					if (2 == positionMemoData[stateIdx]) {
 														
 						long lengthRemaining = payloadLengthData[i];
 											
@@ -679,17 +625,33 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//positionMemoData[stateIdx] = positionMemoData[stateIdx];
 														
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-							break;
 						} else {
 							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 							assert(lengthRemaining>0);
-							break;//we have no data and need more.
+							return foundWork;
 						}
 					}
 					if (3!=positionMemoData[stateIdx]) {
-						break;
-					}
+						return foundWork;
+					}						
+				} else {
+					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					return foundWork;
+				}
+			} else {
+				foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+				return foundWork;					
 			}
+			
+		}	
+		//TODO: converting to conditionals, removing switches..
+		
+		////////////////////////////////////
+		//case 3
+		///////////////////////////////////
+		
+		 switch (positionMemoData[stateIdx]) {
+
 			case 3: //PAYLOAD READING WITH CHUNKS	
 			{
 					//if we can not release then do not finish.
@@ -887,6 +849,56 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			}						
 		}
 		return foundWork;
+	}
+
+	private long processHeaderLogic(int i, final int memoIdx, final int stateIdx, Pipe<NetPayloadSchema> localInputPipe,
+			HTTPClientConnection cc, DataOutputBlobWriter<NetResponseSchema> writer) {
+		long headerToken;
+		int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
+
+		headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
+
+		assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
+
+		int consumed = startingLength - trieReader.sourceLen;							
+		runningHeaderBytes[i] += consumed;
+				
+		if (headerToken != -1) {											
+			
+			if (HTTPSpecification.END_OF_HEADER_ID != headerToken) {	
+				
+				headerProcessing(i, writer, headerToken, cc);
+				
+				//do not change state we want to come back here.									
+			} else {
+				endOfHeaderProcessing(i, memoIdx, stateIdx, localInputPipe, writer);																
+			}
+		}
+		return headerToken;
+	}
+
+	private void processFoundRevision(int i, final int stateIdx, Pipe<NetResponseSchema> targetPipe, long ccId,
+			HTTPClientConnection cc, int startingLength1) {
+		clearConnectionStateData(i);
+		
+		//because we have started written the response we MUST do extra cleanup later.
+
+		Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
+		Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
+		Pipe.addIntValue(cc.sessionId, targetPipe);
+		Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
+
+		positionMemoData[stateIdx]++;//state change is key
+							
+		
+		DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
+		DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
+			
+									
+		//NOTE: this is always first and not indexed...
+		TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
+					
+		runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
 	}
 
 	private void endOfHeaderProcessing(int i, final int memoIdx, final int stateIdx,

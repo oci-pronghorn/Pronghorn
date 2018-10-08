@@ -68,9 +68,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 		recordTypeData = graphManager.recordTypeData;
 
-		//hack test,  since we have many client callers this needs to be isolated to ensure on is not blocking the others.
-		GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-
 	}
 	
 	private final StructRegistry recordTypeData;
@@ -169,14 +166,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 				 long duration = System.nanoTime()-started;
 				 
 				 ///////////////////////////////////////
-				 //BIG HACK for TLS handshake, we must wait 40 ms BEFORE we start sending data
+				 //BIG HACK for TLS handshake, we must wait 400 ms BEFORE we start sending data
 				 //This may be a problem on the server side no expecting data so quickly?
 				 //This is a problem on the server we are fixing on the client by 
 				 //waiting for the server to fully process the handshake,
 				 //TODO: urgent, must fix server ServerSocketReader -> SSLEngineUnwrap
 				 //This only happens on first TLS call
 				 
-				 if (duration < 40_000_000L) { //TODO: this needs urgent attention but the problem may be in the server..
+				 if (duration < 400_000_000L) { //TODO: this needs urgent attention but the problem may be in the server..
 					 return false;
 				 }
 	
