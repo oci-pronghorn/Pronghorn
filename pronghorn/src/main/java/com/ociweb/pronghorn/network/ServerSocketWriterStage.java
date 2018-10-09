@@ -195,7 +195,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				) {
 	    				writeToChannelMsg[x] = -1;
 		    			if (!(doingWork = writeDataToChannel(x))) {
-		    				break;//network blocked so try again later 
+		    				//this channel did not write but we need to check the others
+		    				continue;
 		    			}	
 	    			} else {
 	    				
