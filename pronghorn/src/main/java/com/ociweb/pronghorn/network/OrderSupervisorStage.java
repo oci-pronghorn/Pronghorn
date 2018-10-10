@@ -6,6 +6,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.BaseConnection.ConnDataReaderController;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
@@ -19,6 +20,7 @@ import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.ChannelReaderController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -207,7 +209,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				requestShutdown();
 				return;
 			}
-		
+
 	    	boolean didWork;
 
 	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
@@ -223,8 +225,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	}		        	
 		        }		       
 	    	} while ( didWork && !shutdownInProgress);
-	    	
-		
+
     }
 
 
@@ -243,9 +244,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    if (peekMsgId>=0 
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
-		    			  
-		    	//dataToSend.length
-		    	int myPipeIdx = (int)(channelId % poolMod);
+		    			  		    	
+		    	//dataToSend.length  this is a big hack by shifting, we need a better way to know this?
+		    	//WARNING: magic knowledge, the ServerSocketReaderStage will manage 2 tracks and split work 
+		    	//         between them even/odd. As a result the low bit is not helpful for picking a pipe.		    	
+		    	int myPipeIdx = (int)((channelId>>1) % poolMod);//channel must always have the same pipe for max write speed. 
+		    			    	
 		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) &&
 		            (log==null || Pipe.hasRoomForWrite(log))) {	
 				    	
@@ -260,7 +264,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			        ///////////////////////////////
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		keepWorking = false; //break out
-		    		//logger.info("no room to write out, try again later");
+		    		
+		    		//logger.info("no room to write out, try again later {}",outgoingPipes[myPipeIdx]);
+		    		
 		    		//return didWork;
 		    	}
 
@@ -590,7 +596,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 final int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
 		
 		 BaseConnection con = socketHolder.get(channelId);
-		 ChannelReaderController connectionDataReader = null;
+		 ConnDataReaderController connectionDataReader = null;
 		 long arrivalTime = -1;
 		 long businessTime = -1;
 		 int routeId = -1;
@@ -600,43 +606,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 connectionDataReader = con.connectionDataReader;
 			 ChannelReader reader = connectionDataReader.beginRead();
 			 if (null!=reader && conStruct!=null) {
-				 assert(reader.isStructured()) : "connection data reader must hold structured data";
+				
 				 
-				 arrivalTime = reader.structured().readLong(conStruct.arrivalTimeFieldId);
-				 businessTime = arrivalTime+reader.structured().readLong(conStruct.businessStartTime);//relative to arrival time
+				 arrivalTime = connectionDataReader.readArrivalTime();
+				 businessTime = connectionDataReader.readBusinessTime();
 				 				 
-				 int origCon = reader.structured().readInt(conStruct.contextFieldId);				 
-				 routeId = reader.structured().readInt(conStruct.routeIdFieldId);
+				 int origCon = connectionDataReader.readContext();				 
+				 routeId = connectionDataReader.readRoute();
 				 			 				 
 				 requestContext |= origCon;
-
 				 
-				 if (beginningOfResponse) {
-					 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
-					 if (null!=headersToEcho) {
-
-						 int newLinePos = (bytePosition+len-2);
-						 assert(blob[newLinePos&blobMask]=='\r');
-						 assert(blob[(1+newLinePos)&blobMask]=='\n');						 
-						 if (blob[newLinePos&blobMask]=='\r') {
-							 len-=2;//confirm it is \r\n? add assert!
-							 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
-							 len = 0;//so the following write will not write a second time.
-		
-							 for(int i=0; i<headersToEcho.length; i++) {
-								 HTTPHeader header = headersToEcho[i];
-							
-								 if (!reader.structured().isNull(header)) {	
-									 System.err.println("echo header "+header);
-									 spec.writeHeader(outputStream, header, reader.structured().read(header));
-								 }
-								 //TODO: confirm works with chunked and not
-								 
-							 }
-							 outputStream.write(BYTES_NEWLINE);
-						 }
-					 }
-				 }
+				 len = beginningOfResponse(beginningOfResponse, outputStream, len, blobMask, blob, bytePosition, reader);
 			 } else {
 				 //warning this is an odd case which happens in telemetry.
 				 //why is there no context stored.
@@ -697,7 +677,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
-		 if (finishedFullReponse) {
+		 finishPublish(input, myPipeIdx, channelId, output, expSeq, 
+				       requestContext, connectionDataReader, businessTime,
+			 	       routeId, finishedFullReponse);
+
+	}
+
+	private void finishPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
+			Pipe<NetPayloadSchema> output, int expSeq, int requestContext,
+			ConnDataReaderController connectionDataReader, long businessTime, int routeId,
+			boolean finishedFullReponse) {
+		if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
 			 if (null!=connectionDataReader) {
 				 connectionDataReader.commitRead();
@@ -772,7 +762,37 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 assert(0==Pipe.releasePendingByteCount(input));
 		 assert(Pipe.bytesReadBase(input)>=0);
+	}
 
+	private int beginningOfResponse(boolean beginningOfResponse, DataOutputBlobWriter<NetPayloadSchema> outputStream,
+			int len, final int blobMask, byte[] blob, final int bytePosition, ChannelReader reader) {
+		if (beginningOfResponse) {
+			 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
+			 if (null!=headersToEcho) {
+
+				 int newLinePos = (bytePosition+len-2);
+				 assert(blob[newLinePos&blobMask]=='\r');
+				 assert(blob[(1+newLinePos)&blobMask]=='\n');						 
+				 if (blob[newLinePos&blobMask]=='\r') {
+					 len-=2;//confirm it is \r\n? add assert!
+					 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+					 len = 0;//so the following write will not write a second time.
+
+					 for(int i=0; i<headersToEcho.length; i++) {
+						 HTTPHeader header = headersToEcho[i];
+					
+						 if (!reader.structured().isNull(header)) {	
+							 System.err.println("echo header "+header);
+							 spec.writeHeader(outputStream, header, reader.structured().read(header));
+						 }
+						 //TODO: confirm works with chunked and not
+						 
+					 }
+					 outputStream.write(BYTES_NEWLINE);
+				 }
+			 }
+		 }
+		return len;
 	}
 
 	private int writeToNextStage(Pipe<NetPayloadSchema> output, int myPipeIdx,

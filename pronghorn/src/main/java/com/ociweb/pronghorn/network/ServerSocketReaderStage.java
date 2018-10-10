@@ -114,7 +114,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 //        //If server socket reader does not catch the data it may be lost
 //        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-//        GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 4000L, this);
+ //       GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 2000L, this);
         
         
         //if we only have 1 router then do not isolate the reader.

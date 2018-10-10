@@ -43,7 +43,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     private byte[] declaredMemberName;
 
     // In order to support tryCase, we need a render state for objects.
-    private ThreadLocal<ObjectRenderState> ors;
+    private ObjectRenderState ors;
 
     JSONBuilder() {
         this(new StringTemplateBuilder<T>(), JSONKeywords.instance, 0, null);
@@ -108,18 +108,9 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         }
     }
 
-    private ThreadLocal<ObjectRenderState> createOrs() {
-        return new ThreadLocal<ObjectRenderState>() {
-            @Override
-            protected ObjectRenderState initialValue() {
-                return new ObjectRenderState(kw);
-            }
-        };
-    }
-
     private void prefixObjectMemberName(byte[] declaredMemberName, int depth, ByteWriter writer) {
         if (declaredMemberName != null && this.ors != null) {
-            ObjectRenderState ors = this.ors.get();
+            ObjectRenderState ors = this.ors;
             if (ors != null) {
                 ors.prefixObjectMemberName(declaredMemberName, depth, writer);
             }
@@ -285,14 +276,14 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         final StringTemplateBuilder<M> accessorScript = new StringTemplateBuilder<>();
         kw.OpenObj(accessorScript, depth);
 
-        final ThreadLocal<ObjectRenderState> newOrs = createOrs();
+        final ObjectRenderState newOrs = new ObjectRenderState(kw);
 
         final StringTemplateScript<T> objNullBranch = createNullObjectScript(declaredMemberName);
         final StringTemplateScript<T> notNullBranch = new StringTemplateScript<T>() {
             @Override
             public void render(AppendableByteWriter writer, T source) {
                 prefixObjectMemberName(declaredMemberName, depth, writer);
-                newOrs.get().beginObjectRender();
+                newOrs.beginObjectRender();
                 accessorScript.render(writer, accessor.get(source));
             }
         };
@@ -316,12 +307,12 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         final StringTemplateBuilder<M> accessorBranch = new StringTemplateBuilder<>();
         kw.OpenObj(accessorBranch, depth);
 
-        final ThreadLocal<ObjectRenderState> newOrs = createOrs();
+        final ObjectRenderState newOrs = new ObjectRenderState(kw);
 
         iterate(iterator, true, new IterMemberFunction<T, M>() {
             @Override
             public M get(T o, int i) {
-                newOrs.get().beginObjectRender();
+                newOrs.beginObjectRender();
                 return accessor.get(o, i);
             }
         }, new RenderIteration<M, N>() {

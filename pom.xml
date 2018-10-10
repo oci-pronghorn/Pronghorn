@@ -4,7 +4,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>open-edge-pronghorn</artifactId>
   <name>open-edge-pronghorn</name>
-  <version>1.0.9</version>
+  <version>1.0.10</version>
   <packaging>pom</packaging>
  
   <modules>  

@@ -160,36 +160,33 @@ public class ClientSocketReaderStage extends PronghornStage {
 	         ////////////////////////////////////////
 
 	     	Selector selector = coordinator.selector();
-    		if (!selector.keys().isEmpty()) {
 
-	    		///////////////////
-	    		//after this point we are always checking for new data work so always record this
-	    		////////////////////
-		     	if (null != this.didWorkMonitor) {
-		     		this.didWorkMonitor.published();
-		     	}	
-	
-		         while ( hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
-	
-		 	           doneSelectors.clear();
-		 		
-		 	           hasRoomForMore = true;
-		 	           
-		 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-		 	           if (null!=keyMap) {
-		 	        	   keyMap.forEach(keyVisitor);
-		 	           } else {
-		 	        	   selectedKeys.forEach(selectionKeyAction);
-		 	           }
-		 	           
-		 			   removeDoneKeys(selectedKeys);
-		 			      
-		 			   if (!hasRoomForMore) {
-		 				   break; //this allows us to stop when the pipes get backed up.
-		 			   }
-		 		
-		         }
-    		}
+	     	if (null != this.didWorkMonitor) {
+	     		this.didWorkMonitor.published();
+	     	}	
+
+	        while ( hasNewDataToRead(selector) ) { //single & to ensure we check has new data to read.
+
+	 	           doneSelectors.clear();
+	 		
+	 	           hasRoomForMore = true;
+	 	           
+	 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	 	           if (null!=keyMap) {
+	 	        	   keyMap.forEach(keyVisitor);
+	 	           } else {
+	 	        	   selectedKeys.forEach(selectionKeyAction);
+	 	           }
+	 	           
+	 			   removeDoneKeys(selectedKeys);
+	 			      
+	 			   //TODO: confirm this has room is right...
+	 			   if (!hasRoomForMore) {
+	 				   break; //this allows us to stop when the pipes get backed up.
+	 			   }
+	 		
+	        }
+    	
 	  
 	  		if (abandonSlowConnections && ((++iteration & rateMask)==0) ) {        	
 
@@ -345,65 +342,61 @@ public class ClientSocketReaderStage extends PronghornStage {
 		}
 		
 		if (doRead) {			
-			
-		    int idx  = responsePipeLinePool.get(cc.id);//will assign if not found and one is available.
+						
+		    int idx  = cc.getResponsePipeIdx();
 		    if (idx>=0) {		    
 		    	//holds the pipe until we gather all the data and got the end of the parse.
-		    	didWork = readFromSocket(didWork, cc, output[idx]);
-		    } else {
-		    	didWork = false;//could not reserve a pipe.
-		    }
-
-		} else {
-			didWork = false;
+		    	
+				Pipe<NetPayloadSchema> target = output[idx];
+				if (Pipe.hasRoomForWrite(target) ) {
+					didWork = readFromSocketImpl(didWork, cc, target);
+				} else {
+					didWork = false;
+				}
+		    } 
 		}
 		return didWork;
 	}
 
-	private boolean readFromSocket(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
-		
-		if (Pipe.hasRoomForWrite(target) ) {			
-	
-			
-        	long units = Math.min(10, target.sizeOfSlabRing - (Pipe.headPosition(target)-Pipe.tailPosition(target)));
-        	int blocks = 1;
-        	if (!coordinator.isTLS) {
-        		blocks = (int)units/SIZE_OF_PLAIN;
-        	} else {
-        		blocks = (int)units/SIZE_OF_ENCRYPTED;
-        	}
-        	int len = Math.max(target.maxVarLen, blocks*target.maxVarLen);
+	private boolean readFromSocketImpl(boolean didWork, ClientConnection cc, Pipe<NetPayloadSchema> target) {
+		long units = Math.min(10, target.sizeOfSlabRing - (Pipe.headPosition(target)-Pipe.tailPosition(target)));
+		int blocks = 1;
+		if (!coordinator.isTLS) {
+			blocks = (int)units/SIZE_OF_PLAIN;
+		} else {
+			blocks = (int)units/SIZE_OF_ENCRYPTED;
+		}
+		int len = Math.max(target.maxVarLen, blocks*target.maxVarLen);
    
-			//these buffers are only big enough to accept 1 target.maxAvgVarLen
-			ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target),
-					                                                                      target, len);
+		//these buffers are only big enough to accept 1 target.maxAvgVarLen
+		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target),
+				                                                                      target, len);
 
-			long readCount=-1; 
-			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
-			if (null != socketChannel) {
-				try {
-					readCount = socketChannel.read(wrappedUnstructuredLayoutBufferOpen);					
-				} catch (IOException ioex) {
-					readCount = -1;
-					//			logger.info("\nUnable to read socket, may not be an error. data was droped. ",ioex);
-				}
+		long readCount=-1; 
+		SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();
+		if (null != socketChannel) {
+			try {
+				readCount = socketChannel.read(wrappedUnstructuredLayoutBufferOpen);					
+			} catch (IOException ioex) {
+				readCount = -1;
+				//			logger.info("\nUnable to read socket, may not be an error. data was droped. ",ioex);
 			}
+		}
+		
+		if (readCount>0) {
+			didWork = true;
+			totalBytes += readCount;						    		
+			//we read some data so send it
 			
-			if (readCount>0) {
-				didWork = true;
-				totalBytes += readCount;						    		
-				//we read some data so send it
-				
-				if (!coordinator.isTLS) {
-					writePlain(cc, target, readCount);
-				} else {
-					writeEncrypted(cc.getId(), target, readCount);
-				}
+			if (!coordinator.isTLS) {
+				writePlain(cc, target, readCount);
 			} else {
-				//logger.info("zero read detected client side..");
-				//nothing to send so let go of byte buffer.
-				Pipe.unstoreBlobWorkingHeadPosition(target);
+				writeEncrypted(cc.getId(), target, readCount);
 			}
+		} else {
+			//logger.info("zero read detected client side..");
+			//nothing to send so let go of byte buffer.
+			Pipe.unstoreBlobWorkingHeadPosition(target);
 		}
 		return didWork;
 	}

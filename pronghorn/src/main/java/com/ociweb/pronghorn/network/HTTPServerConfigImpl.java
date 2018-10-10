@@ -71,7 +71,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		this.pcm = pcm;		
 		
 		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
-		this.pcm.ensureSize(ServerResponseSchema.class, 4, 2048); //TODO: may drop this to 1024 that would be nice.		
+		this.pcm.ensureSize(ServerResponseSchema.class, 4, 512); //ico file is < 512	
 		
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();

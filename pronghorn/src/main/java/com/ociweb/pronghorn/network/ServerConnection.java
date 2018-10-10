@@ -4,10 +4,8 @@ import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLEngine;
 
-import com.ociweb.pronghorn.pipe.ChannelReaderController;
-import com.ociweb.pronghorn.pipe.ChannelWriterController;
+import com.ociweb.pronghorn.network.schema.ConnectionStateSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class ServerConnection extends BaseConnection {
 
@@ -21,19 +19,19 @@ public class ServerConnection extends BaseConnection {
 		this.scs  = coordinator.connectionStruct();
 		assert(coordinator.connectionStruct() != null) : "server side connections require struct";
 				
-		Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(
+		Pipe<ConnectionStateSchema> pipe = ConnectionStateSchema.instance.newPipe(
 					this.scs.inFlightCount(), this.scs.inFlightPayloadSize()
 				);
 		pipe.initBuffers();
 		Pipe.structRegistry(pipe, scs.registry);
 		
-		this.connectionDataWriter = new ChannelWriterController(pipe);
-		this.connectionDataReader = new ChannelReaderController(pipe);	
+		this.connectionDataWriter = new ConnDataWriterController(pipe);
+		this.connectionDataReader = new ConnDataReaderController(pipe);	
 		
 	}
 	
 	protected ServerConnection(SSLEngine engine, SocketChannel socketChannel, long id,
-							   ChannelWriterController connectionData, ServerConnectionStruct scs) {
+							   ConnDataWriterController connectionData, ServerConnectionStruct scs) {
 		super(engine, socketChannel, id);
 		this.connectionDataWriter = connectionData;
 		this.scs = scs;

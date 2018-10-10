@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.BaseConnection;
+import com.ociweb.pronghorn.network.BaseConnection.ConnDataWriterController;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ServerConnection;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
@@ -82,6 +83,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private       int[]                    inputLengths;
     private       boolean[]                needsData;
+    
+    //pipes are held here when we have parsed the beginning of this request but its
+    //target pipe is full, there is no point in re-parsing the message until this 
+    //pipe has room again, also this will be set to null once cleared.
+    private Pipe<HTTPRequestSchema>[] blockedOnOutput;
         
     private final Pipe<ReleaseSchema> releasePipe;
     
@@ -236,6 +242,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         inputSlabPos = new long[inputs.length];
         sequences = new int[inputs.length];
+        
+        blockedOnOutput = new Pipe[inputs.length];
       
         trieReader = new TrieParserReader();//max fields we support capturing.
         
@@ -314,41 +322,51 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     //return 0, 1 work, -1 shutdown.
     private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
-   	
-    	
-    	final int start = that.inputLengths[idx];
-        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx])
-        		             >=0) {//message idx   
-        	
-        	if (!that.needsData[idx]) {
-        	} else {        		
-        		if (that.inputLengths[idx]!=start) {            			
-        			that.needsData[idx]=false;
-        		} else {			
-        			//we got no data, if pipe also empty return 
-        			if (Pipe.isEmpty(that.inputs[idx])) {
-        				return 0;
-        			}
-        			//continue to do work because we may have enough data already but 
-        			//we had to stop due to the target pipe filling.
-        		}
-        	}
-        } else {
-        	if (that.inputLengths[idx] <= 0) {
-    			//closed so return
-    			return 0;
+ 
+	    	final int start = that.inputLengths[idx];
+	        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx])
+	        		             >=0) {//message idx   
+	        	
+	        	if (!that.needsData[idx]) {
+	        	} else {        		
+	        		if (that.inputLengths[idx]!=start) {            			
+	        			that.needsData[idx]=false;
+	        		} else {			
+	        			//we got no data, if pipe also empty return 
+	        			if (Pipe.isEmpty(that.inputs[idx])) {
+	        				return 0;
+	        			}
+	        			//continue to do work because we may have enough data already but 
+	        			//we had to stop due to the target pipe filling.
+	        		}
+	        	}
+	        } else {
+	        	if (that.inputLengths[idx] <= 0) {
+	    			//closed so return
+	    			return 0;
+	    		} else {
+	    			//process remaining data if all the data is here
+	    		}             
+	
+	    		if (that.needsData[idx]) {
+	    			//got no data but we need more data
+	    			return -1;
+	    		}
+	        }       
+	      	
+	    //we can accumulate above but we can not parse or continue until this pipe is clear    
+	   	if (null == that.blockedOnOutput[idx]) {
+	    	  
+	        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 
+	        			0 :	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
+    	} else {
+    		if (Pipe.hasRoomForWrite(that.blockedOnOutput[idx])) {
+    			that.blockedOnOutput[idx] = null;
+    			return 1;
     		} else {
-    			//process remaining data if all the data is here
-    		}             
-
-    		if (that.needsData[idx]) {
-    			//got no data but we need more data
-    			return -1;
+    			return 0;
     		}
-        }       
-        
-        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 
-        			0 :	(that.parseAvail(idx, that.inputs[idx], that.activeChannel) ? 1 : 0);
+    	}
     }
 
 
@@ -364,7 +382,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		if (!webSocketUpgraded) {			
 			return parseHTTPAvail(this, idx, selectedInput, channel, false);
 		} else {
-			
+
 			final int totalAvail = inputLengths[idx];
             final int pipeIdx = ServerCoordinator.getWebSocketPipeIdx(coordinator, channel);
             final Pipe<HTTPRequestSchema> outputPipe = outputs[pipeIdx];
@@ -753,19 +771,23 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     } else {
     	routeId = config.getRouteIdForPathId(pathId);
     }
-
     
-
- 
+    //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
+    //      if catch all is enabled use it because all outputs will be null in that mode
+    Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
+    if (Pipe.hasRoomForWrite(outputPipe) ) {
+    	//if thie above code went past the end OR if there is not enough room for an empty header  line maker then return
+    	if (trieReader.sourceLen<2) {    	
+    		return NEED_MORE_DATA;
+    	}    	
+    	
+    	return parseHTTPImpl(trieReader, channel, idx, arrivalTime, tempLen, tempPos, verbId, pathId, routeId, outputPipe);
+    } else {
+    	blockedOnOutput[idx] = outputPipe;//block on this pipe until it gets room again, do not parse until then.
+    	return -1;//no room so do not parse and try again later.
+    }
    // logger.info("send this message to route {}",routeId);
     
-    //if thie above code went past the end OR if there is not enough room for an empty header  line maker then return
-    if (trieReader.sourceLen<2) {
-    	//logger.info("need more data D");
-    	return NEED_MORE_DATA;
-    }    	
-    
-    return parseHTTPImpl(trieReader, channel, idx, arrivalTime, tempLen, tempPos, verbId, pathId, routeId);
 }
 
 
@@ -796,15 +818,10 @@ private void badVerbParse(TrieParserReader trieReader, final long channel, final
 }
 
 
-private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime, int tempLen,
-		int tempPos, final int verbId, final int pathId, int routeId) {
-	//NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
-    //      if catch all is enabled use it because all outputs will be null in that mode
-    Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
-
-    Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
-    if (Pipe.hasRoomForWrite(outputPipe) ) {
-
+private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime,
+		int tempLen, int tempPos, final int verbId, final int pathId, int routeId, Pipe<HTTPRequestSchema> outputPipe) {
+	Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
+    //NOTE: caller checks for room before calling.
         final int size =  Pipe.addMsgIdx(outputPipe, HTTPRequestSchema.MSG_RESTREQUEST_300);        // Write 1   1                         
         Pipe.addLongValue(channel, outputPipe); // Channel                        // Write 2   3        
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
@@ -826,7 +843,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         	structId = config.extractionParser(pathId).structId;
         	assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
             DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-          	if (!captureAllArgsFromURL(trieReader, pathId, writer)) {
+          	if (!captureAllArgsFromURL(config, trieReader, pathId, writer)) {
           		
           		//////////////////////////////////////////////////////////////////
           		//did not pass validation so we return 404 without giving any clues why
@@ -901,17 +918,38 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         
 
         //	int countOfAllPreviousFields = extractionParser.getIndexCount()+indexOffsetCount;
-		int requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, coordinator.<ServerConnection>lookupConnectionById(channel), 
-												httpRevisionId, config,
-												errorReporter, arrivalTime);  // Write 2   10 //if header is presen
-       
+		ServerConnection serverCon = coordinator.<ServerConnection>lookupConnectionById(channel);
+		
+		int requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+		ConnDataWriterController cwc = null;
+		ChannelWriter cw = null;
+		if (serverCon!=null) {
+
+			cwc = serverCon.connectionDataWriter();
+			if (null != cwc) {
+				assert (routeId == config.getRouteIdForPathId(pathId));
+				cw = cwc.beginWrite(routeId, arrivalTime);
+				if (null!=cw) {
+					requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, cw,  
+														httpRevisionId, config,
+														errorReporter, arrivalTime);  // Write 2   10 //if header is p
+				}
+			}
+		}
         
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {  
+        	if (cw!=null) {
+        		cwc.abandonWrite();
+        	}
         	DataOutputBlobWriter.closeLowLevelField(writer);
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
             return NEED_MORE_DATA;
-        } 
+        } else {
+
+        	cwc.commitWrite(requestContext, System.nanoTime());
+        	
+        }
         
     	DataOutputBlobWriter.commitBackData(writer,structId);
     	DataOutputBlobWriter.closeLowLevelField(writer);
@@ -933,32 +971,8 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         Pipe.confirmLowLevelWrite(outputPipe, size); 
   
         sequences[idx]++; //increment the sequence since we have now published the route.
-        
-    } else {
-
-    	final boolean showsOverload = false;
-		if (showsOverload &&  !"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor	
-			
-			if ((lastNoRoomPosition == Pipe.tailPosition(outputPipe))
-				&& (noRoomPipeId == outputPipe.id)) {	
-				
-				if (++noRoomCount == 100) {
-					logger.warn("\nNo room to route message, waiting for {} {}",channel, outputPipe);
-				}
-			} else {
-				noRoomCount = 0;
-			}
-			
-			lastNoRoomPosition = Pipe.tailPosition(outputPipe);
-			noRoomPipeId = outputPipe.id;
-		}
-		
-        //no room try again later zero or negative values are the the pipe index of which is backed up.
-        return -1;
-    }
     
    inputCounts[idx]++; 
- //  assert(validateNextByte(trieReader, idx));
    return SUCCESS;
 }
 
@@ -966,16 +980,23 @@ private int noRoomCount;
 private int noRoomPipeId;
 private long lastNoRoomPosition;
 
-private boolean captureAllArgsFromURL(TrieParserReader trieReader, final int pathId,
-		DataOutputBlobWriter<HTTPRequestSchema> writer) {
+private static boolean captureAllArgsFromURL(HTTP1xRouterStageConfig<?,?,?,?> config,
+		                                     TrieParserReader trieReader, final int pathId,
+										     DataOutputBlobWriter<HTTPRequestSchema> writer) {
 
-	if (TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
-			                                         config.paramIndexArray(pathId),
-			                                         config.paramIndexArrayValidator(pathId)
-													)) {
+	if (0 == config.paramIndexArray(pathId).length) {
 		//load any defaults
 		config.processDefaults(writer, pathId);
 		return true;
+	} else {	
+		if (TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
+				                                         config.paramIndexArray(pathId),
+				                                         config.paramIndexArrayValidator(pathId)
+														)) {
+			//load any defaults if what was passed in has been validated
+			config.processDefaults(writer, pathId);
+			return true;
+		}
 	}
 	return false;
 }
@@ -984,22 +1005,16 @@ private boolean captureAllArgsFromURL(TrieParserReader trieReader, final int pat
 private static int parseHeaderFields(TrieParserReader trieReader, 
 		final int pathId, final TrieParser headerMap, 
 		DataOutputBlobWriter<HTTPRequestSchema> writer, 
-		ServerConnection serverConnection, int httpRevisionId,
+		ServerConnection serverConnection, ChannelWriter cw,
+		int httpRevisionId,
 		HTTP1xRouterStageConfig<?, ?, ?, ?> config,
 		ErrorReporter errorReporter2, long arrivalTime) {
 	
-
-	
-	if (null == serverConnection) {
-		return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-	}
-	ChannelWriterController cwc = serverConnection.connectionDataWriter();
-	if (null != cwc) {
-		ChannelWriter cw = cwc.beginWrite();
 		if (null != cw) {//try again later if this connection is overloaded
 			
 			int requestContext = keepAliveOrNotContext(httpRevisionId, serverConnection.id);
-				
+
+							
 			long postLength = NO_LENGTH_DEFINED;
 			
 			int iteration = 0;
@@ -1012,21 +1027,17 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
 					if (iteration!=0) {
 									    	
-						int routeId = config.getRouteIdForPathId(pathId);
 						
 						if (NO_LENGTH_DEFINED == postLength) {
 							postLength = 0;//we explicitly set length to zero if it is not provided.
 						}
 						
-						return endOfHeadersLogic(writer, cwc, cw, 
-								serverConnection.scs,
+						return endOfHeadersLogic(writer, 
 								errorReporter2, requestContext, 
-								trieReader, postLength, arrivalTime, routeId);
+								trieReader, postLength, arrivalTime);
 						
-					} else {	         
-						
+					} else {
 						//needs more data 
-						cwc.abandonWrite();
 						return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
 					}
 			    } else if (-1 == headerToken) {            	
@@ -1036,7 +1047,6 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    		return errorReporter2.sendError(400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 			    	}
 			        //nothing valid was found so this is incomplete.
-			    	cwc.abandonWrite();
 			        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
 			    }
 				
@@ -1077,9 +1087,8 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    }
 			    iteration++;
 			}
-			cwc.abandonWrite();
 		}
-	}
+
 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 }
 
@@ -1369,11 +1378,9 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 	}
 	
     private static int endOfHeadersLogic(DataOutputBlobWriter<HTTPRequestSchema> writer,
-    		ChannelWriterController cwc,
-    		ChannelWriter cw,
-    		ServerConnectionStruct scs, ErrorReporter errorReporter,
+    		ErrorReporter errorReporter,
 			int requestContext, final TrieParserReader trieReader,
-			long postLength, long arrivalTime, int routeId) {
+			long postLength, long arrivalTime) {
 		//logger.trace("end of request found");
 		//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
 		//ALL OTHERS MUST RETURN INCOMPLETE
@@ -1390,7 +1397,6 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 				int cpyLen = TrieParserReader.parseCopy(trieReader, postLength, writer);
 				if (cpyLen<postLength) {
 				   //needs more data 
-					cwc.abandonWrite();
 					return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				} else {	
 					
@@ -1409,13 +1415,6 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 			requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 		
 		}
-				
-		cw.structured().writeInt(routeId, scs.routeIdFieldId);
-		cw.structured().writeLong(System.nanoTime()-arrivalTime, scs.businessStartTime); //value is relative to arrival time
-		cw.structured().writeLong(arrivalTime, scs.arrivalTimeFieldId);
-		cw.structured().writeInt(requestContext, scs.contextFieldId); 
-				
-		cwc.commitWrite();
 		return requestContext;
 	}
 

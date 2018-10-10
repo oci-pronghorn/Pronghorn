@@ -62,10 +62,12 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 	}
 
 	public void render(AppendableByteWriter writer, T source) {
+
 		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
 			script[i].render(writer, source);
 		}
+		
 	}
 
 	private StringTemplateBuilder<T> addBytes(final byte[] byteData) {

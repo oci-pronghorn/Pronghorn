@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ConnectionStateSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
@@ -41,6 +42,11 @@ public class SchemaValidationTest {
     @Test
     public void messageNetRequestSchemaFROMTest() {
         assertTrue(FROMValidation.checkSchema("/ClientHTTPRequest.xml", ClientHTTPRequestSchema.class));
+    }
+    
+    @Test
+    public void messageConnectionStateSchemaFROMTest() {
+        assertTrue(FROMValidation.checkSchema("/ConnectionState.xml", ConnectionStateSchema.class));
     }
     
     @Test

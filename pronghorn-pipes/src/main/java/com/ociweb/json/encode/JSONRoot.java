@@ -15,6 +15,26 @@ public abstract class JSONRoot<R, T, P> {
         builder.start();
     }
 
+    private class StartObjectJSON<R, T, P> extends JSONObject<R, T, P> {
+
+    	StartObjectJSON(JSONBuilder<R, T> builder) {
+			super(builder);
+		}
+
+		@Override
+		P objectEnded() {
+			return (P) childCompleted();
+		}    	
+    }
+    
+    private ToMemberFunction<T,T> passThoughMember = 
+											    new ToMemberFunction<T, T>() {
+											        @Override
+											        public T get(T o) {
+											            return o;
+											        }
+											    };
+    
     abstract P rootEnded();
 
     private P childCompleted() {
@@ -35,21 +55,25 @@ public abstract class JSONRoot<R, T, P> {
     }
     
     public JSONObject<R, T, P> startObject() {
-        return startObject(new ToMemberFunction<T, T>() {
-            @Override
-            public T get(T o) {
-                return o;
-            }
-        });
+    	return startObject(passThoughMember);
+//        return startObject(new ToMemberFunction<T, T>() {
+//            @Override
+//            public T get(T o) {
+//                return o;
+//            }
+//        });
     }
 
     public <M> JSONObject<R, M, P> startObject(ToMemberFunction<T, M> accessor) {
-        return new JSONObject<R, M, P>(builder.beginObject(accessor)) {
-            @Override
-            P objectEnded() {
-                return childCompleted();
-            }
-        };
+        return new StartObjectJSON<R, M, P>(builder.beginObject(accessor));
+        		
+        		
+//        		new JSONObject<R, M, P>(builder.beginObject(accessor)) {
+//            @Override
+//            P objectEnded() {
+//                return childCompleted();
+//            }
+//        };
     }
 
     // Array

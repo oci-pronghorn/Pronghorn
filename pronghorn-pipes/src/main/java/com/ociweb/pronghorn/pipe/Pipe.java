@@ -846,7 +846,11 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return long bytes count estimate memory consumed
      */
     public static <S extends MessageSchema<S>> long estBytesAllocated(Pipe<S> pipe) {
-    	return ((long)pipe.blobRing.length) + (pipe.slabRing.length*4L) + 1024L;//1K for overhead
+    	if (null!=pipe && pipe.blobRing!=null && pipe.slabRing!=null) {
+    		return ((long)pipe.blobRing.length) + (pipe.slabRing.length*4L) + 1024L;//1K for overhead
+    	} else {
+    		return 0;
+    	}
     }
     
     /**

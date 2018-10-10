@@ -9,8 +9,13 @@ import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.ChannelReaderController;
-import com.ociweb.pronghorn.pipe.ChannelWriterController;
+import com.ociweb.pronghorn.network.schema.ConnectionStateSchema;
+import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public abstract class BaseConnection {
 	
@@ -29,8 +34,8 @@ public abstract class BaseConnection {
 
     private long lastUsedTimeNS = System.nanoTime();
 
-	protected ChannelWriterController connectionDataWriter;
-	protected ChannelReaderController connectionDataReader;	
+	protected ConnDataWriterController connectionDataWriter;
+	protected ConnDataReaderController connectionDataReader;	
 	
 	protected BaseConnection(SSLEngine engine, 
 			                 SocketChannel socketChannel,
@@ -56,11 +61,11 @@ public abstract class BaseConnection {
 		//connectionDataReader = null;
 	}
 		
-	public ChannelWriterController connectionDataWriter() {		
+	public ConnDataWriterController connectionDataWriter() {		
 		return connectionDataWriter;
 	}
 	
-	public ChannelReaderController connectionDataReader() {		
+	public ConnDataReaderController connectionDataReader() {		
 		return connectionDataReader;
 	}
 	
@@ -187,5 +192,166 @@ public abstract class BaseConnection {
 	protected void finalize() throws Throwable {
 		close();
 	}
+	
+	public class ConnDataWriterController {
+
+		
+		private final int SIZE_OF = Pipe.sizeOf(ConnectionStateSchema.instance,ConnectionStateSchema.MSG_STATE_1);
+		protected final Pipe<ConnectionStateSchema> pipe;
+		private boolean isWriting = false;		
+		
+		public ConnDataWriterController(Pipe<ConnectionStateSchema> pipe) {
+			this.pipe = pipe;
+		}
+		
+		/**
+		 * check if connection data can take another message
+		 * @return true if there is room for another write
+		 */
+		public boolean hasRoomForWrite() {
+			return Pipe.hasRoomForWrite(pipe);
+		}
+		
+		/**
+		 * Open the message for writing
+		 * @return returns the ChannelWriter or null if there is no room to write.
+		 */
+		public ChannelWriter beginWrite(int route, long arrivalTime) {
+			if (Pipe.hasRoomForWrite(pipe)) {
+				Pipe.markHead(pipe);
+				Pipe.addMsgIdx(pipe, ConnectionStateSchema.MSG_STATE_1);
+				Pipe.addIntValue(route, pipe);
+				Pipe.addLongValue(arrivalTime, pipe);
+				isWriting = true;
+				return Pipe.openOutputStream(pipe);
+			}
+			return null;
+		}
+		
+		/**
+		 * Dispose of everything written and restore to the way it was before
+		 * beginWrite() was called.
+		 */
+		public void abandonWrite() {
+			if (isWriting) {
+				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));
+				Pipe.resetHead(pipe);
+			} else {
+				isWriting=false;
+			}
+		}
+		
+		/**
+		 * Store the message and move the pointers forward so the data can be
+		 * consumed later.
+		 */
+		public void commitWrite(int context, long businessTime) {
+			if (isWriting) {
+				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));		
+				
+				Pipe.confirmLowLevelWrite(pipe, SIZE_OF);
+				Pipe.addIntValue(context, pipe);
+				Pipe.addLongValue(businessTime, pipe);
+				Pipe.publishWrites(pipe);
+			} else {
+				isWriting = false;
+			}
+		}
+
+	}
+	
+	public class ConnDataReaderController {
+
+		private final int SIZE_OF = Pipe.sizeOf(ConnectionStateSchema.instance,ConnectionStateSchema.MSG_STATE_1);
+		
+		protected final Pipe<ConnectionStateSchema> pipe;
+		protected boolean isReading = false;
+				
+	    private int activeRoute;
+	    private long activeArrivalTime;
+	    private int activeContext;
+	    private long activeBusinessTime;
+	    
+		
+		public ConnDataReaderController(Pipe<ConnectionStateSchema> pipe) {
+			this.pipe = pipe;
+		}
+			
+		/**
+		 * checks if there is data on the channel
+		 * @return true if there is a full message to read
+		 */
+		public boolean hasContentToRead() {
+			return Pipe.hasContentToRead(pipe);
+		}
+
+		
+		/**
+		 * Opens the channel reader for reading from beginning of message
+		 * @return ChannelReader opened for reading or null if channel has no data
+		 */
+		public ChannelReader beginRead() {
+			if (Pipe.hasContentToRead(pipe)) {
+				Pipe.markTail(pipe);
+				int msg = Pipe.takeMsgIdx(pipe);
+				
+				if (msg >= 0) {
+					isReading = true;
+					
+					activeRoute = Pipe.takeInt(pipe);
+					activeArrivalTime = Pipe.takeLong(pipe);					
+					DataInputBlobReader<ConnectionStateSchema> result = Pipe.openInputStream(pipe);
+					activeContext = Pipe.takeInt(pipe);
+					activeBusinessTime = Pipe.takeLong(pipe);
+					return result;
+				} 
+			}
+			return null;
+		}
+		
+		public int readRoute() {
+			assert(isReading);
+			return activeRoute;
+		}
+		
+		public long readArrivalTime() {
+			assert(isReading);
+			return activeArrivalTime;
+		}
+		
+		public int readContext() {
+			assert(isReading);
+			return activeContext;
+		}
+		
+		public long readBusinessTime() {
+			assert(isReading);
+			return activeRoute;
+		}
+		
+		/**
+		 * Restore position to the beginning, the ChannelReader is invalidated
+		 * beginRead() must be called again for another read.
+		 */
+		public void rollback() {
+			if (isReading) {
+				Pipe.resetTail(pipe);
+			}
+			isReading = false;
+		}
+		
+		/**
+		 * Move position forward.  ChanelReader is invalid and beginRead() must be called again.
+		 */
+		public void commitRead() {
+			if (isReading) {
+				Pipe.confirmLowLevelRead(pipe, SIZE_OF);
+				Pipe.releaseReadLock(pipe);
+			}
+			isReading = false;
+		}
+
+	}
+
 	
 }

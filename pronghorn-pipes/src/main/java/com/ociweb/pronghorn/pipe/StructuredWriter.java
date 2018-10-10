@@ -89,11 +89,6 @@ public class StructuredWriter {
 		channelWriter.writeUTF(text);
 	}
 	
-	public Appendable writeText(Object assoc) {
-		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
-		storeAssocAndPosition(assoc);
-		return channelWriter;	
-	}
 
 	/**
 	 * Defines the record after fields are defined
@@ -187,24 +182,6 @@ public class StructuredWriter {
 	public ChannelWriter writeBlob(long fieldId) {
 		
 		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructType.Blob);
-		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
-		DataOutputBlobWriter.setIntBackData(
-				channelWriter, 
-				channelWriter.position(), 
-				StructRegistry.extractFieldPosition(fieldId));
-		
-		return channelWriter;
-		
-	}
-
-	/**
-	 * Writes text to specified field in pipe
-	 * @param fieldId field to write to
-	 * @return channelWriter
-	 */
-	public Appendable writeText(long fieldId) {
-		
-		assert(Pipe.structRegistry(channelWriter.backingPipe).fieldType(fieldId) == StructType.Text);
 		DataOutputBlobWriter.commitBackData(channelWriter, StructRegistry.extractStructId(fieldId));
 		DataOutputBlobWriter.setIntBackData(
 				channelWriter, 

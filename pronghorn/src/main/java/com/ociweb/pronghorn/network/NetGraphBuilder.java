@@ -148,14 +148,19 @@ public class NetGraphBuilder {
 		
 		////////////////////////
 		//Control for how many HTTP1xResponseParserStage instances we will be using
-		//This stage is NOT fast so can not support many
-		//TODO: must be power of 2?
-		int pipesPerResponseParser = 16;
-		//HIGHVOLUME test TODO: until the response parser gets faster we need a few of them.
-		//TODO: urgent the respones parse consumes most of the time and needs to be optimized.
-		///////////////////////
-		final int responseParsers = //1;//DISABLED UNTIL TODO: we add groups and reservations for Socket read data..
-		                           Math.max(1, rawToParse.length/pipesPerResponseParser);
+		//on our 4 core test box we can not set this much larger or we will be stuck with 1 parser.
+		final int pipesPerResponseParser = 30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
+
+		//do not have more parsers than cores and do not have more parsers than needed for pipe goal
+		int maxParser = Math.min(Runtime.getRuntime().availableProcessors(),  rawToParse.length/pipesPerResponseParser);
+		//find the first number going into count evenly which causes the pipe count to be < 32
+		int proposed = Math.max(1, maxParser);
+		while (0 != (rawToParse.length%proposed) && proposed>1) {
+			proposed--;
+		}
+		//all pipes go into these response parsers evenly and we have <= # of cores and pipes count is reasonable
+		final int responseParsers = proposed;
+			
 		
 		
 		int a = responseParsers + (ccm.isTLS ? responseUnwrapCount : 0);
@@ -272,8 +277,7 @@ public class NetGraphBuilder {
 			
 			final int masterLen = rawToParse.length;
 			int perPipe = masterLen/parts;
-			int bits = (int)Math.ceil(Math.log(perPipe)/Math.log(2));
-		    perPipe = (1<<bits);//updated for next level of power of 2
+			assert(masterLen%parts == 0) : "parts must go into pipe count evenly";
 		    
 		    final Pipe<NetPayloadSchema>[][] request = new Pipe[parts][];
 		    final Pipe<NetResponseSchema>[][] response = new Pipe[parts][];

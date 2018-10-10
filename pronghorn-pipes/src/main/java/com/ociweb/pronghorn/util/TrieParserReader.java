@@ -1420,7 +1420,7 @@ public class TrieParserReader {
 				short c = source[sourceMask & sourcePos++];        
 
 				if ((c>='0') && (c<='9') ) {
-					intValue = (intValue * 10)+(c-'0');
+					intValue = (intValue * 10)+(c & 0xF);
 					intLength++;
 					continue;
 				} else {
