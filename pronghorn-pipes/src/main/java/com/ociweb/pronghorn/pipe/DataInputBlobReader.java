@@ -157,7 +157,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     	return bigEndianInt((reader.bytesLowBound + Pipe.blobIndexBasePosition(reader.pipe))-(4*(pos+1)), reader.byteMask, reader.backing);
 	}
         
-	public void readFromEndInto(DataOutputBlobWriter<?> outputStream) {
+	public boolean readFromEndInto(DataOutputBlobWriter<?> outputStream) {
 		assert(isStructured) : "method can only be called on structured readers";
 		//WARNING: this method will carry the same exact struct forward to the destination
 		
@@ -171,7 +171,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 			int start = end-copyLen;
 			
 			DataOutputBlobWriter.copyBackData(outputStream, backing, start, copyLen, byteMask);
+			return true;
 		}
+		return false;
 	}
 	
     

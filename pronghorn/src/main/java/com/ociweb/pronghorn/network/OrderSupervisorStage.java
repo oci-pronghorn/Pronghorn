@@ -147,11 +147,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
         
-        if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
-          	throw new UnsupportedOperationException(
-        			"Increase the size of setMaxResponseSize() value.\nAll output<NetPayloadSchema> pipes must support variable length fields equal to or larger"
-        			+ " than all input<ServerResponseSchema> pipes. out "+minVarLength(outgoingPipes)+" in "+maxVarLength(inputPipes));
-        }
+        //TODO: this should be a warning
+//        if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
+//          	throw new UnsupportedOperationException(
+//        			"Increase the size of setMaxResponseSize() value.\nAll output<NetPayloadSchema> pipes must support variable length fields equal to or larger"
+//        			+ " than all input<ServerResponseSchema> pipes. out "+minVarLength(outgoingPipes)+" in "+maxVarLength(inputPipes)
+//        			);
+//        }
         
         this.maxOuputSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210) +
         								Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_UPGRADE_307) +            

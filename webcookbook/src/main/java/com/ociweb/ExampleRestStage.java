@@ -26,7 +26,7 @@ public class ExampleRestStage<      T extends Enum<T> & HTTPContentType,
 	private static final byte[] BANG = "!".getBytes();
 	
 	private static final JSONRenderer<StructuredReader> jsonRenderer = new JSONRenderer<StructuredReader>()
-            .beginObject()
+            .startObject()
             .string("message", (reader,target) ->  {target.write(HEY); reader.readText(WebFields.name, target).write(BANG);} )
             .bool("happy", reader -> !reader.readBoolean(WebFields.happy))
             .integer("age", reader -> reader.readInt(WebFields.age) * 2)
