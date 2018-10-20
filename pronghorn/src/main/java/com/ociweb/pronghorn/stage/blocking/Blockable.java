@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.blocking;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 
+@Deprecated
 public abstract class Blockable<T extends MessageSchema<T>, P extends MessageSchema<P>, Q extends MessageSchema<Q>> {
 
 	/**

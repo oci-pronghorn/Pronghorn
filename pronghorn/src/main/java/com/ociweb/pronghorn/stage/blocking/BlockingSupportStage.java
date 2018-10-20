@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
  */
+@Deprecated
 public class BlockingSupportStage<T extends MessageSchema<T>, P extends MessageSchema<P>, Q extends MessageSchema<Q>> extends PronghornStage {
 
 	private final Pipe<T> input;
