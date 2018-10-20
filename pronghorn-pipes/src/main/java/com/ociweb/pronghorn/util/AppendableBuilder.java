@@ -166,5 +166,10 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		return target.equalBytes(buffer, 0, byteCount);
 	}
 
+	public int base64Decode(byte[] target, int targetIdx, int targetMask) {
+		return Appendables.decodeBase64(buffer, 0, byteCount, Integer.MAX_VALUE,
+							    target, targetIdx, targetMask);
+	}
+
 
 }

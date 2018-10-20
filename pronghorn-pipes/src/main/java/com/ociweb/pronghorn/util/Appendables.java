@@ -894,7 +894,9 @@ public class Appendables {
     	}
     }
     
+    ///ERROR, this method may add an extra A=== on the end... TODO: urgent need test and fix method.
     
+    @Deprecated
     public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int mask) {
         //  https://en.wikipedia.org/wiki/Base64
     	try {

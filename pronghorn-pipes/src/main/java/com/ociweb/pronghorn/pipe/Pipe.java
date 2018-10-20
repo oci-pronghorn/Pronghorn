@@ -1318,6 +1318,8 @@ public class Pipe<T extends MessageSchema<T>> {
         	int bytesPerInt = (int)Math.ceil(length*Pipe.from(pipe).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
         	Pipe.shutdown(pipe);
+        	pipe.creationStack();
+        	
         	throw new UnsupportedOperationException("Can not write byte array of length "+length+
         	                                        ". The dif between slab and byte blob should be at least "+bitsDif+
         	                                        ". "+pipe.bitsOfSlabRing+","+pipe.bitsOfBlogRing+

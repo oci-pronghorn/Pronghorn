@@ -16,8 +16,8 @@ public class StructuredWriter {
 	//////////////////////////
 	
 	private int pos = 0;
-	private int[] positions = new int[4];
-	private Object[] associations = new Object[4];
+	private int[] positions = new int[8];
+	private Object[] associations = new Object[8];
 
 	/**
 	 * Writes null to specified field in pipe
@@ -93,30 +93,64 @@ public class StructuredWriter {
 	/**
 	 * Defines the record after fields are defined
 	 */
-
 	public void selectStruct(Object assoc) {
 		selectStruct(Pipe.structRegistry(channelWriter.backingPipe).structLookupByIdentity(assoc));
 	}
 
+	
 	/**
 	 * Defines the record after fields are defined
 	 */
-
 	public void selectStruct(int structId) {
 		
 		StructRegistry structRegistry = Pipe.structRegistry(channelWriter.backingPipe);
 		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
-		DataOutputBlobWriter.commitBackData(channelWriter, structId);		
+		DataOutputBlobWriter.commitBackData(channelWriter, structId);
+		
 		int p = pos;
 		while (--p>=0) {
 			
-			DataOutputBlobWriter.setIntBackData(channelWriter,
-								positions[p],
-								StructRegistry.lookupIndexOffset(structRegistry,
-										              associations[p], structId) & StructRegistry.FIELD_MASK					
+			DataOutputBlobWriter.setIntBackData(channelWriter, positions[p],
+								
+								//can we cache this lookup??
+					            //lookup the offset of this object in this struct.
+								StructRegistry.lookupIndexOffset(structRegistry, 
+										                         associations[p],
+										                         structId) 
+								
+								          & StructRegistry.FIELD_MASK					
 							);
-		}
+		} 
 		pos = 0;//cleared for next time;
+	}
+	
+	public void selectStructFromCachedIndexes(int[] indexOffsets) {
+
+		StructRegistry structRegistry = Pipe.structRegistry(channelWriter.backingPipe);
+		assert(DataOutputBlobWriter.getStructType(channelWriter)<=0) :  "call selectStruct(id) only after setting all the object fields.";
+		DataOutputBlobWriter.commitBackData(channelWriter, indexOffsets[indexOffsets.length-1]);//last pos is structId
+		
+		int p = pos;
+		while (--p>=0) {			
+			DataOutputBlobWriter.setIntBackData(channelWriter, positions[p], indexOffsets[p]);
+		} 
+		pos = 0;//cleared for next time;
+	}
+	
+	
+	public int[] preBuildIndexOffsets(Object structAssocObj) {
+		StructRegistry structRegistry = Pipe.structRegistry(channelWriter.backingPipe);
+		int structId = structRegistry.structLookupByIdentity(structAssocObj);
+		
+		int[] result = new int[pos+1];
+		result[pos] = structId;//store struct id in last position of this array.
+		int p = pos;
+		while (--p>=0) {			
+			result[p] = StructRegistry.lookupIndexOffset(structRegistry, 
+                                                         associations[p], 
+                                                         structId) & StructRegistry.FIELD_MASK;			
+		}
+		return result;
 	}
 
 	
@@ -486,6 +520,14 @@ public class StructuredWriter {
 		channelWriter.writeRational(numerator, denominator);
 	}
 
+	public int getStructType() {
+		return DataOutputBlobWriter.getStructType(channelWriter);
+	}
+
+	public StructRegistry getStructRegistry() {
+		return Pipe.structRegistry(channelWriter.backingPipe);
+	}
+	
 	/**
 	 * Writes rational to specified field in pipe
 	 * @param numerator of rational to be written

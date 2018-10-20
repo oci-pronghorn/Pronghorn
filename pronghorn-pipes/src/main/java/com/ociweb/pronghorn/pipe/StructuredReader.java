@@ -115,6 +115,42 @@ public final class StructuredReader {
 		
 		return read(structRegistry.buildFieldId(structId, idx));
 	}
+	
+	/**
+	 * Used by assertions to ensure that the cursor is set at the right position to read the given field.
+	 * This is important because it allows for checks at compile time so the lookup is removed from runtime.
+	 * @param association object for the field
+	 * @return true if the position of the channelReader is ready to read the field
+	 */
+	public boolean isPositionedToRead(Object association) {
+		int indexOffset = indexOffset(association);
+		final int index = channelReader.readFromEndLastInt(indexOffset);
+
+		if (index>=0) {
+			return index==channelReader.position();
+		}
+		return false;
+	}
+
+	public int dataPositionFromIndexOffset(int indexOffset) {
+		return channelReader.readFromEndLastInt(indexOffset);
+	}
+	
+	public Object associatedFieldObject(int structId, int fieldIdx) {
+		StructRegistry structRegistry = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader));
+		return structRegistry.getAssociatedObject(structRegistry.buildFieldId(structId, fieldIdx));
+	}
+	
+	public int indexOffset(Object association) {
+		StructRegistry structRegistry = Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader));
+		
+		int structId = DataInputBlobReader.getStructType(channelReader);
+		
+		int idx = StructRegistry.lookupIndexOffset(structRegistry, association, structId);
+		
+		int indexOffset = StructRegistry.FIELD_MASK&(int)structRegistry.buildFieldId(structId, idx);
+		return indexOffset;
+	}
 		
 	public boolean isNull(Object association) {
 		return isNull(
@@ -2152,6 +2188,7 @@ public final class StructuredReader {
 				Pipe.structRegistry(DataInputBlobReader.getBackingPipe(channelReader)), 
 				fieldIdAssoc, DataInputBlobReader.getStructType(channelReader));
 	}
+
 	
 
 }

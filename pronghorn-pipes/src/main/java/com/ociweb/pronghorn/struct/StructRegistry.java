@@ -266,7 +266,7 @@ public class StructRegistry { //prong struct store
 		this.fieldRequired[structIdx] = new boolean[fieldNames.length];
 		
 		//added lots of extra space since many hash values are the same at the low digits
-		this.fieldAttachedIndex[structIdx] = new IntHashTable(5+IntHashTable.computeBits(Math.max(fieldNames.length,8)));
+		this.fieldAttachedIndex[structIdx] = new IntHashTable(4 + IntHashTable.computeBits(Math.max(fieldNames.length,8)) );
 				
 		if (null!=fieldAssoc) {
 			int fieldId = fieldAssoc.length;
