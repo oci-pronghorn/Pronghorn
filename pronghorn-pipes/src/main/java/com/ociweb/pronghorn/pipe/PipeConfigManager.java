@@ -48,12 +48,11 @@ public class PipeConfigManager {
 			configs[configCount++] = newConfig;
 			
 		} else {
+			//if (configs[idx].minimumFragmentsOnPipe()>newConfig.minimumFragmentsOnPipe()) {
+			//	throw new UnsupportedOperationException("Already ensured size larger than new assignment, use ensure not add.");
+			//}
 			configs[idx] = newConfig;
 		}
-		
-		//show all the places where we set the config instead of ensure the size.
-		//new Exception("new config "+newConfig+"  "+newConfig.schema).printStackTrace();
-		
 		return newConfig;
 	}
 	

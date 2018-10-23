@@ -72,6 +72,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		
 		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
 		this.pcm.ensureSize(ServerResponseSchema.class, 4, 512); //ico file is < 512	
+	
 		
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
@@ -243,7 +244,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	
 	@Override
 	public HTTPServerConfig setMaxQueueIn(int maxQueueIn) {
-		this.maxQueueIn = Math.max(this.maxQueueIn, maxQueueIn);
+		this.maxQueueIn = Math.max(this.maxQueueIn, maxQueueIn);		
+
+		//for after router and before module, limited since all the data is cached in previous pipe
+		//and we do not want to use all the memory here.
+		this.pcm.ensureSize(HTTPRequestSchema.class, Math.min(maxQueueIn,1<<14), 0); 
+       
 		return this;
 	}
 	

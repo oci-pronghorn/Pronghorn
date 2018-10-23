@@ -120,7 +120,7 @@ public class ServerPipesConfig {
 		
 		this.releaseMsg                      = 2048;
 				
-		pcm.addConfig(new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg));
+		pcm.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 
 	    //byte buffer must remain small because we will have a lot of these for all the partial messages
 		//however for large posts we make this large for fast data reading
