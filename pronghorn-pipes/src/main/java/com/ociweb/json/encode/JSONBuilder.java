@@ -469,7 +469,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
                     kw.Null(writer);
                 }
                 else {
-                    Appendables.appendValue(writer, func.applyAsLong(source));
+                    Appendables.appendValue(writer, func.applyAsLong(source), false);
                 }
             }
         });
@@ -479,7 +479,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         iterate(iterator, isNull, new RenderIteration<T, N>() {
             @Override
             public void render(AppendableByteWriter writer, T source, int i, N node) {
-                Appendables.appendValue(writer, func.applyAsLong(source, i));
+                Appendables.appendValue(writer, func.applyAsLong(source, i), false);
             }});
     }
 

@@ -450,11 +450,11 @@ public class Appendables {
     			return target;
     		}
     	}
-    	return appendValueSlow(target, value);
+    	return appendValue(target, value, true);
     }
 
 
-	private static <A extends Appendable> A appendValueSlow(A target, int value) {
+	public static <A extends Appendable> A appendValue(final A target, int value, final boolean useNegPara) {
 		try {
 	        int tens = 1000000000;
 	        
@@ -464,8 +464,10 @@ public class Appendables {
 	            if (value==Integer.MIN_VALUE) {
 	                return appendValue(target,(long)value);
 	            }
-	            
-	            target.append("(-");
+	            if (useNegPara) {
+	            	target.append('(');
+	            }
+	            target.append('-');
 	            value = -value;
 	        }
 	        
@@ -481,8 +483,8 @@ public class Appendables {
 	            tens /= 10;
 	        }
 	        target.append((char)('0'+nextValue));
-	        if (isNegative) {
-	            target.append(")");
+	        if (isNegative && useNegPara) {
+	            target.append(')');
 	        }
 	        return target;
     	} catch (IOException ex) {
@@ -588,17 +590,20 @@ public class Appendables {
     		}
     	}
     	/////////////////////////////    	
-    	return appendValueSlow(target, value);
+    	return appendValue(target, value, true);
     }
 
 
-	private static <A extends Appendable> A appendValueSlow(A target, long value) {
+	public static <A extends Appendable> A appendValue(A target, long value, boolean useNegPara) {
 		try {
 	        long tens = 1000000000000000000L;
 	        
 	        boolean isNegative = value<0;
 	        if (isNegative) {
-	            target.append("(-");
+	        	if (useNegPara) {
+	        		target.append('(');
+	        	}
+	            target.append('-');
 	            value = -value;
 	        }
 	        
@@ -614,7 +619,7 @@ public class Appendables {
 	            tens /= 10;
 	        }
 	        target.append((char)('0'+nextValue));
-	        if (isNegative) {
+	        if (isNegative && useNegPara) {
 	            target.append(')');
 	        }
 	        return target;

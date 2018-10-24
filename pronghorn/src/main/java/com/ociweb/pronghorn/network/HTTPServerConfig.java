@@ -12,7 +12,7 @@ public interface HTTPServerConfig {
 	HTTPServerConfig setMinConnections(int connections);
 		
 	HTTPServerConfig setMaxRequestSize(int maxRequestSize);
-	HTTPServerConfig setMaxResponseSize(int maxRequestSize);	
+	HTTPServerConfig setMaxResponseSize(int maxResponseSize);	
 	HTTPServerConfig setMaxQueueIn(int maxQueueIn);
 	HTTPServerConfig setMaxQueueOut(int maxQueueIn);
 	HTTPServerConfig setEncryptionUnitsPerTrack(int value);
