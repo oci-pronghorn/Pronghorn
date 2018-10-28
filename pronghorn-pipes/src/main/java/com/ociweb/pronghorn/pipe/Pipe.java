@@ -1103,7 +1103,7 @@ public class Pipe<T extends MessageSchema<T>> {
         int contentRem = Pipe.contentRemaining(this);
         
         if (contentRem > sizeOfSlabRing) {        	
-        	log.warn("ERROR: can not have more content than the size of the pipe. content {} vs {}",contentRem,sizeOfSlabRing);
+        	log.warn("ERROR: can not have more slab content than the size of the pipe. content {} vs {}",contentRem,sizeOfSlabRing);
         }
         
     	StringBuilder result = new StringBuilder();

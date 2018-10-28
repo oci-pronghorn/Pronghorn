@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.ChannelWriter;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 
 /**
@@ -563,38 +564,52 @@ public class Appendables {
     
     
     public static <A extends Appendable> A appendValue(A target, long value) {
-    	
-    	//////////////////////////////
-    	//can be optimized due to knowing the target type
-    	//////////////////////////////
-    	if (value>=0 && (target instanceof ChannelWriter)) {	    
-    		ChannelWriter dataOutputBlobWriter = (ChannelWriter)target;
-    		if (value<10) {
-				dataOutputBlobWriter.writeByte(('0'+(int)value));
-    			return target;
-    		} else if (value<100) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		} else if (value<1000) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		} else if (value<10000) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		}
-    	}
-    	/////////////////////////////    	
-    	return appendValue(target, value, true);
+    	return fastAppendValue(target, value, true);
     }
 
+    public static <A extends Appendable> A appendValue(A target, long value, boolean useNegPara) {
+    	return fastAppendValue(target, value, useNegPara);
+    }
 
-	public static <A extends Appendable> A appendValue(A target, long value, boolean useNegPara) {
+    
+	private static <A extends Appendable> A fastAppendValue(A target, long value, boolean useNegPara) {
+		
+		if (target instanceof DataOutputBlobWriter){
+			DataOutputBlobWriter dataOutputBlobWriter = (DataOutputBlobWriter)target;
+			//////////////////////////////
+			//can be optimized due to knowing the target type
+			//////////////////////////////
+	    	if (value>=0) {	    
+	    		if (value<10) {
+					dataOutputBlobWriter.writeByte(('0'+(int)value));
+	    			return target;
+	    		} else if (value<100) {
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+	    			return target;
+	    		} else if (value<1000) {
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
+	    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+	    			return target;
+	    		} else if (value<10000) {
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
+	    			dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
+	    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+	    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+	    			return target;
+	    		}
+	    		
+	    	}
+	    	DataOutputBlobWriter.appendLongAsText(dataOutputBlobWriter, value, useNegPara);
+	    	return target;
+		} else {
+	    	/////////////////////////////    	
+	    	return slowAppendValue(target, value, useNegPara);
+		}
+	}
+
+	private static <A extends Appendable> A slowAppendValue(A target, long value, boolean useNegPara) {
 		try {
 	        long tens = 1000000000000000000L;
 	        
@@ -611,11 +626,11 @@ public class Appendables {
 	        int orAll = 0; //this is to remove the leading zeros
 	        while (tens>1) {
 	            int digit = (int)(nextValue/tens);
+	            nextValue = nextValue%tens;
 	            orAll |= digit;
 	            if (0!=orAll) {
-	                target.append((char)('0'+digit));
+	            	target.append((char)('0'+digit));	            
 	            }
-	            nextValue = nextValue%tens;
 	            tens /= 10;
 	        }
 	        target.append((char)('0'+nextValue));

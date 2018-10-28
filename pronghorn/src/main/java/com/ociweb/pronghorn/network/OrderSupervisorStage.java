@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.SequenceValidator;
 import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
@@ -51,7 +52,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         
     private boolean showUTF8Sent = false;
         
-    private int[]            expectedSquenceNos;
+    private int[]            expectedSquenceNosSequence;
     private short[]          expectedSquenceNosPipeIdx;
     private long[]           expectedSquenceNosChannelId;
     
@@ -163,7 +164,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
-        //GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
          
     }
     
@@ -174,7 +175,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		//Due to N Order Supervisors in place this array is far too large.
 		int totalChannels = channelBitsSize; //WARNING: this can be large eg 4 million
-        expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
+        expectedSquenceNosSequence = new int[totalChannels];//room for 1 per active channel connection
         
         expectedSquenceNosPipeIdx = new short[totalChannels];
         Arrays.fill(expectedSquenceNosPipeIdx, (short)-1);
@@ -213,7 +214,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			}
 
 	    	boolean didWork;
-
+	    	
 	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
 	    	do {
 		    	didWork = false;
@@ -227,9 +228,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	}		        	
 		        }		       
 	    	} while ( didWork && !shutdownInProgress);
+	    	
+	 
+	    	
 
     }
-
 
 	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
@@ -247,14 +250,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
 		    			  		    	
+		    	//may come back in many times..
+		    	assert(validator.isValidSequence(channelId, Pipe.peekInt(sourcePipe,  3))) : "Bad sequence value found for channel:"+channelId;	    	
+
 		    	//dataToSend.length  this is a big hack by shifting, we need a better way to know this?
 		    	//WARNING: magic knowledge, the ServerSocketReaderStage will manage 2 tracks and split work 
 		    	//         between them even/odd. As a result the low bit is not helpful for picking a pipe.		    	
 		    	int myPipeIdx = (int)((channelId>>1) % poolMod);//channel must always have the same pipe for max write speed. 
 		    			    	
-		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) &&
-		            (log==null || Pipe.hasRoomForWrite(log))) {	
+		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
 				    	
+		        		
 			    	//only after we know that we are doing something.
 		        	keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
 									        		peekMsgId, myPipeIdx,
@@ -265,7 +271,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 			        ///////////////////////////////
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		keepWorking = false; //break out
+		    		keepWorking = false; //break out to allow down stream to consume
 		    		
 		    		//logger.info("no room to write out, try again later {}",outgoingPipes[myPipeIdx]);
 		    		
@@ -285,12 +291,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		return didWork;
 	}
 
+	SequenceValidator validator = new SequenceValidator();
+	
 	private boolean processInputData(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
 			int peekMsgId, int myPipeIdx, long channelId) {
 		
 		
-		int sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
-				 
+		int sequenceNo = Pipe.peekInt(sourcePipe,  3);	
+			 
 		//read the next non-blocked pipe, sequenceNo is never reset to zero
 		//every number is used even if there is an exception upon write.
      
@@ -301,18 +309,18 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		///////////////////
 		if ((expectedSquenceNosChannelId[idx]!=channelId) || (sequenceNo==0)) {
 
-			expectedSquenceNos[idx] = 0;
+			expectedSquenceNosSequence[idx] = 0;
 			expectedSquenceNosChannelId[idx] = channelId;
 			
 		}
 
-		return processInput(sourcePipe, pipeIdx, keepWorking, 
+		return checkSeqAndProcessInput(sourcePipe, pipeIdx, keepWorking, 
 				peekMsgId, myPipeIdx, channelId,
-				sequenceNo, idx, expectedSquenceNos[idx]);
+				sequenceNo, idx, expectedSquenceNosSequence[idx]);
 	
 	}
 
-	private boolean processInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
+	private boolean checkSeqAndProcessInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
 			int peekMsgId, int myPipeIdx, long channelId, int sequenceNo, int idx,
 			int expected) {
 	
@@ -324,7 +332,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 						channelId, idx, expected);
 		    	
 			} else {
-	
+				
+				//TODO: why get backs...
+	//			System.out.println("for channel:"+channelId+" waiting for: "+expected+" but got "+sequenceNo );
+				
 				assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
 				assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 				assert(Pipe.bytesReadBase(sourcePipe)>=0);
@@ -583,7 +594,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 DataOutputBlobWriter.openField(outputStream);
 		 /////////////////////////
 		
-		 int expSeq = Pipe.takeInt(input); //sequence number
+		 final int expSeq = Pipe.takeInt(input); //sequence number
 		 assert(sequenceNo == expSeq);
 		 
 		 //byteVector is payload
@@ -686,7 +697,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private void finishPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
-			Pipe<NetPayloadSchema> output, int expSeq, int requestContext,
+			Pipe<NetPayloadSchema> output, final int expSeq, int requestContext,
 			ConnDataReaderController connectionDataReader, long businessTime, int routeId,
 			boolean finishedFullReponse) {
 		if (finishedFullReponse) {
@@ -758,7 +769,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 Pipe.outputStream(output).debugAsUTF8();
 		 }
 		 
-		 writeToNextStage(output, myPipeIdx, channelId, requestContext); 
+		 writeToNextStage(output, myPipeIdx, channelId, requestContext, expSeq); 
 		 	 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
@@ -798,7 +809,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private int writeToNextStage(Pipe<NetPayloadSchema> output, int myPipeIdx,
-			final long channelId, int requestContext) {
+			final long channelId, int requestContext, int expSeq) {
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
@@ -835,20 +846,27 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.confirmLowLevelWrite(output, plainSize);
 		 Pipe.publishWrites(output);
 		 
+		 int idx = (int)(channelId & channelBitsMask);
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 		    
 			//we have finished all the chunks for this request so the sequence number will now go up by one	
-		 	int idx = (int)(channelId & channelBitsMask);
 		 	//logger.info("detected end and incremented sequence number {}",expectedSquenceNos[idx]);
 		 	
 		 	//NOTE: it is critical that the only time we inc is when the end of the response is reached.
-			expectedSquenceNos[idx]++;
+			expectedSquenceNosSequence[idx]++;
 		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
+		 	
+		 	
 		 	
 		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);
 		 	
 
 		 } 
+		 if (expSeq+1 > expectedSquenceNosSequence[idx]) {
+			 System.out.println("XXX chnl:"+channelId+" req sequence "+expSeq+" bumped up to "+expectedSquenceNosSequence[idx]+
+					 " isENDResp: "+(0 != (END_RESPONSE_MASK & requestContext)));
+		 }
+		 
 		                     
 	 	//////////////
 	 	//if needed write out the close connection message
@@ -864,6 +882,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	 		Pipe.publishWrites(output);
 	 		
 	 	}
+
 	 	
 		 return lenWritten;
 	}

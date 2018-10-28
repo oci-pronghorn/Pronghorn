@@ -5,19 +5,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ObjectPipe<T> {
 
-	private int size;
-	private int mask;	
+	private final int size;
+	private final int mask;	
 	private final T[] objects;
 	private final AtomicInteger head = new AtomicInteger(); //TODO: this can be optimized by caching the head
 	private final AtomicInteger tail = new AtomicInteger(); //TODO: this can be optimized by caching the tail
 	private final AtomicInteger count = new AtomicInteger();
-	
+
+	private Thread headThread; //for assert to ensure only 2 threads are used, one read and one write
+	private Thread tailThread; //for assert to ensure only 2 threads are used, one read and one write
 	
 	public ObjectPipe(int bits, Class<T> clazz, ObjectPipeObjectCreator<T> opoc) {
-		size = 1<<bits;
-		mask = size-1;
+		this.size = 1<<bits;
+		this.mask = size-1;
 		
-		objects = (T[]) Array.newInstance(clazz, size);
+		this.objects = (T[]) Array.newInstance(clazz, size);
 		
 		int i = size;
 		while (--i>=0) {
@@ -31,6 +33,7 @@ public class ObjectPipe<T> {
 	 * @return true if this can move
 	 */
 	public boolean tryMoveHeadForward() {
+		assert(isHeadThread());
 		if (count.get()<mask) {
 			count.incrementAndGet();
 			head.incrementAndGet();
@@ -41,23 +44,36 @@ public class ObjectPipe<T> {
 	}
 
 	public void moveHeadForward() {
-			count.incrementAndGet();
-			head.incrementAndGet();		
+		assert(isHeadThread());
+		assert(count.get()<mask);
+		count.incrementAndGet();
+		head.incrementAndGet();		
 	}
 	
-	public int count() {
-		return count.get();
+	public T headObject() {
+		assert(isHeadThread());
+		if (count.get()<mask) {
+		    return objects[head.get()&mask];
+		} else {
+			return null;
+		}
 	}
 
-	public boolean hasRoomFor(int count) {
-		return (this.count.get()+count)<=mask;
+	private boolean isHeadThread() {
+		Thread t = Thread.currentThread();
+		if (null == headThread) {
+			headThread = t;
+		}
+		return t==headThread;
 	}
 	
+
 	/**
 	 * 
 	 * @return true if this can move
 	 */
 	public boolean tryMoveTailForward() {
+		assert(isTailThread());
 		if (count.get()>0) {
 			count.decrementAndGet();
 			tail.incrementAndGet();
@@ -67,21 +83,39 @@ public class ObjectPipe<T> {
 		}		
 	}
 	
+	public void moveTailForward() {
+		assert(isTailThread());
+		assert (count.get()>0);
+		count.decrementAndGet();
+		tail.incrementAndGet();		
+	}
+	
 	public T tailObject() {
+		assert(isTailThread());
 		if (count.get()>0) {
 			return objects[tail.get()&mask];
 		} else {
 			return null;
 		}
 	}
-	
-	public T headObject() {
-		if (count.get()<mask) {
-		    return objects[head.get()&mask];
-		} else {
-			return null;
+
+    private boolean isTailThread() {
+		Thread t = Thread.currentThread();
+		if (null == tailThread) {
+			tailThread = t;
 		}
+		return t==tailThread;
 	}
 
+
+	////////////////////////////////
+	
+	public int count() {
+		return count.get();
+	}
+
+	public boolean hasRoomFor(int count) {
+		return (this.count.get()+count)<=mask;
+	}
 	
 }

@@ -395,6 +395,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     public void writeByte(int v) {
         byteBuffer[byteMask & activePosition++] = (byte)v;
     }
+    
+    public static void writeByte(DataOutputBlobWriter<?> that, int v) {
+    	that.byteBuffer[that.byteMask & that.activePosition++] = (byte)v;
+    }
 
     @Override
     public void writeShort(int v) {
@@ -1007,6 +1011,107 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	@Override
 	public void write(ChannelReader source) {
 		source.readInto(this, source.available());	
+	}
+	
+	private final static long[] tensDivisor = buildTensDivisorArray();
+	
+    private static long[] buildTensDivisorArray() {
+    	long tens = 1000000000000000000L;
+    	int c = 0;
+    	long[] result = new long[20];
+    	while (tens>0) {
+    		//System.out.println("pos "+c+" has "+tens);
+    		
+    		result[c++] = tens;
+    		tens = tens/10;
+    	}
+    	assert(c==result.length-1) : "found "+c+" expected "+result.length;
+   
+    	return result;
+    }
+    
+    private final static char[] onesChars = buildChars(1000, 1);
+    private final static char[] tensChars = buildChars(1000, 10);
+    private final static char[] thousChars = buildChars(1000, 100);
+
+    
+    private static char[] buildChars(int total, int run) {
+    	char[] result = new char[total];
+    	int c = 0;
+    	int v = 0;
+    	while (c<total) {
+    		char value = (char)('0' + (v++));
+    		int x = run;
+    		while (--x>=0) {
+    			result[c++] = value;
+    		}
+    		if ('9' == value) {
+    			v=0;
+    		}
+    	}    	
+    	return result;
+    }
+    
+
+	public static void appendLongAsText(DataOutputBlobWriter writer, long value, boolean useNegPara) {
+
+	        final byte[] localBuffer = writer.byteBuffer;
+	        final int mask = writer.byteMask;
+	        
+	        int activePos = writer.activePosition;
+	        
+	        boolean isNegative = value<0;
+	        if (isNegative) {
+	        	if (useNegPara) {
+	        		localBuffer[mask & activePos++] = (byte) '(';
+	        	}
+	        	localBuffer[mask & activePos++] = (byte) '-';
+	            value = -value;
+	        }
+	        
+	        long nextValue = value;//at this point the value is absolute
+	        int orAll = 0; 
+	        int t = value <=  Integer.MAX_VALUE ? (value<=10000? 14: 8): 2;//skip high end if smaller value
+
+	        activePos = collectDigitChars(localBuffer, mask, activePos, nextValue, orAll, t);
+	        
+	        
+	        if (isNegative && useNegPara) {
+	        	localBuffer[mask & activePos++] = (byte) ')';
+	        }
+		
+	        //return position now that we have moved it
+	        writer.activePosition = activePos;
+	}
+
+	private static int collectDigitChars(final byte[] localBuffer, final int mask,
+											int activePos, long nextValue,
+											int orAll, int t) {
+		long tens;
+		while (t!=tensDivisor.length && (tens=tensDivisor[t++])>=1) {
+			t+=2;
+		    int digit  = (int)(nextValue/tens);
+		    nextValue  = nextValue%tens;
+		    
+		    char c;
+		    orAll |= ((c=thousChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+
+		    orAll |= ((c=tensChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+
+		    orAll |= ((c=onesChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+		    
+		}
+		localBuffer[mask & activePos++] = (byte)onesChars[(int)nextValue];
+		return activePos;
 	}
 
 }

@@ -9,6 +9,10 @@ import java.util.Random;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.util.Appendables;
 
 
@@ -108,20 +112,86 @@ public class AppendablesTest {
     	assertEquals(str.toString(),"Label: 5");
     	
     	str = new StringBuilder();
-    Appendables.appendValue(str, "Label:", Long.MAX_VALUE, "-Sufix");
-  
-    assertEquals(str.toString(),"Label:9223372036854775807-Sufix");
-    
-	str = new StringBuilder();
-    Appendables.appendValue(str, "Label:", Long.MAX_VALUE);
-  
-    assertEquals(str.toString(),"Label:9223372036854775807");
-    
-    
-    
-  
+	    Appendables.appendValue(str, "Label:", Long.MAX_VALUE, "-Sufix");
+	  
+	    assertEquals(str.toString(),"Label:9223372036854775807-Sufix");
+	    
+		str = new StringBuilder();
+	    Appendables.appendValue(str, "Label:", Long.MAX_VALUE);
+	  
+	    assertEquals(str.toString(),"Label:9223372036854775807");  
     	
     }
+    
+    
+    @Test
+    public void appendLongValueToBlobWriter() {
+    	
+    	Pipe<RawDataSchema> p = RawDataSchema.instance.newPipe(100, 60);
+    	p.initBuffers();
+    	
+    	checkOneValue(p, 0L,  "0");
+    	checkOneValue(p, 1L,  "1");    	
+    	checkOneValue(p, 13L,  "13");    	    	
+    	checkOneValue(p, 103L,  "103");
+     	checkOneValue(p, 1003L,  "1003");
+     	checkOneValue(p, 10003L,  "10003");
+     	checkOneValue(p, 100003L,  "100003");
+     	checkOneValue(p, 1000003L,  "1000003");
+     	checkOneValue(p, 10000003L,  "10000003");
+     	checkOneValue(p, 100000003L,  "100000003");
+     	checkOneValue(p, 1000000003L,  "1000000003");
+     	checkOneValue(p, 10000000003L,  "10000000003");
+     	checkOneValue(p, 100000000003L,  "100000000003");
+     	checkOneValue(p, 1000000000003L,  "1000000000003");
+     	checkOneValue(p, 10000000000003L,  "10000000000003");
+     	checkOneValue(p, 100000000000003L,  "100000000000003");
+    	
+     	checkOneValue(p, -1L,  "-1");    	
+    	checkOneValue(p, -10L,  "-10");    	    	
+    	checkOneValue(p, -100L,  "-100");
+     	checkOneValue(p, -1000L,  "-1000");
+     	checkOneValue(p, -10000L,  "-10000");
+     	checkOneValue(p, -100000L,  "-100000");
+     	checkOneValue(p, -1000000L,  "-1000000");
+     	checkOneValue(p, -10000000L,  "-10000000");
+     	checkOneValue(p, -100000000L,  "-100000000");
+     	checkOneValue(p, -1000000000L,  "-1000000000");
+     	checkOneValue(p, -10000000000L,  "-10000000000");
+     	checkOneValue(p, -100000000000L,  "-100000000000");
+     	checkOneValue(p, -1000000000000L,  "-1000000000000");
+     	checkOneValue(p, -10000000000000L,  "-10000000000000");
+     	checkOneValue(p, -100000000000000L,  "-100000000000000");
+     	
+     	
+     	Random r = new Random(123);
+     	
+     	int x = 1000000;
+     	while (--x>=0) {
+     		long value  = r.nextLong();     		
+     		checkOneValue(p, value, Long.toString(value));
+     	}
+     	
+   
+    	
+    }
+	private void checkOneValue(Pipe<RawDataSchema> p, long testValue, String expected) {
+		int size = p.addMsgIdx(p, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+    	DataOutputBlobWriter<RawDataSchema> target = Pipe.openOutputStream(p);    	    	
+    	Appendables.appendValue(target, testValue, false);    	
+    	DataOutputBlobWriter.closeLowLevelField(target);
+    	p.confirmLowLevelWrite(p, size);
+    	p.publishWrites(p);
+    	
+    	p.takeMsgIdx(p);
+    	DataInputBlobReader<RawDataSchema> source = p.openInputStream(p);
+    	StringBuilder captured = new StringBuilder();
+    	source.readUTFOfLength(source.length(), captured);
+    	p.confirmLowLevelRead(p, size);
+    	p.releaseReadLock(p);
+    	
+    	assertEquals(expected, captured.toString());
+	}
     
     @Test
     public void appendFixedDecimalDigits(){

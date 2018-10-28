@@ -90,6 +90,14 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 	
 	public void write(long time, Appendable target) {
 		
+		if (target instanceof ChannelWriter) {
+			write(time, (ChannelWriter)target);			
+		} else {		
+			slowWrite(time, target);
+		}
+	}
+
+	private void slowWrite(long time, Appendable target) {
 		long localMinute = time/60_000L;
 		
 		if (localMinute != validRange) {
@@ -128,7 +136,6 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 			Pipe.resetTail(temp);
 			
 		}
-		
 	}
 	
 }

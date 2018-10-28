@@ -70,6 +70,7 @@ public class StructRegistry { //prong struct store
 				throw new RuntimeException("internal error");
 			};
 		}		
+		structLocals[structId&STRUCT_MASK] = associatedObject;
 	}
 	
 	
