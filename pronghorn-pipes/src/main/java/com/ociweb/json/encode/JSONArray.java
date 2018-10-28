@@ -54,7 +54,7 @@ public abstract class JSONArray<R, T, P, N> {
                 builder.beginArray(accessor),
                 new IteratorFunction<M, M>() {
                     @Override
-                    public M get(M o, int i, M node) {
+                    public M get(M o, int i) {
                         return i < o.size() ? o : null;
                     }
                 }) {
@@ -73,7 +73,7 @@ public abstract class JSONArray<R, T, P, N> {
                 builder.beginArray(accessor),
                 new IteratorFunction<N[], N[]>() {
                     @Override
-                    public N[] get(N[] o, int i, N[] node) {
+                    public N[] get(N[] o, int i) {
                         return i < o.length ? o : null;
                     }
                 }) {
@@ -98,7 +98,7 @@ public abstract class JSONArray<R, T, P, N> {
                 }),
                 new IteratorFunction<Iterator<N>, Iterator<N>>() {
                     @Override
-                    public Iterator<N> get(Iterator<N> o, int i, Iterator<N> node) {
+                    public Iterator<N> get(Iterator<N> o, int i) {
                         return o.hasNext() ? o : null;
                     }
                 }) {
@@ -153,7 +153,7 @@ public abstract class JSONArray<R, T, P, N> {
                 builder.beginArray(this.iterator, accessor),
                 new IteratorFunction<M, M>() {
                     @Override
-                    public M get(M obj, int i, M node) {
+                    public M get(M obj, int i) {
                         return i < obj.size() ? obj : null;
                     }
                 }) {
@@ -169,7 +169,7 @@ public abstract class JSONArray<R, T, P, N> {
                 builder.beginArray(this.iterator, accessor),
                 new IteratorFunction<N2[], N2[]>() {
                     @Override
-                    public N2[] get(N2[] obj, int i, N2[] node) {
+                    public N2[] get(N2[] obj, int i) {
                         return i < obj.length ? obj : null;
                     }
                 }) {
@@ -191,7 +191,7 @@ public abstract class JSONArray<R, T, P, N> {
                 }),
                 new IteratorFunction<Iterator<N2>, Iterator<N2>>() {
                     @Override
-                    public Iterator<N2> get(Iterator<N2> obj, int i, Iterator<N2> node) {
+                    public Iterator<N2> get(Iterator<N2> obj, int i) {
                         return obj.hasNext() ? obj : null;
                     }
                 }) {

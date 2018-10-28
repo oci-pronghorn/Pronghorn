@@ -56,24 +56,10 @@ public abstract class JSONRoot<R, T, P> {
     
     public JSONObject<R, T, P> startObject() {
     	return startObject(passThoughMember);
-//        return startObject(new ToMemberFunction<T, T>() {
-//            @Override
-//            public T get(T o) {
-//                return o;
-//            }
-//        });
     }
 
     public <M> JSONObject<R, M, P> startObject(ToMemberFunction<T, M> accessor) {
         return new StartObjectJSON<R, M, P>(builder.beginObject(accessor));
-        		
-        		
-//        		new JSONObject<R, M, P>(builder.beginObject(accessor)) {
-//            @Override
-//            P objectEnded() {
-//                return childCompleted();
-//            }
-//        };
     }
 
     // Array

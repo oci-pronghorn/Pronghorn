@@ -700,6 +700,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			Pipe<NetPayloadSchema> output, final int expSeq, int requestContext,
 			ConnDataReaderController connectionDataReader, long businessTime, int routeId,
 			boolean finishedFullReponse) {
+		
 		if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
 			 if (null!=connectionDataReader) {
@@ -717,45 +718,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 long businessDuration = now-businessTime;
 				 
 				 if (businessDuration>limitSLA) {
-					 //send the routeId to those listening that we have a violation
-					 
-					 //TODO: publish if pipe is found..
-					 
+					 //send the routeId to those listening that we have a violation					 
+					 //TODO: publish if pipe is found..	
 					 
 				 }
 				 				 
-				 //if we have a log pipe then log these events
-				 Pipe<HTTPLogResponseSchema> outLog = log;
-				 if (null!=outLog) {
-					 //the log max var len may not be large enough for the entire payload
-					 //so this may need to write multiple messages to capture all the data.
-					 
-					 DataOutputBlobWriter<?> logStr = Pipe.openOutputStream(outLog);				 
-					 Pipe.outputStream(output).replicate(logStr);
-					 outLog.closeBlobFieldWrite();
-					 
-					 int writeLength = logStr.length();
-					 int startPos = Pipe.getWorkingBlobHeadPosition(outLog);
-					 do {
-						 //we do not know how many will be needed so we use presume to block as needed.
-						 Pipe.presumeRoomForWrite(outLog);
-						 
-						 int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
-						 Pipe.addLongValue(now, outLog);
-						 Pipe.addLongValue(channelId, outLog);
-						 Pipe.addIntValue(expSeq, outLog);
-						 
-						 int blockLen = Math.min(writeLength, outLog.maxVarLen);
-						 Pipe.addBytePosAndLenSpecial(outLog, startPos, blockLen);
-						 startPos += blockLen;
-						 writeLength -= blockLen;
-						 
-						 Pipe.addLongValue(businessDuration, outLog);
-						 Pipe.confirmLowLevelWrite(outLog, size);
-						 Pipe.publishWrites(outLog);
-					 } while (writeLength>0);
-					 
-				 }
+				 writeToLog(channelId, output, expSeq, now, businessDuration);
 			 }			 
 			 
 		 } else {
@@ -775,6 +743,42 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 assert(0==Pipe.releasePendingByteCount(input));
 		 assert(Pipe.bytesReadBase(input)>=0);
+	}
+
+	private void writeToLog(long channelId, Pipe<NetPayloadSchema> output, final int expSeq, long now,
+			long businessDuration) {
+		//if we have a log pipe then log these events
+		 Pipe<HTTPLogResponseSchema> outLog = log;
+		 if (null!=outLog) {
+			 //the log max var len may not be large enough for the entire payload
+			 //so this may need to write multiple messages to capture all the data.
+			 
+			 DataOutputBlobWriter<?> logStr = Pipe.openOutputStream(outLog);				 
+			 Pipe.outputStream(output).replicate(logStr);
+			 outLog.closeBlobFieldWrite();
+			 
+			 int writeLength = logStr.length();
+			 int startPos = Pipe.getWorkingBlobHeadPosition(outLog);
+			 do {
+				 //we do not know how many will be needed so we use presume to block as needed.
+				 Pipe.presumeRoomForWrite(outLog);
+				 
+				 int size = Pipe.addMsgIdx(outLog, HTTPLogResponseSchema.MSG_RESPONSE_1);
+				 Pipe.addLongValue(now, outLog);
+				 Pipe.addLongValue(channelId, outLog);
+				 Pipe.addIntValue(expSeq, outLog);
+				 
+				 int blockLen = Math.min(writeLength, outLog.maxVarLen);
+				 Pipe.addBytePosAndLenSpecial(outLog, startPos, blockLen);
+				 startPos += blockLen;
+				 writeLength -= blockLen;
+				 
+				 Pipe.addLongValue(businessDuration, outLog);
+				 Pipe.confirmLowLevelWrite(outLog, size);
+				 Pipe.publishWrites(outLog);
+			 } while (writeLength>0);
+			 
+		 }
 	}
 
 	private int beginningOfResponse(boolean beginningOfResponse, DataOutputBlobWriter<NetPayloadSchema> outputStream,

@@ -46,7 +46,7 @@ public class JSONArrayCompoundTests {
     @Test
     public void testArrayObject() {
         JSONRenderer<BasicObj[]> json = new JSONRenderer<BasicObj[]>()
-                .array((o, i, n) -> i<o.length?o:null)
+                .array((o, i) -> i<o.length?o:null)
                 .startObject((o, i) -> o[i])
                     .bool("b", o->o.b)
                     .integer("i", o->o.i)
@@ -64,11 +64,11 @@ public class JSONArrayCompoundTests {
     public void testArrayArray_FromArray_empty() {
         JSONRenderer<int[][][]> json = new JSONRenderer<int[][][]>()
                 // for i in root
-                .array(o->o, (o, i, node) -> (i < o.length ? o[i] : null))
+                .array(o->o, (o, i) -> (i < o.length ? o[i] : null))
                     // for j in o[i]
-                    .array((o, i) -> o[i], (o, j, node) -> (j < o.length ? o : null))
+                    .array((o, i) -> o[i], (o, j) -> (j < o.length ? o : null))
                         // for k in o[i][j]
-                        .array((o, j) -> o[j], (o, k, node) -> (k < o.length ? o : null))
+                        .array((o, j) -> o[j], (o, k) -> (k < o.length ? o : null))
                             // v = o[i][j][k]
                             .integer((o, k) -> o[k]);
         assertTrue(json.isLocked());
@@ -79,9 +79,9 @@ public class JSONArrayCompoundTests {
     @Test
     public void testArrayArray_FromArray_NotEmpty() {
         JSONRenderer<int[][][]> json = new JSONRenderer<int[][][]>()
-                .array(o->o, (o, i, node) -> (i < o.length ? o[i] : null))
-                .array((o, i) -> o[i], (o, j, node) -> (j < o.length ? o : null))
-                .array((o, j) -> o[j], (o, k, node) -> (k < o.length ? o : null))
+                .array(o->o, (o, i) -> (i < o.length ? o[i] : null))
+                .array((o, i) -> o[i], (o, j) -> (j < o.length ? o : null))
+                .array((o, j) -> o[j], (o, k) -> (k < o.length ? o : null))
                 .integer((o, k) -> o[k]);
         assertTrue(json.isLocked());
         json.render(out, new int[][][]
@@ -92,8 +92,8 @@ public class JSONArrayCompoundTests {
     @Test
     public void testArrayArray_FromArray_Null() {
         JSONRenderer<int[][]> json = new JSONRenderer<int[][]>()
-                .array(o->o, (o, i, node) -> (i < o.length ? o : null))
-                .array((o, i) -> o[i], (o, j, node) -> (j < o.length ? o : null))
+                .array(o->o, (o, i) -> (i < o.length ? o : null))
+                .array((o, i) -> o[i], (o, j) -> (j < o.length ? o : null))
                 .integer((o, j) -> o[j]);
         assertTrue(json.isLocked());
         json.render(out, new int[][] {{1, 2, 3}, null, {4, 5, 6}});

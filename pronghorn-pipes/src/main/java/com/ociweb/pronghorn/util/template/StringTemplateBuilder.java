@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.util.template;
 import com.ociweb.pronghorn.util.AppendableByteWriter;
 import com.ociweb.pronghorn.util.ByteWriter;
 
-public class StringTemplateBuilder<T> implements ByteWriter {
+public class StringTemplateBuilder<T> extends StringTemplateRenderer<T> implements ByteWriter {
 	private StringTemplateScript<T>[] script;
 	private int count;
 
@@ -32,13 +32,12 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 		return append(script);
 	}
 
-	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T, N> script) {
+	public <N> StringTemplateBuilder<T> add(final StringTemplateIterScript<T> script) {
 		return append(
 				new StringTemplateScript<T>() {
 					@Override
-					public void render(AppendableByteWriter writer, T source) {
-						N node = null;
-						for(int i = 0; (node = script.render(writer, source, i, node)) != null; i++) {
+					public void render(AppendableByteWriter writer, T source) {					
+						for(int i = 0; (script.render(writer, source, i)); i++) {
 						}
 					}
 				});
@@ -61,6 +60,10 @@ public class StringTemplateBuilder<T> implements ByteWriter {
 				});
 	}
 
+	public StringTemplateRenderer<T> finish() {
+		return this;
+	}
+	
 	public void render(AppendableByteWriter writer, T source) {
 
 		//assert(immutable) : "String template builder can only be rendered after lock.";

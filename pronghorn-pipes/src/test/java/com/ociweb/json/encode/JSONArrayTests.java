@@ -60,7 +60,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayRepeatedNulls() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array((o, i, n)->i<o.length?o:null).constantNull();
+                .array((o, i)->i<o.length?o:null).constantNull();
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[null,null,null,null,null,null,null,null,null]", out.toString());
@@ -69,7 +69,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayNull_Yes() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i) -> o[i]);
+                .array(o->o, (o, i)->i<o.length?o:null).integer((o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, null);
         assertEquals("null", out.toString());
@@ -78,7 +78,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayNull_No() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array(o->o, (o, i, n)->i<o.length?o:null).integer((o, i) -> o[i]);
+                .array(o->o, (o, i)->i<o.length?o:null).integer((o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -105,7 +105,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayBool() {
         JSONRenderer<boolean[]> json = new JSONRenderer<boolean[]>()
-                .array((o, i, n)->i<o.length?o:null).bool((o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).bool((o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new boolean[] {true, true, false, false, true, false, true, false});
         assertEquals("[true,true,false,false,true,false,true,false]", out.toString());
@@ -114,7 +114,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayBool_Null() {
         JSONRenderer<boolean[]> json = new JSONRenderer<boolean[]>()
-                .array((o, i, n)->i<o.length?o:null).nullableBool((o, i) -> i==2, (o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).nullableBool((o, i) -> i==2, (o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new boolean[] {true, true, false, false, true, false, true, false});
         assertEquals("[true,true,null,false,true,false,true,false]", out.toString());
@@ -123,7 +123,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayInt() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array((o, i, n)->i<o.length?o:null).integer((o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).integer((o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,7,6,5,4,3,2,1]", out.toString());
@@ -132,7 +132,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayInt_Null() {
         JSONRenderer<int[]> json = new JSONRenderer<int[]>()
-                .array((o, i, n)->i<o.length?o:null).nullableInteger((o, i) -> i==2, (o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).nullableInteger((o, i) -> i==2, (o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new int[] {9, 8, 7, 6, 5, 4, 3, 2, 1});
         assertEquals("[9,8,null,6,5,4,3,2,1]", out.toString());
@@ -141,7 +141,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayDouble() {
         JSONRenderer<double[]> json = new JSONRenderer<double[]>()
-                .array((o, i, n)->i<o.length?o:null).decimal(2, (o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).decimal(2, (o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new double[] {9.765, 0.8, 7.0009, 6.1, 0.00004});
         assertEquals("[9.76,0.80,7.00,6.10,0.00]", out.toString());
@@ -150,7 +150,7 @@ public class JSONArrayTests {
     @Test
     public void testArrayDouble_Null() {
         JSONRenderer<double[]> json = new JSONRenderer<double[]>()
-                .array((o, i, n)->i<o.length?o:null).nullableDecimal(2, (o, i) -> i==2, (o, i) -> o[i]);
+                .array((o, i)->i<o.length?o:null).nullableDecimal(2, (o, i) -> i==2, (o, i) -> o[i]);
         assertTrue(json.isLocked());
         json.render(out, new double[] {9.765, 0.8, 7.0009, 6.1, 0.00004});
         assertEquals("[9.76,0.80,null,6.10,0.00]", out.toString());

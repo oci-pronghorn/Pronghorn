@@ -1122,6 +1122,47 @@ public class Appendables {
 		return target;
 	}
 
+	private static final String[] htmlEntities = buildHTMLEntities();
+	
+	/**
+	 * @param target Appendable for encoded data
+	 * @param source CharSequence source text to be encoded
+	 * @return the target Apppendable for more data to be added.
+	 */
+	public static <A extends Appendable> A appendHTMLEntityEscaped(A target, CharSequence source) {
+		
+		try {
+			String entity = null;
+			for(int i = 0; i<source.length(); i++) {
+				char at = source.charAt(i);
+				if (at>=64 || null == (entity = htmlEntities[(int)at])) {
+					target.append(at);
+				} else {
+					target.append(entity);					
+				}
+			}		
+			target.append(source);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+				
+		return target;
+	}
+
+
+	private static String[] buildHTMLEntities() {
+		
+		String[] result = new String[64];
+		
+		result['<'] = "&lt;";
+		result['>'] = "&gt;";		
+		result['&'] = "&amp;";
+		result['"'] = "&quot;";		
+		result['\''] = "&apos;";
+				
+		return result;
+	}
+
 	
 	//TODO: add nearestMemoryUnit  B, K, M, G, T, P
     
