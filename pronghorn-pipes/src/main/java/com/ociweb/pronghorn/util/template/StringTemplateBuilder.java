@@ -64,7 +64,8 @@ public class StringTemplateBuilder<T> extends StringTemplateRenderer<T> implemen
 		return this;
 	}
 	
-	public void render(AppendableByteWriter writer, T source) {
+	@Override
+	public void render(AppendableByteWriter<?> writer, T source) {
 
 		//assert(immutable) : "String template builder can only be rendered after lock.";
 		for(int i=0;i<count;i++) {
