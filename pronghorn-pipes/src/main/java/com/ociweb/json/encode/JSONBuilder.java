@@ -146,7 +146,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
             final RenderIteration<M, N> func) {
         scripts.add(new StringTemplateIterScript<T>() {
             @Override
-            public boolean render(final AppendableByteWriter writer, T source, int i) {
+            public boolean render(AppendableByteWriter<?> writer, T source, int i) {
                 N node = iterator.get(source, i);
                 if (node != null) {
                     if (i > 0) {
@@ -171,7 +171,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
             final RenderIteration<T, N> func) {
         scripts.add(new StringTemplateIterScript<T>() {
             @Override
-            public boolean render(final AppendableByteWriter writer, T source, int i) {
+            public boolean render(final AppendableByteWriter<?> writer, T source, int i) {
                 N node = iterator.get(source, i);
                 if (node != null) {
                     if (i > 0) {
