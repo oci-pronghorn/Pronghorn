@@ -764,7 +764,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	    	
 			//unsupported route path, send 404 error			
 	    	sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
-	    	sequences[idx]++;
+	    	
 			return SUCCESS;
 	    }
     	routeId = config.UNMAPPED_ROUTE; 
@@ -937,8 +937,8 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 			}
 		}
         
-        if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {  
-        	if (cw!=null) {
+        if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {         	
+        	if (cw!=null) {        		
         		cwc.abandonWrite();
         	}
         	DataOutputBlobWriter.closeLowLevelField(writer);
@@ -946,7 +946,6 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
             Pipe.resetHead(outputPipe);
             return NEED_MORE_DATA;
         } else {
-
         	cwc.commitWrite(requestContext, System.nanoTime());
         	
         }
@@ -969,7 +968,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         int consumed = Pipe.publishWrites(outputPipe);                        // Write 1 
         assert(consumed>=0);        
         Pipe.confirmLowLevelWrite(outputPipe, size); 
-  
+
         sequences[idx]++; //increment the sequence since we have now published the route.
     
    inputCounts[idx]++; 
@@ -1025,13 +1024,12 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 				
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-					if (iteration!=0) {
-									    	
+					if (iteration!=0) {						    	
 						
 						if (NO_LENGTH_DEFINED == postLength) {
 							postLength = 0;//we explicitly set length to zero if it is not provided.
 						}
-						
+		
 						return endOfHeadersLogic(writer, 
 								errorReporter2, requestContext, 
 								trieReader, postLength, arrivalTime);
@@ -1113,9 +1111,13 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 		int errorCode) {
 
 	BaseConnection con = coordinator.lookupConnectionById(channel);
-	boolean sent = sendError(channel, idx, errorCode); 			
-	
-	if (!sent) {
+	boolean sent = sendError(channel, idx, errorCode);
+	if (sent) {
+		//error was sent, do clear reservation 
+//		if (null!=con) {
+//			con.clearPoolReservation();	
+//		}
+	} else {
 		trieReader.sourceLen = tempLen;
 		trieReader.sourcePos = tempPos;
 		
@@ -1132,11 +1134,6 @@ private static boolean confirmCoreHeadersSupported(TrieParserReader trieReader) 
 			con.clearPoolReservation();		
 			con.close();
 		}
-	} else {
-		//error was sent, do clear reservation 
-		if (null!=con) {
-			con.clearPoolReservation();	
-		}
 	}
 	//in all cases clear out the reader data.
 	//this connection is now closed so do not read any more.
@@ -1151,12 +1148,14 @@ private boolean sendError(final long channel, final int idx, int errorCode) {
 	if (Pipe.hasRoomForWrite(errorResponsePipe)) {
 		//will close connection as soon as error is returned.
 		HTTPUtil.publishStatus(channel, sequences[idx], 
-				              errorCode, errorResponsePipe);		
+				              errorCode, errorResponsePipe);	
+		
+		sequences[idx]++;
 		sent = true;				
 	}
 
 	sendRelease(channel, idx);
-	
+
 	return sent;
 }
 

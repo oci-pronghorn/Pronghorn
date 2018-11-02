@@ -424,71 +424,80 @@ public class Appendables {
 		writer.writeByte(dv[(int) nextValue]);// (char)('0'+nextValue));
 	}
     
-    public static <A extends Appendable> A appendValue(A target, int value) {
-    	
-    	//////////////////////////////
-    	//can be optimized due to knowing the target type
-    	//////////////////////////////
-    	if (value>=0 && (target instanceof ChannelWriter)) {	    
-    		ChannelWriter dataOutputBlobWriter = (ChannelWriter)target;
-    		if (value<10) {
-				dataOutputBlobWriter.writeByte(('0'+(int)value));
-    			return target;
-    		} else if (value<100) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		} else if (value<1000) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		} else if (value<10000) {
-    			dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
-    			dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
-    			dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
-    			return target;
-    		}
-    	}
+    public static <A extends Appendable> A appendValue(A target, int value) {    	
     	return appendValue(target, value, true);
     }
 
-
 	public static <A extends Appendable> A appendValue(final A target, int value, final boolean useNegPara) {
+				
+		//////////////////////////////
+		//can be optimized due to knowing the target type
+		//////////////////////////////
+		if (target instanceof DataOutputBlobWriter) {
+			DataOutputBlobWriter dataOutputBlobWriter = (DataOutputBlobWriter)target;
+			if (value>=0 ) {	    
+				if (value<10) {
+					dataOutputBlobWriter.writeByte(('0'+(int)value));
+					return target;
+				} else if (value<100) {
+					dataOutputBlobWriter.writeByte(('0'+((int)value/10)));
+					dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+					return target;
+				} else if (value<1000) {
+					dataOutputBlobWriter.writeByte(('0'+((int)value/100)));
+					dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+					dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+					return target;
+				} else if (value<10000) {
+					dataOutputBlobWriter.writeByte(('0'+((int)value/1000)));
+					dataOutputBlobWriter.writeByte(('0'+(((int)value%1000)/100)));
+					dataOutputBlobWriter.writeByte(('0'+(((int)value%100)/10)));
+					dataOutputBlobWriter.writeByte(('0'+((int)value%10)));
+					return target;
+				}
+			}
+		   	DataOutputBlobWriter.appendLongAsText(dataOutputBlobWriter, value, useNegPara);
+	    	return target;
+		} else {		
+			return slowAppendValue(target, value, useNegPara);
+		}
+	}
+
+
+	private static <A extends Appendable> A slowAppendValue(final A target, int value, final boolean useNegPara) {
 		try {
-	        int tens = 1000000000;
-	        
-	        boolean isNegative = value<0;
-	        if (isNegative) {
-	            //special case which can not be rendered here.
-	            if (value==Integer.MIN_VALUE) {
-	                return appendValue(target,(long)value);
-	            }
-	            if (useNegPara) {
-	            	target.append('(');
-	            }
-	            target.append('-');
-	            value = -value;
-	        }
-	        
-	        int nextValue = value;
-	        int orAll = 0; //this is to remove the leading zeros
-	        while (tens>1) {
-	            int digit = nextValue/tens;
-	            orAll |= digit;
-	            if (0!=orAll) {
-	                target.append((char)('0'+digit));
-	            }
-	            nextValue = nextValue%tens;
-	            tens /= 10;
-	        }
-	        target.append((char)('0'+nextValue));
-	        if (isNegative && useNegPara) {
-	            target.append(')');
-	        }
-	        return target;
-    	} catch (IOException ex) {
+		    int tens = 1000000000;
+		    
+		    boolean isNegative = value<0;
+		    if (isNegative) {
+		        //special case which can not be rendered here.
+		        if (value==Integer.MIN_VALUE) {
+		            return appendValue(target,(long)value);
+		        }
+		        if (useNegPara) {
+		        	target.append('(');
+		        }
+		        target.append('-');
+		        value = -value;
+		    }
+		    
+		    int nextValue = value;
+		    int orAll = 0; //this is to remove the leading zeros
+		    while (tens>1) {
+		        int digit = nextValue/tens;
+		        orAll |= digit;
+		        if (0!=orAll) {
+		            target.append((char)('0'+digit));
+		        }
+		        nextValue = nextValue%tens;
+		        tens /= 10;
+		    }
+		    target.append((char)('0'+nextValue));
+		    if (isNegative && useNegPara) {
+		        target.append(')');
+		    }
+		    return target;
+		} catch (IOException ex) {
 			throw new RuntimeException(ex); 
 		}
 	}
@@ -564,15 +573,15 @@ public class Appendables {
     
     
     public static <A extends Appendable> A appendValue(A target, long value) {
-    	return fastAppendValue(target, value, true);
+    	return customNegAppendValue(target, value, true);
     }
 
     public static <A extends Appendable> A appendValue(A target, long value, boolean useNegPara) {
-    	return fastAppendValue(target, value, useNegPara);
+    	return customNegAppendValue(target, value, useNegPara);
     }
 
     
-	private static <A extends Appendable> A fastAppendValue(A target, long value, boolean useNegPara) {
+	private static <A extends Appendable> A customNegAppendValue(A target, long value, boolean useNegPara) {
 		
 		if (target instanceof DataOutputBlobWriter){
 			DataOutputBlobWriter dataOutputBlobWriter = (DataOutputBlobWriter)target;
@@ -1123,14 +1132,38 @@ public class Appendables {
 	}
 
 	private static final String[] htmlEntities = buildHTMLEntities();
+	private static final byte[][] httpEntitiesUTF8 = encodeUTF8(buildHTMLEntities());
 	
 	/**
 	 * @param target Appendable for encoded data
 	 * @param source CharSequence source text to be encoded
 	 * @return the target Apppendable for more data to be added.
 	 */
-	public static <A extends Appendable> A appendHTMLEntityEscaped(A target, CharSequence source) {
-		
+	public static <A extends Appendable> A appendHTMLEntityEscaped(A target, CharSequence source) {	
+		if (target instanceof AppendableByteWriter) {
+			return appendHTMLEntityEscaped1(target, source, (AppendableByteWriter)target);
+		} else {
+			return appendHTMLEntityEscaped2(target, source);
+		}
+	}
+
+
+	private static <A extends Appendable> A appendHTMLEntityEscaped1(A target, CharSequence source,
+			final AppendableByteWriter abw) {
+		byte[] entity = null;
+		for(int i = 0; i<source.length(); i++) {
+			char at = source.charAt(i);
+			if (at>=64 || null == (entity = httpEntitiesUTF8[(int)at])) {
+				abw.append(at);
+			} else {
+				abw.write(entity);
+			}
+		}
+		return target;
+	}
+
+
+	private static <A extends Appendable> A appendHTMLEntityEscaped2(A target, CharSequence source) {
 		try {
 			String entity = null;
 			for(int i = 0; i<source.length(); i++) {
@@ -1141,7 +1174,6 @@ public class Appendables {
 					target.append(entity);					
 				}
 			}		
-			target.append(source);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -1150,17 +1182,30 @@ public class Appendables {
 	}
 
 
-	private static String[] buildHTMLEntities() {
-		
-		String[] result = new String[64];
-		
-		result['<'] = "&lt;";
-		result['>'] = "&gt;";		
-		result['&'] = "&amp;";
-		result['"'] = "&quot;";		
-		result['\''] = "&apos;";
-				
+	private static byte[][] encodeUTF8(String[] input) {
+		byte[][] result = new byte[input.length][];
+		int i = input.length;
+		while (--i>=0) {
+			result[i] = null==input[i]?null:input[i].getBytes();
+		}
 		return result;
+	}
+
+
+	private static String[] buildHTMLEntities() {
+		if (null!=htmlEntities) {
+			return htmlEntities;
+		} else {
+			String[] result = new String[64];
+			
+			result['<'] = "&lt;";
+			result['>'] = "&gt;";		
+			result['&'] = "&amp;";
+			result['"'] = "&quot;";		
+			result['\''] = "&apos;";
+					
+			return result;
+		}
 	}
 
 	

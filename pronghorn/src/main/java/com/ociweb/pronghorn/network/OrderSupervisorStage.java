@@ -259,8 +259,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	int myPipeIdx = (int)((channelId>>1) % poolMod);//channel must always have the same pipe for max write speed. 
 		    			    	
 		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
-				    	
-		        		
+				    			        	
 			    	//only after we know that we are doing something.
 		        	keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
 									        		peekMsgId, myPipeIdx,
@@ -323,18 +322,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private boolean checkSeqAndProcessInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
 			int peekMsgId, int myPipeIdx, long channelId, int sequenceNo, int idx,
 			int expected) {
-	
+			
 		if ((0==sequenceNo) || (sequenceNo >= expected)) {
 			if ((0==sequenceNo) || (expected == sequenceNo)) {
 				keepWorking = processExpectedSequenceValue(sourcePipe, pipeIdx,
 						keepWorking, peekMsgId,
 						myPipeIdx, sequenceNo, 
 						channelId, idx, expected);
+				
+				//System.out.println("sequence matched "+sequenceNo);
 		    	
 			} else {
 				
 				//TODO: why get backs...
-	//			System.out.println("for channel:"+channelId+" waiting for: "+expected+" but got "+sequenceNo );
+				//System.out.println("for channel:"+channelId+" waiting for: "+expected+" but got "+sequenceNo );
 				
 				assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
 				assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
@@ -700,7 +701,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			Pipe<NetPayloadSchema> output, final int expSeq, int requestContext,
 			ConnDataReaderController connectionDataReader, long businessTime, int routeId,
 			boolean finishedFullReponse) {
-		
+				
 		if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
 			 if (null!=connectionDataReader) {
@@ -854,7 +855,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 		    
 			//we have finished all the chunks for this request so the sequence number will now go up by one	
-		 	//logger.info("detected end and incremented sequence number {}",expectedSquenceNos[idx]);
+		 	//logger.info("detected end and incremented sequence number from {}",expectedSquenceNosSequence[idx]);
 		 	
 		 	//NOTE: it is critical that the only time we inc is when the end of the response is reached.
 			expectedSquenceNosSequence[idx]++;
@@ -865,7 +866,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);
 		 	
 
-		 } 
+		 } else {
+			// logger.info("no resposne mask, continuation");
+			 
+		 }
+		 
 		 if (expSeq+1 > expectedSquenceNosSequence[idx]) {
 			 System.out.println("XXX chnl:"+channelId+" req sequence "+expSeq+" bumped up to "+expectedSquenceNosSequence[idx]+
 					 " isENDResp: "+(0 != (END_RESPONSE_MASK & requestContext)));

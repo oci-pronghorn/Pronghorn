@@ -3343,31 +3343,36 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	    if (c <= 0x007F) { // less than or equal to 7 bits or 127
 	        // code point 7
-	        buffer[mask&pos++] = (byte) c;
+	        buffer[mask&pos] = (byte) c;
+	        return pos+1;
 	    } else {
-	        if (c <= 0x07FF) { // less than or equal to 11 bits or 2047
-	            // code point 11
-	            buffer[mask&pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-	        } else {
-	            if (c <= 0xFFFF) { // less than or equal to  16 bits or 65535
-
-	            	//special case logic here because we know that c > 7FF and c <= FFFF so it may hit these
-	            	// D800 through DFFF are reserved for UTF-16 and must be encoded as an 63 (error)
-	            	if (0xD800 == (0xF800&c)) {
-	            		buffer[mask&pos++] = 63;
-	            		return pos;
-	            	}
-
-	                // code point 16
-	                buffer[mask&pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-	            } else {
-	                pos = rareEncodeCase(c, buffer, mask, pos);
-	            }
-	            buffer[mask&pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-	        }
-	        buffer[mask&pos++] = (byte) (0x80 | (c & 0x3F));
+	        return encodeComplexSingleChar(c, buffer, mask, pos);
 	    }
-	    return pos;
+	}
+
+	private static int encodeComplexSingleChar(int c, byte[] buffer, int mask, int pos) {
+		if (c <= 0x07FF) { // less than or equal to 11 bits or 2047
+		    // code point 11
+		    buffer[mask&pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+		} else {
+		    if (c <= 0xFFFF) { // less than or equal to  16 bits or 65535
+
+		    	//special case logic here because we know that c > 7FF and c <= FFFF so it may hit these
+		    	// D800 through DFFF are reserved for UTF-16 and must be encoded as an 63 (error)
+		    	if (0xD800 == (0xF800&c)) {
+		    		buffer[mask&pos++] = 63;
+		    		return pos;
+		    	}
+
+		        // code point 16
+		        buffer[mask&pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+		    } else {
+		        pos = rareEncodeCase(c, buffer, mask, pos);
+		    }
+		    buffer[mask&pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+		}
+		buffer[mask&pos++] = (byte) (0x80 | (c & 0x3F));
+		return pos;
 	}
 
 	private static <S extends MessageSchema<S>> int rareEncodeCase(int c, byte[] buffer, int mask, int pos) {

@@ -81,11 +81,11 @@ public class StringTemplateBuilderTest {
 		///////////////////
 		
 		String expected = "<!DOCTYPE html> <html> <head><title>Fortunes</title></head> <body> <table> <tr><th>id</th><th>message</th></tr>\n" + 
-				"<tr><td>1</td><td>&lt;script&gt;alert(&quot;This should not be displayed in a browser alert box.&quot;)&lt;/script&gt;<script>alert(\"This should not be displayed in a browser alert box.\")</script></td></tr>\n" + 
-				"<tr><td>2</td><td>A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1</td></tr>\n" + 
-				"<tr><td>3</td><td>フレームワークのベンチマークフレームワークのベンチマーク</td></tr>\n" + 
+				"<tr><td>1</td><td>&lt;script&gt;alert(&quot;This should not be displayed in a browser alert box.&quot;)&lt;/script&gt;</td></tr>\n" + 
+				"<tr><td>2</td><td>A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1</td></tr>\n" + 
+				"<tr><td>3</td><td>フレームワークのベンチマーク</td></tr>\n" + 
 				"</table></body></html>";
-		
+				
 		assertEquals(expected, result);	
 		
 	}

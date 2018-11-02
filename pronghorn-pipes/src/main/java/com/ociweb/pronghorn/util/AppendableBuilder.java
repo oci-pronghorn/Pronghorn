@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 
@@ -15,7 +16,8 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
     private byte[] buffer;	
 	private int byteCount;
 
-    
+    //TODO: add mechanism to grow as needed...
+	
 	//This class is allowed to grow but only up to the maximumAllocation
 	public AppendableBuilder(int maximumAllocation) {
 		
@@ -36,6 +38,12 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		return byteCount;
 	}
 
+	public int copyTo(ChannelWriter target, int sourcePos) {	
+		int len = Math.min(target.remaining(), byteCount-sourcePos);		
+		target.write(buffer,sourcePos,len);
+		return len;
+	}
+	
 	public int copyTo(OutputStream target) {	
 		return copyTo(Integer.MAX_VALUE, target);
 	}

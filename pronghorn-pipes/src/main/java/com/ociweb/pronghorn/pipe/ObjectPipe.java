@@ -10,8 +10,9 @@ public class ObjectPipe<T> {
 	private final T[] objects;
 	private final AtomicInteger head = new AtomicInteger(); //TODO: this can be optimized by caching the head
 	private final AtomicInteger tail = new AtomicInteger(); //TODO: this can be optimized by caching the tail
-	private final AtomicInteger count = new AtomicInteger();
-
+	private int publicTail = 0;
+	
+	
 	private Thread headThread; //for assert to ensure only 2 threads are used, one read and one write
 	private Thread tailThread; //for assert to ensure only 2 threads are used, one read and one write
 	
@@ -34,8 +35,8 @@ public class ObjectPipe<T> {
 	 */
 	public boolean tryMoveHeadForward() {
 		assert(isHeadThread());
-		if (count.get()<mask) {
-			count.incrementAndGet();
+		if (count()<mask) {
+			
 			head.incrementAndGet();
 			return true;
 		} else {
@@ -45,14 +46,13 @@ public class ObjectPipe<T> {
 
 	public void moveHeadForward() {
 		assert(isHeadThread());
-		assert(count.get()<mask);
-		count.incrementAndGet();
+		assert(count()<mask);
 		head.incrementAndGet();		
 	}
 	
 	public T headObject() {
 		assert(isHeadThread());
-		if (count.get()<mask) {
+		if (count()<mask) {
 		    return objects[head.get()&mask];
 		} else {
 			return null;
@@ -66,34 +66,21 @@ public class ObjectPipe<T> {
 		}
 		return t==headThread;
 	}
-	
 
-	/**
-	 * 
-	 * @return true if this can move
-	 */
-	public boolean tryMoveTailForward() {
-		assert(isTailThread());
-		if (count.get()>0) {
-			count.decrementAndGet();
-			tail.incrementAndGet();
-			return true;
-		} else {
-			return false;
-		}		
-	}
-	
 	public void moveTailForward() {
 		assert(isTailThread());
-		assert (count.get()>0);
-		count.decrementAndGet();
 		tail.incrementAndGet();		
+	}
+	
+	public void publishTailPosition() {
+		publicTail = tail.get();
+		
 	}
 	
 	public T tailObject() {
 		assert(isTailThread());
-		if (count.get()>0) {
-			return objects[tail.get()&mask];
+		if (count()>0) {
+			return objects[publicTail&mask];
 		} else {
 			return null;
 		}
@@ -111,11 +98,11 @@ public class ObjectPipe<T> {
 	////////////////////////////////
 	
 	public int count() {
-		return count.get();
+		return head.get()-publicTail;
 	}
 
 	public boolean hasRoomFor(int count) {
-		return (this.count.get()+count)<=mask;
+		return (this.count()+count)<=mask;
 	}
 	
 }

@@ -133,7 +133,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
         this.contentType = contentType;
         this.fileExtension = fileExtension;
         this.isAlias = false;
-        this.bytes = contentType.getBytes();
+        this.bytes = getWriteBytes(contentType); 
     }
 
     private HTTPContentTypeDefaults(String contentType, String fileExtension, boolean isAlias) {
@@ -141,8 +141,16 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
         this.contentType = contentType;
         this.fileExtension = fileExtension;
         this.isAlias = isAlias;
-        this.bytes = contentType.getBytes();
+        this.bytes = getWriteBytes(contentType);
     }
+    
+    private static byte[] getWriteBytes(String contentType) {
+    	
+    	//for all text types we add  ; charset=UTF-8
+    	//because everything text in PH/GL is utf-8 encoded.    	
+    	return contentType.startsWith("text") ? (contentType+"; charset=UTF-8").getBytes() : contentType.getBytes();
+    }
+    
 
     @Override
     public byte[] getBytes() {
