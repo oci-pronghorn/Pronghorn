@@ -94,7 +94,8 @@ public class HeaderWriter {
 	 */
 	public void write(HTTPHeader header, HeaderValue value) {		
 	
-			value.appendTo(activeTarget.append(header.writingRoot()));
+		    activeTarget.write(header.rootBytes());		
+			value.appendTo(activeTarget);
 			activeTarget.writeByte('\r');
 			activeTarget.writeByte('\n');
 	}
