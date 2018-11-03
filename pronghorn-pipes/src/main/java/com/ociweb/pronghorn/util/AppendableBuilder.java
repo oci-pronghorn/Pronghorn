@@ -11,12 +11,14 @@ import com.ociweb.pronghorn.pipe.Pipe;
 public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder> {
 
 	private int maximumAllocation;
-	private static final int defaultSize = 1<<14;
+	private static final int defaultSize = 1<<15;
 	
     private byte[] buffer;	
 	private int byteCount;
 
-    //TODO: add mechanism to grow as needed...
+	public AppendableBuilder() {
+		this(Integer.MAX_VALUE);
+	}
 	
 	//This class is allowed to grow but only up to the maximumAllocation
 	public AppendableBuilder(int maximumAllocation) {
@@ -71,95 +73,117 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 		
 	}
 
+	public static void appendLongAsText(AppendableBuilder ab, long value, boolean useNegPara) {
+		
+		if (ab.byteCount+(18) <= ab.buffer.length) {		
+			ab.byteCount = Appendables.longToChars(value, useNegPara, ab.buffer, 
+	        		                                        Integer.MAX_VALUE, ab.byteCount);
+		} else {
+			growNow(ab, ab.byteCount+(18));
+			ab.byteCount = Appendables.longToChars(value, useNegPara, ab.buffer, 
+                    Integer.MAX_VALUE, ab.byteCount);
+		}
+	}
 	
 	@Override
 	public AppendableBuilder append(CharSequence csq) {
 		
-		int len = csq.length();
-		
-		int req = byteCount+(len<<3); 
-		if (req > buffer.length) {
-			growNow(req);			
+		int len = csq.length();		
+		if (byteCount+(len<<3) <= buffer.length) {
+			int bytesConsumed = Pipe.copyUTF8ToByte(csq, 0, buffer, Integer.MAX_VALUE, byteCount, len);
+			byteCount+=bytesConsumed;		
+		} else {
+			growNow(this,byteCount+(len<<3));			
+			int bytesConsumed = Pipe.copyUTF8ToByte(csq, 0, buffer, Integer.MAX_VALUE, byteCount, len);
+			byteCount+=bytesConsumed;
 		}
-		
-		int bytesConsumed = Pipe.copyUTF8ToByte(csq, 0, buffer, Integer.MAX_VALUE, byteCount, len);
-		byteCount+=bytesConsumed;
 
 		return this;
 	}
 
 	
-	private void growNow(int req) {
-		if (req > maximumAllocation) {
-			throw new UnsupportedOperationException("Max allocation was limited to "+maximumAllocation+" but more space needed");
+	private static void growNow(AppendableBuilder that, int req) {
+		if (req > that.maximumAllocation) {
+			throw new UnsupportedOperationException("Max allocation was limited to "+that.maximumAllocation+" but more space needed");
 		}
 		byte[] temp = new byte[req];
-		System.arraycopy(buffer, 0, temp, 0, buffer.length);
-		buffer = temp;
+		System.arraycopy(that.buffer, 0, temp, 0, that.buffer.length);
+		that.buffer = temp;
 	}
 
 	@Override
 	public AppendableBuilder append(CharSequence csq, int start, int end) {
 		
 		int len = end-start;
-		
-		int req = byteCount+(len<<3); 
-		if (req > buffer.length) {
-			growNow(req);			
+
+		if (byteCount+(len<<3) <= buffer.length) {
+			int bytesConsumed = Pipe.copyUTF8ToByte(csq, start, buffer, Integer.MAX_VALUE, byteCount, len);
+			byteCount+=bytesConsumed;
+		} else {
+			growNow(this,byteCount+(len<<3));			
+			int bytesConsumed = Pipe.copyUTF8ToByte(csq, start, buffer, Integer.MAX_VALUE, byteCount, len);
+			byteCount+=bytesConsumed;
+
 		}
-		
-		int bytesConsumed = Pipe.copyUTF8ToByte(csq, start, buffer, Integer.MAX_VALUE, byteCount, len);
-		byteCount+=bytesConsumed;
 
 		return this;
 	}
 
 	@Override
-	public AppendableBuilder append(char c) {
-	
-		int req = byteCount+(1<<3); 
-		if (req > buffer.length) {
-			growNow(req);			
+	public AppendableBuilder append(char c) {	
+		if (byteCount+(1<<3) <= buffer.length) {
+			byteCount = Pipe.encodeSingleChar(c, buffer, Integer.MAX_VALUE, byteCount);
+		} else {		
+			growNow(this,byteCount+(1<<3));			
+			byteCount = Pipe.encodeSingleChar(c, buffer, Integer.MAX_VALUE, byteCount);
 		}
-		
-		byteCount = Pipe.encodeSingleChar(c, buffer, Integer.MAX_VALUE, byteCount);
-
 		return this;
 	}
 
 	@Override
 	public void write(byte[] encodedBlock, int pos, int len) {
-		int req = byteCount+len; 
-		if (req > buffer.length) {
-			growNow(req);			
+		
+		if (byteCount+len <= buffer.length) {
+			Pipe.copyBytesFromArrayToRing(encodedBlock, pos, 
+					buffer, byteCount, Integer.MAX_VALUE, 
+					len);
+		} else {
+			growNow(this,byteCount+len);			
+			Pipe.copyBytesFromArrayToRing(encodedBlock, pos, 
+					buffer, byteCount, Integer.MAX_VALUE, 
+					len);			
 		}
 		
-		Pipe.copyBytesFromArrayToRing(encodedBlock, pos, 
-				buffer, byteCount, Integer.MAX_VALUE, 
-				len);
 		this.byteCount+=len;
 	}
 
 	@Override
 	public void write(byte[] encodedBlock) {
-		int req = byteCount+encodedBlock.length; 
-		if (req > buffer.length) {
-			growNow(req);			
-		}
 		
-		Pipe.copyBytesFromArrayToRing(encodedBlock, 0, 
-				buffer, byteCount, Integer.MAX_VALUE, 
-				encodedBlock.length);
-		this.byteCount+=encodedBlock.length;
+		if (byteCount+encodedBlock.length <= buffer.length) {
+			
+			Pipe.copyBytesFromArrayToRing(encodedBlock, 0, 
+					buffer, byteCount, Integer.MAX_VALUE, 
+					encodedBlock.length);
+			this.byteCount+=encodedBlock.length;
+		} else {
+			growNow(this,byteCount+encodedBlock.length);
+			Pipe.copyBytesFromArrayToRing(encodedBlock, 0, 
+					buffer, byteCount, Integer.MAX_VALUE, 
+					encodedBlock.length);
+			this.byteCount+=encodedBlock.length;
+		}
 	}
 
 	@Override
 	public void writeByte(int asciiChar) {
-		int req = byteCount+1; 
-		if (req > buffer.length) {
-			growNow(req);			
+		
+		if (byteCount+1 <= buffer.length) {
+			buffer[byteCount++] = (byte)asciiChar;
+		} else {
+			growNow(this,byteCount+1);			
+			buffer[byteCount++] = (byte)asciiChar;
 		}
-		buffer[byteCount++] = (byte)asciiChar;
 	}
 
 	public int absolutePosition() {

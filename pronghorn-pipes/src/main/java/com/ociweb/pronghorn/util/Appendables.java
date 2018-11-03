@@ -433,8 +433,8 @@ public class Appendables {
 		//////////////////////////////
 		//can be optimized due to knowing the target type
 		//////////////////////////////
-		if (target instanceof DataOutputBlobWriter) {
-			DataOutputBlobWriter dataOutputBlobWriter = (DataOutputBlobWriter)target;
+		if (target instanceof AppendableByteWriter) {
+			AppendableByteWriter dataOutputBlobWriter = (AppendableByteWriter)target;
 			if (value>=0 ) {	    
 				if (value<10) {
 					dataOutputBlobWriter.writeByte(('0'+(int)value));
@@ -456,7 +456,15 @@ public class Appendables {
 					return target;
 				}
 			}
-		   	DataOutputBlobWriter.appendLongAsText(dataOutputBlobWriter, value, useNegPara);
+			if (dataOutputBlobWriter instanceof DataOutputBlobWriter) {			
+				DataOutputBlobWriter.appendLongAsText((DataOutputBlobWriter)dataOutputBlobWriter, value, useNegPara);
+			}  else {
+				if (dataOutputBlobWriter instanceof AppendableBuilder) {
+					AppendableBuilder.appendLongAsText((AppendableBuilder)dataOutputBlobWriter, value, useNegPara);
+				} else {
+					return slowAppendValue(target, value, useNegPara); //TODO: speed up as other methods.. 
+				}
+			}
 	    	return target;
 		} else {		
 			return slowAppendValue(target, value, useNegPara);
@@ -583,8 +591,8 @@ public class Appendables {
     
 	private static <A extends Appendable> A customNegAppendValue(A target, long value, boolean useNegPara) {
 		
-		if (target instanceof DataOutputBlobWriter){
-			DataOutputBlobWriter dataOutputBlobWriter = (DataOutputBlobWriter)target;
+		if (target instanceof AppendableByteWriter){
+			AppendableByteWriter dataOutputBlobWriter = (AppendableByteWriter)target;
 			//////////////////////////////
 			//can be optimized due to knowing the target type
 			//////////////////////////////
@@ -610,7 +618,15 @@ public class Appendables {
 	    		}
 	    		
 	    	}
-	    	DataOutputBlobWriter.appendLongAsText(dataOutputBlobWriter, value, useNegPara);
+	    	if (dataOutputBlobWriter instanceof DataOutputBlobWriter) {			
+				DataOutputBlobWriter.appendLongAsText((DataOutputBlobWriter)dataOutputBlobWriter, value, useNegPara);
+			}  else {
+				if (dataOutputBlobWriter instanceof AppendableBuilder) {
+					AppendableBuilder.appendLongAsText((AppendableBuilder)dataOutputBlobWriter, value, useNegPara);
+				} else {
+					return slowAppendValue(target, value, useNegPara); //TODO: speed up as other methods.. 
+				}
+			}
 	    	return target;
 		} else {
 	    	/////////////////////////////    	
@@ -1141,25 +1157,24 @@ public class Appendables {
 	 */
 	public static <A extends Appendable> A appendHTMLEntityEscaped(A target, CharSequence source) {	
 		if (target instanceof AppendableByteWriter) {
-			return appendHTMLEntityEscaped1(target, source, (AppendableByteWriter)target);
+			appendHTMLEntityEscaped1(source, (AppendableByteWriter)target);
+			return target;
 		} else {
 			return appendHTMLEntityEscaped2(target, source);
 		}
 	}
 
-
-	private static <A extends Appendable> A appendHTMLEntityEscaped1(A target, CharSequence source,
-			final AppendableByteWriter abw) {
-		byte[] entity = null;
-		for(int i = 0; i<source.length(); i++) {
+	private static void appendHTMLEntityEscaped1(final CharSequence source, final AppendableByteWriter abw) {
+		final int len = source.length();
+		for(int i = 0; i<len; i++) {
 			char at = source.charAt(i);
+			byte[] entity = null;
 			if (at>=64 || null == (entity = httpEntitiesUTF8[(int)at])) {
 				abw.append(at);
 			} else {
 				abw.write(entity);
 			}
 		}
-		return target;
 	}
 
 
@@ -1208,6 +1223,102 @@ public class Appendables {
 		}
 	}
 
+	
+	
+	private final static long[] tensDivisor = buildTensDivisorArray();
+	
+    private static long[] buildTensDivisorArray() {
+    	long tens = 1000000000000000000L;
+    	int c = 0;
+    	long[] result = new long[20];
+    	while (tens>0) {
+    		//System.out.println("pos "+c+" has "+tens);
+    		
+    		result[c++] = tens;
+    		tens = tens/10;
+    	}
+    	assert(c==result.length-1) : "found "+c+" expected "+result.length;
+   
+    	return result;
+    }
+    
+    private final static char[] onesChars = buildChars(1000, 1);
+    private final static char[] tensChars = buildChars(1000, 10);
+    private final static char[] thousChars = buildChars(1000, 100);
+
+    
+    private static char[] buildChars(int total, int run) {
+    	char[] result = new char[total];
+    	int c = 0;
+    	int v = 0;
+    	while (c<total) {
+    		char value = (char)('0' + (v++));
+    		int x = run;
+    		while (--x>=0) {
+    			result[c++] = value;
+    		}
+    		if ('9' == value) {
+    			v=0;
+    		}
+    	}    	
+    	return result;
+    }
+    
+
+	public static int longToChars(long value, boolean useNegPara, final byte[] localBuffer, final int mask,
+			int activePos) {
+		boolean isNegative = value<0;
+		if (isNegative) {
+			if (useNegPara) {
+				localBuffer[mask & activePos++] = (byte) '(';
+			}
+			localBuffer[mask & activePos++] = (byte) '-';
+		    value = -value;
+		}
+		
+		long nextValue = value;//at this point the value is absolute
+		int orAll = 0; 
+		int t = value <=  Integer.MAX_VALUE ? (value<=10000? 14: 8): 2;//skip high end if smaller value
+
+		activePos = collectDigitChars(localBuffer, mask, activePos, nextValue, orAll, t);
+		
+		
+		if (isNegative && useNegPara) {
+			localBuffer[mask & activePos++] = (byte) ')';
+		}
+		return activePos;
+	}
+	
+
+	private static int collectDigitChars(final byte[] localBuffer, final int mask,
+											int activePos, long nextValue,
+											int orAll, int t) {
+		long tens;
+		while (t!=tensDivisor.length && (tens=tensDivisor[t++])>=1) {
+			t+=2;
+		    int digit  = (int)(nextValue/tens);
+		    nextValue  = nextValue%tens;
+		    
+		    char c;
+		    orAll |= ((c=thousChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+
+		    orAll |= ((c=tensChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+
+		    orAll |= ((c=onesChars[digit])-'0');//this is to remove the leading zeros
+		    if (0!=orAll) {
+		    	localBuffer[mask & activePos++] = (byte)c;
+		    }
+		    
+		}
+		localBuffer[mask & activePos++] = (byte)onesChars[(int)nextValue];
+		return activePos;
+	}
 	
 	//TODO: add nearestMemoryUnit  B, K, M, G, T, P
     
