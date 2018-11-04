@@ -80,7 +80,7 @@ public class ObjectPipe<T> {
 	public T tailObject() {
 		assert(isTailThread());
 		if (count()>0) {
-			return objects[publicTail&mask];
+			return objects[tail.get()&mask];
 		} else {
 			return null;
 		}
