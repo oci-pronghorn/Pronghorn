@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashSet;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.encrypt.NoiseProducer;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;

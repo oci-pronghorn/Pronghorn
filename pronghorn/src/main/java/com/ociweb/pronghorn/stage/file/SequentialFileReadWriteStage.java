@@ -72,10 +72,10 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	 * @param paths
 	 */
     public SequentialFileReadWriteStage(GraphManager graphManager,
-	    						 Pipe<SequentialCtlSchema>[] control,
-	    						 Pipe<SequentialRespSchema>[] response,
-	    						 Pipe<RawDataSchema>[] input,
-	    		                 Pipe<RawDataSchema>[] output, 
+	    						 Pipe<SequentialCtlSchema>[] control, // replay, clear, metaReq, idToSaveReq
+	    						 Pipe<SequentialRespSchema>[] response, //clearack, writeack, metaresponse(full size,date)
+	    						 Pipe<RawDataSchema>[] input, //data to append
+	    		                 Pipe<RawDataSchema>[] output,  //data from full replay
 	    		                 String[] paths) {
     	
         super(graphManager, join(control, input), join(response, output));

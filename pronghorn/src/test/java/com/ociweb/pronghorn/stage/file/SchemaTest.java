@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.stage.file.schema.BlockManagerRequestSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockManagerResponseSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
+import com.ociweb.pronghorn.stage.file.schema.FolderWatchSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
@@ -80,9 +81,9 @@ public class SchemaTest {
 		assertTrue(FROMValidation.checkSchema(ROOT + "BlockStorageReceive.xml", BlockStorageReceiveSchema.class));
 	}
 	
-	
-	
-//
-//	
+	@Test
+	public void testFolderWatchSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "FolderWatch.xml", FolderWatchSchema.class));
+	}
 
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="NewFile" id="1">
+   		 <string name="Path" id="10" charset="unicode"/>
+   		 <string name="File" id="11" charset="unicode"/>
+   		 <byteVector name="Payload" id="12"/>
+   </template> 
+   
+   <template name="UpdatedFile" id="2">
+   		 <string name="Path" id="10" charset="unicode"/>
+   		 <string name="File" id="11" charset="unicode"/>
+   		 <byteVector name="Payload" id="12"/>
+   </template>     
+
+   <template name="DeletedFile" id="3">
+   		 <string name="Path" id="10" charset="unicode"/>
+   		 <string name="File" id="11" charset="unicode"/>
+   </template>      
+
+</templates>

@@ -7,6 +7,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.encrypt.NoiseProducer;
 import com.ociweb.pronghorn.stage.encrypt.RawDataCryptAESCBCPKCS5Stage;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
@@ -22,11 +23,11 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class FileGraphBuilder {
 
 	public static void buildSequentialReplayer(GraphManager gm,
-			Pipe<PersistedBlobLoadReleaseSchema>  fromStoreRelease,
-			Pipe<PersistedBlobLoadConsumerSchema> fromStoreConsumer,
-			Pipe<PersistedBlobLoadProducerSchema> fromStoreProducer,
-			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,
-			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer,
+			Pipe<PersistedBlobLoadReleaseSchema>  fromStoreRelease,   //ack of release
+			Pipe<PersistedBlobLoadConsumerSchema> fromStoreConsumer,  //replay data for watchers
+			Pipe<PersistedBlobLoadProducerSchema> fromStoreProducer,  //ack of write
+			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,   //command release, replay or clear
+			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer,   //command store
 			short inFlightCount, int largestBlock,
 			File targetDirectory, NoiseProducer noiseProducer, 
 			PronghornStageProcessor stageProcessor) {
@@ -73,6 +74,11 @@ public class FileGraphBuilder {
 			e.printStackTrace();
 		}
 		
+		//TODO: we should be able to drop different implementations here, not just file but other backing stores...
+		//TODO: add the RAFT logic down here
+		//TODO: add a stage which does this in memory..
+		//TODO: add GL ingress egress interface on the front of buildSequentialReplayer
+		//       Bridge object must define details of storage.
 		SequentialFileReadWriteStage readWriteStage = new SequentialFileReadWriteStage(gm, control, response, 
 									     fileDataToSave, fileDataToLoad, 
 									     paths);

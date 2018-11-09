@@ -12,6 +12,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.encrypt.NoiseProducer;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
