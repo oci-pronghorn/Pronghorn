@@ -252,38 +252,45 @@ public class ServerNewConnectionStage extends PronghornStage{
 	private SocketAddress bindAddressPort(String host, int port) throws IOException, BindException {
 		
 		InetSocketAddress endPoint = null;
-		
-		long timeout = System.currentTimeMillis()+CONNECTION_TIMEOUT;
-		boolean notConnected = true;
-		int printWarningCountdown = 20;
-		do {
-		    try{
-		    	if (null == endPoint) {
-		    		endPoint = new InetSocketAddress(host, port);		
-		    		logger.trace("bind to {} ",endPoint);
-		    	}
-		    	server.socket().bind(endPoint);
-		    	notConnected = false;
-		    } catch (BindException se) {
-		    	if (System.currentTimeMillis() > timeout) {
-		    		logger.warn("Timeout attempting to open open {}",endPoint,se.getMessage());
-		    		coordinator.shutdown();
-		    		throw se;
-		    	} else {
-		    		//small pause before retry
-		    		try {
-		    			if (0 == printWarningCountdown--) {
-		    				logger.warn("Unable to open {} this port appears to already be in use.",endPoint);
-		    			}
-						Thread.sleep( printWarningCountdown>=0 ? 4 : 20);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						break;
-					}
-		    	}
-		    }
-		} while (notConnected);
-		return endPoint;
+		if ("0.0.0.0".equals(host)) {
+			logger.warn("Developer used 0.0.0.0 as the host so this server is running on all known networks,\n              It is much more secure to define an explicit network binding like this eg. '10.*.*.*' ");
+			endPoint = new InetSocketAddress(port);
+			server.socket().bind(endPoint);
+			return endPoint;
+		} else {
+			
+			long timeout = System.currentTimeMillis()+CONNECTION_TIMEOUT;
+			boolean notConnected = true;
+			int printWarningCountdown = 20;
+			do {
+			    try{
+			    	if (null == endPoint) {
+			    		endPoint = new InetSocketAddress(host, port);		
+			    		logger.trace("bind to {} ",endPoint);
+			    	}
+			    	server.socket().bind(endPoint);
+			    	notConnected = false;
+			    } catch (BindException se) {
+			    	if (System.currentTimeMillis() > timeout) {
+			    		logger.warn("Timeout attempting to open open {}",endPoint,se.getMessage());
+			    		coordinator.shutdown();
+			    		throw se;
+			    	} else {
+			    		//small pause before retry
+			    		try {
+			    			if (0 == printWarningCountdown--) {
+			    				logger.warn("Unable to open {} this port appears to already be in use.",endPoint);
+			    			}
+							Thread.sleep( printWarningCountdown>=0 ? 4 : 20);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+							break;
+						}
+			    	}
+			    }
+			} while (notConnected);
+			return endPoint;
+		}
 	}
 
     private boolean hasNewDataToRead() {
