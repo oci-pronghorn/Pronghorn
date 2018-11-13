@@ -673,19 +673,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     @Override
     public void readInto(ChannelWriter writer, int length) {
     	
-    	DataOutputBlobWriter.write((DataOutputBlobWriter)writer, backing, position, length, byteMask);
+    	DataOutputBlobWriter.write((DataOutputBlobWriter<?>)writer, backing, position, length, byteMask);
     	position += length;
     	
-    }
-    
+    }    
     
     public <T extends MessageSchema<T>> void readInto(DataOutputBlobWriter<T> writer, int length) {
     	
     	DataOutputBlobWriter.write(writer, backing, position, length, byteMask);
     	position += length;
     	
-    }
-    
+    }   
     
     
     ////////

@@ -2730,6 +2730,26 @@ public class Pipe<T extends MessageSchema<T>> {
 		}
 	}
 	
+	public static void copyBytesFromInputStreamToRing(InputStream source, byte[] target, int targetloc, int targetMask, int length) {
+		try {			
+			if (length > 0) {
+				final int tStart = targetloc & targetMask;
+				final int tStop = (targetloc + length) & targetMask;
+				if (tStop > tStart) {
+					//the source and target do not wrap
+					source.read(target,  tStart, length);
+				} else {
+					//the source does not wrap but the target does
+					// done as two copies
+					source.read(target, tStart, length-tStop);
+					source.read(target, 0,      tStop);
+				}
+			}
+		} catch (IOException ioex) {
+			throw new RuntimeException(ioex);
+		}
+	}
+	
 	/**
 	 * directly copy byte array field from the source pipe to the target pipe
 	 * @param source Pipe source positioned to the field to be copied

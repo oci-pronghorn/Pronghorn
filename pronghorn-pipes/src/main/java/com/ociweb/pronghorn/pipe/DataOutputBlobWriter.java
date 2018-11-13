@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Externalizable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectOutputStream;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWriter {
@@ -516,7 +517,21 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     public static <T extends MessageSchema<T>, S extends MessageSchema<S>> void writeStream(DataOutputBlobWriter<T> that,  DataInputBlobReader<S> input, int length) {
     	that.activePosition += DataInputBlobReader.read(input, that.byteBuffer, that.activePosition, length, that.byteMask);
     }
-        
+
+	public void writeStream(InputStream inputStream, int length) {	
+		assert hasExpectedData(inputStream, length);
+		Pipe.copyBytesFromInputStreamToRing(inputStream, byteBuffer, activePosition, byteMask, length);
+        activePosition+=length;
+	}
+
+	private boolean hasExpectedData(InputStream inputStream, int length) {
+		try {
+			return inputStream.available()>=length;
+		} catch (IOException ioex) {
+			return false;
+		}
+	}
+	
     /////////////////////
     /////////////////////
 
@@ -1016,6 +1031,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	public static void appendLongAsText(DataOutputBlobWriter writer, long value, boolean useNegPara) {
 	        writer.activePosition = Appendables.longToChars(value, useNegPara, writer.byteBuffer, writer.byteMask, writer.activePosition);;
 	}
+
 	
 
 }
