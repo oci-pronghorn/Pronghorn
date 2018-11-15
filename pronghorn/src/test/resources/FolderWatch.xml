@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
 
+   <!-- 
+        NOTE: these messages only have 2 fields which are both text.
+   	    This is done so that they can both be read together in the blob.
+   	    eg. the full path is available together and in place.
+   	    Also note that the path will end with the platform slash to make this possible.
+    -->
    <template name="NewFile" id="1">
    		 <string name="Path" id="10" charset="unicode"/>
    		 <string name="File" id="11" charset="unicode"/>
-   		 <byteVector name="Payload" id="12"/>
    </template> 
    
    <template name="UpdatedFile" id="2">
    		 <string name="Path" id="10" charset="unicode"/>
    		 <string name="File" id="11" charset="unicode"/>
-   		 <byteVector name="Payload" id="12"/>
    </template>     
 
    <template name="DeletedFile" id="3">

@@ -24,12 +24,12 @@ import com.ociweb.pronghorn.struct.StructType;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
+public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
                                     V extends Enum<V> & HTTPVerb,
 									H extends Enum<H> & HTTPHeader> implements RouterStageConfig {
 	
-	public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
+	public static final Logger logger = LoggerFactory.getLogger(HTTPRouterStageConfig.class);
 
 	public final HTTPSpecification<T,R,V,H> httpSpec;
 	
@@ -66,11 +66,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return conStruct.registry.totalSizeOfIndexes(structId);
 	}
 	
-	public <T extends Object> T getAssociatedObject(long field) {
+	public <O extends Object> O getAssociatedObject(long field) {
 		return conStruct.registry.getAssociatedObject(field);
 	}
 	
-	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, 
+	public HTTPRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec, 
 									ServerConnectionStruct conStruct) {
 		this.httpSpec = httpSpec;
 		this.conStruct = conStruct;
@@ -234,7 +234,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
     @Override
-	public HTTPSpecification httpSpec() {
+	public HTTPSpecification<T,R,V,H> httpSpec() {
 		return httpSpec;
 	}
 

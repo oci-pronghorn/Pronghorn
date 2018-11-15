@@ -249,9 +249,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    if (peekMsgId>=0 
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
-		    			  		    	
-		    	//may come back in many times..
-		    	assert(validator.isValidSequence(channelId, Pipe.peekInt(sourcePipe,  3))) : "Bad sequence value found for channel:"+channelId;	    	
+    	
 
 		    	//dataToSend.length  this is a big hack by shifting, we need a better way to know this?
 		    	//WARNING: magic knowledge, the ServerSocketReaderStage will manage 2 tracks and split work 

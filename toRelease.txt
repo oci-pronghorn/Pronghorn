@@ -5,6 +5,23 @@ mvn clean deploy -s /home/nate/MavenCentral/settings.xml
 
 mvn nexus-staging:release -s /home/nate/MavenCentral/settings.xml
 
+//TODO: make a docker image to do this
+* build on MVN and add git support.
+* must hold volume to keys
+* must clone latest code fresh (this keeps us from releasing current work)
+* must run deploy
+* must run release if deploy succeeded
+
+new bash: (test next time)..
+
+rm -rf workingDeploy
+mkdir workingDeploy
+cd workingDeploy
+set +e
+git clone https://github.com/oci-pronghorn/Pronghorn.git
+mvn clean deploy -s /home/nate/MavenCentral/settings.xml
+mvn nexus-staging:release -s /home/nate/MavenCentral/settings.xml
+set -e
 
 
 //////////////////////////

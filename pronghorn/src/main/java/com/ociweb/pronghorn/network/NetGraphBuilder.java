@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
-import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
+import com.ociweb.pronghorn.network.http.HTTPRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.http.HTTPLogUnificationStage;
 import com.ociweb.pronghorn.network.http.HTTPRequestJSONExtractionStage;
@@ -396,7 +396,7 @@ public class NetGraphBuilder {
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[coordinator.moduleParallelism()][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[coordinator.moduleParallelism()][];
                 
-        final HTTP1xRouterStageConfig routerConfig = buildModules(coordinator, graphManager,
+        final HTTPRouterStageConfig routerConfig = buildModules(coordinator, graphManager,
         		 									modules, httpSpec, fromModule, toModules);
 		
         //logger.info("build http stages 3");
@@ -479,7 +479,7 @@ public class NetGraphBuilder {
 			Pipe<ReleaseSchema>[] releaseAfterParse, 
 			Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules,
-			final HTTP1xRouterStageConfig routerConfig,
+			final HTTPRouterStageConfig routerConfig,
 			boolean captureAll, 
 			Pipe<HTTPLogRequestSchema>[] log,
 			Pipe[][] perTrackFromNet) {
@@ -708,7 +708,7 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static HTTP1xRouterStageConfig buildModules(ServerCoordinator coordinator, GraphManager graphManager, ModuleConfig modules,
+	public static HTTPRouterStageConfig buildModules(ServerCoordinator coordinator, GraphManager graphManager, ModuleConfig modules,
 			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec,
 			Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
@@ -717,7 +717,7 @@ public class NetGraphBuilder {
 		
 		final int trackCount = coordinator.moduleParallelism();
 
-		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec, coordinator.connectionStruct()); 
+		final HTTPRouterStageConfig routerConfig = new HTTPRouterStageConfig(httpSpec, coordinator.connectionStruct()); 
 
 		for(int r=0; r<trackCount; r++) {
 			toModules[r] = new Pipe[modules.moduleCount()];
@@ -1041,7 +1041,7 @@ public class NetGraphBuilder {
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
 										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTPRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/","index.html");						
 						break;
 
@@ -1053,7 +1053,7 @@ public class NetGraphBuilder {
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
 										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+								((HTTPRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
 						    if (null==monitor) {	
@@ -1064,7 +1064,7 @@ public class NetGraphBuilder {
 									inputPipes, 
 									staticFileOutputs = Pipe.buildPipes(instances, 
 											           ServerResponseSchema.instance.newPipeConfig(2, maxSummarySize)), 
-									((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+									((HTTPRouterStageConfig)routerConfig).httpSpec);
 							break;
 //						case 3:
 //						
@@ -1374,7 +1374,7 @@ public class NetGraphBuilder {
 					int i = instances;
 					while (--i>=0) {
 						staticFileOutputs[i] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
-						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
+						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTPRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
 					}
 						
 					routerConfig.registerCompositeRoute().path("/${path}");

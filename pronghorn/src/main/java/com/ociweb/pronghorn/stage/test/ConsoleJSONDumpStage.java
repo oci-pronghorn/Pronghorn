@@ -34,6 +34,13 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 		}
 	}
 	
+	public static void newInstance(GraphManager gm, Pipe[] input, Appendable[] out) {
+		int i = input.length;
+		while (--i>=0) {
+			newInstance(gm,input[i],out[i]);
+		}
+	}
+	
 	public static ConsoleJSONDumpStage newInstance(GraphManager graphManager, Pipe input) {
 		return new ConsoleJSONDumpStage(graphManager, input);
 	}

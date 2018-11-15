@@ -34,7 +34,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 	private final int routeId;
 
 	private final AtomicInteger pathCounter;
-	private final HTTP1xRouterStageConfig<?,?,?,?> config;
+	private final HTTPRouterStageConfig<?,?,?,?> config;
 	private final ArrayList<FieldExtractionDefinitions> defs;
 	
 	public final int structId;
@@ -80,7 +80,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 
     
 	public CompositeRouteImpl(ServerConnectionStruct scs,
-			                  HTTP1xRouterStageConfig<?,?,?,?> config,
+			                  HTTPRouterStageConfig<?,?,?,?> config,
 			                  JSONExtractorCompleted extractor, 
 			                  URLTemplateParser parser, 
 			                 

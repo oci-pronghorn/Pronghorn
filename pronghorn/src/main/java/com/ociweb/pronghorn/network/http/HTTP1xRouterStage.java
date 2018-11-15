@@ -104,7 +104,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private int shutdownCount;
     
     private int idx;
-    private final HTTP1xRouterStageConfig<T,R,V,H> config;
+    private final HTTPRouterStageConfig<T,R,V,H> config;
     private final ServerCoordinator coordinator;
     private final Pipe<ServerResponseSchema> errorResponsePipe;
 	private boolean catchAll;
@@ -126,7 +126,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		                               Pipe<ServerResponseSchema> errorResponsePipe,
     		                               Pipe<HTTPLogRequestSchema> log,
     		                               Pipe<ReleaseSchema> ackStop,
-                                           HTTP1xRouterStageConfig<T,R,V,H> config, 
+                                           HTTPRouterStageConfig<T,R,V,H> config, 
                                            ServerCoordinator coordinator, boolean catchAll) {
        return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, log, ackStop, config, coordinator, catchAll); 
     }
@@ -144,7 +144,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		                           Pipe<ServerResponseSchema> errorResponsePipe,
 		                           Pipe<HTTPLogRequestSchema> log,
 		                           Pipe<ReleaseSchema> ackStop,
-		                           HTTP1xRouterStageConfig<T,R,V,H> config, 
+		                           HTTPRouterStageConfig<T,R,V,H> config, 
 		                           ServerCoordinator coordinator, boolean catchAll) {
 		
 		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,
@@ -171,7 +171,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             Pipe<ServerResponseSchema> errorResponsePipe, 
             Pipe<HTTPLogRequestSchema> log,
             Pipe<ReleaseSchema> ackStop,
-            HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
+            HTTPRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
 		this(gm, parallelId, input, join(outputs), errorResponsePipe, log, ackStop, config, coordinator, catchAll);
 		
@@ -191,7 +191,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			                 Pipe<ServerResponseSchema> errorResponsePipe, 
 			                 Pipe<HTTPLogRequestSchema> log,
 			                 Pipe<ReleaseSchema> ackStop,
-                             HTTP1xRouterStageConfig<T,R,V,H> config, 
+                             HTTPRouterStageConfig<T,R,V,H> config, 
                              ServerCoordinator coordinator, 
                              boolean catchAll) {
 		
@@ -979,7 +979,7 @@ private int noRoomCount;
 private int noRoomPipeId;
 private long lastNoRoomPosition;
 
-private static boolean captureAllArgsFromURL(HTTP1xRouterStageConfig<?,?,?,?> config,
+private static boolean captureAllArgsFromURL(HTTPRouterStageConfig<?,?,?,?> config,
 		                                     TrieParserReader trieReader, final int pathId,
 										     DataOutputBlobWriter<HTTPRequestSchema> writer) {
 
@@ -1006,7 +1006,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		DataOutputBlobWriter<HTTPRequestSchema> writer, 
 		ServerConnection serverConnection, ChannelWriter cw,
 		int httpRevisionId,
-		HTTP1xRouterStageConfig<?, ?, ?, ?> config,
+		HTTPRouterStageConfig<?, ?, ?, ?> config,
 		ErrorReporter errorReporter2, long arrivalTime) {
 	
 		if (null != cw) {//try again later if this connection is overloaded
