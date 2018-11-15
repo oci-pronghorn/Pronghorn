@@ -1,9 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Type;
-
-import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
+import java.lang.reflect.Modifier;
 
 public abstract class MessageSchema<T extends MessageSchema<T>> {
 
@@ -37,31 +35,27 @@ public abstract class MessageSchema<T extends MessageSchema<T>> {
     	return new Pipe<T>((PipeConfig<T>) newPipeConfig(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields));
     }
 
+    //TODO: write a second one for assert only which confirms only 1 static instance field.
 	public static <S extends MessageSchema<S>> S findInstance(Class<S> clazz) {
-		S found = null;
+		
 		Field[] declaredFields = clazz.getDeclaredFields();
-		int i = declaredFields.length;
-		while (--i>=0) {
-			Field f = declaredFields[i];			
-			Type type = f.getGenericType();    	
-			
-			if (type.getTypeName().equals(clazz.getName())) { 
-				    			
-				try {
-					if (null!=found) {
-						FROMValidation.logger.error("found multiple instance members for this schema");
-						return null;
-					}
-					found = (S)f.get(null);
-				} catch (IllegalArgumentException e) {
-					throw new RuntimeException(e);
-				} catch (IllegalAccessException e) {
-					throw new RuntimeException(e);
-				}    			
+		for(int i=0;i<declaredFields.length;i++) {
+			Field f = declaredFields[i];
+			//only look at static fields
+		
+			if (Modifier.isStatic(f.getModifiers())) {
+				if (f.getGenericType().getTypeName().equals(clazz.getName())) {					
+					try {
+						return (S)f.get(null);
+					} catch (IllegalArgumentException e) {
+						throw new RuntimeException(e);
+					} catch (IllegalAccessException e) {
+						throw new RuntimeException(e);
+					}    			
+				}
 			}
 		}
-	
-		return found;
+		return null;
 	};
     
 }

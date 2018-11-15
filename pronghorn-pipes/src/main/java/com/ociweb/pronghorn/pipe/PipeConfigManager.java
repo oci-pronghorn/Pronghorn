@@ -95,14 +95,29 @@ public class PipeConfigManager {
 	
     public <S extends MessageSchema<S>> PipeConfig<S> getConfig(Class<S> clazz) {
     	
-    	int idx = findIndex(clazz);    	
+    	S instance = MessageSchema.findInstance(clazz);
+		final int idx = findIndex(instance);    	
     	if (idx>=0) {
     		return (PipeConfig<S>)configs[idx];
     	}
-    	//when undefined build store and return the default
-    	return addConfig(defaultMinimumFragmentsOnPipe, defaultMaximumLengthOfVariableLengthFields, clazz);
-    	
+		return buildNewConfig(instance);    	
     }
+
+	private <S extends MessageSchema<S>> PipeConfig<S> buildNewConfig(S instance) {
+		final int maximumLengthOfVariableLengthFields = defaultMaximumLengthOfVariableLengthFields;
+    	//when undefined build store and return the default
+    	PipeConfig<S> newConfig = instance.newPipeConfig(defaultMinimumFragmentsOnPipe, maximumLengthOfVariableLengthFields);
+
+		if (configCount >= configs.length) {
+			//grow, we are out of room
+			PipeConfig[] newConfigs = new PipeConfig[configs.length*2];
+			System.arraycopy(configs, 0, newConfigs, 0, configs.length);
+			configs = newConfigs;
+		}			
+		configs[configCount++] = newConfig;
+		
+		return newConfig;
+	}
 
 	private <S extends MessageSchema<S>> int findIndex(Class<S> clazz) {
 		S goal = MessageSchema.findInstance(clazz);
@@ -120,8 +135,7 @@ public class PipeConfigManager {
     			break;
     		}
     	}
-    	int idx = i;
-		return idx;
+    	return i;
 	}
 
 	public <S extends MessageSchema<S>> Pipe<S> newPipe(Class<S> clazz) {		

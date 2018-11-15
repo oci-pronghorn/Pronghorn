@@ -1185,86 +1185,69 @@ public class Pipe<T extends MessageSchema<T>> {
     
 	private void buildBuffers() {
 
-	    this.pendingReleases = 
-	    		((null == schema.from) ?	null : //pending releases only supported with real FROM schemas
-	    		new PendingReleaseData(
-	    				sizeOfSlabRing / FieldReferenceOffsetManager.minFragmentSize(MessageSchema.from(schema))	
-	    		));
-	    
-	    
-	    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
-	    if (usingHighLevelAPI && null!=schema.from) {
-	    	this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
-	    }
-	    
-        assert(slabRingHead.workingHeadPos.value == slabRingHead.headPos.get());
-        assert(slabRingTail.workingTailPos.value == slabRingTail.tailPos.get());
-        assert(slabRingHead.workingHeadPos.value == slabRingTail.workingTailPos.value);
-        assert(slabRingTail.tailPos.get()==slabRingHead.headPos.get());
-
-        long toPos = slabRingHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
-
-        this.llRead = new LowLevelAPIReadPositionCache();
-        this.llWrite = new LowLevelAPIWritePositionCache();
-
-        //This init must be the same as what is done in reset()
-        //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
-        llWrite.llwHeadPosCache = toPos;
-        llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
-        llWrite.llrConfirmedPosition = toPos;
-
-        try {
-	        this.blobRing = new byte[sizeOfBlobRing];
-	        this.slabRing = new int[sizeOfSlabRing];
-	        
-//	        int pipeBytesTotal = sizeOfBlobRing + (4*sizeOfSlabRing);
-//			int delta = pipeBytesTotal;
-//	        
-//	        String unit = "b";
-//	        if (delta > (1<<20)) {
-//	        	delta = delta>>20;
-//	    	    unit = "mb";
-//	        }
-//	        
-//			long totalMemory = totalBytes.addAndGet(delta);
-//			
-//			if (pipeBytesTotal > (1<<23)) {
-//		        if (totalMemory > (1<<20)) {
-//		        	System.out.println("total consumed "+(totalMemory>>20)+"mb  "+delta+unit+"  "+this.config()+"  "+this.config().totalBytesAllocated());
-//		        } else {
-//		        	System.out.println("total consumed "+totalMemory+"b  "+delta+unit+"  "+this.config()+"  "+this.config().totalBytesAllocated());
-//		        }
-//			}
-	        
+		try {
+			
+			this.blobRing = new byte[sizeOfBlobRing];
+			this.slabRing = new int[sizeOfSlabRing];
+			
+		    this.pendingReleases = 
+		    		((null == schema.from) ?	null : //pending releases only supported with real FROM schemas
+		    		new PendingReleaseData(
+		    				sizeOfSlabRing / FieldReferenceOffsetManager.minFragmentSize(MessageSchema.from(schema))	
+		    		));
+		    
+		    
+		    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
+		    if (usingHighLevelAPI && null!=schema.from) {
+		    	this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
+		    }
+		    
+	        assert(slabRingHead.workingHeadPos.value == slabRingHead.headPos.get());
+	        assert(slabRingTail.workingTailPos.value == slabRingTail.tailPos.get());
+	        assert(slabRingHead.workingHeadPos.value == slabRingTail.workingTailPos.value);
+	        assert(slabRingTail.tailPos.get()==slabRingHead.headPos.get());
+	
+	        long toPos = slabRingHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
+	
+	        this.llRead = new LowLevelAPIReadPositionCache();
+	        this.llWrite = new LowLevelAPIWritePositionCache();
+	
+	        //This init must be the same as what is done in reset()
+	        //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
+	        llWrite.llwHeadPosCache = toPos;
+	        llRead.llrTailPosCache = toPos;
+	        llRead.llwConfirmedPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
+	        llWrite.llrConfirmedPosition = toPos;	       
 	        
 	        this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
+	        
+	        //This assignment is critical to knowing that init was called
+	        this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
+
+	        //only create if there is a possibility that they may be used.
+	        if (sizeOfBlobRing>0) {
+	        	this.wrappedBlobReadingRingA = ByteBuffer.wrap(this.blobRing);
+	        	this.wrappedBlobReadingRingB = ByteBuffer.wrap(this.blobRing);
+	        	this.wrappedBlobWritingRingA = ByteBuffer.wrap(this.blobRing);
+	        	this.wrappedBlobWritingRingB = ByteBuffer.wrap(this.blobRing);	        
+	        	this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
+	        	
+	        	this.wrappedReadingBuffers = new ByteBuffer[]{wrappedBlobReadingRingA,wrappedBlobReadingRingB}; 
+	        	this.wrappedWritingBuffers = new ByteBuffer[]{wrappedBlobWritingRingA,wrappedBlobWritingRingB};
+	        	
+	        	
+	        	assert(0==wrappedBlobReadingRingA.position() && wrappedBlobReadingRingA.capacity()==wrappedBlobReadingRingA.limit()) : "The ByteBuffer is not clear.";
+	        	
+	        	//blobReader and writer must be last since they will be checking isInit in construction.
+	        	this.blobReader = createNewBlobReader();
+	        	this.blobWriter = createNewBlobWriter();
+	        }
+	        
         } catch (OutOfMemoryError oome) {
         	
         	log.warn("attempted to allocate Slab:{} Blob:{} in {}", sizeOfSlabRing, sizeOfBlobRing, this, oome);
         	shutdown(this);
         	System.exit(-1);
-        }
-        //This assignment is critical to knowing that init was called
-        this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
-
-        //only create if there is a possibility that they may be used.
-        if (sizeOfBlobRing>0) {
-	        this.wrappedBlobReadingRingA = ByteBuffer.wrap(this.blobRing);
-	        this.wrappedBlobReadingRingB = ByteBuffer.wrap(this.blobRing);
-	        this.wrappedBlobWritingRingA = ByteBuffer.wrap(this.blobRing);
-	        this.wrappedBlobWritingRingB = ByteBuffer.wrap(this.blobRing);	        
-	        this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
-	        
-	        this.wrappedReadingBuffers = new ByteBuffer[]{wrappedBlobReadingRingA,wrappedBlobReadingRingB}; 
-	        this.wrappedWritingBuffers = new ByteBuffer[]{wrappedBlobWritingRingA,wrappedBlobWritingRingB};
-	        
-	        
-	        assert(0==wrappedBlobReadingRingA.position() && wrappedBlobReadingRingA.capacity()==wrappedBlobReadingRingA.limit()) : "The ByteBuffer is not clear.";
-	
-	        //blobReader and writer must be last since they will be checking isInit in construction.
-	        this.blobReader = createNewBlobReader();
-	        this.blobWriter = createNewBlobWriter();
         }
 	}
 	
