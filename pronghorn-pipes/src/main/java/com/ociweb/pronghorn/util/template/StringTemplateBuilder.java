@@ -65,11 +65,12 @@ public class StringTemplateBuilder<T> extends StringTemplateRenderer<T> implemen
 	}
 	
 	@Override
-	public void render(AppendableByteWriter<?> writer, T source) {
+	public void render(final AppendableByteWriter<?> writer, final T source) {
 
 		//assert(immutable) : "String template builder can only be rendered after lock.";
+		StringTemplateScript<T>[] localScript = script;
 		for(int i=0;i<count;i++) {
-			script[i].render(writer, source);
+			localScript[i].render(writer, source);
 		}
 		
 	}

@@ -19,7 +19,6 @@ public class ServerPipesConfig {
 	public final int serverPipesPerOutputEngine;
 	public final int serverSocketWriters;
 	public final LogFileConfig logFile;
-	public final int serverOutputMsg;
 	
 	public final int releaseMsg;
 	
@@ -31,30 +30,11 @@ public class ServerPipesConfig {
 	public final int fromRouterToModuleCount;
 	public final int fromRouterToModuleBlob; //may grow based on largest post required
 
-	private int serverBlobToWrite; //may need to grow based on largest payload required
-
 	private static final Logger logger = LoggerFactory.getLogger(ServerPipesConfig.class);
 	
-	
-    //byte buffer must remain small because we will have a lot of these for all the partial messages
-    //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
-    private      PipeConfig<NetPayloadSchema> fromOrderWraperConfig;     
-  
+    public final PipeConfigManager pcmIn; 
+    public final PipeConfigManager pcmOut; 
     
-    //this cannot be put in the PCM or it will collide..
-    public final PipeConfig<NetPayloadSchema> incomingDataConfig; //also meets handshake req when TLS is used
-
-	
-    //This list of configs is kept inside the PCM, some of the above are to be moved down here...
-    //final PipeConfig<NetPayloadSchema> fromOrderWraperConfig;     
-    //final PipeConfig<ServerConnectionSchema> newConnectionsConfig;	    
-    //final PipeConfig<ReleaseSchema> releaseConfig;    
-	//final PipeConfig<HTTPRequestSchema> routerToModuleConfig
-	//final PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);	
-    public final PipeConfigManager pcm; //TODO: move all the above configs to this PCM...
-    
-	public int writeBufferMultiplier;
-
 	public ServerPipesConfig(LogFileConfig logFile, boolean isTLS, 
 							 int maxConnectionBits,
 							 int tracks,
@@ -67,7 +47,9 @@ public class ServerPipesConfig {
 							 int maxResponseSize,
 							 int queueLengthIn, //router to modules
 							 int queueLengthOut, // from superOrder to channel writer
-							 PipeConfigManager pcm				 
+							 PipeConfigManager pcmIn,
+							 PipeConfigManager pcmOut
+							 
 			) {
 	
 		if (isTLS && (maxRequestSize< (SSLUtil.MinTLSBlock))) {
@@ -82,9 +64,9 @@ public class ServerPipesConfig {
 		}
 
 		this.fromRouterToModuleCount = queueLengthIn; // 2 - 1024
-		this.serverOutputMsg         = queueLengthOut;// 4 -  256
-
-		this.pcm = pcm;
+		this.pcmIn = pcmIn;
+		this.pcmOut = pcmOut;
+		
 	    this.logFile = logFile;
 	    this.moduleParallelism = tracks;
 	    this.maxConnectionBitsOnServer = maxConnectionBits;
@@ -112,39 +94,25 @@ public class ServerPipesConfig {
 
 		//defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
-	    
-	    
-	    this.serverBlobToWrite               = maxResponseSize; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
-		int targetServerWriteBufferSize = 1<<23;
-		this.writeBufferMultiplier           = targetServerWriteBufferSize/ serverBlobToWrite; //write buffer on server
-		
+	    		
 		this.releaseMsg                      = 2048;
 				
-		pcm.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
+		pcmIn.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
+		pcmOut.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 
+			
 	    //byte buffer must remain small because we will have a lot of these for all the partial messages
 		//however for large posts we make this large for fast data reading
 		//in addition this MUST be 1<15 in var size when TLS is in use.
-		this.incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
-	    								partialPartsIn, 
-	    								maxRequestSize);
+		pcmIn.ensureSize(NetPayloadSchema.class, partialPartsIn, maxRequestSize);
+		
+		//maxResponseSize Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+		pcmOut.ensureSize(NetPayloadSchema.class, queueLengthOut, maxResponseSize);
 
 	}
 	
 	public void ensureServerCanWrite(int length) {
-		serverBlobToWrite =  Math.max(serverBlobToWrite, length);
-	}
-	
-	public PipeConfig<NetPayloadSchema> orderWrapConfig() {
-		if (null==fromOrderWraperConfig) {
-						
-			//also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
-			fromOrderWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,
-					                  serverOutputMsg, 
-					                  serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
-
-		}		
-		return fromOrderWraperConfig;
+		pcmOut.ensureSize(NetPayloadSchema.class, 0, length);
 	}
 	
 	

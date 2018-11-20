@@ -453,8 +453,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	}
 
-
-	private int rMask = 0;
 	
 	private void releasePipesForUse() {
 		int i = releasePipes.length;
@@ -768,26 +766,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 		}
 	}
-    
-     
-//	private int startsWith(StringBuilder stringBuilder, String expected2) {
-//		
-//		int count = 0;
-//		int rem = stringBuilder.length();
-//		int base = 0;
-//		while(rem>=expected2.length()) {
-//			int i = expected2.length();
-//			while (--i>=0) {
-//				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-//					return count;
-//				}
-//			}
-//			base+=expected2.length();
-//			rem-=expected2.length();
-//			count++;
-//		}
-//		return count;
-//	}
-    
+
     
 }

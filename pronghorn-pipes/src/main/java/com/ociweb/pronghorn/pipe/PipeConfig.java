@@ -103,10 +103,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	    this(messageSchema, minimumFragmentsOnRing, 0, byteConst);
 	}
     public PipeConfig(T messageSchema, byte[] byteConst, int minimumFragmentsOnRing, final int maximumLenghOfVariableLengthFields) {
-    	
-    	//if (messageSchema.getClass().getSimpleName().startsWith("NetPayloadSchema") && 32768==maximumLenghOfVariableLengthFields) {
-    	//	new Exception(minimumFragmentsOnRing+" - "+maximumLenghOfVariableLengthFields).printStackTrace();
-    	//}
+ 
     	this.maximumLenghOfVariableLengthFields = maximumLenghOfVariableLengthFields;
     	
         FieldReferenceOffsetManager from = MessageSchema.from(messageSchema);

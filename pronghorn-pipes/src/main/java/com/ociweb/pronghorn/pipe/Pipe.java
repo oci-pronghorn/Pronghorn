@@ -625,6 +625,10 @@ public class Pipe<T extends MessageSchema<T>> {
 		this(config,true);
 	}
     	
+	
+	//private static AtomicLong totalMemory = new AtomicLong();
+	
+	
 	/**
 	 * Build new Pipe instance. Can save some object construction and memory
 	 * if the high level API is not used.
@@ -640,6 +644,12 @@ public class Pipe<T extends MessageSchema<T>> {
         this.schema = config.schema;
 
         assert(holdConstructionLocation());
+        
+        //totalMemory.addAndGet(config.totalBytesAllocated());        
+//        if (schemaName(this).contains("NetPayloadSchema")) {
+//        	System.out.println("new pipe of size "+config.totalBytesAllocated()+" total so far "+totalMemory.get()+"   "+config.toString());
+//            //new Exception("build here").printStackTrace();
+//        }
         
         debugFlags = config.debugFlags;
                 
@@ -2946,7 +2956,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @param index int offset to find int
 	 * @return int value at that poisition
 	 */
-	public static int readInt(int[] buffer, int mask, long index) {
+	public static int readInt(final int[] buffer, final int mask, final long index) {
 		return buffer[mask & (int)(index)];
 	}
 
@@ -3992,8 +4002,8 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param position int position index
      * @return int value
      */
-    public static <S extends MessageSchema<S>> int readIntValue(int[] backing, int mask, long position) {
-        return backing[(int)(mask & position)];
+    public static <S extends MessageSchema<S>> int readIntValue(final int[] backing, final int mask, final long position) {
+        return backing[mask & (int)position];
     }
     
     @Deprecated
@@ -4077,14 +4087,14 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe pipe to check
      * @return message index
      */
-    public static <S extends MessageSchema<S>> int takeMsgIdx(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> int takeMsgIdx(final Pipe<S> pipe) {
         
     	assert(PipeMonitor.monitor(pipe,
     			      pipe.slabRingTail.workingTailPos.value,
     			      Pipe.bytesReadBase(pipe)
     			));
   
-    	return pipe.lastMsgIdx = readValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
+    	return pipe.lastMsgIdx = readIntValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
     }
     
     /**

@@ -79,7 +79,7 @@ public abstract class StageScheduler {
 	
 
 	private static int idealThreadCount() {
-		return Runtime.getRuntime().availableProcessors()*2;
+		return CoresUtil.availableProcessors()*2;
 	}
 	
 	public static StageScheduler defaultScheduler(GraphManager gm) {

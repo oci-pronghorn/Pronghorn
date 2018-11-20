@@ -219,6 +219,12 @@ public abstract class JSONObject<R, T, P> {
         builder.addFieldPrefix(name).addString(false, func);
         return this;
     }
+    
+    public JSONObject<R, T, P> string(byte[] utf8EncodedName, ToStringFunction<T> func) {
+        assert(!declaredEmpty);
+        builder.addFieldPrefix(utf8EncodedName).addString(false, func);
+        return this;
+    }
 
     public JSONObject<R, T, P> string(String name, ToStringFunction<T> func, JSONType encode) {
         assert(!declaredEmpty);

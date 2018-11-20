@@ -82,6 +82,11 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
         this.declaredMemberName = name.getBytes();
         return this;
     }
+    
+    JSONBuilder<R, T> addFieldPrefix(byte[] utf8EncodedName) {
+        this.declaredMemberName = utf8EncodedName;
+        return this;
+    }
 
     private static class ObjectRenderState {
         private final JSONKeywords kw;

@@ -52,7 +52,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 	private int minMemoryInputPipe = 1<<14; // 16K default to keep it small.
 	
-	public final PipeConfigManager pcm;
+	public final PipeConfigManager pcmIn;
+	public final PipeConfigManager pcmOut;
+	
     int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	
 
@@ -61,18 +63,19 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private final ServerConnectionStruct scs;
 	
 	public HTTPServerConfigImpl(int bindPort, 
-			                    PipeConfigManager pcm, 
+			                    PipeConfigManager pcmIn,
+			                    PipeConfigManager pcmOut,
 			                    StructRegistry recordTypeData) {
 		this.bindPort = bindPort;
 		if (bindPort<=0 || (bindPort>=(1<<16))) {
 			throw new UnsupportedOperationException("invalid port "+bindPort);
 		}
 
-		this.pcm = pcm;		
-		
-		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
-		this.pcm.ensureSize(ServerResponseSchema.class, 4, 512); //ico file is < 512	
+		this.pcmIn = pcmIn;
+		this.pcmOut = pcmOut;
 	
+		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
+		this.pcmOut.ensureSize(ServerResponseSchema.class, 4, Math.max(512, maxResponseSize)); //ico file is < 512	
 		
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
@@ -151,9 +154,8 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	
 	@Override
 	public HTTPServerConfig setMaxResponseSize(int maxResponseSize) {
-		pcm.ensureSize(ServerResponseSchema.class, 4, maxResponseSize);	
+		pcmOut.ensureSize(ServerResponseSchema.class, 4, maxResponseSize);	
 		//logger.info("\nsetting the max response size for {}  to {}", ServerResponseSchema.class, maxResponseSize);
-		
 		this.maxResponseSize = maxResponseSize;
 		return this;
 	}
@@ -248,7 +250,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 		//for after router and before module, limited since all the data is cached in previous pipe
 		//and we do not want to use all the memory here.
-		this.pcm.ensureSize(HTTPRequestSchema.class, Math.min(maxQueueIn,1<<14), 0); 
+		this.pcmIn.ensureSize(HTTPRequestSchema.class, Math.min(maxQueueIn,1<<14), 0); 
        
 		return this;
 	}
@@ -274,11 +276,11 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	public ServerPipesConfig buildServerConfig() {
 		int incomingMsgFragCount = defaultComputedChunksCount();
 
-		pcm.addConfig(new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 
+		pcmIn.ensureSize(HTTPRequestSchema.class, 
 						Math.max(incomingMsgFragCount-2, 2), 
-						getMaxRequestSize()));
+						getMaxRequestSize());
 			
-		pcm.ensureSize(ServerResponseSchema.class, 4, 512);
+		pcmOut.ensureSize(ServerResponseSchema.class, 4, 512);
 		
 		int queueIn = 2; //2-1024
 		int queueOut = 4; //4-256
@@ -298,7 +300,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 				getMaxResponseSize(),
 				queueIn,
 				queueOut,
-				pcm);
+				pcmIn,pcmOut);
 	}
 
 	public int getMaxResponseSize() {

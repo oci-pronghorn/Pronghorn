@@ -155,9 +155,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      HTTPRevision[] revs = httpSpec.supportedHTTPRevisions.getEnumConstants();
 	      x = revs.length;               
 	      while (--x >= 0) {
-	    	   //TODO: since most responses are 200 would this run faster if we hard coded that as part of the tree??
+	    	    revisionMap.setUTF8Value(revs[x].getKey(), " 200 OK\r\n", revs[x].ordinal());
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\r\n", revs[x].ordinal());
-	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be last because we prefer to have it pick \r\n
+	           // revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be last because we prefer to have it pick \r\n
 	      }
 	      
 	      chunkEnd = new TrieParser(256,true);
@@ -862,10 +862,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
 		DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
 			
-									
-		//NOTE: this is always first and not indexed...
-		TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
-					
+		if (!TrieParserReader.hasCapturedBytes(trieReader, 0)) {	
+			//default ok case
+			openOutputStream.writeShort(200);
+		} else {
+			//NOTE: this is always first and not indexed...
+			TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
+		}	
 		runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
 	}
 

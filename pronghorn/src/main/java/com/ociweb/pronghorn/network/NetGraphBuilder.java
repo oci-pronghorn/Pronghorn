@@ -52,6 +52,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.FileBlobWriteStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
+import com.ociweb.pronghorn.stage.scheduling.CoresUtil;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.IPv4Tools;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -152,7 +153,7 @@ public class NetGraphBuilder {
 		final int pipesPerResponseParser = 30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
 
 		//do not have more parsers than cores and do not have more parsers than needed for pipe goal
-		int maxParser = Math.min(Runtime.getRuntime().availableProcessors(),  rawToParse.length/pipesPerResponseParser);
+		int maxParser = Math.min(CoresUtil.availableProcessors(),  rawToParse.length/pipesPerResponseParser);
 		//find the first number going into count evenly which causes the pipe count to be < 32
 		int proposed = Math.max(1, maxParser);
 		while (0 != (rawToParse.length%proposed) && proposed>1) {
@@ -341,23 +342,23 @@ public class NetGraphBuilder {
 													final ServerCoordinator coordinator,
 													ServerFactory factory) {
 		logger.trace("building server graph");
-		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs, coordinator.incomingDataConfig);           
+		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs,				
+				coordinator.pcmIn.getConfig(NetPayloadSchema.class));     
            
         Pipe<ReleaseSchema>[] ack = buildSocketReaderStage(graphManager, 
         		                                                         coordinator, 
         		                                                         coordinator.moduleParallelism(),
-        		                                                         encryptedIncomingGroup);
-                       
+        		                                                         encryptedIncomingGroup);       
         
         Pipe<NetPayloadSchema>[] handshakeIncomingGroup = null;
         Pipe<NetPayloadSchema>[] receivedFromNet;
         
         if (coordinator.isTLS) {
         	receivedFromNet = Pipe.buildPipes(	coordinator.maxConcurrentInputs,
-        										coordinator.incomingDataConfig);
+        									coordinator.pcmIn.getConfig(NetPayloadSchema.class));  
         	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, 
 							        			coordinator.serverRequestUnwrapUnits, 
-							        			coordinator.incomingDataConfig,
+							        			coordinator.pcmIn.getConfig(NetPayloadSchema.class),
         			                      encryptedIncomingGroup, receivedFromNet, ack);
         } else {
         	receivedFromNet = encryptedIncomingGroup;
@@ -487,7 +488,7 @@ public class NetGraphBuilder {
 		//create the routers
 		/////////////////////
 		
-		PipeConfig<ServerResponseSchema> config = coordinator.pcm.getConfig(ServerResponseSchema.class);
+		PipeConfig<ServerResponseSchema> config = coordinator.pcmOut.getConfig(ServerResponseSchema.class);
 
 		
 		int acksBase = releaseAfterParse.length-1;
@@ -553,11 +554,11 @@ public class NetGraphBuilder {
 		Pipe<ReleaseSchema>[] acks;
 		
 		if (!coordinator.isTLS) {
-			acks = Pipe.buildPipes(tracks, coordinator.pcm.getConfig(ReleaseSchema.class));		
+			acks = Pipe.buildPipes(tracks, coordinator.pcmIn.getConfig(ReleaseSchema.class));		
 		} else {
 			///route count is messing up data
 			acks = Pipe.buildPipes(tracks + coordinator.serverRequestUnwrapUnits, 
-					               coordinator.pcm.getConfig(ReleaseSchema.class));						
+					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
 
 	    //HIGHVOLUME		
@@ -617,7 +618,7 @@ public class NetGraphBuilder {
 		int y = coordinator.serverPipesPerOutputEngine;
 		int z = coordinator.serverResponseWrapUnitsAndOutputs;
 		Pipe<NetPayloadSchema>[] toWiterPipes = null;
-		PipeConfig<NetPayloadSchema> fromOrderedConfig = coordinator.pcm.getConfig(NetPayloadSchema.class);
+		PipeConfig<NetPayloadSchema> fromOrderedConfig = coordinator.pcmOut.getConfig(NetPayloadSchema.class);
 		
 		if (coordinator.isTLS) {
 		    
@@ -713,7 +714,7 @@ public class NetGraphBuilder {
 			Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
 		
-		PipeConfig<HTTPRequestSchema> routerToModuleConfig = coordinator.pcm.getConfig(HTTPRequestSchema.class);
+		PipeConfig<HTTPRequestSchema> routerToModuleConfig = coordinator.pcmIn.getConfig(HTTPRequestSchema.class);
 		
 		final int trackCount = coordinator.moduleParallelism();
 
@@ -736,19 +737,7 @@ public class NetGraphBuilder {
 			//each module can unify of split across routers
 			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(
 					                routeId, graphManager, routerConfig, routesTemp);
-			
-			int maxOut = coordinator.pcm.getConfig(NetPayloadSchema.class).maxVarLenSize();
-			int i = outputPipes.length;
-			while (--i>=0) {
-				if (outputPipes[i].maxVarLen>maxOut) {
-					throw new UnsupportedOperationException(
-						"Module instance "+routeId+" is configured to write blocks of "+outputPipes[i].maxVarLen+
-						" but the server is set to maximum response size of "+maxOut+
-						". Either setMaxResponseSize larger or modify module to write less."
-					);
-				}
-			}
-			
+				
 			
 			assert(validateNoNulls(outputPipes));
 		    
@@ -876,7 +865,7 @@ public class NetGraphBuilder {
 		 //for cookies sent in
 		
 		
-		HTTPServerConfig c = NetGraphBuilder.serverConfig(8080, gm);
+		HTTPServerConfig c = NetGraphBuilder.serverConfig(port, gm);
 		if (!isTLS) {
 			c.useInsecureServer();
 		}
@@ -894,12 +883,13 @@ public class NetGraphBuilder {
 		
 		HTTPServerConfigImpl r = ((HTTPServerConfigImpl)c);
 		int incomingMsgFragCount = r.defaultComputedChunksCount();
+				
 		
-		r.pcm.addConfig(new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 
+		r.pcmIn.ensureSize(HTTPRequestSchema.class, 
 						Math.max(incomingMsgFragCount-2, 2), 
-						r.getMaxRequestSize()));
+						r.getMaxRequestSize());
 			
-		r.pcm.ensureSize(ServerResponseSchema.class, 4, 512);
+		r.pcmOut.ensureSize(ServerResponseSchema.class, 4, 512);
 		
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(
 						null,//we do not need to log the telemetry traffic, so null...
@@ -916,7 +906,8 @@ public class NetGraphBuilder {
 						r.getMaxResponseSize(),
 						2, //incoming telemetry requests in Queue, keep small
 						4, //outgoing telemetry responses, keep small.
-						r.pcm);
+						r.pcmIn,
+						r.pcmOut);
 		
 		if (isTLS) {
 			serverConfig.ensureServerCanWrite(SSLUtil.MinTLSBlock);
@@ -1336,14 +1327,9 @@ public class NetGraphBuilder {
 		return eventPipes;		
 		
 	}
-
-	//TODO:update to take StructRegistry instead of GraphManager
-	public static HTTPServerConfig serverConfig(int host, PipeConfigManager pcm, GraphManager gm) {
-		return new HTTPServerConfigImpl(host, pcm, gm.recordTypeData);				
-	}
 	
-	public static HTTPServerConfig serverConfig(int host, GraphManager gm) {
-		return new HTTPServerConfigImpl(host, new PipeConfigManager(), gm.recordTypeData);				
+	public static HTTPServerConfig serverConfig(int port, GraphManager gm) {
+		return new HTTPServerConfigImpl(port, new PipeConfigManager(), new PipeConfigManager(), gm.recordTypeData);				
 	}
 	
 	public static ModuleConfig simpleFileServer(final String pathRoot, final int messagesToOrderingSuper,

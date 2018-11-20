@@ -96,8 +96,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
         //for high volume this must be on its own
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-        
-
+    
     }
     
     
@@ -141,14 +140,20 @@ public class ServerSocketWriterStage extends PronghornStage {
     	activeMessageIds = new int[c];
     	Arrays.fill(activeTails, -1);   	
     	
+    	long totalSize = 0;
 		int j = c;
 		while (--j>=0) {
 			//warning: this is the entire ring and may be too large.
-			workingBuffers[j] = ByteBuffer.allocateDirect(
-						Math.max(MINIMUM_BUFFER_SIZE, 
-							input[j].sizeOfBlobRing)					
+			int size = Math.max(MINIMUM_BUFFER_SIZE, 
+					c>8 ?
+					   input[j].maxVarLen*2    //small pipe mode since we have large count of outputs
+					  :input[j].sizeOfBlobRing //larger pipe since we only have a few
+					
 					);
+			workingBuffers[j] = ByteBuffer.allocateDirect(size);
+			totalSize+=size;
 		}
+		//System.out.println(ServerSocketWriterStage.class.getSimpleName()+" instance allocated "+totalSize+" bytes split over "+c+" pipes");
     	
     }
     

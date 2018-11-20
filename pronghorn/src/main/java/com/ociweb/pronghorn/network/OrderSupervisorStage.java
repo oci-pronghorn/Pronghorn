@@ -695,10 +695,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	}
 
-	private void finishPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
-			Pipe<NetPayloadSchema> output, final int expSeq, int requestContext,
-			ConnDataReaderController connectionDataReader, long businessTime, int routeId,
-			boolean finishedFullReponse) {
+	private void finishPublish(final Pipe<ServerResponseSchema> input, final int myPipeIdx, final long channelId,
+			Pipe<NetPayloadSchema> output, final int expSeq, final int requestContext,
+			final ConnDataReaderController connectionDataReader, final long businessTime, final int routeId,
+			final boolean finishedFullReponse) {
 				
 		if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
@@ -716,11 +716,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 long now = System.nanoTime();
 				 long businessDuration = now-businessTime;
 				 
-				 if (businessDuration>limitSLA) {
+				 //if (businessDuration>limitSLA) {
 					 //send the routeId to those listening that we have a violation					 
 					 //TODO: publish if pipe is found..	
-					 
-				 }
+				 //}
 				 				 
 				 writeToLog(channelId, output, expSeq, now, businessDuration);
 			 }			 
@@ -868,13 +867,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			// logger.info("no resposne mask, continuation");
 			 
 		 }
-		 
-		 if (expSeq+1 > expectedSquenceNosSequence[idx]) {
-			 System.out.println("XXX chnl:"+channelId+" req sequence "+expSeq+" bumped up to "+expectedSquenceNosSequence[idx]+
-					 " isENDResp: "+(0 != (END_RESPONSE_MASK & requestContext)));
-		 }
-		 
-		                     
+			                     
 	 	//////////////
 	 	//if needed write out the close connection message
 	 	//can only be done when we are at the end of the message

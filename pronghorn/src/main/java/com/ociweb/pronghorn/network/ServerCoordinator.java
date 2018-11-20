@@ -87,9 +87,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 
-	public final PipeConfigManager pcm;
-
-	public final PipeConfig<NetPayloadSchema> incomingDataConfig;
+	public final PipeConfigManager pcmIn;
+	public final PipeConfigManager pcmOut;
+	
 	public final int serverRequestUnwrapUnits;
 	public final int serverPipesPerOutputEngine;
 	public final int serverResponseWrapUnitsAndOutputs;
@@ -111,7 +111,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		this.moduleParallelism = serverPipesConfig.moduleParallelism;
 		this.logFile = serverPipesConfig.logFile;
 		 
-		this.incomingDataConfig       = serverPipesConfig.incomingDataConfig;
 		this.serverRequestUnwrapUnits = serverPipesConfig.serverRequestUnwrapUnits;
 		this.serverPipesPerOutputEngine = serverPipesConfig.serverPipesPerOutputEngine;
 		this.serverResponseWrapUnitsAndOutputs = serverPipesConfig.serverResponseWrapUnitsAndOutputs;
@@ -137,13 +136,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
         		ServerConnection.class, 
         		new SocketValidator(), false/*Do not grow*/);
 
-        serverPipesConfig.pcm.ensureSize(HTTPRequestSchema.class, 
+        serverPipesConfig.pcmIn.ensureSize(HTTPRequestSchema.class, 
         		Math.min(serverPipesConfig.fromRouterToModuleCount, 1<<12), //4K max queue length 
         		this.connectionStruct().inFlightPayloadSize());
         
-        serverPipesConfig.pcm.addConfig(serverPipesConfig.orderWrapConfig()); 
+        serverPipesConfig.pcmOut.addConfig(serverPipesConfig.pcmOut.getConfig(NetPayloadSchema.class)); 
 
-		pcm = serverPipesConfig.pcm;
+		pcmIn = serverPipesConfig.pcmIn;
+		pcmOut = serverPipesConfig.pcmOut;
         
     }
     

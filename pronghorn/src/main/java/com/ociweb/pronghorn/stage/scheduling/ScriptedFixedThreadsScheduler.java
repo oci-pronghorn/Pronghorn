@@ -203,7 +203,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager) {
 		//this is often very optimal since we have enough granularity to swap work but we do not
 		//have so many threads that it overwhelms the operating system context switching
-		this(graphManager, Runtime.getRuntime().availableProcessors()*2);
+		this(graphManager, CoresUtil.availableProcessors()*2);
 	}
 
 	public ScriptedFixedThreadsScheduler(GraphManager graphManager, int targetThreadCount) {

@@ -73,7 +73,7 @@ public class ColorMinusScheduler extends StageScheduler {
         this.maximumThreadsPerStage = new int[numberOfStages];
         Arrays.fill(maximumThreadsPerStage, 1);
 
-        int numberOfCores = Runtime.getRuntime().availableProcessors();
+        int numberOfCores = CoresUtil.availableProcessors();
         this.numberOfThreads = Math.min(this.numberOfStages, numberOfCores);
         this.numberOfThreads = Math.max(this.numberOfThreads, 1);   // just in case numberOfCores is -1
 

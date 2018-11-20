@@ -32,6 +32,7 @@ public class TrieParser implements Serializable {
     static final byte TYPE_RUN                 = 0x00; //followed by length
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
     static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.  
+  //  static final byte TYPE_SWITCH_BRANCH       = 0X03; //followed by 1 short meta low 8 base 2 of table,   high 8 shift for skip,   followed by pairs of shorts table
     
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
@@ -98,8 +99,7 @@ public class TrieParser implements Serializable {
     static final short NUMERIC_FLAG_RATIONAL       =  8;
     //   when there is no number take that path and use zero as the value
     static final short NUMERIC_FLAG_ABSENT_IS_ZERO =  (short)0x8000;
-    
-    
+        
     
     
     private final boolean fixedSize;
@@ -208,6 +208,9 @@ public class TrieParser implements Serializable {
         int i = 0;
         while (i<limit) {
             switch (data[i]) {
+//            	case TYPE_SWITCH_BRANCH:
+//            		i = toStringSwitch(builder, i);
+//            		break;
                 case TYPE_SAFE_END:
                     i = toStringSafe(builder, i);
                     break;
@@ -242,7 +245,27 @@ public class TrieParser implements Serializable {
         return builder;
     }
     
-    private int toStringSafe(StringBuilder builder, int i) {
+    private int toStringSwitch(StringBuilder builder, int i) {
+		
+    	builder.append("SWITCH");
+    	int meta = data[i];
+    	int shift = (meta>>8)&0xFF;
+    	int countBits = meta&0xFF;    	
+    	
+        builder.append(shift).append(".").append(countBits).append("[").append(i++).append("], "); //meta  shift.count
+        //jumps
+        int c = (1<<countBits);
+        while (--c>=0) {
+        	builder.append(data[i]).append("[").append(i++).append("], ");
+        	builder.append(data[i]).append("[").append(i++).append("], ");//JUMP        	
+        }
+        
+        builder.append("\n");
+        return i;
+
+	}
+
+	private int toStringSafe(StringBuilder builder, int i) {
         builder.append("SAFE");
         builder.append(data[i]).append("[").append(i++).append("], ");
         int s = SIZE_OF_RESULT;
@@ -325,6 +348,9 @@ public class TrieParser implements Serializable {
         if (i<limit){
             	
 	    	switch (data[i]) {
+//	    		case TYPE_SWITCH_BRANCH:
+//	    			visitSwitch(pv,i,buffer,bufferPosition);
+//	    		break;
 		        case TYPE_SAFE_END:
 		        	visitSafeEnd(pv,i,buffer,bufferPosition);
 		            break;
@@ -353,6 +379,23 @@ public class TrieParser implements Serializable {
         }
 		
 	}
+
+//	private void visitSwitch(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+//		
+//		assert(TYPE_SWITCH_BRANCH == data[i]);
+//		i++;
+//    	int meta = data[i];
+//    	int shift = (meta>>8)&0xFF;
+//    	int countBits = meta&0xFF;    
+//    	int count = 1<<countBits;
+//    	
+//        //add jumps
+//        int base = i+1+(count<<1);
+//        for(int j = 0; j<count; j++) {
+//        	int destination = base + ((((int)data[j])<<15) | (0x7FFF&data[j+1]));        	
+//        	visitPatterns(pv,destination,buffer,bufferPosition);
+//        }
+//	}
 
 	private void visitSafeEnd(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
 		assert(TYPE_SAFE_END == data[i]);
@@ -457,6 +500,9 @@ public class TrieParser implements Serializable {
 	        	//each type will add its label details and close the line
 	        	//after closing the line links can also be added to other jump points       	
 			            switch (data[i]) {
+//			            	case TYPE_SWITCH_BRANCH:
+//			            		i = toDotSwitch(builder, i);
+//			            		break;			            
 			                case TYPE_SAFE_END:
 			                    i = toDotSafe(builder, i);
 			                    break;
@@ -498,7 +544,45 @@ public class TrieParser implements Serializable {
     }
     
     
-    private int toDotSafe(Appendable builder, int i) throws IOException {
+    private int toDotSwitch(Appendable builder, int i) throws IOException {
+		
+    	
+    	int start = i;
+    	builder.append("SWITCH");
+    	int meta = data[i];
+    	int shift = (meta>>8)&0xFF;
+    	int countBits = meta&0xFF;    
+    	int count = 1<<countBits;
+    	
+    	Appendables.appendValue(builder, shift).append(".");
+    	Appendables.appendValue(builder, countBits).append("[");
+    	Appendables.appendValue(builder, i++).append("], "); //meta  shift.count
+        //jumps
+        int c = count;
+        while (--c>=0) {
+        	Appendables.appendValue(builder, data[i]).append("[");
+        	Appendables.appendValue(builder, i++).append("], ");
+        	Appendables.appendValue(builder, data[i]).append("[");
+        	Appendables.appendValue(builder, i++).append("], ");//JUMP        	
+        }
+        
+        //end of label
+        builder.append("\"]\n");
+        
+        //add jumps
+        int base = start+1+(count<<1);
+        for(int j = 0; j<count; j++) {
+	        Appendables.appendValue(builder,"node", start);
+	        int destination = base + ((((int)data[j])<<15) | (0x7FFF&data[j+1]));
+	        builder.append("->");
+	        Appendables.appendValue(builder,"node", destination, "\n"); //jump
+        }
+        
+        return i;
+
+	}
+
+	private int toDotSafe(Appendable builder, int i) throws IOException {
         
     	int start = i;
     	
@@ -816,6 +900,8 @@ public class TrieParser implements Serializable {
     public int shortestKnown() {
     	return shortestKnown;
     }
+
+    
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
  
@@ -846,6 +932,37 @@ public class TrieParser implements Serializable {
                 int type = 0xFF & data[pos++];
 
                 switch(type) {
+//                	case TYPE_SWITCH_BRANCH:
+//                
+//                		int meta = data[pos++];
+//                		
+//                    	int shift = (meta>>8)&0xFF;
+//                    	int countBits = meta&0xFF;    
+//                    	int count = 1<<countBits;
+//                		//jump to location..
+//                    	int base = pos+(count<<1);
+//                    	
+//                    	short v1 = (short) source[sourceMask & sourcePos];
+//                		int jump = ((v1>>shift)&(count-1))<<1;
+//                		
+//                		//jump to new position, all are relative to the end of the jump table so no values need to be
+//                		//adjusted if the jump table grows with new inserts.
+//                		pos = base + ((((int)data[pos+jump])<<15) | (0x7FFF&data[pos+jump+1]));
+//                    	
+//                		//TODO: peek ahead at destination run, if next byte does NOT match 
+//                		//      add new case to this switch.
+//                		 int peekType2 = 0xFF & data[pos];
+//                         if (TYPE_RUN == peekType2) {
+//                         	byte sourceByte = source[sourceMask & sourcePos]; //TODO: this may be escaped by caller??
+//                         	if (sourceByte != data[pos+2]) {
+//                         		System.out.println("will not match and we should add new case to this switch");
+//                         		
+//                         		
+//                         	};
+//                         	
+//                         }
+//                		
+//                		break;
                     case TYPE_BRANCH_VALUE:
                         
                         short v = (short) source[sourceMask & sourcePos];
@@ -862,10 +979,36 @@ public class TrieParser implements Serializable {
                             
                         } else {
                      
-                            int pos1 = pos;
-							int jumpMask = computeJumpMask((short) v, data[pos1++]);														
-                            pos = 0==jumpMask? 1+pos1 : 1+(jumpMask&((((int)data[pos1++])<<15) | (0x7FFF&data[pos1])))+pos1;   
+                        	
+                        	final int topOfItem = pos-1;
+                            int tempPos = pos;
+							int jumpMask = computeJumpMask((short) v, data[tempPos++]);	
+							
+                            pos = 0==jumpMask? 1+tempPos : 1+(jumpMask&((((int)data[tempPos])<<15) | (0x7FFF&data[1+tempPos])))+1+tempPos;   
+
+                            //TODO: peek at destinations, if this new insert does not match either next byte 
+                            //      then modify this to become a switch...
                         
+//                            int peekType = 0xFF & data[pos];
+//                            if (TYPE_RUN == peekType) {
+//                            	byte sourceByte = source[sourceMask & sourcePos]; //TODO: this may be escaped by caller??
+//                            	if (sourceByte != data[pos+2]) {
+//                            		System.out.println("will not match and we should use switch instead of branch");
+//                            		final int leftPos  = 1+tempPos;
+//                            		final int rightPos = 1+(jumpMask&((((int)data[tempPos])<<15) | (0x7FFF&data[1+tempPos])))+1+tempPos;
+//                            		final int dataToToss = leftPos-topOfItem;
+//                            		
+//                            		
+//                            		
+//                            		
+//                            		
+//                            	};
+//                            	
+//                            }
+                            
+                            
+                            
+                            
                         }
                         break;
                     case TYPE_ALT_BRANCH:
@@ -963,7 +1106,9 @@ public class TrieParser implements Serializable {
                                 }                                
                                 
                                 if (data[pos++] != sourceByte) {
-                                	                                	
+                                	            
+                                	//add switch
+                                	
                                     insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);    		
 					
                                     maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
@@ -1002,7 +1147,9 @@ public class TrieParser implements Serializable {
                             }                          
                             
                             if (data[pos++] != sourceByte) {
-                                           	
+                                          
+                            	//add switch
+                            	
                             	insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
                             	                            	 
                                 maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
@@ -1340,26 +1487,24 @@ public class TrieParser implements Serializable {
 		if (r1 == run) {
 			final int sourceLength1 = sourceLength - length;
 			assert(sourceLength1>=1);
-			writeEnd(writeRuns(insertByteBranch(0, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+			int insertByteBranch = insertBranch(0, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask);
+			writeEnd(writeRuns(insertByteBranch, source, sourceCharPos, sourceLength1, sourceMask), value);
+		
 		} else {
 			final int sourceLength1 = sourceLength - (length+(data[runPos] = (short)(run-r1)));
 			assert(sourceLength1>=1);
-
-			writeEnd(writeRuns(insertByteBranch(r1, pos-1, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+			int insertByteBranch = insertBranch(r1, pos-1, source, sourceCharPos, sourceLength1, sourceMask);
+			writeEnd(writeRuns(insertByteBranch, source, sourceCharPos, sourceLength1, sourceMask), value);
+		
 		}
 	}
 
+	private int insertBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
+		
+		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);			            		
+		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);			
+		return writeBranch(TYPE_BRANCH_VALUE, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], this.data[oldValueIdx]));
 
-
-
-
-	private int insertByteBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
-		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
-		            		
-		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);
-		byte c = source[sourcePos & sourceMask];
-		pos = writeBranch(TYPE_BRANCH_VALUE, pos, requiredRoom, findSingleBitMask((short) c, this.data[oldValueIdx]));
-		return pos;
 	}
 
 	/**
@@ -1434,11 +1579,7 @@ public class TrieParser implements Serializable {
                 }
             }          
         }        
-        
-//        if (mask == (1<<5)) { ////////////////////////////only for debug tracking down case issues 
-//        	System.err.println("ERROR HHHHHHHHHHHHHHHH  jump mask "+Integer.toBinaryString(mask)+" "+(char)a+" vs "+(char)b+"   "+a+" vs "+b);
-//        	new Exception().printStackTrace();
-//        }
+ 
         short result =  (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
         assert((result&a) != (result&b));        
         return result;

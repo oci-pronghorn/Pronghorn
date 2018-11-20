@@ -10,7 +10,7 @@ public class PipeConfigManager {
 	private int defaultMinimumFragmentsOnPipe;
 	private int defaultMaximumLengthOfVariableLengthFields;
 	private Logger logger = LoggerFactory.getLogger(PipeConfigManager.class);
-	
+			
 	public PipeConfigManager() {
 		this(4, 2, 512);
 	}
@@ -18,9 +18,6 @@ public class PipeConfigManager {
 	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLengthOfVariableLengthFields) {
 		this.configs = new PipeConfig[initialCount];
 		this.configCount = 0;
-		if (defaultMinimumFragmentsOnPipe>1024) {
-			throw new UnsupportedOperationException("Why is this value "+defaultMinimumFragmentsOnPipe+" soo large?");
-		}
 		this.defaultMinimumFragmentsOnPipe = defaultMinimumFragmentsOnPipe;
 		this.defaultMaximumLengthOfVariableLengthFields = defaultMaximumLengthOfVariableLengthFields;
 		
@@ -76,7 +73,8 @@ public class PipeConfigManager {
 				}
 			} else {
 				//add it was not found
-				addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),Math.max(maxMessageSize, defaultMaximumLengthOfVariableLengthFields),clazz);
+				addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),
+						  Math.max(maxMessageSize, defaultMaximumLengthOfVariableLengthFields),clazz);
 			}
 		} catch (UnsupportedOperationException t) {
 			//report where these values came from

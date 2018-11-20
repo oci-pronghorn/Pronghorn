@@ -61,4 +61,25 @@ public class BranchlessTest {
      
     }
     
+    @Test
+    public void simpleTest() {
+    	
+    	int x;
+    	int y;
+    	int a=1;
+    	int b=2;
+    	
+    	x=4;
+    	y=4;    	
+    	assertEquals(a, Branchless.ifEquals(x, y, a, b));
+    	
+    	
+    	x=-3;
+    	y=-4;    	
+    	assertEquals(b, Branchless.ifEquals(x, y, a, b));
+    	
+    	
+    }
+    
+    
 }
