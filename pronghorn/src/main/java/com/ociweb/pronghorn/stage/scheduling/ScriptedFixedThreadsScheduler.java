@@ -82,6 +82,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 //							System.arraycopy(ntsArray, 0, newArray, 0, ntsArray.length);
 //							newArray[newArray.length-1] = splitOn;
 //							ntsArray = newArray;
+//		                    must grow the exeuctiro without using the system core count.	
 //							executorService.execute(buildRunnable(splitOn));
 //						} else {
 //							//logger.trace("stage was already scheduled for the optimum time "+stage);
@@ -1388,8 +1389,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			}        	
         };
         
-        this.executorService = Executors.newCachedThreadPool(threadFactory);
-    
+        //TODO: add extra threads here for splitting??
+        this.executorService = Executors.newFixedThreadPool(ntsArray.length, threadFactory);    
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
