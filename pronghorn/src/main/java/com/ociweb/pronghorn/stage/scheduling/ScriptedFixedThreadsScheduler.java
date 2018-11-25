@@ -1336,6 +1336,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			@Override
 			public Thread newThread(Runnable r) {
 				Thread result = null;
+				
 				int prioirity = Thread.NORM_PRIORITY;
 				Field[] fields = r.getClass().getDeclaredFields();
 				int f = fields.length;
@@ -1352,11 +1353,15 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 								result = new Thread(r, namedRunnable.name());
 								namedRunnable.setThreadId(result.getId());
 								
-								//long names are more important and get a higher priority
-								//may want to count commas instead..
-								if (namedRunnable.name().length()>40) {
-									logger.trace("priority thread {}",namedRunnable.name());
-									prioirity = Thread.MAX_PRIORITY;
+								//NOTE: disabled until we work out performance issues on production test server...
+								boolean enableThreadProrityInc = false;
+								if (enableThreadProrityInc) {
+									//long names are more important and get a higher priority
+									//may want to count commas instead..
+									if (namedRunnable.name().length()>40) {
+										logger.trace("priority thread {}",namedRunnable.name());
+										prioirity = Thread.MAX_PRIORITY;
+									}
 								}
 							}
 						} catch (IllegalArgumentException e) {
