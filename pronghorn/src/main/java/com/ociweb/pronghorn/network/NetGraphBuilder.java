@@ -112,8 +112,10 @@ public class NetGraphBuilder {
 		
 		//pipe holds data as it is parsed so making it larger is helpful
 		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(
-				NetPayloadSchema.instance, netResponseCount, ccm.receiveBufferSize); 	
-		
+				NetPayloadSchema.instance, 
+				netResponseCount, 
+				ccm.receiveBufferSize
+				); 	
 		
 		///////////////////
 		//add the stage under test
@@ -150,7 +152,7 @@ public class NetGraphBuilder {
 		////////////////////////
 		//Control for how many HTTP1xResponseParserStage instances we will be using
 		//on our 4 core test box we can not set this much larger or we will be stuck with 1 parser.
-		final int pipesPerResponseParser = 30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
+		final int pipesPerResponseParser = 28;//30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
 
 		//do not have more parsers than cores and do not have more parsers than needed for pipe goal
 		int maxParser = Math.min(CoresUtil.availableProcessors(),  rawToParse.length/pipesPerResponseParser);
