@@ -23,6 +23,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
+import com.ociweb.pronghorn.pipe.util.ISOTimeFormatterLowGC;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
@@ -151,7 +152,7 @@ public class GraphManager {
 	//By reviewing this periodically blocking and/or long running stages can be detected
 	//The "bad players" are reported back to the asking scheduler so re-scheduling can be done.
 	private ElapsedTimeRecorder[] stageElapsed = new ElapsedTimeRecorder[0];
-	
+
 	public static void visitLongRunningStages(GraphManager gm, StageVisitor visitor) {
 		//bad players are detected by looking at 
 		//the std dev of elapsed time for a given percentile.
@@ -277,6 +278,9 @@ public class GraphManager {
 	
 	private boolean enableMutation = true;
 	public final String name;
+	private transient PipeMonitorCollectorStage telemetryMonitor; //only used when we need to log telemetry and not run HTTP server.
+	private transient ISOTimeFormatterLowGC telemetryTimestamp;
+	private transient AppendableBuilder telemetryBuffer;
 	
 	public GraphManager() {
 		this(null);
@@ -586,7 +590,7 @@ public class GraphManager {
 					
 			//logger.info("disable mutation");
 
-			if (isTelemetryEnabled(gm)) {
+			if (gm.telemetryPort > 0) {
 				recordElapsedTime = true; //turn on for the chart data
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
@@ -595,7 +599,16 @@ public class GraphManager {
 						gm, TELEMTRY_SERVER_RATE);
 				logger.info("total count of stages including telemetry {} ",gm.stageCounter.get());
 			} else {
-				logger.trace("normal startup without telemetry");
+				if (0 == gm.telemetryPort) {
+					recordElapsedTime = true; //Required to see CPU allocation.
+					
+					gm.telemetryMonitor = PipeMonitorCollectorStage.attach(gm);
+					gm.telemetryTimestamp = new ISOTimeFormatterLowGC(true);
+					gm.telemetryBuffer = new AppendableBuilder();		
+					
+				} else {
+					logger.trace("normal startup without telemetry");
+				}
 			}
 			
 			gm.enableMutation = false;
@@ -652,8 +665,24 @@ public class GraphManager {
 		}
 	}
 
+	/**
+	 * If feature was enabled by setting telemetry port to zero this method uses logging to write out the dot data.
+	 * @param gm
+	 */
+	public static void logTelemetrySnapshot(GraphManager gm) {
+		if (null!=gm.telemetryBuffer) {
+			gm.telemetryBuffer.clear();
+			gm.telemetryTimestamp.write(System.currentTimeMillis(), gm.telemetryBuffer);
+			gm.telemetryBuffer.append(".dot\n\n");
+			gm.telemetryMonitor.writeAsDot(gm, "gl", gm.telemetryBuffer);
+			logger.info("\nTelemetry:{}\n\n", gm.telemetryBuffer.toString());
+		} else {
+			logger.warn("requested telemetry snapshot but this feature is not enabled, turn on telemetry with port set to zero");
+		}
+	}
+
 	public static boolean isTelemetryEnabled(GraphManager gm) {
-		return gm.telemetryPort > 0;
+		return gm.telemetryPort >= 0;
 	}
 	
 	private Comparator<? super Pipe> joinFirstComparator;
@@ -1751,7 +1780,7 @@ public class GraphManager {
 								  AppendableByteWriter<?> target, boolean isVertical,
 			                      int[] pipePercentileFullValues, 
 			                      long[] pipeTraffic, int[] msgPerSec) {
-					    	
+			
 	        int stages = GraphManager.countStages(m);
 	        	        
 	        
@@ -2792,20 +2821,20 @@ public class GraphManager {
 	}
 	
     private String 			telemetryHost = null;
-    private int    			telemetryPort = -1;
+    private int    			telemetryPort = -1; // <0 no telmetry, 0 log telemetry, >0 port for telemetry server
     
     //TODO: do not enable until the index.html can use https for its call back...
     private TLSCertificates telemetryCert = null;//TLSCertificates.defaultCerts;
     
     public String enableTelemetry(String host, int port) {
-    	telemetryHost = NetGraphBuilder.bindHost(host);
+    	telemetryHost = port>0?NetGraphBuilder.bindHost(host):null;
     	telemetryPort = port;
     	
     	return host;
 	}
     
     public String enableTelemetry(int port) {
-    	telemetryHost = NetGraphBuilder.bindHost(telemetryHost);
+    	telemetryHost = port>0?NetGraphBuilder.bindHost(telemetryHost):null;
     	telemetryPort = port;
     	
     	return telemetryHost;
