@@ -19,7 +19,7 @@ To simplify creation of a Pronghorn project, we created [PronghornRanch](https:/
 
 First, run the following command:
 
-    mvn archetype:generate -DarchetypeGroupId=com.ociweb -DarchetypeArtifactId=pronghorn-ranch -DarchetypeVersion=1.0.17
+    mvn archetype:generate -DarchetypeGroupId=com.ociweb -DarchetypeArtifactId=pronghorn-ranch -DarchetypeVersion=1.0.18
 
 You will then be prompted to enter the following properties:
 
