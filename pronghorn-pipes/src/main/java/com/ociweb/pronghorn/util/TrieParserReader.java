@@ -136,20 +136,24 @@ public class TrieParserReader {
 		
 		int run = 0;
 		short[] data = that.data;
+		
 
 		visitorInitForQuery(this, that, source, localSourcePos, unfoundResult, noMatchResult);
-		pos = i+1; //used globally by other methods TODO: VERY BAD DESIGN THIS MAY CAUSE CORRUPT READS IN THE STACK
+		this.pos = i+1; //used globally by other methods TODO: VERY BAD DESIGN THIS MAY CAUSE CORRUPT READS IN THE STACK
+		if (this.pos>=data.length) {
+			return;
+		}
 		assert i<that.data.length: "the jumpindex: " + i + " exceeds the data length: "+that.data.length;
 		type = that.data[i]; //used globally by other methods TODO: VERY BAD DESIGN THIS MAY CAUSE CORRUPT READS IN THE STACK
 		assert (type>-1) && (type<8) : "TYPE is not in range (0-7)";
 		
 		switch (type) {
 		
-//			case TrieParser.TYPE_SWITCH_BRANCH:
-//		
-//				visitorSwitchBranch(that, i, visitor, source, localSourcePos, sourceLength, sourceMask, data);
-//				
-//				break;
+			case TrieParser.TYPE_SWITCH_BRANCH:
+		
+				visitorSwitchBranch(that, i, visitor, source, localSourcePos, sourceLength, sourceMask, data);
+				
+				break;
 		
 			case TrieParser.TYPE_RUN:
 	
@@ -194,7 +198,7 @@ public class TrieParserReader {
 				break;
 			default:
 				throw new UnsupportedOperationException("ERROR Unrecognized value\n");
-		}            
+		}
 	}
 
 
@@ -270,29 +274,30 @@ public class TrieParserReader {
 
 	private void visitorSwitchBranch(TrieParser that, int i, ByteSquenceVisitor visitor, byte[] source,
 					int localSourcePos, int sourceLength, int sourceMask, short[] data) {
-		
-				
+	
 		if (this.runLength<sourceLength) {          
+		
+			short metaData = data[pos]; 
 			
-			short sourceShort = (short) source[sourceMask & localSourcePos];
-			
-			
-			short maskData = data[pos]; 
-			
-			short count  = (short)(maskData & 0xFF);//Also needed when we grow the switch on insert later
-			short shift = (short)((maskData>>8) & 0xFF);
-			short mask = (short)((1<<count)-1);
+			short trieLen  = (short)(metaData & 0xFF);//Also needed when we grow the switch on insert later
+			short offset  = (short)((metaData>>8) & 0xFF);
 			
 			//we only have 8 sizes of jump tables made up of pairs of shorts.
 			// 2 up to 512		
+			int base = pos+1;//must keep since pos will be moving forward.			
 			
-			int jump = ((sourceShort>>shift)&mask)<<1;
+			for(int k = 0; k<trieLen; k++) {
 			
-			//jump to new position, all are relative to the end of the jump table so no values need to be
-			//adjusted if the jump table grows with new inserts.
-			pos = pos + 1 + count + ((((int)data[pos+jump])<<15) | (0x7FFF&data[pos+jump+1]));
+				//jump to new position, all are relative to the end of the jump table so no values need to be
+				//adjusted if the jump table grows with new inserts.
+				int j = k<<1;
+				int idxJump = (((int)data[base+j])<<15) | (0x7FFF&data[base+j+1]);
+				if (idxJump>=0) {
+					visit(that, idxJump+(base-1+(trieLen<<1)), visitor, source, localSourcePos, sourceLength, sourceMask, this.unfoundConstant, this.noMatchConstant);//only that jump
+				}
 			
-			visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, this.unfoundConstant, this.noMatchConstant);//only that jump
+			}
+		
 		} else {
 			return;
 		}
@@ -330,9 +335,9 @@ public class TrieParserReader {
 		int r1 = data[pos]; 
 		int t1 = pos +1;  
 		int t2 = localSourcePos; 
-		while ((--r1 >= 0) && ((caseMask&data[t1++]) == (caseMask&source[sourceMask & t2++])) ) { //getting slash somewhere should not equal eachother. 
-			//matching characters while decrementing run length.
-	
+
+		while ((--r1 >= 0) && ((caseMask&data[t1++]) == (caseMask&0xFF&source[sourceMask & t2++])) ) { //getting slash somewhere should not equal eachother. 
+			//matching characters while decrementing run length.	
 		}
 		pos = t1;
 		localSourcePos = t2;
@@ -346,8 +351,9 @@ public class TrieParserReader {
 			
 			//visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
 			//visit(that, pos, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
-			visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, this.unfoundConstant, this.noMatchConstant); //** took run off localsourcePos.
-			
+			if (pos<that.data.length) {
+				visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, this.unfoundConstant, this.noMatchConstant); //** took run off localsourcePos.
+			}
 			
 		}
 	}
@@ -707,20 +713,20 @@ public class TrieParserReader {
 			int sourceMask, 
 			boolean hasSafePoint, int t) {
 
+		int lastType = -1;
 		while (reader.normalExit && (t=reader.type) != TrieParser.TYPE_END ) {  
-
-//			if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
-//				processSwitch(reader, trie, source, sourceLength, sourceMask);				
-//			} else 
-			{
+			
+			if (TrieParser.TYPE_RUN == t) {   
+				parseRun(reader, trie, source, sourceLength, sourceMask, hasSafePoint);
+			} else {						
 				if (TrieParser.TYPE_BRANCH_VALUE == t) {   
 					processBinaryBranch(reader, trie, source, sourceLength, sourceMask);				
 				} else {
-					if (TrieParser.TYPE_RUN == t) {   
-						parseRun(reader, trie, source, sourceLength, sourceMask, hasSafePoint);
+					if (TrieParser.TYPE_ALT_BRANCH == t) {
+						processAltBranch(reader, source, trie.data);
 					} else {
-						if (TrieParser.TYPE_ALT_BRANCH == t) {
-							processAltBranch(reader, source, trie.data);
+						if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
+							processSwitch(reader, trie, source, sourceMask, hasSafePoint);				
 						} else {
 							if (TrieParser.TYPE_VALUE_BYTES == t) {            	
 								parseBytesAction(reader, trie, source, sourceLength, sourceMask);	
@@ -731,15 +737,17 @@ public class TrieParserReader {
 									if (TrieParser.TYPE_SAFE_END == t) {
 										hasSafePoint = processSafeEndAction(reader, trie, sourceLength);                                             
 									} else  {       
-										reportError(reader, trie);									
+										reportError(reader, trie, lastType);									
 									}
 								}
 							}
-						}
+						}							
 					}
 				}
-			}
+			}			
+			lastType = t;
 		}
+		
 	}
 
 
@@ -808,57 +816,97 @@ public class TrieParserReader {
 			final int run,
 			final int srcMask) {
 		
-				final byte caseMask = trie.caseRuleMask;
-				final int t1 = reader.pos+run;
-				final int t2 = reader.localSourcePos+run;
-				final short[] data = trie.data;
-				final byte[] source1 = source;
-				
-				return scanBytes3(reader, source1, srcMask, caseMask, t1, t2, data, t1-run, t2-run, run);
+			final byte caseMask = trie.caseRuleMask;
+			final int t1 = reader.pos+run;
+			final int t2 = reader.localSourcePos+run;
+			return scanBytes3(reader, source, srcMask, caseMask, t1, t2, trie.data, t1-run, t2-run, run);
 				
 	}
 
 	private static boolean scanBytes3(TrieParserReader reader, final byte[] source, final int srcMask,
 			final byte caseMask, final int t1, final int t2, final short[] data, int t11, int t21, int r) {
-		while (--r >= 0) {
-			
-			if ((caseMask & data[t11++]) != (caseMask & source[srcMask & (t21++)]) ) {
-				return true;
+		if (t11+r < data.length) {
+			while (--r >= 0) {			
+				if ((caseMask & data[t11++]) != (caseMask & 0xFF & source[srcMask & (t21++)]) ) {
+					return true;
+				}				
 			}
-			
+			reader.pos = t1;
+			reader.localSourcePos = t2;
+			return false;
+		} else {
+			return true;			
 		}
-		reader.pos = t1;
-		reader.localSourcePos = t2;
-		return false;
 	}
 
 
 	private static void processSwitch(TrieParserReader reader, TrieParser trie, 
-			                          byte[] source, long sourceLength, int sourceMask) {
+			                          byte[] source, int sourceMask, boolean hasSafePoint) {
 	
-		short sourceShort = (short) source[sourceMask & reader.localSourcePos];
+	
+			short sourceShort = (short) (trie.caseRuleMask&0xFF&source[sourceMask & reader.localSourcePos]);
+			
+			assert(TrieParser.TYPE_SWITCH_BRANCH == trie.data[reader.pos-1]);
+			int p = reader.pos;
+			short[] localData = trie.data;
+			
+			int metaPos = p++;
+			short metaData = localData[metaPos]; 
+			
+			short trieLen  = (short)(metaData & 0xFF);//Also needed when we grow the switch on insert later
+			short offset = (short)((metaData>>8) & 0xFF);
+	
+			if (sourceShort>=offset
+			   && ( (sourceShort-offset) < trieLen )) {
+						
+				int jump = (sourceShort-offset)<<1;
+				
+				//jump to new position, all are relative to the end of the jump table so no values need to be
+				//adjusted if the jump table grows with new inserts.
+				int idxJump = (((int)localData[p+jump])<<15) | (0x7FFF&localData[p+jump+1]);
+							
+				if (idxJump >= 0) {				
+					p = idxJump+(metaPos+(trieLen<<1));
+			
+					//read next type and restore the reader position
+					reader.type = localData[p++];
+					assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
+					reader.pos = p;
+				
+				} else {
+					if (!hasSafePoint) {                       	
+						if (reader.altStackPos > 0) {                                
+							reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos); 
+						
+						} else {
+							//we have NO safe point AND we found a non match in the sequence
+							//this will never match no matter how much data is added so return the noMatch code.
+							reader.normalExit=false;
+							reader.result = reader.noMatchConstant;
+						}
+					} else {
+						reader.normalExit=false;
+						reader.result = useSafePoint(reader); 
+						
+					}
+				}
+			} else {
+				if (!hasSafePoint) {                       	
+					if (reader.altStackPos > 0) {                                
+						reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
+					} else {
+						//we have NO safe point AND we found a non match in the sequence
+						//this will never match no matter how much data is added so return the noMatch code.
+						reader.normalExit=false;
+						reader.result = reader.noMatchConstant;
+					}
+				} else {
+					reader.normalExit=false;
+					reader.result = useSafePoint(reader);
+					
+				}
+			}
 		
-		int p = reader.pos;
-		short[] localData = trie.data;
-		
-		short maskData = localData[p]; 
-		
-		short count  = (short)(maskData & 0xFF);//Also needed when we grow the switch on insert later
-		short shift = (short)((maskData>>8) & 0xFF);
-		short mask = (short)((1<<count)-1);
-		
-		//we only have 8 sizes of jump tables made up of pairs of shorts.
-		// 2 up to 512		
-		
-		int jump = ((sourceShort>>shift)&mask)<<1;
-		
-		//jump to new position, all are relative to the end of the jump table so no values need to be
-		//adjusted if the jump table grows with new inserts.
-		p = p + 1 + count + ((((int)localData[p+jump])<<15) | (0x7FFF&localData[p+jump+1]));
-
-		//read next type and restore the reader position
-		reader.type = localData[p++];
-		reader.pos = p;
 	}
 	
 	
@@ -886,6 +934,7 @@ public class TrieParserReader {
 				: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
 				
 		} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
+				
 				
 		reader.type = t;
 		reader.pos = p;
@@ -938,9 +987,9 @@ public class TrieParserReader {
 		}
 	}
 
-	private static void reportError(TrieParserReader reader, TrieParser trie) {
+	private static void reportError(TrieParserReader reader, TrieParser trie, int lastType) {
 		logger.error(trie.toString());
-		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
+		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type+" previous valid type "+lastType);
 	}
 
 	private static boolean parseBytes(final TrieParserReader reader, final TrieParser trie, final byte[] source, final long sourceLength, final int sourceMask) {
@@ -1132,6 +1181,10 @@ public class TrieParserReader {
 			TrieParser.TYPE_ALT_BRANCH == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] || 
 			TrieParser.TYPE_BRANCH_VALUE == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE]) : "unknown value of: "+(int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE];  // local can only be one of the capture types or a branch leaning to those exclusively.
 	
+			assert(pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE< localData.length):
+				"jump out of bounds "+pos+" + "+(((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos])))+" +"+TrieParser.BRANCH_JUMP_SIZE+" jump data from pos "+pos;
+				
+			
 			pos = processAltBranch2(reader, source, 
 					         localData, reader.localSourcePos, 
 					         reader.runLength, pos+ TrieParser.BRANCH_JUMP_SIZE,

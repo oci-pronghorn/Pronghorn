@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 
 /**
  * Optimized for fast lookup and secondarily size. 
@@ -23,7 +22,11 @@ import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
  */
 public class TrieParser implements Serializable {
         
-    
+	//new feature under development
+	static final boolean doSupportSwitch = true; //Still working on feature
+	  
+		//TODO: focus on opimize of mult query options, can win that one.
+	    // 31-42 cpu at 20 requests, base speed... 9696 or 10kTPS
 
 	private static final long serialVersionUID = -2877089562575447986L;
 
@@ -32,8 +35,7 @@ public class TrieParser implements Serializable {
     static final byte TYPE_RUN                 = 0x00; //followed by length
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
     static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.  
-  //  static final byte TYPE_SWITCH_BRANCH       = 0X03; //followed by 1 short meta low 8 base 2 of table,   high 8 shift for skip,   followed by pairs of shorts table
-    
+    static final byte TYPE_SWITCH_BRANCH       = 0X03; //followed by 1 short (Hi: base offset)|(Lo: trie len) followed by pairs of shorts for run
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
             
@@ -208,9 +210,9 @@ public class TrieParser implements Serializable {
         int i = 0;
         while (i<limit) {
             switch (data[i]) {
-//            	case TYPE_SWITCH_BRANCH:
-//            		i = toStringSwitch(builder, i);
-//            		break;
+           		case TYPE_SWITCH_BRANCH:
+            		i = toStringSwitch(builder, i);
+            		break;
                 case TYPE_SAFE_END:
                     i = toStringSafe(builder, i);
                     break;
@@ -247,20 +249,43 @@ public class TrieParser implements Serializable {
     
     private int toStringSwitch(StringBuilder builder, int i) {
 		
-    	builder.append("SWITCH");
-    	int meta = data[i];
-    	int shift = (meta>>8)&0xFF;
-    	int countBits = meta&0xFF;    	
+    	builder.append("SWITCH_");
+    	int type = data[i++];
+    	int metaBase = i;
+    	int meta = data[metaBase];
+    	int base = (meta>>8)&0xFF;
+    	int trieLen = meta&0xFF;    	
     	
-        builder.append(shift).append(".").append(countBits).append("[").append(i++).append("], "); //meta  shift.count
+        builder.append(base).append("+").append(trieLen).append("[").append(i++).append("], \n"); //meta  shift.count
+        int b = i;
         //jumps
-        int c = (1<<countBits);
-        while (--c>=0) {
-        	builder.append(data[i]).append("[").append(i++).append("], ");
-        	builder.append(data[i]).append("[").append(i++).append("], ");//JUMP        	
+        for(int k=0; k<trieLen; k++) {
+        	int dist = i-b;
+        	int steps = dist>>1;
+            int value = (0xFF)&steps+base;
+            
+            if (data[i]>=0) {
+	            if (value<127 && value>=32) {
+	            	builder.append("case: '").append((char)value).append("' ");
+	            } else {
+	            	builder.append("case: ").append(value).append("   ");
+	            }
+	        	 
+	            int j = data[i]<<15;
+	        	builder.append(data[i]).append("[").append(i++).append("], ");
+	        	j |= (data[i]&0x7FFF);
+	        	builder.append(data[i]).append("[").append(i++).append("], ");//JUMP
+	        	
+	        	j += (metaBase+(trieLen<<1));
+	        	
+	        	if (j>=data.length) {
+	        		builder.append("ERROR: OUT OF RANGE ");
+	        	}
+	        	builder.append(" jumpTo:").append(j).append("\n");
+            } else {
+            	i+=2;
+            }
         }
-        
-        builder.append("\n");
         return i;
 
 	}
@@ -325,17 +350,25 @@ public class TrieParser implements Serializable {
     private int toStringAltBranch(StringBuilder builder, int i) {
         builder.append("ALT_BRANCH");
         builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
+        int j = data[i]<<15;
         builder.append(data[i]).append("[").append(i++).append("], ");
-        builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
+        j |= (data[i]&0x7FFF);
+        builder.append(data[i]).append("[").append(i++).append("], jumpTo:"+(i+j));//JUMP
+        builder.append("\n");
         return i;
     }
 
     private int toStringBranchValue(StringBuilder builder, int i) {
         builder.append("BRANCH_VALUE");
         builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
-        builder.append(data[i]).append("[").append(i++).append("], "); //MASK FOR CHAR
+        String binaryString = "00000000"+Integer.toBinaryString(data[i]);
+		builder.append(binaryString.substring(binaryString.length()-8));
+        builder.append("[").append(i++).append("], "); //MASK FOR CHAR
+        int j = data[i]<<15;
         builder.append(data[i]).append("[").append(i++).append("], ");
-        builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
+        j |= (data[i]&0x7FFF);
+        builder.append(data[i]).append("[").append(i++).append("], jumpTo:"+(i+j));//JUMP
+        builder.append("\n");
         return i;
     }
 
@@ -348,9 +381,9 @@ public class TrieParser implements Serializable {
         if (i<limit){
             	
 	    	switch (data[i]) {
-//	    		case TYPE_SWITCH_BRANCH:
-//	    			visitSwitch(pv,i,buffer,bufferPosition);
-//	    		break;
+	    		case TYPE_SWITCH_BRANCH:
+	    			visitSwitch(pv,i,buffer,bufferPosition);
+	    		break;
 		        case TYPE_SAFE_END:
 		        	visitSafeEnd(pv,i,buffer,bufferPosition);
 		            break;
@@ -380,22 +413,23 @@ public class TrieParser implements Serializable {
 		
 	}
 
-//	private void visitSwitch(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
-//		
-//		assert(TYPE_SWITCH_BRANCH == data[i]);
-//		i++;
-//    	int meta = data[i];
-//    	int shift = (meta>>8)&0xFF;
-//    	int countBits = meta&0xFF;    
-//    	int count = 1<<countBits;
-//    	
-//        //add jumps
-//        int base = i+1+(count<<1);
-//        for(int j = 0; j<count; j++) {
-//        	int destination = base + ((((int)data[j])<<15) | (0x7FFF&data[j+1]));        	
-//        	visitPatterns(pv,destination,buffer,bufferPosition);
-//        }
-//	}
+	private void visitSwitch(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
+		
+		assert(TYPE_SWITCH_BRANCH == data[i]);
+		i++;
+    	int meta = data[i];
+    	int offset = (meta>>8)&0xFF;
+    	int trieLen = meta&0xFF;    
+    	
+        //add jumps
+       // int base = i+1+(trieLen<<1);
+        for(int j = 0; j<trieLen; j++) {
+        	int jump = (((int)data[j])<<15) | (0x7FFF&data[j+1]);
+        	if (jump>=0) {
+        		visitPatterns(pv,(i+(trieLen<<1)) + jump,buffer,bufferPosition);
+        	}
+        }
+	}
 
 	private void visitSafeEnd(TrieParserVisitor pv, int i, byte[] buffer, int bufferPosition) {
 		assert(TYPE_SAFE_END == data[i]);
@@ -500,9 +534,9 @@ public class TrieParser implements Serializable {
 	        	//each type will add its label details and close the line
 	        	//after closing the line links can also be added to other jump points       	
 			            switch (data[i]) {
-//			            	case TYPE_SWITCH_BRANCH:
-//			            		i = toDotSwitch(builder, i);
-//			            		break;			            
+			            	case TYPE_SWITCH_BRANCH:
+			            		i = toDotSwitch(builder, i);
+			            		break;			            
 			                case TYPE_SAFE_END:
 			                    i = toDotSafe(builder, i);
 			                    break;
@@ -549,16 +583,16 @@ public class TrieParser implements Serializable {
     	
     	int start = i;
     	builder.append("SWITCH");
+    	int type = data[i++];
     	int meta = data[i];
-    	int shift = (meta>>8)&0xFF;
-    	int countBits = meta&0xFF;    
-    	int count = 1<<countBits;
+    	int offset = (meta>>8)&0xFF;
+    	int trieLen = meta&0xFF;    
     	
-    	Appendables.appendValue(builder, shift).append(".");
-    	Appendables.appendValue(builder, countBits).append("[");
+    	Appendables.appendValue(builder, offset).append(".");
+    	Appendables.appendValue(builder, trieLen).append("[");
     	Appendables.appendValue(builder, i++).append("], "); //meta  shift.count
         //jumps
-        int c = count;
+        int c = trieLen;
         while (--c>=0) {
         	Appendables.appendValue(builder, data[i]).append("[");
         	Appendables.appendValue(builder, i++).append("], ");
@@ -570,8 +604,8 @@ public class TrieParser implements Serializable {
         builder.append("\"]\n");
         
         //add jumps
-        int base = start+1+(count<<1);
-        for(int j = 0; j<count; j++) {
+        int base = start+1+(trieLen<<1);
+        for(int j = 0; j<trieLen; j++) {
 	        Appendables.appendValue(builder,"node", start);
 	        int destination = base + ((((int)data[j])<<15) | (0x7FFF&data[j+1]));
 	        builder.append("->");
@@ -910,6 +944,9 @@ public class TrieParser implements Serializable {
 //    	System.out.println();
     	
     	
+    	//System.out.println("before set of value: "+this.toString());
+    	
+    	assert(source.length >= sourceMask || sourceMask==Integer.MAX_VALUE) : "len "+source.length+" mask "+sourceMask;    	
     	assert(isValidSize(value));
     	assert(sourceLength<=source.length);
     	assert((sourceMask&sourcePos)<=source.length);
@@ -927,84 +964,216 @@ public class TrieParser implements Serializable {
         	
             int length = 0;
                     
+            int parentType = -1;
             while (true) {
             
+            	int topPos = pos;
                 int type = 0xFF & data[pos++];
 
                 switch(type) {
-//                	case TYPE_SWITCH_BRANCH:
-//                
-//                		int meta = data[pos++];
-//                		
-//                    	int shift = (meta>>8)&0xFF;
-//                    	int countBits = meta&0xFF;    
-//                    	int count = 1<<countBits;
-//                		//jump to location..
-//                    	int base = pos+(count<<1);
-//                    	
-//                    	short v1 = (short) source[sourceMask & sourcePos];
-//                		int jump = ((v1>>shift)&(count-1))<<1;
-//                		
-//                		//jump to new position, all are relative to the end of the jump table so no values need to be
-//                		//adjusted if the jump table grows with new inserts.
-//                		pos = base + ((((int)data[pos+jump])<<15) | (0x7FFF&data[pos+jump+1]));
-//                    	
-//                		//TODO: peek ahead at destination run, if next byte does NOT match 
-//                		//      add new case to this switch.
-//                		 int peekType2 = 0xFF & data[pos];
-//                         if (TYPE_RUN == peekType2) {
-//                         	byte sourceByte = source[sourceMask & sourcePos]; //TODO: this may be escaped by caller??
-//                         	if (sourceByte != data[pos+2]) {
-//                         		System.out.println("will not match and we should add new case to this switch");
-//                         		
-//                         		
-//                         	};
-//                         	
-//                         }
-//                		
-//                		break;
+                	case TYPE_SWITCH_BRANCH:
+	                	{	         
+	                		int metaPos = pos++;
+	                		int meta = data[metaPos];
+	                		
+	                    	int offset = (meta>>8)&0xFF;
+	                    	int trieLen = meta&0xFF;    
+	                    
+	                    	short v1 = (short) (0xFF&source[sourceMask & sourcePos]);
+	                    	
+	                    	if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==v1 && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
+	                            final int sourceLength1 = sourceLength-length; 
+	                            assert(sourceLength1>=1);
+								          
+								writeEnd(writeRuns(insertAltBranch(0, pos-2, source, sourcePos, sourceLength1, sourceMask), source, sourcePos, sourceLength1, sourceMask), value); 
+	           				
+	                            return;
+	                            
+	                        } 
+	                    	
+	                    	v1 &= caseRuleMask;
+	                    		                    	
+	                    	if (v1 < offset) {
+	                    		//logger.info("expanded switch on low end");
+	                    		
+	                    		int growBy = offset-v1;
+								int requiredRoom = growBy<<1;
+								
+								int neededLen = limit+requiredRoom;
+								if (neededLen > data.length) { 
+									growDataLen(neededLen);        	
+								}		
+								
+	                    	    updatePreviousJumpDistances(0, data, topPos, requiredRoom);     	 
+								System.arraycopy(data, topPos, data, topPos + requiredRoom, limit - topPos);
+								limit+=requiredRoom;
+								
+	                    	    //update metadata
+	                    	    int newOffset = v1;
+	                    	    int newTrieLen = trieLen + growBy;
+	                    	    data[metaPos] = (short)((newOffset<<8)|newTrieLen);
+
+	                    	    Arrays.fill(data, metaPos+1, metaPos+1+requiredRoom, (byte)-1);
+	                    	    
+	                    	    int indexJump = limit-(metaPos+(newTrieLen<<1));
+	                    	    	                    	    
+                    			data[pos] = (short)(0x7FFF&(indexJump>>15));
+                                data[pos+1] = (short)(0x7FFF&(indexJump));                    			
+                    			limit = writeEnd(writeRuns(limit, source, sourcePos, sourceLength-length, sourceMask), value);
+                    			                    			
+                    			return;
+	                    		
+	                    	}
+	                    	int dif = v1-offset;
+	                    	
+	                    	
+	                    	if (dif >= trieLen) {
+	                    		dif++;
+	                    		//logger.info("expanded switch on high end");
+	                    			                    		
+	                    		int growBy = dif-trieLen;
+	                    		
+		                    	int oldEnd = pos + (trieLen<<1);
+								int requiredRoom = growBy<<1;
+		                    	  
+								int neededLen = limit+requiredRoom;
+								if (neededLen > data.length) { 
+									growDataLen(neededLen);        	
+								}		
+								
+		                    	updatePreviousJumpDistances(0, data, topPos, requiredRoom);     	 
+								System.arraycopy(data, oldEnd, data, oldEnd + requiredRoom, limit - oldEnd);
+		                    	limit+=requiredRoom;
+								
+	                    	    //update metadata
+	                    	    int newOffset = offset;
+	                    	    int newTrieLen = dif;
+	                    	    data[metaPos] = (short)((newOffset<<8)|newTrieLen);
+		                    	
+	                    	    Arrays.fill(data, oldEnd, oldEnd + (growBy<<1) , (byte)-1);
+	                    	    
+	                    	    int idx = pos + ((v1-offset)<<1);
+	                    	  	
+	                    	    int indexJump = limit-(metaPos+(newTrieLen<<1));
+                    			data[idx] = (short)(0x7FFF&(indexJump>>15));
+                                data[idx+1] = (short)(0x7FFF&(indexJump)); 
+                                                                
+                    			limit = writeEnd(writeRuns(limit, source, sourcePos, sourceLength-length, sourceMask), value);
+                    			
+                    			return;
+	                    	}	                    	
+	                    	
+	                		//jump to new position, all are relative to the end of the jump table so no values need to be
+	                		//adjusted if the jump table grows with new inserts.
+	                    	final int jumpPos = metaPos +1 +(dif<<1);
+	                    	
+	                		int indexJump = (((int)data[jumpPos])<<15) | (0x7FFF&data[jumpPos+1]);
+	                		
+	                		if (indexJump == -1) {
+	                			//logger.info("new switch value in the middle");
+	                		
+                    			indexJump = limit-(metaPos+(trieLen<<1));
+                    			
+                    			data[jumpPos] = (short)(0x7FFF&(indexJump>>15));
+                                data[jumpPos+1] = (short)(0x7FFF&(indexJump));      
+                               	limit = writeEnd(writeRuns(limit, source, sourcePos, sourceLength-length, sourceMask), value);
+                    			
+                    			return;
+	                		}	                		
+	                			                		
+	                		// jump to location..           	
+	                		pos = indexJump+metaPos+(trieLen<<1);
+	
+	                	}
+                		break;
                     case TYPE_BRANCH_VALUE:
                         
                         short v = (short) source[sourceMask & sourcePos];
                         if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==v && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
-                            //we have found an escape sequence so we must insert a branch here we cant branch on a value
+                            //we have found an escape sequence so we must insert a branch here we cant branch on a value              	
                         	
-							final int sourcePos1 = sourcePos;
 							final int sourceLength1 = sourceLength-length; 
                             assert(sourceLength1>=1);
 							          
-							writeEnd(writeRuns(insertAltBranch(0, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
+							int newPos = insertAltBranch(0, pos-1, source, sourcePos, sourceLength1, sourceMask);							
+							writeEnd(writeRuns(newPos, source, sourcePos, sourceLength1, sourceMask), value); 
                       
                             return;
                             
                         } else {
-                     
                         	
-                        	final int topOfItem = pos-1;
-                            int tempPos = pos;
-							int jumpMask = computeJumpMask((short) v, data[tempPos++]);	
+                        	final int topOfItem = pos-1; //type idx
+                        	                        	
+                            int tempPos = pos; //mask position
+							int jumpMask = computeJumpMask((short) v, data[tempPos]);	
 							
-                            pos = 0==jumpMask? 1+tempPos : 1+(jumpMask&((((int)data[tempPos])<<15) | (0x7FFF&data[1+tempPos])))+1+tempPos;   
+							int rightJump = ((((int)data[1+tempPos])<<15) | (0x7FFF&data[2+tempPos])) & 0xFFFFFF;
+							pos = 3+tempPos+(jumpMask&rightJump);
+							
+							int leftPos  = tempPos+ 3;
+							int rightPos = tempPos+ 3 + rightJump;
+                            //////////////////////////////////////
+                            //possible conversion of a single conditional to a switch if this is a simple switch
+                            int leftByte = (0xFF & data[leftPos]);
+                            assert(rightPos<data.length) : "index to "+rightPos+" but array length "+data.length;
+                            int rightByte = (0xFF & data[rightPos]);
+                            
+                            short sourceByte = (short)(caseRuleMask&0xFF&source[sourceMask & sourcePos]); 
+                        	
+                            if (doSupportSwitch 
+                            	&& (TYPE_RUN == leftByte) 
+                            	&& (TYPE_RUN == rightByte)
+                            	&& ((caseRuleMask&sourceByte) != (caseRuleMask&0xFF&data[pos+2]))
+                            	) {
+                            	
+                            		//point to first byte not the command
+                            		leftByte = (caseRuleMask & 0xFF & data[leftPos+2]);
+                            		rightByte = (caseRuleMask & 0xFF & data[rightPos+2]);
+                            		    		
+                            		int offsetBase = Math.min(sourceByte, Math.min(leftByte, rightByte));
+                            		int trieLen = 1+ Math.max(sourceByte, Math.max(leftByte, rightByte)) - offsetBase;                      		
+                            	                       		
+                            		final int requiredRoom = (2*trieLen) - 2;
+																		
+									int neededLen = limit+requiredRoom;
+									if (neededLen > data.length) {
+										growDataLen(neededLen);        	
+									}									
+									
+								    updatePreviousJumpDistances(0, data, topOfItem, requiredRoom);        
+									    
+								    System.arraycopy(data, topOfItem, data, topOfItem + requiredRoom, limit - topOfItem);
+								                            		
+								    limit+=requiredRoom;      
+                            		int newPos = limit;    			
 
-                            //TODO: peek at destinations, if this new insert does not match either next byte 
-                            //      then modify this to become a switch...
-                        
-//                            int peekType = 0xFF & data[pos];
-//                            if (TYPE_RUN == peekType) {
-//                            	byte sourceByte = source[sourceMask & sourcePos]; //TODO: this may be escaped by caller??
-//                            	if (sourceByte != data[pos+2]) {
-//                            		System.out.println("will not match and we should use switch instead of branch");
-//                            		final int leftPos  = 1+tempPos;
-//                            		final int rightPos = 1+(jumpMask&((((int)data[tempPos])<<15) | (0x7FFF&data[1+tempPos])))+1+tempPos;
-//                            		final int dataToToss = leftPos-topOfItem;
-//                            		
-//                            		
-//                            		
-//                            		
-//                            		
-//                            	};
-//                            	
-//                            }
+                            		final int sourceLength1 = sourceLength-length; 
+                                    limit = writeEnd(writeRuns(newPos, source, sourcePos, sourceLength1, sourceMask), value);
+
+                                    leftPos += (requiredRoom);
+                                    rightPos += (requiredRoom);
+                                                            			
+                            
+                            	        assert(data[newPos]<8 && data[newPos]>=0) : "bad type:"+data[newPos];
+                            	        assert(data[leftPos]<8 && data[leftPos]>=0) : "bad type:"+data[leftPos];
+                            	        assert(data[rightPos]<8 && data[rightPos]>=0) : "bad type:"+data[rightPos];
+                            	        
+                            	        newPos -= ((topOfItem+1)+(trieLen<<1));
+                            	        leftPos -= ((topOfItem+1)+(trieLen<<1));
+                            	        rightPos -= ((topOfItem+1)+(trieLen<<1));
+                            	        
+                            			int insertByteBranch = writeSwitch3(TrieParser.TYPE_SWITCH_BRANCH, topOfItem, 
+                            							                    sourceByte, leftByte, rightByte,
+					                            		                    (short)(newPos>>15), (short)(0x7FFF&newPos),  
+					                            		                    (short)(leftPos>>15), (short)(0x7FFF&leftPos),
+					                            		                    (short)(rightPos>>15), (short)(0x7FFF&rightPos)					                            					
+					                            					);
+                            		                            
+                            			return;
+                            		
+                            		
+                            	
+                            }
                             
                             
                             
@@ -1122,11 +1291,13 @@ public class TrieParser implements Serializable {
                             return;
                         }                        
                         
+                        final byte caseMask = caseRuleMask;
+                        
                         while (--r >= 0) {
                             
                             byte sourceByte = source[sourceMask & sourcePos++];                            
-                            
-                            if ((data[pos] != sourceByte) && ESCAPE_BYTE == sourceByte && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
+                       
+                            if (((caseMask&data[pos]) != (caseMask&0xFF&sourceByte)) && ESCAPE_BYTE == sourceByte && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
                             	//source byte is %
                                                 
                                 sourceByte = source[sourceMask & sourcePos++];
@@ -1146,10 +1317,8 @@ public class TrieParser implements Serializable {
                                 //else we have two escapes in a row therefore this is a literal
                             }                          
                             
-                            if (data[pos++] != sourceByte) {
-                                          
-                            	//add switch
-                            	
+                            if ((caseMask&data[pos++]) != (caseMask&0xFF&sourceByte)) {
+                                                                      	
                             	insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
                             	                            	 
                                 maxExtractedFields = Math.max(maxExtractedFields, activeExtractionCount);
@@ -1188,7 +1357,8 @@ public class TrieParser implements Serializable {
                     	logger.info("unknown op {}",this);
                         throw new UnsupportedOperationException("unknown op "+type+" at "+(pos-1));
                 }
-               
+                //hold this parent for downstream items
+                parentType = topPos;
             }
         } else {
 
@@ -1386,7 +1556,7 @@ public class TrieParser implements Serializable {
 
         //now insert the needed run 
         int requiredRoom = SIZE_OF_END_1 + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);             
-      
+    //TODO: bad req room, add to end instead we do not know right length...  
 		makeRoomForInsert(0, pos, requiredRoom); //after the safe point we make room for our new run and end
 		pos += SIZE_OF_SAFE_END;
 
@@ -1398,6 +1568,7 @@ public class TrieParser implements Serializable {
     /**
      * Compute the additional space needed for any value extraction meta command found in the middle of a run.
      */
+    @Deprecated  //TODO: Must remove all usages of this and instead add these to the end so we need not know the length.
     private int midRunEscapeValuesSizeAdjustment(byte[] source, int sourcePos, int sourceLength, int sourceMask) {
         
         if (0==sourceLength) {
@@ -1410,7 +1581,11 @@ public class TrieParser implements Serializable {
         boolean needsRunStart = true;
 
         for(int i=0;i<sourceLength;i++) {
-            byte value = source[sourceMask & (sourcePos+i)];
+        	int idx = sourceMask & (sourcePos+i);
+        	if (idx>=source.length) {
+        		break;//stop here
+        	}
+            byte value = source[idx];
        
            // System.err.println(i+" "+((char)value));
             
@@ -1502,6 +1677,7 @@ public class TrieParser implements Serializable {
 	private int insertBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
 		
 		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);			            		
+	    //TODO: bad req room, add to end instead we do not know right length...
 		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);			
 		return writeBranch(TYPE_BRANCH_VALUE, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], this.data[oldValueIdx]));
 
@@ -1521,11 +1697,13 @@ public class TrieParser implements Serializable {
 	private int insertAltBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
 
 		int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
-
+	    //TODO: bad req room, add to end instead we do not know right length...
 		makeRoomForInsert(danglingByteCount, pos, requiredRoom);
 
 		requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
-		data[pos++] = TYPE_ALT_BRANCH;         
+		data[pos++] = TYPE_ALT_BRANCH; 
+		
+		//TODO: type alt branch needs 2 jumps so we can add new run to the end
 		             
 		data[pos++] = (short)(0x7FFF&(requiredRoom>>15));          
 		data[pos++] = (short)(0x7FFF&requiredRoom);
@@ -1585,6 +1763,17 @@ public class TrieParser implements Serializable {
         return result;
     }
 
+    private void makeRoom(int pos, int requiredRoom) {
+		int neededLen = limit+requiredRoom;
+		if (neededLen > data.length) {
+			growDataLen(neededLen);        	
+		}	
+    	updatePreviousJumpDistances(0, data, pos, requiredRoom);     	 
+    	System.arraycopy(data, pos, data, pos + requiredRoom, limit - pos);
+	        
+    }
+    
+    @Deprecated
     private int makeRoomForInsert(int danglingByteCount, int pos, int requiredRoom) {
                 
     	
@@ -1641,11 +1830,33 @@ public class TrieParser implements Serializable {
 	}
 
 
-    private void updatePreviousJumpDistances(int i, short[] data, int limit, int requiredRoom) {
+    private void updatePreviousJumpDistances(int i, short[] data, int localLimit, int requiredRoom) {
 
-        while (i<limit) {
+        while (i<localLimit) {
        
             switch (data[i]) {
+            	case TYPE_SWITCH_BRANCH:
+            		i++;
+            		int metaPos = i++;
+            		int meta = data[metaPos];
+                	int base = (meta>>8)&0xFF;
+                	int trieLen = meta&0xFF; 
+                	
+                	for(int k = 0; k<trieLen && i<localLimit; k++) {
+                		
+                		int jmp = (((int)data[i]) << 15)|(0x7FFF&data[i+1]);
+                		if (jmp>=0) {
+                			if (jmp+metaPos+(trieLen<<1) > localLimit) {                			
+                			
+	                			jmp += requiredRoom; 
+		                   
+		                        data[i] = (short)(0x7FFF&(jmp>>15));
+		                        data[i+1] = (short)(0x7FFF&(jmp));
+                			}
+                		}
+                		i+=2;                		
+                	}
+            		break;
                 case TYPE_SAFE_END:
                     i += SIZE_OF_SAFE_END;
                     break;
@@ -1654,7 +1865,7 @@ public class TrieParser implements Serializable {
                         int jmp = (((int)data[i+2]) << 15)|(0x7FFF&data[i+3]);
                         
                         int newPos = SIZE_OF_BRANCH+i+jmp;
-                        if (newPos > limit) {
+                        if (newPos > localLimit) {
                             
                         	//System.err.println("byte jmp "+ jmp+" adjusted to new jump of "+(jmp+requiredRoom));
                         	//System.err.println("byte jmp target "+ (i+4+jmp)+" adjusted to new jump targe of "+(i+4+jmp+requiredRoom));
@@ -1678,7 +1889,7 @@ public class TrieParser implements Serializable {
                         int jmp = (((int)data[i+1]) << 15)|(0x7FFF&data[i+2]);
                                        
                            int newPos = SIZE_OF_ALT_BRANCH+i+jmp;
-                           if (newPos > limit) {
+                           if (newPos > localLimit) {
                         	   
                         	   //System.err.println("alt jmp "+jmp+" adjusted to new jump of "+(jmp+requiredRoom));
                         	   
@@ -1710,9 +1921,51 @@ public class TrieParser implements Serializable {
                     throw new UnsupportedOperationException("ERROR Unrecognized value "+data[i]+" at "+i);
             }            
         }
+
     }
 
+    private int writeSwitch3(byte type, int pos, 
+    		                 int b1, int b2, int b3,
+    		                 short b1jumpHigh, short b1jumpLow,
+    		                 short b2jumpHigh, short b2jumpLow,
+    		                 short b3jumpHigh, short b3jumpLow
+    		                 ) {
+        
+    	int offset = Math.min(b1, Math.min(b2, b3));
+    	int trieLen = 1+Math.max(b1, Math.max(b2, b3))-offset;
+    	
+    	final int sizeOf = (2+(2*trieLen));
+        int neededLen = pos+sizeOf;
+        if (neededLen>data.length) {
+     	   growDataLen(neededLen); 
+        }
+    	
+        data[pos++] = type;
+        data[pos++] = (short)((offset<<8)|trieLen);
+        
+        int base = pos;
+        int t = trieLen;
+        while (--t>=0) {             
+        	data[pos++] = -1;
+        	data[pos++] = -1;
+        }
 
+        b1= (b1-offset)*2;
+        b2= (b2-offset)*2;
+        b3= (b3-offset)*2;
+        
+        data[b1+base] = b1jumpHigh;
+        data[1+b1+base] = b1jumpLow;
+        
+        data[b2+base] = b2jumpHigh;
+        data[1+b2+base] = b2jumpLow;
+        
+        data[b3+base] = b3jumpHigh;
+        data[1+b3+base] = b3jumpLow;
+       
+        return pos;
+    }
+    
     private int writeBranch(byte type, int pos, int requiredRoom, short criteria) {
                 
         int neededLen = pos+4;
@@ -1808,6 +2061,7 @@ public class TrieParser implements Serializable {
     }
  
     private int writeRuns(int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
+    	
        if (sourceLength<=0) {
            return pos;
        }
@@ -1826,7 +2080,7 @@ public class TrieParser implements Serializable {
        int sourceStop = sourceLength+sourcePos;
        short activeRunLength = 0;
        while (--runLeft >= 0) {
-                  byte value = source[sourceMask & sourcePos++];
+                  short value = (short)(0xFF&source[sourceMask & sourcePos++]);
                   if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
                      
                       value = source[sourceMask & sourcePos++];
@@ -1862,6 +2116,7 @@ public class TrieParser implements Serializable {
                       } else {
                           //add this value twice 
                           data[pos++] = value;
+                          data[runLenPos]++;
                           activeRunLength++;
                           //literal so jump over the second instance
                           sourcePos++;
