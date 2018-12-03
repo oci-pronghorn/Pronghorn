@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -275,6 +274,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	}
 
+	//int[] selectedOuts = null;
 	
 	private boolean processSelection(SelectionKey selection) {
 		
@@ -302,8 +302,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 			//if this selection was closed then remove it from the selections
 
-			if (checkForResponsePipeLineIdx(channelId)>=0) {
-				releaseResponsePipeLineIdx(channelId);
+			if (PoolIdx.getIfReserved(responsePipeLinePool,channelId)>=0) {
+				responsePipeLinePool.release(channelId);
 			}			
 
 			return true;
@@ -326,6 +326,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 		}
 		
+		
 		boolean hasOutputRoom = true;
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (null!=cc) {
@@ -340,22 +341,24 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					if (cc.id != channelId) {
 						//we must release the old one?
-						int result = checkForResponsePipeLineIdx(channelId);
+						int result = PoolIdx.getIfReserved(responsePipeLinePool,channelId);
 						if (result>=0) {
 							//we found the old channel so remove it before we add the new id.
-							releaseResponsePipeLineIdx(channelId);
+							responsePipeLinePool.release(channelId);
 						}
 					}
 					
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
-					responsePipeLineIdx = responsePipeLineIdx(channelId);
+					isOk.setId(channelId); //key to ensure connection is sent to same track
+					responsePipeLineIdx = responsePipeLinePool.get(channelId, isOk);
 					
 					if (-1 == responsePipeLineIdx) { 
 						//logger.trace("second check for released pipe");
 						Thread.yield();
 						releasePipesForUse();
-						responsePipeLineIdx = responsePipeLineIdx(channelId);
+						isOk.setId(channelId); //key to ensure connection is sent to same track
+						responsePipeLineIdx = responsePipeLinePool.get(channelId, isOk);
 						if (-1 == responsePipeLineIdx) {
 							//logger.info("\n too much load");
 							//try later, we can not find an open pipe right now.
@@ -365,6 +368,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 					}
 					
 					if (responsePipeLineIdx >= 0) {
+						
+						//debug to see if distribution is even.
+//						if (null == selectedOuts) {
+//							selectedOuts = new int[output.length];
+//							
+//						}
+//						selectedOuts[responsePipeLineIdx]++;
+//						
+//						System.out.println(stageId+"  pipe selectios: "+Arrays.toString(selectedOuts));
+						
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
 			
@@ -410,25 +423,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		return hasOutputRoom;
 	} 
 
-	///////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////
-
-	private int responsePipeLineIdx(final long ccId) {
-
-			isOk.setId(ccId); //key to ensure connection is sent to same track
-			return responsePipeLinePool.get(ccId, isOk);			
-
-	}
-
-	private void releaseResponsePipeLineIdx(long ccId) {		
-		responsePipeLinePool.release(ccId);	
-	}
-
-	private int checkForResponsePipeLineIdx(long ccId) {
-		return PoolIdx.getIfReserved(responsePipeLinePool,ccId);
-	}
-
-	
+		
 	////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////
 
@@ -501,14 +496,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 			throw new UnsupportedOperationException();
 		}
 				
-		int pipeIdx = checkForResponsePipeLineIdx(idToClear);
+		int pipeIdx = PoolIdx.getIfReserved(responsePipeLinePool,idToClear);
 		//if we can not look it  up then we can not release it?
 				
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
 		//	logger.info("NEW RELEASE for pipe {} connection {} at pos {}",pipeIdx, idToClear, pos);
-			releaseResponsePipeLineIdx(idToClear);
+			responsePipeLinePool.release(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
@@ -604,7 +599,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					//logger.info("client disconnected, so release");
 					//client was disconnected so release all our resources to ensure they can be used by new connections.
 					selection.cancel();                	
-					releaseResponsePipeLineIdx(channelId);
+					responsePipeLinePool.release(channelId);
 					//to abandon this must be negative.
 					len = -1;
 					int result;
@@ -624,7 +619,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	    logger.trace("client closed connection ",e.getMessage());
             	
 	             	selection.cancel();                	
-	            	releaseResponsePipeLineIdx(cc.id);    
+	            	responsePipeLinePool.release(cc.id);    
 					cc.clearPoolReservation();
 					boolean isOpen = temp>=0;
 					int result;
@@ -666,7 +661,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		 if (isOpen && newBeginning) {
 			 //Gatling does this a lot, TODO: we should optimize this case.
 		 	//we will abandon but we also must release the reservation because it was never used
-		 	releaseResponsePipeLineIdx(channelId);
+		 	responsePipeLinePool.release(channelId);
 		 	BaseConnection conn = coordinator.lookupConnectionById(channelId);
 		 	if (null!=conn) {
 		 		conn.clearPoolReservation();
