@@ -677,7 +677,9 @@ public class GraphManager {
 			gm.telemetryMonitor.writeAsDot(gm, "gl", gm.telemetryBuffer);
 			logger.info("\nTelemetry:{}\n\n", gm.telemetryBuffer.toString());
 		} else {
-			logger.warn("requested telemetry snapshot but this feature is not enabled, turn on telemetry with port set to zero");
+			if (gm.telemetryPort<0) {
+				logger.warn("requested telemetry snapshot but this feature is not enabled, turn on telemetry with port set to zero");
+			}
 		}
 	}
 
