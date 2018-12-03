@@ -55,7 +55,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
-    private static final long humanLimitNS = 20_000_000;
+    private static final long realWorldLimitNS = 2_000_000_000;
     
 
     private int[] producersIdx;
@@ -182,7 +182,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
         schedule = PMath.buildScriptedSchedule(rates, reverseOrder);
 
         //in cycles but under the human perception of time
-        deepSleepCycleLimt = humanLimitNS/schedule.commonClock;
+        deepSleepCycleLimt = realWorldLimitNS/schedule.commonClock;
         
         assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 20_000_000_000L)));
 
@@ -791,7 +791,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		if (isNormalCase) {
 			int maxIterations = 20;//this is limited or we may be sleeping during shutdown request.
 			while (--maxIterations>=0 && (noWorkCounter > deepSleepCycleLimt)) {
-				LockSupport.parkNanos(humanLimitNS);
+				LockSupport.parkNanos(realWorldLimitNS);
 				//we stay in this loop until we find real work needs to be done
 				//but not too long or we will not be able to shutdown.
 				if (!accumulateWorkHistory()) {
@@ -971,6 +971,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		return true;
 	}
 
+	int msgConsumerTrigger = 0;
+	
 	private static void recordRunResults(
 			ScriptedNonThreadScheduler that, 
 			final boolean recordTime, int inProgressIdx, long start,
@@ -983,11 +985,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				assert(reportLowAccuracyClock(that));
 			}
 
-			int c = GraphManager.getInputPipeCount(that.graphManager, stage.stageId);
-			for(int i = 1; i<=c ;i++) {
-				Pipe<?> pipe = GraphManager.getInputPipe(that.graphManager, stage.stageId, i);
-				pipe.markConsumerPassDone();
-			}		
+			//No need to run on every call, we run 1 out of every 4
+			if (0== (0x3 & that.msgConsumerTrigger++)) {
+				int c = GraphManager.getInputPipeCount(that.graphManager, stage.stageId);
+				for(int i = 1; i<=c ;i++) {
+					Pipe<?> pipe = GraphManager.getInputPipe(that.graphManager, stage.stageId, i);
+					pipe.markConsumerPassDone();
+				}	
+			}
+			
+			
 		}
 	}
 
