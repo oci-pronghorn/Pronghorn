@@ -563,23 +563,15 @@ public class NetGraphBuilder {
 					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
 
-	    //HIGHVOLUME		
-		//if we have at least 4 tracks and it is divisible by 2
-		boolean needsMultipleReaders = (tracks>=4) && (tracks&1)==0;				
+	    //HIGHVOLUME	
 		
-		if (needsMultipleReaders && !coordinator.isTLS) { 
-			int groups = tracks>>1; 
-			
-			Pipe[][] in  = Pipe.splitPipes(groups, encryptedIncomingGroup);
-			Pipe[][] out = Pipe.splitPipes(groups, acks);
-			
-			for(int x=0; x<groups; x++) {
-						
-				ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, out[(groups-x)-1], in[x], coordinator);
-				GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
-				coordinator.processNota(graphManager, readerStage);
-	
-			} 
+		//if we have at least 6 tracks and it is divisible by 3
+		if ((tracks>=6) && (tracks%3)==0 && !coordinator.isTLS) {			
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/3);			
+		} else		
+		//if we have at least 4 tracks and it is divisible by 2
+		if ((tracks>=4) && (tracks&1)==0 && !coordinator.isTLS) { 					
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/2); 
 			
 		} else {
 			/////////////////
@@ -594,6 +586,20 @@ public class NetGraphBuilder {
         
         
 		return acks;
+	}
+
+	private static void buildSocketReaderGroups(final GraphManager graphManager, final ServerCoordinator coordinator,
+			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup, Pipe<ReleaseSchema>[] acks, int groups) {
+		Pipe[][] in  = Pipe.splitPipes(groups, encryptedIncomingGroup);
+		Pipe[][] out = Pipe.splitPipes(groups, acks);
+		
+		for(int x=0; x<groups; x++) {
+					
+			ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, out[(groups-x)-1], in[x], coordinator);
+			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
+			coordinator.processNota(graphManager, readerStage);
+
+		}
 	}
 
 	public static Pipe<NetPayloadSchema>[] buildRemainderOfServerStagesWrite(final GraphManager graphManager,
