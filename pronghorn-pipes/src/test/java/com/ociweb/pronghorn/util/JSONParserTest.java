@@ -97,8 +97,7 @@ public class JSONParserTest {
 				
 		String json = " [ { \"key\" : \"value\" } , \n { \"key\" : \"value\" }     ] ";
 		
-		Pipe pipe = buildPopulatedPipe(json);
-			
+		Pipe pipe = buildPopulatedPipe(json);			
 		
 		TrieParserReader reader = new TrieParserReader();
 		
@@ -115,8 +114,7 @@ public class JSONParserTest {
 				
 		assertEquals( target.toString().replaceAll("\n", "\\n"),				
 				"[{\n    \"key\":\"value\"}\n,\n{\n    \"key\":\"value\"}\n]",target.toString());
-		
-		 
+ 
 		
 	}
 

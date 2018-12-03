@@ -22,8 +22,8 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
  */
 public class TrieParser implements Serializable {
         
-	//new feature under development
-	static final boolean doSupportSwitch = true; //Still working on feature
+	//TODO:  new feature under development, Not working yet with JSON streaming or escape escape.
+	static final boolean doSupportSwitch = false; //Still working on feature
 	  
 		//TODO: focus on opimize of mult query options, can win that one.
 	    // 31-42 cpu at 20 requests, base speed... 9696 or 10kTPS
