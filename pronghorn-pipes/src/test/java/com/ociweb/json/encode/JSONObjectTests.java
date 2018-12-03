@@ -116,7 +116,7 @@ public class JSONObjectTests {
                 .endObject();
         assertTrue(json.isLocked());
         json.render(out, new BasicObj());
-        System.out.println(out);
+        
         assertEquals("{\"b\":null,\"i\":null,\"d\":null,\"s\":null,\"m\":null,\"always\":null,\"en\":null,\"eo\":null}", out.toString());
     }
 
