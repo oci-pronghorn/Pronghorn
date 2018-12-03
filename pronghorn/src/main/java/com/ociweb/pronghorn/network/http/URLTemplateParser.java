@@ -44,6 +44,10 @@ public class URLTemplateParser {
 			
 		}
     }
+    
+    public String debugRouterMap() {
+    	return routerMap.toString();
+    }
 	
 	public static TrieParser buildRouteTemplateParser(TrieParser parser) {
 				
@@ -97,10 +101,17 @@ public class URLTemplateParser {
 		}			
 	};
 	
+	public static boolean showAllInserts = false;//Great to debug the actual routes defined
+	
 	private final EncodingStorage es = new EncodingStorage() {
 
 		@Override
 		public void store(Pipe<RawDataSchema> pipe) {
+			
+			if (showAllInserts) {
+				System.out.println(" map.setUTF8Value(\""+pipe.peekInputStream(pipe, 0).readUTFFully()+"\","+activePathId+");");
+			}
+			
 			//set full byte field in pipe to map with the key routeValue
 			//this is the converted to tri parser format text value
 			routerMap.setValue(pipe, activePathId);
