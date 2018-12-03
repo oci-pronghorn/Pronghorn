@@ -85,7 +85,7 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	        }
         }
         
-        this.verbMap = new TrieParser(256,false);//does deep check
+        this.verbMap = new TrieParser(256,true);//skip deep check
         //logger.info("building verb map");
         //Load the supported HTTP verbs
         V[] verbs = (V[])httpSpec.supportedHTTPVerbs.getEnumConstants();
@@ -377,6 +377,10 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public void processDefaults(DataOutputBlobWriter<HTTPRequestSchema> writer, int pathId) {
 		pathToRoute[pathId].processDefaults(writer);
+	}
+
+	public static FieldExtractionDefinitions fieldExDef(HTTPRouterStageConfig<?, ?, ?, ?> that, int pathId) {
+		return that.pathToRoute[pathId];
 	}
 
 }
