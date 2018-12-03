@@ -181,7 +181,7 @@ public class ServerNewConnectionStage extends PronghornStage{
            throw new RuntimeException(e);
            
         }
-        logger.info("startup done");
+        //logger.info("startup done");
     }
     
     @Override
