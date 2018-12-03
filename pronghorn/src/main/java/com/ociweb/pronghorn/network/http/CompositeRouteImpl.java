@@ -107,7 +107,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		/////////////////////////
 		//add the headers to the struct
 	    //always add parser in order to ignore headers if non are requested.
-		boolean skipDeepChecks = false;
+		boolean skipDeepChecks = false; //TODO: this may help but removing the wild card support would be better...
 		boolean supportsExtraction = true;
 		boolean ignoreCase = true;
 		TrieParser headerParser = new TrieParser(256,4,skipDeepChecks,supportsExtraction,ignoreCase);
@@ -203,7 +203,8 @@ public class CompositeRouteImpl implements CompositeRoute {
 		
 		defs.add(fieldExDef);
 		
-		
+		//System.out.println("added path:"+path);
+		//System.out.println("known routes defined:\n"+parser.debugRouterMap());
 		return this;
 	}
 	
