@@ -354,7 +354,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	    		}
 	        }       
 	      	
-	    //we can accumulate above but we can not parse or continue until this pipe is clear    
+	      return parsePipe(that, idx);
+    }
+
+
+	private static int parsePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
+		//we can accumulate above but we can not parse or continue until this pipe is clear    
 	   	if (null == that.blockedOnOutput[idx]) {
 	    	  
 	        return ((that.activeChannel = that.inputChannels[idx]) < 0) ? 
@@ -367,7 +372,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     			return 0;
     		}
     	}
-    }
+	}
 
 
 
@@ -983,17 +988,19 @@ private static boolean captureAllArgsFromURL(HTTPRouterStageConfig<?,?,?,?> conf
 		                                     TrieParserReader trieReader, final int pathId,
 										     DataOutputBlobWriter<HTTPRequestSchema> writer) {
 
-	if (0 == config.paramIndexArray(pathId).length) {
+	final FieldExtractionDefinitions fed = HTTPRouterStageConfig.fieldExDef(config,pathId);
+	
+	if (0 == fed.paramIndexArray().length) {
 		//load any defaults
-		config.processDefaults(writer, pathId);
+		fed.processDefaults(writer);
 		return true;
 	} else {	
 		if (TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, 
-				                                         config.paramIndexArray(pathId),
-				                                         config.paramIndexArrayValidator(pathId)
+				                                         fed.paramIndexArray(),
+				                                         fed.paramIndexArrayValidator()
 														)) {
 			//load any defaults if what was passed in has been validated
-			config.processDefaults(writer, pathId);
+			fed.processDefaults(writer);
 			return true;
 		}
 	}
