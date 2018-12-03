@@ -214,6 +214,19 @@ public class PMath {
         //return the value
         return primes[i];
     }
+    
+    /**
+     * Next prime above the given value which need not be prime.
+     * @param startValue
+     * @return first prime discovered at or above start value
+     */
+    public static int nextPrime(int startValue) {
+    	int i = 0;
+    	int p = 1;
+    	while ((p=primeAtIdx(i++))<startValue) {
+    	}
+    	return p;
+    }
 
     /**
      * Not a general method, this only works for up to numbers 1 larger than the last prime discovered.
