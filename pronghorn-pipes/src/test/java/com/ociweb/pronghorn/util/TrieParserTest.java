@@ -17,7 +17,6 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.ChannelWriter;
@@ -25,6 +24,7 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 
 public class TrieParserTest {
 
@@ -1196,7 +1196,11 @@ public class TrieParserTest {
 			
 		});
 
-		assertEquals("ab$ghi 10,ab$cde 23,ab##gkl 47,abcdf 35,", target.toString());
+		String results = target.toString();
+		assertTrue(results, results.contains("ab$ghi 10"));
+		assertTrue(results, results.contains("ab$cde 23"));
+		assertTrue(results, results.contains("ab##gkl 47"));
+		assertTrue(results, results.contains("abcdf 35"));
 		
 	}
 	
@@ -1617,7 +1621,7 @@ public class TrieParserTest {
 		assertFalse(map.toString(), map.toString().contains("ERROR"));
 
 		byte[] text0 = "/unfollow?user=12345".getBytes();
-		assertEquals(-1, TrieParserReader.query(reader, map, wrapping(text0, 6), 0, text0.length, 63));
+		assertEquals(35, TrieParserReader.query(reader, map, wrapping(text0, 6), 0, text0.length, 63));
 
 	}
 
@@ -2511,6 +2515,13 @@ public class TrieParserTest {
 		parser.setUTF8Value("%\"b", TrieParser.ESCAPE_CMD_RATIONAL); // %i%/
 
 		// parser.toDOT();
+		//System.out.println("custom escape tree:\n"+parser);
+		
+		findShortText(parser, reader, "%hello?", TrieParser.ESCAPE_CMD_RATIONAL);
+		findShortText(parser, reader, "%hello/", TrieParser.ESCAPE_CMD_RATIONAL);
+		findShortText(parser, reader, "%{hello}", TrieParser.ESCAPE_CMD_RATIONAL);
+		findShortText(parser, reader, "%hello&", TrieParser.ESCAPE_CMD_RATIONAL);
+		findShortText(parser, reader, "%hello", TrieParser.ESCAPE_CMD_RATIONAL);
 
 		findShortText(parser, reader, "$hello?", TrieParser.ESCAPE_CMD_BYTES);
 		findShortText(parser, reader, "$hello/", TrieParser.ESCAPE_CMD_BYTES);
@@ -2529,13 +2540,6 @@ public class TrieParserTest {
 		findShortText(parser, reader, "^{hello}", TrieParser.ESCAPE_CMD_DECIMAL);
 		findShortText(parser, reader, "^hello&", TrieParser.ESCAPE_CMD_DECIMAL);
 		findShortText(parser, reader, "^hello", TrieParser.ESCAPE_CMD_DECIMAL);
-
-		findShortText(parser, reader, "%hello?", TrieParser.ESCAPE_CMD_RATIONAL);
-		findShortText(parser, reader, "%hello/", TrieParser.ESCAPE_CMD_RATIONAL);
-		findShortText(parser, reader, "%{hello}", TrieParser.ESCAPE_CMD_RATIONAL);
-		findShortText(parser, reader, "%hello&", TrieParser.ESCAPE_CMD_RATIONAL);
-		findShortText(parser, reader, "%hello", TrieParser.ESCAPE_CMD_RATIONAL);
-
 	}
 
 	@Test
@@ -2598,7 +2602,7 @@ public class TrieParserTest {
 		
 	}	
 	
-	@Ignore //TODO: need to add support for escaped % symbols...
+	@Test
 	public void testEscapedEscape() {
 
 		TrieParser map = new TrieParser(1000, 1, true, true);
@@ -3902,4 +3906,34 @@ public class TrieParserTest {
 		// System.out.println("Total bytes of test data "+runningPos);
 		return testData;
 	}
+	
+	@Test
+	public void jsonExampleTest() {
+		
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser jsonParser = JSONStreamParser.defaultParser();
+		
+		//System.out.println("TODO: check the order of alt check:\n"+jsonParser);
+		
+		//private final String simpleExample = "{root:{\"keya\":123, \"keyb\":\"hello\"}}";
+		assertEquals(10, TrieParserReader.query(reader, jsonParser, "{root".getBytes(), 0, 6, 15));
+		assertEquals(6, TrieParserReader.query(reader, jsonParser, ":{".getBytes(), 0, 6, 15));
+		assertEquals(4, TrieParserReader.query(reader, jsonParser, "\"keya\"".getBytes(), 0, 6, 15));
+		assertEquals(3, TrieParserReader.query(reader, jsonParser, "\"keya\\".getBytes(), 0, 6, 15));
+		assertEquals(5, TrieParserReader.query(reader, jsonParser, "\\keya\"".getBytes(), 0, 6, 15));
+		assertEquals(11, TrieParserReader.query(reader, jsonParser, "]}".getBytes(), 0, 6, 15));
+		
+		
+//		private final String simpleArrayMissingExample = "{root: [ "
+//				+ "{\"keya\":1, \"keyb\":\"one\"}  "
+//				+ ", {\"keyb\":\"two\"}  "
+//				+ ", {\"keya\":3}  "
+//				+ ", {\"keya\":4, \"keyb\":\"four\"}  "
+//				+ ", {\"keya\":5, \"keyb\":\"five\"}  "			
+//				+ "]}";
+		
+		
+	}
+	
+	
 }

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -11,7 +12,6 @@ import org.junit.Test;
 
 import com.ociweb.json.JSONAccumRule;
 import com.ociweb.json.JSONAligned;
-import com.ociweb.json.JSONType;
 import com.ociweb.json.decode.JSONExtractor;
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -70,9 +70,9 @@ public class JSONParseTest {
 		assertEquals("{\"status\":200,\"message\":\"Success\",\"body\":\"\"}", json);
 	}
 	
-	@Test //can do 150K per second but < 10K per second is an error
+	@Test //can do 100K per second but < 10K per second is an error
 	public void loadFor2D() {
-		int iterations = 150_000;
+		int iterations = 100_000;
 		long now = System.nanoTime();
 		parseJSONLoad(iterations, simple2DArrayExample, simple2DArrayExtractor);
 		long duration = System.nanoTime()-now;
@@ -154,7 +154,7 @@ public class JSONParseTest {
 			+ ", {\"keya\":5, \"keyb\":\"five\"}  "			
 			+ "]}";
 	
-	@Test	
+	@Test
 	public void simpleMultipleParseTest() {
 
 		Pipe<RawDataSchema> targetData = parseJSON(simpleMultipleRootExample, simpleArrayExtractor);
@@ -201,7 +201,7 @@ public class JSONParseTest {
 			+ ", {\"keya\":5, \"keyb\":\"five\"}  "			
 			+ "]}";
 	
-	@Test	
+	@Test
 	public void simpleArrayMissingParseTest() {
 
 		Pipe<RawDataSchema> targetData = parseJSON(simpleArrayMissingExample, simpleArrayExtractor);
@@ -400,7 +400,10 @@ public class JSONParseTest {
 	@Test
 	public void simpleNullBTest() {
 	
-		try {
+			//extractor:
+			//root.keyb
+			//root.keya
+		
 			Pipe<RawDataSchema> targetData = parseJSON(nullBExample, simpleExtractor);
 			
 			//confirm data on the pipe is good...
@@ -415,11 +418,6 @@ public class JSONParseTest {
 	
 			long valueA = dataStream.readPackedLong();
 			assertEquals(123,valueA);
-				
-		} catch (Throwable t) {
-			t.printStackTrace();
-			throw new AssertionError("rethrow",t);
-		}
 	
 	}
 	
@@ -473,7 +471,7 @@ public class JSONParseTest {
 		TrieParserReader.parseSetup(reader ,testInputData); 
 
 		//export data to this pipe 	
-		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(4, 512);
+		PipeConfig<RawDataSchema> targetDataConfig = RawDataSchema.instance.newPipeConfig(16, 512);
 		Pipe<RawDataSchema> targetData = new Pipe<RawDataSchema>(targetDataConfig);
 		targetData.initBuffers();
 		Pipe.structRegistry(targetData, reg);
@@ -484,23 +482,33 @@ public class JSONParseTest {
 		//parse data data		
 		JSONStreamParser parser = new JSONStreamParser();
 		JSONStreamVisitorToChannel visitor = extractor.newJSONVisitor();
-		
+				
 		do {
 			parser.parse( reader,
 					extractor.trieParser(), 
 					visitor);
 			
-			/////write the captured data into the pipe
-			Pipe.presumeRoomForWrite(targetData);
-			int writeSize = Pipe.addMsgIdx(targetData, 0);
-			DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
-						
-			visitor.export(stream, extractor.getIndexPositions());
-			DataOutputBlobWriter.commitBackData(stream, extractor.getStructId());
+			if (!visitor.hasExport()) {
+				fail();
+			} else {
+				
+				/////write the captured data into the pipe
+				
+				if (!Pipe.hasRoomForWrite(targetData)) {
+					fail("Assumed available space but not found, make pipe larger or write less "+targetData);
+				}
+				int writeSize = Pipe.addMsgIdx(targetData, 0);
+				DataOutputBlobWriter<RawDataSchema> stream = Pipe.openOutputStream(targetData);
+							
+				visitor.export(stream, extractor.getIndexPositions());
+				DataOutputBlobWriter.commitBackData(stream, extractor.getStructId());
+				
+				stream.closeLowLevelField();
+				Pipe.confirmLowLevelWrite(targetData, writeSize);
+				Pipe.publishWrites(targetData);
+			}
 			
-			stream.closeLowLevelField();
-			Pipe.confirmLowLevelWrite(targetData, writeSize);
-			Pipe.publishWrites(targetData);
+			
 		} while (visitor.isReady() && TrieParserReader.parseHasContent(reader));
 		
 		

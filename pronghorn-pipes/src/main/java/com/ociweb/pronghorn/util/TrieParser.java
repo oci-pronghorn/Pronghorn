@@ -23,10 +23,8 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 public class TrieParser implements Serializable {
         
 	//TODO:  new feature under development, Not working yet with JSON streaming or escape escape.
-	static final boolean doSupportSwitch = false; //Still working on feature
-	  
-		//TODO: focus on opimize of mult query options, can win that one.
-	    // 31-42 cpu at 20 requests, base speed... 9696 or 10kTPS
+	static final boolean doSupportSwitch = true; //Still working on feature
+
 
 	private static final long serialVersionUID = -2877089562575447986L;
 
@@ -1181,19 +1179,16 @@ public class TrieParser implements Serializable {
                         }
                         break;
                     case TYPE_ALT_BRANCH:
-
-                        altBranch(pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
-
-					    int[] choices = selectDataSpecificOrderedChoices(source, sourcePos, sourceMask);
-                     
-					    int selectedStackPos = choseOptimalPathFromStack(choices);
-                     
-					    altStackPos = 0;
-                        
-                        //pop top off stack
-                        pos       = altStackA[selectedStackPos];
-                        sourcePos = altStackB[selectedStackPos];
-                
+                    	short w = (short) source[sourceMask & sourcePos];
+                    	if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==w && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
+                    		//new data is an alt so insert on alt side
+                    		pos +=2;
+                    	} else {
+	                    	//check the  fixed jump side and push the var side for later
+							int jump = (((int)data[pos++])<<15) | (0x7FFF&data[pos++]);
+							pushAlt(pos, sourcePos);
+							pos       = pos+jump;
+                    	}
                         break;
                     case TYPE_VALUE_NUMERIC:
                         if (ESCAPE_BYTE==source[sourceMask & sourcePos]) {                        	
@@ -1381,46 +1376,6 @@ public class TrieParser implements Serializable {
 			return false;
 		}
 		return true;
-	}
-
-	private int choseOptimalPathFromStack(int[] choices) {
-		int i = altStackPos;
-		int selectedRank = Integer.MAX_VALUE;
-		int selectedStackPos = -1;
-		
-		while (--i>=0) {
-			final int type2 = (0xFF & data[altStackA[i]]);
-			int c = choices.length;
-			while (--c>=0) {
-				if (type2 == choices[c]) {
-					if (c < selectedRank) {
-						selectedRank = c;
-						selectedStackPos = i;
-					}
-					break;
-				}
-			}                        	
-		}
-		return selectedStackPos;
-	}
-
-	private int[] selectDataSpecificOrderedChoices(byte[] source, int sourcePos, int sourceMask) {
-		int[] choices = null;
-		if (ESCAPE_BYTE==source[sourceMask & sourcePos]) { 
-			byte second = source[sourceMask & (sourcePos+1)];
-			if ('b'==second) {
-				choices = captureBytesChoices;
-			} else {
-				if (isNumber(second)) {
-					choices = captureNumberChoices;
-				} else {
-					choices = definedChoices;
-				}
-			}
-		} else {
-			choices = definedChoices;
-		}
-		return choices;
 	}
 
 	private boolean isNumber(byte second) {
@@ -2114,9 +2069,7 @@ public class TrieParser implements Serializable {
                           
                           return pos;
                       } else {
-                          //add this value twice 
-                          data[pos++] = value;
-                          data[runLenPos]++;
+                          //do NOT add this value a second time here.
                           activeRunLength++;
                           //literal so jump over the second instance
                           sourcePos++;

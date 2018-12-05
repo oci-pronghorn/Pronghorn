@@ -88,6 +88,8 @@ public class JSONStreamParser {
 
 	
 	public static void populateWithJSONTokens(TrieParser trie) {
+		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values
+		
 		//code for strings with escape sequences
 		trie.setValue(JSONConstants.string221, STRING_PART);
 		trie.setValue(JSONConstants.continuedString, CONTINUED_STRING);
@@ -109,7 +111,6 @@ public class JSONStreamParser {
 		trie.setValue(JSONConstants.ws1, WHITE_SPACE_1);
 		
 		trie.setValue(JSONConstants.number, NUMBER_ID);		
-		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values
 		
 		trie.setValue(JSONConstants.valueSeparator, VALUE_SEPARATOR);
 		trie.setValue(JSONConstants.nameSeparator, NAME_SEPARATOR);			
@@ -119,7 +120,7 @@ public class JSONStreamParser {
 	
 	
 	
-	private static TrieParser defaultParser() {
+	public static TrieParser defaultParser() {
 			
 	    	TrieParser trie = new TrieParser(256,1,false,true);
 
@@ -129,7 +130,7 @@ public class JSONStreamParser {
 	}
 
 
-	private static TrieParser stringEndParser() {
+	static TrieParser stringEndParser() {
 		
     	TrieParser trie = new TrieParser(256,1,false,true);
 
@@ -173,6 +174,8 @@ public class JSONStreamParser {
 		
 		byte state = DEFAULT_STATE;
 		
+		//System.out.println("xxxx: "+customParser);
+		
 		while (visitor.isReady()) {
 			if (DEFAULT_STATE == state) {
 				
@@ -180,6 +183,9 @@ public class JSONStreamParser {
 				//TrieParserReader.debugAsUTF8(reader, builder, 180);
 				
 				int pos = reader.sourcePos;
+				
+				//TrieParserReader.debugAsUTF8(reader, System.err);
+				//System.err.println();
 				
 				final int id  = (int)TrieParserReader.parseNext(reader, customParser);
 				
@@ -190,7 +196,7 @@ public class JSONStreamParser {
 					assert(pos == reader.sourcePos) : "did not return to start position";
 				}
 				
-				//logger.info("log event {}  ",id);
+				//logger.info("PRSE log event {}  ",id);
 				
 				
 				//customParser.toDOT(System.out);
@@ -321,7 +327,8 @@ public class JSONStreamParser {
 				
 				int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
 				
-				//logger.info("log event {} ",id);
+				
+				//logger.info("P2 log event {} remaining {}",id,reader.sourceLen);
 				
 				switch (id) {
 					case STRING_PART: //start of string change mode
@@ -375,16 +382,22 @@ public class JSONStreamParser {
 						visitor.literalTrue();
 						break;
 					case -1:						
+						//System.err.println("last text was unfound");
 						//TrieParserReader.debugAsUTF8(reader, System.err);						
 						return;
+					default:
+						System.out.println("unknown value: "+id);
 				}			
 				
 			} else {
 				//text state;
 				
+				//TODO: quote not found and not rolling back to other def
+				//TODO: fast def must be run first not slow one!!!!
+				
 				int id = (int)TrieParserReader.parseNext(reader, stringEndParser);
 				
-				//logger.info("log text {} ",id);
+			//	logger.info("log text {} ",id);
 				
 				if (id!=-1) {
 					int type = 0xFF&id;

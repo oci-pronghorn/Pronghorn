@@ -14,6 +14,9 @@ public class PackedBits {
 		bitsData = new byte[1];
 	}
 	
+	public String toString() {
+		return Arrays.toString(bitsData);
+	}
 	public void clear() {
 		Arrays.fill(bitsData, (byte)0);
 	}

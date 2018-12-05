@@ -253,6 +253,10 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 		}	
 	}
 	
+	public boolean hasExport() {
+		return indexData.length>0;
+	}
+	
 	public void export(ChannelWriter writer, int[] fieldIndexPositions) {
 		
 		//TODO: are we going to remove these header bits??
@@ -687,7 +691,7 @@ public class JSONStreamVisitorToChannel implements JSONStreamVisitor {
 
 	
 	private boolean writeNullString() {
-				
+		
 		if (required[selectedRow] == JSONRequired.REQUIRED) {
 			//was null but this field is required 
 			return false;

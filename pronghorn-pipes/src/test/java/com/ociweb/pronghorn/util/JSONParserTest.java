@@ -102,7 +102,7 @@ public class JSONParserTest {
 		TrieParserReader reader = new TrieParserReader();
 		
 		int msgIdx = Pipe.takeMsgIdx(pipe);
-		TrieParserReader.parseSetup(reader,pipe); 
+		TrieParserReader.parseSetup(reader,pipe); 	
 		
 		StringBuilder target = new StringBuilder();
 		
@@ -110,9 +110,11 @@ public class JSONParserTest {
 		
 		Pipe.takeMsgIdx(pipe);
 		JSONStreamParser parser = new JSONStreamParser();
-		parser.parse(reader, visitor);
 				
-		assertEquals( target.toString().replaceAll("\n", "\\n"),				
+		parser.parse(reader, visitor);
+
+		assertEquals( target.toString().replaceAll("\n", "\\n"),
+				
 				"[{\n    \"key\":\"value\"}\n,\n{\n    \"key\":\"value\"}\n]",target.toString());
  
 		

@@ -449,6 +449,7 @@ public class TrieParserReader {
 	
 	public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen, boolean mayHaveLeading) {
 		int pos = that.sourcePos;
+		int slen = that.sourceLen;
 		try {
 			if (mayHaveLeading && ((that.sourceBacking[pos & that.sourceMask]<32) || (that.sourceBacking[(1+pos) & that.sourceMask]<32))) {
 				//we have a leading length
@@ -457,16 +458,19 @@ public class TrieParserReader {
 				target.append(",");
 				Appendables.appendValue(target, that.sourceBacking[that.sourceMask & pos++]);
 				target.append("]");
-				that.sourceLen-=2;
+				slen-=2;
 			}
 
-			Appendable a = Appendables.appendUTF8(target, that.sourceBacking, pos, Math.min(maxLen, that.sourceLen), that.sourceMask);
-			if (maxLen<that.sourceLen) {
-				a.append("...");
+			int len = Math.min(maxLen, slen);
+			if (len>0) {
+				Appendable a = Appendables.appendUTF8(target, that.sourceBacking, pos, len, that.sourceMask);
+				if (maxLen<slen) {
+					a.append("...");
+				}
 			}
 		} catch (Exception e) {
 			//this was not UTF8 so dump the chars
-			Appendables.appendArray(target, '[', that.sourceBacking, pos, that.sourceMask, ']', Math.min(maxLen, that.sourceLen));
+			Appendables.appendArray(target, '[', that.sourceBacking, pos, that.sourceMask, ']', Math.min(maxLen, slen));
 		}
 		return pos;
 	}
@@ -723,16 +727,16 @@ public class TrieParserReader {
 					processBinaryBranch(reader, trie, source, sourceLength, sourceMask);				
 				} else {
 					if (TrieParser.TYPE_ALT_BRANCH == t) {
-						processAltBranch(reader, source, trie.data);
+						processAltBranch(reader, source, trie.data, hasSafePoint);
 					} else {
 						if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
 							processSwitch(reader, trie, source, sourceMask, hasSafePoint);				
 						} else {
 							if (TrieParser.TYPE_VALUE_BYTES == t) {            	
-								parseBytesAction(reader, trie, source, sourceLength, sourceMask);	
+								parseBytesAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);	
 							} else {
 								if (TrieParser.TYPE_VALUE_NUMERIC == t) {
-									parseNumericAction(reader, trie, source, sourceLength, sourceMask);		
+									parseNumericAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);		
 								}  else {
 									if (TrieParser.TYPE_SAFE_END == t) {
 										hasSafePoint = processSafeEndAction(reader, trie, sourceLength);                                             
@@ -927,34 +931,60 @@ public class TrieParserReader {
 			final short sourceShort, int p,
 			final short[] localData) {
 		
-		int t;
-		do {		
-			p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
-				? p+3 
-				: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
-				
-		} while (TrieParser.TYPE_BRANCH_VALUE == (t=localData[p++])); //keep going since this type cant end.
-				
-				
-		reader.type = t;
+		p = (0==(TrieParser.computeJumpMask(sourceShort, localData[p])&0xFFFFFF))
+			? p+3 
+			: p+3+((((int)localData[p+1])<<15) | (0x7FFF&localData[p+2]));			
+						
+		reader.type = localData[p++];
 		reader.pos = p;
 	}
 
 
 	private static void parseNumericAction(TrieParserReader reader, TrieParser trie, byte[] source,
-			final long sourceLength, int sourceMask) {
+			final long sourceLength, int sourceMask, boolean hasSafePoint) {
 		if (reader.runLength<sourceLength) {
 			if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, trie.data[reader.pos++]))<0) {			            	
-				reader.normalExit=false;
-				reader.result = reader.unfoundConstant;
+				/////////////////
+				//common pattern
+				if (!hasSafePoint) {                       	
+					if (reader.altStackPos > 0) {                                
+						reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
+					} else {
+						//we have NO safe point AND we found a non match in the sequence
+						//this will never match no matter how much data is added so return the noMatch code.
+						reader.normalExit=false;
+						reader.result = reader.noMatchConstant;
+					}
+				} else {
+					reader.normalExit=false;
+					reader.result = useSafePoint(reader);
+					
+				}
+				///////////////
 
 			} else {
 				//finished parse of number so move next
 				reader.type = trie.data[reader.pos++];
 			}
 		} else {
-			reader.normalExit=false;
-			reader.result = reader.unfoundConstant;
+		
+			/////////////////
+			//common pattern
+			if (!hasSafePoint) {                       	
+				if (reader.altStackPos > 0) {                                
+					reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
+				} else {
+					//we have NO safe point AND we found a non match in the sequence
+					//this will never match no matter how much data is added so return the noMatch code.
+					reader.normalExit=false;
+					reader.result = reader.noMatchConstant;
+				}
+			} else {
+				reader.normalExit=false;
+				reader.result = useSafePoint(reader);
+				
+			}
+			///////////////
 
 		}
 	}
@@ -975,12 +1005,30 @@ public class TrieParserReader {
 	}
 
 	private static void parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
-			final long sourceLength, final int sourceMask) {
+			final long sourceLength, final int sourceMask, boolean hasSafePoint) {
 
 		if ( (!(reader.runLength < sourceLength)) 
 			||  (!parseBytes(reader, trie, source, sourceLength, sourceMask))) {
-			reader.normalExit = false;
-			reader.result = reader.unfoundConstant;
+			
+			/////////////////
+			//common pattern
+			if (!hasSafePoint) {                       	
+				if (reader.altStackPos > 0) {                                
+					reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
+				} else {
+					//we have NO safe point AND we found a non match in the sequence
+					//this will never match no matter how much data is added so return the noMatch code.
+					reader.normalExit=false;
+					reader.result = reader.noMatchConstant;
+				}
+			} else {
+				reader.normalExit=false;
+				reader.result = useSafePoint(reader);
+				
+			}
+			///////////////
+			
+			
 		} else {
 			//move next since we did not need to exit
 			reader.type = trie.data[reader.pos++];
@@ -1056,16 +1104,14 @@ public class TrieParserReader {
 				int x = localSourcePos;
 				int lim = maxCapture<=sourceMask ? (int)maxCapture : sourceMask+1;	        	
 
-				if (stopCount==2) {
+				if (stopCount==2 && stopValue!=0) {
 					//special case since this happens very often
 
 					final short s1 = localWorkingMultiStops[0];
 					final short s2 = localWorkingMultiStops[1]; //B DEBUG CAPTURE:keep-alive  B DEBUG CAPTURE:127.0.0.1
 
-					do {  
-
+					do { 
 						short value = source[sourceMask & x++];
-
 						if (value==s2) {
 							reader.pos = reader.workingMultiContinue[1];
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);							
@@ -1082,13 +1128,41 @@ public class TrieParserReader {
 
 				} else {
 					int stopIdx = -1;
-
 					do {  
 					} while ( (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) && (--lim > 0));
-					return assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);
+					boolean results =  assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);
+					if (results) {						
+						int len = (x-localSourcePos)-1;
+//						if (len>0) {
+//							
+//							Appendables.appendUTF8(System.out, source, localSourcePos, len, sourceMask);
+//							System.out.println("  -<ABA");
+//							
+////            host and content-type should not be here!!!							
+////							Host   
+////							127.0.0.1:8080    //can we cache this one since it is us??
+////							content-type
+////							application/json   //can we cache this as well??
+////				request:			
+////							GET /json HTTP/1.1
+////							Host: 127.0.0.1:8080
+////							content-type: application/json
+////							OK  -<CAC -- Parsed by client..
+////							date  -<CAC  Parsed by client..
+////							Tue, 04 Dec 2018 05:17:24 GMT  -<CAC- Parsed by client..
+////							server  -<CAC- Parsed by client..
+////							GreenLightning  -<CAC- Parsed by client..
+////							application/json  -<CAC- Parsed by client..
+//							
+//						}
+					}
+					
+					return results;
 				}
 			} else {
-				return -1 != (reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue));
+				boolean results = -1 != (reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue));
+
+				return results;
 			}
 		} else {
 			reader.localSourcePos = -1;
@@ -1120,9 +1194,6 @@ public class TrieParserReader {
 
 		if (-1==stopIdx) {//not found!
 			reader.localSourcePos =-1;
-
-			System.err.println("not found B");
-
 			return false;
 		} else {
 			int len = (x-sourcePos)-1;
@@ -1167,7 +1238,7 @@ public class TrieParserReader {
 		reader.type = trie.data[reader.pos++];
 	}
 
-	private static void processAltBranch(TrieParserReader reader, byte[] source, short[] localData) {
+	private static void processAltBranch(TrieParserReader reader, byte[] source, short[] localData, boolean hasSafePoint) {
 		assert(localData[reader.pos]>=0): "bad value "+localData[reader.pos];
 		assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
 
@@ -1194,6 +1265,18 @@ public class TrieParserReader {
 		} while (TrieParser.TYPE_ALT_BRANCH == (reader.type=localData[pos++]));
 		
 		reader.pos = pos;
+		
+		if (reader.noMatchConstant == reader.result && !reader.normalExit) {
+			if (!hasSafePoint) {                       	
+				if (reader.altStackPos > 0) {                                
+					reader.altStackPos = loadupNextChoiceFromStack(reader, localData, reader.altStackPos);                           
+				} 
+			} else {
+				reader.normalExit=false;
+				reader.result = useSafePoint(reader);
+			}
+		}
+		
 	}
 
 	private static int processAltBranch2(TrieParserReader reader, byte[] source, short[] localData, int offset,
@@ -1318,6 +1401,21 @@ public class TrieParserReader {
 			
 			final int x1 = hasStopValue ? x : x+1;
 			final int len = (x1-sourcePos)-1;
+			
+
+//			if (len>0) {
+////				OK  -<CAC
+////				date  -<CAC
+////				Tue, 04 Dec 2018 05:17:24 GMT  -<CAC
+////				server  -<CAC
+////				GreenLightning  -<CAC
+////				application/json  -<CAC
+//				
+//				Appendables.appendUTF8(System.out, source, sourcePos, len, sourceMask);
+//				System.out.println("  -<CAC");
+//				
+//			}
+		
 			
 			reader.runLength += (len);
 			reader.capturedPos = extractedBytesRange(reader.capturedBlobArray, 
