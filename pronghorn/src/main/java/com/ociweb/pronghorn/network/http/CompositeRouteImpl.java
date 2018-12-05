@@ -114,9 +114,20 @@ public class CompositeRouteImpl implements CompositeRoute {
 
 		HTTPUtil.addHeader(headerParser,HTTPSpecification.END_OF_HEADER_ID,"");
 		
+		//these added for logical req
 		boolean headerContentLength = false;
 		boolean headerTransferEncodeing = false;
 		boolean headerConnection = false;
+		
+		//these added for performance
+		boolean hostHeader = false;
+		boolean contentType = false;
+		boolean language = false;
+		boolean encoding = false;
+		boolean referer = false;
+		boolean origin = false;
+		boolean dnt = false;
+		boolean user = false;
 		
 		if (null!=headers) {			
 			int h = headers.length;
@@ -137,6 +148,31 @@ public class CompositeRouteImpl implements CompositeRoute {
 				if (Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) {
 					headerConnection = true;
 				}
+				if (Arrays.equals(HTTPHeaderDefaults.HOST.rootBytes(),header.rootBytes())) {
+					hostHeader = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.CONTENT_TYPE.rootBytes(),header.rootBytes())) {
+					contentType = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.ACCEPT_LANGUAGE.rootBytes(),header.rootBytes())) {
+					language = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.ACCEPT_ENCODING.rootBytes(),header.rootBytes())) {
+					encoding = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.REFERER.rootBytes(),header.rootBytes())) {
+					referer = true;				
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.ORIGIN.rootBytes(),header.rootBytes())) {
+					origin = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.DNT.rootBytes(),header.rootBytes())) {
+					dnt = true;
+				}
+				if (Arrays.equals(HTTPHeaderDefaults.USER_AGENT.rootBytes(),header.rootBytes())) {
+					user = true;
+				}
+				
 				
 				HTTPUtil.addHeader(scs.registry, structId, headerParser, header);
 			}
@@ -152,6 +188,31 @@ public class CompositeRouteImpl implements CompositeRoute {
 		if (!headerConnection) {
 			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.CONNECTION);
 		}
+		if (!hostHeader) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.HOST);
+		}
+		if (!contentType) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.CONTENT_TYPE);
+		}
+		if (!language) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.ACCEPT_LANGUAGE);
+		}
+		if (!encoding) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.ACCEPT_ENCODING);
+		}
+		if (!referer) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.REFERER);
+		}
+		if (!origin) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.ORIGIN);
+		}
+		if (!dnt) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.DNT);
+		}
+		if (!user) {
+			HTTPUtil.addHeader(scs.registry, structId, headerParser, HTTPHeaderDefaults.USER_AGENT);
+		}
+				
 				
 		HTTPHeader[] toEcho = scs.headersToEcho();
 		if (null != toEcho) {

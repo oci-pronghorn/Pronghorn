@@ -113,6 +113,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     	this(graphManager, join(inputPipes), log, outgoingPipes, coordinator);
     }
 
+    private final int pipeDivisor; //to take out the factors above like track and sub track
+    
     public OrderSupervisorStage(GraphManager graphManager, 
     		Pipe<ServerResponseSchema>[] inputPipes, 
     		Pipe<HTTPLogResponseSchema> log,
@@ -128,6 +130,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.conStruct = coordinator.connectionStruct();
         this.spec = coordinator.spec;
                 
+        //moduleParallelism is all the routes which is Readers * sub tracks so it must have both primes in use.
+        this.pipeDivisor = coordinator.moduleParallelism;
+        
         this.routeSLA = coordinator.routeSLALimits;
         
         this.dataToSend = inputPipes;
@@ -250,11 +255,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
 		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
     	
-
-		    	//dataToSend.length  this is a big hack by shifting, we need a better way to know this?
-		    	//WARNING: magic knowledge, the ServerSocketReaderStage will manage 2 tracks and split work 
-		    	//         between them even/odd. As a result the low bit is not helpful for picking a pipe.		    	
-		    	int myPipeIdx = (int)((channelId>>1) % poolMod);//channel must always have the same pipe for max write speed. 
+		    	//ensure that the channelId is not a factor of the roots found in poolMod then take the mod	    	
+		    	int myPipeIdx = (int)((channelId/pipeDivisor) % poolMod);//channel must always have the same pipe for max write speed. 
 		    			    	
 		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
 				    			        	
@@ -644,17 +646,24 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
 	
-		 boolean finishedFullReponse = true;//only false when we run out of room...
-		 int y = 0;
+		 rollupMultiAndPublish(input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, blobMask,
+				blob, connectionDataReader, businessTime, routeId);
+
+	}
+
+	private void rollupMultiAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
+			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq,
+			int len, int requestContext, final int blobMask, byte[] blob, ConnDataReaderController connectionDataReader,
+			long businessTime, int routeId) {
+		boolean finishedFullReponse = true;//only false when we run out of room...
+	
 		 //If a response was sent as multiple parts all part of the same sequence number then we roll them up as a single write when possible.
 		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 
 			 	 && Pipe.peekInt(input, 0xFF&ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23) == expSeq 
 			 	 && Pipe.peekLong(input, 0xFF&ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21) == channelId 
 			     && (finishedFullReponse =((len+Pipe.peekInt(input, PAYLOAD_LENGTH_IDX))<output.maxVarLen)) ) {
 					 //this is still part of the current response so combine them together
-					
-			 		y++;
-			 		
+								 		
 			 		 if (showCounts) {
 			 			 System.out.println(++countOfMessages +" combined message ");
 			 		 }
@@ -692,7 +701,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 finishPublish(input, myPipeIdx, channelId, output, expSeq, 
 				       requestContext, connectionDataReader, businessTime,
 			 	       routeId, finishedFullReponse);
-
 	}
 
 	private void finishPublish(final Pipe<ServerResponseSchema> input, final int myPipeIdx, final long channelId,

@@ -75,6 +75,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     },
     CONTENT_LOCATION("Content-Location: %b"),
     LOCATION("Location: %b"),
+    REFERER("Referer: %b"),
     ACCEPT("Accept: %b"),//chromium
     ACCEPT_CHARSET("Accept-Charset: %b"),
     ALT_SVC("Alt-Svc: %b"),//google.com

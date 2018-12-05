@@ -113,7 +113,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 //        //If server socket reader does not catch the data it may be lost
 //        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
- //       GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 2000L, this);
+        
+        //if too slow we may loose data but if too fast we may starve others needing data
+        GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
+        //TODO: can we do this dynamic by checking pipe depths??
+        
+        
         
         
         //if we only have 1 router then do not isolate the reader.
@@ -205,7 +210,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     public void run() {
     	
     	 if(!shutdownInProgress) {
-  
+
     	    	/////////////////////////////
     	    	//must keep this pipe from getting full or the processing will get backed up
     	    	////////////////////////////
@@ -223,7 +228,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ///Read from socket
     	        ////////////////////////////////////////
 
-    	        while (hasNewDataToRead()) { //single & to ensure we check has new data to read.
+    	        if (hasNewDataToRead()) { //single & to ensure we check has new data to read.
 
     	           doneSelectors.clear();
     	           hasRoomForMore = true; //set this up before we visit
@@ -238,7 +243,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	           
     	           removeDoneKeys(selectedKeys);
     	           if (!hasRoomForMore) {
-    	        	   break;
+    	        	 return;//  break;
     	           } else {
     	        	   //do we need to detected has room for more better?
     	        	 //  break;

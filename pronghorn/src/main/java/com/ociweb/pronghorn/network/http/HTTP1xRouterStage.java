@@ -864,9 +864,9 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 				
     			return SUCCESS;
           	}
-            
-          	
+                      	
         	headerMap = config.headerParserRouteId( routeId );
+        	
         	        
         } else {
        	
@@ -878,6 +878,9 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
       
         }
 
+//        if (!"Telemetry Server".equals(coordinator.serviceName())) {     
+//        	System.out.println("header map:\n"+headerMap.toString());
+//        }
       
     	tempLen = trieReader.sourceLen;
     	tempPos = trieReader.sourcePos;
@@ -1019,8 +1022,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 		if (null != cw) {//try again later if this connection is overloaded
 			
 			int requestContext = keepAliveOrNotContext(httpRevisionId, serverConnection.id);
-
-							
+	
 			long postLength = NO_LENGTH_DEFINED;
 			
 			int iteration = 0;

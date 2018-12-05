@@ -31,20 +31,17 @@ public class ServerSocketWriterStage extends PronghornStage {
     public static boolean showWrites = false;
     
     public static boolean lowLatency = true; //only turn this off when you are willing to accept long latencies for high volume 
-	public static long hardLimtNS = 200_000L; //200 micros
+	public static long hardLimtNS = 10_000_000L; //Was too small,   200_000L; //200 micros
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
 	//   2. if the pipe has no more data.
-    
-	
-	//TODO: by adding method and clearing the bufferChecked can make this grow at runtime if needed.
-	public static int MINIMUM_BUFFER_SIZE = 1<<21; //2mb default minimum
-	
+    	
     private final Pipe<NetPayloadSchema>[] input;
     private final Pipe<ReleaseSchema> releasePipe;
     
     private final ServerCoordinator coordinator;
     
+    //TODO: may want multiple buffers in the future per pipe...
     private ByteBuffer    workingBuffers[];
     private boolean       bufferChecked[];
     private SocketChannel writeToChannel[];
@@ -124,7 +121,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	    	
 
     	
-    	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue());  	
+    	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue()); 
     	
     	int c = input.length;
 
@@ -139,22 +136,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
     	Arrays.fill(activeTails, -1);   	
-    	
-    	long totalSize = 0;
-		int j = c;
-		while (--j>=0) {
-			//warning: this is the entire ring and may be too large.
-			int size = Math.max(MINIMUM_BUFFER_SIZE, 
-					c>8 ?
-					   input[j].maxVarLen*2    //small pipe mode since we have large count of outputs
-					  :input[j].sizeOfBlobRing //larger pipe since we only have a few
-					
-					);
-			workingBuffers[j] = ByteBuffer.allocateDirect(size);
-			totalSize+=size;
-		}
-		//System.out.println(ServerSocketWriterStage.class.getSimpleName()+" instance allocated "+totalSize+" bytes split over "+c+" pipes");
-    	
     }
     
     @Override
@@ -167,7 +148,9 @@ public class ServerSocketWriterStage extends PronghornStage {
        
     	boolean didWork = false;
     	boolean doingWork = false;
+    	int iteration = 0;
     	do {
+    		iteration++;
     		doingWork = false;
 	    	int x = input.length;
 	    	while (--x>=0) {
@@ -194,10 +177,15 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			
 	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
-	    			if (--writeToChannelBatchCountDown[x]<=0 
-	    				|| !hasRoomToWrite
-	    				||  (lowLatency & (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
+	    			if ( 
+	    				((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
+	    				||
+	    				!hasRoomToWrite
+	    				||
+	    				(lowLatency & (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
 	    				) {
+	    		    				
+	    				writeToChannelBatchCountDown[x]=-4;
 	    				writeToChannelMsg[x] = -1;
 		    			if (!(doingWork = writeDataToChannel(x))) {
 		    				//this channel did not write but we need to check the others
@@ -218,9 +206,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    					mergeNextMessage(writeToChannelMsg[x], x, localInput, writeToChannelId[x]);
 	    						    					
 	    				}	
-	    				if (Pipe.hasContentToRead(localInput)) {
-	    					writeToChannelBatchCountDown[x] = 0;//send now nothing else is mergable
-	    				}
 	    				
 	    				if (h>0) {
 	    					Pipe.releaseAllPendingReadLock(localInput);
@@ -360,7 +345,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        		}
 	        	}
 	        	
-	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
+	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId   
+	        	
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
 	        	writeToChannelBatchCountDown[idx] = maxBatchCount;
@@ -369,21 +355,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
 		        checkBuffers(idx, pipe, writeToChannel[idx]);
-		        //lazy allocate since we need to wait for a socket to be created.
-		        if (null == workingBuffers[idx]) {
-					try {
-						int sendBufSize = 
-								Math.max(pipe.maxVarLen, 
-								         writeToChannel[idx].getOption(StandardSocketOptions.SO_SNDBUF));
-						
-						sendBufSize *= 10;
-						
-						logger.info("new direct buffer of size {}",sendBufSize);
-						workingBuffers[idx] = ByteBuffer.allocateDirect(sendBufSize);						
-					} catch (IOException e) {
-						new RuntimeException(e);
-					}
-		        }
 		        
 		        ((Buffer)workingBuffers[idx]).clear();
 		        workingBuffers[idx].put(writeBuffs[0]);
@@ -406,9 +377,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	mergeNextMessage(msgIdx, idx, pipe, channelId);
 			        			      
 		        }	
-				if (Pipe.hasContentToRead(pipe)) {
-					writeToChannelBatchCountDown[idx] = 0;//send now nothing else is mergable
-				}
+//				if (Pipe.hasContentToRead(pipe)) {
+//					writeToChannelBatchCountDown[idx] = -1;//send now nothing else is mergable
+//				}
 		        		        
 		        Pipe.releaseAllPendingReadLock(input[idx]);
 		
@@ -430,6 +401,8 @@ public class ServerSocketWriterStage extends PronghornStage {
         }
                 
     }
+
+
 
 	private void mergeNextMessage(final int msgIdx, final int idx, Pipe<NetPayloadSchema> pipe, final long channelId) {
 		
@@ -475,7 +448,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(NetPayloadSchema.instance, msgIdx));
 		Pipe.readNextWithoutReleasingReadLock(input[idx]);
 	}
-
+	
 	private boolean isNextMessageMergeable(Pipe<NetPayloadSchema> pipe, final int msgIdx, final int idx, final long channelId, boolean debug) {
 
 		if (debug) {
@@ -486,22 +459,35 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    		    Pipe.peekLong(pipe, 1)==channelId	    		
 		    		);
 		}
+
+//		if (Pipe.hasContentToRead(pipe)) {
+//			if (Pipe.peekLong(pipe, 1)!=channelId) {
+//				System.out.println("stop accumulation: "+channelId+" vs "+Pipe.peekLong(pipe, 1));
+//			}
+//			if (Pipe.peekInt(pipe)!=msgIdx) {
+//				System.out.println("not msgIdx matching");
+//			}
+//			if (workingBuffers[idx].remaining()<=pipe.maxVarLen) {
+//				System.out.println("no room to write");
+//			}
+//			
+//		}
+		
 		
 		return  Pipe.hasContentToRead(pipe) && 
+				Pipe.peekLong(pipe, 1)==channelId && //this point blocks must merges since we need to write different channel.
 				Pipe.peekInt(pipe)==msgIdx && 
-				workingBuffers[idx].remaining()>pipe.maxVarLen && 
-				Pipe.peekLong(pipe, 1)==channelId;
+				workingBuffers[idx].remaining()>pipe.maxVarLen;
 	}
     
 	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
 		if (!bufferChecked[i]) {
 			try {
-				int minBufSize = 
-						Math.max(pipe.maxVarLen, 
-						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
-				//logger.info("buffer is {} and must be larger than {}",workingBuffers[i].capacity(), minBufSize);
-				if (workingBuffers[i].capacity()<minBufSize) {
-					logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
+				
+				int minBufSize = Math.max(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing, 
+						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF) * 4);
+				
+				if (null==workingBuffers[i] || workingBuffers[i].capacity()<minBufSize) {
 					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
 				}
 				bufferChecked[i] = true;
@@ -528,19 +514,21 @@ public class ServerSocketWriterStage extends PronghornStage {
 			
 			int bytesWritten = 0;
   
-		//	int localWritten = 0;
+			int localWritten = 0;
 			do {		 
 				bytesWritten = writeToChannel[idx].write(target);	
 			
 		    	if (bytesWritten>0) {
-		  //  		localWritten += bytesWritten;
+		    		localWritten += bytesWritten;
 		    	} else {
 		    		break;
 		    	}
 		    
 		    	//output buffer may be too small so keep writing
 			} while (target.hasRemaining());
-		//	System.out.println(localWritten);
+			 
+			// max 157569   260442
+			//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670
 			
 			if (!target.hasRemaining()) {
 				markDoneAndRelease(idx);

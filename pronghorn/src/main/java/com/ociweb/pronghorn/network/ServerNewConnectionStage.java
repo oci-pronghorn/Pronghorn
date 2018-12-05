@@ -136,7 +136,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
     		server = ServerSocketChannel.open();
-    		
+    	    		
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
     		server.socket().setPerformancePreferences(1, 2, 0);
@@ -411,14 +411,18 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      if (channelId>=0) {		                    
 		    	  Selector sel = coordinator.getSelector();
 		          if (sel!=null) {      		          
-			          try {                          
+			          try {         
+			        	  
 			        	  SocketChannel channel = server.accept();
+			        			        	  
 			              channel.configureBlocking(false);
 			              
+			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
 			              channel.socket().setPerformancePreferences(1, 0, 2);
 			     
+			              
 			              SSLEngine sslEngine = null;
 			              if (coordinator.isTLS) {
 							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
@@ -485,6 +489,41 @@ public class ServerNewConnectionStage extends PronghornStage{
 		  }
 	}
 
+
+//	private void growSendBuf(SocketChannel socketChannel) {
+//		try {
+//			final int baseSize =socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
+//			//try to set a larger send buffer size...
+//			
+//			System.out.println("base: "+baseSize);
+//			
+//		    int lastKnown = baseSize;
+//		    do {
+//		    	socketChannel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<21);//lastKnown+baseSize);
+//		    	
+//		    	int newValue = socketChannel.getOption(StandardSocketOptions.SO_SNDBUF);
+//		    	System.out.println("updated to: "+newValue);
+//		    	
+//		    	if (newValue!=(lastKnown+baseSize)) {
+//		    		break;
+//		    	} else {
+//		    		lastKnown = newValue;
+//		    	}
+//		    
+//		    	
+//		    	
+//		    } while (true);
+//			
+//			
+//			
+//			
+//			
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		
+//	}
+	
 	private void publishNotificationOFNewConnection(int targetPipeIdx, final long channelId) {
 		//the pipe selected has already been checked to ensure room for the connect message                      
 		  Pipe<ServerConnectionSchema> targetPipe = newClientConnections;

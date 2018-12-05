@@ -570,9 +570,8 @@ public class NetGraphBuilder {
 			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/3);			
 		} else		
 		//if we have at least 4 tracks and it is divisible by 2
-		if ((tracks>=4) && (tracks&1)==0 && !coordinator.isTLS) { 					
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/2); 
-			
+		if ((tracks>4) && (tracks&1)==0 && !coordinator.isTLS) { 					
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/2);			
 		} else {
 			/////////////////
 			//do not split for TLS since it is already slow and the ack backs are more complex
