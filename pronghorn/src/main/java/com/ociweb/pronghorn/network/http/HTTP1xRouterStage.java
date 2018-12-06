@@ -1055,9 +1055,7 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    	}
 			        //nothing valid was found so this is incomplete.
 			        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
-			    }
-				
-			    if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
+			    } else if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
 				    HTTPHeader header = config.getAssociatedObject(headerToken);
 				    int writePosition = writer.position();
 				    

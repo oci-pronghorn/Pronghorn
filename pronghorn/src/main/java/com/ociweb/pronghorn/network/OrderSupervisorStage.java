@@ -233,7 +233,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	}		        	
 		        }		       
 	    	} while ( didWork && !shutdownInProgress);
-	    	
+			
 	 
 	    	
 
@@ -257,7 +257,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     	
 		    	//ensure that the channelId is not a factor of the roots found in poolMod then take the mod	    	
 		    	int myPipeIdx = (int)((channelId/pipeDivisor) % poolMod);//channel must always have the same pipe for max write speed. 
-		    			    	
+		    			   
+		    	//System.out.println("write: "+channelId+" to pipe "+myPipeIdx+" divisor "+pipeDivisor);
+		    	
 		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
 				    			        	
 			    	//only after we know that we are doing something.

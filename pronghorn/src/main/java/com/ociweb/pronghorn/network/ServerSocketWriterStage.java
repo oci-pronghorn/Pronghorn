@@ -29,9 +29,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     public static boolean showWrites = false;
-    
-    public static boolean lowLatency = true; //only turn this off when you are willing to accept long latencies for high volume 
-	public static long hardLimtNS = 10_000_000L; //Was too small,   200_000L; //200 micros
+ 	public static long hardLimtNS = 1_000_000L; //1ms
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
 	//   2. if the pipe has no more data.
@@ -121,7 +119,9 @@ public class ServerSocketWriterStage extends PronghornStage {
     	    	
 
     	
-    	this.maxBatchCount = null==rate ? 16 : (int)(hardLimtNS/rate.longValue()); 
+    	this.maxBatchCount = ( null==rate ? 16 : (int)(hardLimtNS/rate.longValue())); 
+    	
+    	//System.out.println("server socket write batch count "+maxBatchCount+" cycle rate "+rate.longValue()); // 100_000;
     	
     	int c = input.length;
 
@@ -145,7 +145,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     @Override
     public void run() {
-       
+
     	boolean didWork = false;
     	boolean doingWork = false;
     	int iteration = 0;
@@ -178,12 +178,15 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
 	    			if ( 
+	    			    //accumulating too long so flush now.
 	    				((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
 	    				||
-	    				!hasRoomToWrite
+	    				!hasRoomToWrite //must write to network out buffer has no more room
 	    				||
-	    				(lowLatency & (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
+	    				//fire on no data, to make the loop faster.. may help with online test!!! return quickly..
+	    				((!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
 	    				) {
+	    				
 	    		    				
 	    				writeToChannelBatchCountDown[x]=-4;
 	    				writeToChannelMsg[x] = -1;
@@ -376,11 +379,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	
 		        	mergeNextMessage(msgIdx, idx, pipe, channelId);
 			        			      
-		        }	
-//				if (Pipe.hasContentToRead(pipe)) {
-//					writeToChannelBatchCountDown[idx] = -1;//send now nothing else is mergable
-//				}
-		        		        
+		        }
+		       		        		        
 		        Pipe.releaseAllPendingReadLock(input[idx]);
 		
 		        
@@ -460,24 +460,33 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    		);
 		}
 
-//		if (Pipe.hasContentToRead(pipe)) {
-//			if (Pipe.peekLong(pipe, 1)!=channelId) {
-//				System.out.println("stop accumulation: "+channelId+" vs "+Pipe.peekLong(pipe, 1));
-//			}
-//			if (Pipe.peekInt(pipe)!=msgIdx) {
-//				System.out.println("not msgIdx matching");
-//			}
-//			if (workingBuffers[idx].remaining()<=pipe.maxVarLen) {
-//				System.out.println("no room to write");
-//			}
-//			
-//		}
-		
-		
-		return  Pipe.hasContentToRead(pipe) && 
-				Pipe.peekLong(pipe, 1)==channelId && //this point blocks must merges since we need to write different channel.
-				Pipe.peekInt(pipe)==msgIdx && 
-				workingBuffers[idx].remaining()>pipe.maxVarLen;
+
+		if (Pipe.hasContentToRead(pipe) ) {
+			if (Pipe.peekLong(pipe, 1)==channelId 
+				&& Pipe.peekInt(pipe)==msgIdx
+				&& workingBuffers[idx].remaining()>pipe.maxVarLen) {
+				return true;
+			} else {
+				//not for same channel or message or out of room so we must flush now.
+				writeToChannelBatchCountDown[idx] = -2;
+//							if (Pipe.peekInt(pipe)!=msgIdx) {
+//								System.out.println("not msgIdx matching");
+//							}
+//							if (workingBuffers[idx].remaining()<=pipe.maxVarLen) {
+//								System.out.println("no room to write");
+//							}				
+//							if (Pipe.peekLong(pipe, 1)!=channelId) { //by far most common here.
+//								System.out.println("stop accumulation: "+channelId+" vs "+Pipe.peekLong(pipe, 1));
+//							}
+							
+				//TODO: if we have multiple blocks per pipe we could group them by connection Id for more effective writes..			
+							
+				return false;
+			}
+		} else {
+			return false;
+		}
+	
 	}
     
 	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
@@ -485,7 +494,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			try {
 				
 				int minBufSize = Math.max(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing, 
-						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF) * 4);
+						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
 				
 				if (null==workingBuffers[i] || workingBuffers[i].capacity()<minBufSize) {
 					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);

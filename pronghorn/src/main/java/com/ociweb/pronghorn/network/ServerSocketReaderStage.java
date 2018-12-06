@@ -115,7 +115,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 //        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
         
         //if too slow we may loose data but if too fast we may starve others needing data
-        GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
+       // GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
         //TODO: can we do this dynamic by checking pipe depths??
         
         
