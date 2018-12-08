@@ -835,7 +835,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @param expected1 used for comparison with message
      * @param expected2 used for comparison with message
      * @param expected3 used for comparison with message
-     * @return <code>true</code> if message == expected1, expected2 && expected3, else <code>false</code>
+     * @return <code>true</code> if message equals expected1, expected2 and expected3, else <code>false</code>
      */
 
 	public static boolean peekMsg(Pipe pipe, int expected1, int expected2, int expected3) {

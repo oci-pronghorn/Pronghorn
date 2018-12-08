@@ -66,13 +66,15 @@ public class StringTemplateBuilder<T> extends StringTemplateRenderer<T> implemen
 	
 	@Override
 	public void render(final AppendableByteWriter<?> writer, final T source) {
+		render(this,writer,source);
+	}
 
+	public static <T> void render(StringTemplateBuilder<T> builder, AppendableByteWriter<?> writer, T source) {
 		//assert(immutable) : "String template builder can only be rendered after lock.";
-		StringTemplateScript<T>[] localScript = script;
-		for(int i=0;i<count;i++) {
-			localScript[i].render(writer, source);
-		}
-		
+				StringTemplateScript<T>[] localScript = builder.script;
+				for(int i=0;i<builder.count;i++) {
+					localScript[i].render(writer, source);
+				}
 	}
 
 	private StringTemplateBuilder<T> addBytes(final byte[] byteData) {
@@ -121,6 +123,7 @@ public class StringTemplateBuilder<T> extends StringTemplateRenderer<T> implemen
 					}
 				});
 	}
+
 
 
 

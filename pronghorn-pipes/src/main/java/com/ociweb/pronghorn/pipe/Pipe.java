@@ -1830,6 +1830,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * 
 	 * @param len int length of bytes written
 	 * @param output Pipe target 
+	 * @param S schema
 	 */
     public static <S extends MessageSchema<S>> void moveBlobPointerAndRecordPosAndLength(int len, Pipe<S> output) {
     	moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(output), len, output);

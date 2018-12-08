@@ -146,10 +146,10 @@ public class TokenBuilder {
     }
 
     /**
-     * Computes the absent values as needed. 00 -> 1 
-     *                                       01 -> 0 
-     *                                       10 -> -1 
-     *                                       11 -> Long.MAX_VALUE
+     * Computes the absent values as needed. 00 is 1 
+     *                                       01 is 0 
+     *                                       10 is -1 
+     *                                       11 is Long.MAX_VALUE
      * 
      * 0 1 1111111111111111111111111111111111111111111111111111111111111111
      * 111111111111111111111111111111111111111111111111111111111111111

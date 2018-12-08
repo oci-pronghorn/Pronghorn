@@ -31,7 +31,7 @@ import com.ociweb.pronghorn.util.template.StringTemplateScript;
 
 // Maintain no dependencies to the public API classes (i.e. JSONObject)
 
-class JSONBuilder<R, T> implements StringTemplateScript<T> {
+class JSONBuilder<R, T> extends StringTemplateScript<T> {
     // Do not store mutable state used during render.
     // Use ThreadLocal if required.
     private final StringTemplateBuilder<T> scripts;
@@ -73,7 +73,7 @@ class JSONBuilder<R, T> implements StringTemplateScript<T> {
     }
 
     public void render(AppendableByteWriter writer, T source) {
-        scripts.render(writer, source);
+    	StringTemplateBuilder.render(scripts,writer, source);
     }
 
     // Object Helpers

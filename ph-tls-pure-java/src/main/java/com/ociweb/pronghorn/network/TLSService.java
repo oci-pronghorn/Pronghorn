@@ -33,12 +33,9 @@ public class TLSService {
 
 	private TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory, boolean trustAll, SecureRandom secureRandom) {
 		try {
-			//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
-			final String PROTOCOL    = "TLSv1.2";
-			final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
 
-			this.protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
-
+			this.protocols = selectSupportedProtocols();		
+			
 			KeyManager[] keyManagers = keyManagerFactory != null ? keyManagerFactory.getKeyManagers() : null;
 
 			TrustManager[] trustManagers = null;
@@ -47,13 +44,36 @@ public class TLSService {
 			} else if (trustManagerFactory != null) {
 				trustManagers = trustManagerFactory.getTrustManagers();
 			}
-	        context = SSLContext.getInstance(PROTOCOL);
+	        context = SSLContext.getInstance(this.protocols[0]);
 			context.init(keyManagers, trustManagers, secureRandom);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		//run once first to determine which cypher suites we will be using.
 		createSSLEngineServer();
+	}
+
+	private String[] selectSupportedProtocols() {
+		String[] temp;
+		{
+		//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
+		final String PROTOCOL    = "TLSv1.2";
+		final String PROTOCOL1_3 = "TLSv1.3"; //only supported for Java 11 and greater
+
+		try {
+			float ver = Float.parseFloat(System.getProperty("java.version"));
+			if (ver>=11) {
+				//System.out.println("Support for "+PROTOCOL1_3+" enabled.");
+				temp = new String[]{PROTOCOL1_3,PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]	
+			} else {
+				temp = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]	
+			}
+			
+		} catch (NumberFormatException e) {
+			temp = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]				
+		}
+		}
+		return temp;
 	}
 	
 	public int maxEncryptedContentLength() {
