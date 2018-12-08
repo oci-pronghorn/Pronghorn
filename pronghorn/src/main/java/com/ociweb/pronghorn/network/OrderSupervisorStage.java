@@ -169,7 +169,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         //NOTE: do not flag order super as a LOAD_MERGE since it must be combined with
         //      its feeding pipe as frequently as possible, critical for low latency.
         
-   //     GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        //GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
          
     }
     
@@ -597,6 +597,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 DataOutputBlobWriter.openField(outputStream);
 		 /////////////////////////
 		
+		 
 		 final int expSeq = Pipe.takeInt(input); //sequence number
 		 assert(sequenceNo == expSeq);
 		 
@@ -605,34 +606,35 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int len = Pipe.takeByteArrayLength(input);
 		
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
-		 
-		 
-		 final int blobMask = Pipe.blobMask(input);
+ 
 		 byte[] blob = Pipe.byteBackingArray(meta, input);
 		 final int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
 		
-		 BaseConnection con = socketHolder.get(channelId);
-		 ConnDataReaderController connectionDataReader = null;
-		 long arrivalTime = -1;
-		 long businessTime = -1;
-		 int routeId = -1;
+		 final BaseConnection con = socketHolder.get(channelId);
 		 
+		 loadConnectionDataAndPublish(input, myPipeIdx, channelId, beginningOfResponse, 
+				 	output, outputStream, expSeq,
+				 	len, requestContext, blob, bytePosition, con);
+
+	}
+
+	private void loadConnectionDataAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
+			boolean beginningOfResponse, Pipe<NetPayloadSchema> output,
+			DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq, int len, int requestContext,
+			byte[] blob, final int bytePosition, final BaseConnection con) {
+		
+		ConnDataReaderController connectionDataReader = null;
+
 		 if (null!=con) {
 			 channelId = con.id;
 			 connectionDataReader = con.connectionDataReader;
 			 ChannelReader reader = connectionDataReader.beginRead();
-			 if (null!=reader && conStruct!=null) {
+			 if (null!=reader && conStruct!=null) {	
+				 requestContext |= connectionDataReader.readContext();
 				
-				 
-				 arrivalTime = connectionDataReader.readArrivalTime();
-				 businessTime = connectionDataReader.readBusinessTime();
-				 				 
-				 int origCon = connectionDataReader.readContext();				 
-				 routeId = connectionDataReader.readRoute();
-				 			 				 
-				 requestContext |= origCon;
-				 
-				 len = beginningOfResponse(beginningOfResponse, outputStream, len, blobMask, blob, bytePosition, reader);
+				 if (beginningOfResponse) {
+					 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
+				 }
 			 } else {
 				 //warning this is an odd case which happens in telemetry.
 				 //why is there no context stored.
@@ -640,23 +642,19 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 } else {			 
 		 }
 		 if (len>0) {
-			 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+			 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, Pipe.blobMask(input));
 		 }
-
-		 
-		 int temp = Pipe.bytesReadBase(input);
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
 	
-		 rollupMultiAndPublish(input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, blobMask,
-				blob, connectionDataReader, businessTime, routeId);
-
+		 rollupMultiAndPublish(input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
+				blob, connectionDataReader);
 	}
 
 	private void rollupMultiAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
 			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq,
-			int len, int requestContext, final int blobMask, byte[] blob, ConnDataReaderController connectionDataReader,
-			long businessTime, int routeId) {
+			int len, int requestContext, final int blobMask, byte[] blob, 
+			ConnDataReaderController connectionDataReader) {
 		boolean finishedFullReponse = true;//only false when we run out of room...
 	
 		 //If a response was sent as multiple parts all part of the same sequence number then we roll them up as a single write when possible.
@@ -700,28 +698,31 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
-		 finishPublish(input, myPipeIdx, channelId, output, expSeq, 
-				       requestContext, connectionDataReader, businessTime,
-			 	       routeId, finishedFullReponse);
+		 finishPublish(this, input, myPipeIdx, channelId, output, expSeq, 
+				       requestContext, connectionDataReader, finishedFullReponse);
 	}
 
-	private void finishPublish(final Pipe<ServerResponseSchema> input, final int myPipeIdx, final long channelId,
+	private static void finishPublish(OrderSupervisorStage that, final Pipe<ServerResponseSchema> input, final int myPipeIdx, final long channelId,
 			Pipe<NetPayloadSchema> output, final int expSeq, final int requestContext,
-			final ConnDataReaderController connectionDataReader, final long businessTime, final int routeId,
+			final ConnDataReaderController connectionDataReader, 
 			final boolean finishedFullReponse) {
 				
 		if (finishedFullReponse) {
 			 //nothing after this point needs this data so it is abandoned.
+			 int routeId = -1;
+			 long businessTime = -1;
 			 if (null!=connectionDataReader) {
+				 routeId = connectionDataReader.readRoute();
+				 businessTime = connectionDataReader.readBusinessTime();
 				 connectionDataReader.commitRead();
 			 }
 			 
 			 long limitSLA = -1;
-			 if (routeId<routeSLA.length && routeId>=0) {
-				 limitSLA = routeSLA[routeId];				 
+			 if (routeId<that.routeSLA.length && routeId>=0) {
+				 limitSLA = that.routeSLA[routeId];				 
 			 }
 			 
-			 if ((null!=log) || (limitSLA>0)) {
+			 if ((null!=that.log) || (limitSLA>0)) {
 				 
 				 long now = System.nanoTime();
 				 long businessDuration = now-businessTime;
@@ -731,7 +732,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 //TODO: publish if pipe is found..	
 				 //}
 				 				 
-				 writeToLog(channelId, output, expSeq, now, businessDuration);
+				 that.writeToLog(channelId, output, expSeq, now, businessDuration);
 			 }			 
 			 
 		 } else {
@@ -741,11 +742,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 
          
-		 if (showUTF8Sent) {
+		 if (that.showUTF8Sent) {
 			 Pipe.outputStream(output).debugAsUTF8();
 		 }
 		 
-		 writeToNextStage(output, myPipeIdx, channelId, requestContext, expSeq); 
+		 that.writeToNextStage(output, myPipeIdx, channelId, requestContext, expSeq); 
 		 	 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
@@ -789,32 +790,30 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 	}
 
-	private int beginningOfResponse(boolean beginningOfResponse, DataOutputBlobWriter<NetPayloadSchema> outputStream,
-			int len, final int blobMask, byte[] blob, final int bytePosition, ChannelReader reader) {
-		if (beginningOfResponse) {
-			 HTTPHeader[] headersToEcho = conStruct.headersToEcho();
-			 if (null!=headersToEcho) {
+	private int echoHeaders(DataOutputBlobWriter<NetPayloadSchema> outputStream, int len, final int blobMask,
+			byte[] blob, final int bytePosition, ChannelReader reader) {
+		HTTPHeader[] headersToEcho = conStruct.headersToEcho();
+		 if (null!=headersToEcho) {
 
-				 int newLinePos = (bytePosition+len-2);
-				 assert(blob[newLinePos&blobMask]=='\r');
-				 assert(blob[(1+newLinePos)&blobMask]=='\n');						 
-				 if (blob[newLinePos&blobMask]=='\r') {
-					 len-=2;//confirm it is \r\n? add assert!
-					 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
-					 len = 0;//so the following write will not write a second time.
+			 int newLinePos = (bytePosition+len-2);
+			 assert(blob[newLinePos&blobMask]=='\r');
+			 assert(blob[(1+newLinePos)&blobMask]=='\n');						 
+			 if (blob[newLinePos&blobMask]=='\r') {
+				 len-=2;//confirm it is \r\n? add assert!
+				 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+				 len = 0;//so the following write will not write a second time.
 
-					 for(int i=0; i<headersToEcho.length; i++) {
-						 HTTPHeader header = headersToEcho[i];
-					
-						 if (!reader.structured().isNull(header)) {	
-							 System.err.println("echo header "+header);
-							 spec.writeHeader(outputStream, header, reader.structured().read(header));
-						 }
-						 //TODO: confirm works with chunked and not
-						 
+				 for(int i=0; i<headersToEcho.length; i++) {
+					 HTTPHeader header = headersToEcho[i];
+				
+					 if (!reader.structured().isNull(header)) {	
+						 System.err.println("echo header "+header);
+						 spec.writeHeader(outputStream, header, reader.structured().read(header));
 					 }
-					 outputStream.write(BYTES_NEWLINE);
+					 //TODO: confirm works with chunked and not
+					 
 				 }
+				 outputStream.write(BYTES_NEWLINE);
 			 }
 		 }
 		return len;

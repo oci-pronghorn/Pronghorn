@@ -440,7 +440,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 		ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 		
 		workingBuffers[idx].put(writeBuffs2[0]);
-		workingBuffers[idx].put(writeBuffs2[1]);
+	
+		if (writeBuffs2[1].hasRemaining()) {
+			workingBuffers[idx].put(writeBuffs2[1]);
+		}
 		
 		assert(!writeBuffs2[0].hasRemaining());
 		assert(!writeBuffs2[1].hasRemaining());
@@ -501,6 +504,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 				}
 				bufferChecked[i] = true;
 			} catch (ClosedChannelException cce) {
+				if (null==workingBuffers[i]) {
+					workingBuffers[i] = ByteBuffer.allocateDirect(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing);
+				}
 				bufferChecked[i] = true;
 			} catch (IOException e) {
 				throw new RuntimeException(e);

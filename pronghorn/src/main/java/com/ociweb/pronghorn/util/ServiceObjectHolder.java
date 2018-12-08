@@ -17,13 +17,13 @@ import com.ociweb.pronghorn.network.ServerConnection;
  * 
  * Sample usage:
  * 
- *        ServiceObjectValidator<Channel> validator = new ServiceObjectValidator<Channel>() {
+ *        ServiceObjectValidator<?> validator = new ServiceObjectValidator<?>() {
  *              public Channel isValid(Channel serviceObject) {
  *                   return serviceObject.isOpen() ? serviceObject : null;
  *               }
  *        };
  *             
- *        ServiceObjectHolder<Channel> channelHolder = new ServiceObjectHolder<Channel>(initialBits, Channel.class, validator);
+ *        ServiceObjectHolder<?> channelHolder = new ServiceObjectHolder<?>(initialBits, Channel.class, validator);
  * 
  *        //save channel so it can be looked up later
  *        long channelIndex = channelHolder.add(channel);

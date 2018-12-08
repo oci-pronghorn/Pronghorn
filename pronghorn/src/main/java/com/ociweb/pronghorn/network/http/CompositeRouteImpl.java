@@ -43,6 +43,12 @@ public class CompositeRouteImpl implements CompositeRoute {
     private int[] activePathFieldIndexPosLookup;
     private Object[] activePathFieldValidator;
 
+    //TODO: add feature to turn off debug of unknown headers, 
+    //      this must remove the printing of %d headers when -1 found
+    //      this must remove the %d pattern added to filters
+    //      this must change this boolean to true;
+    boolean skipHeaderDeepChecks = false;
+    
     
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
@@ -106,11 +112,10 @@ public class CompositeRouteImpl implements CompositeRoute {
 		}
 		/////////////////////////
 		//add the headers to the struct
-	    //always add parser in order to ignore headers if non are requested.
-		boolean skipDeepChecks = false; //TODO: this may help but removing the wild card support would be better...
-		boolean supportsExtraction = true;
-		boolean ignoreCase = true;
-		TrieParser headerParser = new TrieParser(256,4,skipDeepChecks,supportsExtraction,ignoreCase);
+	    //always add parser in order to ignore headers if non are requested.		
+		final boolean supportsExtraction = true;
+		final boolean ignoreCase = true;
+		TrieParser headerParser = new TrieParser(256,4,skipHeaderDeepChecks,supportsExtraction,ignoreCase);
 
 		HTTPUtil.addHeader(headerParser,HTTPSpecification.END_OF_HEADER_ID,"");
 		

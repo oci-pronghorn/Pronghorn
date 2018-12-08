@@ -326,7 +326,7 @@ public abstract class BaseConnection {
 		
 		public long readBusinessTime() {
 			assert(isReading);
-			return activeRoute;
+			return activeBusinessTime;
 		}
 		
 		/**

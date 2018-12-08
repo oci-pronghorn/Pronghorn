@@ -597,7 +597,7 @@ public class GraphManager {
 				NetGraphBuilder.telemetryServerSetup(gm.telemetryCert, 
 						gm.telemetryHost, gm.telemetryPort, 
 						gm, TELEMTRY_SERVER_RATE);
-				logger.info("total count of stages including telemetry {} ",gm.stageCounter.get());
+				logger.trace("total count of stages including telemetry {} ",gm.stageCounter.get());
 			} else {
 				if (0 == gm.telemetryPort) {
 					recordElapsedTime = true; //Required to see CPU allocation.
@@ -916,7 +916,7 @@ public class GraphManager {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
                 if (Pipe.isForSchema(tp, targetSchema) && tp.id>=minimumPipeId) {
-                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema.getClass());
+                	Pipe<T>[] result = (Pipe<T>[])pipesOfType(count+1,p,gm, (Class<T>)targetSchema.getClass());
                 	result[(result.length-1)-count] = tp;
                     return result;
                 }

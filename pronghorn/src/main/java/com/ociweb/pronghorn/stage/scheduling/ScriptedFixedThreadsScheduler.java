@@ -1052,7 +1052,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			
 		}
 		threadCount=count;
-		logger.info("actual thread count {}", threadCount);
+		logger.trace("actual thread count {}", threadCount);
 		
 		//logger.trace("thread checking for long runs is {}",idxThreadCheckingForLongRuns);
 		/////////////
@@ -1333,64 +1333,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			return;
 		}	
 		
-        ThreadFactory threadFactory = new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable r) {
-				Thread result = null;
-				
-				int prioirity = Thread.NORM_PRIORITY;
-				Field[] fields = r.getClass().getDeclaredFields();
-				int f = fields.length;
-				while (--f>=0) {
-					if (fields[f].getType().isAssignableFrom(NamedRunnable.class)) {
-						fields[f].setAccessible(true);
-						
-						try {
-							if (fields[f].get(r)==null || null==((NamedRunnable)fields[f].get(r)).name()) {
-								result = new Thread(r,"Unknown");	
-							} else {
-								//logger.info("Creating new thread named {}",((NamedRunnable)fields[f].get(r)).name());
-								NamedRunnable namedRunnable = (NamedRunnable)fields[f].get(r);
-								result = new Thread(r, namedRunnable.name());
-								namedRunnable.setThreadId(result.getId());
-								
-								//NOTE: disabled until we work out performance issues on production test server...
-								boolean enableThreadProrityInc = false;
-								if (enableThreadProrityInc) {
-									//long names are more important and get a higher priority
-									//may want to count commas instead..
-									if (namedRunnable.name().length()>40) {
-										logger.trace("priority thread {}",namedRunnable.name());
-										prioirity = Thread.MAX_PRIORITY;
-									}
-								}
-							}
-						} catch (IllegalArgumentException e) {
-							logger.info("error pulling NamedRunnable",e);
-							result = new Thread(r,"Unknown");
-						} catch (IllegalAccessException e) {
-							logger.info("error pulling NamedRunnable",e);
-							result = new Thread(r,"Unknown");		
-						} finally {
-							fields[f].setAccessible(false);
-						}
-					}
-					
-				} 
-				
-				if (null==result) {
-					result = new Thread(r,"Unknown");				
-				}			
-				
-				result.setPriority(prioirity);
-								
-				//logger.info("new thread created for {}",r.getClass().getName());
-				return result;
-			}        	
-        };
-        
         //TODO: add extra threads here for splitting??
-        this.executorService = Executors.newFixedThreadPool(ntsArray.length, threadFactory);    
+        this.executorService = Executors.newFixedThreadPool(ntsArray.length);    
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
@@ -1412,9 +1356,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		//PinningUtil.visitStacks();
 		
 	}
-
 	
-	private Runnable buildRunnable(final CyclicBarrier allStagesLatch, final ScriptedNonThreadScheduler nts) {
+	private NamedRunnable buildRunnable(final CyclicBarrier allStagesLatch, final ScriptedNonThreadScheduler nts) {
 		assert(null!=allStagesLatch);
 		assert(null!=nts);
 	
@@ -1423,6 +1366,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			@Override
 			public void run() {
 				
+				Thread.currentThread().setName(name());
 				nts.startup();
 				
 				try {
@@ -1461,13 +1405,14 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 		};
 	}
 
-	private Runnable buildRunnable(final ScriptedNonThreadScheduler nts) {
+	private NamedRunnable buildRunnable(final ScriptedNonThreadScheduler nts) {
 		assert(null!=nts);
 	
 		return new NamedRunnable() {
 
 			@Override
 			public void run() {
+					Thread.currentThread().setName(name());
 					while (!ScriptedNonThreadScheduler.isShutdownRequested(nts)) {
 						nts.run();										
 					}		

@@ -147,17 +147,12 @@ public class NetGraphBuilder {
 				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);//may be consumed by high level API one does not know.
 			}
 		}
-			
-		
-		////////////////////////
-		//Control for how many HTTP1xResponseParserStage instances we will be using
-		//on our 4 core test box we can not set this much larger or we will be stuck with 1 parser.
-		final int pipesPerResponseParser = 28;//30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
 
 		//do not have more parsers than cores and do not have more parsers than needed for pipe goal
-		int maxParser = Math.min(CoresUtil.availableProcessors(),  rawToParse.length/pipesPerResponseParser);
+		int maxParser = Math.min(CoresUtil.availableProcessors(),  rawToParse.length/ccm.pipesPerResponseParser);
 		//find the first number going into count evenly which causes the pipe count to be < 32
 		int proposed = Math.max(1, maxParser);
+
 		while (0 != (rawToParse.length%proposed) && proposed>1) {
 			proposed--;
 		}

@@ -22,7 +22,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn</artifactId>
-            <version>1.0.19</version>
+            <version>1.0.20</version>
         </dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -71,7 +71,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.6</version>
+				<version>3.1.0</version>
 				<configuration>
 					<forceCreation>true</forceCreation>
 					<archive>
@@ -85,7 +85,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>2.4</version>
+				<version>3.0.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -133,7 +133,8 @@
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
 
-					<finalName>uber${artifactId}</finalName>
+					<!--  finalName>uber${artifactId}</finalName  use for java 8 proguard -->
+					<finalName>{artifactId}</finalName>
 					<appendAssemblyId>false</appendAssemblyId>
 
 				</configuration>
@@ -149,7 +150,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
+			<!--  plugin  only works for Java8 until next release of proguard for 11>
 
 				<groupId>com.github.wvengen</groupId>
 				<artifactId>proguard-maven-plugin</artifactId>
@@ -184,7 +185,7 @@
 						<scope>runtime</scope>
 					</dependency>
 				</dependencies>
-			</plugin>
+			</plugin -->
 
 		</plugins>
 	</build>

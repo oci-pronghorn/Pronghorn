@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn</artifactId>
     <name>pronghorn</name>
-    <version>1.0.19</version>
+    <version>1.0.20</version>
     <!-- Looking for the release jar? This project is under active development.
        Please consider getting involved and sponsoring the completion of Pronghorn.
        mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -102,13 +102,13 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn-pipes</artifactId>
-            <version>1.0.13</version>
+            <version>1.0.14</version>
         </dependency>
 
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>ph-tls-pure-java</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
         </dependency>
 
         <dependency>
@@ -133,14 +133,7 @@
     </dependencies>
 
     <build>
-        <extensions>
-            <extension>
-                <groupId>org.apache.maven.wagon</groupId>
-                <artifactId>wagon-webdav-jackrabbit</artifactId>
-                <version>2.2</version>
-            </extension>
-        </extensions>
-
+      
         <plugins>
 
             <plugin>
@@ -155,7 +148,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.9</version>
+                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -194,20 +187,10 @@
                 <configuration>
 
                     <fork>true</fork>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                     <testSource>1.8</testSource>
                     <testTarget>1.8</testTarget>
-
-                    <!-- class loader and compiler is needed for unit tests so 3, this must be new builder test...-->
-                    <!--  	<testCompilerArguments>
-                                <profile>compact3</profile>
-                            </testCompilerArguments>
-                              <compilerArguments>
-                                <profile>compact1</profile>
-                            </compilerArguments>
-                            <source>1.8</source>
-                            <target>1.8</target> -->
 
                 </configuration>
             </plugin>
@@ -215,7 +198,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.4</version>
+                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -231,7 +214,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.1.0</version>
                 <configuration>
                     <archive>
                         <manifest>

@@ -101,10 +101,10 @@ public abstract class StageScheduler {
 		if (targetThreadCountLimit==Integer.MAX_VALUE) { 
 				  //NOTE: this case will be rarely used, the other schedules are
 			      //      more efficient however this scheduler is much simpler.
-				  logger.info("Threads in use {}, one per stage.", countStages);
+				  logger.trace("Threads in use {}, one per stage.", countStages);
 		          return new ThreadPerStageScheduler(gm);
 		} else {
-				  logger.info("Targeted threads in use {}, fixed limit with fixed script. NOTE: More threads may be used use to graph complexity and telemetry usage.", targetThreadCountLimit);
+				  logger.trace("Targeted threads in use {}, fixed limit with fixed script. NOTE: More threads may be used use to graph complexity and telemetry usage.", targetThreadCountLimit);
 				  return new ScriptedFixedThreadsScheduler(gm, targetThreadCountLimit, threadLimitHard);
 		}
 	}

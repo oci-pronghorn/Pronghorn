@@ -24,7 +24,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.PoolIdxPredicate;
-import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
+//import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Server-side stage that reads from the socket. Useful for building a server.
@@ -174,7 +174,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	this.isOk = new PipeLineFilter(groups, sizeOfOneGroup);      
     	this.responsePipeLinePool = new PoolIdx(output.length, groups); 	
         	
-    	this.selectedKeyHolder = new SelectedKeyHashMapHolder();
+    	//this.selectedKeyHolder = new SelectedKeyHashMapHolder();
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
                 
@@ -197,7 +197,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     };    
 
-    private SelectedKeyHashMapHolder selectedKeyHolder;
+   // private SelectedKeyHashMapHolder selectedKeyHolder;
 	private final BiConsumer keyVisitor = new BiConsumer() {
 		@Override
 		public void accept(Object k, Object v) {
@@ -233,13 +233,13 @@ public class ServerSocketReaderStage extends PronghornStage {
     	           doneSelectors.clear();
     	           hasRoomForMore = true; //set this up before we visit
 
-    	           HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-    	           if (null!=keyMap) {   
-    				   keyMap.forEach(keyVisitor);
-    	           } else {
+    	           //HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+    	           //if (null!=keyMap) {   
+    				//   keyMap.forEach(keyVisitor);
+    	           //} else {
     	        	   //fall back to old if the map can not be found.
     	        	   selectedKeys.forEach(selectionKeyAction);
-    	           }
+    	           //}
     	           
     	           removeDoneKeys(selectedKeys);
     	           if (!hasRoomForMore) {

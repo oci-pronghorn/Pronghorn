@@ -37,6 +37,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private PronghornStage firstStage;
 	
 	
+	////////////////////////
+	//Control for how many HTTP1xResponseParserStage instances we will be using
+	//on our 4 core test box we can not set this much larger or we will be stuck with 1 parser.
+	//30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
+	public final int pipesPerResponseParser =14;//may be as large as 28??
+
+	
 	public static boolean TEST_RECORDS = false;
 	
 	//do not modify without sync on domainRegistry which is final
@@ -367,6 +374,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private int clientConnectionsErrorCounter = 0;
 
 	private final ClientAbandonConnectionScanner abandonScanner;
+
+
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, 
 			final int hostId, int port, 

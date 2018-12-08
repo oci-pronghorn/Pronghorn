@@ -201,6 +201,10 @@ public class SSLUtil {
 
 	private static void gatherPipeDataForUnwrap(int maxEncryptedContentLength, ByteBuffer rolling, BaseConnection cc, final ByteBuffer[] targetBuffer, boolean isServer, Pipe<NetPayloadSchema> source) {
 
+		if (null!=cc) {
+			cc.localRunningBytesProduced = 0;
+		}
+		
 		assert(rolling.limit()==rolling.capacity());
 		
 		int meta = Pipe.takeByteArrayMetaData(source);
@@ -208,8 +212,7 @@ public class SSLUtil {
 		ByteBuffer[] inputs =  Pipe.wrappedReadingBuffers(source, meta, len);
 
 		assert(inputs[0].remaining()>0);
-		
-		cc.localRunningBytesProduced = 0;
+
 		if (inputs[1].remaining()==0) {
 			rolling.put(inputs[0]);
 			assert(0==inputs[0].remaining());
