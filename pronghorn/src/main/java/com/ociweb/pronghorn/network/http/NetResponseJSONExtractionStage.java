@@ -152,25 +152,98 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 		    		}
 		        }	
 		        break;
+		        
 		    	case NetResponseSchema.MSG_CONTINUATION_102:
-		    		throw new UnsupportedOperationException("Support for JSON parsing of chunked frames in the response is not yet implemented.\nPlease contact info@objectcomputing.com to request features and support this project.");
+		        {
+		        	//hold to pass forward
+		        	long conId = Pipe.takeLong(localInput);
+		        	int userSessionId = Pipe.takeInt(localInput);
+		        	int contextFlags = Pipe.takeInt(localInput);
+		        	DataInputBlobReader<NetResponseSchema> inputStream = Pipe.openInputStream(localInput); //payload
+	       			        	
+		        	//copies params and headers.
+		        	DataOutputBlobWriter<NetResponseSchema> outputStream = Pipe.openOutputStream(localOutput);
+		        	inputStream.readInto(outputStream, inputStream.readFromEndLastInt(StructuredReader.PAYLOAD_INDEX_LOCATION));
+		    
+		        	//inputStream is now positioned to the JSON
+		        	//outputStream is now positions as the target
+		        	DataInputBlobReader.setupParser(inputStream, reader);
+		    		parser.parse(reader, extractor.trieParser(), visitor);
+		    		
+		    		//if (TrieParserReader.parseHasContent(reader)) {
+		    		//	logger.info("calls detected with {} bytes after JSON.",TrieParserReader.parseHasContentLength(reader));
+		    		//}
+		    		
+		    		if (!visitor.isReady()  && visitor.isValid()) {
+		    			
+		    			final int size = Pipe.addMsgIdx(localOutput, msgIdx);
+		    			
+		    			Pipe.addLongValue(conId, localOutput);
+		    			Pipe.addIntValue(userSessionId, localOutput);
+		    			Pipe.addIntValue(contextFlags, localOutput);
+		    			
+		    			//moves the index data as is and must happen before JSON updates index
+		    			inputStream.readFromEndInto(outputStream);
+		    			//parser is not "ready for data" and requires export to be called
+		    			//this export will populate the index positions for the JSON fields
+
+		    			visitor.export(outputStream, extractor.getIndexPositions());
+		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());
+		    			
+		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
+				    			
+		    			Pipe.confirmLowLevelWrite(localOutput,size);
+		    			Pipe.publishWrites(localOutput);
+		    		} else {
+		    			//waiting for more in the next chunk.
+		    			
+		    			//TODO: how to detect  a failure vs needing more data...
+		    			throw new UnsupportedOperationException("Not yet finished, needs implmentation for detection of corrupt data inside chunked data processing.");
+		    			
+//		    			//send what data we have
+//		    			logger.debug("Unable to parse JSON");		    			
+//		    			
+//	    			    final int size = Pipe.addMsgIdx(localOutput, msgIdx);
+//		    			
+//		    			Pipe.addLongValue(conId, localOutput);
+//		    			Pipe.addIntValue(userSessionId, localOutput);
+//		    			Pipe.addIntValue(contextFlags, localOutput);
+//		    			
+//		    			//moves the index data as is and must happen before JSON updates index
+//		    			inputStream.readFromEndInto(outputStream);   			
+//		    			
+//		    			///we could not parse the JSON so we have not written anything to the payload
+//		    			///the caller will see a zero length response for this call
+//		    			
+//		    			DataOutputBlobWriter.commitBackData(outputStream, extractor.getStructId());		    			
+//		    			DataOutputBlobWriter.closeLowLevelField(outputStream);
+//				    			
+//		    			Pipe.confirmLowLevelWrite(localOutput,size);
+//		    			Pipe.publishWrites(localOutput);
+//		    			
+//		    			visitor.clear();//reset for next JSON
+		    		}
+		    		
+		    		
+		        }	
+		        break;
 		    	case NetResponseSchema.MSG_CLOSED_10:
-		    		
-					long conId = Pipe.takeLong(input);
-					int session = Pipe.takeInt(input);
-		    		final int size = Pipe.addMsgIdx(localOutput, msgIdx);
-		    		 
-		    		ChannelReader hostReader = Pipe.openInputStream(localInput);		    		
-		    		ChannelWriter hostWriter = Pipe.openOutputStream(localOutput);
-		    		hostReader.readInto(hostWriter, hostReader.available());
-		    		hostWriter.closeLowLevelField();
-		    		
-		    		Pipe.addIntValue(Pipe.takeInt(localInput), localOutput);
-		    		
-	    			Pipe.confirmLowLevelWrite(localOutput,size);
-	    			Pipe.publishWrites(localOutput);
-			    	break;
-			    	
+			    	{
+						long conId = Pipe.takeLong(input);
+						int session = Pipe.takeInt(input);
+			    		final int size = Pipe.addMsgIdx(localOutput, msgIdx);
+			    		 
+			    		ChannelReader hostReader = Pipe.openInputStream(localInput);		    		
+			    		ChannelWriter hostWriter = Pipe.openOutputStream(localOutput);
+			    		hostReader.readInto(hostWriter, hostReader.available());
+			    		hostWriter.closeLowLevelField();
+			    		
+			    		Pipe.addIntValue(Pipe.takeInt(localInput), localOutput);
+			    		
+		    			Pipe.confirmLowLevelWrite(localOutput,size);
+		    			Pipe.publishWrites(localOutput);
+				    	break;
+			    	}	
 		        case -1:
 		           requestShutdown();
 		        break;

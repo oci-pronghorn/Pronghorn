@@ -70,20 +70,6 @@
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<version>3.1.0</version>
-				<configuration>
-					<forceCreation>true</forceCreation>
-					<archive>
-						<manifestEntries>
-							<Build-Time>${maven.build.timestamp}</Build-Time>
-						</manifestEntries>
-					</archive>
-				</configuration>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.0.1</version>
 				<executions>
@@ -126,7 +112,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>${package}.${artifactId}</mainClass>
+							<mainClass>${package}.${mainClass}</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
@@ -134,7 +120,7 @@
 					</descriptorRefs>
 
 					<!--  finalName>uber${artifactId}</finalName  use for java 8 proguard -->
-					<finalName>{artifactId}</finalName>
+					<finalName>${artifactId}</finalName>
 					<appendAssemblyId>false</appendAssemblyId>
 
 				</configuration>

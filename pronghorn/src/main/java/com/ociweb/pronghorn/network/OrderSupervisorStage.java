@@ -638,8 +638,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 } else {
 				 //warning this is an odd case which happens in telemetry.
 				 //why is there no context stored.
+				 connectionDataReader=null;//no reader..
 			 }
-		 } else {			 
+			 assert(null==connectionDataReader || connectionDataReader.isReading.get());
+		 } else {
+			 assert(null==connectionDataReader || connectionDataReader.isReading.get());
 		 }
 		 if (len>0) {
 			 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, Pipe.blobMask(input));
@@ -647,6 +650,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
 	
+		
 		 rollupMultiAndPublish(input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
 				blob, connectionDataReader);
 	}

@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -265,7 +266,7 @@ public abstract class BaseConnection {
 		private final int SIZE_OF = Pipe.sizeOf(ConnectionStateSchema.instance,ConnectionStateSchema.MSG_STATE_1);
 		
 		protected final Pipe<ConnectionStateSchema> pipe;
-		protected boolean isReading = false;
+		protected AtomicBoolean isReading = new AtomicBoolean();
 				
 	    private int activeRoute;
 	    private long activeArrivalTime;
@@ -296,7 +297,7 @@ public abstract class BaseConnection {
 				int msg = Pipe.takeMsgIdx(pipe);
 				
 				if (msg >= 0) {
-					isReading = true;
+					isReading .set(true);
 					
 					activeRoute = Pipe.takeInt(pipe);
 					activeArrivalTime = Pipe.takeLong(pipe);					
@@ -304,28 +305,30 @@ public abstract class BaseConnection {
 					activeContext = Pipe.takeInt(pipe);
 					activeBusinessTime = Pipe.takeLong(pipe);
 					return result;
-				} 
+				} else {
+					//eof
+				}
 			}
 			return null;
 		}
 		
 		public int readRoute() {
-			assert(isReading);
+			assert(isReading.get());
 			return activeRoute;
 		}
 		
 		public long readArrivalTime() {
-			assert(isReading);
+			assert(isReading.get());
 			return activeArrivalTime;
 		}
 		
 		public int readContext() {
-			assert(isReading);
+			assert(isReading.get());
 			return activeContext;
 		}
 		
 		public long readBusinessTime() {
-			assert(isReading);
+			assert(isReading.get());
 			return activeBusinessTime;
 		}
 		
@@ -334,21 +337,21 @@ public abstract class BaseConnection {
 		 * beginRead() must be called again for another read.
 		 */
 		public void rollback() {
-			if (isReading) {
+			if (isReading.get()) {
 				Pipe.resetTail(pipe);
 			}
-			isReading = false;
+			isReading .set(false);
 		}
 		
 		/**
 		 * Move position forward.  ChanelReader is invalid and beginRead() must be called again.
 		 */
 		public void commitRead() {
-			if (isReading) {
+			if (isReading.get()) {
 				Pipe.confirmLowLevelRead(pipe, SIZE_OF);
 				Pipe.releaseReadLock(pipe);
 			}
-			isReading = false;
+			isReading.set(false);
 		}
 
 	}
