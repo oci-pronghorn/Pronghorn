@@ -228,8 +228,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ///Read from socket
     	        ////////////////////////////////////////
 
-    	        if (hasNewDataToRead()) { //single & to ensure we check has new data to read.
-
+    	        while (hasNewDataToRead()) { 
     	           doneSelectors.clear();
     	           hasRoomForMore = true; //set this up before we visit
 

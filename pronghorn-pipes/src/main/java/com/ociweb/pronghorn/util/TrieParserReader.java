@@ -649,7 +649,7 @@ public class TrieParserReader {
 							  long sourceLength, int sourceMask, final long unfoundResult, final long noMatchResult) {
 		
 		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, sourceMask, unfoundResult, noMatchResult);        
-		processEachType(reader, trie, source, sourceLength, sourceMask, false, 0);	
+		processEachType(reader, trie, source, sourceLength, sourceMask, false, 0, -1);	
 		return (reader.normalExit) ? exitUponParse(reader, trie) :   reader.result;
 	}
 
@@ -715,14 +715,14 @@ public class TrieParserReader {
 	private static void processEachType(TrieParserReader reader, 
 			TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, 
-			boolean hasSafePoint, int t) {
+			boolean hasSafePoint,
+			int t, int lastType) {
 
-		int lastType = -1;
 		while (reader.normalExit && (t=reader.type) != TrieParser.TYPE_END ) {  
 			
 			if (TrieParser.TYPE_RUN == t) {   
 				parseRun(reader, trie, source, sourceLength, sourceMask, hasSafePoint);
-			} else {						
+			} else {
 				if (TrieParser.TYPE_BRANCH_VALUE == t) {   
 					processBinaryBranch(reader, trie, source, sourceLength, sourceMask);				
 				} else {
@@ -732,19 +732,8 @@ public class TrieParserReader {
 						if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
 							processSwitch(reader, trie, source, sourceMask, hasSafePoint);				
 						} else {
-							if (TrieParser.TYPE_VALUE_BYTES == t) {            	
-								parseBytesAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);	
-							} else {
-								if (TrieParser.TYPE_VALUE_NUMERIC == t) {
-									parseNumericAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);		
-								}  else {
-									if (TrieParser.TYPE_SAFE_END == t) {
-										hasSafePoint = processSafeEndAction(reader, trie, sourceLength);                                             
-									} else  {       
-										reportError(reader, trie, lastType);									
-									}
-								}
-							}
+							hasSafePoint = extractValue(reader, trie, source, sourceLength, 
+									                   sourceMask, hasSafePoint, t, lastType);
 						}							
 					}
 				}
@@ -752,6 +741,24 @@ public class TrieParserReader {
 			lastType = t;
 		}
 		
+	}
+
+	private static boolean extractValue(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
+			int sourceMask, boolean hasSafePoint, int t, int lastType) {
+		if (TrieParser.TYPE_VALUE_BYTES == t) {            	
+			parseBytesAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);	
+		} else {
+			if (TrieParser.TYPE_VALUE_NUMERIC == t) {
+				parseNumericAction(reader, trie, source, sourceLength, sourceMask, hasSafePoint);		
+			}  else {
+				if (TrieParser.TYPE_SAFE_END == t) {
+					hasSafePoint = processSafeEndAction(reader, trie, sourceLength);                                             
+				} else  {       
+					reportError(reader, trie, lastType);									
+				}
+			}
+		}
+		return hasSafePoint;
 	}
 
 

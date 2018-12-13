@@ -137,7 +137,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
         		new SocketValidator(), false/*Do not grow*/);
 
         serverPipesConfig.pcmIn.ensureSize(HTTPRequestSchema.class, 
-        		Math.min(serverPipesConfig.fromRouterToModuleCount, 1<<12), //4K max queue length 
+      				serverPipesConfig.fromRouterToModuleCount, 
         		this.connectionStruct().inFlightPayloadSize());
         
         serverPipesConfig.pcmOut.addConfig(serverPipesConfig.pcmOut.getConfig(NetPayloadSchema.class)); 

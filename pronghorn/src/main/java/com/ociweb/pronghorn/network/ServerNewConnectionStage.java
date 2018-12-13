@@ -139,7 +139,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     	    		
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
-    		server.socket().setPerformancePreferences(1, 2, 0);
+    		server.socket().setPerformancePreferences(0,1,2);  //(1, 2, 0);
     		server.socket().setSoTimeout(0);
     		    		
     		endPoint = bindAddressPort(coordinator.host(), coordinator.port());
@@ -420,7 +420,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
-			              channel.socket().setPerformancePreferences(1, 0, 2);
+			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
 			     
 			              
 			              SSLEngine sslEngine = null;
