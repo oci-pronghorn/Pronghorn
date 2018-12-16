@@ -29,7 +29,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     public static boolean showWrites = false;
- 	public static long hardLimtNS = 1_000_000L; //1ms
+ 	public static long hardLimtNS = 50_000_000L; //50ms -- must be fast enough for the telemetry set now to 100ms
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
 	//   2. if the pipe has no more data.
@@ -177,14 +177,16 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			
 	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
-	    			if ( 
+	    			if (
+	    				//these are set up to minimize writes so we can write bigger blocks at once.	
+	    				/// 	
 	    			    //accumulating too long so flush now.
 	    				((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
 	    				||
 	    				!hasRoomToWrite //must write to network out buffer has no more room
 	    				||
 	    				//fire on no data, to make the loop faster.. may help with online test!!! return quickly..
-	    				((!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
+	    				(iteration>3 && (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
 	    				) {
 	    				
 	    		    				
@@ -498,7 +500,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 				
 				int minBufSize = Math.max(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing, 
 						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
-				
+									
 				if (null==workingBuffers[i] || workingBuffers[i].capacity()<minBufSize) {
 					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
 				}
@@ -543,7 +545,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			} while (target.hasRemaining());
 			 
 			// max 157569   260442
-			//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670
+	//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670
 			
 			if (!target.hasRemaining()) {
 				markDoneAndRelease(idx);

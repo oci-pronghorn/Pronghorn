@@ -49,43 +49,48 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 		
 		long localMinute = time/60_000L;
 		
-		if (localMinute != validRange) {
-						
-		    //this is so we know that we are in the same minute next time
-		    validRange = localMinute; 
-		    		    
-		    temp.reset();
-		    int size = Pipe.addMsgIdx(temp, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-		    
-		    DataOutputBlobWriter<RawDataSchema> targetStream = Pipe.openOutputStream(temp);
-		    		    
-		    //expensive call, must keep infrequent
-			formatter.formatTo(Instant.ofEpochMilli(time), targetStream);
-			targetStream.append(" GMT");
-			targetStream.replicate(writer);
-			
-			DataOutputBlobWriter.closeLowLevelField(targetStream);
-			Pipe.confirmLowLevelWrite(temp);
-			Pipe.publishWrites(temp);
-				
+		if (localMinute != validRange) {						
+		    updateFullTime(time, writer, localMinute);				
 		} else {
-			//just update seconds but use the rest
-			
-			Pipe.markTail(temp);
-			Pipe.takeMsgIdx(temp);
-			DataInputBlobReader<RawDataSchema> inStream = Pipe.openInputStream(temp);
-			inStream.readInto(writer, SECONDS_OFFSET);
-			inStream.skip(SECONDS_LENGTH);
-			
-			long sec = (time%60_000L)/1_000L;					
-			Appendables.appendFixedDecimalDigits(writer, sec, 10);
-				
-			inStream.readInto(writer, inStream.available());
-			
-			Pipe.resetTail(temp);
-			
+			updateSecondsOnly(time, writer);			
 		}
 		
+	}
+
+	private void updateSecondsOnly(long time, ChannelWriter writer) {
+		//just update seconds but use the rest
+		
+		Pipe.markTail(temp);
+		Pipe.takeMsgIdx(temp);
+		DataInputBlobReader<RawDataSchema> inStream = Pipe.openInputStream(temp);
+		inStream.readInto(writer, SECONDS_OFFSET);
+		inStream.skip(SECONDS_LENGTH);
+		
+		long sec = (time%60_000L)/1_000L;					
+		Appendables.appendFixedDecimalDigits(writer, sec, 10);
+			
+		inStream.readInto(writer, inStream.available());
+		
+		Pipe.resetTail(temp);
+	}
+
+	private void updateFullTime(long time, ChannelWriter writer, long localMinute) {
+		//this is so we know that we are in the same minute next time
+		validRange = localMinute; 
+				    
+		temp.reset();
+		int size = Pipe.addMsgIdx(temp, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		
+		DataOutputBlobWriter<RawDataSchema> targetStream = Pipe.openOutputStream(temp);
+				    
+		//expensive call, must keep infrequent
+		formatter.formatTo(Instant.ofEpochMilli(time), targetStream);
+		targetStream.append(" GMT");
+		targetStream.replicate(writer);
+		
+		DataOutputBlobWriter.closeLowLevelField(targetStream);
+		Pipe.confirmLowLevelWrite(temp);
+		Pipe.publishWrites(temp);
 	}
 	
 	public void write(long time, Appendable target) {

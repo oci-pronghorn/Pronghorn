@@ -211,12 +211,6 @@ public class ServerSocketReaderStage extends PronghornStage {
     	
     	 if(!shutdownInProgress) {
 
-    	    	/////////////////////////////
-    	    	//must keep this pipe from getting full or the processing will get backed up
-    	    	////////////////////////////
-    	   		releasePipesForUse();
-      
-
     	   		///////////////////
     	   		//after this point we are always checking for new data work so always record this
     	   		////////////////////
@@ -229,25 +223,20 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ////////////////////////////////////////
 
     	        while (hasNewDataToRead()) { 
-    	           doneSelectors.clear();
-    	           hasRoomForMore = true; //set this up before we visit
+        	    	/////////////////////////////
+        	    	//must keep this pipe from getting full or the processing will get backed up
+        	    	////////////////////////////
+        	   		releasePipesForUse();
+        	   		
+    	            doneSelectors.clear();
+    	            hasRoomForMore = true; //set this up before we visit
 
-    	           //HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-    	           //if (null!=keyMap) {   
-    				//   keyMap.forEach(keyVisitor);
-    	           //} else {
-    	        	   //fall back to old if the map can not be found.
-    	        	   selectedKeys.forEach(selectionKeyAction);
-    	           //}
-    	           
-    	           removeDoneKeys(selectedKeys);
-    	           if (!hasRoomForMore) {
-    	        	 return;//  break;
-    	           } else {
-    	        	   //do we need to detected has room for more better?
-    	        	 //  break;
-    	        	   
-    	           }
+    	            selectedKeys.forEach(selectionKeyAction);
+    	    	           
+    	            removeDoneKeys(selectedKeys);
+    	            if (!hasRoomForMore) {
+    	            	return;//  break;
+    	            } 
     	        }
     	 
     	 } else {

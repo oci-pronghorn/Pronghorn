@@ -136,7 +136,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
     		server = ServerSocketChannel.open();
-    	    		
+       	    		
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
     		server.socket().setPerformancePreferences(0,1,2);  //(1, 2, 0);
@@ -412,17 +412,19 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	  Selector sel = coordinator.getSelector();
 		          if (sel!=null) {      		          
 			          try {         
-			        	  
+			        	 
 			        	  SocketChannel channel = server.accept();
 			        			        	  
+			        	  server.socket().setReceiveBufferSize(1<<21);
 			              channel.configureBlocking(false);
 			              
-			            
+			              //for high volume techempower we are trying this, they may not be set in all platforms.
+			              channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<21);
+			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
-			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);  
+			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
-			     
-			              
+			           			              
 			              SSLEngine sslEngine = null;
 			              if (coordinator.isTLS) {
 							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
