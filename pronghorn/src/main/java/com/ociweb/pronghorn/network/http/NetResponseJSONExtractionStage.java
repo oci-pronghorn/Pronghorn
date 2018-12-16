@@ -44,7 +44,6 @@ public class NetResponseJSONExtractionStage extends PronghornStage {
 	 *
 	 * @param graphManager
 	 * @param extractor
-	 * @param structId
 	 * @param input _in_ The HTTP request containing JSON.
 	 * @param output _out_ The HTTP response.
 	 */

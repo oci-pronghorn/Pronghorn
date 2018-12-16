@@ -290,9 +290,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //TODO: what if we get valid data which is incomplete and we are waiting forever.
     //     happens across network with bad client???
     
+    int maxIter;
     @Override
     public void run() {
 
+    		maxIter = 1000;
     		boolean didWork = false;
     		do {
     			didWork = false;
@@ -314,7 +316,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            
 		           
 		      } 
-    	   } while (didWork);
+    	   } while (didWork && --maxIter>=0);
     	
     		
     }
@@ -334,6 +336,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	        		} else {			
 	        			//we got no data, if pipe also empty return 
 	        			if (Pipe.isEmpty(that.inputs[idx])) {
+	        				that.maxIter = 0;
 	        				return 0;
 	        			}
 	        			//continue to do work because we may have enough data already but 
@@ -547,6 +550,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		    		state = that.parseHTTP(that.trieReader, channel, idx, arrivalTime);	
 
 		    	} else {
+		    		that.maxIter = 0;
 		    		state = NEED_MORE_DATA;
 		    	}
 				
@@ -567,7 +571,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							              remainingBytes);
 				 } else if (NEED_MORE_DATA == state) {				
 					that.needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
-	
+					that.maxIter = 0;
 					result = false;   
 				 } else {	
 					 //we have no room to write, we need no more data but must try again

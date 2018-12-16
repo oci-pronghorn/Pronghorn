@@ -194,7 +194,7 @@ public class HTTPUtil {
 
 	public static TrieParser buildHeaderParser(StructRegistry schema, int structId, HTTPHeader ... headers) {
 				
-		boolean skipDeepChecks = false;
+		boolean skipDeepChecks = false; //TODO: does not make as big a difference as expected.
 		boolean supportsExtraction = true;
 		boolean ignoreCase = true;
 		TrieParser headerParser = new TrieParser(256,4,skipDeepChecks,supportsExtraction,ignoreCase);

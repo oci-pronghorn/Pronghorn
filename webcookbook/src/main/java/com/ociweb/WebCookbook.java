@@ -112,7 +112,7 @@ public class WebCookbook  {
 								inputPipes, 
 								response, 
 								routerConfig.httpSpec(),
-								"site/","index.html"); //good example since telemetry is in resources...
+								"site/","reqPerSec.png");
 						
 						//http://10.10.10.105:8080/resource/reqPerSec.png
 						//http://172.16.10.221:8080/resource/reqPerSec.png

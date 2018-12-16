@@ -4,7 +4,7 @@
   <groupId>com.ociweb</groupId>
   <artifactId>open-edge-pronghorn</artifactId>
   <name>open-edge-pronghorn</name>
-  <version>1.0.21</version>
+  <version>1.0.22</version>
   <packaging>pom</packaging>
  
   <modules>  
@@ -14,6 +14,7 @@
     <module>webcookbook</module> 
     <module>jpg-raster</module>
     <module>pronghorn-ranch</module>
+    <module>log-telemetry</module>
   </modules>
   
   
@@ -48,11 +49,7 @@
     </plugins>
   </reporting>
 
-</project>
-
-
-
- <!-- 
+</project><!-- 
   need to pull the latest? 
  
   setup workspace:
@@ -72,5 +69,3 @@
             mvn -f open-edge-pom.xml install
             
  -->
-
-

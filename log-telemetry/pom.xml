@@ -1,20 +1,16 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>${groupId}</groupId>
-	<artifactId>${artifactId}</artifactId>
-	<version>${version}</version>
+
+	<groupId>com.ociweb.logtelemetry</groupId>
+	<artifactId>log-telemetry</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<description>load telemetry from log file as a telemetry server for easy viewing.</description>
 
 	<properties>
-		<java.bootstrap.classes>
-			${java.home}/lib/rt.jar
-		</java.bootstrap.classes>
-		<java.cryptographic.extension.classes>
-			${java.home}/lib/jce.jar
-		</java.cryptographic.extension.classes>
-		<java.secure.socket.extension.classes>
-			${java.home}/lib/jsse.jar
-		</java.secure.socket.extension.classes>
+		<java.bootstrap.classes>${java.home}/lib/rt.jar</java.bootstrap.classes>
+		<java.cryptographic.extension.classes>${java.home}/lib/jce.jar</java.cryptographic.extension.classes>
+		<java.secure.socket.extension.classes>${java.home}/lib/jsse.jar</java.secure.socket.extension.classes>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -41,7 +37,6 @@
 			<version>5.0.1</version>
 			<type>jar</type>
 			<scope>test</scope>
-			<optional>false</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.platform</groupId>
@@ -112,15 +107,15 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>${package}.${mainClass}</mainClass>
+							<mainClass>com.ociweb.logtelemetry.LogTelemetry</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
 
-					<!--  finalName>uber${artifactId}</finalName  use for java 8 proguard -->
-					<finalName>${artifactId}</finalName>
+					<!--  finalName>uberlog-telemetry</finalName  use for java 8 proguard -->
+					<finalName>log-telemetry</finalName>
 					<appendAssemblyId>false</appendAssemblyId>
 
 				</configuration>
@@ -157,8 +152,8 @@
 						<lib>${java.cryptographic.extension.classes}</lib>
 						<lib>${java.secure.socket.extension.classes}</lib>
 					</libs>
-					<injar>uber${artifactId}.jar</injar>
-					<outjar>${artifactId}.jar</outjar>
+					<injar>uberlog-telemetry.jar</injar>
+					<outjar>log-telemetry.jar</outjar>
 
 					<outputDirectory>${project.build.directory}</outputDirectory>
 					<proguardInclude>${basedir}/proguard.conf</proguardInclude>

@@ -10,6 +10,9 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -35,6 +38,8 @@ public class FileBlobReadStage extends PronghornStage {
     private Set<OpenOption> readOptions;
     private boolean shutdownInProgress;
     private final boolean shutDownAtEndOfFile;
+    
+    private Logger logger = LoggerFactory.getLogger(FileBlobReadStage.class);
 
     /**
      *
@@ -60,7 +65,7 @@ public class FileBlobReadStage extends PronghornStage {
         	GraphManager.addNota(graphManager, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, this);
         }
         shutDownAtEndOfFile = true;
-        
+  
     }
     
     public FileBlobReadStage(GraphManager graphManager, 
@@ -81,7 +86,7 @@ public class FileBlobReadStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, this);
 		}
 		this.shutDownAtEndOfFile = shutDownAtEndOfFile;
-		
+	
 	}
 
     public static FileBlobReadStage newInstance(GraphManager graphManager,
@@ -102,6 +107,7 @@ public class FileBlobReadStage extends PronghornStage {
     
     @Override
     public void startup() {
+    	
     	if (null!=inputPathString && inputPathString.length()>0) {
 	        this.fileSystem = FileSystems.getDefault();
 	        this.provider = fileSystem.provider();
@@ -111,9 +117,11 @@ public class FileBlobReadStage extends PronghornStage {
 	        
 	        try {
 	        	fileChannel = provider.newFileChannel(fileSystem.getPath(inputPathString), readOptions);
+	        	logger.info("\nfile: {} size: {} ", inputPathString, fileChannel.size());
 	        } catch (IOException e) {
 	           throw new RuntimeException(e);
 	        } 
+	        
     	}
     }
 
@@ -128,6 +136,7 @@ public class FileBlobReadStage extends PronghornStage {
     
     @Override
     public void run() {
+    	
     	if (fileChannel!=null) {
 		   	 if(shutdownInProgress) {
 	         	if (null!=output && Pipe.isInit(output)) {

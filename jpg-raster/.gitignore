@@ -1,3 +1,6 @@
 /target/
 /.attach_*
 /dependency-reduced-pom.xml
+/.settings/
+/.classpath
+/.project

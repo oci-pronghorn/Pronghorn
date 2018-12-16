@@ -373,9 +373,11 @@ public class TrieParserReader {
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
 		
-		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
-			reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
-		}		
+		if (trie.maxExtractedFields()>0) {
+			if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {
+				reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
+			}		
+		}
 
 		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
 
@@ -1229,8 +1231,11 @@ public class TrieParserReader {
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
 		
-		if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {	
-			reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
+		//only allocate when this is going to be used.
+		if (trie.maxExtractedFields()>0) {
+			if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {
+				reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
+			}
 		}
 
 		reader.sourceBacking = source;
@@ -1245,6 +1250,7 @@ public class TrieParserReader {
 		reader.type = trie.data[reader.pos++];
 	}
 
+	
 	private static void processAltBranch(TrieParserReader reader, byte[] source, short[] localData, boolean hasSafePoint) {
 		assert(localData[reader.pos]>=0): "bad value "+localData[reader.pos];
 		assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
@@ -1252,25 +1258,11 @@ public class TrieParserReader {
 		//the extracted (byte or number) is ALWAYS local so push LOCAL position on stack and take the JUMP        	
 
 		int pos = reader.pos;
-		
-		do {
-			assert(TrieParser.TYPE_VALUE_BYTES == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] || 
-			TrieParser.TYPE_VALUE_NUMERIC  == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] ||
-			TrieParser.TYPE_ALT_BRANCH == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE] || 
-			TrieParser.TYPE_BRANCH_VALUE == (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE]) : "unknown value of: "+(int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE];  // local can only be one of the capture types or a branch leaning to those exclusively.
-	
-			assert(pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE< localData.length):
-				"jump out of bounds "+pos+" + "+(((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos])))+" +"+TrieParser.BRANCH_JUMP_SIZE+" jump data from pos "+pos;
+		//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+		reader.altStackPos = pushAlt(reader.altStack, reader.localSourcePos, reader.capturedPos, pos+ TrieParser.BRANCH_JUMP_SIZE, reader.runLength, reader.altStackPos);
 				
-			
-			pos = processAltBranch2(reader, source, 
-					         localData, reader.localSourcePos, 
-					         reader.runLength, pos+ TrieParser.BRANCH_JUMP_SIZE,
-					         pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE, 
-					         (int) localData[pos+ TrieParser.BRANCH_JUMP_SIZE]);
-			
-		} while (TrieParser.TYPE_ALT_BRANCH == (reader.type=localData[pos++]));
-		
+		pos = pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE;
+		reader.type=localData[pos++];
 		reader.pos = pos;
 		
 		if (reader.noMatchConstant == reader.result && !reader.normalExit) {
@@ -1282,63 +1274,7 @@ public class TrieParserReader {
 				reader.normalExit=false;
 				reader.result = useSafePoint(reader);
 			}
-		}
-		
-	}
-
-	private static int processAltBranch2(TrieParserReader reader, byte[] source, short[] localData, int offset,
-			int runLength, int aLocal, int bJump, int localType) {
-		//simply logic to only do one side since that is the only side which will match.
-		int result;
-		if (  TrieParser.TYPE_VALUE_NUMERIC == localType ) {
-				
-			//////////////////////////////////////
-			//the local jump is to type of numeric
-			/////////////////////////////////////
-			
-			if ( TrieParser.TYPE_VALUE_NUMERIC  != localData[bJump]	) {
-				
-				//////////////////////////////////
-				//the far jump is for something that is NOT numeric
-				//////////////////////////////////
-				assert(reader.sourceMask!=0);
-				char c = (char)source[reader.sourceMask & reader.localSourcePos];
-			
-				if (c>='0' && c<='9') { //not done if we see + or - symbols
-			        //this is a number and we want a number local so take this path
-					result = aLocal;
-				} else {
-				
-					//if this MIGHT be a local number but its not yet clear so push 
-					if (c=='-' || c=='+') {
-						reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos,
-								                     aLocal, runLength, reader.altStackPos);
-					}
-					
-					//take the jump   		    
-					result = bJump;
-					
-				}
-			} else {
-								
-				//this is the normal expected case
-				//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-				reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos, aLocal, runLength, reader.altStackPos);
-			    //take the jump   		    
-				result = bJump;
-			}					
-		} else {		
-
-			assert(TrieParser.TYPE_ALT_BRANCH == localType || TrieParser.TYPE_VALUE_BYTES == localType  ): "Trie parser was built backwards, check add logic.";
-
-			//this is the normal expected case
-			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-			reader.altStackPos = pushAlt(reader.altStack, offset, reader.capturedPos, aLocal, runLength, reader.altStackPos);
-			//take the jump, this is the part we will run first.   		    
-			result = bJump;
-
-		}
-		return result;
+		}		
 	}
 
 	private static long useSafePointNow(TrieParserReader reader) {
@@ -1694,9 +1630,23 @@ public class TrieParserReader {
 
 	}
 
+	public static void setCapturedShort(TrieParserReader reader, int idx, int unsignedShort) {
+		int pos = idx*4;
+		if (null==reader.capturedValues || pos>=reader.capturedValues.length) {
+			int[] newInt = new int[4*(1+idx)*4];
+			if (reader.capturedValues!=null) {
+				System.arraycopy(reader.capturedValues, 0, newInt, 0, reader.capturedValues.length);
+			}
+			reader.capturedValues = newInt;
+		}
+		reader.capturedValues[pos++] = unsignedShort>=0 ? 1 : -1;
+		reader.capturedValues[pos++] = 0;
+		reader.capturedValues[pos++] = unsignedShort;
+		reader.capturedValues[pos] = 0;		
+	}
+	
 	public static void writeCapturedShort(TrieParserReader reader, int idx, DataOutput target) {
-		
-		
+				
 		int pos = idx*4;
 
 		
@@ -1900,11 +1850,24 @@ public class TrieParserReader {
 
 	}
 
+	public static void clearCapturedBytes(TrieParserReader reader, int idx) {
+		int pos = idx*4;
+		if (null==reader.capturedValues || pos>=reader.capturedValues.length) {
+			return;
+		}
+		reader.capturedValues[pos++] = 0;
+		reader.capturedValues[pos++] = 0;
+		reader.capturedValues[pos++] = 0;
+		reader.capturedValues[pos] = 0;		
+	}
+	
 	public static boolean hasCapturedBytes(TrieParserReader reader, int idx) {
 		int pos = idx*4;
+				
 		return (pos<reader.capturedPos)
-				&& 0==reader.capturedValues[pos] 
-				&& reader.capturedValues[pos+2]>=0;		
+				&& 0!=reader.capturedValues[pos]
+				&& reader.capturedValues[pos+2]>=0;	
+ 	
 	}
 	
 	

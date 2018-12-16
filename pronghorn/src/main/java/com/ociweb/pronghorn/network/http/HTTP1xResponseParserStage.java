@@ -151,7 +151,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      ///////////////////////////
 	      //Load the supported HTTP revisions
 	      ///////////////////////////
-	      revisionMap = new TrieParser(256,true); //TODO: set switch to turn on off the deep check skip
+	      revisionMap = new TrieParser(256,1,true,true,false); //TODO: double check deep check skip
 	      HTTPRevision[] revs = httpSpec.supportedHTTPRevisions.getEnumConstants();
 	      x = revs.length;               
 	      while (--x >= 0) {
@@ -186,10 +186,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			process();		
 	}
 
+	int maxIter;//force an exit if we are here too long or we need more data.
 	private void process() {
 		int foundWork; //keep going until we make a pass and there is no work.
 			
-		int maxIter = 10000; //this stage is slow and must be forced to return periodically
+		maxIter = 10000; //this stage is slow and must be forced to return periodically
 
 		do {		
 			foundWork = 0;
@@ -243,7 +244,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//we have new data to consume
 					//////////////////////////////		
 					final int msgIdx = Pipe.takeMsgIdx(localInputPipe);
-					final int sizeOf = Pipe.sizeOf(localInputPipe, msgIdx);
+					final int sizeOf = Pipe.sizeOf(NetPayloadSchema.instance, msgIdx);
 					if (msgIdx>=0) {//does not read the body if this is a shutdown request.
 											
 						//is closed
@@ -400,7 +401,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								//we have the same data but we do have room for write so continue to try parse again
 								blockedOpenCount[i]++;
 							} else {
-								if (0 == trieReader.sourceLen) {
+								if (0 == trieReader.sourceLen) {								
 									continue;// do not parse again since nothing has changed and we have no data	
 								}
 							}
@@ -417,10 +418,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 				////////////
 				////////////
-				
-				if (Pipe.hasContentToRead(localInputPipe) || positionMemoData[lenIdx]>localInputPipe.maxVarLen   ) {
-					foundWork++;//do not leave if we are backed up
-				}
+
+//test to do less work here...				
+//				if (Pipe.hasContentToRead(localInputPipe) || positionMemoData[lenIdx]>localInputPipe.maxVarLen   ) {
+//					foundWork++;//do not leave if we are backed up
+//				}
 
 			
 				foundWork = parseHTTP(foundWork, i, memoIdx, posIdx, lenIdx, stateIdx, targetPipe, ccId, localInputPipe, cc);	
@@ -442,6 +444,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);					
 				if (startingLength1 >= (revisionMap.shortestKnown()+1)) {
 									
+					//we use a default of 200 if this value was not extracted, this is the common and fast case 
+					//because the string "200" is a faster match to the expected "200" than having to parse it to an int
+					TrieParserReader.setCapturedShort(trieReader, 0, 200);
+															
 					final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap, -1, -2);
 					if (revisionId>=0) {											
 						processFoundRevision(i, stateIdx, targetPipe, ccId, cc, startingLength1);										
@@ -452,6 +458,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						if (-1==revisionId && (trieReader.sourceLen < (revisionMap.longestKnown()+1))) {
 							foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+							maxIter = 0;
 						} else {
 							reportCorruptStream("HTTP revision", cc);
 							closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
@@ -460,10 +467,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					}
 				} else {
 					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					maxIter = 0;
 					return foundWork;					
 				}
 			} else { 
 				foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+				maxIter = 0;
 				return foundWork;
 			}			
 		}
@@ -486,6 +495,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 				if (trieReader.sourceLen<MAX_VALID_HEADER) {
 					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					maxIter = 0;
 					return foundWork;//not an error just needs more data.
 				} else {
 					
@@ -604,10 +614,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					}						
 				} else {
 					foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+					maxIter = 0;
 					return foundWork;
 				}
 			} else {
 				foundWork = 0;//we must exit to give the other stages a chance to fix this issue
+				maxIter = 0;
 				return foundWork;					
 			}
 			
@@ -624,6 +636,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			{
 					//if we can not release then do not finish.
 					if (!Pipe.hasRoomForWrite(releasePipe)) {
+						maxIter = 0;
 						foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 						break;
 					}
@@ -641,6 +654,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								if (trieReader.sourceLen>16) {
 									parseErrorWhileChunking(memoIdx, localInputPipe, trieReader.sourcePos);
 								}
+								maxIter = 0;
 								foundWork = 0;//we must exit to give the other stages a chance to fix this issue
 								//logger.info("need chunk data");
 								break;	//not enough data yet to parse try again later
@@ -811,6 +825,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 				    assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
 				} else {
+					maxIter = 0;
 					foundWork = 0;
 				}
 				break;	
@@ -861,14 +876,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 		DataOutputBlobWriter<NetResponseSchema> openOutputStream = Pipe.openOutputStream(targetPipe);							
 		DataOutputBlobWriter.tryClearIntBackData(openOutputStream, cc.totalSizeOfIndexes()); 
-			
-		if (!TrieParserReader.hasCapturedBytes(trieReader, 0)) {	
-			//default ok case
-			openOutputStream.writeShort(200);
-		} else {
-			//NOTE: this is always first and not indexed...
-			TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
-		}	
+		
+		//NOTE: this is always first and not indexed...
+		TrieParserReader.writeCapturedShort(trieReader, 0, openOutputStream); //status code	
+	
 		runningHeaderBytes[i] = startingLength1 - trieReader.sourceLen;
 	}
 
@@ -1113,8 +1124,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 					//TODO: this encoding from the content type should be applied to convert the payload to the 
 					//      internal standard of UTF8 if it is not already UTF8
-					if (false && TrieParserReader.hasCapturedBytes(trieReaderCharType,0)) {
-					   //TODO: the extracton of the encoding only does not appear to be working right.
+					if (TrieParserReader.hasCapturedBytes(trieReaderCharType,0)) {
+					   //TODO: the extracton of the encoding still needs testing
 						String encoding = trieReader.capturedFieldBytesAsUTF8(trieReaderCharType, 0, new StringBuilder()).toString();
 						logger.info("encoding detected of {}",encoding);
 					}

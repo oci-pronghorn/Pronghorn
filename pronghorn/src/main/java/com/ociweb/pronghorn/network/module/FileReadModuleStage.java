@@ -16,7 +16,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ClientSocketReaderStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerSocketWriterStage;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
@@ -582,7 +584,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         int bytesPosition = Pipe.bytePosition(meta, input, bytesLength);
         int bytesMask = Pipe.blobMask(input);
            
-        //logger.info("fetch file name: {}", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask));
+       // logger.info("fetch file name: {}", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask));
         
         ///////////
         //NOTE we have added 2 because that is how it is sent from the routing stage! with a leading short for length
@@ -601,7 +603,6 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         int context = Pipe.takeInt(input);
         
         if (pathId < 0) {
-      	  
         	//send 404
         	//publishError(requestContext, sequence, status, writer, localOutput, channelIdHigh, channelIdLow, httpSpec, revision, contentType);
         	publishErrorHeader(activeRequestContext, activeSequenceId, 404, input, output);  
@@ -633,12 +634,20 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         }     
        
         int pathId;
-        if (bytesLength>0 || defaultPathId==-1) {
+        
+        //Appendables.appendArray(System.out, bytesBackingArray, bytesPosition, bytesMask, bytesLength);
+        
+        //if we have data and it starts with a valid char or we have no default then do a normal parse
+        //leading 0 will be found for empty route, we know all char values 32 or less are also invalid.
+        if (((bytesLength>0) && (bytesBackingArray[bytesPosition&bytesMask]>32)) || defaultPathId==-1) {
+        	
         	pathId = (int)TrieParserReader.query(trieReader, trie, 
                                                          bytesBackingArray, 
                                                          bytesPosition, 
-                                                         bytesLength, bytesMask, -1 );    
-        } else {       		
+                                                         bytesLength, bytesMask, -1 );   
+           	
+        } else {       	
+        	//else case we select the default
        	    pathId = defaultPathId;       		
         }
         
@@ -648,32 +657,35 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                 findAgainFileChannel(pathId);
             }
         } else {
-        	//if bytesLength is 0 then use the defaultPathFile
-        	//System.err.println("default: "+	defaultPathFile);
-        
-        	//TODO: need to lookup the resource??
-        	StringBuilder builder = new StringBuilder();
-        	
-        	builder.append(folderRootString).append('/');
-        	Appendables.appendUTF8(builder, bytesBackingArray, bytesPosition, bytesLength, bytesMask);
-        	
-        	String name = builder.toString();
-			InputStream stream = FileReadModuleStage.class.getResourceAsStream(name);
-		
-        	if (null!=stream) {
-        		try {
-					long size = stream.available();					
-					logger.info("found as resource at {} size {}",name,size);					
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}	
-        	} else {
-        		//NOTE: the name is too large
-        		//logger.trace("NOT found as resource at {}",name);
-        	}
-        	
-        	
+        	//DELETE?? Dec 2018
+//        	
+//        	
+//        	//if bytesLength is 0 then use the defaultPathFile
+//        	//System.err.println("default: "+	defaultPathFile);
+//        
+//        	//TODO: need to lookup the resource??
+//        	StringBuilder builder = new StringBuilder();
+//        	
+//        	builder.append(folderRootString).append('/');
+//        	Appendables.appendUTF8(builder, bytesBackingArray, bytesPosition, bytesLength, bytesMask);
+//        	
+//        	String name = builder.toString();
+//			InputStream stream = FileReadModuleStage.class.getResourceAsStream(name);
+//		
+//        	if (null!=stream) {
+//        		try {
+//					long size = stream.available();					
+//					logger.info("found as resource at {} size {}",name,size);					
+//				} catch (IOException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}	
+//        	} else {
+//        		//NOTE: the name is too large
+//        		//logger.trace("NOT found as resource at {}",name);
+//        	}
+//        	
+//        	
         	//NOTE: the file name is too long and must be trimmed
         	//logger.trace("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }
@@ -857,7 +869,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     	
        if (null != localFileChannel) {
          long localPos = activePosition;
-       //  logger.info("write body {} {}",Pipe.hasRoomForWrite(localOutput), localOutput);
+        ///logger.info("write body {} {}",Pipe.hasRoomForWrite(localOutput), localOutput);
          
          
          debugFileProgress();

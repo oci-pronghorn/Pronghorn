@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn-ranch</artifactId>
     <name>pronghorn-ranch</name>
-    <version>1.0.21</version>
+    <version>1.0.22</version>
     <description>A Maven Archetype for Pronghorn projects
     </description>
     <url>https://github.com/oci-pronghorn/PronghornRanch</url>
@@ -112,13 +112,7 @@
     </profiles>
 
     <build>
-        <extensions>
-            <extension>
-                <groupId>org.apache.maven.wagon</groupId>
-                <artifactId>wagon-webdav-jackrabbit</artifactId>
-                <version>2.2</version>
-            </extension>
-        </extensions>
+ 
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
