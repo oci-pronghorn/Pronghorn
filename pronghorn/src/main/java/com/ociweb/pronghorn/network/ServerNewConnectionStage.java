@@ -47,7 +47,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 	
     private Selector selector;
-    private ServerSocketChannel server;
+    private ServerSocketChannel serverSocketChannel;
     private String host;
     private final long startupTimeNS;
     
@@ -135,16 +135,19 @@ public class ServerNewConnectionStage extends PronghornStage{
             //logger.info("startup of new server");
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
-    		server = ServerSocketChannel.open();
+    		serverSocketChannel = ServerSocketChannel.open();
        	    		
+    		//by design we set this in both places
+    		serverSocketChannel.socket().setReceiveBufferSize(1<<19);
+      	  
     		//to ensure that this port can be re-used quickly for testing and other reasons
-    		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
-    		server.socket().setPerformancePreferences(0,1,2);  //(1, 2, 0);
-    		server.socket().setSoTimeout(0);
+    		serverSocketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
+    		serverSocketChannel.socket().setPerformancePreferences(0,1,2);  //(1, 2, 0);
+    		serverSocketChannel.socket().setSoTimeout(0);
     		    		
     		endPoint = bindAddressPort(coordinator.host(), coordinator.port());
             
-            ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
+            ServerSocketChannel channel = (ServerSocketChannel)serverSocketChannel.configureBlocking(false);
 
             //this stage accepts connections as fast as possible
             selector = Selector.open();
@@ -191,8 +194,8 @@ public class ServerNewConnectionStage extends PronghornStage{
     		if (null!=selector) {
     			selector.close();
     		}
-    		if (null!=server) {
-    			server.close();
+    		if (null!=serverSocketChannel) {
+    			serverSocketChannel.close();
     		}
 		} catch (IOException e) {
 		}
@@ -259,7 +262,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		if ("0.0.0.0".equals(host)) {
 			logger.warn("Developer used 0.0.0.0 as the host so this server is running on all known networks,\n              It is much more secure to define an explicit network binding like this eg. '10.*.*.*' ");
 			endPoint = new InetSocketAddress(port);
-			server.socket().bind(endPoint);
+			serverSocketChannel.socket().bind(endPoint);
 			return endPoint;
 		} else {
 			
@@ -272,7 +275,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 			    		endPoint = new InetSocketAddress(host, port);		
 			    		logger.trace("bind to {} ",endPoint);
 			    	}
-			    	server.socket().bind(endPoint);
+			    	serverSocketChannel.socket().bind(endPoint);
 			    	notConnected = false;
 			    } catch (BindException se) {
 			    	if (System.currentTimeMillis() > timeout) {
@@ -413,13 +416,11 @@ public class ServerNewConnectionStage extends PronghornStage{
 		          if (sel!=null) {      		          
 			          try {         
 			        	 
-			        	  SocketChannel channel = server.accept();
+			        	  SocketChannel channel = serverSocketChannel.accept();
 			        			        	  
-			        	  server.socket().setReceiveBufferSize(1<<21);
+			        	  //by design we set this in both places
+			        	  channel.socket().setReceiveBufferSize(1<<19);
 			              channel.configureBlocking(false);
-			              
-			              //for high volume techempower we are trying this, they may not be set in all platforms.
-			              channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<21);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  

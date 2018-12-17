@@ -4,7 +4,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>jpg-raster</artifactId>
     <name>jpg-raster</name>
-    <version>1.0.22</version>
+    <version>1.0.24</version>
 
     <description>JPG-Raster (or JPG-to-Raster or J2R) is a JPG file decoder and encoder.
         It reads a JPG file and decompresses all of its data which is then accessible as an array of raw RGB pixel
@@ -150,7 +150,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn</artifactId>
-            <version>[1.0.22,)</version>
+            <version>[1.0.24,)</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

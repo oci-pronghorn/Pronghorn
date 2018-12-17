@@ -675,7 +675,8 @@ public class GraphManager {
 			gm.telemetryTimestamp.write(System.currentTimeMillis(), gm.telemetryBuffer);
 			gm.telemetryBuffer.append(".dot\n\n");
 			gm.telemetryMonitor.writeAsDot(gm, "gl", gm.telemetryBuffer);
-			logger.info("\nTelemetry:{}\n\n", gm.telemetryBuffer.toString());
+			logger.info("\nTelemetry:{}\n\n", gm.telemetryBuffer
+					.toString().replaceAll("µs", "micro")); //UTF8 support offten missing from log subsystem
 		} else {
 			if (gm.telemetryPort<0) {
 				logger.warn("requested telemetry snapshot but this feature is not enabled, turn on telemetry with port set to zero");
