@@ -175,28 +175,34 @@ public class ServerSocketWriterStage extends PronghornStage {
 	 
 	    			ByteBuffer localWorkingBuffer = workingBuffers[x];
 	    			
-	    			boolean hasRoomToWrite = localWorkingBuffer.capacity()-localWorkingBuffer.limit() > localInput.maxVarLen;
+	    			int capacity = localWorkingBuffer.capacity();
+					int limit = localWorkingBuffer.limit();
+					boolean hasRoomToWrite = capacity-limit > localInput.maxVarLen;
 	    			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
 	    			if (
 	    				//these are set up to minimize writes so we can write bigger blocks at once.	
 	    				/// 	
 	    			    //accumulating too long so flush now.
-	    				((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
+	    					((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
 	    				||
-	    				!hasRoomToWrite //must write to network out buffer has no more room
+	    					!hasRoomToWrite //must write to network out buffer has no more room
 	    				||
 	    				//fire on no data, to make the loop faster.. may help with online test!!! return quickly..
-	    				(iteration>3 && (!Pipe.hasContentToRead(localInput))) //for low latency when pipe is empty fire now...
+	    					(Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
 	    				) {
-	    				
 	    		    				
 	    				writeToChannelBatchCountDown[x]=-4;
 	    				writeToChannelMsg[x] = -1;
+	    				
 		    			if (!(doingWork = writeDataToChannel(x))) {
 		    				//this channel did not write but we need to check the others
 		    				continue;
 		    			}	
 	    			} else {
+	    				
+	    				//must set to true to ensure we count up the iterations above.
+	    				doingWork |= (!Pipe.hasContentToRead(localInput));
+	    				
 	    				
 	    				//unflip
 	    				int p = ((Buffer)localWorkingBuffer).limit();
