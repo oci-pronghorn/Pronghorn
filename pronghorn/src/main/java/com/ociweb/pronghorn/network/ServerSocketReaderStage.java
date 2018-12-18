@@ -286,20 +286,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
 		} else {
-			//logger.info("closed connection here for channel {}",channelId);
-			
-			assert(validateClose(socketChannel, channelId));
-			try {
-				socketChannel.close();
-			} catch (IOException e) {				
-			}
-			//if this selection was closed then remove it from the selections
-
-			if (PoolIdx.getIfReserved(responsePipeLinePool,channelId)>=0) {
-				responsePipeLinePool.release(channelId);
-			}			
-
-			return true;
+			return processClosedConnection(socketChannel, channelId);
 		}
 
 	//	boolean processWork = true;
@@ -357,35 +344,16 @@ public class ServerSocketReaderStage extends PronghornStage {
 							//try later, we can not find an open pipe right now.
 							return false;//must return false to ensure we leave this stage
 						}
-						
 					}
 					
 					if (responsePipeLineIdx >= 0) {
-						
-						//debug to see if distribution is even.
-//						if (null == selectedOuts) {
-//							selectedOuts = new int[output.length];
-//							
-//						}
-//						selectedOuts[responsePipeLineIdx]++;
-//						
-//						System.out.println(stageId+"  pipe selectios: "+Arrays.toString(selectedOuts));
-						
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
-			
-					
+								
 					final boolean debugPipeAssignment = false;
 					if (debugPipeAssignment) {
 						if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
-						
-//							int i = output.length;
-//							while (--i>=0) {
-//																
-//								//What about encryption unit does it hold data we have not yet processed??
-//								System.out.println(this.stageId+"  "+i+" pos tail "+Pipe.tailPosition(output[i])+"  head "+Pipe.headPosition(output[i])+" len  "+Pipe.contentRemaining(output[i])+" total frags:"+Pipe.totalWrittenFragments(output[i]));
-//							}					
-											
+			
 							logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
 									this.stageId,
 									channelId, 
@@ -393,12 +361,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 									output.length);
 						}
 					}
-					/////////////////////////////////////
-					
-					
-				} else {
-		//			logger.info("use existing return with {} is valid {} connection {} ",responsePipeLineIdx, cc.isValid, cc.id);
-				}
+					/////////////////////////////////////	
+				} 
 					
 				if (responsePipeLineIdx >= 0) {
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, cc.id, 
@@ -414,6 +378,23 @@ public class ServerSocketReaderStage extends PronghornStage {
 				} 
 		}
 		return hasOutputRoom;
+	}
+
+	private boolean processClosedConnection(final SocketChannel socketChannel, long channelId) {
+		//logger.info("closed connection here for channel {}",channelId);
+		
+		assert(validateClose(socketChannel, channelId));
+		try {
+			socketChannel.close();
+		} catch (IOException e) {				
+		}
+		//if this selection was closed then remove it from the selections
+
+		if (PoolIdx.getIfReserved(responsePipeLinePool,channelId)>=0) {
+			responsePipeLinePool.release(channelId);
+		}			
+
+		return true;
 	} 
 
 		
@@ -569,11 +550,14 @@ public class ServerSocketReaderStage extends PronghornStage {
                        
                 assert(collectRemainingCount(b));
                 
-                temp = sourceChannel.read(b);
-            	if (temp>0){
-            		len+=temp;
-            	}           
-
+                //read as much as we can, one read is often not enough for high volume
+                do {
+	                temp = sourceChannel.read(b);
+	            	if (temp>0){
+	            		len+=temp;
+	            	}
+                } while (temp>0);            	
+            	
                 assert(readCountMatchesLength(len, b));
                 
                 if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
@@ -585,22 +569,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 						return 1;
 					}
                 } else {
+                	//logger.info("client disconnected, so release");
                 
                 	if (null!=cc) {
                 		cc.clearPoolReservation();
                 	}
-					//logger.info("client disconnected, so release");
 					//client was disconnected so release all our resources to ensure they can be used by new connections.
 					selection.cancel();                	
 					responsePipeLinePool.release(channelId);
-					//to abandon this must be negative.
-					len = -1;
-					int result;
-					if (len>0) {			
-						result = publishData(channelId, sequenceNo, targetPipe, len, b, false, newBeginning);
-					} else {
-						result = abandonConnection(channelId, targetPipe, false, newBeginning);
-					}
+					//to abandon this must be negative.				
+					int result = abandonConnection(channelId, targetPipe, false, newBeginning);
+					
                 	if (null!=cc) {
                 		cc.close();
                 	}

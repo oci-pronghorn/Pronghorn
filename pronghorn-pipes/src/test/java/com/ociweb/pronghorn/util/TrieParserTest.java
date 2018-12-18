@@ -2631,18 +2631,13 @@ public class TrieParserTest {
 		map.setValue(wrapping(data3b, 3), 1, 7, 7, value4);
 		assertFalse(map.toString(), map.toString().contains("ERROR"));
 				
-		//TODO: this escaped exscape is wrong!!!!
-		System.out.println("map:\n"+map);
 		map.setValue(wrapping(escapedEscape, 3), 1, 7, 7, value2);
-
-		System.out.println("map:\n"+map);
 		
 		assertFalse(map.toString(), map.toString().contains("ERROR"));
 
 		assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data2b, 3), 1, 7, 7));
 		assertEquals(value4, TrieParserReader.query(reader, map, wrapping(data3b, 3), 1, 7, 7));
 		
-		System.out.println("map:\n"+map);
 		assertEquals(value2, TrieParserReader.query(reader, map, wrapping(escapedEscape, 3), 1, 7, 7));
 
 	}

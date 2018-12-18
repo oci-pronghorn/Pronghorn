@@ -605,16 +605,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int meta = Pipe.takeByteArrayMetaData(input); //for string and byte array
 		 int len = Pipe.takeByteArrayLength(input);
 		
-		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
+		  //high 1 upgrade, 1 close low 20 target pipe	                     
  
-		 byte[] blob = Pipe.byteBackingArray(meta, input);
-		 final int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
-		
-		 final BaseConnection con = socketHolder.get(channelId);
 		 
+		  //also move the position forward
+		
 		 loadConnectionDataAndPublish(input, myPipeIdx, channelId, beginningOfResponse, 
 				 	output, outputStream, expSeq,
-				 	len, requestContext, blob, bytePosition, con);
+				 	len, Pipe.takeInt(input), Pipe.byteBackingArray(meta, input), 
+				 	Pipe.bytePosition(meta, input, len), socketHolder.get(channelId));
 
 	}
 
@@ -651,11 +650,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.releaseReadLock(input);
 	
 		
-		 rollupMultiAndPublish(input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
+		 rollupMultiAndPublish(this, input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
 				blob, connectionDataReader);
 	}
 
-	private void rollupMultiAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
+	private static void rollupMultiAndPublish(
+			OrderSupervisorStage that,
+			final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
 			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq,
 			int len, int requestContext, final int blobMask, byte[] blob, 
 			ConnDataReaderController connectionDataReader) {
@@ -669,7 +670,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 //this is still part of the current response so combine them together
 								 		
 			 		 if (showCounts) {
-			 			 System.out.println(++countOfMessages +" combined message ");
+			 			 System.out.println(++that.countOfMessages +" combined message ");
 			 		 }
 			 		 
 					 int msgId = Pipe.takeMsgIdx(input); //msgIdx
@@ -702,7 +703,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
-		 finishPublish(this, input, myPipeIdx, channelId, output, expSeq, 
+		 finishPublish(that, input, myPipeIdx, channelId, output, expSeq, 
 				       requestContext, connectionDataReader, finishedFullReponse);
 	}
 
