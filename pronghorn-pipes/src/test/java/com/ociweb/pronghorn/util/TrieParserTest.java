@@ -166,6 +166,24 @@ public class TrieParserTest {
 
 	}
 
+	@Test
+	public void testNumbersOverTextQuery() {
+
+		TrieParserReader reader = new TrieParserReader(true);
+		CharSequence test2 = "A1234.123";
+		
+		TrieParser map2 = new TrieParser(16);
+		map2.setUTF8Value("A%b.123", 2);
+		map2.setUTF8Value("A%i.123", 3);
+		assertEquals(3, reader.query(map2, test2));
+
+		TrieParser map1 = new TrieParser(16);
+		map1.setUTF8Value("A%i.123", 3);
+		map1.setUTF8Value("A%b.123", 2);
+		assertEquals(3, reader.query(map1, test2));
+		
+	}
+	
 	@Test // ******
 	// captured val: whatever is in wild card.
 	public void testwriteCapturedValuesToAppendable() throws IOException {
@@ -1608,6 +1626,9 @@ public class TrieParserTest {
 		byte[] text0 = "/unfollow?user=12345".getBytes();
 		assertEquals(value2, TrieParserReader.query(reader, map, wrapping(text0, 6), 0, text0.length, 63));
 
+		long value = reader.capturedLongField(reader, 0);
+		assertEquals(12345, value);
+		
 	}
 
 	@Test

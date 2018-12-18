@@ -1177,23 +1177,38 @@ public class TrieParserReader {
 		//the extracted (byte or number) is ALWAYS local so push LOCAL position on stack and take the JUMP        	
 
 		int pos = reader.pos;
-		//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-		reader.altStackPos = pushAlt(reader.altStack, reader.localSourcePos, reader.capturedPos, pos+ TrieParser.BRANCH_JUMP_SIZE, reader.runLength, reader.altStackPos);
-				
-		pos = pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE;
+		int nearJump = pos+ TrieParser.BRANCH_JUMP_SIZE;
+		int farJump = pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE;
+		
+		//if local is NOT numeric then take the jump first
+		if (localData[nearJump] != TrieParser.TYPE_VALUE_NUMERIC) {
+
+			//push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+			reader.altStackPos = pushAlt(reader.altStack, 
+					                     reader.localSourcePos, 
+					                     reader.capturedPos, 
+					                     nearJump, 
+					                     reader.runLength, 
+					                     reader.altStackPos);
+					
+			pos = farJump;
+		} else {
+			
+			reader.altStackPos = pushAlt(reader.altStack, 
+                    reader.localSourcePos, 
+                    reader.capturedPos, 
+                    farJump, 
+                    reader.runLength, 
+                    reader.altStackPos);
+
+			pos = nearJump;
+		}
+		
+		
+		
 		reader.type=localData[pos++];
 		reader.pos = pos;
 		
-		if (reader.noMatchConstant == reader.result && !reader.normalExit) {
-			if (!hasSafePoint) {                       	
-				if (reader.altStackPos > 0) {                                
-					reader.altStackPos = loadupNextChoiceFromStack(reader, localData, reader.altStackPos);                           
-				} 
-			} else {
-				reader.normalExit=false;
-				reader.result = useSafePoint(reader);
-			}
-		}		
 	}
 
 	private static long useSafePointNow(TrieParserReader reader) {

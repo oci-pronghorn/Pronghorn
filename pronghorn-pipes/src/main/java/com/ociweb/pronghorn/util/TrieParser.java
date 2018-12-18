@@ -1184,10 +1184,18 @@ public class TrieParser implements Serializable {
                     		//new data is an alt so insert on alt side
                     		pos +=2;
                     	} else {
-	                    	//check the  fixed jump side and push the var side for later
+	                    	
+                    		//check the  fixed jump side and push the var side for later
 							int jump = (((int)data[pos++])<<15) | (0x7FFF&data[pos++]);
-							pushAlt(pos, sourcePos);
-							pos       = pos+jump;
+							
+							if (data[pos]!=TYPE_VALUE_NUMERIC) {
+								//take the far one first (default)
+								pushAlt(pos, sourcePos);
+								pos       = pos+jump;
+							} else {
+								//take this local one first because it is numeric
+								pushAlt(pos+jump, sourcePos);								
+							}							
                     	}
                         break;
                     case TYPE_VALUE_NUMERIC:
