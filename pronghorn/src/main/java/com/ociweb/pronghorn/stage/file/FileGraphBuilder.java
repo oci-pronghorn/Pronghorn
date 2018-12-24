@@ -6,6 +6,7 @@ import java.io.IOException;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.encrypt.NoiseProducer;
 import com.ociweb.pronghorn.stage.encrypt.RawDataCryptAESCBCPKCS5Stage;
@@ -64,6 +65,7 @@ public class FileGraphBuilder {
 							 new Pipe<RawDataSchema>(dataConfig),
 				             new Pipe<RawDataSchema>(releaseConfig)};
 		
+		
 		String[] paths = null;
 		try {
 			paths = new String[]{	
@@ -73,16 +75,11 @@ public class FileGraphBuilder {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		//TODO: we should be able to drop different implementations here, not just file but other backing stores...
-		//TODO: add the RAFT logic down here
-		//TODO: add a stage which does this in memory..
-		//TODO: add GL ingress egress interface on the front of buildSequentialReplayer
-		//       Bridge object must define details of storage.
-		SequentialFileReadWriteStage readWriteStage = new SequentialFileReadWriteStage(gm, control, response, 
+
+		PronghornStage readWriteStage = new SequentialFileReadWriteStage(gm, control, response, 
 									     fileDataToSave, fileDataToLoad, 
 									     paths);
-		
+			
 		if (null!=stageProcessor) {
 			stageProcessor.process(gm,  readWriteStage);
 		}
@@ -116,9 +113,15 @@ public class FileGraphBuilder {
 				Pipe<BlockStorageReceiveSchema> doFinalReceive2 = BlockStorageReceiveSchema.instance.newPipe(7, largestBlock);
 				Pipe<BlockStorageXmitSchema> doFinalXmit2 = BlockStorageXmitSchema.instance.newPipe(7, largestBlock);
 				
-				BlockStorageStage.newInstance(gm, paths[i]+".tail", 
+				
+				
+				BlockStorageStage.newInstance(gm, 
+									  paths[i]+".tail", 
 						              new Pipe[] {doFinalXmit1, doFinalXmit2},
 						              new Pipe[] {doFinalReceive1, doFinalReceive2});
+				
+				
+				
 				
 				RawDataCryptAESCBCPKCS5Stage crypt1 = new RawDataCryptAESCBCPKCS5Stage(gm, 
 						cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
@@ -161,5 +164,6 @@ public class FileGraphBuilder {
 			
 		}
 	}
+
 
 }

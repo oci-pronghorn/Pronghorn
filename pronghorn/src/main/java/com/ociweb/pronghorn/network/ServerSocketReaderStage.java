@@ -205,6 +205,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	};
 
+	final int waitForPipeConsume = 10;
 
     @Override
     public void run() {
@@ -222,6 +223,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ///Read from socket
     	        ////////////////////////////////////////
 
+    	    	int noRoomCount = waitForPipeConsume;
     	        while (hasNewDataToRead()) { 
         	    	/////////////////////////////
         	    	//must keep this pipe from getting full or the processing will get backed up
@@ -235,8 +237,12 @@ public class ServerSocketReaderStage extends PronghornStage {
     	    	           
     	            removeDoneKeys(selectedKeys);
     	            if (!hasRoomForMore) {
-    	            	return;//  break;
-    	            } 
+    	            	if (--noRoomCount<=0) {
+    	            		return;//  break;
+    	            	}
+    	            } else {
+    	            	noRoomCount = waitForPipeConsume;
+    	            }
     	        }
     	 
     	 } else {
@@ -340,9 +346,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 						isOk.setId(channelId); //key to ensure connection is sent to same track
 						responsePipeLineIdx = responsePipeLinePool.get(channelId, isOk);
 						if (-1 == responsePipeLineIdx) {
+							return true;//try again very soon, do no block
 							//logger.info("\n too much load");
 							//try later, we can not find an open pipe right now.
-							return false;//must return false to ensure we leave this stage
+							//return false;//must return false to ensure we leave this stage
 						}
 					}
 					
@@ -562,7 +569,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 
                 if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
                 
-					if (len>0) {			
+					if (len>0) {
 						return publishData(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
 					} else {
 						Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
@@ -712,7 +719,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	        remainLen -= localLen;
 	        pos += localLen;	        
     	}
-
+    
     }
 
 	private void showRequests(Pipe<NetPayloadSchema> targetPipe, long channelId, int pos, int localLen) {
