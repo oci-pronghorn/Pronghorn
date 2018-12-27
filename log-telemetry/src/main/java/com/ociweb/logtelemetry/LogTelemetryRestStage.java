@@ -49,8 +49,13 @@ public class LogTelemetryRestStage extends PronghornStage {
 		//load log file and parse out all the telemetry snapshots...
 		
 		lineParser = new TrieParser();
+		lineParser.setUTF8Value("greenlightning: digraph gl {\n", 1);
 		lineParser.setUTF8Value("digraph gl {\n", 1);
+		
+		lineParser.setUTF8Value("greenlightning: }\n", 2);
 		lineParser.setUTF8Value("}\n", 2);
+		
+		lineParser.setUTF8Value("greenlightning: %b\n", 3);
 		lineParser.setUTF8Value("%b\n", 3);
 		
 		reader = TrieParserReaderLocal.get();
@@ -110,7 +115,7 @@ public class LogTelemetryRestStage extends PronghornStage {
 					}
 					if (id == 3) {
 						if (null!=accum) {
-							TrieParserReader.capturedFieldBytesAsUTF8(reader, 0, accum);	
+							TrieParserReader.capturedFieldBytesAsUTF8(reader, 0, accum);
 							accum.append('\n');
 						}						
 					}
