@@ -380,14 +380,18 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		final short expectedPipe = expectedSquenceNosPipeIdx[idx];
 		if (-1 == expectedPipe) {
 			expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
-			copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
+			int responses = copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
 					myPipeIdx, sequenceNo,
 					channelId, true);
+			expectedSquenceNosSequence[idx]+=responses;
+			
 		} else {			        			
 			if (expectedPipe ==(short)pipeIdx) {
-				copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
+				int responses = copyDataBlock(sourcePipe, pipeIdx, peekMsgId, 
 						myPipeIdx, sequenceNo,
 						channelId, false);
+				expectedSquenceNosSequence[idx]+=responses;
+				
 			} else {
 				
 				if (shutdownInProgress) {
@@ -405,7 +409,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, int peekMsgId,
+	private int copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, int peekMsgId,
 			int myPipeIdx, int sequenceNo, long channelId, boolean beginningOfResponse) {
 		
 		failureIterations = -1;//clears the flag to let hang detector know we are ok.			        		
@@ -418,8 +422,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			finishHandshake(outPipe, channelId);
 		}
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);				
-		copyDataBlock(sourcePipe, peekMsgId, myPipeIdx, sequenceNo, channelId, beginningOfResponse);							
+		int responses = copyDataBlock(sourcePipe, peekMsgId, myPipeIdx, sequenceNo, channelId, beginningOfResponse);							
 		assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		return responses;
 	}
 
 	private void skipData(final Pipe<ServerResponseSchema> sourcePipe, long channelId) {
@@ -539,7 +544,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 	}
 
-	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
+	private int copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
 							   int myPipeIdx,
 							   int sequenceNo, long channelId, boolean beginningOfResponse) {
 		 
@@ -561,13 +566,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		long channelId2 = Pipe.takeLong(input);		    
 		assert(oldChannelId == channelId2) : ("channel mismatch "+oldChannelId+" "+channelId2);
 		
+		int totalResponses = 0;
 	    //most common case by far so we put it first
 	    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
 	    	 	    	
 	    	 if (showCounts) {
 	    		System.out.println(++countOfMessages +" start of block "+(++countOfBlocks));
 	    	 }
-	    	 publishDataBlock(input, myPipeIdx, sequenceNo, channelId2, beginningOfResponse);
+	    	 totalResponses = publishDataBlock(input, myPipeIdx, sequenceNo, channelId2, beginningOfResponse);
 	    	
 	    } else {
 	    	
@@ -577,10 +583,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	    } 
 	
 		assert(Pipe.bytesReadBase(input)>=0);
+		return totalResponses;
 	}
 
 
-	private void publishDataBlock(final Pipe<ServerResponseSchema> input,
+	private int publishDataBlock(final Pipe<ServerResponseSchema> input,
 			                      int myPipeIdx, 
 			                      int sequenceNo,
 			                      long channelId, 
@@ -610,14 +617,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		  //also move the position forward
 		
-		 loadConnectionDataAndPublish(input, myPipeIdx, channelId, beginningOfResponse, 
+		 return loadConnectionDataAndPublish(input, myPipeIdx, channelId, beginningOfResponse, 
 				 	output, outputStream, expSeq,
 				 	len, Pipe.takeInt(input), Pipe.byteBackingArray(meta, input), 
 				 	Pipe.bytePosition(meta, input, len), socketHolder.get(channelId));
 
 	}
 
-	private void loadConnectionDataAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
+	private int loadConnectionDataAndPublish(final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
 			boolean beginningOfResponse, Pipe<NetPayloadSchema> output,
 			DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq, int len, int requestContext,
 			byte[] blob, final int bytePosition, final BaseConnection con) {
@@ -630,10 +637,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 ChannelReader reader = connectionDataReader.beginRead();
 			 if (null!=reader && conStruct!=null) {	
 				 requestContext |= connectionDataReader.readContext();
-				
-				 if (beginningOfResponse) {
-					 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
-				 }
+		
+					
+				 //This echo feature can not be correct and must be re-implemented??...
+				 //should be after write not before??? and should read from reader???
+				 //if (beginningOfResponse) {
+				 //	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
+				 //}
+				 
 			 } else {
 				 //warning this is an odd case which happens in telemetry.
 				 //why is there no context stored.
@@ -650,25 +661,65 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.releaseReadLock(input);
 	
 		
-		 rollupMultiAndPublish(this, input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
+		 return rollupMultiAndPublish(this, input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
 				blob, connectionDataReader);
 	}
 
-	private static void rollupMultiAndPublish(
+	private static int rollupMultiAndPublish(
 			OrderSupervisorStage that,
 			final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
-			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq,
+			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, int expSeq,
 			int len, int requestContext, final int blobMask, byte[] blob, 
 			ConnDataReaderController connectionDataReader) {
-		boolean finishedFullReponse = true;//only false when we run out of room...
-	
+		 boolean finishedFullReponse = true;//only false when we run out of room...
+		 int localContext;
+		 
+		 int totalResponses = 0;	
+		 int logPos = 0;
+		 int logLen = Pipe.outputStream(output).length();
+		 
+		 if (0 != (END_RESPONSE_MASK & requestContext)) {
+			 totalResponses++;
+				 
+			 int routeId = -1;
+			 long businessTime = -1;
+			 if (null!=connectionDataReader) {
+				 routeId = connectionDataReader.readRoute();
+				 businessTime = connectionDataReader.readBusinessTime();
+				 connectionDataReader.commitRead();
+				 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+			 }
+			 logPos+=logLen;
+			 logLen=0;
+			 
+			 ChannelReader reader = connectionDataReader.beginRead();
+			 if (null != reader) {
+				 //write the echos	??		 
+					
+				 //This echo feature can not be correct and must be re-implemented??...
+				 //should be after write not before??? and should read from reader???
+			//	if (beginningOfResponse) {
+				//	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
+				 
+				//}
+				 
+			 }
+			 
+		 }
+		 
+		 int tseq = -1;
 		 //If a response was sent as multiple parts all part of the same sequence number then we roll them up as a single write when possible.
 		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 
-			 	 && Pipe.peekInt(input, 0xFF&ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23) == expSeq 
+			 	 && 
+			 	  (
+			 	   ((tseq=Pipe.peekInt(input, 0xFF&ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23)) == expSeq)
+			 	   || (tseq==expSeq+1)
+			 	  )
 			 	 && Pipe.peekLong(input, 0xFF&ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21) == channelId 
 			     && (finishedFullReponse =((len+Pipe.peekInt(input, PAYLOAD_LENGTH_IDX))<output.maxVarLen)) ) {
 					 //this is still part of the current response so combine them together
-								 		
+						
+			         expSeq = tseq;
 			 		 if (showCounts) {
 			 			 System.out.println(++that.countOfMessages +" combined message ");
 			 		 }
@@ -684,17 +735,45 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 
 					 int meta2 = Pipe.takeByteArrayMetaData(input); //for string and byte array
 					 int len2 = Pipe.takeByteArrayLength(input);
+					 assert(len2>=0);
 					 len+=len2;//keep running count so we can sure not to overflow the output
-
+					 logLen+=len2;
 					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward
 					 
 					 //logger.info("read position {}",bytePosition2);
 					 
 					 DataOutputBlobWriter.write(outputStream, blob, bytePosition2, len2, blobMask);
 					 	
+					 localContext = Pipe.takeInt(input);
+					 if (0 != (END_RESPONSE_MASK & localContext)) {
+						 totalResponses++;
+						 
+						 int routeId = -1;
+						 long businessTime = -1;
+						 if (null!=connectionDataReader) {
+							 routeId = connectionDataReader.readRoute();
+							 businessTime = connectionDataReader.readBusinessTime();
+							 connectionDataReader.commitRead();
+							 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+						 }
+						 logPos+=logLen;
+						 logLen=0;
+						 
+						 ChannelReader reader = connectionDataReader.beginRead();
+						 if (null != reader) {
+							 requestContext = connectionDataReader.readContext();
+							 //write the echos?	seems right place for this..			 
+							 
+						 } else {
+							 requestContext = 0;//keep previous call from leaking into this one.
+						 }
+						 
+						 
+					 }
+					 
 					 //note: these masks are or'd with the previous
 					 //upgrade, end-response, and close connection apply the same 
-					 requestContext |= Pipe.takeInt(input); 
+					 requestContext |= localContext;
 										 
 					 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 					 
@@ -703,63 +782,53 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
-		 finishPublish(that, input, myPipeIdx, channelId, output, expSeq, 
-				       requestContext, connectionDataReader, finishedFullReponse);
-	}
-
-	private static void finishPublish(OrderSupervisorStage that, final Pipe<ServerResponseSchema> input, final int myPipeIdx, final long channelId,
-			Pipe<NetPayloadSchema> output, final int expSeq, final int requestContext,
-			final ConnDataReaderController connectionDataReader, 
-			final boolean finishedFullReponse) {
-				
-		if (finishedFullReponse) {
-			 //nothing after this point needs this data so it is abandoned.
-			 int routeId = -1;
-			 long businessTime = -1;
-			 if (null!=connectionDataReader) {
-				 routeId = connectionDataReader.readRoute();
-				 businessTime = connectionDataReader.readBusinessTime();
-				 connectionDataReader.commitRead();
-			 }
-			 
-			 long limitSLA = -1;
-			 if (routeId<that.routeSLA.length && routeId>=0) {
-				 limitSLA = that.routeSLA[routeId];				 
-			 }
-			 
-			 if ((null!=that.log) || (limitSLA>0)) {
-				 
-				 long now = System.nanoTime();
-				 long businessDuration = now-businessTime;
-				 
-				 //if (businessDuration>limitSLA) {
-					 //send the routeId to those listening that we have a violation					 
-					 //TODO: publish if pipe is found..	
-				 //}
-				 				 
-				 that.writeToLog(channelId, output, expSeq, now, businessDuration);
-			 }			 
-			 
-		 } else {
-			 if (null!=connectionDataReader) {
-				 connectionDataReader.rollback();
+		 if (finishedFullReponse) {
+			 //if finished and we had some responses
+			 if (totalResponses>0) {//NOTE: this would be much nicer up above to avoid reconstructing IDX..
+				 int idx = (int)(channelId & that.channelBitsMask);
+				 that.expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
 			 }
 		 }
-
-         
+		
+		 if (null!=connectionDataReader && connectionDataReader.isReading()) {
+			 connectionDataReader.rollback();
+		 }
+		
 		 if (that.showUTF8Sent) {
 			 Pipe.outputStream(output).debugAsUTF8();
 		 }
-		 
+		
 		 that.writeToNextStage(output, myPipeIdx, channelId, requestContext, expSeq); 
 		 	 
-		 
+		
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 assert(0==Pipe.releasePendingByteCount(input));
 		 assert(Pipe.bytesReadBase(input)>=0);
+		 return totalResponses;
 	}
 
-	private void writeToLog(long channelId, Pipe<NetPayloadSchema> output, final int expSeq, long now,
+	private static void writeToLog(OrderSupervisorStage that, final long channelId, Pipe<NetPayloadSchema> output,
+			final int expSeq, int logPos, int logLen, int routeId, long businessTime) {
+		long limitSLA = -1;
+		 if (routeId<that.routeSLA.length && routeId>=0) {
+			 limitSLA = that.routeSLA[routeId];				 
+		 }
+		 
+		 if ((null!=that.log) || (limitSLA>0)) {
+			 
+			 long now = System.nanoTime();
+			 long businessDuration = now-businessTime;
+			 
+			 //if (businessDuration>limitSLA) {
+			 //send the routeId to those listening that we have a violation					 
+			 //TODO: publish if pipe is found..	
+			 //}
+			 
+			 that.writeToLog(channelId, output, logPos, logLen, expSeq, now, businessDuration);
+		 }
+	}
+
+	private void writeToLog(long channelId, Pipe<NetPayloadSchema> output, int outPos, int outLen, final int expSeq, long now,
 			long businessDuration) {
 		//if we have a log pipe then log these events
 		 Pipe<HTTPLogResponseSchema> outLog = log;
@@ -768,7 +837,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 //so this may need to write multiple messages to capture all the data.
 			 
 			 DataOutputBlobWriter<?> logStr = Pipe.openOutputStream(outLog);				 
-			 Pipe.outputStream(output).replicate(logStr);
+			 Pipe.outputStream(output).replicate(logStr, outPos, outLen);
 			 outLog.closeBlobFieldWrite();
 			 
 			 int writeLength = logStr.length();
@@ -862,25 +931,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.confirmLowLevelWrite(output, plainSize);
 		 Pipe.publishWrites(output);
 		 
-		 int idx = (int)(channelId & channelBitsMask);
-		 if (0 != (END_RESPONSE_MASK & requestContext)) {
-		    
-			//we have finished all the chunks for this request so the sequence number will now go up by one	
-		 	//logger.info("detected end and incremented sequence number from {}",expectedSquenceNosSequence[idx]);
-		 	
-		 	//NOTE: it is critical that the only time we inc is when the end of the response is reached.
-			expectedSquenceNosSequence[idx]++;
-		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
-		 	
-		 	
-		 	
-		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);
-		 	
 
-		 } else {
-			// logger.info("no resposne mask, continuation");
-			 
-		 }
 			                     
 	 	//////////////
 	 	//if needed write out the close connection message
