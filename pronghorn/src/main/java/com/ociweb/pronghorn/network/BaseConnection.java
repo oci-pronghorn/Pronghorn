@@ -16,7 +16,6 @@ import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public abstract class BaseConnection {
 	
@@ -249,10 +248,9 @@ public abstract class BaseConnection {
 		public void commitWrite(int context, long businessTime) {
 			if (isWriting) {
 				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));		
-				
-				Pipe.confirmLowLevelWrite(pipe, SIZE_OF);
 				Pipe.addIntValue(context, pipe);
 				Pipe.addLongValue(businessTime, pipe);
+				Pipe.confirmLowLevelWrite(pipe, SIZE_OF);
 				Pipe.publishWrites(pipe);
 			} else {
 				isWriting = false;
@@ -354,6 +352,9 @@ public abstract class BaseConnection {
 			isReading.set(false);
 		}
 
+		public boolean isReading() {
+			return isReading.get();
+		}
 	}
 
 	
