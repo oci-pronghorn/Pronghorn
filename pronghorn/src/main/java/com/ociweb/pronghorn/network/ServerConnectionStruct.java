@@ -23,9 +23,10 @@ public class ServerConnectionStruct {
 	public final long arrivalTimeFieldId;
 	public final long businessStartTime;
 	public final long routeIdFieldId;
-
-	private int minInternalInFlightCount = 1<<10;//must not be zero //TODO: add update method
-	private int minInternalInFlightPayloadSize = 56;//TODO: add update method
+	private int minInternalInFlightCount = 1<<15;//must not be zero //TODO: add update method
+	
+	//none of the internal fields need this, this is only for echo feature and for index of echo.
+	private int minInternalInFlightPayloadSize = 0;//when feature is not used there will be no blob length allocated
 		
 	public int inFlightCount() {
 		return minInternalInFlightCount;		
@@ -87,6 +88,9 @@ public class ServerConnectionStruct {
 	}
 
 	public void headersToEcho(int maxSingleHeaderSize, HTTPHeader ... headers) {
+		if (0==minInternalInFlightPayloadSize) {
+			minInternalInFlightPayloadSize += 4;//room to open and add index
+		}
 		minInternalInFlightPayloadSize += (headers.length*maxSingleHeaderSize);
 		headersToEcho = headers;
 		
