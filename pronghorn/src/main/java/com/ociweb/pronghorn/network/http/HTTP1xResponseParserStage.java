@@ -1000,7 +1000,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			if (!isValid) {
 				logger.warn("invalid HTTP request from server should start with H");
 				if (null!=cc) {
-					closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
+					try {
+						closeConnectionAndAbandonOldData(posIdx, lenIdx, stateIdx, cc, i);
+					} catch (Throwable e) {
+						//ignore this is not the source of the problem
+					}
 				}
 			}
 		}
