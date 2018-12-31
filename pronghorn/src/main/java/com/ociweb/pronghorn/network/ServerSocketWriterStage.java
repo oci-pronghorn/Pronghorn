@@ -29,7 +29,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     public static boolean showWrites = false;
- 	public static long hardLimtNS = 50_000_000L; //50ms -- must be fast enough for the telemetry set now to 100ms
+ 	public static long hardLimtNS = 10_000_000L; //10ms -- must be fast enough for the telemetry set now to 100ms
     //also note however data can be written earlier if:
 	//   1. the buffer has run out of space (the multiplier controls this)
 	//   2. if the pipe has no more data.
@@ -187,8 +187,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				||
 	    					!hasRoomToWrite //must write to network out buffer has no more room
 	    				||
-	    				//fire on no data, to make the loop faster.. may help with online test!!! return quickly..
-	    					(Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
+	    				    //if we have less than 1/2 of blob used wait for normal count down above
+	    				    //if above this and we have no new data go ahead and write.
+	    					( (limit>= (localInput.sizeOfBlobRing>>1) ) &&  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
 	    				) {
 	    		    				
 	    				writeToChannelBatchCountDown[x]=-4;
@@ -201,7 +202,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			} else {
 	    				
 	    				//must set to true to ensure we count up the iterations above.
-	    				doingWork |= (!Pipe.hasContentToRead(localInput));
+	   // 				doingWork |= (!Pipe.hasContentToRead(localInput));
 	    				
 	    				
 	    				//unflip
@@ -484,7 +485,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 //								System.out.println("not msgIdx matching");
 //							}
 //							if (workingBuffers[idx].remaining()<=pipe.maxVarLen) {
-//								System.out.println("no room to write");
+//								System.out.println("no room to write needs :"+pipe.maxVarLen+" has "+workingBuffers[idx].remaining());
 //							}				
 //							if (Pipe.peekLong(pipe, 1)!=channelId) { //by far most common here.
 //								System.out.println("stop accumulation: "+channelId+" vs "+Pipe.peekLong(pipe, 1));
@@ -495,6 +496,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 				return false;
 			}
 		} else {
+	//		System.out.println("no content to read "+pipe);
 			return false;
 		}
 	
