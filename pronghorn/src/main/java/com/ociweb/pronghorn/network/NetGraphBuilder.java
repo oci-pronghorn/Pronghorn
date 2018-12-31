@@ -861,8 +861,8 @@ public class NetGraphBuilder {
 		int maxConnectionBits = 12;
 		int tracks = 1;
 		
-		int concurrentChannelsPerDecryptUnit = 4; //need large number for new requests
-		int concurrentChannelsPerEncryptUnit = 1; //this will use a lot of memory if increased
+		int concurrentChannelsPerDecryptUnit = 8; //need large number for new requests
+		int concurrentChannelsPerEncryptUnit = 4; //this will use a lot of memory if increased
 				
 		 //for cookies sent in
 		
