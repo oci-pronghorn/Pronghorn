@@ -6,7 +6,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
