@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.memory;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadConsumerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadProducerSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadReleaseSchema;
@@ -26,15 +27,16 @@ public class MemorySequentialReplayerStage extends PronghornStage {
 	private int activeData=0;
 	
 	
-	public static void newInstance(GraphManager gm, 
+	public static MemorySequentialReplayerStage newInstance(GraphManager gm, 
 			Pipe<PersistedBlobLoadReleaseSchema>  fromStoreRelease,   //ack of release
 			Pipe<PersistedBlobLoadConsumerSchema> fromStoreConsumer,  //replay data for watchers
 			Pipe<PersistedBlobLoadProducerSchema> fromStoreProducer,  //ack of write
 			Pipe<PersistedBlobStoreConsumerSchema> toStoreConsumer,   //command release, replay or clear
-			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer    //command store
+			Pipe<PersistedBlobStoreProducerSchema> toStoreProducer   //command store
+	
 			) {
 		
-		new MemorySequentialReplayerStage(gm, 
+		return new MemorySequentialReplayerStage(gm, 
 				fromStoreRelease, fromStoreConsumer, fromStoreProducer,
 				toStoreConsumer, toStoreProducer
 				);
