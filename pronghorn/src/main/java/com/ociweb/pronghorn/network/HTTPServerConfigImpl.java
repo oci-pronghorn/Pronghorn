@@ -44,7 +44,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	
 	private int maxRequestSize = 1<<9;//default of 512	
-	private int maxResponseSize = 1<<11;//default of 2k
+	private final static int ICO_FILE_SIZE = 1<<11;//2k minimum to match ico file size, TODO: reduce ico to 1K?
+	
+	private int maxResponseSize = ICO_FILE_SIZE;//default of 2k
 	
 	//smaller to use less memory default use
 	private int maxQueueIn = 8; ///from router to modules
@@ -75,7 +77,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		this.pcmOut = pcmOut;
 	
 		//NOTE: this is set at the minimum sizes to support example, template and favicon.ico files
-		this.pcmOut.ensureSize(ServerResponseSchema.class, 4, Math.max(512, maxResponseSize)); //ico file is < 512	
+		this.pcmOut.ensureSize(ServerResponseSchema.class, 4, Math.max(ICO_FILE_SIZE, maxResponseSize));	
 		
 		this.scs = new ServerConnectionStruct(recordTypeData);
 		beginDeclarations();
@@ -250,7 +252,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 		//for after router and before module, limited since all the data is cached in previous pipe
 		//and we do not want to use all the memory here.
-		this.pcmIn.ensureSize(HTTPRequestSchema.class, Math.min(maxQueueIn,1<<14), 0); 
+		this.pcmIn.ensureSize(HTTPRequestSchema.class, Math.max(maxQueueIn,1<<12), 0); 
        
 		return this;
 	}
