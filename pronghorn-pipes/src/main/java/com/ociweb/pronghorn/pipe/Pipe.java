@@ -943,7 +943,8 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>> int blobIndexBasePosition(Pipe<S> pipe) {
 		if (pipe.maxVarLen<INDEX_BASE_OFFSET) {
-			throw new UnsupportedOperationException("no var length for index");
+			return 0; //NOTE: there is no byte buffer space
+			//NOTE: throw new UnsupportedOperationException("no var length for index");
 		}		
 		return pipe.maxVarLen-INDEX_BASE_OFFSET;
 	}

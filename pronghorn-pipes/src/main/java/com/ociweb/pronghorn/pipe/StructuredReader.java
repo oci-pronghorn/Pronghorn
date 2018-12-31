@@ -390,7 +390,7 @@ public final class StructuredReader {
     /**
      * Reads rational as double from specified field in pipe
      * @param fieldId field to read from
-     * @return channelReader if index >= 0, else <code>NaN</code>
+     * @return channelReader if index GTE 0, else <code>NaN</code>
      */
 	public double readRationalAsDouble(long fieldId) {
 		

@@ -94,8 +94,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         writer.backPosition = writer.startPosition + Pipe.blobIndexBasePosition(writer.backingPipe);
         //this is turned on when callers begin to add index data
         writer.structuredWithIndexData = false;
-        DataOutputBlobWriter.setStructType(writer, -1);//clear any previous type
-        
+        if (writer.backingPipe.sizeOfBlobRing>1) {
+        	DataOutputBlobWriter.setStructType(writer, -1);//clear any previous type
+        }
         return writer;
 	}
     
@@ -130,6 +131,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	 */
 	public void replicate(DataOutputBlobWriter<?> writer) {
 		writer.write(backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+	}
+	
+	/**
+	 * Data written so far and in the offset to length segment is directly copied to the destination writer.
+	 * @param writer
+	 * @param offset from start of the writer, 0 is the start
+	 * @param length must not be longer than bytes written.
+	 */
+	public void replicate(DataOutputBlobWriter<?> writer, int offset, int length) {
+		assert(length<= (activePosition-startPosition));
+		writer.write(backingPipe.blobRing, startPosition+offset, length, backingPipe.blobMask);
 	}
     
 	public void replicate(Appendable target) {
