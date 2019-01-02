@@ -81,6 +81,7 @@ public abstract class PronghornStage {
 	}
 	
     /**
+     * @param pipes Pipes to scan for max
      * @return the maximum variable length supported across all the pipes
      */
     public static int maxVarLength(Pipe<?>[] pipes) {
@@ -102,6 +103,7 @@ public abstract class PronghornStage {
     }
 
     /**
+     * @param pipes Pipes to scan for min
      * @return the minimum variable length supported across all the pipes
      */
 	public static int minVarLength(Pipe<?>[] pipes) {

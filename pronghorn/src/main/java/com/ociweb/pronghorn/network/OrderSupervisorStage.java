@@ -688,22 +688,23 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 businessTime = connectionDataReader.readBusinessTime();
 				 connectionDataReader.commitRead();
 				 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+
+				 ChannelReader reader = connectionDataReader.beginRead();
+				 if (null != reader) {
+					 //write the echos	??		 
+					 
+					 //This echo feature can not be correct and must be re-implemented??...
+					 //should be after write not before??? and should read from reader???
+					 //	if (beginningOfResponse) {
+					 //	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
+					 
+					 //}
+					 
+				 }
 			 }
 			 logPos+=logLen;
 			 logLen=0;
 			 
-			 ChannelReader reader = connectionDataReader.beginRead();
-			 if (null != reader) {
-				 //write the echos	??		 
-					
-				 //This echo feature can not be correct and must be re-implemented??...
-				 //should be after write not before??? and should read from reader???
-			//	if (beginningOfResponse) {
-				//	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
-				 
-				//}
-				 
-			 }
 			 
 		 }
 		 
@@ -755,18 +756,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 							 businessTime = connectionDataReader.readBusinessTime();
 							 connectionDataReader.commitRead();
 							 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+							 ChannelReader reader = connectionDataReader.beginRead();
+							 if (null != reader) {
+								 requestContext = connectionDataReader.readContext();
+								 //write the echos?	seems right place for this..			 
+								 
+							 } else {
+								 requestContext = 0;//keep previous call from leaking into this one.
+							 }
+						 } else {
+							 requestContext = 0;
 						 }
 						 logPos+=logLen;
 						 logLen=0;
 						 
-						 ChannelReader reader = connectionDataReader.beginRead();
-						 if (null != reader) {
-							 requestContext = connectionDataReader.readContext();
-							 //write the echos?	seems right place for this..			 
-							 
-						 } else {
-							 requestContext = 0;//keep previous call from leaking into this one.
-						 }
 						 
 						 
 					 }
