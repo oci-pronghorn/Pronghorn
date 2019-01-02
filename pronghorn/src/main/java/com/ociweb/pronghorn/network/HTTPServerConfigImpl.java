@@ -43,16 +43,16 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private TLSCertificates serverTLS = TLSCerts.define();
 	private BridgeConfigStage configStage = BridgeConfigStage.Construction;
 	
-	private int maxRequestSize = 1<<9;//default of 512	
+	private int maxRequestSize = 1<<9;//default of 1024	
 	private final static int ICO_FILE_SIZE = 1<<11;//2k minimum to match ico file size, TODO: reduce ico to 1K?
 	
 	private int maxResponseSize = ICO_FILE_SIZE;//default of 2k
 	
 	//smaller to use less memory default use
-	private int maxQueueIn = 8; ///from router to modules
+	private int maxQueueIn = 16; ///from router to modules
 	private int maxQueueOut = 8; //from orderSuper to ChannelWriter
 
-	private int minMemoryInputPipe = 1<<14; // 16K default to keep it small.
+	private int minMemoryInputPipe = 1<<21;
 	
 	public final PipeConfigManager pcmIn;
 	public final PipeConfigManager pcmOut;
@@ -242,8 +242,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 
 	@Override
 	public HTTPServerConfig setMinimumInputPipeMemory(int bytes) {
-		this.minMemoryInputPipe = bytes;
+		this.minMemoryInputPipe = Math.max(bytes, this.minMemoryInputPipe);
 		return this;
+	}
+	
+	public int getMinimumInputPipeMemory() {
+		return this.minMemoryInputPipe;
 	}
 	
 	@Override
@@ -276,17 +280,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	}
 
 	public ServerPipesConfig buildServerConfig() {
-		int incomingMsgFragCount = defaultComputedChunksCount();
-
-		pcmIn.ensureSize(HTTPRequestSchema.class, 
-						Math.max(incomingMsgFragCount-2, 2), 
-						getMaxRequestSize());
-			
+				
 		pcmOut.ensureSize(ServerResponseSchema.class, 4, 512);
-		
+		int blocksFromSocket = 32;
 		int queueIn = 2; //2-1024
 		int queueOut = 4; //4-256
-		
+				
 		return new ServerPipesConfig(
 				logFile,
 				isTLS(),
@@ -297,7 +296,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 				getDecryptionUnitsPerTrack(),
 				getConcurrentChannelsPerDecryptUnit(),				
 				//one message might be broken into this many parts
-				incomingMsgFragCount,
+				blocksFromSocket, minMemoryInputPipe,
 				getMaxRequestSize(),
 				getMaxResponseSize(),
 				queueIn,
@@ -309,21 +308,6 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		return maxResponseSize;
 	}
 	
-	public int defaultComputedChunksCount() {		
-		
-		///////////////////////
-		//WARNING: if this is too small the server will drop incoming work
-		//////////////////////
-		
-		//must be no more than 32 if we have very large data
-		int temp = Math.min(32, 2+(getMaxRequestSize()/1500));
-		
-		//do consume at least 1M if it is small
-		int result =  Math.max(temp, minMemoryInputPipe/getMaxRequestSize());
-		//HIGHVOLUME
-		return result;
-	}
-
 	public int getMaxRequestSize() {
 		return this.maxRequestSize;
 	}

@@ -681,13 +681,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 			 totalResponses++;
 				 
-			 int routeId = -1;
 			 long businessTime = -1;
 			 if (null!=connectionDataReader) {
-				 routeId = connectionDataReader.readRoute();
 				 businessTime = connectionDataReader.readBusinessTime();
 				 connectionDataReader.commitRead();
-				 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+				//TODO: need to capture which pipe this came in from and if it violates the SLA.
+				 //      then report this as an error.
+				 				 
+				 writeToLog(that, channelId, output, expSeq, logPos, logLen, businessTime);			 
 
 				 ChannelReader reader = connectionDataReader.beginRead();
 				 if (null != reader) {
@@ -749,13 +750,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 if (0 != (END_RESPONSE_MASK & localContext)) {
 						 totalResponses++;
 						 
-						 int routeId = -1;
 						 long businessTime = -1;
 						 if (null!=connectionDataReader) {
-							 routeId = connectionDataReader.readRoute();
+							 //TODO: need to capture which pipe this came in from and if it violates the SLA.
+							 //      then report this as an error.
+							 
 							 businessTime = connectionDataReader.readBusinessTime();
 							 connectionDataReader.commitRead();
-							 writeToLog(that, channelId, output, expSeq, logPos, logLen, routeId, businessTime);			 
+							 writeToLog(that, channelId, output, expSeq, logPos, logLen, businessTime);			 
 							 ChannelReader reader = connectionDataReader.beginRead();
 							 if (null != reader) {
 								 requestContext = connectionDataReader.readContext();
@@ -811,13 +813,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private static void writeToLog(OrderSupervisorStage that, final long channelId, Pipe<NetPayloadSchema> output,
-			final int expSeq, int logPos, int logLen, int routeId, long businessTime) {
-		long limitSLA = -1;
-		 if (routeId<that.routeSLA.length && routeId>=0) {
-			 limitSLA = that.routeSLA[routeId];				 
-		 }
-		 
-		 if ((null!=that.log) || (limitSLA>0)) {
+			final int expSeq, int logPos, int logLen, long businessTime) {
+
+		 if (null!=that.log) {
 			 
 			 long now = System.nanoTime();
 			 long businessDuration = now-businessTime;

@@ -581,7 +581,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @param pipe pipe to read from
      * @param loc location to read from
      * @param target byte array to write to
-     * @return if len>=0 return len, else 0
+     * @return if len GTE 0 return len, else 0
      */
     public static int readBytes(Pipe pipe, int loc, byte[] target, int targetOffset, int targetMask) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
@@ -818,7 +818,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @param pipe to be checked
      * @param expected1 used for comparison with message
      * @param expected2 used for comparison with message
-     * @return <code>true</code> if message == expected1 && expected2, else <code>false</code>
+     * @return <code>true</code> if message == expected1 and expected2, else <code>false</code>
      */
 	public static boolean peekMsg(Pipe pipe, int expected1, int expected2) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
@@ -863,7 +863,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
      * @param pipe to be checked
      * @param expected1 used for comparison
      * @param expected2 used for comparison
-     * @return <code>true</code> if message != expected1 && message != expected2, else <code>false</code>
+     * @return <code>true</code> if message != expected1 and message != expected2, else <code>false</code>
      */
 
 	public static boolean peekNotMsg(Pipe pipe, int expected1, int expected2) {			

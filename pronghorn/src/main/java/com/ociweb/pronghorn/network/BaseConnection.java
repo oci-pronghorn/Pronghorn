@@ -216,11 +216,11 @@ public abstract class BaseConnection {
 		 * Open the message for writing
 		 * @return returns the ChannelWriter or null if there is no room to write.
 		 */
-		public ChannelWriter beginWrite(int route, long arrivalTime) {
+		public ChannelWriter beginWrite(long arrivalTime) {
 			if (Pipe.hasRoomForWrite(pipe)) {
 				Pipe.markHead(pipe);
 				Pipe.addMsgIdx(pipe, ConnectionStateSchema.MSG_STATE_1);
-				Pipe.addIntValue(route, pipe);
+
 				Pipe.addLongValue(arrivalTime, pipe);
 				isWriting = true;
 				return Pipe.openOutputStream(pipe);
@@ -266,7 +266,6 @@ public abstract class BaseConnection {
 		protected final Pipe<ConnectionStateSchema> pipe;
 		protected AtomicBoolean isReading = new AtomicBoolean();
 				
-	    private int activeRoute;
 	    private long activeArrivalTime;
 	    private int activeContext;
 	    private long activeBusinessTime;
@@ -297,7 +296,6 @@ public abstract class BaseConnection {
 				if (msg >= 0) {
 					isReading .set(true);
 					
-					activeRoute = Pipe.takeInt(pipe);
 					activeArrivalTime = Pipe.takeLong(pipe);					
 					DataInputBlobReader<ConnectionStateSchema> result = Pipe.openInputStream(pipe);
 					activeContext = Pipe.takeInt(pipe);
@@ -308,11 +306,6 @@ public abstract class BaseConnection {
 				}
 			}
 			return null;
-		}
-		
-		public int readRoute() {
-			assert(isReading.get());
-			return activeRoute;
 		}
 		
 		public long readArrivalTime() {

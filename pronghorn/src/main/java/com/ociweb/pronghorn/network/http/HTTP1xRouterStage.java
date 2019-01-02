@@ -875,7 +875,7 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 			cwc = serverCon.connectionDataWriter();
 			if (null != cwc) {
 				assert (routeId == config.getRouteIdForPathId(pathId));
-				cw = cwc.beginWrite(routeId, arrivalTime);
+				cw = cwc.beginWrite(arrivalTime);
 				if (null!=cw) {
 					requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, cw,  
 														httpRevisionId, config,

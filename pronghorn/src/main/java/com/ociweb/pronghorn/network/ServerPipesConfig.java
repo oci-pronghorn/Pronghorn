@@ -43,6 +43,7 @@ public class ServerPipesConfig {
 							 int decryptUnitsPerTrack,
 							 int concurrentChannelsPerDecryptUnit, 
 							 int partialPartsIn,  //make larger for many fragments
+							 int partsInBuffer, //full buffer from socket to parser
 							 int maxRequestSize, //make larger for large posts
 							 int maxResponseSize,
 							 int queueLengthIn, //router to modules
@@ -100,11 +101,15 @@ public class ServerPipesConfig {
 		pcmIn.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 		pcmOut.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 
+		int blockSize = partsInBuffer/partialPartsIn;
+		pcmIn.ensureSize(NetPayloadSchema.class, partialPartsIn, 
+				Math.max(maxRequestSize, 
+						 isTLS ? (Math.max(blockSize, SSLUtil.MinTLSBlock)) : blockSize				
+						)
+				);
 			
-	    //byte buffer must remain small because we will have a lot of these for all the partial messages
-		//however for large posts we make this large for fast data reading
-		//in addition this MUST be 1<15 in var size when TLS is in use.
-		pcmIn.ensureSize(NetPayloadSchema.class, partialPartsIn, maxRequestSize);
+		
+		pcmIn.ensureSize(HTTPRequestSchema.class, queueLengthIn, fromRouterToModuleBlob);
 		
 		//maxResponseSize Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 		pcmOut.ensureSize(NetPayloadSchema.class, queueLengthOut, maxResponseSize);

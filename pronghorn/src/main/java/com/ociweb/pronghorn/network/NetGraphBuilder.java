@@ -884,13 +884,10 @@ public class NetGraphBuilder {
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();
 		
 		HTTPServerConfigImpl r = ((HTTPServerConfigImpl)c);
-		int incomingMsgFragCount = r.defaultComputedChunksCount();
-				
+
+		int fromSocketBlocks = 128;
+		int fromSocketBuffer = 1<<21;
 		
-		r.pcmIn.ensureSize(HTTPRequestSchema.class, 
-						Math.max(incomingMsgFragCount-2, 2), 
-						r.getMaxRequestSize());
-			
 		r.pcmOut.ensureSize(ServerResponseSchema.class, 4, 512);
 		
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(
@@ -903,7 +900,7 @@ public class NetGraphBuilder {
 						r.getDecryptionUnitsPerTrack(),
 						r.getConcurrentChannelsPerDecryptUnit(),				
 						//one message might be broken into this many parts
-						incomingMsgFragCount,
+						fromSocketBlocks, fromSocketBuffer,
 						r.getMaxRequestSize(),
 						r.getMaxResponseSize(),
 						2, //incoming telemetry requests in Queue, keep small
