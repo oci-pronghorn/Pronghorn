@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Batches messages based on a limit.
- * @param <T>
+ * @param <T> schema
  *
  * @author Nathan Tippy
  */
@@ -21,8 +21,8 @@ public class BatchingStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	/**
 	 *
-	 * @param gm
-	 * @param pct
+	 * @param gm graph this stage is to be part of
+	 * @param pct percentage full before release
 	 * @param input _in_ The pipe that will be batched
 	 * @param output _out_ Pipe onto which batches will be released
 	 */

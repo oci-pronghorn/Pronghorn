@@ -41,7 +41,7 @@ public class FieldSplitterStage extends PronghornStage {
 
 	/**
 	 *
-	 * @param graphManager
+	 * @param graphManager graph this stage will be part of
 	 * @param inputRing _in_ Pipe containing inputRing
 	 * @param outputRing _out_ Pipe containing outputRing
 	 */

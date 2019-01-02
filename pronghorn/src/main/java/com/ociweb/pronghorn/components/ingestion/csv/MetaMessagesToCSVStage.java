@@ -31,7 +31,7 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 
 	/**
 	 *
-	 * @param gm
+	 * @param gm graph this stage will be part of
 	 * @param inputRing _in_ Pipe containing meta messages
 	 * @param outputRing _out_ Pipe containing newly produced XML templates
 	 */
