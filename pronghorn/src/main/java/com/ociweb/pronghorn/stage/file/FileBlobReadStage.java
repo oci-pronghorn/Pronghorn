@@ -117,7 +117,7 @@ public class FileBlobReadStage extends PronghornStage {
 	        
 	        try {
 	        	fileChannel = provider.newFileChannel(fileSystem.getPath(inputPathString), readOptions);
-	        	logger.info("\nfile: {} size: {} ", inputPathString, fileChannel.size());
+	        	//logger.info("\nfile: {} size: {} ", inputPathString, fileChannel.size());
 	        } catch (IOException e) {
 	           throw new RuntimeException(e);
 	        } 
