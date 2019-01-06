@@ -806,8 +806,10 @@ public class TrieParserReader {
 			reader.runLength += run;
 			reader.type = trie.data[reader.pos++];
 		} else { 		
+			
 			noMatchAction(reader, trie, hasSafePoint,
-					reader.sourceLen >= run ? reader.noMatchConstant : reader.unfoundConstant);
+					reader.alwaysCompletePayloads ||
+					(reader.sourceLen >= run) ? reader.noMatchConstant : reader.unfoundConstant);
 		}
 	}
 
