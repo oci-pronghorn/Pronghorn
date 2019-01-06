@@ -1440,7 +1440,8 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	/**
 	 * Build an array of Pipe instances from a set of PipeConfig found in array of pipes.
-	 * @param configs array of PipeConfig values
+	 * @param Pipe array of pipes
+	 * @param <S> schema
 	 * @return array of new pipes
 	 */
 	public static <S extends MessageSchema<S>> Pipe<S>[] buildPipes(Pipe<S>[] pipes) {
@@ -1832,7 +1833,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * 
 	 * @param len int length of bytes written
 	 * @param output Pipe target 
-	 * @param S schema
+	 * @param <S> schema
 	 */
     public static <S extends MessageSchema<S>> void moveBlobPointerAndRecordPosAndLength(int len, Pipe<S> output) {
     	moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(output), len, output);
@@ -2043,6 +2044,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param input Pipe source
      * @param target Appendable to write text
      * @param fragIdx fragment idx
+     * @param <S> message schema
      */
     public static <S extends MessageSchema<S>> void appendFragment(Pipe<S> input, Appendable target, int fragIdx) {
         try {
@@ -2178,6 +2180,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param target ByteBuffer written into
      * @param meta int field meta data
      * @param len int field length in bytes
+     * @param <S> message schema
      * @return ByteBuffer target
      */
     public static <S extends MessageSchema<S>> ByteBuffer readBytes(Pipe<S> pipe, ByteBuffer target, int meta, int len) {
@@ -2212,6 +2215,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * 
      * @param pipe Pipe source
      * @param target DataOutputBlobWriter field written into
+     * @param <S> message schema
      * @return DataOutputBlobWriter target
      */
     public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, 
@@ -2224,6 +2228,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe to read from
      * @param target array to check
      * @param targetIdx index to check
+     * @param <S> message schema
      */
     public static <S extends MessageSchema<S>> void readBytes(Pipe<S> pipe, byte[] target, int targetIdx, int targetMask, int meta, int len) {
 		if (meta >= 0) {

@@ -805,8 +805,9 @@ public class TrieParserReader {
 		if (!scanForNonMatchingBytes(reader, trie, source, run, sourceMask)) {
 			reader.runLength += run;
 			reader.type = trie.data[reader.pos++];
-		} else {        
-			noMatchAction(reader, trie, hasSafePoint);
+		} else { 		
+			noMatchAction(reader, trie, hasSafePoint,
+					reader.sourceLen >= run ? reader.noMatchConstant : reader.unfoundConstant);
 		}
 	}
 
@@ -819,7 +820,7 @@ public class TrieParserReader {
 			final byte caseMask = trie.caseRuleMask;
 			final int t1 = reader.pos+run;
 			final int t2 = reader.localSourcePos+run;
-			return scanBytes3(reader, source, srcMask, caseMask, t1, t2, trie.data, t1-run, t2-run, run);
+			return scanBytes3(reader, source, srcMask, caseMask, t1, t2, trie.data, reader.pos, reader.localSourcePos, run);
 				
 	}
 
@@ -874,10 +875,12 @@ public class TrieParserReader {
 					reader.pos = p;
 				
 				} else {
-					noMatchAction(reader, trie, hasSafePoint);
+					
+					noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 				}
 			} else {
-				noMatchAction(reader, trie, hasSafePoint);
+				
+				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 			}
 		
 	}
@@ -913,7 +916,8 @@ public class TrieParserReader {
 			final long sourceLength, int sourceMask, boolean hasSafePoint) {
 		if (reader.runLength<sourceLength) {
 			if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, trie.data[reader.pos++]))<0) {			            	
-				noMatchAction(reader, trie, hasSafePoint);
+				
+				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 
 			} else {
 				//finished parse of number so move next
@@ -921,7 +925,7 @@ public class TrieParserReader {
 			}
 		} else {
 		
-			noMatchAction(reader, trie, hasSafePoint);
+			noMatchAction(reader, trie, hasSafePoint, reader.unfoundConstant);
 
 		}
 	}
@@ -952,11 +956,12 @@ public class TrieParserReader {
 			reader.type = trie.data[reader.pos++];
 			
 		} else {
-			noMatchAction(reader, trie, hasSafePoint);		
+			noMatchAction(reader, trie, hasSafePoint, reader.unfoundConstant);		
 		}
 	}
 
-	private static void noMatchAction(final TrieParserReader reader, final TrieParser trie, boolean hasSafePoint) {
+	private static void noMatchAction(final TrieParserReader reader, final TrieParser trie, boolean hasSafePoint,
+			long result) {
 		/////////////////
 		//common pattern
 		if (!hasSafePoint) {                       	
@@ -966,7 +971,7 @@ public class TrieParserReader {
 				//we have NO safe point AND we found a non match in the sequence
 				//this will never match no matter how much data is added so return the noMatch code.
 				reader.normalExit=false;
-				reader.result = reader.noMatchConstant;
+				reader.result = result;
 			}
 		} else {
 			reader.normalExit=false;
