@@ -23,7 +23,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.PoolIdxPredicate;
-//import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Server-side stage that reads from the socket. Useful for building a server.
@@ -287,6 +286,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
 		BaseConnection cc = coordinator.lookupConnectionById(channelId);
+		assert(cc.getSocketChannel()==socketChannel) : "internal error";
 		
 		if (null != cc) {
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
@@ -329,7 +329,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 						int result = PoolIdx.getIfReserved(responsePipeLinePool,channelId);
 						if (result>=0) {
 							//we found the old channel so remove it before we add the new id.
-							responsePipeLinePool.release(channelId);
+				 		    responsePipeLinePool.release(channelId);
 						}
 					}
 					
@@ -355,7 +355,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					if (responsePipeLineIdx >= 0) {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
-								
+			
 					final boolean debugPipeAssignment = false;
 					if (debugPipeAssignment) {
 						if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
@@ -371,6 +371,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				} 
 					
 				if (responsePipeLineIdx >= 0) {
+				
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, cc.id, 
 															cc.getSequenceNo(),
 							                                output[responsePipeLineIdx], 
@@ -385,6 +386,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 		return hasOutputRoom;
 	}
+	
 
 	private boolean processClosedConnection(final SocketChannel socketChannel, long channelId) {
 		//logger.info("closed connection here for channel {}",channelId);
@@ -466,7 +468,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			shutdownInProgress = true;
 	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
 	    		}
-	    		Pipe.releaseReadLock(a);	    		
+	    		
+	        	Pipe.releaseReadLock(a);
+	    		
 	    	}
 		}
 	}
@@ -483,7 +487,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
 		//	logger.info("NEW RELEASE for pipe {} connection {} at pos {}",pipeIdx, idToClear, pos);
-			responsePipeLinePool.release(idToClear);
+       	    responsePipeLinePool.release(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
@@ -539,7 +543,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 
             	//Read as much data as we can...
             	//We must make the writing buffers larger based on how many messages we can support
-            	int readMaxSize = targetPipe.maxVarLen;
+            	int readMaxSize = targetPipe.maxVarLen;           	
             	long units = targetPipe.sizeOfSlabRing - (Pipe.headPosition(targetPipe)-Pipe.tailPosition(targetPipe));
             	units -= reqPumpPipeSpace;
             	if (units>0) {
@@ -550,11 +554,13 @@ public class ServerSocketReaderStage extends PronghornStage {
             	}
             	
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap around
-				b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), 
+				int wrkHeadPos = Pipe.storeBlobWorkingHeadPosition(targetPipe);
+				b = Pipe.wrappedWritingBuffers(wrkHeadPos, 
                 		                       targetPipe, 
                 		                       readMaxSize);
                        
                 assert(collectRemainingCount(b));
+     
                 
                 //read as much as we can, one read is often not enough for high volume
                 do {
@@ -562,7 +568,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	            	if (temp>0){
 	            		len+=temp;
 	            	}
-                } while (temp>0);            	
+                } while (temp>0);
             	
                 assert(readCountMatchesLength(len, b));
                 
@@ -596,9 +602,6 @@ public class ServerSocketReaderStage extends PronghornStage {
             	
             	    logger.trace("client closed connection ",e.getMessage());
             	
-	             	selection.cancel();                	
-	            	responsePipeLinePool.release(cc.id);    
-					cc.clearPoolReservation();
 					boolean isOpen = temp>=0;
 					int result;
 					if (len>0) {			
@@ -606,6 +609,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 					} else {
 						result = abandonConnection(channelId, targetPipe, isOpen, newBeginning);
 					}            	
+					selection.cancel();                	
+	            	responsePipeLinePool.release(cc.id);    
+					cc.clearPoolReservation();
 					if (temp<0) {
 						cc.close();
 					}
@@ -685,12 +691,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 		return (fullTarget && isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 	}
-
+	
     private void publishSingleMessage(Pipe<NetPayloadSchema> targetPipe, 
 		    		                 long channelId, 
 		    		                 int pos, long remainLen) {
-
-    	while (remainLen>0) {
+    	
+    	while (remainLen>0 && Pipe.hasRoomForWrite(targetPipe)) {
     		int localLen = (int)Math.min(targetPipe.maxVarLen, remainLen);
 
 	        final int size = Pipe.addMsgIdx(targetPipe, messageType);               
