@@ -568,7 +568,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			}         
 		} while (result); //this while is ok because the TrieReader is returned to its starting position upon failure.
 	
-		assert(validateParseEnd(that, idx));
+		//assert(validateParseEnd(that, idx));
 			
 		return didWork;
 	}
