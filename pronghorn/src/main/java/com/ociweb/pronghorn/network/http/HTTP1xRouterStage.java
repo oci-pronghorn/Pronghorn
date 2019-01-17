@@ -286,6 +286,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
 
+    	//	int x = 10;
+    	//	while (--x>=0) {
 	    		int i = inputs.length;
 		        while (--i>=0 ) {
 		        			        	
@@ -299,6 +301,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            	}
 		            }
 		      } 
+    	//	}
     		
     }
 
@@ -1060,30 +1063,12 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
 				
 			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-					if (iteration!=0) {						    	
-						
-						if (NO_LENGTH_DEFINED == postLength) {
-							postLength = 0;//we explicitly set length to zero if it is not provided.
-						}
-		
-						return endOfHeadersLogic(writer, 
-								errorReporter2, requestContext, 
-								trieReader, postLength, arrivalTime, ccId);
-						
-					} else {
-						//needs more data 
-						
-						return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
-					}
-			    } else if (-1 == headerToken) {            	
-			    	if (remainingLen>MAX_HEADER) {   
-			    		//client has sent very bad data.
-			    		logger.info("client has sent bad data connection {} was closed",serverConnection.id);
-			    		return errorReporter2.sendError(ccId, 400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-			    	}
-			        //nothing valid was found so this is incomplete.
+			    	return endOfHeader(trieReader, writer,
+			    			errorReporter2, arrivalTime, ccId, requestContext,
+							postLength, iteration);
 			    	
-			        return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
+			    } else if (-1 == headerToken) {            	
+			    	return noHeaderToken(serverConnection, errorReporter2, ccId, requestContext, remainingLen); 
 			    } else if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
 				    HTTPHeader header = config.getAssociatedObject(headerToken);
 				    int writePosition = writer.position();
@@ -1122,6 +1107,38 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 			    iteration++;
 			}
 		
+	
+	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+}
+
+
+private static int endOfHeader(TrieParserReader trieReader, DataOutputBlobWriter<HTTPRequestSchema> writer,
+		ErrorReporter errorReporter2, long arrivalTime, long ccId, int requestContext, long postLength, int iteration) {
+
+		if (iteration!=0) {						    	
+			
+			//we explicitly set length to zero if it is not provided.
+			return endOfHeadersLogic(writer, 
+					errorReporter2, requestContext, 
+					trieReader, NO_LENGTH_DEFINED == postLength ? 0 : postLength,
+					arrivalTime, ccId);
+			
+		} else {
+			//needs more data 						
+			return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
+		}
+	
+}
+
+
+private static int noHeaderToken(ServerConnection serverConnection, ErrorReporter errorReporter2, long ccId,
+		int requestContext, int remainingLen) {
+	if (remainingLen>MAX_HEADER) {   
+		//client has sent very bad data.
+		logger.info("client has sent bad data connection {} was closed",serverConnection.id);
+		return errorReporter2.sendError(ccId, 400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+	}
+	//nothing valid was found so this is incomplete.
 	
 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 }
@@ -1508,6 +1525,11 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
             System.err.println("due to old HTTP in use the connection was closed for "+id);
         }
 		return requestContext;
+	}
+
+
+	public HTTPRouterStageConfig<?,?,?,?> routerConfig() {
+		return config;
 	}
     
 }

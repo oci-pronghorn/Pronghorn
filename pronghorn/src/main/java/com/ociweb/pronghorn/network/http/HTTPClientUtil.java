@@ -103,7 +103,7 @@ public class HTTPClientUtil {
 			Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, activeWriter);
 	
 			byte[] host = ClientCoordinator.registeredDomainBytes(hostId);			
-			HeaderUtil.writeHeaderBeginning(host, 0, host.length, Integer.MAX_VALUE, port, activeWriter);
+			HeaderUtil.writeHeaderBeginning(host, 0, host.length, port, activeWriter);
 			
 			HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);
 			activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe), headersPos, headersLen, Pipe.blobMask(requestPipe));
@@ -256,7 +256,7 @@ public class HTTPClientUtil {
 		byte[] domain = ClientCoordinator.registeredDomainBytes(hostId);
 		
 		HeaderUtil.writeHeaderBeginning(
-				domain, 0, domain.length, Integer.MAX_VALUE,
+				domain, 0, domain.length, 
 				port, activeWriter);
 		
 		HeaderUtil.writeHeaderMiddle(activeWriter, HTTPClientRequestStage.implementationVersion);

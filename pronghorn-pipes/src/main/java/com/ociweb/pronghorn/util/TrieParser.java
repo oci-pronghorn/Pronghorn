@@ -30,15 +30,14 @@ public class TrieParser implements Serializable {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrieParser.class);
 
-    static final byte TYPE_RUN                 = 0x00; //followed by length
-    static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
-    static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.  
-    static final byte TYPE_SWITCH_BRANCH       = 0X03; //followed by 1 short (Hi: base offset)|(Lo: trie len) followed by pairs of shorts for run
-    static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
-    static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
-            
-    static final byte TYPE_SAFE_END            = 0X06;
-    static final byte TYPE_END                 = 0x07;
+    public static final byte TYPE_RUN                 = 0x00; //followed by length
+    public static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
+    public static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.  
+    public static final byte TYPE_SWITCH_BRANCH       = 0X03; //followed by 1 short (Hi: base offset)|(Lo: trie len) followed by pairs of shorts for run
+    public static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
+    public static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
+    public static final byte TYPE_SAFE_END            = 0X06;
+    public static final byte TYPE_END                 = 0x07;
 
     static final int BRANCH_JUMP_SIZE = 2;    
     
@@ -417,12 +416,13 @@ public class TrieParser implements Serializable {
 		i++;
     	int meta = data[i];
     	int offset = (meta>>8)&0xFF;
-    	int trieLen = meta&0xFF;    
+    	int trieLen = meta&0xFF;  
+
     	
-        //add jumps
-       // int base = i+1+(trieLen<<1);
-        for(int j = 0; j<trieLen; j++) {
-        	int jump = (((int)data[j])<<15) | (0x7FFF&data[j+1]);
+        int base = i+1;
+        for(int k = 0; k<trieLen; k++) {
+        	int j = k<<1;
+        	int jump = (((int)data[base+j])<<15) | (0x7FFF&data[base+j+1]);        	
         	if (jump>=0) {
         		visitPatterns(pv,(i+(trieLen<<1)) + jump,buffer,bufferPosition);
         	}

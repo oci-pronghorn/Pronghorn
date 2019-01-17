@@ -1,9 +1,9 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.struct.ByteSequenceValidator;
 import com.ociweb.pronghorn.struct.DecimalValidator;
 import com.ociweb.pronghorn.struct.LongValidator;
@@ -17,22 +17,22 @@ import com.ociweb.pronghorn.util.math.Decimal;
 
 public class FieldExtractionDefinitions {
 
-	private final TrieParser runtimeParser;
+	private final TrieParser fieldParamParser;
 	private int indexCount;
 	public final int structId;
 	public final int routeId;
 	public final int pathId;
 	public int defaultsCount = 0;
-	private transient Pipe<RawDataSchema> workingPipe = null;
+	//private transient Pipe<RawDataSchema> workingPipe = null;
 		
-	private static final TrieParser numberParser = textToNumberTrieParser();
+	//private static final TrieParser numberParser = textToNumberTrieParser();
 		
 	private DefaultArgPopulation populateDefaults = new DefaultArgPopulation();
 
 	public FieldExtractionDefinitions(boolean trustText, int routeId, int pathId, int structId) {
 		
 		//field name to type and index
-		this.runtimeParser = new TrieParser(64, 4, trustText, true);
+		this.fieldParamParser = new TrieParser(64, 4, trustText, true);
 		this.routeId = routeId;
 		this.pathId = pathId;
 		this.structId = structId;
@@ -49,6 +49,9 @@ public class FieldExtractionDefinitions {
 		//fields found in the path
 		this.pathFieldLookup = pathFieldLookup;
 		this.pathFieldValidator = validators;
+		
+//		new Exception("set index lookup values "+Arrays.toString(pathFieldLookup)).printStackTrace();
+
 	}
 	
 	public int[] paramIndexArray() {
@@ -59,14 +62,14 @@ public class FieldExtractionDefinitions {
 		return pathFieldValidator;
 	}
 
-	private static TrieParser textToNumberTrieParser() {
-		 TrieParser p = new TrieParser(8,true); //supports only complete values
-		 p.setUTF8Value("%i%.%/%.", 1); 
-		 return p;
-	}
+//	private static TrieParser textToNumberTrieParser() {
+//		 TrieParser p = new TrieParser(8,true); //supports only complete values
+//		 p.setUTF8Value("%i%.%/%.", 1); 
+//		 return p;
+//	}
 	
-	public TrieParser getRuntimeParser() {
-		return runtimeParser;
+	public TrieParser getFieldParamParser() {
+		return fieldParamParser;
 	}
 	
 	public void setIndexCount(int indexCount) {
@@ -81,7 +84,7 @@ public class FieldExtractionDefinitions {
 	public void defaultText(byte[] key, final String value, StructRegistry registry) {
 		
 		//only add this as a default if it is not already included in the url path
-		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
+		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), fieldParamParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			return;
 		}		
 		
@@ -130,7 +133,7 @@ public class FieldExtractionDefinitions {
 	public void defaultInteger(byte[] key, final long value, StructRegistry registry) {
 				
 		//only add this as a default if it is not already included in the url path
-		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
+		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), fieldParamParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			return;
 		}
 		
@@ -209,7 +212,7 @@ public class FieldExtractionDefinitions {
 	public void defaultDecimal(byte[] key, final long m, final byte e, StructRegistry registry) {
 		
 		//only add this as a default if it is not already included in the url path
-		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
+		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), fieldParamParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			return;
 		}
 		
@@ -290,7 +293,7 @@ public class FieldExtractionDefinitions {
 	public void defaultRational(byte[] key, long numerator, long denominator, StructRegistry registry) {
 
 		//only add this as a default if it is not already included in the url path
-		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), runtimeParser, key, 0, key.length, Integer.MAX_VALUE)) {
+		if (-1 != TrieParserReader.query(TrieParserReaderLocal.get(), fieldParamParser, key, 0, key.length, Integer.MAX_VALUE)) {
 			return;
 		}
 		

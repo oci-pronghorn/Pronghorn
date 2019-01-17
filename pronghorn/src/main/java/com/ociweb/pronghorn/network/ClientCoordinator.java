@@ -41,7 +41,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	//Control for how many HTTP1xResponseParserStage instances we will be using
 	//on our 4 core test box we can not set this much larger or we will be stuck with 1 parser.
 	//30;//HIGHVOLUME increase this constant if we fix performance of HTTP1xResponseParser
-	public final int pipesPerResponseParser =14;//may be as large as 28??
+	//NOTE: must be small to push large volume or we will not use all CPU available
+	//TODO: must optimize HTTP1xResponseParserStage, it takes too much CPU!
+	public final int pipesPerResponseParser =7;//14;//may be as large as 28??
 
 	
 	public static boolean TEST_RECORDS = false;

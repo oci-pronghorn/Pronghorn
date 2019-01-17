@@ -62,4 +62,9 @@ public class JSONExtractor implements JSONExtractorCompleted {
     	return extractor.getStructId();
     }
 
+	@Override
+	public void debugSchema() {
+		extractor.debugSchema();
+	}
+
 }

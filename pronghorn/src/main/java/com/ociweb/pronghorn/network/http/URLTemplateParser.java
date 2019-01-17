@@ -93,7 +93,7 @@ public class URLTemplateParser {
 				DataOutputBlobWriter<RawDataSchema> outputStream) {
 
 			activeRouteDef.setIndexCount(
-					convertEncoding(activeRouteDef.getRuntimeParser(), 
+					convertEncoding(activeRouteDef.getFieldParamParser(), 
 							        templateParserReader, 
 							        templateParser, 
 							        outputStream));

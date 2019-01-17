@@ -67,8 +67,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	
     /**
      * Internal function only used when dependent classes want to add bounds check per method call.
-     * @param that
-     * @param x
+     * @param that instance in use
+     * @param x needed value
      */
     protected static <T extends MessageSchema<T>> void checkLimit(DataOutputBlobWriter<T> that, int x) {
     	if (that.length()+x > that.backingPipe.maxVarLen ) {
@@ -127,7 +127,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
 	/**
 	 * Data written so far is directly copied to the destination writer.
-	 * @param writer
+	 * @param writer target writer
 	 */
 	public void replicate(DataOutputBlobWriter<?> writer) {
 		writer.write(backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);

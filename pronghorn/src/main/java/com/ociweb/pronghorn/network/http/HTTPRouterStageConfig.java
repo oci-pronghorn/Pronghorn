@@ -2,12 +2,17 @@ package com.ociweb.pronghorn.network.http;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.json.JSONExtractorCompleted;
+import com.ociweb.json.encode.JSONObject;
+import com.ociweb.json.encode.JSONRenderer;
 import com.ociweb.pronghorn.network.ServerConnectionStruct;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -19,8 +24,10 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
 import com.ociweb.pronghorn.struct.StructType;
+import com.ociweb.pronghorn.util.AppendableBuilder;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -137,8 +144,7 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		
 	}
 
-
-
+	
 	private URLTemplateParser routeParser() {
 		//Many projects do not need this so do not build..
 		if (routeParser==null) {
@@ -381,6 +387,160 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public static FieldExtractionDefinitions fieldExDef(HTTPRouterStageConfig<?, ?, ?, ?> that, int pathId) {
 		return that.pathToRoute[pathId];
+	}
+
+	@Override
+	public byte[] jsonOpenAPIBytes(GraphManager graphManager) {
+		
+//////////////////
+//plan TODO: follow the plan
+///////////////////
+//1. build JAX-RS project to capture example OpenAPI.
+//2. CommandChannel get HTTPResponder instance holding (this is GL???)
+//   A. response type
+//   B. JSON template
+//   C. Link this data into HTTPRouterStageConf77ig
+//3. HTTPRouterStageConfig builds JSON
+//4. Add Telemetry module to return open API
+//////
+//////
+//Estimates
+//////
+//1. 2 hours
+//2. 4 hours
+//3. 16 hours
+//4. 2 hours 
+//////
+
+		JSONObject<HTTPRouterStageConfig, HTTPRouterStageConfig, JSONObject<HTTPRouterStageConfig, HTTPRouterStageConfig, JSONRenderer<HTTPRouterStageConfig>>> paths = new JSONRenderer<HTTPRouterStageConfig>()
+		 .startObject()
+		 	.string("openapi".getBytes(),(f,w)->{w.write("3.0.1".getBytes());})		 	
+		 	.startObject("paths");
+		 	
+		//loop over paths and add each one? because the keys are dynamic here, (bad idea but...)
+		//TODO: once done capture this pattern as new feature .writeMany ???
+		
+	//	System.out.println("urlMap\n"+this.urlMap);
+		
+		//TODO: remove 5 way server and use 4 instead.
+		//new Exception("XXX need to read index values").printStackTrace();
+		
+		
+		final Set<String> dupDetect = new HashSet<String>();
+		final StringBuilder openApiPath = new StringBuilder();
+		this.urlMap.visitPatterns((backing,length,value)-> { //why is length passed in??
+
+			int pathId = (int)value;
+			if (pathId>=0) {
+				int routeId = getRouteIdForPathId((int)pathId);
+				if (routeId>=0) {
+					
+					FieldExtractionDefinitions ep = extractionParser((int)pathId);
+		
+//					System.out.println("routeId "+routeId+" "+ep.routeId);
+//					
+//					if (ep!=null) {
+//						System.out.println(Arrays.toString(	ep.paramIndexArrayValidator() ));
+//						
+//						
+//						////TODO: these are the field names, is there a better place to get this??
+//						//System.out.println(		ep.getRuntimeParser().toString() );
+//						
+//						ep.getFieldParamParser().visitPatterns((b,l,v)-> {
+//							
+//							final int argPos = ((int)value&0xFFFF)-1; 			
+//							StructType type = CompositeRouteImpl.extractType(b, l, v);
+//							
+//							int[] paramIndexArray = ep.paramIndexArray(); //TODO: is this not set yet??
+//							int x= argPos<paramIndexArray.length ? paramIndexArray[argPos] : -2;
+//							//TODO: need to know the order..
+//							
+//							System.out.println(new String(b,0,l)+" "+v+"  "+type+" argpos "+x+" from "+argPos);
+//						});
+//						
+//
+//					}
+					
+					
+					
+				}
+			}
+			
+			//how to get pathId or routeId from the id of the url parser??
+			
+//			System.out.println("debug C");
+//			if (null != ep) {
+//				
+//				
+//				JSONExtractorCompleted ex = this.JSONExtractor(ep.routeId);
+//			//	ep.
+//				
+//				ex.debugSchema();
+//				
+////				System.out.println(ex.trieParser());
+//			}
+//			System.out.println("debug D");
+			
+			
+//			System.out.println("["+new String(backing,0,length)+"]");
+			
+			openApiPath.setLength(0);
+			for(int i=0; i<length; i++) {				
+				int v = backing[i];
+				if (v==TrieParser.TYPE_VALUE_BYTES) {
+					//do not skip stopper
+					
+					//TODO: what is the name of this field?
+					openApiPath.append("{}");
+				} else {
+					if (v==TrieParser.TYPE_VALUE_NUMERIC) {
+						//skip type
+						i++;
+						//TODO: what is the name of this field?
+						openApiPath.append("{}");
+					} else {
+						
+						openApiPath.append((char)v);
+					}
+				}
+			}
+			
+			openApiPath.setLength(openApiPath.length()-1); //remove trailing space
+			
+			 if (length>2) {
+				 //TODO: why is 2 needed to remove / ??
+				 //visit patterns ?? need to make readable??
+				 
+				 //if we have already seen this patter do not add again..
+				 String pathString = openApiPath.toString();
+				 
+				 if (!dupDetect.contains(pathString)) {
+					 
+					 //if this matches previous skip..
+					 
+					 paths.startObject(pathString) //remove white space
+							//verbs??
+							.endObject();
+					 
+					 dupDetect.add(pathString);
+				 }
+			 }
+			
+		});
+		
+		 	
+		 JSONRenderer<HTTPRouterStageConfig> rend = paths.endObject()
+		 	.startObject("components")
+			 	.startObject("schemas")
+			 	//??
+			 	.endObject()
+		 	.endObject()
+		 .endObject();
+		
+		AppendableBuilder builder = new AppendableBuilder();
+		rend.render(builder, this);
+		return builder.toBytes();//NOTE: may want to return builder instead?
+		
 	}
 
 }

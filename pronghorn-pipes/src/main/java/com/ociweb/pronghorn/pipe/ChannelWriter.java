@@ -53,6 +53,7 @@ public abstract class ChannelWriter extends OutputStream implements ObjectOutput
 
 	/**
 	 * Used for debugging, to find if object is over a certain size
+	 * @param target appendable
 	 * @return usually false; dev feature
 	 */
 	 abstract public boolean reportObjectSizes(Appendable target);

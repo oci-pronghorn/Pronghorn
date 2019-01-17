@@ -229,6 +229,9 @@ public class StructRegistry { //prong struct store
 	 * @param fieldNames - name for each field
 	 * @param fieldTypes - type for each field
 	 * @param fieldDim - dominations for this field, should be 0 for most cases of simple data
+	 * @param fieldAssoc - assocated objects
+	 * @param fieldRequired -  required JSON
+	 * @param fieldValidators - validators for each field
 	 * @return the array of field identifiers in the same order as defined
 	 */
 	public int addStruct(Object associatedObject,

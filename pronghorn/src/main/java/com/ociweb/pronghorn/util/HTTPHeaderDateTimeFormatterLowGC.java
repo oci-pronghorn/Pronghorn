@@ -26,7 +26,10 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 	
 	private final DateTimeFormatter formatter;
 	private long validRange = 0;
-
+	private long validFloor = 0;
+	private long validCeiling = 0;
+	
+	
 	Pipe<RawDataSchema> temp;
 	
 	public HTTPHeaderDateTimeFormatterLowGC() {
@@ -47,12 +50,10 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 		
 	public void write(long time, ChannelWriter writer) {
 		
-		long localMinute = time/60_000L;
-		
-		if (localMinute != validRange) {						
-		    updateFullTime(time, writer, localMinute);				
-		} else {
+		if (time>=validFloor && time<validCeiling) {						
 			updateSecondsOnly(time, writer);			
+		} else {
+			updateFullTime(time, writer, (time/60_000L));				
 		}
 		
 	}
@@ -66,8 +67,7 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 		inStream.readInto(writer, SECONDS_OFFSET);
 		inStream.skip(SECONDS_LENGTH);
 		
-		long sec = (time%60_000L)/1_000L;					
-		Appendables.appendFixedDecimalDigits(writer, sec, 10);
+		Appendables.appendFixedDecimalDigits(writer, (time%60_000L)/1_000L, 10);
 			
 		inStream.readInto(writer, inStream.available());
 		
@@ -76,7 +76,9 @@ public class HTTPHeaderDateTimeFormatterLowGC {
 
 	private void updateFullTime(long time, ChannelWriter writer, long localMinute) {
 		//this is so we know that we are in the same minute next time
-		validRange = localMinute; 
+		validRange   = localMinute; 
+		validFloor   = localMinute*60_000L;
+		validCeiling = (localMinute+1)*60_000L;
 				    
 		temp.reset();
 		int size = Pipe.addMsgIdx(temp, RawDataSchema.MSG_CHUNKEDSTREAM_1);

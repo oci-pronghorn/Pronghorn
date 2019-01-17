@@ -2692,6 +2692,9 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param targetloc location to copy data to
      */
 	public static void copyBytesFromToRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
+		//assert (sourceMask!=Integer.MAX_VALUE) : "for source do not call this method without a mask";
+		//assert (targetMask!=Integer.MAX_VALUE) : "for target do not call this method without a mask";
+		
 		copyBytesFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
 	}
 

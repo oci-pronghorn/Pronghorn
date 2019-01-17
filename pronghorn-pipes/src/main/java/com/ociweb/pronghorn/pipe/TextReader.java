@@ -6,6 +6,7 @@ public interface TextReader {
 	 * Reads bytes from ChannelReader depending on leading short for length
 	 * assuming bytes are UTF-8 encoded passes them to target
 	 * @param target receiver of converted bytes
+     * @param <A> type of appendable target
 	 * @return target with UTF bytes
 	 */
 	public <A extends Appendable> A readUTF(A target);

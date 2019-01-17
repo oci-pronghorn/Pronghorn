@@ -203,5 +203,11 @@ public class AppendableBuilder implements AppendableByteWriter<AppendableBuilder
 							    target, targetIdx, targetMask);
 	}
 
+	public byte[] toBytes() {
+		byte[] result = new byte[byteCount];
+		System.arraycopy(this.buffer, 0, result, 0, result.length);
+		return result;
+	}
+
 
 }

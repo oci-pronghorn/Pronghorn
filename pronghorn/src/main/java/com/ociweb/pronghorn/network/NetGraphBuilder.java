@@ -558,8 +558,12 @@ public class NetGraphBuilder {
 					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
 
-	    //HIGHVOLUME	
+//		System.out.println("tracks: "+tracks);
 		
+	    //HIGHVOLUME	
+		if ((tracks==5) && !coordinator.isTLS) { //only use for exactly 5 at this time.			
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/5);			
+		} else	
 		//if we have at least 6 tracks and it is divisible by 3
 		if ((tracks>=6) && (tracks%3)==0 && !coordinator.isTLS) {			
 			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/3);			
@@ -996,6 +1000,7 @@ public class NetGraphBuilder {
 					 "/${path}"			
 					,"/graph.dot"
 					,"/summary.json"
+					,"/openapi.json"
 //					,"/dataView?pipeId=#{pipeId}"
 //					,"/histogram/pipeFull?pipeId=#{pipeId}"
 //					,"/histogram/stageElapsed?stageId=#{stageId}"
@@ -1036,14 +1041,14 @@ public class NetGraphBuilder {
 						break;
 
 						case 1:
-					    if (null==monitor) {	
-							monitor = PipeMonitorCollectorStage.attach(graphManager);	
-					    }
-						activeStage = DotModuleStage.newInstance(graphManager, monitor,
-								inputPipes, 
-								staticFileOutputs = Pipe.buildPipes(instances, 
-										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-								((HTTPRouterStageConfig)routerConfig).httpSpec);
+						    if (null==monitor) {	
+								monitor = PipeMonitorCollectorStage.attach(graphManager);	
+						    }
+							activeStage = DotModuleStage.newInstance(graphManager, monitor,
+									inputPipes, 
+									staticFileOutputs = Pipe.buildPipes(instances, 
+											           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+									((HTTPRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
 						    if (null==monitor) {	
@@ -1056,24 +1061,29 @@ public class NetGraphBuilder {
 											           ServerResponseSchema.instance.newPipeConfig(2, maxSummarySize)), 
 									((HTTPRouterStageConfig)routerConfig).httpSpec);
 							break;
-//						case 3:
-//						
-//					
-//							//One module for each file??
-//							//TODO: add monitor to this stream
-//							//this will be a permanent output stream...
-//							//Pipe<?> results = PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
-//							//some stage much stream out this pipe?
-//							//must convert to JSON and stream.
-//							//how large is the JSON blocks must ensure output is that large.
-//							
-//							//TODO: replace this code with the actual streaming data from pipe..
-//							activeStage = new DummyRestStage(graphManager, 
-//									                          inputPipes, 
-//									                          staticFileOutputs = Pipe.buildPipes(instances, 
-//																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
-//									                          ((HTTP1xRouterStageConfig)routerConfig).httpSpec);
-//							break;
+						case 3:
+												
+							//look up the router config defined in the graph
+							PronghornStage[] stage = GraphManager.allStagesByType(graphManager, HTTP1xRouterStage.class);
+							
+							byte[] json;
+							if (stage.length>0) {
+								HTTP1xRouterStage serverRouter = (HTTP1xRouterStage)stage[0];
+								json = serverRouter.routerConfig().jsonOpenAPIBytes(graphManager);
+								
+							//TODO: must lookup the response in the graph as well.
+							
+							} else {
+								json = new byte[0];
+							}
+							
+							activeStage = new FixedRestStage(graphManager, 
+									                          inputPipes, 
+									                          staticFileOutputs = Pipe.buildPipes(instances, 
+																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+									                          HTTPContentTypeDefaults.JSON.getBytes(), json);
+							
+							break;
 //						case 4:
 //						//TODO: replace this code with the actual pipe full histogram
 //							activeStage = new DummyRestStage(graphManager, 

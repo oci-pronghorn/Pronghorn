@@ -53,25 +53,8 @@ public class CompositeRouteImpl implements CompositeRoute {
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
 		public void visit(byte[] pattern, int length, long value) {
-			final int argPos = ((int)value&0xFFFF)-1;
-			
-			StructType type = null;
-			switch((int)(value>>16)) {
-				case TrieParser.ESCAPE_CMD_SIGNED_INT:
-					type = StructType.Long;
-					break;			
-				case TrieParser.ESCAPE_CMD_RATIONAL:
-					type = StructType.Rational;
-					break;
-				case TrieParser.ESCAPE_CMD_DECIMAL:
-					type = StructType.Decimal;
-					break;
-				case TrieParser.ESCAPE_CMD_BYTES:
-					type = StructType.Blob;
-					break;
-				default:
-					throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
-			}
+			final int argPos = ((int)value&0xFFFF)-1;			
+			StructType type = extractType(pattern, length, value);
 						
 			final long fieldId = scs.registry.modifyStruct(structId, pattern, 0, length, type, 0);
 			
@@ -82,8 +65,29 @@ public class CompositeRouteImpl implements CompositeRoute {
 			activePathFieldValidator[argPos] = scs.registry.fieldValidator(fieldId);
 			
 		}
+
     };
 
+	public static StructType extractType(byte[] pattern, int length, long value) {
+		StructType type = null;
+		switch((int)(value>>16)) {
+			case TrieParser.ESCAPE_CMD_SIGNED_INT:
+				type = StructType.Long;
+				break;			
+			case TrieParser.ESCAPE_CMD_RATIONAL:
+				type = StructType.Rational;
+				break;
+			case TrieParser.ESCAPE_CMD_DECIMAL:
+				type = StructType.Decimal;
+				break;
+			case TrieParser.ESCAPE_CMD_BYTES:
+				type = StructType.Blob;
+				break;
+			default:
+				throw new UnsupportedOperationException("unknown value of "+(value>>16)+" for key "+new String(Arrays.copyOfRange(pattern, 0, length)));
+		}
+		return type;
+	}
     
 	public CompositeRouteImpl(ServerConnectionStruct scs,
 			                  HTTPRouterStageConfig<?,?,?,?> config,
@@ -258,7 +262,7 @@ public class CompositeRouteImpl implements CompositeRoute {
 		activePathFieldValidator = new Object[fieldExDef.getIndexCount()];
 
 		//this visitor will populate the above 2 member arrays we just created 
-		fieldExDef.getRuntimeParser().visitPatterns(modifyStructVisitor);
+		fieldExDef.getFieldParamParser().visitPatterns(modifyStructVisitor);
 		
 		fieldExDef.setPathFieldLookup(activePathFieldIndexPosLookup, activePathFieldValidator);
 		

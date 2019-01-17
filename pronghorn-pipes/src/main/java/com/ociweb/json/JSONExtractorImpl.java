@@ -188,6 +188,11 @@ public class JSONExtractorImpl implements JSONExtractorUber, JSONExtractorActive
 	public void addToStruct(StructRegistry typeData, StructBuilder structBuilder) {
 		schema.addToStruct(typeData, structBuilder);
 	}
+
+	@Override
+	public void debugSchema() {
+		schema.debug();
+	}
     
 	
 }

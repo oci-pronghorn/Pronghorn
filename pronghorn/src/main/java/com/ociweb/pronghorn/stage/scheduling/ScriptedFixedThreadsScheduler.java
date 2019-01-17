@@ -1109,7 +1109,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 				//      This boolean can be set to true IF we know the pipe will be full all the time
 				//      By setting this to true the scheduler is optimized for heavy loads
 				//      Each individual part of the graph can have its own custom setting... 
-				boolean reverseOrder = false;
+				boolean reverseOrder = true;
 
 				//System.out.println("only seems to help if we can toggle this fast; reverse:"+reverseOrder);
 				

@@ -11,6 +11,7 @@ public interface JSONExtractorCompleted {
 	
 	int[] getIndexPositions();
 	int getStructId();
+	void debugSchema();
 	
 }
 

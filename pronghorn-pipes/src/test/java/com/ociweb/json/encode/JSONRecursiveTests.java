@@ -20,7 +20,7 @@ public class JSONRecursiveTests {
     @Test
     public void testRecurseObjectMember() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .integer("i", o->o.i)
                     .recurseRoot("m", o->o.m)
                 .endObject();
@@ -32,7 +32,7 @@ public class JSONRecursiveTests {
     @Test
     public void testRecurseObjectMember_Null() {
         JSONRenderer<BasicObj> json = new JSONRenderer<BasicObj>()
-                .beginObject()
+                .startObject()
                     .integer("i", o->o.i)
                     .recurseRoot("m", o->o.m)
                 .endObject();

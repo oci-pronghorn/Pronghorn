@@ -495,9 +495,9 @@ public class FieldReferenceOffsetManager {
      * This does not return the token found in the script but rather a special value that can be used to 
      * get dead reckoning offset into the field location. 
      * 
-     * @param name
-     * @param fragmentStart
-     * @param from
+     * @param name field name
+     * @param fragmentStart index of field start
+     * @param from field reference offset manager
      */
     public static int lookupFieldLocator(String name, int fragmentStart, FieldReferenceOffsetManager from) {
 		int x = fragmentStart;

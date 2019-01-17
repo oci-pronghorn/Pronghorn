@@ -48,6 +48,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 * Reads specified length of bytes from ChannelReader depending on available() and, assuming they are UTF, passes them to target
 	 * @param length the number of bytes to read
 	 * @param target receiver of converted bytes
+	 * @param <A> type of appendable target
 	 * @return target of specified length with UTF bytes
 	 */
 	public abstract <A extends Appendable> A readUTFOfLength(int length, A target);
@@ -130,6 +131,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	/**
 	 * Reads packed Chars from ChannelReader and passes them to target
 	 * @param target to receive packed Chars
+	 * @param <A> type of appendable target
 	 * @return <code>target</code>
 	 */
 	public abstract <A extends Appendable> A readPackedChars(A target);
@@ -167,6 +169,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
     /**
      * Reads decimal from ChannelReader and writes to target
      * @param target Appendable target
+     * @param <A> type of appendable target
      * @return target Appendable
      */
 	public abstract <A extends Appendable> A readDecimalAsText(A target);
@@ -181,6 +184,7 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	/**
 	 * Reads rational from ChannelReader and writes it as text to target
 	 * @param target Appendable target
+     * @param <A> type of appendable target
 	 * @return target Appendable
 	 */
 	public abstract <A extends Appendable> A readRationalAsText(A target);

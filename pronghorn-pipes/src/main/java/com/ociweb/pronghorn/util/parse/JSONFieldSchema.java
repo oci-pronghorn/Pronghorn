@@ -169,6 +169,15 @@ public class JSONFieldSchema {
 		}
 		return fieldType;
 	}
+
+
+	public void debug() {
+		// TODO Auto-generated method stub
+		for(int i = 0; i<mappings.length; i++) {
+			System.out.println("field name:"+mappings[i].getName());
+			
+		}
+	}
 	 
 	 
 }

@@ -129,16 +129,15 @@ public class HTTPUtil {
 	public static void publishArrayResponse(int requestContext, int sequence, int status,
 			Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, byte[] typeBytes,
 			int contentLength, byte[] contentBacking, int contentPosition, int contentMask) {
-		assert(contentLength>=0) : "This method does not support chunking";
 		
-		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
-		    
+		assert(contentLength>=0) : "This method does not support chunking";		
+		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload     
 	    Pipe.addIntValue(channelIdHigh, localOutput);
 	    Pipe.addIntValue(channelIdLow, localOutput);
 	    Pipe.addIntValue(sequence, localOutput);
-	    
 	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.openOutputStream(localOutput);        
 
+	    
 		boolean chunked = false;
 		boolean server = false;
 		byte[] eTagBytes = null;
@@ -153,16 +152,59 @@ public class HTTPUtil {
 	    if (contentLength>0) {
 			writer.write(contentBacking, contentPosition, contentLength, contentMask);
 	    }
-		writer.closeLowLevelField();          
-	
-	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
 	    
+	    
+		writer.closeLowLevelField();
+	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last. 
 	    Pipe.confirmLowLevelWrite(localOutput, size);
 	    Pipe.publishWrites(localOutput);
 	    
-	    //logger.info("published error {} ",status);
 	}
 
+	public static void publishArrayResponse(int requestContext, int sequence, int status,
+			Pipe<ServerResponseSchema> localOutput, long channelId, byte[] typeBytes, byte[] content) {
+		
+		int channelIdHigh = (int)(channelId>>32); 
+		int channelIdLow = (int)channelId;
+		
+		publishArrayResponse(requestContext, sequence, status, localOutput,
+				channelIdHigh, channelIdLow, typeBytes, content);
+		
+	}
+	
+	public static void publishArrayResponse(int requestContext, int sequence, int status,
+			Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
+			byte[] typeBytes, byte[] content) {
+			
+		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload     
+	    Pipe.addIntValue(channelIdHigh, localOutput);
+	    Pipe.addIntValue(channelIdLow, localOutput);
+	    Pipe.addIntValue(sequence, localOutput);
+	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.openOutputStream(localOutput);        
+
+	    
+		boolean chunked = false;
+		boolean server = false;
+		byte[] eTagBytes = null;
+		HTTPUtil.writeHeader(  HTTPRevisionDefaults.HTTP_1_1.getBytes(),
+				                        status, requestContext, eTagBytes, 
+				                        typeBytes, 
+				                        content.length, 
+						    		    chunked, server,
+						    		    writer,
+						    		    1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT),
+						    		    null);
+	   
+		
+		writer.write(content);	      
+	    
+		writer.closeLowLevelField();
+	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last. 
+	    Pipe.confirmLowLevelWrite(localOutput, size);
+	    Pipe.publishWrites(localOutput);
+	    
+	}
+	
 	public static void addHeader(TrieParser headerParser, long value, CharSequence template) {
 		
 		//logger.info("building parsers for: {} {}",template,((0xFF)&value));
