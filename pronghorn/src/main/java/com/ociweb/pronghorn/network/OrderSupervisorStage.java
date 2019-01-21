@@ -6,7 +6,6 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.BaseConnection.ConnDataReaderController;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
@@ -629,48 +628,40 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			DataOutputBlobWriter<NetPayloadSchema> outputStream, final int expSeq, int len, int requestContext,
 			byte[] blob, final int bytePosition, final BaseConnection con) {
 		
-		ConnDataReaderController connectionDataReader = null;
-
 		 if (null!=con) {
 			 channelId = con.id;
-			 connectionDataReader = con.connectionDataReader;
-			 ChannelReader reader = connectionDataReader.beginRead();
-			 if (null!=reader && conStruct!=null) {	
-				 requestContext |= connectionDataReader.readContext();
-		
-					
+			 
+			 
+			 if (con.hasDataRoom() && conStruct!=null) {
+				 //TODO: echo feature
+				 
 				 //This echo feature can not be correct and must be re-implemented??...
 				 //should be after write not before??? and should read from reader???
 				 //if (beginningOfResponse) {
 				 //	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
 				 //}
 				 
-			 } else {
-				 //warning this is an odd case which happens in telemetry.
-				 //why is there no context stored.
-				 connectionDataReader=null;//no reader..
 			 }
-			 assert(null==connectionDataReader || connectionDataReader.isReading.get());
+			
 		 } else {
-			 assert(null==connectionDataReader || connectionDataReader.isReading.get());
+			 
 		 }
 		 if (len>0) {
 			 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, Pipe.blobMask(input));
 		 }
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
-	
-		
-		 return rollupMultiAndPublish(this, input, myPipeIdx, channelId, output, outputStream, expSeq, len, requestContext, Pipe.blobMask(input),
-				blob, connectionDataReader);
+
+		 return rollupMultiAndPublish(this, input, myPipeIdx, channelId, output,
+				 outputStream, expSeq, len, requestContext, Pipe.blobMask(input), blob, con);
 	}
 
 	private static int rollupMultiAndPublish(
 			OrderSupervisorStage that,
 			final Pipe<ServerResponseSchema> input, int myPipeIdx, long channelId,
-			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream, int expSeq,
-			int len, int requestContext, final int blobMask, byte[] blob, 
-			ConnDataReaderController connectionDataReader) {
+			Pipe<NetPayloadSchema> output, DataOutputBlobWriter<NetPayloadSchema> outputStream,
+			int expSeq, int len, int requestContext, final int blobMask, byte[] blob, final BaseConnection con) {
+		
 		 boolean finishedFullReponse = true;//only false when we run out of room...
 		 int localContext;
 		 
@@ -678,31 +669,32 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int logPos = 0;
 		 int logLen = Pipe.outputStream(output).length();
 		 
+		 //TODO: need to capture which pipe this came in from and if it violates the SLA.
+		 //      then report this as an error.
+		 
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 			 totalResponses++;
 				 
-			 long businessTime = -1;
-			 if (null!=connectionDataReader) {
-				 businessTime = connectionDataReader.readBusinessTime();
-				 connectionDataReader.commitRead();
-				//TODO: need to capture which pipe this came in from and if it violates the SLA.
-				 //      then report this as an error.
-				 				 
-				 writeToLog(that, channelId, output, expSeq, logPos, logLen, businessTime);			 
+			 long startTime = -1;
+			 
+			 con.markDataTail();
+			 startTime = con.readStartTime(); 
+					 				 
+			 writeToLog(that, channelId, output, expSeq, logPos, logLen, startTime);			 
 
-				 ChannelReader reader = connectionDataReader.beginRead();
-				 if (null != reader) {
-					 //write the echos	??		 
-					 
-					 //This echo feature can not be correct and must be re-implemented??...
-					 //should be after write not before??? and should read from reader???
-					 //	if (beginningOfResponse) {
-					 //	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
-					 
-					 //}
-					 
-				 }
+			 if (con.hasHeadersToEcho()) {
+				 //write the echos	??		 
+				 
+				 //This echo feature can not be correct and must be re-implemented??...
+				 //should be after write not before??? and should read from reader???
+				 //	if (beginningOfResponse) {
+				 //	 len = echoHeaders(outputStream, len, Pipe.blobMask(input), blob, bytePosition, reader);
+				 
+				 //}
+				 
 			 }
+			
+			 
 			 logPos+=logLen;
 			 logLen=0;
 			 
@@ -750,25 +742,21 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 if (0 != (END_RESPONSE_MASK & localContext)) {
 						 totalResponses++;
 						 
-						 long businessTime = -1;
-						 if (null!=connectionDataReader) {
-							 //TODO: need to capture which pipe this came in from and if it violates the SLA.
-							 //      then report this as an error.
+						 long startTime = -1;
+				
+						 //TODO: need to capture which pipe this came in from and if it violates the SLA.
+						 //      then report this as an error.
+						 con.markDataTail();
+						 startTime = con.readStartTime();
+						 
+						 writeToLog(that, channelId, output, expSeq, logPos, logLen, startTime);
+						 
+						 requestContext = localContext;
+						 if (con.hasHeadersToEcho()) {
+							 //TODO: do echos...
 							 
-							 businessTime = connectionDataReader.readBusinessTime();
-							 connectionDataReader.commitRead();
-							 writeToLog(that, channelId, output, expSeq, logPos, logLen, businessTime);			 
-							 ChannelReader reader = connectionDataReader.beginRead();
-							 if (null != reader) {
-								 requestContext = connectionDataReader.readContext();
-								 //write the echos?	seems right place for this..			 
-								 
-							 } else {
-								 requestContext = 0;//keep previous call from leaking into this one.
-							 }
-						 } else {
-							 requestContext = 0;
 						 }
+					
 						 logPos+=logLen;
 						 logLen=0;
 						 
@@ -795,9 +783,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 }
 		 }
 		
-		 if (null!=connectionDataReader && connectionDataReader.isReading()) {
-			 connectionDataReader.rollback();
-		 }
+		 con.resetDataTail();
 		
 		 if (that.showUTF8Sent) {
 			 Pipe.outputStream(output).debugAsUTF8();
@@ -813,24 +799,24 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 	private static void writeToLog(OrderSupervisorStage that, final long channelId, Pipe<NetPayloadSchema> output,
-			final int expSeq, int logPos, int logLen, long businessTime) {
+			final int expSeq, int logPos, int logLen, long startTime) {
 
 		 if (null!=that.log) {
 			 
 			 long now = System.nanoTime();
-			 long businessDuration = now-businessTime;
+			 long durationNS = now-startTime;
 			 
 			 //if (businessDuration>limitSLA) {
 			 //send the routeId to those listening that we have a violation					 
 			 //TODO: publish if pipe is found..	
 			 //}
 			 
-			 that.writeToLog(channelId, output, logPos, logLen, expSeq, now, businessDuration);
+			 that.writeToLog(channelId, output, logPos, logLen, expSeq, now, durationNS);
 		 }
 	}
 
 	private void writeToLog(long channelId, Pipe<NetPayloadSchema> output, int outPos, int outLen, final int expSeq, long now,
-			long businessDuration) {
+			long serverDuration) {
 		//if we have a log pipe then log these events
 		 Pipe<HTTPLogResponseSchema> outLog = log;
 		 if (null!=outLog) {
@@ -857,7 +843,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 startPos += blockLen;
 				 writeLength -= blockLen;
 				 
-				 Pipe.addLongValue(businessDuration, outLog);
+				 Pipe.addLongValue(serverDuration, outLog);
 				 Pipe.confirmLowLevelWrite(outLog, size);
 				 Pipe.publishWrites(outLog);
 			 } while (writeLength>0);

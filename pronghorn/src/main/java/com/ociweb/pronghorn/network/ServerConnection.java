@@ -19,22 +19,15 @@ public class ServerConnection extends BaseConnection {
 		this.scs  = coordinator.connectionStruct();
 		assert(coordinator.connectionStruct() != null) : "server side connections require struct";
 				
-		Pipe<ConnectionStateSchema> pipe = ConnectionStateSchema.instance.newPipe(
-					this.scs.inFlightCount(), this.scs.inFlightPayloadSize()
-				);
-		pipe.initBuffers();
-		Pipe.structRegistry(pipe, scs.registry);
 		
-		this.connectionDataWriter = new ConnDataWriterController(pipe);
-		this.connectionDataReader = new ConnDataReaderController(pipe);	
+		//TODO: build queues. // this.scs.inFlightCount(), this.scs.inFlightPayloadSize()
 		
+				
 	}
 	
-	protected ServerConnection(SSLEngine engine, SocketChannel socketChannel, long id,
-							   ConnDataWriterController connectionData, ServerConnectionStruct scs) {
-		super(engine, socketChannel, id);
-		this.connectionDataWriter = connectionData;
-		this.scs = scs;
+	@Override
+	public boolean hasHeadersToEcho() {
+		return scs.hasHeadersToEcho();
 	}
 	
 }

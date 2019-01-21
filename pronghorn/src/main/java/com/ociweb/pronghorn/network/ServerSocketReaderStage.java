@@ -286,9 +286,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
 		BaseConnection cc = coordinator.lookupConnectionById(channelId);
-		assert(cc.getSocketChannel()==socketChannel) : "internal error";
 		
 		if (null != cc) {
+			assert(cc.getSocketChannel()==socketChannel) : "internal error";
 			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
 		} else {
 			return processClosedConnection(socketChannel, channelId);

@@ -6,17 +6,13 @@
      <uInt64 name="ArrivalTime" id="12"/>
     
      <byteVector name="CustomFields" id="14"/>
-     
-     <uInt32 name="Context" id="10"/>
-     <uInt64 name="BusinessStartTime" id="13"/> <!-- must be last so we can record it at the right moment -->
+
    </template>
    
    <template name="StateNoEcho" id="2">
       
      <uInt64 name="ArrivalTime" id="12"/>
 
-     <uInt32 name="Context" id="10"/>
-     <uInt64 name="BusinessStartTime" id="13"/> <!-- must be last so we can record it at the right moment -->
    </template>
 	 
 </templates>

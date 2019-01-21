@@ -107,9 +107,6 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		super(engine, SocketChannel.open(), conId);
 
 		
-		//TODO: add support to hold data to be returned to client responder.
-		this.connectionDataWriter = null;
-		
 		this.structureId = structureId;
 		this.timeoutNS =  timeoutNS;
 		this.creationTimeNS = System.nanoTime();

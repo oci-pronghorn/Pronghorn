@@ -891,7 +891,24 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     public static <S extends MessageSchema<S>> long readPackedLong(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
-        return (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that, 0) : (accumulator) |(v & 0x7F);
+        
+        IntArrayPool temp = IntArrayPoolLocal.get();
+        int id = IntArrayPool.lockInstance(temp, 1);
+        int[] pos = IntArrayPool.getArray(IntArrayPoolLocal.get(), 1, id); //thread local wrapper
+        pos[0] = that.position;        
+        long result = (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,pos, 0) : (accumulator) |(v & 0x7F);
+        that.position = pos[0];
+        IntArrayPool.releaseLock(temp, 1, id);
+        
+        return result;
+    }
+    
+    public static <S extends MessageSchema<S>> long readPackedLong(byte[] backing, int byteMask, int[] position) {
+        byte v = backing[byteMask & position[0]++];
+        long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
+         
+        return (v >= 0) ? readPackedLong((accumulator | v) << 7,backing,byteMask,position, 0) : (accumulator) |(v & 0x7F);
+
     }
     
     public static <S extends MessageSchema<S>> int readPackedInt(DataInputBlobReader<S> that) {
@@ -901,15 +918,15 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     }
     
     //recursive use of the stack turns out to be a good way to unroll this loop.
-    private static <S extends MessageSchema<S>> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that, int depth) {
-        return readPackedLongB(a, buf, mask, that, buf[mask & that.position++], depth+1);
+    private static <S extends MessageSchema<S>> long readPackedLong(long a, byte[] buf, int mask, int[] pos, int depth) {
+        return readPackedLongB(a, buf, mask, pos, buf[mask & pos[0]++], depth+1);
     }
 
-    private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v, int depth) {
+    private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, int[] pos, byte v, int depth) {
     	assert(depth<11) : "Error malformed data";
     	if (depth<11) {
     		//Not checking for this assert because we use NaN for business logic, assert(a!=0 || v!=0) : "malformed data";
-    		return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that, depth) : a | (v & 0x7Fl);
+    		return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, pos, depth) : a | (v & 0x7Fl);
     	} else {
     		logger.warn("malformed data");
     		return 0;

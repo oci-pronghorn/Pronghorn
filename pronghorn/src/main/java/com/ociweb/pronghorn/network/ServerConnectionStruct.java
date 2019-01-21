@@ -23,12 +23,16 @@ public class ServerConnectionStruct {
 	public final long arrivalTimeFieldId;
 	public final long businessStartTime;
 	public final long routeIdFieldId;
-	private int minInternalInFlightCount = 1<<15;//must not be zero //TODO: add update method
+	private int minInternalInFlightCount = 1+(1<<14);//must not be zero //TODO: add update method
 	
 	//none of the internal fields need this, this is only for echo feature and for index of echo.
 	private int minInternalInFlightPayloadSize = 0;//when feature is not used there will be no blob length allocated
 		
 	public int inFlightCount() {
+		
+		//TODO: if this is not echo we can do half as much since pipe build is based on largest
+		//  OR ad feature to build config off specific message not largest!!!!
+		
 		return minInternalInFlightCount;		
 	}
 	
@@ -100,21 +104,25 @@ public class ServerConnectionStruct {
 		}
 	}
 	
+	public boolean hasHeadersToEcho() {
+		return (null!=headersToEcho) && (headersToEcho.length>0);
+	}
+	
 	public HTTPHeader[] headersToEcho() {
 		return headersToEcho;
 	}
 
-	public boolean isEchoHeader(HTTPHeader header) {
+	public int isEchoHeader(HTTPHeader header) {
 		if (null!=headersToEcho) {
 			//NOTE: may be a better way to do this if we have a long list...
 			int h = headersToEcho.length;
-			while (--h>=0) {
+			while (--h >= 0) {
 				if (header == headersToEcho.clone()[h]) {
-					return true;
+					return h;
 				}
 			}
 		}
-		return false;
+		return -1;
 	}	
 	
 }

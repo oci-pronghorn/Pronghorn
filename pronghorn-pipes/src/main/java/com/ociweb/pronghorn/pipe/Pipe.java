@@ -857,6 +857,8 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static <S extends MessageSchema<S>> long estBytesAllocated(Pipe<S> pipe) {
     	if (null!=pipe && pipe.blobRing!=null && pipe.slabRing!=null) {
+    		//System.out.println("slab: "+pipe.slabRing.length+" blob: "+pipe.blobRing.length);
+    		
     		return ((long)pipe.blobRing.length) + (pipe.slabRing.length*4L) + 1024L;//1K for overhead
     	} else {
     		return 0;

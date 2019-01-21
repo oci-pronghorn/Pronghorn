@@ -35,7 +35,13 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private String defaultHostPath = "";
 	private String bindHost = null;
 	private int bindPort = -1;
-	private int maxConnectionBits = 15; //default of 32K
+	private int maxConnectionBits = 14; //default of 16K, do not change
+	//TODO: reduce connection memory to allow us to bump this up.
+	//      the echo code is not yet implemented. 
+	//      start time array could be shorter
+	//      objects held by socket connection must be reviewed
+	
+	
 	private int encryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
 	private int decryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
 	private int concurrentChannelsPerEncryptUnit = 2; //default 2, for low memory usage

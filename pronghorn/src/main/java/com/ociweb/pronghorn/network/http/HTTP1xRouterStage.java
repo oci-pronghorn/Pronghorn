@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.BaseConnection;
-import com.ociweb.pronghorn.network.BaseConnection.ConnDataWriterController;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ServerConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
@@ -22,7 +21,6 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
-import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -906,39 +904,41 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 		ServerConnection serverCon = coordinator.<ServerConnection>lookupConnectionById(channel);
 		
 		int requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
-		ConnDataWriterController cwc = null;
-		ChannelWriter cw = null;
+
 		if (serverCon!=null) {
 
-			cwc = serverCon.connectionDataWriter();
-			if (null != cwc) {
-				assert (routeId == config.getRouteIdForPathId(pathId));
-				cw = cwc.beginWrite(arrivalTime);
-				if (null!=cw) {
-					requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, cw,  
-														httpRevisionId, config,
-														errorReporter, arrivalTime, channel);  // Write 2   10 //if header is p
-				} else {
-					logger.warn("too many requests already in flight in server, limit may be 32K per connection...");
-					DataOutputBlobWriter.closeLowLevelField(writer);
-		            //try again later, not complete.
-		            Pipe.resetHead(outputPipe);
-		            return -1;//the downstream stages need to consume this now.
-				}
-			} 
+			assert (routeId == config.getRouteIdForPathId(pathId));
+			
+			if (serverCon.hasDataRoom()) {
+			
+				serverCon.markDataHead();
+				serverCon.writeStartTime(arrivalTime);
+				
+				requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, 
+													httpRevisionId, config,
+													errorReporter, arrivalTime, channel);  // Write 2   10 //if header is p
+			
+				
+			} else {
+				logger.warn("too many requests already in flight in server, limit may be 32K per connection...");
+				DataOutputBlobWriter.closeLowLevelField(writer);
+	            //try again later, not complete.
+	            Pipe.resetHead(outputPipe);
+	            return -1;//the downstream stages need to consume this now.
+			}
+		
 		} 
         
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {         	
-        	if (cw!=null) {        		
-        		cwc.abandonWrite();
+        	if (serverCon!=null) {
+        		serverCon.resetDataHead();//abandon writes
         	}
         	DataOutputBlobWriter.closeLowLevelField(writer);
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
             return NEED_MORE_DATA;
         } else {
-        	cwc.commitWrite(requestContext, System.nanoTime());
-        	
+        	//nothing need be done to commit the data writes.   	
         }
         
     	DataOutputBlobWriter.commitBackData(writer,structId);
@@ -1046,7 +1046,7 @@ private static boolean captureAllArgsFromURL(HTTPRouterStageConfig<?,?,?,?> conf
 private static int parseHeaderFields(TrieParserReader trieReader, 
 		final int pathId, final TrieParser headerMap, 
 		DataOutputBlobWriter<HTTPRequestSchema> writer, 
-		ServerConnection serverConnection, ChannelWriter cw,
+		ServerConnection serverConnection,
 		int httpRevisionId,
 		HTTPRouterStageConfig<?, ?, ?, ?> config,
 		ErrorReporter errorReporter2, long arrivalTime, long ccId) {
@@ -1074,12 +1074,18 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				    int writePosition = writer.position();
 				    
 				    if (null!=header) {
-				    	if (serverConnection.scs.isEchoHeader(header) ) {
-				    		System.err.println("saved header "+header);
+				    	int echoIndex = -1;
+				    	if ((echoIndex = serverConnection.scs.isEchoHeader(header)) >= 0 ) {
 				    		//write this to be echoed when responding.
-				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
-				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
-				    		TrieParserReader.writeCapturedValuesToDataOutput(trieReader, (DataOutputBlobWriter<?>)cw);
+				    		
+				//				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
+				//				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
+				    		//TrieParserReader.writeCapturedValuesToDataOutput(trieReader, null);
+				    		
+				    		//serverConnection.storeHeader(echoIndex, ); ///TODO: how
+				    		
+				    		throw new UnsupportedOperationException("Echo headers not yet implmented...");
+	
 				    	}
 				    	
 					    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
@@ -1495,7 +1501,8 @@ private void plainFreshStart(final int idx, Pipe<NetPayloadSchema> selectedInput
 		    case 'l': //close
 		    	requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK; 
 		    	//System.err.println("close detected in header so connection "+connectionId+" was closed");
-		        break;
+		        //new Exception("close detected").printStackTrace();
+		    	break;
 		    case 'e': //keep-alive
 		        requestContext &= (~ServerCoordinator.CLOSE_CONNECTION_MASK);
 		        assert(0==(requestContext&ServerCoordinator.CLOSE_CONNECTION_MASK));

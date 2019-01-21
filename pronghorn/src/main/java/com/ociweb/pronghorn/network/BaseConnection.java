@@ -16,6 +16,8 @@ import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.util.primitive.ByteArrayQueue;
+import com.ociweb.pronghorn.util.primitive.LongDateTimeQueue;
 
 public abstract class BaseConnection {
 	
@@ -24,28 +26,30 @@ public abstract class BaseConnection {
 	private SSLEngine engine;
 	private SocketChannel socketChannel;
 	public final long id;//MUST be final and never change.
+	
 	protected boolean isValid = true;
-
-	protected int localRunningBytesProduced;
-	private long lastNetworkBeginWait = 0;
-	private int sequenceNo;
-
 	protected boolean isDisconnecting = false;
-
+	protected int localRunningBytesProduced; //NOTE: could be a boolean
+	
+	private long lastNetworkBeginWait = 0;
+	
+	private int sequenceNo;
     private long lastUsedTimeNS = System.nanoTime();
 
-	protected ConnDataWriterController connectionDataWriter;
-	protected ConnDataReaderController connectionDataReader;	
+    private LongDateTimeQueue startTimes = new LongDateTimeQueue(16);
+    private ByteArrayQueue[] echos = new ByteArrayQueue[0];
+
+
 	
 	protected BaseConnection(SSLEngine engine, 
 			                 SocketChannel socketChannel,
 			                 long id
 				) {
 		
-		this.engine = engine;
-		this.socketChannel = socketChannel;
+		this.engine = engine; //this is null for non TLS
+		this.socketChannel = socketChannel;		
 		this.id = id;
-		
+
 	}
 	
 	/**
@@ -54,19 +58,9 @@ public abstract class BaseConnection {
 	 * the Selector.
 	 */
 	public void decompose() {
-		//new Exception("decompose connection").printStackTrace();
-		//socketChannel = null;
-		//engine = null;
-		//connectionDataWriter = null;
-		//connectionDataReader = null;
-	}
-		
-	public ConnDataWriterController connectionDataWriter() {		
-		return connectionDataWriter;
-	}
-	
-	public ConnDataReaderController connectionDataReader() {		
-		return connectionDataReader;
+		//new Exception("decompose connection").printStackTrace();//TODO: only called when we re-use slot...
+		socketChannel = null;
+		engine = null;
 	}
 	
 	public void setLastUsedTime(long timeNS) {
@@ -158,11 +152,7 @@ public abstract class BaseConnection {
 	}
 
 	public void setSequenceNo(int seq) {
-		if (seq<sequenceNo) {
-			logger.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
-			System.exit(-1);
-		}
-		//	log.info("setSequenceNo {} for chanel {}",seq,id);
+		assert(seq>=sequenceNo) : "sequence numbers can only move forward.";
 		sequenceNo = seq;
 	}
 	
@@ -193,162 +183,64 @@ public abstract class BaseConnection {
 		close();
 	}
 	
-	public class ConnDataWriterController {
-
-		
-		private final int SIZE_OF = Pipe.sizeOf(ConnectionStateSchema.instance,ConnectionStateSchema.MSG_STATE_1);
-		protected final Pipe<ConnectionStateSchema> pipe;
-		private boolean isWriting = false;		
-		
-		public ConnDataWriterController(Pipe<ConnectionStateSchema> pipe) {
-			this.pipe = pipe;
-		}
-		
-		/**
-		 * check if connection data can take another message
-		 * @return true if there is room for another write
-		 */
-		public boolean hasRoomForWrite() {
-			return Pipe.hasRoomForWrite(pipe);
-		}
-		
-		/**
-		 * Open the message for writing
-		 * @return returns the ChannelWriter or null if there is no room to write.
-		 */
-		public ChannelWriter beginWrite(long arrivalTime) {
-			if (Pipe.hasRoomForWrite(pipe)) {
-				Pipe.markHead(pipe);
-				Pipe.addMsgIdx(pipe, ConnectionStateSchema.MSG_STATE_1);
-
-				Pipe.addLongValue(arrivalTime, pipe);
-				isWriting = true;
-				return Pipe.openOutputStream(pipe);
-			}
-			return null;
-		}
-		
-		/**
-		 * Dispose of everything written and restore to the way it was before
-		 * beginWrite() was called.
-		 */
-		public void abandonWrite() {
-			if (isWriting) {
-				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));
-				Pipe.resetHead(pipe);
-			} else {
-				isWriting=false;
-			}
-		}
-		
-		/**
-		 * Store the message and move the pointers forward so the data can be
-		 * consumed later.
-		 */
-		public void commitWrite(int context, long businessTime) {
-			if (isWriting) {
-				DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(pipe));		
-				Pipe.addIntValue(context, pipe);
-				Pipe.addLongValue(businessTime, pipe);
-				Pipe.confirmLowLevelWrite(pipe, SIZE_OF);
-				Pipe.publishWrites(pipe);
-			} else {
-				isWriting = false;
-			}
-		}
-
+	//overwritten by leaf which has the headers
+	public boolean hasHeadersToEcho() {
+		return true;
 	}
 	
-	public class ConnDataReaderController {
-
-		private final int SIZE_OF = Pipe.sizeOf(ConnectionStateSchema.instance,ConnectionStateSchema.MSG_STATE_1);
-		
-		protected final Pipe<ConnectionStateSchema> pipe;
-		protected AtomicBoolean isReading = new AtomicBoolean();
-				
-	    private long activeArrivalTime;
-	    private int activeContext;
-	    private long activeBusinessTime;
+	public long readStartTime() {
+		return startTimes.dequeue();
+	}
+	
+	public void writeStartTime(long timeNS) {
+		boolean ok = startTimes.tryEnqueue(timeNS);
+		assert(ok);
+	}
 	    
-		
-		public ConnDataReaderController(Pipe<ConnectionStateSchema> pipe) {
-			this.pipe = pipe;
-		}
-			
-		/**
-		 * checks if there is data on the channel
-		 * @return true if there is a full message to read
-		 */
-		public boolean hasContentToRead() {
-			return Pipe.hasContentToRead(pipe);
-		}
-
-		
-		/**
-		 * Opens the channel reader for reading from beginning of message
-		 * @return ChannelReader opened for reading or null if channel has no data
-		 */
-		public ChannelReader beginRead() {
-			if (Pipe.hasContentToRead(pipe)) {
-				Pipe.markTail(pipe);
-				int msg = Pipe.takeMsgIdx(pipe);
-				
-				if (msg >= 0) {
-					isReading .set(true);
-					
-					activeArrivalTime = Pipe.takeLong(pipe);					
-					DataInputBlobReader<ConnectionStateSchema> result = Pipe.openInputStream(pipe);
-					activeContext = Pipe.takeInt(pipe);
-					activeBusinessTime = Pipe.takeLong(pipe);
-					return result;
-				} else {
-					//eof
-				}
-			}
-			return null;
-		}
-		
-		public long readArrivalTime() {
-			assert(isReading.get());
-			return activeArrivalTime;
-		}
-		
-		public int readContext() {
-			assert(isReading.get());
-			return activeContext;
-		}
-		
-		public long readBusinessTime() {
-			assert(isReading.get());
-			return activeBusinessTime;
-		}
-		
-		/**
-		 * Restore position to the beginning, the ChannelReader is invalidated
-		 * beginRead() must be called again for another read.
-		 */
-		public void rollback() {
-			if (isReading.get()) {
-				Pipe.resetTail(pipe);
-			}
-			isReading .set(false);
-		}
-		
-		/**
-		 * Move position forward.  ChanelReader is invalid and beginRead() must be called again.
-		 */
-		public void commitRead() {
-			if (isReading.get()) {
-				Pipe.confirmLowLevelRead(pipe, SIZE_OF);
-				Pipe.releaseReadLock(pipe);
-			}
-			isReading.set(false);
-		}
-
-		public boolean isReading() {
-			return isReading.get();
-		}
+	public boolean hasDataRoom() {
+		if (startTimes.hasRoom()) {
+			int x = echos.length;
+	    	while (--x>=0) {
+	    		if (!echos[x].hasRoom()) {
+	    			return false;
+	    		};
+	    	}
+			return true;
+		}		
+		return false;
 	}
 
-	
+    public void markDataHead() {
+    	startTimes.markHead();
+    	int x = echos.length;
+    	while (--x>=0) {
+    		echos[x].markHead();
+    	}
+    }
+    
+    public void resetDataHead() {
+    	startTimes.resetHead();
+    	int x = echos.length;
+    	while (--x>=0) {
+    		echos[x].resetHead();
+    	}
+    }
+    
+
+    public void markDataTail() {
+    	startTimes.markTail();
+    	int x = echos.length;
+    	while (--x>=0) {
+    		echos[x].markTail();
+    	}
+    }
+    
+    public void resetDataTail() {
+    	startTimes.resetTail();
+    	int x = echos.length;
+    	while (--x>=0) {
+    		echos[x].resetTail();
+    	}
+    }
+    
 }

@@ -255,7 +255,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
 
-			final long channelId = Pipe.takeLong(input[idx]);
+ 			final long channelId = Pipe.takeLong(input[idx]);
 		    Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(input[idx], activeMessageId));
 		    Pipe.releaseReadLock(input[idx]);
 		    assert(Pipe.contentRemaining(input[idx])>=0);

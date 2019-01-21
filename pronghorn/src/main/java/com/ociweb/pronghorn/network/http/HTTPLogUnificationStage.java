@@ -25,7 +25,7 @@ public class HTTPLogUnificationStage extends PronghornStage {
 	private static final byte[] BYTES_REQUEST = "IN ".getBytes();
 	private static final byte[] BYTES_EOL = "\r\n".getBytes();
 	private static final byte[] BYTES_C = "] ".getBytes();
-	private static final byte[] BYTES_BUSINESS = "BusinessLatency:".getBytes();
+	private static final byte[] BYTES_LATENCY = "Latency:".getBytes();
 	private static final byte[] BYTES_B = ":".getBytes();
 	private static final byte[] BYTES_A = " [".getBytes();
 	private final Pipe<HTTPLogRequestSchema>[] requestInputs;
@@ -244,7 +244,7 @@ public class HTTPLogUnificationStage extends PronghornStage {
 
 		if (duration>=0) {
 			ElapsedTimeRecorder.record(etr, duration);
-			writer.write(BYTES_BUSINESS);
+			writer.write(BYTES_LATENCY);
 			Appendables.appendNearestTimeUnit(writer, duration);
 			
 			//done every 4K cycles, not need to go faster since we must gather data
