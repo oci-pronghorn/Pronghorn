@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.util.primitive;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -21,11 +22,14 @@ public class LongDateTimeQueue {
 	private final int size;
 	private final int mask;
 	private final byte[] data;
-	private int head;
 	private int markedHead;
 	private int markedTail;
 	
-	private final int[] tail = new int[1];
+	private AtomicInteger head = new AtomicInteger();
+	private AtomicInteger tail = new AtomicInteger();
+	
+	private final int[] temp = new int[1];
+	
 	private long lastInputValue;
 	private long lastOutputValue;
 	
@@ -37,41 +41,53 @@ public class LongDateTimeQueue {
 		
 	}
 	
-	//int[] temp = new int[12];
+	//TODO: add a run lenght encoding for values of zero dif since this happens very freqntly.
+	//      this will allow for 2-4x more connections...
 	
-	public boolean tryEnqueue(long time) {
+	AtomicInteger c = new AtomicInteger();
+	
+	//returns new head
+	public int tryEnqueue(long time) {
 		
+		int h = head.get();
+		int t = tail.get();
 		int room;
-		if (tail[0]>head) {
-			room = tail[0]-head;
+		if (t>h) {
+			room = t-h;
 		} else {
-			room = (size-head)+tail[0];
+			room = (size-h)+t;
 		}
 		if (room<11) {
-			return false;
+			return -1;
 		}
 		
 		long dif = time-lastInputValue;
 		//int oldHead = head;
-		head = mask  & DataOutputBlobWriter.writePackedLong(dif, data, mask, head);		
+		int newHead = mask  & DataOutputBlobWriter.writePackedLong(dif, data, mask, head.get());		
 		
 		//temp[head-oldHead]++;
 		//System.out.println("lengthwritten: "+Arrays.toString(temp)); //normally 1
 		//                lengthwritten: [0, 64611, 21, 260, 18, 5, 0, 1, 0, 0, 0, 0] //mostly 1
-		
+		c.incrementAndGet();
 		lastInputValue = time;
-		return true;
+		return newHead;
+	}
+	
+	public void publishHead(int headPos) {
+		head.set(headPos);
 	}
 	
 	public boolean hasData() {
-		return tail[0]!=head;
+		return tail.get()!=head.get();
 	}
-	
+
 	public long dequeue() {
-		
-		assert (tail[0]!=head);		
-		long value = lastOutputValue+DataInputBlobReader.readPackedLong(data, mask, tail);
-		tail[0] = tail[0]&mask;
+		c.decrementAndGet();
+	//	System.out.println("left starts: "+c);
+		assert (tail.get()!=head.get());	
+		temp[0]=tail.get();
+		long value = lastOutputValue+DataInputBlobReader.readPackedLong(data, mask, temp);
+		tail.set(temp[0]&mask);
 		lastOutputValue = value;
 		return value;
 		
@@ -79,34 +95,26 @@ public class LongDateTimeQueue {
 
 	//store in case we need to roll back this write
 	public void markHead() {
-		markedHead = head;
+		markedHead = head.get();
 	}
 	
 	//roll back the write to the last mark
 	public void resetHead() {
-		head = markedHead;
+		head.set(markedHead); //TODO: head goes backards read is bad
 	}
-	
-	//store in case we need to roll back this read
-	public void markTail() {
-		markedTail = tail[0];
-	}
-	
-	//roll back the read to the last mark
-	public void resetTail() {
-		tail[0] = markedTail;
-	}
-	
 	
 
 	public boolean hasRoom() {
+		int h = head.get();
+		int t = tail.get();
 		int room;
-		if (tail[0]>head) {
-			room = tail[0]-head;
+		if (t>h) {
+			room = t-h;
 		} else {
-			room = (size-head)+tail[0];
+			room = (size-h)+t;
 		}
-		if (room<11) {
+		if (room<11) {//TOOD: key bug...
+			System.out.println("no room but holding "+c+" size "+size+" tail "+t+" head "+h);
 			return false;
 		}
 		return true;

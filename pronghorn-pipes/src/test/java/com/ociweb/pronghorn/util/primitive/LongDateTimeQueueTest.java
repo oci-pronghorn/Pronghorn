@@ -19,9 +19,13 @@ public class LongDateTimeQueueTest {
 		
 		LongDateTimeQueue q = new LongDateTimeQueue(8);
 		
-		assertTrue(q.tryEnqueue(a));
-		assertTrue(q.tryEnqueue(b));
-		assertTrue(q.tryEnqueue(c));
+		int h = -1;
+		assertTrue((h=q.tryEnqueue(a))>=0);
+		q.publishHead(h);
+		assertTrue((h=q.tryEnqueue(b))>=0);
+		q.publishHead(h);
+		assertTrue((h=q.tryEnqueue(c))>=0);
+		q.publishHead(h);
 		
 		assertEquals(a, q.dequeue());
 		assertEquals(b, q.dequeue());
