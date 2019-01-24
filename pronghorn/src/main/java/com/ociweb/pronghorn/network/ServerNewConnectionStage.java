@@ -419,13 +419,16 @@ public class ServerNewConnectionStage extends PronghornStage{
 			        	  SocketChannel channel = serverSocketChannel.accept();
 			        			        	  
 			        	  //by design we set this in both places
-			        	  channel.socket().setReceiveBufferSize(1<<19);
+			        	  channel.socket().setReceiveBufferSize(1<<20);
 			              channel.configureBlocking(false);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
-			           			              
+			           	  channel.socket().setTrafficClass((0x08));	//THOUGHPUT	    
+			              channel.socket().setSoTimeout(0);
+			              channel.socket().setKeepAlive(true);
+			         
 			              SSLEngine sslEngine = null;
 			              if (coordinator.isTLS) {
 							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
@@ -440,9 +443,9 @@ public class ServerNewConnectionStage extends PronghornStage{
 						  							  
 						  
 			              ServerConnection old = holder.setValue(channelId, 
-			            		  		  new ServerConnection(sslEngine, 
-			            		  				  		       channel, channelId,
-			            				                       coordinator)
+							            		  		  new ServerConnection(sslEngine, 
+							            		  				  		       channel, channelId,
+							            				                       coordinator)
 			            		  		  );
 			              if (null!=old) {
 			            	//  logger.info("\nclosing an old connection");

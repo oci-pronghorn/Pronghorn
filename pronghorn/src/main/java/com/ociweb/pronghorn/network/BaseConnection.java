@@ -36,7 +36,7 @@ public abstract class BaseConnection {
 	private int sequenceNo;
     private long lastUsedTimeNS = System.nanoTime();
 
-    private LongDateTimeQueue startTimes = new LongDateTimeQueue(16);
+    private LongDateTimeQueue startTimes = new LongDateTimeQueue(15); //32K of data by default for start times
     private ByteArrayQueue[] echos = new ByteArrayQueue[0];
 
 
@@ -162,6 +162,7 @@ public abstract class BaseConnection {
 	}
 
 	private int poolReservation=-1;
+	private int previousPoolReservation=-1;
 	
 	public void setPoolReservation(int value) {
 		assert(-1==poolReservation);
@@ -175,7 +176,14 @@ public abstract class BaseConnection {
 	}
 	
 	public void clearPoolReservation() {
+		if (-1!=poolReservation) {
+			previousPoolReservation = poolReservation;
+		}
 		poolReservation = -1;
+	}
+	
+	public int getPreviousPoolReservation() {
+		return previousPoolReservation;
 	}
 
 	@Override
@@ -192,11 +200,14 @@ public abstract class BaseConnection {
 		return startTimes.dequeue();
 	}
 	
-	public void writeStartTime(long timeNS) {
-		boolean ok = startTimes.tryEnqueue(timeNS);
-		assert(ok);
+	public int enqueueStartTime(long timeNS) {
+		return startTimes.tryEnqueue(timeNS);	
 	}
-	    
+	public void publishStartTime(int headPos) {
+		startTimes.publishHead(headPos);
+	}
+	
+	
 	public boolean hasDataRoom() {
 		if (startTimes.hasRoom()) {
 			int x = echos.length;
@@ -209,38 +220,5 @@ public abstract class BaseConnection {
 		}		
 		return false;
 	}
-
-    public void markDataHead() {
-    	startTimes.markHead();
-    	int x = echos.length;
-    	while (--x>=0) {
-    		echos[x].markHead();
-    	}
-    }
-    
-    public void resetDataHead() {
-    	startTimes.resetHead();
-    	int x = echos.length;
-    	while (--x>=0) {
-    		echos[x].resetHead();
-    	}
-    }
-    
-
-    public void markDataTail() {
-    	startTimes.markTail();
-    	int x = echos.length;
-    	while (--x>=0) {
-    		echos[x].markTail();
-    	}
-    }
-    
-    public void resetDataTail() {
-    	startTimes.resetTail();
-    	int x = echos.length;
-    	while (--x>=0) {
-    		echos[x].resetTail();
-    	}
-    }
     
 }

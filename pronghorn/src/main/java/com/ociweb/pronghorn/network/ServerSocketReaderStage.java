@@ -33,9 +33,6 @@ import com.ociweb.pronghorn.util.PoolIdxPredicate;
  */
 public class ServerSocketReaderStage extends PronghornStage {
    
-
-	private PipeLineFilter isOk;
-
 	private final int messageType;
 	private final int singleMessageSpace;
 	private final int reqPumpPipeSpace;
@@ -61,7 +58,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	
     private final class PipeLineFilter implements PoolIdxPredicate {
 		
-    	private int groups;
+    	public final int groups;
     	private int groupSize;
     	private int okGroup;
 
@@ -168,8 +165,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     		//not even so just use 1
     		groups = 1;
     	}
-    	
-    	this.isOk = new PipeLineFilter(groups, sizeOfOneGroup);      
+    	     
     	this.responsePipeLinePool = new PoolIdx(output.length, groups); 	
         	
     	//this.selectedKeyHolder = new SelectedKeyHashMapHolder();
@@ -207,7 +203,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     @Override
     public void run() {
-    	
+ 
     	 if(!shutdownInProgress) {
 
     	   		///////////////////
@@ -221,7 +217,6 @@ public class ServerSocketReaderStage extends PronghornStage {
     	        ///Read from socket
     	        ////////////////////////////////////////
 
-    	    	int noRoomCount = waitForPipeConsume;
     	        while (hasNewDataToRead()) { 
         	    	/////////////////////////////
         	    	//must keep this pipe from getting full or the processing will get backed up
@@ -230,17 +225,12 @@ public class ServerSocketReaderStage extends PronghornStage {
         	   		
     	            doneSelectors.clear();
     	            hasRoomForMore = true; //set this up before we visit
-
     	            selectedKeys.forEach(selectionKeyAction);
     	    	           
     	            removeDoneKeys(selectedKeys);
     	            if (!hasRoomForMore) {
-    	            	if (--noRoomCount<=0) {
-    	            		return;//  break;
-    	            	}
-    	            } else {
-    	            	noRoomCount = waitForPipeConsume;
-    	            }
+    	            	return;
+    	            } 
     	        }
     	 
     	 } else {
@@ -271,8 +261,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	}
 
-	//int[] selectedOuts = null;
-	
 	private boolean processSelection(SelectionKey selection) {
 		
 		assert isRead(selection) : "only expected read"; 
@@ -285,16 +273,112 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
-		BaseConnection cc = coordinator.lookupConnectionById(channelId);
-		
+		return processConnection(selection, socketChannel, channelId, coordinator.lookupConnectionById(channelId));
+
+	}
+	
+	private boolean processConnection(SelectionKey selection, final SocketChannel socketChannel, long channelId,
+			BaseConnection cc) {
 		if (null != cc) {
 			assert(cc.getSocketChannel()==socketChannel) : "internal error";
-			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
+			handshakeProcessing(cc);		
+			
+			boolean hasOutputRoom = true;
+			
+			int responsePipeLineIdx = cc.getPoolReservation();
+			
+			final boolean newBeginning = (responsePipeLineIdx<0);
+			
+			if (newBeginning) {
+				//this connection lost the lock on this outgoing pipe so we need to look it up.				
+				responsePipeLineIdx = lookupResponsePipeLineIdx(channelId, cc);
+
+				boolean hasRoom = true; //only lock value if we have room for write
+				if (responsePipeLineIdx>=0 && (hasRoom=Pipe.hasRoomForWrite(output[responsePipeLineIdx], reqPumpPipeSpace)) ) {
+					//we got the pipe lock so keep it until we finish a "block"
+					cc.setPoolReservation(responsePipeLineIdx);
+				} else {
+					//logger.info("\n too much load");
+					//if does not have room on pipe do not take value..
+					
+					return hasRoom;//try again very soon, do no block
+					//try later, we can not find an open pipe right now.
+				}
+				
+				//debugPipeAssignment(channelId, responsePipeLineIdx);
+				/////////////////////////////////////
+			}
+			
+			
+			if (responsePipeLineIdx >= 0) {		
+				//only call nano if we are consuming this one.
+				cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
+				if (pumpByteChannelIntoPipe(socketChannel, cc.id, 
+														cc.getSequenceNo(),
+						                                output[responsePipeLineIdx], 
+						                                newBeginning, 
+						                                cc, selection)<=0) {
+					hasOutputRoom = false;
+					//logger.info("\n no output room to read data");
+				}					
+			} 
+			
+			return hasOutputRoom;
 		} else {
 			return processClosedConnection(socketChannel, channelId);
 		}
+	}
 
-	//	boolean processWork = true;
+
+	private int lookupResponsePipeLineIdx(long channelId, BaseConnection cc) {
+		if (cc.id == channelId) {			
+			int idx = cc.getPreviousPoolReservation();
+			
+			if (-1!=idx) {
+				idx = responsePipeLinePool.optimisticGet(channelId, idx);
+				if (-1!=idx) {
+					return idx;
+				}
+			} 			
+			
+			//key & group to ensure connection is sent to same track	
+			return responsePipeLinePool.get(channelId, (int)channelId%responsePipeLinePool.groups);	
+			
+		} else {
+			
+			releaseOldChannelId(channelId);
+			//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
+			releasePipesForUse();
+		
+			//key & group to ensure connection is sent to same track	
+			return responsePipeLinePool.get(channelId, (int)channelId%responsePipeLinePool.groups);	
+		}
+	}
+
+	private void releaseOldChannelId(long channelId) {
+		//we must release the old one?
+		int result = PoolIdx.getIfReserved(responsePipeLinePool,channelId);
+		if (result>=0) {
+			//we found the old channel so remove it before we add the new id.
+		    responsePipeLinePool.release(channelId);
+		}
+	}
+
+	private void debugPipeAssignment(long channelId, int responsePipeLineIdx) {
+		final boolean debugPipeAssignment = false;
+		if (debugPipeAssignment) {
+			if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
+
+				logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
+						this.stageId,
+						channelId, 
+						responsePipeLineIdx,
+						output.length);
+			}
+		}
+	}
+
+	private void handshakeProcessing(BaseConnection cc) {
 		if (coordinator.isTLS) {
 				
 			if (null!=cc && null!=cc.getEngine()) {
@@ -306,85 +390,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 		                }
 				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 					 releasePipesForUse();
-//					 processWork = false;
+
 				 }				 
 			}
 		}
-		
-		
-		boolean hasOutputRoom = true;
-		//the normal case is to do this however we do need to skip for TLS wrap
-		if (null!=cc) {
-			
-			  // ServerCoordinator.acceptConnectionRespond = System.nanoTime();
-						
-				int responsePipeLineIdx = cc.getPoolReservation();
-
-				final boolean newBeginning = (responsePipeLineIdx<0);
-
-				if (newBeginning) {
-					
-					if (cc.id != channelId) {
-						//we must release the old one?
-						int result = PoolIdx.getIfReserved(responsePipeLinePool,channelId);
-						if (result>=0) {
-							//we found the old channel so remove it before we add the new id.
-				 		    responsePipeLinePool.release(channelId);
-						}
-					}
-					
-					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
-					releasePipesForUse();
-					isOk.setId(channelId); //key to ensure connection is sent to same track
-					responsePipeLineIdx = responsePipeLinePool.get(channelId, isOk);
-					
-					if (-1 == responsePipeLineIdx) { 
-						//logger.trace("second check for released pipe");
-						Thread.yield();
-						releasePipesForUse();
-						isOk.setId(channelId); //key to ensure connection is sent to same track
-						responsePipeLineIdx = responsePipeLinePool.get(channelId, isOk);
-						if (-1 == responsePipeLineIdx) {
-							return true;//try again very soon, do no block
-							//logger.info("\n too much load");
-							//try later, we can not find an open pipe right now.
-							//return false;//must return false to ensure we leave this stage
-						}
-					}
-					
-					if (responsePipeLineIdx >= 0) {
-						cc.setPoolReservation(responsePipeLineIdx);
-					}
-			
-					final boolean debugPipeAssignment = false;
-					if (debugPipeAssignment) {
-						if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
-			
-							logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
-									this.stageId,
-									channelId, 
-									responsePipeLineIdx,
-									output.length);
-						}
-					}
-					/////////////////////////////////////	
-				} 
-					
-				if (responsePipeLineIdx >= 0) {
-				
-					int pumpState = pumpByteChannelIntoPipe(socketChannel, cc.id, 
-															cc.getSequenceNo(),
-							                                output[responsePipeLineIdx], 
-							                                newBeginning, 
-							                                cc, selection);
-								
-					if (pumpState<=0) {
-						hasOutputRoom = false;
-						//logger.info("\n no output room to read data");
-					}					
-				} 
-		}
-		return hasOutputRoom;
 	}
 	
 
@@ -495,6 +504,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				BaseConnection conn = coordinator.lookupConnectionById(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
+					
 					conn.clearPoolReservation();
 				}				
 			} 
@@ -504,7 +514,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private boolean hasNewDataToRead() {
     	
     	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
-    		
+    	
         try {
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called

@@ -905,14 +905,14 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 		
 		int requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 
+		int headPos = -1;
 		if (serverCon!=null) {
 
 			assert (routeId == config.getRouteIdForPathId(pathId));
 			
 			if (serverCon.hasDataRoom()) {
 			
-				serverCon.markDataHead();
-				serverCon.writeStartTime(arrivalTime);
+				headPos = serverCon.enqueueStartTime(arrivalTime);
 				
 				requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, 
 													httpRevisionId, config,
@@ -930,14 +930,15 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
 		} 
         
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {         	
-        	if (serverCon!=null) {
-        		serverCon.resetDataHead();//abandon writes
-        	}
+
         	DataOutputBlobWriter.closeLowLevelField(writer);
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
             return NEED_MORE_DATA;
         } else {
+        	if (-1 != headPos) {
+        		serverCon.publishStartTime(headPos);
+        	}
         	//nothing need be done to commit the data writes.   	
         }
         

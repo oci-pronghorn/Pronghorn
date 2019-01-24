@@ -9,7 +9,7 @@ public final class PoolIdx  {
 
     private final long[] keys;
     private final byte[] locked;
-    private final int groups;
+    public final int groups;
     private final int step;
     private long locksTaken = 0;
     private long locksReleased = 0;
@@ -114,11 +114,13 @@ public final class PoolIdx  {
 	            /////////
 	        	
 	        	//found and returned member that matches key and was locked
-	            if (key == keys[temp] && 1 == locked[temp]) {	            	
-	                return temp;
+	            if (1 == locked[temp]) {
+	            	if (key == keys[temp]) {
+	            		return temp;
+	            	}
 	            } else {
 	            		            	
-	            	if (0 == locked[temp] && isOk.isOk(temp)) {	            		
+	            	if (isOk.isOk(temp)) {	            		
 	            		if (idx<0) {
 	            			//not already set
 	            			if (0 == locked[temp]) {
@@ -130,44 +132,103 @@ public final class PoolIdx  {
 	            			if (key == keys[temp]) {
 	            				idx = temp; //take this one since we had it before
 	            				lastUsedGroup = gr;
+	            				break;
 	            			} else if (-1 == keys[temp] //never used
  	            					  && keys[idx]!=key) { //and not already assigned to previous selection
 	            				idx = temp;
 	            				lastUsedGroup = gr;
 	            			}          			
 	            		}	                
-	            	}
-	            	
+	            	}	            	
 	            }
 	        }  
+        }
+        return startNewLock(this, key, idx);
+    }
+    
+    /**
+     * 
+     * @param key
+     * @param isOk filter to ensure that only acceptable values are chosen
+     */
+    public int get(long key, int fixedGroup) {   
+    	
+        int idx = -1;
+        
+        int j = step;    
+        int base = fixedGroup*step;
+        
+        while (--j>=0) {        	
+        	
+	        	///////////     
+	        	final int temp = base+j;
+	            /////////
+	        	
+	        	//found and returned member that matches key and was locked
+	            if (1 == locked[temp]) {	  
+	            	if (key == keys[temp]) {
+	            		return temp;
+	            	}
+	            } else {	                        		
+            		if (idx<0) {
+            			//not already set
+            			if (0 == locked[temp]) {
+            				idx = temp; //if unlocked take it            				           				
+            			}
+            		} else {
+            			//already set do we have something better?
+            			if (key == keys[temp]) {
+            				idx = temp; //take this one since we had it before
+            				break;
+            			} else if (-1 == keys[temp] //never used
+            					  && keys[idx]!=key) { //and not already assigned to previous selection
+            				idx = temp;
+            				
+            			}          			
+            		}
+	            }
+	          
         }
         return startNewLock(this, key, idx);
     }
 
     private int failureCount = 0;
     
+    public int optimisticGet(long key, int idx) {
+    	if (key == keys[idx] && 0 == locked[idx]) {
+    		return startNewLock(this,key,idx);
+    	} else {
+    		return -1;
+    	}
+    	
+    }
+    
     private static int startNewLock(PoolIdx that, long key, int idx) {
-    	
-
-    	
+ 
         if (idx>=0) {
-        	if (0==that.locksTaken && that.firstUsage!=null) {
+        	if ((0!=that.locksTaken) || (that.firstUsage==null)) {
+            	that.locksTaken++;
+            	that.locked[idx] = 1;
+            	that.keys[idx] = key;
+
+        	} else {
+            	that.locksTaken++;
+            	that.locked[idx] = 1;
+            	that.keys[idx] = key;
+        		
         		that.firstUsage.run();
         	}
-        	that.locksTaken++;
-        	that.locked[idx] = 1;
-        	that.keys[idx] = key;
             return idx;
         } else {
         	
-        	boolean debug = false;
-        	if (debug) {
-	        	//DO NOT REPORT UNLESS DEBUGGING.
-	        	//unable to find a lock, report this.
-	        	if (Integer.numberOfLeadingZeros(that.failureCount) != Integer.numberOfLeadingZeros(++that.failureCount)) {
-	        		logger.info("Unable to find free value from the pool, consider modification of the graph/configuration.");
-	        	}     	
-        	}
+//        	boolean debug = false;
+//        	if (debug) {
+//	        	//DO NOT REPORT UNLESS DEBUGGING.
+//	        	//unable to find a lock, report this.
+//	        	if (Integer.numberOfLeadingZeros(that.failureCount) != Integer.numberOfLeadingZeros(++that.failureCount)) {
+//	        		logger.info("Unable to find free value from the pool, consider modification of the graph/configuration.");
+//	        	}     	
+//        	}
         	
             return -1;
         }

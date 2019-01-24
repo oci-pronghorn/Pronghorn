@@ -675,10 +675,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 			 totalResponses++;
 				 
-			 long startTime = -1;
-			 
-			 con.markDataTail();
-			 startTime = con.readStartTime(); 
+			 long startTime = con.readStartTime(); 
 					 				 
 			 writeToLog(that, channelId, output, expSeq, logPos, logLen, startTime);			 
 
@@ -742,12 +739,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 if (0 != (END_RESPONSE_MASK & localContext)) {
 						 totalResponses++;
 						 
-						 long startTime = -1;
-				
+						 long startTime = con.readStartTime();
 						 //TODO: need to capture which pipe this came in from and if it violates the SLA.
 						 //      then report this as an error.
-						 con.markDataTail();
-						 startTime = con.readStartTime();
 						 
 						 writeToLog(that, channelId, output, expSeq, logPos, logLen, startTime);
 						 
@@ -782,9 +776,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				 that.expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
 			 }
 		 }
-		
-		 con.resetDataTail();
-		
+				
 		 if (that.showUTF8Sent) {
 			 Pipe.outputStream(output).debugAsUTF8();
 		 }

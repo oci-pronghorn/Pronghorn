@@ -734,7 +734,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 		boolean isNormalCase = accumulateWorkHistory();
 						
-		int cyclesOfNoWorkBeforeSleep = 1000;
+		int cyclesOfNoWorkBeforeSleep = 10_000_000; //do not sleep too soon, may cause issues..
 		
 		//if we have over X cycles of non work found then
 		//drop CPU usage to greater latency mode since we have no work
