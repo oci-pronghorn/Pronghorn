@@ -57,14 +57,14 @@
             </distributionManagement>
             <build>
                 <plugins>
-                    <plugin>
-                    	<groupId>org.apche.maven.plugins</groupId>
-                    	<artifactId>maven-resources-plugin</artifactId>
-                    	<version>2.5</version>
-                    	<configuration>
-                    		<escapeString>\</escapeString>
-                    	</configuration>
-                    </plugin>                   
+                     <plugin>
+		             	<groupId>org.apche.maven.plugins</groupId>
+		             	<artifactId>maven-resources-plugin</artifactId>
+		             	<version>2.5</version>
+		             	<configuration>
+		             		<escapeString>\</escapeString>
+		             	</configuration>
+		            </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>

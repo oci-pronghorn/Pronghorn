@@ -1,19 +1,19 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>\${groupId}</groupId>
-	<artifactId>\${artifactId}</artifactId>
-	<version>\${version}</version>
+	<groupId>${groupId}</groupId>
+	<artifactId>${artifactId}</artifactId>
+	<version>${version}</version>
 
 	<properties>
 		<java.bootstrap.classes>
-			\${java.home}/lib/rt.jar
+			${java.home}/lib/rt.jar
 		</java.bootstrap.classes>
 		<java.cryptographic.extension.classes>
-			\${java.home}/lib/jce.jar
+			${java.home}/lib/jce.jar
 		</java.cryptographic.extension.classes>
 		<java.secure.socket.extension.classes>
-			\${java.home}/lib/jsse.jar
+			${java.home}/lib/jsse.jar
 		</java.secure.socket.extension.classes>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -54,7 +54,7 @@
 	<build>
 
 		<plugins>
-
+                   
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -112,7 +112,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>\${package}.\${mainClass}</mainClass>
+							<mainClass>${package}.${mainClass}</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
@@ -120,7 +120,7 @@
 					</descriptorRefs>
 
 					<!--  finalName>uber${artifactId}</finalName  use for java 8 proguard -->
-					<finalName>\${artifactId}</finalName>
+					<finalName>${artifactId}</finalName>
 					<appendAssemblyId>false</appendAssemblyId>
 
 				</configuration>
