@@ -426,8 +426,6 @@ public class ServerNewConnectionStage extends PronghornStage{
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
 			           	  channel.socket().setTrafficClass((0x08));	//THOUGHPUT	    
-			              channel.socket().setSoTimeout(0);
-			              channel.socket().setKeepAlive(true);
 			         
 			              SSLEngine sslEngine = null;
 			              if (coordinator.isTLS) {

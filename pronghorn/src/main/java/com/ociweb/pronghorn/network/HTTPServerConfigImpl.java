@@ -35,7 +35,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private String defaultHostPath = "";
 	private String bindHost = null;
 	private int bindPort = -1;
-	private int maxConnectionBits = 14; //default of 16K, do not change
+	private int maxConnectionBits = 14; //default of 16K, TODO: Must be larger!!!
 	//TODO: reduce connection memory to allow us to bump this up.
 	//      the echo code is not yet implemented. 
 	//      start time array could be shorter
@@ -58,7 +58,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	private int maxQueueIn = 16; ///from router to modules
 	private int maxQueueOut = 8; //from orderSuper to ChannelWriter
 
-	private int minMemoryInputPipe = 1<<21;
+	private int minMemoryInputPipe = 1<<12; //4Kminum input pipe.
 	
 	public final PipeConfigManager pcmIn;
 	public final PipeConfigManager pcmOut;
@@ -66,8 +66,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
     int tracks = 1;//default 1, for low memory usage
 	private LogFileConfig logFile;	
 
-	private String serviceName = "Server";
-	
+	private String serviceName = "Server";	
 	private final ServerConnectionStruct scs;
 	
 	public HTTPServerConfigImpl(int bindPort, 

@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.network;
 
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -10,12 +9,6 @@ import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ConnectionStateSchema;
-import com.ociweb.pronghorn.pipe.ChannelReader;
-import com.ociweb.pronghorn.pipe.ChannelWriter;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.util.primitive.ByteArrayQueue;
 import com.ociweb.pronghorn.util.primitive.LongDateTimeQueue;
 
@@ -36,19 +29,22 @@ public abstract class BaseConnection {
 	private int sequenceNo;
     private long lastUsedTimeNS = System.nanoTime();
 
-    private LongDateTimeQueue startTimes = new LongDateTimeQueue(15); //32K of data by default for start times
-    private ByteArrayQueue[] echos = new ByteArrayQueue[0];
-
-
+    private LongDateTimeQueue startTimes; 
+    private ByteArrayQueue[] echos;
 	
 	protected BaseConnection(SSLEngine engine, 
 			                 SocketChannel socketChannel,
-			                 long id
+			                 long id,
+			                 boolean initQueue
 				) {
 		
 		this.engine = engine; //this is null for non TLS
 		this.socketChannel = socketChannel;		
 		this.id = id;
+		if (initQueue) {
+			startTimes = new LongDateTimeQueue(13); //8K of data by default for start times
+			echos = new ByteArrayQueue[0];
+		}
 
 	}
 	

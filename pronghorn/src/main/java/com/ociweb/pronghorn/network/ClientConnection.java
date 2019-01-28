@@ -62,7 +62,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 	private long TIME_TILL_CLOSE = 10_000;
 	private ElapsedTimeRecorder histRoundTrip = new ElapsedTimeRecorder();
 
-	private final static int maxInFlightBits  = 14;
+	private final static int maxInFlightBits  = 4;
 	public  final static int maxInFlight      = 1<<maxInFlightBits;
 	private final static int maxInFlightMask  = maxInFlight-1;
 	
@@ -104,7 +104,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			                int requestPipeIdx, int responsePipeIdx, long conId, long timeoutNS, int structureId		                 
 			 			  ) throws IOException {
 
-		super(engine, SocketChannel.open(), conId);
+		super(engine, SocketChannel.open(), conId, false);
 
 		
 		this.structureId = structureId;
@@ -140,7 +140,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 
 		this.recBufferSize = this.getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF);
 
-		resolveAddressAndConnect(port);		
+		resolveAddressAndConnect(port);	//TODO: need to cache this lookup.	
 		
 		this.payloadSize = isTLS ?
 				Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200) :
@@ -211,7 +211,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			return;
 		} else {
 			
-			InetAddress inetAddress = ipAddresses[0];			
+			InetAddress inetAddress = ipAddresses[0];
 			this.getSocketChannel().connect(new InetSocketAddress(inetAddress, port));
 			
 			//if you see BindException: Can't assign requested address then something is

@@ -95,7 +95,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		}
 		
 		responsePipeLinePool = new PoolIdx(output.length, 1); //client response does not need to worry about groups; just reserve pipes.
-		
+
 	}
 
 	

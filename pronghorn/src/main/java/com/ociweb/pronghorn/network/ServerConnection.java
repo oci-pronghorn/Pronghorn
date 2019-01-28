@@ -14,7 +14,7 @@ public class ServerConnection extends BaseConnection {
 	protected ServerConnection(SSLEngine engine, SocketChannel socketChannel, 
 			                   long id, ServerCoordinator coordinator) {
 		
-		super(engine, socketChannel, id);
+		super(engine, socketChannel, id, true);
 		
 		this.scs  = coordinator.connectionStruct();
 		assert(coordinator.connectionStruct() != null) : "server side connections require struct";

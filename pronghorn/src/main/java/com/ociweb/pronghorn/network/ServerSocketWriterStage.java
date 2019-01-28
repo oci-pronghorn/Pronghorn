@@ -29,9 +29,10 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
     public static boolean showWrites = false;
- 	public static long hardLimtNS = 10_000_000L; //10ms -- must be fast enough for the telemetry set now to 100ms
+    //must work with only 16 in flight!!
+ 	public static long hardLimtNS = 20_000L;//20 micros -- must be fast enough for the telemetry set now to 100ms
     //also note however data can be written earlier if:
-	//   1. the buffer has run out of space (the multiplier controls this)
+	//   1. the buffer has run out of space 
 	//   2. if the pipe has no more data.
     	
     private final Pipe<NetPayloadSchema>[] input;
@@ -117,11 +118,9 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
     	final Number rate = (Number)GraphManager.getNota(graphManager, this, GraphManager.SCHEDULE_RATE, null);
     	    	
-
+    	this.maxBatchCount = Math.max(1, ( null==rate ? 16 : (int)(hardLimtNS/rate.longValue()))); 
     	
-    	this.maxBatchCount = ( null==rate ? 16 : (int)(hardLimtNS/rate.longValue())); 
-    	
-    	//System.out.println("server socket write batch count "+maxBatchCount+" cycle rate "+rate.longValue()); // 100_000;
+    	//logger.info("server socket write batch count "+maxBatchCount+" cycle rate "+rate.longValue()); // 100_000;
     	
     	int c = input.length;
 
@@ -166,7 +165,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	
 		            	int activeMessageId = Pipe.takeMsgIdx(input[x]);		            			            	
 		            	processMessage(activeMessageId, x);
-		            	doingWork |= (activeMessageId < 0);
+		            	doingWork |= true;
 	    			}
 	    			
 	    		} else {
@@ -189,7 +188,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    				||
 	    				    //if we have less than 1/2 of blob used wait for normal count down above
 	    				    //if above this and we have no new data go ahead and write.
-	    					( (limit>= (localInput.sizeOfBlobRing>>1) ) &&  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
+	    					( /*(limit>= (localInput.sizeOfBlobRing>>1) ) &&*/  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
 	    				) {
 	    		    				
 	    				writeToChannelBatchCountDown[x]=-4;
@@ -202,7 +201,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			} else {
 	    				
 	    				//must set to true to ensure we count up the iterations above.
-	   // 				doingWork |= (!Pipe.hasContentToRead(localInput));
+	    				doingWork |= (!Pipe.hasContentToRead(localInput));
 	    				
 	    				
 	    				//unflip

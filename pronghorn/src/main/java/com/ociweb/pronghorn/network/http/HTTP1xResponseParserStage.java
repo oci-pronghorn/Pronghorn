@@ -113,7 +113,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
 		
 		//GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-			
+					
 	}
 
 	  private Pipe<NetResponseSchema>[] reSizeArray(Pipe<NetResponseSchema> output, int length) {

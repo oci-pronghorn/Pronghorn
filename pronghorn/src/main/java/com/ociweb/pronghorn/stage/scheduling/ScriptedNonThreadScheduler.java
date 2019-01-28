@@ -439,37 +439,68 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
     private static Pipe[] buildInputPipes(int count, int stageIdx, int inputIdx, final PronghornStage[] stages, final GraphManager graphManager) {
 
-        while (stageIdx < stages.length) {
+    	int s=stageIdx;
+    	//walk it twice, can not recurse because large graphs cause overflow...
+        while (s < stages.length) {
 
-            int inputCount = GraphManager.getInputPipeCount(graphManager, stages[stageIdx]);
+            int inputCount = GraphManager.getInputPipeCount(graphManager, stages[s]);
+          
+            ///copy how many pipes we will have
             while (inputIdx <= inputCount) {
-
-                Pipe pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);
-
-                int producerId = GraphManager.getRingProducerId(graphManager, pipe.id);
+                Pipe inputPipe = GraphManager.getInputPipe(graphManager, stages[s], inputIdx);
+                int producerStageId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
 
                 boolean isFromOutside = true;
                 int k = stages.length;
                 while (--k >= 0) {
-                    if (stages[k].stageId == producerId) {
+                    if (stages[k].stageId == producerStageId) {
                         isFromOutside = false;
                         break;
                     }
+                    
                 }
                 if (isFromOutside) {
-                    Pipe[] result = buildInputPipes(count + 1, stageIdx, inputIdx + 1, stages, graphManager);
-                    result[count] = pipe;
-                    return result;
-
+                	count++;             
                 }
-
                 inputIdx++;
             }
             inputIdx = 1;
-            stageIdx++;
+            s++;
         }
-        return new Pipe[count];
-
+        ///////////////////////////
+        int i = 0;       
+        Pipe[] result = new Pipe[count];
+        ///fill the array
+        s=stageIdx;
+        while (s < stages.length) {
+	        int inputCount = GraphManager.getInputPipeCount(graphManager, stages[s]);
+	          
+	        while (inputIdx <= inputCount) {
+	
+	            Pipe inputPipe = GraphManager.getInputPipe(graphManager, stages[s], inputIdx);
+	
+	            int producerStageId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
+	
+	            boolean isFromOutside = true;
+	            int k = stages.length;
+	            while (--k >= 0) {
+	                if (stages[k].stageId == producerStageId) {
+	                    isFromOutside = false;
+	                    break;
+	                }
+	                
+	            }
+	            if (isFromOutside) { //skip repeats to same producer
+	            	result[i++] = inputPipe;
+	            }
+	          
+	            inputIdx++;
+	        }
+	        inputIdx = 1;
+	        s++;
+        }
+        assert(result.length==i);
+        return result;
     }
 
 
@@ -742,6 +773,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
 		if ( (noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
 			
+			if (isInDeepSleepMode) {
+				logger.info("waking up from deep sleep for :\n "+this.name());
+			}
+			isInDeepSleepMode = false;
+			
 			long now = System.nanoTime();
 			long nowMS = now/1_000_000l;
 			
@@ -782,10 +818,16 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			//      2. pipe listener from the producer to wake down stream..
 			//NOTE: what we have here is fine but later we will improve it.			
 			
+			if (!isInDeepSleepMode) {
+				logger.info("entering deep sleep for :\n "+this.name());
+			}
+			isInDeepSleepMode = true;
 			deepSleep(isNormalCase);
 		}
 	}
 
+	private boolean isInDeepSleepMode = false;
+	
 	private void deepSleep(boolean isNormalCase) {
 
 		if (isNormalCase) {
@@ -910,7 +952,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //		} else {		
 			shutDownRequestedHere = runStageImpl(this, stage);	
 //		}
-		if (!DidWorkMonitor.didWork(localDidWork)) {		
+		if (!DidWorkMonitor.didWork(localDidWork)) {
+			GraphManager.recordNoWorkDone(graphManager,stage.stageId);			
 		} else {
 			ScriptedNonThreadScheduler.recordRunResults(
 					         this, recordTime, 

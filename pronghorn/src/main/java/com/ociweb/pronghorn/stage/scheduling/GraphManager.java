@@ -2951,8 +2951,7 @@ public class GraphManager {
 		}
 	}
 
-	private static final long AVG_BITS = 8;
-	private static final long AVG_BASE = (1L<<AVG_BITS)-1L;
+	private static final long AVG_BITS = 7;
 	
 	
 	private static void accumPositiveTime(GraphManager graphManager, int stageId, long duration, long now) {
@@ -2981,10 +2980,18 @@ public class GraphManager {
 		}		
 		
 		long newPct = ( (100_000L*(duration)) / (fullPeriod) );		
+		setWorkPct(graphManager, stageId, newPct);
+	}
+
+	private static void setWorkPct(GraphManager graphManager, int stageId, long newPct) {
 		int oldPct = graphManager.stageWrkPct[stageId];
 		
 		graphManager.stageWrkPct[stageId] = (int) 
-				(0==oldPct ? newPct: (newPct + (AVG_BASE*(long)oldPct)) >> AVG_BITS );
+				(0==oldPct ? newPct: (newPct + ( ((((long)oldPct)<<AVG_BITS)-((long)oldPct))  )) >> AVG_BITS );
+	}
+	
+	public static void recordNoWorkDone(GraphManager graphManager, int stageId) {
+		setWorkPct(graphManager, stageId, 0);
 	}
 
 	private static void accumWhenZero(GraphManager graphManager, int stageId, long duration) {

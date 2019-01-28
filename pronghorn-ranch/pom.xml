@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>pronghorn-ranch</artifactId>
     <name>pronghorn-ranch</name>
-    <version>1.0.31</version>
+    <version>1.0.32</version>
     <description>A Maven Archetype for Pronghorn projects
     </description>
     <url>https://github.com/oci-pronghorn/PronghornRanch</url>
@@ -58,6 +58,14 @@
             <build>
                 <plugins>
                     <plugin>
+                    	<groupId>org.apche.maven.plugins</groupId>
+                    	<artifactId>maven-resources-plugin</artifactId>
+                    	<version>2.5</version>
+                    	<configuration>
+                    		<escapeString>\</escapeString>
+                    	</configuration>
+                    </plugin>                   
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
                         <version>3.1.0</version>
@@ -111,8 +119,25 @@
         </profile>
     </profiles>
 
+	
+
     <build>
- 
+	 <resources>
+	 	<resource>
+		 	<directory>src/main/resources</directory>
+			<filtering>true</filtering>
+			<includes>
+				<include>archetype-resources/pom.xml</include>
+			</includes>
+	 	</resource>
+	 	<resource>
+		 	<directory>src/main/resources</directory>
+			<filtering>false</filtering>
+			<excludes>
+				<exclude>archetype-resources/pom.xml</exclude>
+			</excludes>
+	 	</resource>	 
+	 </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

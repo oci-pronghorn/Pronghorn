@@ -858,11 +858,11 @@ public class NetGraphBuilder {
 		///////////////
 		//The graph.dot must respond in less than 40ms but 20ms is nominal
 		///////////////
-		final int serverRate = baseRate>>6;
+		final int serverRate = baseRate>>3;
 
 		final ModuleConfig modules = buildTelemetryModuleConfig(serverRate);
 		boolean isTLS = tlsCertificates != null;
-		int maxConnectionBits = 12;
+		int maxConnectionBits = 8;
 		int tracks = 1;
 		
 		int concurrentChannelsPerDecryptUnit = 8; //need large number for new requests
@@ -882,15 +882,15 @@ public class NetGraphBuilder {
 		c.setMaxConnectionBits(maxConnectionBits);
 		
 		c.setMaxRequestSize(1<<14);//NOTE: this is a little bigger in case of cookies.		
-		c.setMaxResponseSize(1<<21);//NOTE: needs to be large enough for telemetry responses...
+		c.setMaxResponseSize(1<<23);//NOTE: needs to be large enough for telemetry responses...
 		
 		((HTTPServerConfigImpl)c).setTracks(tracks);
 		((HTTPServerConfigImpl)c).finalizeDeclareConnections();
 		
 		HTTPServerConfigImpl r = ((HTTPServerConfigImpl)c);
 
-		int fromSocketBlocks = 128;
-		int fromSocketBuffer = 1<<21;
+		int fromSocketBlocks = 16;
+		int fromSocketBuffer = 1<<12;
 		
 		r.pcmOut.ensureSize(ServerResponseSchema.class, 4, 512);
 		
@@ -908,7 +908,7 @@ public class NetGraphBuilder {
 						r.getMaxRequestSize(),
 						r.getMaxResponseSize(),
 						2, //incoming telemetry requests in Queue, keep small
-						4, //outgoing telemetry responses, keep small.
+						2, //outgoing telemetry responses, keep small.
 						r.pcmIn,
 						r.pcmOut);
 		
@@ -990,8 +990,8 @@ public class NetGraphBuilder {
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
 		//TODO: the resource server can not span fragments, but all must be in one block.
-		//      also the DOT generator as teh same limit, as a result this must be large for now..
-		final int outputPipeChunk = 1<<21;
+		//      also the DOT generator as the same limit, as a result this must be large for now..
+		final int outputPipeChunk = 1<<24;//some graph.dot files are very large..
 		
 		ModuleConfig config = new ModuleConfig(){
 			PipeMonitorCollectorStage monitor;

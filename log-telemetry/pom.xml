@@ -4,7 +4,7 @@
 
 	<groupId>com.ociweb.logtelemetry</groupId>
 	<artifactId>log-telemetry</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0.32</version>
 	<description>load telemetry from log file as a telemetry server for easy viewing.</description>
 
 	<properties>
@@ -18,7 +18,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>pronghorn</artifactId>
-            <version>1.0.31</version>
+            <version>${version}</version>
         </dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

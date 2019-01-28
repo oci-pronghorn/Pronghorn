@@ -438,14 +438,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 				SocketChannel sc = cc.getSocketChannel();
 				if (null!=sc) {
 					try {
-						int minBufSize = 
-								Math.max(pipe.sizeOfBlobRing/4, //buffer should be as large as the full pipe so more can accumulate
-								         sc.getOption(StandardSocketOptions.SO_SNDBUF));
+						int minBufSize = Math.max(pipe.sizeOfBlobRing/4, //buffer should be as large as the full pipe so more can accumulate
+								                  sc.getOption(StandardSocketOptions.SO_SNDBUF));
 						if (null!=buffers[i]) {
 							logger.trace("buffer is {} and must be at least {}",buffers[i].capacity(), minBufSize);
 						}
 						if (null==buffers[i] || buffers[i].capacity()<minBufSize) {
-							//logger.trace("new direct buffer of size {} created old one was too small.",minBufSize);
+							//logger.info("new direct buffer of size {} created old one was too small.",minBufSize);
 							buffers[i] = ByteBuffer.allocateDirect(minBufSize);
 						}
 						bufferChecked[i] = true;

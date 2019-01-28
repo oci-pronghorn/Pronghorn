@@ -284,8 +284,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
 
-    	//	int x = 10;
-    	//	while (--x>=0) {
+    		int x = 4;
+    		while (--x>=0) {
 	    		int i = inputs.length;
 		        while (--i>=0 ) {
 		        			        	
@@ -299,7 +299,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            	}
 		            }
 		      } 
-    	//	}
+    		}
     		
     }
 
@@ -320,8 +320,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 			        } else {
 			        	//we got -1 msgIdx
 			        	if (that.inputLengths[idx] <= 0) {
-			    			//closed so return
-			    			return 0;
+			    			//closed move on to next pipe
+			        		return 0;
 			    		} else {
 			    			//process remaining data if all the data is here
 			    		}             
