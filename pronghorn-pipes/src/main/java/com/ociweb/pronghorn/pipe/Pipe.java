@@ -976,6 +976,12 @@ public class Pipe<T extends MessageSchema<T>> {
     	pipe.batchReleaseCountDown = size;
     }
 
+    
+    public static <S extends MessageSchema<S>> void batchFollowingPublishes(Pipe<S> pipe, int count) {
+    	pipe.batchPublishCountDown += count;
+    }
+
+    
     /**
      * sets specific batch publish size, publishes do not occur when called for but only when the
      * size count of publishes is reached.
