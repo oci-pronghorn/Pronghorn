@@ -3,7 +3,7 @@
     <groupId>com.ociweb</groupId>
     <artifactId>webcookbook</artifactId>
     <name>webcookbook</name>
-    <version>1.0.32</version>
+    <version>1.0.33</version>
     <description>Example project of the web components of pronghorn
     </description>
     <url>https://github.com/oci-pronghorn/WebCookBook</url>
