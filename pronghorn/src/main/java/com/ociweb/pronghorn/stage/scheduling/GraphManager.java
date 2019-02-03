@@ -2136,6 +2136,7 @@ public class GraphManager {
                 				int maxPctFull = 0;
                 				long sumTraffic = 0;
                 				long sumMsgPerSec = 0;
+                				long sumFull = 0;
                 				String pipeConstMsg = "";
                 				int count = 0;
                 				int zeroTrafficCount = 0;
@@ -2148,6 +2149,7 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
+	                						sumFull += (pipePercentileFullValues[p.id]>0?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
 	                					}
 	                					
@@ -2170,11 +2172,12 @@ public class GraphManager {
                 							
                 				}
                 				
+                				int avgFull = (int)(sumFull/count);
                 				                				                				
 		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
 		                				pipeTraffic, msgPerSec,
-										width, maxPctFull, sumTraffic, 
-										sumMsgPerSec, count, pipeConstMsg, zeroTrafficCount);
+										width, avgFull, maxPctFull, 
+										sumTraffic,	sumMsgPerSec, count, pipeConstMsg, zeroTrafficCount);
 		                				
 		                	}
 
@@ -2187,6 +2190,7 @@ public class GraphManager {
                 				int maxPctFull = 0;
                 				long sumTraffic = 0;
                 				long sumMsgPerSec = 0;
+                				long sumFull = 0;
                 				int count = 0;
                 				int zeroTrafficCount = 0;
                 				String pipeConstMsg = "";
@@ -2199,6 +2203,7 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
+	                						sumFull += (pipePercentileFullValues[p.id]>0?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
 	                					}
 	                					
@@ -2222,10 +2227,11 @@ public class GraphManager {
                 							
                 				}
                 				
+                				int avgFull = (int)(sumFull/count);
                 				                				                				
 		                		writeAggregatedPipeLabel(target, pipePercentileFullValues, 
 		                				pipeTraffic, msgPerSec,
-										width, maxPctFull, sumTraffic, 
+										width, avgFull, maxPctFull, sumTraffic, 
 										sumMsgPerSec, count, pipeConstMsg, zeroTrafficCount);
 		                				
 		                	}
@@ -2264,7 +2270,8 @@ public class GraphManager {
 	}
 
 	private static void writeAggregatedPipeLabel(AppendableByteWriter<?> target, int[] pipePercentileFullValues,
-			long[] pipeTraffic, int[] msgPerSec, final int width, int maxPctFull, long sumTraffic, long sumMsgPerSec,
+			long[] pipeTraffic, int[] msgPerSec, final int width, 
+			int allPctUsed, int maxPctFull, long sumTraffic, long sumMsgPerSec,
 			int count, String constMsg, int zeroTrafficCount) {
 		target.write(LABEL_OPEN);
 		
@@ -2282,8 +2289,11 @@ public class GraphManager {
 			target.append(" never used\n");
 		}
 		
-		if (null!=pipePercentileFullValues) {		                	
+		if (null!=pipePercentileFullValues) {		
+			target.append(" M");
 			target.write(pipeFullValues[maxPctFull]);
+			target.append(" A");
+			target.write(pipeFullValues[allPctUsed]);
 			target.append("\n");			
 		}
 		//right here.
@@ -2305,10 +2315,11 @@ public class GraphManager {
 		int lineWidth = 10;
 		
 		if (null!=pipePercentileFullValues) {          	
-			
-			if (maxPctFull>=60) {
+			int triggerSource = Math.max(allPctUsed,maxPctFull);
+					
+			if (triggerSource>=60) {
 				target.append(",color=red");	    
-			} else if (maxPctFull>=40) {
+			} else if (triggerSource>=40) {
 				target.append(",color=orange");	    
 			} else {
 				target.append(",color=\"#b2b2b2\""); //replaced gray30 with the inverse of it, which is #B2B2B2

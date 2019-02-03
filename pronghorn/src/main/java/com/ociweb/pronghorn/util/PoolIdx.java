@@ -48,7 +48,7 @@ public final class PoolIdx  {
     }    
     
     public int getIfReserved(long key) {   
-    	return getIfReserved(this,key);
+    	return getIfReserved(this, key);
     }
     
     public static int getIfReserved(PoolIdx that, long key) {   
@@ -56,16 +56,11 @@ public final class PoolIdx  {
     	long[] localKeys = that.keys;
     	byte[] localLocked = that.locked;
         int i = localKeys.length;
-        int idx = -1;
+    
         //linear search for this key. TODO: if member array is 100 or bigger we should consider hashTable
         while (--i>=0) {
             //found and returned member that matches key and was locked
             if (0 == localLocked[i] || key != localKeys[i] ) {
-            	//this slot was not locked so remember it
-            	//we may want to use this slot if key is not found.
-            	if (idx < 0 && 0 == localLocked[i]) {
-            		idx = i;
-            	}
             } else {
             	return i;//this is the rare case
             }
@@ -252,6 +247,25 @@ public final class PoolIdx  {
                 return i;
             }
         } 
+        return -1;
+    }
+    
+    /**
+     * fast release since we already know where to find this one.
+     * also does NOT notify any listeners for no locks since it must be fast.
+     * 
+     * @param key
+     * @param idx
+     * @return the released pool index value
+     */
+    public static int release(final PoolIdx that, final long key, final int idx) {
+
+        if (key==that.keys[idx]) {
+        	that.locksReleased++;
+        	that.locked[idx] = 0;
+            return idx;
+        }
+      
         return -1;
     }
     

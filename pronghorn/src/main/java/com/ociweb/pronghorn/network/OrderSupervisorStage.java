@@ -652,6 +652,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
 
+		 if (null==con) {
+			 return 0;
+		 }
+		
 		 return rollupMultiAndPublish(this, input, myPipeIdx, channelId, output,
 				 outputStream, expSeq, len, requestContext, Pipe.blobMask(input), blob, con);
 	}

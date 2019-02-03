@@ -262,7 +262,7 @@ public class WebCookbook  {
 				            .defaultInteger("id", Integer.MIN_VALUE)
 							.defaultText("name", "")
 							.associatedObject("id", WebFields.id)
-							.associatedObject("name", WebFields.name)
+							.associatedObject("name", WebFields.name)							
 				            .routeId();
 						
 						return responses;
@@ -290,7 +290,16 @@ public class WebCookbook  {
 									 .integerField("age", WebFields.age)
 									 .finish();
 							
-							routerConfig.registerCompositeRoute(extractor).path("/hello").routeId(Routes.primary);
+							routerConfig.registerCompositeRoute(extractor)
+							            .path("/hello")
+							            
+							         // .responseType(type) 
+							         // .responseType(type,jsonObject? struct??) 
+								            
+							            //by default all response types
+							         //   .verbGet()
+							            //by default these are all routes...
+							            .routeId(Routes.primary);
 							
 							return responses;
 						}

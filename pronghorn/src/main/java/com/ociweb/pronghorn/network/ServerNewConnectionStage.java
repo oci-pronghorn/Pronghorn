@@ -136,9 +136,9 @@ public class ServerNewConnectionStage extends PronghornStage{
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
     		serverSocketChannel = ServerSocketChannel.open();
-       	    		
+    		
     		//by design we set this in both places
-    		serverSocketChannel.socket().setReceiveBufferSize(1<<19);
+    		serverSocketChannel.socket().setReceiveBufferSize(1<<23);//1<<19);
       	  
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		serverSocketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
@@ -257,12 +257,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 	}
 
 	private SocketAddress bindAddressPort(String host, int port) throws IOException, BindException {
-		
+		int backlog = (1<<17); //128K TODO: expose this..
 		InetSocketAddress endPoint = null;
 		if ("0.0.0.0".equals(host)) {
 			logger.warn("Developer used 0.0.0.0 as the host so this server is running on all known networks,\n              It is much more secure to define an explicit network binding like this eg. '10.*.*.*' ");
 			endPoint = new InetSocketAddress(port);
-			serverSocketChannel.socket().bind(endPoint);
+			serverSocketChannel.socket().bind(endPoint,backlog);
 			return endPoint;
 		} else {
 			
@@ -275,7 +275,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 			    		endPoint = new InetSocketAddress(host, port);		
 			    		logger.trace("bind to {} ",endPoint);
 			    	}
-			    	serverSocketChannel.socket().bind(endPoint);
+			    	serverSocketChannel.socket().bind(endPoint,backlog);
 			    	notConnected = false;
 			    } catch (BindException se) {
 			    	if (System.currentTimeMillis() > timeout) {
@@ -414,17 +414,18 @@ public class ServerNewConnectionStage extends PronghornStage{
 		      if (channelId>=0) {		                    
 		    	  Selector sel = coordinator.getSelector();
 		          if (sel!=null) {      		          
-			          try {         
-			        	 
+			          try {
+			        	 			        	 
 			        	  SocketChannel channel = serverSocketChannel.accept();
-			        			        	  
+			        			        	 
 			        	  //by design we set this in both places
-			        	  channel.socket().setReceiveBufferSize(1<<20);
+			        	  channel.socket().setReceiveBufferSize(1<<18);
 			              channel.configureBlocking(false);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
+			        
 			           	  channel.socket().setTrafficClass((0x08));	//THOUGHPUT	    
 			         
 			              SSLEngine sslEngine = null;
@@ -451,11 +452,12 @@ public class ServerNewConnectionStage extends PronghornStage{
 								old.decompose();
 						  }
 	  
-			        //  logger.info("\naccepting new connection {} registered data selector {}", channelId, sel); 
-	
-			              channel.register(sel,SelectionKey.OP_READ, 
+ //logger.info("\naccepting new connection {} registered data selector {}", channelId, sel); 
+			              sel.wakeup();
+			              channel.register(sel,
+			            		           SelectionKey.OP_READ, 
 								           ServerCoordinator.selectorKeyContext(coordinator, channelId));
-							
+						
 						//  logger.info("\nnew server connection attached for new id {} ",channelId);
 						  if (null!=newClientConnections) {								  
 			                  int targetPipeIdx = 0;

@@ -558,19 +558,23 @@ public class NetGraphBuilder {
 					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
 
-//		System.out.println("tracks: "+tracks);
+		//minimize the number of selectors since they must fight for the critical ePoll block in the OS.
+		//each selector also has some housekeeping work (data copy and usage flags) which is not in the critical block.
+		//if we assume 33% is in the block and 66% of the time is NOT then 3 selectors is optimal.
+		//the above logic may change as we optimize the selector and my become 50% or 2 in the future
+		//We must NEVER have 4 or more selectors since they will block each other and may cause prime route issues
+	
+		//Selector rules
+		//Small:  1 for 7 or less tracks
+		//Medium: 2 for 8-26 tracks, groups are the first prime after division eg 5,7 etc 
+		//Large:  3 for 27+ tracks, groups are the first prime after division eg 11, 13 etc 
+		//PMath.nextPrime
 		
-	    //HIGHVOLUME	
-		if ((tracks==5) && !coordinator.isTLS) { //only use for exactly 5 at this time.			
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/5);			
-		} else	
-		//if we have at least 6 tracks and it is divisible by 3
-		if ((tracks>=6) && (tracks%3)==0 && !coordinator.isTLS) {			
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/3);			
+		if ((tracks>=27 && (0==tracks%3)) && !coordinator.isTLS) {			
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, 3);			
 		} else		
-		//if we have at least 4 tracks and it is divisible by 2
-		if ((tracks>4) && (tracks&1)==0 && !coordinator.isTLS) { 					
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, tracks/2);			
+		if ((tracks>=11 && (0==tracks%2)) && !coordinator.isTLS) { 					
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, 2);			
 		} else {
 			/////////////////
 			//do not split for TLS since it is already slow and the ack backs are more complex

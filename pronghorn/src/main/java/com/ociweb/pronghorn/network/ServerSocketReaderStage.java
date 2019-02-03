@@ -44,6 +44,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private final ServerCoordinator coordinator;
 
     private final Selector selector;
+    
     private final GraphManager gm;
     
     public static boolean showRequests = false;
@@ -110,10 +111,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 //        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
         
         //if too slow we may loose data but if too fast we may starve others needing data
-       // GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
+        //GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
         //TODO: can we do this dynamic by checking pipe depths??
         
         
+        //GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE,  4_000L, this);
         
         
         //if we only have 1 router then do not isolate the reader.
@@ -130,9 +132,9 @@ public class ServerSocketReaderStage extends PronghornStage {
         gm = graphManager;
         
         try {//must be done early to ensure this is ready before the other stages startup.
-            coordinator.registerSelector(selector = Selector.open());
+        	coordinator.registerSelector(selector = Selector.open());
         } catch (IOException e) {
-           throw new RuntimeException(e);
+        	throw new RuntimeException(e);
         }
 
     }
@@ -205,6 +207,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     public void run() {
  
     	 if(!shutdownInProgress) {
+ 	        	releasePipesForUse();//clear now so select will pick up more
 
     	   		///////////////////
     	   		//after this point we are always checking for new data work so always record this
@@ -213,25 +216,30 @@ public class ServerSocketReaderStage extends PronghornStage {
     	    		this.didWorkMonitor.published();
     	    	}
     	   		
+    	   
     	        ////////////////////////////////////////
     	        ///Read from socket
     	        ////////////////////////////////////////
-
-    	        while (hasNewDataToRead()) { 
-        	    	/////////////////////////////
-        	    	//must keep this pipe from getting full or the processing will get backed up
-        	    	////////////////////////////
-        	   		releasePipesForUse();
-        	   		
-    	            doneSelectors.clear();
-    	            hasRoomForMore = true; //set this up before we visit
-    	            selectedKeys.forEach(selectionKeyAction);
-    	    	           
-    	            removeDoneKeys(selectedKeys);
-    	            if (!hasRoomForMore) {
-    	            	return;
-    	            } 
-    	        }
+    	    	int iter = 1;//if no data go around one more time..
+    	    	do {
+	    	        if (hasNewDataToRead(selector)) { 
+	    	        	iter = 1;
+	        	    		        	   		
+	    	            doneSelectors.clear();
+	    	            hasRoomForMore = true; //set this up before we visit
+	    	            
+	    	            selectedKeys.forEach(selectionKeyAction);
+	    	    	           
+	    	            removeDoneKeys(selectedKeys);
+	    	            
+	    	            if (!hasRoomForMore) {
+	    	            	return;
+	    	            } 
+	    	        }
+	    	        releasePipesForUse();//clear now so select will pick up more
+    	    	} while (--iter>=0);
+    	   
+    	    	
     	 
     	 } else {
 	    	 int i = output.length;
@@ -264,8 +272,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 	private boolean processSelection(SelectionKey selection) {
 		
 		assert isRead(selection) : "only expected read"; 
-		final SocketChannel socketChannel = (SocketChannel)selection.channel();
-		
 		//get the context object so we know what the channel identifier is
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		long channelId = connectionContext.getChannelId();
@@ -273,60 +279,58 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 		//logger.info("\nnew key selection in reader for connection {}",channelId);
 		
-		return processConnection(selection, socketChannel, channelId, coordinator.lookupConnectionById(channelId));
+		return processConnection(selection, channelId, coordinator.lookupConnectionById(channelId));
 
 	}
 	
-	private boolean processConnection(SelectionKey selection, final SocketChannel socketChannel, long channelId,
+	private boolean processConnection(SelectionKey selection, long channelId,
 			BaseConnection cc) {
 		if (null != cc) {
-			assert(cc.getSocketChannel()==socketChannel) : "internal error";
-			handshakeProcessing(cc);		
+			if (!coordinator.isTLS) {	
+			} else {
+				handshakeTaskOrWrap(cc);
+			}		
 			
-			boolean hasOutputRoom = true;
-			
-			int responsePipeLineIdx = cc.getPoolReservation();
-			
-			final boolean newBeginning = (responsePipeLineIdx<0);
-			
-			if (newBeginning) {
-				//this connection lost the lock on this outgoing pipe so we need to look it up.				
-				responsePipeLineIdx = lookupResponsePipeLineIdx(channelId, cc);
-
-				boolean hasRoom = true; //only lock value if we have room for write
-				if (responsePipeLineIdx>=0 && (hasRoom=Pipe.hasRoomForWrite(output[responsePipeLineIdx], reqPumpPipeSpace)) ) {
-					//we got the pipe lock so keep it until we finish a "block"
-					cc.setPoolReservation(responsePipeLineIdx);
-				} else {
-					//logger.info("\n too much load");
-					//if does not have room on pipe do not take value..
-					
-					return hasRoom;//try again very soon, do no block
-					//try later, we can not find an open pipe right now.
-				}
-				
-				//debugPipeAssignment(channelId, responsePipeLineIdx);
-				/////////////////////////////////////
-			}
-			
-			
-			if (responsePipeLineIdx >= 0) {		
-				//only call nano if we are consuming this one.
-				cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
-				if (pumpByteChannelIntoPipe(socketChannel, cc.id, 
-														cc.getSequenceNo(),
-						                                output[responsePipeLineIdx], 
-						                                newBeginning, 
-						                                cc, selection)<=0) {
-					hasOutputRoom = false;
-					//logger.info("\n no output room to read data");
-				}					
-			} 
-			
-			return hasOutputRoom;
+			return processConnection2(selection, channelId, cc, cc.getPoolReservation());
 		} else {
-			return processClosedConnection(socketChannel, channelId);
+			return processClosedConnection((SocketChannel)selection.channel(), channelId);
 		}
+	}
+
+	private boolean processConnection2(SelectionKey selection, long channelId,
+			BaseConnection cc, int responsePipeLineIdx) {
+		
+		final boolean newBeginning = responsePipeLineIdx<0;
+		
+		if (newBeginning) {
+			responsePipeLineIdx = beginningProcessing(channelId, cc);
+		}			
+		
+		if (responsePipeLineIdx >= 0) {		
+			return (pumpByteChannelIntoPipe(cc.getSocketChannel(), cc.id, 
+													cc.getSequenceNo(),
+					                                output[responsePipeLineIdx], 
+					                                newBeginning, 
+					                                cc, selection)==1);
+		} else {			
+			return true;
+		}
+	}
+
+	private int beginningProcessing(long channelId, BaseConnection cc) {
+		int responsePipeLineIdx;
+		//this connection lost the lock on this outgoing pipe so we need to look it up.				
+		responsePipeLineIdx = lookupResponsePipeLineIdx(channelId, cc);
+		if (responsePipeLineIdx>=0 && (Pipe.hasRoomForWrite(output[responsePipeLineIdx], reqPumpPipeSpace)) ) {
+			//we got the pipe lock so keep it until we finish a "block"
+			cc.setPoolReservation(responsePipeLineIdx);
+		} else {
+			//logger.info("\n too much load");
+		}
+		
+		//debugPipeAssignment(channelId, responsePipeLineIdx);
+		/////////////////////////////////////
+		return responsePipeLineIdx;
 	}
 
 
@@ -378,21 +382,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	}
 
-	private void handshakeProcessing(BaseConnection cc) {
-		if (coordinator.isTLS) {
-				
-			if (null!=cc && null!=cc.getEngine()) {
-				 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-				 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
-		                Runnable task;//TODO: there is an opportunity to have this done by a different stage in the future.
-		                while ((task = cc.getEngine().getDelegatedTask()) != null) {
-		                	task.run();
-		                }
-				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
-					 releasePipesForUse();
+	private void handshakeTaskOrWrap(BaseConnection cc) {
+		if (null!=cc && null!=cc.getEngine()) {
+			 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
+			 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+		            Runnable task;//TODO: there is an opportunity to have this done by a different stage in the future.
+		            while ((task = cc.getEngine().getDelegatedTask()) != null) {
+		            	task.run();
+		            }
+			 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
+				 releasePipesForUse();
 
-				 }				 
-			}
+			 }				 
 		}
 	}
 	
@@ -445,77 +446,86 @@ public class ServerSocketReaderStage extends PronghornStage {
 		while (--i>=0) {
 			Pipe<ReleaseSchema> a = releasePipes[i];
 			//logger.info("{}: release pipes from {}",i,a);
-			while ((!Pipe.isEmpty(a)) && Pipe.hasContentToRead(a)) {
-	    						
-	    		int msgIdx = Pipe.takeMsgIdx(a);
-	    		
-	    		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
-	    			
-	    			
-	    			long connectionId = Pipe.takeLong(a);
-	    			
-	    			//logger.info("release with sequence id {}",connectionId);
-	    		
-	    			long pos = Pipe.takeLong(a);	    			
-	    			int seq = Pipe.takeInt(a);	    				    			
-	    			releaseIfUnused(msgIdx, connectionId, pos, seq);
-	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
-
-	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
-	    			
-	    			//logger.info("warning, legacy (client side) release use detected in the server.");
-	    			
-	    			long connectionId = Pipe.takeLong(a);
-	    			
-	    			long pos = Pipe.takeLong(a);	    					
-	    			releaseIfUnused(msgIdx, connectionId, pos, -1);
-	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
-	  
-	    		} else {
-	    			logger.info("unknown or shutdown on release");
-	    			assert(-1==msgIdx) : "unspected msgId "+msgIdx;
-	    			shutdownInProgress = true;
-	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
-	    		}
-	    		
-	        	Pipe.releaseReadLock(a);
-	    		
+			while ((!Pipe.isEmpty(a)) && Pipe.hasContentToRead(a)) {	    						
+	    		consumeReleaseMessage(a);	    		
 	    	}
 		}
 	}
+
+	private void consumeReleaseMessage(Pipe<ReleaseSchema> a) {
+		final int msgIdx = Pipe.takeMsgIdx(a);
+		
+		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
+			
+			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), Pipe.takeInt(a));
+			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
+
+		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
+			
+			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), -1);
+			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
+  
+		} else {
+			endOfReleaseMessages(a, msgIdx);
+		}
+		
+		Pipe.releaseReadLock(a);
+	}
+
+	private void endOfReleaseMessages(Pipe<ReleaseSchema> a, int msgIdx) {
+		logger.trace("unknown or shutdown on release");
+		assert(-1==msgIdx) : "unspected msgId "+msgIdx;
+		shutdownInProgress = true;
+		Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
+	}
 		
 	private void releaseIfUnused(int id, long idToClear, long pos, int seq) {
-		if (idToClear<0) {
-			throw new UnsupportedOperationException();
-		}
+		assert(idToClear>=0);
 				
-		int pipeIdx = PoolIdx.getIfReserved(responsePipeLinePool,idToClear);
-		//if we can not look it  up then we can not release it?
+		BaseConnection cc = coordinator.lookupConnectionById(idToClear);
+		
+		int pipeIdx = lookupPipeId(idToClear, cc);
 				
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
-		//	logger.info("NEW RELEASE for pipe {} connection {} at pos {}",pipeIdx, idToClear, pos);
-       	    responsePipeLinePool.release(idToClear);
-			
-			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
-						
-			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
-				BaseConnection conn = coordinator.lookupConnectionById(idToClear);
-				if (null!=conn) {					
-					conn.setSequenceNo(seq);//only set when we release a pipe
+		if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx])<=pos && (Pipe.headPosition(output[pipeIdx]) == pos)) {
+       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 		
+		}
+		
+		
+	}
+
+	private void releaseIdx(int id, long idToClear, int seq, BaseConnection cc, int pipeIdx) {
+		PoolIdx.release(responsePipeLinePool, idToClear, pipeIdx);
+		
+		assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 					
-					conn.clearPoolReservation();
-				}				
-			} 
+		if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
+			if (null!=cc) {					
+				cc.setSequenceNo(seq);//only set when we release a pipe					
+				cc.clearPoolReservation();
+			}				
 		}
 	}
 
-    private boolean hasNewDataToRead() {
+	private int lookupPipeId(long idToClear, BaseConnection cc) {
+		int pipeIdx = null!=cc? cc.getPoolReservation() : -1;
+		if (pipeIdx<0) {
+			pipeIdx = null!=cc? cc.getPreviousPoolReservation() : -1;
+			if (pipeIdx<0) {
+				//slow linear search so we avoid this.
+				pipeIdx = PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
+			}
+		}
+		return pipeIdx;
+	}
+
+    private boolean hasNewDataToRead(Selector selector) {
     	
     	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
     	
         try {
+        	
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
@@ -548,7 +558,9 @@ public class ServerSocketReaderStage extends PronghornStage {
     	long temp = 0;
 
 		if (Pipe.hasRoomForWrite(targetPipe, reqPumpPipeSpace)) {
-
+			//only call nano if we are consuming this one.
+			cc.setLastUsedTime(System.nanoTime());//needed to know when this connection can be disposed
+			
             try {                
                 
             	//Read as much data as we can...
@@ -573,12 +585,14 @@ public class ServerSocketReaderStage extends PronghornStage {
      
                 
                 //read as much as we can, one read is often not enough for high volume
+                boolean isStreaming = false; //TODO: expose this switch..
+                
                 do {
 	                temp = sourceChannel.read(b);
 	            	if (temp>0){
 	            		len+=temp;
 	            	}
-                } while (temp>0);
+                } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
             	
                 assert(readCountMatchesLength(len, b));
                 
@@ -676,7 +690,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 			int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
 			Pipe.addIntValue(sequenceNo, targetPipe);						
 			Pipe.confirmLowLevelWrite(targetPipe, size);
-			Pipe.publishWrites(targetPipe);
+			Pipe.batchFollowingPublishes(targetPipe, 1);
+			
+			Pipe.publishWrites(targetPipe); //wait on publish until the rest is ready...
 			
 		}				
 
@@ -691,9 +707,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 			
 		} else {
-			final int size = Pipe.addMsgIdx(targetPipe, messageType);  
-			Pipe.confirmLowLevelWrite(targetPipe, size);
-		    Pipe.publishWrites(targetPipe);
+			Pipe.publishEOF(targetPipe);
+			
+//			final int size = Pipe.addMsgIdx(targetPipe, messageType);  
+//			Pipe.confirmLowLevelWrite(targetPipe, size);
+//		    Pipe.publishWrites(targetPipe);
 		}
 		
 		
