@@ -65,7 +65,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     				//log.info("thread per stage rates "+stage+" rate "+rate);
     				
     				if (0==rate) {
-    			        if (null != GraphManager.getNota(graphManager, stage, GraphManager.MONITOR, null)) {
+    			        if (stage.isMonitor()) {
     			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
     			        }
     			        if (stage instanceof PipeMonitorCollectorStage) {
@@ -76,7 +76,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     					executorService.execute(buildRunnable(allStagesLatch, rate, stage));
     				}
 			    } else {
-			        if (null != GraphManager.getNota(graphManager, stage, GraphManager.MONITOR, null)) {
+			        if (stage.isMonitor()) {
 			        	throw new UnsupportedOperationException("Monitors can not be run in tight loops");
 			        }
 			        if (stage instanceof PipeMonitorCollectorStage) {

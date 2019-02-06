@@ -3,4 +3,6 @@
 /.classpath
 /.project
 /dependency-reduced-pom.xml
-/.attach_pid28589
+/.attach_*
+/greenlightning.log
+/greenlightning_old.log

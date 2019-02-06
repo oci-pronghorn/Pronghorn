@@ -318,8 +318,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //return 0, 1 work, -1 noroom -2 shutdown.
     private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
  		    	
-		        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx])
-		        		             >=0) {//message idx   
+		        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx]) >=0 ) {//message idx   
 			
 		        	if (that.inputLengths[idx]==0) {
 		        		return 0;
@@ -1234,15 +1233,7 @@ private static int accumRunningBytes(
 	    int messageIdx = Integer.MAX_VALUE;
 
 	    //data may be sent in small chunks even when we only have 1 message in flight
-	    while ( //NOTE has content to read looks at slab position between last read and new head.
-	   
-	    		Pipe.hasContentToRead(selectedInput) && (    //content checked first to ensure asserts pass		
-	    				    hasContinuedData(selectedInput, inChnl) ||
-		    				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
-		    				hasReachedEndOfStream(selectedInput) 
-		    				//if we have reached the end of the stream       
-		            )
-	          ) {
+	    while (hasDataToAccum(selectedInput, inChnl)) {
 	    	//if the old was released or this matches or this was proposed for release we set this new current channel.
 	    	
 	    	messageIdx = Pipe.takeMsgIdx(selectedInput);
@@ -1250,12 +1241,7 @@ private static int accumRunningBytes(
 	        //logger.info("seen message id of {}",messageIdx);
 	        
 	        if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
-	        	if (inChnl<0) {
-	        		that.inputChannels[idx] = Pipe.peekLong(selectedInput, 1);	    	    	
-		    		assert(that.inputChannels[idx]>=0) : "channel must not be negative.";
-	        	}
-	        	
-	            inChnl = processPlain(that, idx, selectedInput, inChnl);
+	        	inChnl = processPlain(that, idx, selectedInput, inChnl);
 	        } else {	        	
 	        	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {
 	        		processBegin(that, idx, selectedInput);
@@ -1270,6 +1256,64 @@ private static int accumRunningBytes(
 	    }
 	  
 	    return messageIdx;
+}
+
+
+private static long processPlain(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx,
+		Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+	if (inChnl<0) {
+		that.inputChannels[idx] = Pipe.peekLong(selectedInput, 1);	    	    	
+		assert(that.inputChannels[idx]>=0) : "channel must not be negative.";
+	}
+	final long inChnl1 = inChnl;
+	final long channel = Pipe.takeLong(selectedInput);
+	
+	//instead of using arrival time here, we pull it just before release after each 
+	//block gets parsed, this provides the accurate time of arrival.
+	final long arrivalTime = Pipe.takeLong(selectedInput);
+	
+	long slabPos;
+	that.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
+	    
+	final int meta       = Pipe.takeByteArrayMetaData(selectedInput);
+	final int length     = Pipe.takeByteArrayLength(selectedInput);
+	final int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
+	
+	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
+	assert(length<=selectedInput.maxVarLen);
+	assert(that.inputBlobPos[idx]<=that.inputBlobPosLimit[idx]) : "position is out of bounds.";
+	
+	if (-1 != inChnl1 && that.inputLengths[idx]!=0) {
+		//System.out.println("added length "+length);
+		that.plainMatch(idx, selectedInput, channel, length);
+	} else {
+		that.plainFreshStart(idx, selectedInput, channel, length, pos);	
+	}
+		
+	assert(that.inputLengths[idx]>=0) : "error negative length not supported";
+	
+	//if we do not move this forward we will keep reading the same spot up to the new head
+	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
+	Pipe.readNextWithoutReleasingReadLock(selectedInput);
+	
+	if (-1 == slabPos) {
+		that.inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); 
+		//working and was tested since this is low level with unrleased block.
+	}
+	assert(that.inputSlabPos[idx]!=-1);
+	
+	return channel;
+}
+
+
+private static boolean hasDataToAccum(Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+	return Pipe.hasContentToRead(selectedInput)
+			&& (    //content checked first to ensure asserts pass		
+				hasContinuedData(selectedInput, inChnl) ||
+				hasNoActiveChannel(inChnl) ||      //if we do not have an active channel
+				hasReachedEndOfStream(selectedInput) 
+				//if we have reached the end of the stream       
+	    );
 }
 
 
@@ -1293,49 +1337,6 @@ private static void processDisconnect(HTTP1xRouterStage<?, ?, ?, ?> that, final 
 	Pipe.readNextWithoutReleasingReadLock(selectedInput);
 	Pipe.releasePendingAsReadLock(selectedInput, 0);
 }
-
-private static long processPlain( HTTP1xRouterStage that,
-		final int idx, Pipe<NetPayloadSchema> selectedInput, long inChnl) {
-	final long channel = Pipe.takeLong(selectedInput);
-	
-	//instead of using arrival time here, we pull it just before release after each 
-	//block gets parsed, this provides the accurate time of arrival.
-	final long arrivalTime = Pipe.takeLong(selectedInput);
-	
-	long slabPos;
-	that.inputSlabPos[idx] = slabPos = Pipe.takeLong(selectedInput);            
-        
-	final int meta       = Pipe.takeByteArrayMetaData(selectedInput);
-	final int length     = Pipe.takeByteArrayLength(selectedInput);
-	final int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
-	
-	assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
-	assert(length<=selectedInput.maxVarLen);
-	assert(that.inputBlobPos[idx]<=that.inputBlobPosLimit[idx]) : "position is out of bounds.";
-	
-	if (-1 != inChnl && that.inputLengths[idx]!=0) {
-		//System.out.println("added length "+length);
-		that.plainMatch(idx, selectedInput, channel, length);
-	} else {
-		that.plainFreshStart(idx, selectedInput, channel, length, pos);	
-	}
-	
-	inChnl = channel; 
-
-	assert(that.inputLengths[idx]>=0) : "error negative length not supported";
-
-	//if we do not move this forward we will keep reading the same spot up to the new head
-	Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_PLAIN);            
-	Pipe.readNextWithoutReleasingReadLock(selectedInput);
-
-	if (-1 == slabPos) {
-		that.inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); 
-		//working and was tested since this is low level with unrleased block.
-	}
-	assert(that.inputSlabPos[idx]!=-1);
-	return inChnl;
-}
-
 
 private void plainMatch(final int idx, Pipe<NetPayloadSchema> selectedInput,
 		                long channel, int length) {

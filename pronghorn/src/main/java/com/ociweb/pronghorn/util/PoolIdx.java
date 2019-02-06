@@ -150,21 +150,22 @@ public final class PoolIdx  {
     	
         int idx = -1;
         
-        int j = step;    
         int base = fixedGroup*step;
+        int temp = step+base;    
         
-        while (--j>=0) {        	
+        while (--temp >= base) {        	
         	
-	        	///////////     
-	        	final int temp = base+j;
-	            /////////
-	        	
 	        	//found and returned member that matches key and was locked
-	            if (1 == locked[temp]) {	  
-	            	if (key == keys[temp]) {
-	            		return temp;
-	            	}
-	            } else {	                        		
+        	        	
+	        	if (key == keys[temp]) {
+	        		if (1 == locked[temp]) {
+	        			return temp;
+	        		} else {
+	        			//unlocked but this was the spot
+	        			idx = temp; //take this one since we had it before
+        				break;
+	        		}
+	        	} else {	                        		
             		if (idx<0) {
             			//not already set
             			if (0 == locked[temp]) {
@@ -172,10 +173,7 @@ public final class PoolIdx  {
             			}
             		} else {
             			//already set do we have something better?
-            			if (key == keys[temp]) {
-            				idx = temp; //take this one since we had it before
-            				break;
-            			} else if (-1 == keys[temp] //never used
+            			if (-1 == keys[temp] //never used
             					  && keys[idx]!=key) { //and not already assigned to previous selection
             				idx = temp;
             				

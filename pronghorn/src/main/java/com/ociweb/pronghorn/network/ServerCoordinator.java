@@ -153,7 +153,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public void processNota(GraphManager gm, PronghornStage stage) {
     	if (null != optionalStageProcessor) {
     		optionalStageProcessor.process(gm, stage);
-    	}
+    	}    	
     }
             
     private PronghornStage firstStage;

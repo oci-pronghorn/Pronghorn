@@ -43,7 +43,7 @@ public class PipeMonitorStage extends PronghornStage {
 		this.notifyRingBuffer = notifyRingBuffer;
 		
 		this.gm = gm;
-		GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, this);
+		this.setNotaFlag(PronghornStage.FLAG_MONITOR);
 		
 	}
 	

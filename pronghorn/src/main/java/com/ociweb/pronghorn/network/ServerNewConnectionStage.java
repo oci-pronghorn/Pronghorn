@@ -138,7 +138,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     		serverSocketChannel = ServerSocketChannel.open();
     		
     		//by design we set this in both places
-    		serverSocketChannel.socket().setReceiveBufferSize(1<<23);//1<<19);
+    		serverSocketChannel.socket().setReceiveBufferSize(1<<19);
       	  
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		serverSocketChannel.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
@@ -419,15 +419,18 @@ public class ServerNewConnectionStage extends PronghornStage{
 			        	  SocketChannel channel = serverSocketChannel.accept();
 			        			        	 
 			        	  //by design we set this in both places
-			        	  channel.socket().setReceiveBufferSize(1<<18);
+			        	  channel.socket().setReceiveBufferSize(1<<10);
+			        	  channel.socket().setSendBufferSize(1<<10);
+			        	  
 			              channel.configureBlocking(false);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
-			        
+			        	              
 			           	  channel.socket().setTrafficClass((0x08));	//THOUGHPUT	    
-			         
+			           		           	  
+			           	  
 			              SSLEngine sslEngine = null;
 			              if (coordinator.isTLS) {
 							  sslEngine = coordinator.engineFactory.createSSLEngine();//// not needed for server? host, port);
@@ -461,7 +464,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 						//  logger.info("\nnew server connection attached for new id {} ",channelId);
 						  if (null!=newClientConnections) {								  
 			                  int targetPipeIdx = 0;
-							  publishNotificationOFNewConnection(targetPipeIdx, channelId);
+							  publishNotificationOfNewConnection(targetPipeIdx, channelId);
 						  }
 						  
 			              
@@ -530,7 +533,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 //		
 //	}
 	
-	private void publishNotificationOFNewConnection(int targetPipeIdx, final long channelId) {
+	private void publishNotificationOfNewConnection(int targetPipeIdx, final long channelId) {
 		//the pipe selected has already been checked to ensure room for the connect message                      
 		  Pipe<ServerConnectionSchema> targetPipe = newClientConnections;
 		  

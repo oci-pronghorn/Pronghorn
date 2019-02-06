@@ -95,6 +95,10 @@ public class ServerSocketWriterStage extends PronghornStage {
     
       // GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE,  40_000L, this);
         
+        Number dsr = graphManager.defaultScheduleRate();
+        if (dsr!=null) {
+        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()/2, this);
+        }
 
     }
     
@@ -362,7 +366,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	if (showWrites) {
 	        	
 	        		//Do not report telemetry calls... show show up as monitor
-	        		if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+	        		if (!this.isMonitor() ) {
 	        		
 		        		int pos = Pipe.convertToPosition(meta, pipe);
 		        		logger.info("/////////len{}///////////\n"+
@@ -371,16 +375,16 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        		}
 	        	}
 	        	
+	        	
 	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId   
 	        	
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
 	        	writeToChannelBatchCountDown[idx] = maxBatchCount;
 
+	        	checkBuffers(idx, pipe, writeToChannel[idx]);
 	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
-		        
-		        checkBuffers(idx, pipe, writeToChannel[idx]);
 		        
 		        ((Buffer)workingBuffers[idx]).clear();
 		        workingBuffers[idx].put(writeBuffs[0]);
@@ -391,8 +395,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        		       		        
 		        Pipe.confirmLowLevelRead(input[idx], msgSize);
 		        
-		        Pipe.readNextWithoutReleasingReadLock(input[idx]);
-		        //Pipe.releaseReadLock(dataToSend[idx]);
+		        Pipe.releaseReadLock(input[idx]);
 		        
 		        //In order to maximize throughput take all the messages which are gong to the same location.
 
@@ -451,7 +454,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	if (showWrites) {
         	
     		//Do not report telemetry calls... show show up as monitor
-    		if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+    		if (!this.isMonitor() ) {
     		
         		int pos = Pipe.convertToPosition(meta2, pipe);
         		logger.info("/////////len{}///////////\n"+
@@ -472,7 +475,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		assert(!writeBuffs2[1].hasRemaining());
 				        		
 		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(NetPayloadSchema.instance, msgIdx));
-		Pipe.readNextWithoutReleasingReadLock(input[idx]);
+		//Pipe.readNextWithoutReleasingReadLock(input[idx]);
+		Pipe.releaseReadLock(input[idx]);
 	}
 	
 	private boolean isNextMessageMergeable(Pipe<NetPayloadSchema> pipe, final int msgIdx, final int idx, final long channelId, boolean debug) {
@@ -548,14 +552,14 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private boolean writeDataToChannelQuick(int idx, boolean done) {
 		try {
 			
-			ByteBuffer target = workingBuffers[idx];
-			assert(target.isDirect());
+			ByteBuffer source = workingBuffers[idx];
+			assert(source.isDirect());
 			
 			int bytesWritten = 0;
   
 			int localWritten = 0;
 			do {		 
-				bytesWritten = writeToChannel[idx].write(target);	
+				bytesWritten = writeToChannel[idx].write(source);	
 			
 		    	if (bytesWritten>0) {
 		    		localWritten += bytesWritten;
@@ -564,12 +568,12 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    	}
 		    
 		    	//output buffer may be too small so keep writing
-			} while (target.hasRemaining());
+			} while (source.hasRemaining());
 			 
 			// max 157569   260442
 	//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670
 			
-			if (!target.hasRemaining()) {
+			if (!source.hasRemaining()) {
 				markDoneAndRelease(idx);
 			} else {
 				done = false;
@@ -609,7 +613,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 					expected -= len;
 				}
 				
-				if (!GraphManager.hasNota(graphManager, this.stageId, GraphManager.MONITOR) ) {
+				if (!this.isMonitor() ) {
 					System.out.println("wrote bytes "+len);
 				}
 				

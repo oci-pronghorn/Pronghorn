@@ -91,7 +91,7 @@ public class ServerPipesConfig {
 		////////
 		
 		// do not need multiple writers until we have giant load and parallel tracks in play
-	    this.serverSocketWriters       = (moduleParallelism >= 2) ? ( isTLS ? 1: (moduleParallelism>=4 ? 4 :2)  ) : 1;
+	    this.serverSocketWriters       = (moduleParallelism >= 2) ? ( isTLS ? 1: (moduleParallelism>=8 ? 4 :2)  ) : 1;
 
 		//defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance

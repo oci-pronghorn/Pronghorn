@@ -247,8 +247,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 						
 				//keep all the montiors on one end to merge them last		
 				
-				boolean mon1 = o1!=null && GraphManager.hasNota(graphManager, o1[0].stageId, GraphManager.MONITOR);
-				boolean mon2 = o2!=null && GraphManager.hasNota(graphManager, o2[0].stageId, GraphManager.MONITOR);
+				boolean mon1 = o1!=null && o1[0].isMonitor();
+				boolean mon2 = o2!=null && o2[0].isMonitor();
 
 				if (mon1 && mon2) {
 					mon1 = false;
@@ -412,8 +412,8 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 	    		break;
 	    	}
 	    	
-	    	if (    GraphManager.hasNota(graphManager, stageArrays[idx][0].stageId, GraphManager.MONITOR)
-	    		||	GraphManager.hasNota(graphManager, stageArrays[idx-1][0].stageId, GraphManager.MONITOR)) {
+	    	if (    stageArrays[idx][0].isMonitor()
+	    		||	stageArrays[idx-1][0].isMonitor()) {
 	    		//can not combine any further than this. TODO: or can we???
 	    		//the monitor can not be mixed in.
 	    		break;
@@ -1075,7 +1075,7 @@ public class ScriptedFixedThreadsScheduler extends StageScheduler {
 			if (null!=stageArrays[j]) {
 				assert(stageArrays[j].length>0);
 				//if we find a monitor use it for long run checks instead of primary				
-				if (GraphManager.hasNota(graphManager, stageArrays[j][0].stageId, GraphManager.MONITOR)) {
+				if (stageArrays[j][0].isMonitor()) {
 					idxThreadCheckingForLongRuns=j;
 				}
 				count++;

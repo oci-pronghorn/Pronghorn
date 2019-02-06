@@ -6,6 +6,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -23,6 +24,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.PoolIdxPredicate;
+import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Server-side stage that reads from the socket. Useful for building a server.
@@ -107,16 +109,17 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
-//        //If server socket reader does not catch the data it may be lost
-//        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-        
+        Number dsr = graphManager.defaultScheduleRate();
+        if (dsr!=null) {
+        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*2, this);
+        }
+               
+		//        //If server socket reader does not catch the data it may be lost
+		//        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+      
         //if too slow we may loose data but if too fast we may starve others needing data
         //GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100_000L, this);
-        //TODO: can we do this dynamic by checking pipe depths??
-        
-        
-        //GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE,  4_000L, this);
-        
+      
         
         //if we only have 1 router then do not isolate the reader.
         if (ack.length>1) {
@@ -170,7 +173,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	     
     	this.responsePipeLinePool = new PoolIdx(output.length, groups); 	
         	
-    	//this.selectedKeyHolder = new SelectedKeyHashMapHolder();
+    	this.selectedKeyHolder = new SelectedKeyHashMapHolder();
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
                 
@@ -189,11 +192,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 			@Override
 			public void accept(SelectionKey selection) {
 				hasRoomForMore &= processSelection(selection); 
+				
 				doneSelectors.add(selection);//remove them all..
 			}
     };    
 
-   // private SelectedKeyHashMapHolder selectedKeyHolder;
+    private SelectedKeyHashMapHolder selectedKeyHolder;
 	private final BiConsumer keyVisitor = new BiConsumer() {
 		@Override
 		public void accept(Object k, Object v) {
@@ -228,8 +232,23 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    	            doneSelectors.clear();
 	    	            hasRoomForMore = true; //set this up before we visit
 	    	            
-	    	            selectedKeys.forEach(selectionKeyAction);
-	    	    	           
+	    	            HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	    	            if (null!=keyMap) {
+	    	               keyMap.forEach(keyVisitor);
+	    	            } else {
+	    	         	   //fall back to old if the map can not be found.
+	    	         	   selectedKeys.forEach(selectionKeyAction);
+	    	            }
+
+	    	    	     
+	    	            //TODO: this has reintroduced the overloading hang bug because we have no timer
+	    	            //      the change did not help that much..
+	    	            
+	    	            //TODO: restore old loop, only remove when we have consumed the data
+	    	            //      this will reduce the selection calls since nothing will repeat
+	    	            //      old data does need a timeout however to ensure we do not hang!!!
+	    	            
+	    	            
 	    	            removeDoneKeys(selectedKeys);
 	    	            
 	    	            if (!hasRoomForMore) {
@@ -293,7 +312,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 			return processConnection2(selection, channelId, cc, cc.getPoolReservation());
 		} else {
-			return processClosedConnection((SocketChannel)selection.channel(), channelId);
+			return processClosedConnection(selection, channelId);
 		}
 	}
 
@@ -308,10 +327,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 		if (responsePipeLineIdx >= 0) {		
 			return (pumpByteChannelIntoPipe(cc.getSocketChannel(), cc.id, 
-													cc.getSequenceNo(),
-					                                output[responsePipeLineIdx], 
-					                                newBeginning, 
-					                                cc, selection)==1);
+											cc.getSequenceNo(), output[responsePipeLineIdx], 
+					                        newBeginning, cc, selection)==1);
 		} else {			
 			return true;
 		}
@@ -345,7 +362,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 			} 			
 			
-			//key & group to ensure connection is sent to same track	
+			//key & group to ensure connection is sent to same track
+			//linear search because the previous in cc has been replaced since we are sharing this position
 			return responsePipeLinePool.get(channelId, (int)channelId%responsePipeLinePool.groups);	
 			
 		} else {
@@ -398,9 +416,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 	}
 	
 
-	private boolean processClosedConnection(final SocketChannel socketChannel, long channelId) {
+	private boolean processClosedConnection(SelectionKey selection, long channelId) {
 		//logger.info("closed connection here for channel {}",channelId);
-		
+		final SocketChannel socketChannel = (SocketChannel) selection.channel();
 		assert(validateClose(socketChannel, channelId));
 		try {
 			socketChannel.close();
@@ -412,6 +430,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			responsePipeLinePool.release(channelId);
 		}			
 
+		//doneSelectors.add(selection);//remove them all.
 		return true;
 	} 
 
@@ -523,14 +542,21 @@ public class ServerSocketReaderStage extends PronghornStage {
     private boolean hasNewDataToRead(Selector selector) {
     	
     	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
+    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
+    		return true; //keep this!
+    	}
     	
         try {
-        	
+                	
         	////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
-        	////////////        	
-            if (selector.selectNow() > 0) {
+        	////////////        
+        	if (selector.selectNow() > 0) {            	
             	selectedKeys = selector.selectedKeys();
+            	
+            	//we often select ALL the sent fields so what is going wrong??
+            	//System.out.println(selectedKeys.size()+" selection block "+System.currentTimeMillis()); 
+            	
             	return true;
             } else {
             	return false;
@@ -554,7 +580,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     	//keep appending messages until the channel is empty or the pipe is full
     	long len = 0;//if data is read then we build a record around it
-    	ByteBuffer[] b = null;
+    	ByteBuffer[] targetBuffer = null;
     	long temp = 0;
 
 		if (Pipe.hasRoomForWrite(targetPipe, reqPumpPipeSpace)) {
@@ -577,29 +603,33 @@ public class ServerSocketReaderStage extends PronghornStage {
             	
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap around
 				int wrkHeadPos = Pipe.storeBlobWorkingHeadPosition(targetPipe);
-				b = Pipe.wrappedWritingBuffers(wrkHeadPos, 
+				targetBuffer = Pipe.wrappedWritingBuffers(wrkHeadPos, 
                 		                       targetPipe, 
                 		                       readMaxSize);
                        
-                assert(collectRemainingCount(b));
+                assert(collectRemainingCount(targetBuffer));
      
                 
                 //read as much as we can, one read is often not enough for high volume
                 boolean isStreaming = false; //TODO: expose this switch..
                 
                 do {
-	                temp = sourceChannel.read(b);
+	                temp = sourceChannel.read(targetBuffer);
 	            	if (temp>0){
 	            		len+=temp;
 	            	}
                 } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
             	
-                assert(readCountMatchesLength(len, b));
+                assert(readCountMatchesLength(len, targetBuffer));
                 
+//                if (temp<=0) {
+//                	doneSelectors.add(selection);
+//                }
                 if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
                 
+                	
 					if (len>0) {
-						return publishData(channelId, sequenceNo, targetPipe, len, b, true, newBeginning);
+						return publishData(channelId, sequenceNo, targetPipe, len, targetBuffer, true, newBeginning);
 					} else {
 						Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
 						return 1;
@@ -629,7 +659,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					boolean isOpen = temp>=0;
 					int result;
 					if (len>0) {			
-						result = publishData(channelId, cc.getSequenceNo(), targetPipe, len, b, isOpen, newBeginning);
+						result = publishData(channelId, cc.getSequenceNo(), targetPipe, len, targetBuffer, isOpen, newBeginning);
 					} else {
 						result = abandonConnection(channelId, targetPipe, isOpen, newBeginning);
 					}            	
@@ -725,9 +755,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 		    		                 int pos, long remainLen) {
     	
     	while (remainLen>0 && Pipe.hasRoomForWrite(targetPipe)) {
-    		int localLen = (int)Math.min(targetPipe.maxVarLen, remainLen);
-
-	        final int size = Pipe.addMsgIdx(targetPipe, messageType);               
+    		
+    		    int localLen = (int)Math.min(targetPipe.maxVarLen, remainLen);    		
+	            final int size = Pipe.addMsgIdx(targetPipe, messageType);               
 	
 		        Pipe.addLongValue(channelId, targetPipe);  
 		        Pipe.addLongValue(System.nanoTime(), targetPipe);
@@ -748,6 +778,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	  
 	        Pipe.confirmLowLevelWrite(targetPipe, size);
 	        Pipe.publishWrites(targetPipe);
+	        //Pipe.publishAllBatchedWrites(targetPipe); //not needed
 	        
 	        remainLen -= localLen;
 	        pos += localLen;	        

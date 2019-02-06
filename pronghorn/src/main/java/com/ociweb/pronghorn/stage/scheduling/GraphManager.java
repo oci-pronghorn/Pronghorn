@@ -97,26 +97,28 @@ public class GraphManager {
 		percentile = value;
 	}
 	
+	private Number defaultScheduleRate = null;
+	
     //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns - this is the delay between calls regardless of how long call takes
 	                                                        //If dependable/regular clock is required run should not return and do it internally.
-	public final static String MONITOR         = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
-	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
-	public final static String STAGE_NAME      = "STAGE_NAME";
 	
+	
+	public final static String STAGE_NAME      = "STAGE_NAME";	
 	public final static String SLA_LATENCY     = "SLA_LATENCY";	
+	
+	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String LOAD_BALANCER   = "LOAD_BALANCER"; //this stage evenly splits traffic across outputs
 	public final static String LOAD_MERGE      = "LOAD_MERGE"; //this stage consumes equal priority traffic from inputs.
 	public final static String HEAVY_COMPUTE   = "HEAVY_COMPUTE"; //this stage does a lot of compute, we will avoid putting these on the same thread.
 	public final static String TRIGGER         = "TRIGGER"; //this stage limits rate or flow and triggers other stages.
 	public final static String ROUTER_HUB      = "ROUTER_HUB"; //this stage can become a bottleneck for traffic
 	public final static String ISOLATE         = "ISOLATE"; //this stage should be isolated from its neighbors it will be put on its own thread
+	public final static String UNSCHEDULED     = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
-	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	
-
+	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";
 	
-	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
 					
 	//Used for assigning stageId and for keeping count of all known stages
@@ -174,7 +176,7 @@ public class GraphManager {
 		int i = gm.stageElapsed.length;
 		while (--i>=0) {	
 			if (null!=getStage(gm,i)) {
-				if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+				if (GraphManager.monitorAll || (     !getStage(gm, i).isMonitor()   ) ) {			
 					long elapsedAtPercentile = ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile);
 					if (debug) {
 						logger.info("Stage {} Elap {} ns ",getStage(gm,i).stageId,
@@ -199,7 +201,10 @@ public class GraphManager {
 
 		i = gm.stageElapsed.length;
 		while (--i>=0) {	
-			if (GraphManager.monitorAll || (!GraphManager.hasNota(gm, i, GraphManager.MONITOR))) {			
+			
+			
+			
+			if (GraphManager.monitorAll || (     !getStage(gm, i).isMonitor()     )) {			
 				if (ElapsedTimeRecorder.totalCount(gm.stageElapsed[i])>significantSampleCount) {
 					if (ElapsedTimeRecorder.elapsedAtPercentile(gm.stageElapsed[i], percentile)>limit) {
 						visitor.visit(getStage(gm,i));
@@ -1188,8 +1193,15 @@ public class GraphManager {
     private int defaultsCount = 0;    
 	
 	
+    public Number defaultScheduleRate() {
+    	return defaultScheduleRate;
+    }
+    
     public static void addDefaultNota(GraphManager graphManager, Object key, Object value) {
         
+    	if (key==SCHEDULE_RATE) {    	
+    		graphManager.defaultScheduleRate = (Number)value;
+    	}
         graphManager.defaultNotaKeys[graphManager.defaultsCount] = key;
         graphManager.defaultNotaValues[graphManager.defaultsCount++] = value;
         
@@ -2149,7 +2161,12 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
-	                						sumFull += (pipePercentileFullValues[p.id]>0?100:0);
+	                						int oneMsgSize = 
+	                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
+	                							/
+	                							p.sizeOfSlabRing;
+	                							                						
+	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
 	                					}
 	                					
@@ -2203,7 +2220,12 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
-	                						sumFull += (pipePercentileFullValues[p.id]>0?100:0);
+	                  						int oneMsgSize = 
+		                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
+		                							/
+		                							p.sizeOfSlabRing;
+	                  							                  						
+	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
 	                					}
 	                					
@@ -2701,7 +2723,7 @@ public class GraphManager {
 		
 		PipeMonitorStage stage = new PipeMonitorStage(gm, observedBuffers, monBuffers);
 		
-		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
+		stage.setNotaFlag(PronghornStage.FLAG_MONITOR);
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 				
 		return monBuffers;	
@@ -2709,15 +2731,18 @@ public class GraphManager {
 
 	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
 		if (!monitorAll) {
-			return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.id), GraphManager.MONITOR, null);
+			int producer = GraphManager.getRingProducerId(gm, ringBuffer.id);
+			if (producer>=0) {
+				return GraphManager.getStage(gm, producer).isMonitor();
+			}
 		}
 		return false;
 		
 	}
 	
     private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
-    	if (!monitorAll) {
-    		return null != GraphManager.getNota(gm, stage, GraphManager.MONITOR, null);
+    	if (!monitorAll) {    		
+    		return stage.isMonitor();
 		}
     	return false;
     	

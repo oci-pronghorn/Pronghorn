@@ -972,7 +972,7 @@ public class NetGraphBuilder {
 						stage);
 
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
-				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
+				stage.setNotaFlag(PronghornStage.FLAG_MONITOR);
 			}
 		});
 		
@@ -1121,7 +1121,7 @@ public class NetGraphBuilder {
 					
 					if (null!=activeStage) {
 						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, activeStage);
-						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
+						activeStage.setNotaFlag(PronghornStage.FLAG_MONITOR);						
 					}
 					
 				if (a==5) {

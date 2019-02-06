@@ -34,7 +34,7 @@ public class SelectedKeyHashMapHolder {
 								 if (map instanceof HashMap) {
 									 HashMap<SelectionKey, ?> localMap = (HashMap<SelectionKey,?>)map;
 									 
-									 SelectionKeyHashMap lhm = new SelectionKeyHashMap(32);
+									 SelectionKeyHashMap lhm = new SelectionKeyHashMap(1<<12);
 									 lhm.putAll(localMap);
 								
 									 fields2[f2].set(objectF, lhm);

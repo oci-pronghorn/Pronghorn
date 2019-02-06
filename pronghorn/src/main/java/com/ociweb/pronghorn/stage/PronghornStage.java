@@ -21,12 +21,26 @@ public abstract class PronghornStage {
 	public final int stageId; //since these are unique also used for hash
 	public final Integer boxedStageId;
 	
+	public static final int FLAG_MONITOR = 1; //this stage is not part of business logic but part of internal monitoring.
+	//TODO: ADD OTHER BOOLEANS FROM THE NOTAS....
+	
+	
+	private byte flags;
 	
 	private final int hash;
 	
 	private GraphManager graphManager;	
 	protected boolean supportsBatchedRelease = true;
 	protected boolean supportsBatchedPublish = true;
+	
+	public void setNotaFlag(int flag) {
+		flags |= flag;
+	}
+	
+	public boolean isMonitor() {
+		return 0 != (FLAG_MONITOR & flags);
+	}
+	
 	
 	@Override
 	public int hashCode() {

@@ -62,7 +62,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		this.batchSize = inputs.length>=64?64:inputs.length;
 		
 		validateSchema(inputs);
-		GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, this);
+		this.setNotaFlag(PronghornStage.FLAG_MONITOR);
 		
 	}
 
@@ -253,7 +253,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		PipeMonitorCollectorStage stage = new PipeMonitorCollectorStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate>>5, stage);
-		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
+		stage.setNotaFlag(PronghornStage.FLAG_MONITOR);
 		return stage;
 	}
 
