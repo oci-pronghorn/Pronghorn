@@ -20,8 +20,12 @@ public abstract class BaseConnection {
 	private SocketChannel socketChannel;
 	public final long id;//MUST be final and never change.
 	
-	protected boolean isValid = true;
-	protected boolean isDisconnecting = false;
+	public static final byte IS_NOT_VALID        = 1<<0;
+	public static final byte IS_DISCONNECTING    = 1<<1;
+	public static final byte IS_WRITE_REGISTERED = 1<<2;
+		
+	protected byte flags;
+	
 	protected int localRunningBytesProduced; //NOTE: could be a boolean
 	
 	private long lastNetworkBeginWait = 0;
@@ -56,7 +60,7 @@ public abstract class BaseConnection {
 	public void decompose() {
 		//new Exception("decompose connection").printStackTrace();//TODO: only called when we re-use slot...
 		socketChannel = null;
-		engine = null;
+		engine = null;		
 	}
 	
 	public void setLastUsedTime(long timeNS) {
@@ -80,11 +84,36 @@ public abstract class BaseConnection {
 		}
 	}
 	
+	
+	public void setIsDisconecting() {
+		flags |= IS_DISCONNECTING;
+	}
+	
+	public void setIsNotValid() {
+		flags |= IS_NOT_VALID;
+	}
+	
+	public boolean isValid() {
+		return 0 == (flags&IS_NOT_VALID);		
+	}
+	
+	public boolean isDisconnecting() {
+		return 1 == (flags&IS_DISCONNECTING);
+	}
+	
+	public boolean isWriteRegistered() {
+		return 1 == (flags&IS_WRITE_REGISTERED);
+	}
+	
+	public void setIsWriteRegistered() {
+		flags |=  IS_WRITE_REGISTERED;
+	}
+	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
 	public boolean close() {
 		//logger.info("closed connection {}",id);
-		if (isValid) {
-			isValid = false;
+		if (isValid()) {
+			setIsNotValid();
 			try {
 				 //this call to close will also de-register the selector key
 				 socketChannel.close();
@@ -93,10 +122,6 @@ public abstract class BaseConnection {
 			return true;
 		} 		
 		return false;
-	}
-
-	public boolean isValid() {
-		return isValid;
 	}
 	
 	protected HandshakeStatus closeInboundCloseOutbound(SSLEngine engine) {
@@ -117,10 +142,6 @@ public abstract class BaseConnection {
 		return engine.getHandshakeStatus();
 	}
 
-	
-	public boolean isDisconnecting() {
-		return isDisconnecting;
-	}
 	
 	
 	public long getId() {

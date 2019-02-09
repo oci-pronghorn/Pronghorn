@@ -529,9 +529,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	private int lookupPipeId(long idToClear, BaseConnection cc) {
 		int pipeIdx = null!=cc? cc.getPoolReservation() : -1;
-		if (pipeIdx<0) {
+		if (pipeIdx < 0) {
 			pipeIdx = null!=cc? cc.getPreviousPoolReservation() : -1;
-			if (pipeIdx<0) {
+			if (pipeIdx < 0) {
 				//slow linear search so we avoid this.
 				pipeIdx = PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
 			}
@@ -542,9 +542,9 @@ public class ServerSocketReaderStage extends PronghornStage {
     private boolean hasNewDataToRead(Selector selector) {
     	
     	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
-    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
-    		return true; //keep this!
-    	}
+//    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
+//    		return true; //keep this!
+//    	}
     	
         try {
                 	
@@ -625,7 +625,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 //                if (temp<=0) {
 //                	doneSelectors.add(selection);
 //                }
-                if (temp>=0 & cc!=null && cc.isValid && !cc.isDisconnecting()) { 
+                if (temp>=0 & cc!=null && cc.isValid() && !cc.isDisconnecting()) { 
                 
                 	
 					if (len>0) {

@@ -42,6 +42,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 	private long[] inputPosition;
 	private long[] arrivalTimeAtPosition;
+	
 	private long[] blockedPosition;
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
@@ -1224,11 +1225,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		}
 		//records the leading edge of arrival time.
 		long temp = arrivalTimeAtPosition[i];
-		if (0 != temp) {
+		if (temp > 0) {
 			if (cc.isValid() && !cc.isDisconnecting()) {
 				cc.recordArrivalTime(temp);
 			}
-			arrivalTimeAtPosition[i] = 0;
+			//we hold the old time but we also make it negative so we trigger an update
+			arrivalTimeAtPosition[i] = 0-temp; 
 		}
 				
 		//the server requested a close and we are now done reading the body so we need to close.
@@ -1246,16 +1248,29 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private int sendRelease(final int stateIdx, long ccId, long[] position, int i) {
 
-		Pipe.presumeRoomForWrite(releasePipe);
-		
-		int size = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASE_100);
-		Pipe.addLongValue(ccId, releasePipe);
-		Pipe.addLongValue(position[i], releasePipe);
-		Pipe.confirmLowLevelWrite(releasePipe, size);
-		Pipe.publishWrites(releasePipe);
-		positionMemoData[stateIdx] = 0;
-		
-		position[i] = -1; 
+		//avoid any accidental repeats
+		if (-1 != position[i]) {
+			
+			//store timestamp ccId and position to be sent
+			
+			////////////////////////////
+			
+			Pipe.presumeRoomForWrite(releasePipe);
+			
+			int size = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASE_100);
+			
+			Pipe.addLongValue(ccId, releasePipe);
+			Pipe.addLongValue(position[i], releasePipe);
+			
+			Pipe.confirmLowLevelWrite(releasePipe, size);
+			Pipe.publishWrites(releasePipe);
+			
+			positionMemoData[stateIdx] = 0;			
+			position[i] = -1; 
+		} else {
+			//not expected to happen
+			//System.out.println("success skipped -1");
+		}
 		
 		return 1;
 

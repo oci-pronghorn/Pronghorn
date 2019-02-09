@@ -92,7 +92,10 @@ public class ServerSocketWriterStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
         //for high volume this must be on its own
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+        //TODO: can we run all these on a single thread with writer/or across??
     
+        //NOTE:more writers are bad and slow us down but we need some...
+        
       // GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE,  40_000L, this);
         
         Number dsr = graphManager.defaultScheduleRate();
@@ -149,9 +152,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     }
 
+
     @Override
     public void run() {
-
+    	
     	boolean didWork = false;
     	boolean doingWork = false;
     	int iteration = 0;
@@ -162,7 +166,20 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    	while (--x>=0) {	    		
 	    		//ensure all writes are complete
 	    		if (null == writeToChannel[x]) {	    	
-	    			doingWork = publishDataNew(doingWork, x);	    			
+	    			
+					//second check for full content is critical or the data gets copied too soon
+					if (Pipe.isEmpty(input[x])   //Pipe.workingHeadPosition(input[x])==Pipe.getWorkingTailPosition(input[x]) 
+							|| !Pipe.hasContentToRead(input[x])) {    				
+						//no content to read on the pipe
+						//all the old data has been written so the writeChannel remains null
+						continue;
+					} else {
+					
+						processMessage(Pipe.takeMsgIdx(input[x]), x);
+						doingWork = true;
+						
+						
+					}
 	    		} else {	    
 	    			doingWork = publishDataFromLastPass(doingWork, iteration, x);	    			
 	    		}
@@ -176,28 +193,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    }
 
     }
-
-
-	private boolean publishDataNew(boolean doingWork, int x) {
-		//second check for full content is critical or the data gets copied too soon
-		if (Pipe.isEmpty(input[x]) || !Pipe.hasContentToRead(input[x])) {    				
-			//no content to read on the pipe
-			//all the old data has been written so the writeChannel remains null	    		
-		} else {
-  	
-			processMessage(Pipe.takeMsgIdx(input[x]), x);
-			doingWork |= true;
-			
-			if (writeToChannel[x]!=null) {
-				if (!(writeDataToChannel(x))) {
-					//this channel did not write but we need to check the others
-					///continue;//wait?
-				}	
-			}	
-			
-		}
-		return doingWork;
-	}
 
 
 	private boolean publishDataFromLastPass(boolean doingWork, int iteration, int x) {
@@ -219,7 +214,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 			||
 			    //if we have less than 1/2 of blob used wait for normal count down above
 			    //if above this and we have no new data go ahead and write.
-				( /*(limit>= (localInput.sizeOfBlobRing>>1) ) &&*/  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
+				( (limit>= (localInput.sizeOfBlobRing>>1) ) &&  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
 			) {
 						
 			writeToChannelBatchCountDown[x]=-4;
@@ -333,6 +328,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 	
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
+    	//TODO: we are here 28% of the write time!!
+
+    	
     	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
     	
         Pipe<NetPayloadSchema> pipe = input[idx];
@@ -352,81 +350,114 @@ public class ServerSocketWriterStage extends PronghornStage {
                 
         assert(len>0) : "All socket writes must be of zero length or they should not be requested";
     
-        ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
-        
-        if (null!=socketHolder) {
-	        ServerConnection serverConnection = socketHolder.get(channelId);
-	        	        
-	        //only write if this connection is still valid
-	        if (null != serverConnection) {        
-	        	channelId = serverConnection.id;
-	        	
-	        	
-	        	
-	        	if (showWrites) {
-	        	
-	        		//Do not report telemetry calls... show show up as monitor
-	        		if (!this.isMonitor() ) {
-	        		
-		        		int pos = Pipe.convertToPosition(meta, pipe);
-		        		logger.info("/////////len{}///////////\n"+
-		        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
-		        		+"\n////////////////////",len);
-	        		}
-	        	}
-	        	
-	        	
-	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId   
-	        	
-	        	writeToChannelId[idx] = channelId;
-	        	writeToChannelMsg[idx] = msgIdx;
-	        	writeToChannelBatchCountDown[idx] = maxBatchCount;
-
-	        	checkBuffers(idx, pipe, writeToChannel[idx]);
-	        	
-		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
-		        
-		        ((Buffer)workingBuffers[idx]).clear();
-		        workingBuffers[idx].put(writeBuffs[0]);
-		        workingBuffers[idx].put(writeBuffs[1]);
-		        
-		        assert(!writeBuffs[0].hasRemaining());
-		        assert(!writeBuffs[1].hasRemaining());
-		        		       		        
-		        Pipe.confirmLowLevelRead(input[idx], msgSize);
-		        
-		        Pipe.releaseReadLock(input[idx]);
-		        
-		        //In order to maximize throughput take all the messages which are gong to the same location.
-
-		        //if there is content and this content is also a message to send and we still have room in the working buffer and the channel is the same then we can batch it.
-		        while (enableWriteBatching && isNextMessageMergeable(pipe, msgIdx, idx, channelId, false) ) {		        			        	
-		        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
-		        	
-		        	mergeNextMessage(msgIdx, idx, pipe, channelId);
-			        			      
-		        }
-		       		        		        
-		        Pipe.releaseAllPendingReadLock(input[idx]);
-		
-		        
-		      //  logger.info("total bytes written {} ",totalBytesWritten);
-		        
-		       // logger.info("write bytes {} for id {}",workingBuffers[idx].position(),channelId);
-		        
-		        ((Buffer)workingBuffers[idx]).flip();
-	        } else {
-	        	//logger.info("\nno server connection found for id:{} droped bytes",channelId);
-		        
-		        Pipe.confirmLowLevelRead(pipe, msgSize);
-		        Pipe.releaseReadLock(pipe);
-	        }
-
-        } else {
-        	logger.error("Can not write, too early because SocketChannelHolder has not yet been created");
-        }
+        prepSocketConnection(msgIdx, idx, msgSize, pipe, channelId, meta, len);
                 
     }
+
+
+	private void prepSocketConnection(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
+			long channelId, int meta, int len) {
+		ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
+        assert(null!=socketHolder) : "Internal error, too early";
+        ServerConnection serverConnection = socketHolder.get(channelId);
+        	        
+        //only write if this connection is still valid
+        if (null != serverConnection) {        
+        	channelId = serverConnection.id;
+        	
+        	if (showWrites) {	        	
+        		debugShowWrites(pipe, meta, len);
+        	}	        	
+        	
+        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId   
+			writeToChannelId[idx] = channelId;
+			writeToChannelMsg[idx] = msgIdx;
+			writeToChannelBatchCountDown[idx] = maxBatchCount;
+			
+			prepBuffer(msgIdx, idx, msgSize, pipe, channelId, meta, len);
+        } else {
+        	//logger.info("\nno server connection found for id:{} droped bytes",channelId);
+	        
+	        Pipe.confirmLowLevelRead(pipe, msgSize);
+	        Pipe.releaseReadLock(pipe);
+        }
+	}
+
+
+	private void debugShowWrites(Pipe<NetPayloadSchema> pipe, int meta, int len) {
+		//Do not report telemetry calls... show show up as monitor
+		if (!this.isMonitor() ) {
+		
+			int pos = Pipe.convertToPosition(meta, pipe);
+			logger.info("/////////len{}///////////\n"+
+					Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe))
+			+"\n////////////////////",len);
+		}
+	}
+
+
+	private void prepBuffer(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
+			long channelId, int meta, int len) {
+		checkBuffers(idx, pipe, writeToChannel[idx]);
+		ByteBuffer directBuffer = workingBuffers[idx];
+		
+		ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
+		
+				
+//		try {//try immediate write first then store if we must
+//
+//			//TODO: try locking on socket?
+//			long wroteLen = writeToChannel[idx].write(writeBuffs);
+//			if (wroteLen==len) {
+//				//all wrote so clear
+//				markDoneAndRelease(idx);
+//				Pipe.confirmLowLevelRead(pipe, msgSize);		        
+//				Pipe.releaseReadLock(pipe);
+//				return;
+//				
+//			}
+//			
+//		} catch (IOException e) {
+//			throw new RuntimeException(e);//TODO: fix
+//		}
+//		System.out.println("did not write on first try");
+		
+			
+		((Buffer)directBuffer).clear();
+		directBuffer.put(writeBuffs[0]);
+		directBuffer.put(writeBuffs[1]);
+		
+		
+		assert(!writeBuffs[0].hasRemaining());
+		assert(!writeBuffs[1].hasRemaining());
+				       		        
+		Pipe.confirmLowLevelRead(pipe, msgSize);		        
+		Pipe.releaseReadLock(pipe);
+		
+		combineWritesIfPossible(msgIdx, idx, pipe, channelId);
+
+		
+     //  logger.info("total bytes written {} ",totalBytesWritten);
+		
+      // logger.info("write bytes {} for id {}",workingBuffers[idx].position(),channelId);
+		
+		((Buffer)directBuffer).flip();
+	}
+
+
+	private void combineWritesIfPossible(final int msgIdx, final int idx, Pipe<NetPayloadSchema> pipe, long channelId) {
+		//In order to maximize throughput take all the messages which are gong to the same location.
+
+		//if there is content and this content is also a message to send and we still have room in the working buffer and the channel is the same then we can batch it.
+		while (enableWriteBatching && isNextMessageMergeable(pipe, msgIdx, idx, channelId, false) ) {		        			        	
+			//logger.trace("opportunity found to batch writes going to {} ",channelId);
+			
+			mergeNextMessage(msgIdx, idx, pipe, channelId);
+		    			      
+		}
+			        		        
+		Pipe.releaseAllPendingReadLock(input[idx]);
+	}
 
 
 
@@ -453,14 +484,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		
     	if (showWrites) {
         	
-    		//Do not report telemetry calls... show show up as monitor
-    		if (!this.isMonitor() ) {
-    		
-        		int pos = Pipe.convertToPosition(meta2, pipe);
-        		logger.info("/////////len{}///////////\n"+
-        				Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipe), pos, len2, Pipe.blobMask(pipe))
-        		+"\n////////////////////",len2);
-    		}
+    		debugShowWrites(pipe, meta2, len2);
     	}
     	
 		ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
@@ -558,17 +582,27 @@ public class ServerSocketWriterStage extends PronghornStage {
 			int bytesWritten = 0;
   
 			int localWritten = 0;
-			do {		 
+		//	do {		 
+				
+//				int v =  writeToChannel[idx].validOps();
+//				
+//				
+//				if (0== (SelectionKey.OP_WRITE&v)) {
+//					System.out.println("found itsssss ");
+//					break;//leave if we can not write.
+//				}
+//				
+				
 				bytesWritten = writeToChannel[idx].write(source);	
 			
 		    	if (bytesWritten>0) {
 		    		localWritten += bytesWritten;
 		    	} else {
-		    		break;
+		    	//	break;
 		    	}
 		    
 		    	//output buffer may be too small so keep writing
-			} while (source.hasRemaining());
+		//	} while (source.hasRemaining());
 			 
 			// max 157569   260442
 	//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670

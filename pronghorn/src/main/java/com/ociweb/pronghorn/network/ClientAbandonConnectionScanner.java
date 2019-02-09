@@ -58,7 +58,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 
 			System.out.println("pos: "+idx+" conId: "+t.id
 					           +" calltime "+Appendables.appendNearestTimeUnit(new StringBuilder(), callTime).toString()
-					           +" isValid:"+t.isValid+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting
+					           +" isValid:"+t.isValid()+" isReg:"+t.isRegistered()+" isDis:"+t.isDisconnecting()
 					           +" sentClosedNotice:"+t.isClientClosedNotificationSent()
 							);
 			
@@ -66,7 +66,7 @@ public class ClientAbandonConnectionScanner extends ServerObjectHolderVisitor<Cl
 		
 		//skip those already notified.
 		if ((!t.isClientClosedNotificationSent()) && t.isRegistered()) {			
-			if (t.isDisconnecting || !t.isValid) {//do not kill those starting up.
+			if (t.isDisconnecting() || !t.isValid()) {//do not kill those starting up.
 				if (callTime>CLOSED_LINGER_NS) {
 					//DO NOT IMMEDIATLY SEND THESE OR WE MAY END UP SENDING THE SAME ONE MULTIPLE TIMES.
 					absoluteAbandons = ArrayGrow.setIntoArray(absoluteAbandons, t, absoluteCounts++);

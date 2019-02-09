@@ -417,7 +417,7 @@ public class SSLUtil {
 								//Can not recover from this so log it and reset all the buffers
 								//////////////////////////////
 								((ByteBuffer)rolling).clear();
-								if (cc.isValid && !cc.isDisconnecting() ) {
+								if (cc.isValid() && !cc.isDisconnecting() ) {
 									cc.close();
 								}
 								workspace[0].clear();
@@ -466,7 +466,7 @@ public class SSLUtil {
 				 	int msgId = Pipe.takeMsgIdx(source);
 				 					 	
 				    //if closed close
-	                if (msgId < 0 || !cc.isValid) {	
+	                if (msgId < 0 || !cc.isValid()) {	
 	                	Pipe.skipNextFragment(source,msgId);	          	                	
 	                    if (cc.getEngine().isInboundDone() && cc.getEngine().isOutboundDone()) {
 	                    	return HandShakeUnwrapState.WAS_CLOSED;
@@ -516,7 +516,7 @@ public class SSLUtil {
 								
 								publishDisconnect(handshakePipe, cc.id);
 							} else {
-								if (cc.isValid && !cc.isDisconnecting() ) {
+								if (cc.isValid() && !cc.isDisconnecting() ) {
 									cc.close();
 								}
 							}							
@@ -524,7 +524,7 @@ public class SSLUtil {
 							logger.warn("\n{}\nClient has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc,sslex);							
 						} else {
 							//do not disconnect if we are the client
-							if (cc.isValid && !cc.isDisconnecting() ) {
+							if (cc.isValid() && !cc.isDisconnecting() ) {
 								cc.close();
 							}
 							logger.warn("\n{}\nServer has sent corrupt TLS information, connection {} has been closed (C)",sslex.getLocalizedMessage(),cc);							
@@ -595,7 +595,7 @@ public class SSLUtil {
 		
 			final BaseConnection cc = ccm.lookupConnectionById(connectionId);
 						
-			if (null==cc || !cc.isValid) {
+			if (null==cc || !cc.isValid()) {
 				//logger.info("\nconnection has dropped and data with it");
 //				//do not process this message because the connection has dropped				
 				Pipe.skipNextFragment(source);
@@ -703,7 +703,7 @@ public class SSLUtil {
 					
 					cc = ccm.lookupConnectionById(connectionId); //connection id	
 	
-					if (null==cc || !cc.isValid ) {
+					if (null==cc || !cc.isValid() ) {
 						Pipe.skipNextFragment(source);
 						publishDisconnect(target, connectionId);
 						continue;
@@ -886,7 +886,7 @@ public class SSLUtil {
 			 handShakeUnWrapIfNeeded(ccm.engineFactory.maxEncryptedContentLength(), source, rolling, workspace, handshakePipe, isServer, arrivalTime, cc);
 		     cc.getSocketChannel().close();
 		} catch (IOException e) {
-			cc.isValid = false;
+			cc.setIsNotValid();
 			logger.warn("Error closing connection ",e);
 		}				
 		//clear the rolling for the next user/call since this one is closed

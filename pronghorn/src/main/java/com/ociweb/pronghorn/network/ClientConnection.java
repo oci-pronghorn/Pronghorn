@@ -386,7 +386,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		if (isTLS) {
 			beginHandshakeNow(handshakeBegin);		
 		}
-		isValid = true;
+	
 		//must be last, this connection can not be used until this key is not null;
 		this.key = tempkey;	
 
@@ -463,13 +463,9 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 			}
 			return false;
 		}
-		return isValid;
+		return super.isValid();
 	}
 
-
-	public boolean isDisconnecting() {
-		return isDisconnecting;
-	}
 	
 	public void beginDisconnect() {
 
@@ -478,7 +474,7 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		}
 		
 		try {
-			 isDisconnecting = true;
+			 setIsDisconecting();
 			 if (isTLS) {
 				 SSLEngine eng = getEngine(); ////TODO: is this needed and is it called too early??
 				 if (null!=eng) {

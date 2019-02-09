@@ -27,10 +27,10 @@ import com.ociweb.pronghorn.util.AppendableByteWriter;
  * only using bytes.
  *
  * Use this to define custom HTTP REST behavior.
- * @param <T>
- * @param <R>
- * @param <V>
- * @param <H>
+ * @param <T> content type
+ * @param <R> revisions
+ * @param <V> verbs
+ * @param <H> headers
  *
  * @author Nathan Tippy
  * @see <a href="https://github.com/objectcomputing/Pronghorn">Pronghorn</a>
@@ -54,11 +54,11 @@ public abstract class AbstractAppendablePayloadResponseStage <
 
     /**
      *
-     * @param graphManager
+     * @param graphManager graph
      * @param inputs _in_ HTTP schema request inputs
      * @param outputs _out_ Response schema outputs
-     * @param httpSpec
-     * @param payloadSizeBytes
+     * @param httpSpec http constants used
+     * @param payloadSizeBytes payload response size
      */
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, 

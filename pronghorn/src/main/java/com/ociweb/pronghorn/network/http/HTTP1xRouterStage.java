@@ -78,6 +78,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private       int[]                    inputLengths;
 
+	private long[] releaseTime;
+	private long[] releaseChannel;
+	private long[] releaseInputSlabPos;
+	private int[]  releaseSequences;
+	
     //pipes are held here when we have parsed the beginning of this request but its
     //target pipe is full, there is no point in re-parsing the message until this 
     //pipe has room again, also this will be set to null once cleared.
@@ -245,6 +250,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         sequences = new int[inputs.length];
         
         blockedOnOutput = new Pipe[inputs.length];
+        
+    	releaseTime = new long[inputs.length];
+    	releaseChannel = new long[inputs.length];
+    	releaseInputSlabPos = new long[inputs.length];
+    	releaseSequences = new int[inputs.length];
       
         trieReader = new TrieParserReader();//max fields we support capturing.
         
@@ -293,7 +303,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public void run() {
 
     	    int i = inputs.length;
-	        while (--i>=0 ) {	        			  
+	        while (--i>=0 ) {
 	        	int x;
 	            if ((x=singlePipe(this, i))>=0) {      
 	            	
@@ -308,27 +318,44 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		            	}
 	            	}
 	            }
-	            
+	            releaseIfNeeded(i);	            
 	      } 
-    	
-
     }
 
+    public void releaseIfNeeded(int idx) {
+  
+    	long pos = releaseInputSlabPos[idx];
+    	if (pos>=0) {
+    		long limit = releaseTime[idx] + 20_000_000L; //only release after 1ms of non use.
+    		if (Pipe.hasRoomForWrite(releasePipe) && System.nanoTime()>limit) {
+    							
+					int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
+					
+					Pipe.addLongValue(releaseChannel[idx], releasePipe);
+					Pipe.addLongValue(pos, releasePipe);
+					Pipe.addIntValue(releaseSequences[idx], releasePipe); //send current sequence number so others can continue at this count.
+				
+					Pipe.confirmLowLevelWrite(releasePipe, s);
+					Pipe.publishWrites(releasePipe);
+					
+					this.releaseInputSlabPos[idx]=-1;
+    		}
+    	}
+    }
+    
     
     //return 0, 1 work, -1 noroom -2 shutdown.
     private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
  		    	
 		        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx]) >=0 ) {//message idx   
-			
 		        	if (that.inputLengths[idx]==0) {
 		        		return 0;
-		        	}
-		        	
+		        	}		        	
+		        	return parsePipe(that, idx);
 		        } else {
 		        	//we got -1 msgIdx so shut down
 		        	return -2;
 		        }     
-		        return parsePipe(that, idx);
     }
 
 
@@ -536,7 +563,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					//inputLengths is updated to become zero...
 					result |= consumeBlock(that, idx, (Pipe<NetPayloadSchema>) that.inputs[idx], channel,
 							              that.inputBlobPos[idx], 
-							              totalAvail, totalConsumed, 
+							              totalAvail, totalConsumed, arrivalTime,
 							              remainingBytes) ? 1 : 0;
 					
 				 } else if (NEED_MORE_DATA == state) {				
@@ -585,9 +612,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		Pipe.publishWrites(logOut);
 	}
 
-	private static boolean consumeBlock(HTTP1xRouterStage that, final int idx, Pipe<NetPayloadSchema> selectedInput,
+	private static boolean consumeBlock(HTTP1xRouterStage that, final int idx, 
+			Pipe<NetPayloadSchema> selectedInput,
 			final long channel, int p, int totalAvail, 
-			int totalConsumed, int remainingBytes) {
+			int totalConsumed, long arrivalTime, int remainingBytes) {
 		assert(totalConsumed>0);
 
 		p += totalConsumed;
@@ -606,17 +634,39 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, that.inputBlobPos[idx], that.inputLengths[idx]));
 		
 		if ((totalAvail==0) 
-				&& (remainingBytes<=0) 
-				&& consumedAllOfActiveFragment(selectedInput, p)
-			//did not help && Pipe.isEmpty(selectedInput)//NOTE: only clear when we know nothing is in flight
-				) {
+			&& (remainingBytes<=0) 
+			&& consumedAllOfActiveFragment(selectedInput, p)
+			) {
 				that.inputChannels[idx] = -1;//cleared very often
-				
+
 				//proposed for clearing
 				assert(0==Pipe.releasePendingByteCount(selectedInput));
 				assert(Pipe.getWorkingTailPosition(selectedInput) == Pipe.tailPosition(selectedInput));
-				that.sendRelease(channel, idx);
-						
+				
+				if (that.releaseInputSlabPos[idx]>=0 && that.releaseChannel[idx]!=channel) {
+					//we have something to release and it does not belong to this channel
+					//we must release this now before we add the new value
+					
+					Pipe.presumeRoomForWrite(that.releasePipe);
+					
+					int s = Pipe.addMsgIdx(that.releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
+					
+					Pipe.addLongValue(that.releaseChannel[idx], that.releasePipe);
+					Pipe.addLongValue(that.releaseInputSlabPos[idx], that.releasePipe);
+					Pipe.addIntValue(that.releaseSequences[idx], that.releasePipe); //send current sequence number so others can continue at this count.
+				
+					Pipe.confirmLowLevelWrite(that.releasePipe, s);
+					Pipe.publishWrites(that.releasePipe);					
+				}
+				
+				//do not release now instead store for release later
+								
+				that.releaseTime[idx] = arrivalTime;
+				that.releaseChannel[idx] = channel;
+				that.releaseInputSlabPos[idx] = that.inputSlabPos[idx];
+				that.releaseSequences[idx] = that.sequences[idx];
+								
+				that.inputSlabPos[idx] = -1;
 				
 		}
 		return totalConsumed>0;
@@ -1209,17 +1259,20 @@ private boolean validateNextByte(TrieParserReader trieReader, int idx) {
 
 private void sendRelease(long channel, final int idx) {
 
+	
 	assert(channel>=0) : "channel must exist";
 	if (inputSlabPos[idx]>=0) {
 		Pipe.presumeRoomForWrite(releasePipe);
 		
 		int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
+		
 		Pipe.addLongValue(channel, releasePipe);
 		Pipe.addLongValue(inputSlabPos[idx], releasePipe);
 		Pipe.addIntValue(sequences[idx], releasePipe); //send current sequence number so others can continue at this count.
 	
 		Pipe.confirmLowLevelWrite(releasePipe, s);
 		Pipe.publishWrites(releasePipe);
+		
 		this.inputSlabPos[idx]=-1;
 	}
 }
@@ -1233,7 +1286,8 @@ private static int accumRunningBytes(
 	    int messageIdx = Integer.MAX_VALUE;
 
 	    //data may be sent in small chunks even when we only have 1 message in flight
-	    while (hasDataToAccum(selectedInput, inChnl)) {
+	    int maxIter = 2;
+	    while (--maxIter>=0 && hasDataToAccum(selectedInput, inChnl)) {
 	    	//if the old was released or this matches or this was proposed for release we set this new current channel.
 	    	
 	    	messageIdx = Pipe.takeMsgIdx(selectedInput);

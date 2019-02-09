@@ -173,6 +173,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		GraphManager.addPublishFromListener(graphManager, stages[k], didWorkMonitor);
    		
     		
+    		//TODO: ask about upstream if they did not work?
+    		
+    		
         	// Determine rates for each stage.
 			long scheduleRate = Long.valueOf(String.valueOf(GraphManager.getNota(graphManager, stages[k], GraphManager.SCHEDULE_RATE, defaultValue)));
             rates[k] = scheduleRate;
@@ -671,27 +674,33 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private static void waitBeforeRun(ScriptedNonThreadScheduler that, long now) throws InterruptedException {
 		final long wait = that.blockStartTime - now;
-		assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-
-		//skip wait if it is short AND if this thread has max proirity
-		if (wait<10_000 && //short is < 10 microseconds
-			Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
-			boolean isNormalCase = that.accumulateWorkHistory();
-			if (that.noWorkCounter > 100_000) { 
-				that.deepSleep(isNormalCase);
-				that.noWorkCounter=0;
-			}	
-		} else {
-			if (wait > 0) {
-				assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-				that.waitForBatch(that.totalRequiredSleep+wait);
+		if (wait>=0) {
+			assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+	
+			//skip wait if it is short AND if this thread has max proirity
+			if (wait<10_000 && //short is < 10 microseconds
+				Thread.currentThread().getPriority()==Thread.MAX_PRIORITY) {
+				boolean isNormalCase = that.accumulateWorkHistory();
+				if (that.noWorkCounter > 100_000) { 
+					that.deepSleep(isNormalCase);
+					that.noWorkCounter=0;
+				}	
 			} else {
-				Thread.yield();
+				if (wait > 0) {
+					assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
+					that.waitForBatch(that.totalRequiredSleep+wait);
+				} else {
+					Thread.yield();
+				}
 			}
-		}
-		
-		if (null!=that.sleepETL) {
-			ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
+			
+			if (null!=that.sleepETL) {
+				ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
+			}
+		} else {
+			//warning clock rate is faster than the tasks
+			Thread.yield();
+			
 		}
 	}
 
@@ -788,8 +797,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 					if (totalRequiredSleep>20_000) { //was 500_000
 						LockSupport.parkNanos(totalRequiredSleep);				
 					} else {
-						Thread.yield();
-					
+						Thread.yield();					
 					}
 					now = System.nanoTime();
 					long duration = now-loopTop;
@@ -902,6 +910,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 		//given how long this took to run set up the next run cycle.
 		blockStartTime = startNow+schedule.commonClock;
+		
+		boolean debugHighCPU = false;
+		if (debugHighCPU && blockStartTime<System.nanoTime()) {
+			System.out.println("slow clock or make stages faster");
+			System.out.println("warning clock is faster than tasks in thread: "+name);
+		}
 		
 		return detectShutdownScheduleIdx(scheduleIdx, shutDownRequestedHere);
 	}

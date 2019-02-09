@@ -58,7 +58,7 @@ public final class PoolIdx  {
         int i = localKeys.length;
     
         //linear search for this key. TODO: if member array is 100 or bigger we should consider hashTable
-        while (--i>=0) {
+        while (--i >= 0) {
             //found and returned member that matches key and was locked
             if (0 == localLocked[i] || key != localKeys[i] ) {
             } else {
@@ -144,7 +144,7 @@ public final class PoolIdx  {
     /**
      * 
      * @param key
-     * @param isOk filter to ensure that only acceptable values are chosen
+     * @param fixedGroup group where key will be found for faster lookup
      */
     public int get(long key, int fixedGroup) {   
     	
