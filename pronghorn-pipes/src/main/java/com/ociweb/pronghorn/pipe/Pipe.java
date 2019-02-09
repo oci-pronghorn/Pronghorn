@@ -4424,7 +4424,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Notify any listeners to thsi pipe that a publication has been made. 
+     * Notify any listeners to this pipe that a publication has been made. 
      * This feature is only used in corner cases where a stage needs to watch a number of pipes
      * and only has work if one of them has new content. Polling many pipes is slower than this 
      * notification listener however polling one or two pipes is quicker than this pattern.
@@ -5057,10 +5057,9 @@ public class Pipe<T extends MessageSchema<T>> {
      * NOTE: only works with low-level API.
      * 
      * @param pipe pipe to be examined
-     * @param <S> MessageSchema to extend
      * @return <code>true</code> if there is data to read else <code>false</code>
      */
-    public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe) {
+    public static boolean hasContentToRead(Pipe<?> pipe) {
     	//this method can only be used with low level api navigation loop
     	//CAUTION: THIS IS NOT COMPATIBLE WITH PipeReader behavior...
     	assert(Pipe.singleThreadPerPipeRead(pipe.id));
