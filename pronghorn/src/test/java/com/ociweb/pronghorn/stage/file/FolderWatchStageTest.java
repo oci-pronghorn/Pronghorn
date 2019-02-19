@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -16,7 +17,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class FolderWatchStageTest {
 
-	@Test
+	@Test @Ignore
 	public void folderWatchTest() {
 			
 		
