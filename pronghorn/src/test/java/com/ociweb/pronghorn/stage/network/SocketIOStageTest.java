@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.network;
 
 import java.util.Arrays;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
@@ -201,7 +202,7 @@ public class SocketIOStageTest {
 	private PronghornStage watch = null;
 
 	//send 1 at a time to measure max throughput of the Socket reader/writers alone.
-	@Test
+	@Test @Ignore
 	public void testRoundTrip() {
 		
 		//disable groups so we can test single stages
