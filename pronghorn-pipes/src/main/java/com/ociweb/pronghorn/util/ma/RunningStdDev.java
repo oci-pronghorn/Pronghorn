@@ -60,8 +60,9 @@ public class RunningStdDev {
             	runStdDev.oldMean = runStdDev.newMean = sample;
             	runStdDev.oldStd = 0.0;
             } else {
-            	runStdDev.newMean = runStdDev.oldMean + (sample - runStdDev.oldMean)/runStdDev.sampleCount;
-            	runStdDev.newStd = runStdDev.oldStd + (sample - runStdDev.oldMean)*(sample - runStdDev.newMean);
+            	double temp = sample - runStdDev.oldMean;
+            	runStdDev.newMean = runStdDev.oldMean + temp/runStdDev.sampleCount;
+            	runStdDev.newStd = runStdDev.oldStd + temp*(sample - runStdDev.newMean);
         
                 // set up for next iteration
             	runStdDev.oldMean = runStdDev.newMean; 
@@ -69,6 +70,33 @@ public class RunningStdDev {
             }
 
     }
+    
+    public static void sample(RunningStdDev runStdDev, long sample) {
+    	//important because we must not use isNaN since this stops JIT
+    	final double s = sample;
+        if (sample<runStdDev.min) {
+        	runStdDev.min = s;
+        }
+        if (sample>runStdDev.max) {
+        	runStdDev.max = s;
+        }
+        runStdDev.sampleCount++;
+        // See Knuth TAOCP vol 2, 3rd edition, page 232
+        if (runStdDev.sampleCount == 1)
+        {
+        	runStdDev.oldMean = runStdDev.newMean = s;
+        	runStdDev.oldStd = 0.0;
+        } else {
+        	double temp = s - runStdDev.oldMean;
+			runStdDev.newMean = runStdDev.oldMean + temp/runStdDev.sampleCount;
+        	runStdDev.newStd = runStdDev.oldStd + temp*(sample - runStdDev.newMean);
+    
+            // set up for next iteration
+        	runStdDev.oldMean = runStdDev.newMean; 
+        	runStdDev.oldStd = runStdDev.newStd;
+        }
+
+}
     
 
     public String toString() {
