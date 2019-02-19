@@ -24,6 +24,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 //import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
+import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Client-side stage that reads sockets using a ClientCoordinator
@@ -103,7 +104,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void startup() {
 
-		//selectedKeyHolder = new SelectedKeyHashMapHolder();
+		selectedKeyHolder = new SelectedKeyHashMapHolder();
 		start = System.currentTimeMillis();
 		
         Number schedRate = ((Number)GraphManager.getNota(graphManger, this, GraphManager.SCHEDULE_RATE, new Long(-1)));        
@@ -138,7 +139,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			}
     };
     
-   // private SelectedKeyHashMapHolder selectedKeyHolder;
+    private SelectedKeyHashMapHolder selectedKeyHolder;
 	private final BiConsumer keyVisitor = new BiConsumer() {
 		@Override
 		public void accept(Object k, Object v) {
@@ -171,12 +172,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 	 		
 	 	           hasRoomForMore = true;
 	 	           
-	 	           //HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-	 	           //if (null!=keyMap) {
-	 	        	//   keyMap.forEach(keyVisitor);
-	 	           //} else {
+	 	           HashMap keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	 	           if (null!=keyMap) {
+	 	        	   keyMap.forEach(keyVisitor);
+	 	           } else {
 	 	        	   selectedKeys.forEach(selectionKeyAction);
-	 	           //}
+	 	           }
 	 	           
 	 			   removeDoneKeys(selectedKeys);
 	 			      

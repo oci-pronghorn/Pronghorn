@@ -418,17 +418,22 @@ public class ServerNewConnectionStage extends PronghornStage{
 			        	 			        	 
 			        	  SocketChannel channel = serverSocketChannel.accept();
 			        			        	 
-			        	  //by design we set this in both places
-			        	  channel.socket().setReceiveBufferSize(1<<10);
-			        	  channel.socket().setSendBufferSize(1<<10);
 			        	  
 			              channel.configureBlocking(false);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
-			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);
-			        	              
-			           	  channel.socket().setTrafficClass((0x08));	//THOUGHPUT	    
+			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);			        	              
+
+			           	  //by design we set this in both places
+			              if (coordinator.isTLS) {
+			            	  channel.socket().setReceiveBufferSize(1<<15);//NOTE: must be 15 at least for TLS
+			            	  channel.socket().setSendBufferSize(1<<15);
+			              } 
+			              
+			           	  //turned off for next round of testing
+			           	  //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<9);
+			          	 // channel.socket().setSendBufferSize(1<<9);
 			           		           	  
 			           	  
 			              SSLEngine sslEngine = null;

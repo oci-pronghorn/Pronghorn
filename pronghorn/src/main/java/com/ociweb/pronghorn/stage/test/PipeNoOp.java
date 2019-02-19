@@ -18,6 +18,13 @@ public class PipeNoOp<T extends MessageSchema<T>> extends PronghornStage  {
         return new PipeNoOp<T>(gm, pipe);
     }
 
+    public static <T extends MessageSchema<T>> void newInstance(GraphManager gm, Pipe<T>[] pipe) {
+    	int i = pipe.length;
+    	while (--i>=0) {
+    		new PipeNoOp<T>(gm, pipe[i]);
+    	}
+    }
+    
 	/**
 	 *
 	 * @param graphManager

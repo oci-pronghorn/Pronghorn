@@ -42,8 +42,8 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	//      objects held by socket connection must be reviewed
 	
 	
-	private int encryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
-	private int decryptionUnitsPerTrack = 2; //default of 2 per track or none without TLS
+	private int encryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
+	private int decryptionUnitsPerTrack = 1; //default of 1 per track or none without TLS
 	private int concurrentChannelsPerEncryptUnit = 2; //default 2, for low memory usage
 	private int concurrentChannelsPerDecryptUnit = 2; //default 2, for low memory usage
 	private TLSCertificates serverTLS = TLSCerts.define();

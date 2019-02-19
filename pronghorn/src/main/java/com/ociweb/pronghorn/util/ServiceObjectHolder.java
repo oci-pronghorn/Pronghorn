@@ -376,9 +376,8 @@ public class ServiceObjectHolder<T> {
      */
     public T get(final long key) {
         //must ensure we use the same instance for the work
-        ServiceObjectData<T> localData = data;
-        int modIdx = localData.mask & (int)key;
-        return key == localData.serviceObjectKeys[modIdx] ? localData.serviceObjectValues[modIdx] : null;
+        int modIdx = data.mask & (int)key;
+        return key == data.serviceObjectKeys[modIdx] ? data.serviceObjectValues[modIdx] : null;
 
     }
     

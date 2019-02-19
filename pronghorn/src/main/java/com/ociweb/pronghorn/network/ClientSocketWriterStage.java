@@ -140,6 +140,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		//For the close test we must be sending a plain then a disconnect NOT two plains!!
         //Any sequential Plain or Encrypted values will be rolled together at times on the same connection.
+	
 		
 		if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {							
 			didWork = writePlain(didWork, i, pipe);
@@ -245,20 +246,26 @@ public class ClientSocketWriterStage extends PronghornStage {
 		long chnl = Pipe.peekLong(pipe, 0xF&NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
 		
 		ClientConnection cc = (ClientConnection)ccm.lookupConnectionById(chnl);
-		if (null==cc) {
+		if (null!=cc) {
+			int msgIdx = Pipe.takeMsgIdx(pipe);
+			long channelId = Pipe.takeLong(pipe);
+			assert(channelId == chnl);
+			long arrivalTime = Pipe.takeLong(pipe);
+			
+			long workingTailPosition = Pipe.takeLong(pipe);
+						
+			int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
+			int len  = Pipe.takeByteArrayLength(pipe);
+	
+			return writePlainImpl(didWork, i, pipe, cc, msgIdx, channelId, workingTailPosition, meta, len);
+		} else {
 			return false;
+			
 		}
+	}
 
-		int msgIdx = Pipe.takeMsgIdx(pipe);
-		long channelId = Pipe.takeLong(pipe);
-		assert(channelId == chnl);
-		long arrivalTime = Pipe.takeLong(pipe);
-		
-		long workingTailPosition = Pipe.takeLong(pipe);
-					
-		int meta = Pipe.takeByteArrayMetaData(pipe); //for string and byte array
-		int len  = Pipe.takeByteArrayLength(pipe);
-
+	private boolean writePlainImpl(boolean didWork, int i, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int msgIdx,
+			long channelId, long workingTailPosition, int meta, int len) {
 		if (showWrites) {
 			int pos = Pipe.bytePosition(meta, pipe, len);
 			logger.info("/////\n///pos "+pos+" has connection "+((cc!=null)&&cc.isValid())+" channelId "+channelId+
@@ -271,7 +278,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 				didWork = rollUpPlainsToSingleWrite(didWork, i, 
 						pipe, msgIdx, channelId, cc, meta,
 						len);
-	
+
 		} else {
 			logger.error("Hanshake not supported here, this message should not have arrived");
 			throw new UnsupportedOperationException("Check configuration, TLS handshake was not expected but requested. Check coordinator.");
@@ -462,7 +469,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private boolean tryWrite(int i) {
 		ClientConnection cc = connections[i];
 		ByteBuffer mappedByteBuffer = buffers[i];
-		if (cc!=null && cc.isValid() && !cc.isDisconnecting()) {
+		if (cc!=null && !cc.isDisconnecting()) {
 			SocketChannel sc = cc.getSocketChannel();
 			if (sc!=null) {			
 				//NOT Required: assert(mappedByteBuffer.hasRemaining()) : "please, do not call if there is nothing to write."; 	
@@ -471,40 +478,16 @@ public class ClientSocketWriterStage extends PronghornStage {
 					if (!debugWithSlowWrites) {
 						assert(mappedByteBuffer.isDirect());
 						
+						SocketChannel socketChannel = connections[i].getSocketChannel();
 						//required to push large loads.
 						while (mappedByteBuffer.hasRemaining()) {
-							if (connections[i].getSocketChannel().write(mappedByteBuffer)<=0) {
+							if (socketChannel.write(mappedByteBuffer)<=0) {
+								Thread.yield();//this is also important for large loads
 								break;//can't write now, try later.
 							};
-							Thread.yield();//this is also important for large loads
 						}
 					} else {
-						//write only this many bytes over the network at a time
-						ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
-						buf.clear();
-						
-						int j = debugMaxBlockSize;
-						int c = mappedByteBuffer.remaining();
-						int p = mappedByteBuffer.position();
-						while (--c>=0 && --j>=0) {
-							buf.put(mappedByteBuffer.get(p++));
-						}
-						mappedByteBuffer.position(p);
-						
-						buf.flip();
-						int expected = buf.limit();
-						
-						while (buf.hasRemaining()) {
-							int len = connections[i].getSocketChannel().write(buf);
-							if (len>0) {
-								expected-=len;
-							}
-						}
-						if (expected!=0) {
-							throw new UnsupportedOperationException();
-						}
-						
-						//logger.info("remaining to write {} for {}",buffers[i].remaining(),i);
+						debugWrite(i, mappedByteBuffer);
 						
 					}
 				} catch (IOException e) {
@@ -538,6 +521,35 @@ public class ClientSocketWriterStage extends PronghornStage {
 		((Buffer)mappedByteBuffer).clear();
 		connections[i]=null;
 		return true;
+	}
+
+	private void debugWrite(int i, ByteBuffer mappedByteBuffer) throws IOException {
+		//write only this many bytes over the network at a time
+		ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
+		buf.clear();
+		
+		int j = debugMaxBlockSize;
+		int c = mappedByteBuffer.remaining();
+		int p = mappedByteBuffer.position();
+		while (--c>=0 && --j>=0) {
+			buf.put(mappedByteBuffer.get(p++));
+		}
+		mappedByteBuffer.position(p);
+		
+		buf.flip();
+		int expected = buf.limit();
+		
+		while (buf.hasRemaining()) {
+			int len = connections[i].getSocketChannel().write(buf);
+			if (len>0) {
+				expected-=len;
+			}
+		}
+		if (expected!=0) {
+			throw new UnsupportedOperationException();
+		}
+		
+		//logger.info("remaining to write {} for {}",buffers[i].remaining(),i);
 	}
 
 	

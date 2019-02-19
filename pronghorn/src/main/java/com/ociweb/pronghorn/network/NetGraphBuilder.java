@@ -542,6 +542,8 @@ public class NetGraphBuilder {
 		}
 	}
 
+	public static boolean supportReaderGroups = true;
+	
 	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(
 			final GraphManager graphManager, 
 			final ServerCoordinator coordinator, 
@@ -558,23 +560,11 @@ public class NetGraphBuilder {
 					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
 
-		//minimize the number of selectors since they must fight for the critical ePoll block in the OS.
-		//each selector also has some housekeeping work (data copy and usage flags) which is not in the critical block.
-		//if we assume 33% is in the block and 66% of the time is NOT then 3 selectors is optimal.
-		//the above logic may change as we optimize the selector and my become 50% or 2 in the future
-		//We must NEVER have 4 or more selectors since they will block each other and may cause prime route issues
-	
-		//Selector rules
-		//Small:  1 for 7 or less tracks
-		//Medium: 2 for 8-26 tracks, groups are the first prime after division eg 5,7 etc 
-		//Large:  3 for 27+ tracks, groups are the first prime after division eg 11, 13 etc 
-		//PMath.nextPrime
-		
-		if ((tracks>=27 && (0==tracks%3)) && !coordinator.isTLS) {			
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, 3);			
-		} else		
-		if ((tracks>=11 && (0==tracks%2)) && !coordinator.isTLS) { 					
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, 2);			
+				
+		int groups = computeGroupsFromTracks(tracks, coordinator.isTLS);
+				
+		if (groups>0) {			
+			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, groups);
 		} else {
 			/////////////////
 			//do not split for TLS since it is already slow and the ack backs are more complex
@@ -588,6 +578,20 @@ public class NetGraphBuilder {
         
         
 		return acks;
+	}
+
+	public static int computeGroupsFromTracks(final int tracks, boolean isTLS) {
+		int groups = -1;
+		if (supportReaderGroups && (tracks>=15 && (0==tracks%5)) && !isTLS) {			
+			groups = 5;			
+		} else
+		if (supportReaderGroups && (tracks>=12 && (0==tracks%3)) && !isTLS) {			
+			groups = 3;
+		} else		
+		if (supportReaderGroups && (tracks>=6 && (0==tracks%2)) && !isTLS) { 		
+			groups = 2;		
+		}
+		return groups;
 	}
 
 	private static void buildSocketReaderGroups(final GraphManager graphManager, final ServerCoordinator coordinator,
@@ -915,10 +919,7 @@ public class NetGraphBuilder {
 						2, //outgoing telemetry responses, keep small.
 						r.pcmIn,
 						r.pcmOut);
-		
-		if (isTLS) {
-			serverConfig.ensureServerCanWrite(SSLUtil.MinTLSBlock);
-		}
+	
 		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
 		ServerCoordinator serverCoord = new ServerCoordinator(tlsCertificates,
 				        bindHost, port, scs,								

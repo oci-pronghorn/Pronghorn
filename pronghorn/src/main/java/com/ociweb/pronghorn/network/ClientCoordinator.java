@@ -130,12 +130,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
+	
+	
 	public BaseConnection lookupConnectionById(long id) {
 		if (null!=connections) {
 			ClientConnection response = connections.get(id);
 			
 			if (null != response) {			
-				if (response.isValid()) {
+				if (response.isValidPeriodic()) {
 					connections.incUsageCount(response.id);
 					return response;
 				} else {

@@ -111,7 +111,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
         Number dsr = graphManager.defaultScheduleRate();
         if (dsr!=null) {
-        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*2, this);
+        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*7, this);
         }
                
 		//        //If server socket reader does not catch the data it may be lost
@@ -613,13 +613,15 @@ public class ServerSocketReaderStage extends PronghornStage {
                 //read as much as we can, one read is often not enough for high volume
                 boolean isStreaming = false; //TODO: expose this switch..
                 
-                do {
-	                temp = sourceChannel.read(targetBuffer);
-	            	if (temp>0){
-	            		len+=temp;
-	            	}
-                } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
-            	
+           //     synchronized(sourceChannel) {
+	                do {
+		                temp = sourceChannel.read(targetBuffer);
+		            	if (temp>0){
+		            		len+=temp;
+		            	}
+	                } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
+          //      }
+                
                 assert(readCountMatchesLength(len, targetBuffer));
                 
 //                if (temp<=0) {

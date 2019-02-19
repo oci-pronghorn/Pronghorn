@@ -596,5 +596,14 @@ public class ClientConnection extends BaseConnection implements SelectionKeyHash
 		return timeoutNS;
 	}
 
+	int validCount = 0;//NOTE: used to avoid validation checks on every call.
+	public boolean isValidPeriodic() {
+		if ((++validCount & 0x3) == 0) {
+			return isValid();
+		} else {
+			return true;
+		}
+	}
+
 	
 }

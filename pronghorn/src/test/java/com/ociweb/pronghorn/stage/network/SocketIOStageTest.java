@@ -1,238 +1,297 @@
 package com.ociweb.pronghorn.stage.network;
 
-import com.ociweb.pronghorn.network.*;
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.PipeMonitorCollectorStage;
-import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
-import org.junit.Assert;
-import org.junit.Ignore;
+import java.util.Arrays;
+
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.BasicClientConnectionFactory;
+import com.ociweb.pronghorn.network.ClientConnection;
+import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.ClientResponseParserFactory;
+import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerConnectionStruct;
+import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerFactory;
+import com.ociweb.pronghorn.network.ServerPipesConfig;
+import com.ociweb.pronghorn.network.TLSCertificates;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfigManager;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
+import com.ociweb.pronghorn.struct.StructRegistry;
+
 public class SocketIOStageTest {
-
-	private static final int TIMEOUT = 30_000;//1 min
 	
-    private final int maxConcurrentInputs = 5;
-	private final int maxConcurrentOutputs = 1;
+	int clientWriters = 2;				
+	int responseUnwrapCount = 1;
+	int clientWrapperCount = 1;
+	int responseQueue = 10;
+	int releaseCount = 10;
+	int netResponseCount = 10;
+			
+	int payloadSize = 16;//140; //SAME RESULTS EVEN WITH SMALL PAYLOAD
+	int connectionsInBits = 9;
+	int fromSocketBlocks = 128;
+	int fromSocketBuffer = 1<<17;
+	int maxRequestSize = payloadSize;
+	int maxResponseSize = payloadSize;
 	
-    private final int maxConnBits = 15;
-	private final int testUsers = 12;
-	////
-	////test data, these are seeds and sizes to be sent in order by each user
-	////
+	int totalSessions = 512;//256;
+	int testSize = 20;//_000_000;		
+	int port = (int) (2000 + (System.nanoTime()%12000));
 	
-	private final int[] testSeeds = new int[]{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-	private final int[] testSizes = new int[]{1,2,4,8,16,32,64,128,256,512,1024,2048,4069,8192,16384,32768};
+	//TODO: why is return pipe 100% and red on graph
+	//TODO: why is server pipe into echo always full?
 	
+	String host = "127.0.0.1";
+
+	TLSCertificates tlsCertificates = null;
 	
-	@Ignore //TODO: debug why this does not complete
-	public void roundTripATest() {		
-		roundTripTest(true, 14089);		
-	}
+	ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, totalSessions, tlsCertificates, new StructRegistry());
 
-	@Ignore //TODO: debug why this does not complete
-	public void roundTripBTest() {		
-		roundTripTest(false, 15089);		
-	}
+	
+	public class EchoTest extends PronghornStage {
 
-	private void roundTripTest(boolean encryptedContent, int port) {
-
-        
-        PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 30);  
-        PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
-		
-        GraphManager gm = new GraphManager();
-        
-        String bindHost = "127.0.0.1";
-        int tracks = 1;
-
-		TLSCertificates certs = encryptedContent ? TLSCerts.define() : null;
-
-		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
-		serverConfig.setHost(bindHost)
-		 .setMaxConnectionBits(maxConnBits)
-		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
-		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs);
-
-		if (null==certs) {
-			serverConfig.useInsecureServer();
-		} else {
-			serverConfig.setTLS(certs);
+		private final Pipe<NetPayloadSchema>[] inputs;
+		private final Pipe<NetPayloadSchema>[] outputs;
+		private final int step;
+		private int openCount;
+		public EchoTest(GraphManager gm, boolean isClient, Pipe<NetPayloadSchema>[] inputs, Pipe<NetPayloadSchema>[] outputs, Pipe<ReleaseSchema>... release) {
+			super(gm, inputs, join(outputs,release));
+			this.inputs = inputs;
+			this.outputs = outputs;
+			this.openCount = inputs.length;
+			this.step = isClient ? 1 : 0;
+			assert(inputs.length == outputs.length) : "inputs: "+inputs.length+" vs outputs: "+outputs.length;
 		}
-		
-		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
-		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
-		
-		ServerCoordinator serverCoord = serverConfig.buildServerCoordinator();
+
+		@Override
+		public void startup() {
+			
+			if (0 != step) {
+				/////////////////////
+				//staring data
+				////////////////////
 				
-		
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs, null,gm.recordTypeData);
-
-		
-		PipeConfig<NetPayloadSchema> payloadPipeConfig 
-			= new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 4, 1<<20);    
-		
-		PipeConfig<NetPayloadSchema> payloadServerPipeConfig 
-		 	= new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 54, 1<<20);
-		
-		
-		///
-		///server new connections e-poll
-		///
-        ServerNewConnectionStage.newIntance(gm, serverCoord, false); //no actual encryption so false.
-        
-        ////
-        ////client to write data to socket
-        ////   
-        {
-	        Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-	        ClientSocketWriterStage.newInstance(gm, clientCoordinator, input);
-	        new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
-        }
-
-        
-        ////
-        ////server to consume data from socket and bounce it back to sender
-        ////
-        {
-		    Pipe<NetPayloadSchema>[] output = new Pipe[maxConcurrentInputs];
-		    int p = maxConcurrentInputs;
-		    while (--p>=0) {
-		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
-		    }	    
-		    Pipe<ReleaseSchema>[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoord);	
-	        new ServerSocketWriterStage(gm, serverCoord, output, releasePipes[0]); 
-        }
-		
-
-		////
-		//full round trip client takes data off socket
-		////	
-		PronghornStage watch = null;
-		{
-			Pipe[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};   
-			Pipe<NetPayloadSchema>[] response = new Pipe[maxConcurrentInputs];
-		    int z = maxConcurrentInputs;
-		    while (--z>=0) {
-		    	response[z]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
-		    }
-		    new ClientSocketReaderStage(gm, clientCoordinator, releasePipes, response);
-			watch = new SocketClientTestDataStage(gm, response, releasePipes[0], encryptedContent, testUsers, testSeeds, testSizes); 
+				int hostId = ClientCoordinator.lookupHostId(host.getBytes());
+				
+				for(int i = 0; i<totalSessions; i++) {
+					int sessionId = i+1;
+					int responsePipeIdx = i;
+					
+					
+					long liveConnectionId = ClientCoordinator.lookup(hostId, port, sessionId);
+					
+					
+					
+					ClientConnection con = ClientCoordinator.openConnection(ccm, hostId, port, 
+											           sessionId, 
+											           responsePipeIdx, 
+											           outputs, 
+											           liveConnectionId, 
+											           BasicClientConnectionFactory.instance);
+					liveConnectionId = con.id;
+					
+					Pipe.addMsgIdx(outputs[i], NetPayloadSchema.MSG_BEGIN_208);
+					Pipe.addIntValue(0, outputs[i]);
+					Pipe.confirmLowLevelWrite(outputs[i]);
+					Pipe.publishWrites(outputs[i]);
+					
+					Pipe.addMsgIdx(outputs[i], NetPayloadSchema.MSG_PLAIN_210);
+					Pipe.addLongValue(liveConnectionId, outputs[i]);
+					Pipe.addLongValue(System.nanoTime(), outputs[i]);
+					Pipe.addLongValue(0, outputs[i]);
+					DataOutputBlobWriter<NetPayloadSchema> dataOut = Pipe.openOutputStream(outputs[i]);
+					
+					dataOut.writeInt(testSize);
+					byte[] temp = new byte[payloadSize]; 
+					Arrays.fill(temp, (byte)-8);			
+					dataOut.write(temp);
+					dataOut.closeLowLevelField();
+				
+					Pipe.confirmLowLevelWrite(outputs[i]);
+					Pipe.publishWrites(outputs[i]);
+	
+				}
+			}
 		}
 		
-	    PipeMonitorCollectorStage.attach(gm);
 		
-		/////////////////////////////////
-		//run the full test on the JUnit thread until the consumer is complete
-		//////////////////////////////
-		run(gm, watch);
-	}
+		@Override
+		public void run() {
+
+			
+			boolean didWork;
+			//do {
+				didWork = false;
+				int i = inputs.length;
+				while (--i>=0) {
+					Pipe<NetPayloadSchema> pipeIn = inputs[i];
+					Pipe<NetPayloadSchema> pipeOut = outputs[i];
+					didWork = consumePipe(didWork, pipeIn, pipeOut);	
+				}
+				
+			//} while (didWork);
+			
+			
+		}
+
+		private final int readSizeOf = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 		
-	@Test @Ignore
-	public void clientToServerSocketATest() {
-		clientToServerSocketTest(true,13081);
+		private boolean consumePipe(boolean didWork, Pipe<NetPayloadSchema> pipeIn, Pipe<NetPayloadSchema> pipeOut) {
+			if (Pipe.hasContentToRead(pipeIn) && Pipe.hasRoomForWrite(pipeOut)) {
+				int msgIdx = Pipe.takeMsgIdx(pipeIn);
+				if (msgIdx == NetPayloadSchema.MSG_PLAIN_210) {
+					long con = Pipe.takeLong(pipeIn);						
+					long arr = Pipe.takeLong(pipeIn);
+					long pos = Pipe.takeLong(pipeIn);
+					DataInputBlobReader<NetPayloadSchema> sourceData = Pipe.openInputStream(pipeIn);
+					int iter = sourceData.readInt()-step;
+					
+					if (iter > 0) {
+					
+						didWork = true;
+						publishCopy(pipeOut, con, sourceData, iter);
+					
+					} else {
+						
+						if (--openCount == 0) {								
+							//if all are done....
+							Pipe.publishEOF(outputs);
+							requestShutdown();
+						}
+					}
+					
+					Pipe.confirmLowLevelRead(pipeIn, readSizeOf);
+					Pipe.releaseReadLock(pipeIn);
+					
+					
+				} else {
+					
+					Pipe.skipNextFragment(pipeIn, msgIdx);
+					
+				}
+			}
+			return didWork;
+		}
+
+		private void publishCopy(Pipe<NetPayloadSchema> pipeOut, long con,
+				DataInputBlobReader<NetPayloadSchema> sourceData, int iter) {
+			int size = Pipe.addMsgIdx(pipeOut, NetPayloadSchema.MSG_PLAIN_210);
+			Pipe.addLongValue(con, pipeOut);
+			Pipe.addLongValue(System.nanoTime(), pipeOut);
+			Pipe.addLongValue(Pipe.workingHeadPosition(pipeOut), pipeOut);
+			DataOutputBlobWriter<NetPayloadSchema> targetData = Pipe.openOutputStream(pipeOut);
+			targetData.writeInt(iter);
+			sourceData.readInto(targetData, sourceData.available()); //copy the payload back
+			targetData.closeLowLevelField();
+			Pipe.confirmLowLevelWrite(pipeOut, size);
+			Pipe.publishWrites(pipeOut);
+		}
+
 	}
 
-	@Test @Ignore
-	public void clientToServerSocketBTest() {
-		clientToServerSocketTest(false,12082);
-	}
+
 	
-	private void clientToServerSocketTest(boolean encryptedContent, int port) {
+	private PronghornStage watch = null;
+
+	//send 1 at a time to measure max throughput of the Socket reader/writers alone.
+	@Test
+	public void testRoundTrip() {
+		
+		//disable groups so we can test single stages
+		NetGraphBuilder.supportReaderGroups = false;
+		
+		GraphManager.showThreadIdOnTelemetry = true;
+		
+		
+		ClientCoordinator.registerDomain(host);
+		
 		GraphManager gm = new GraphManager();
 
-        
-        //TODO: unit test must run with both true and false.
-        
-        PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 30);  
-        PipeConfig<NetPayloadSchema> payloadPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
-        PipeConfig<NetPayloadSchema> payloadServerPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
-        
-        PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
-        
-        String bindHost = "127.0.0.1";
-        int tracks = 1;
-		TLSCertificates certs = encryptedContent ? TLSCerts.define() : null;
+		//this rate is  10K per second, with 512 is 5120K per second but we only get 300K or so...
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 100_000);
+		
+				//TODO: Can we do all this a yaml and system props? - would be much better for dev ops and late changes..
+				//      each server would have a prefix to read so they can all change independent.
+				//      or point to yaml file to load from resources?
+				final ServerPipesConfig serverConfig = new ServerPipesConfig(
+						null,//we do not need to log the telemetry traffic, so null...
+						null != tlsCertificates,
+						connectionsInBits,
+						totalSessions, //tracks 
+						1,
+						1,
+						1,
+						1,				
+						//one message might be broken into this many parts
+						fromSocketBlocks, 
+						fromSocketBuffer,
+						maxRequestSize,
+						maxResponseSize,
+						2, //requests in Queue, keep small
+						2, //responses, keep small.
+						new PipeConfigManager(),
+						new PipeConfigManager());
+
+		ServerConnectionStruct scs = new ServerConnectionStruct(gm.recordTypeData);
+		ServerCoordinator coordinator = new ServerCoordinator(tlsCertificates,
+				        host, port, scs,								
+				        false, "RoundTrip Server","", serverConfig);
+		
+		NetGraphBuilder.buildServerGraph(gm, coordinator, new ServerFactory() {
+
+			@Override
+			public void buildServer(GraphManager graphManager, ServerCoordinator coordinator,
+					Pipe<ReleaseSchema>[] releaseAfterParse,
+					Pipe<NetPayloadSchema>[] receivedFromNet,
+					Pipe<NetPayloadSchema>[] sendingToNet) {
+			
+				
+				new EchoTest(graphManager, false, receivedFromNet, sendingToNet, releaseAfterParse);
+				
+				
+			}
+			
+		});
+
+
+		Pipe<NetPayloadSchema>[] toServer = Pipe.buildPipes(totalSessions, NetPayloadSchema.instance.newPipeConfig(responseQueue, payloadSize+64));
 
 		
-		HTTPServerConfig serverConfig = NetGraphBuilder.serverConfig(port, gm);
-		serverConfig.setHost(bindHost)
-		 .setMaxConnectionBits(maxConnBits)
-		 .setConcurrentChannelsPerEncryptUnit(maxConcurrentInputs)
-		 .setConcurrentChannelsPerDecryptUnit(maxConcurrentOutputs);
-		 
-		 	
-		if (null==certs) {
-			serverConfig.useInsecureServer();
-		} else {
-			serverConfig.setTLS(certs);
-		}
-		
-		((HTTPServerConfigImpl)serverConfig).setTracks(tracks);
-		((HTTPServerConfigImpl)serverConfig).finalizeDeclareConnections();
+		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, toServer, responseUnwrapCount,
+				         clientWrapperCount, clientWriters,
+				         releaseCount, netResponseCount, new ClientResponseParserFactory() {
 
-		
-		ServerCoordinator serverCoord = serverConfig.buildServerCoordinator(); 
-		
-		ClientCoordinator clientCoordinator = new ClientCoordinator(maxConnBits, maxConcurrentInputs,null,gm.recordTypeData);
-					
-		///
-		///server new connections e-poll
-		///
-        ServerNewConnectionStage.newIntance(gm, serverCoord, false); //no actual encryption so false.
-        
-        ////
-        ////server to consume data from socket
-        ////
-	    Pipe<NetPayloadSchema>[] output = new Pipe[maxConcurrentInputs];
-	    int p = maxConcurrentInputs;
-	    while (--p>=0) {
-	    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
-	    }
-	    
-	    Pipe[] acks = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoord);
-        SocketTestDataStage watch = new SocketTestDataStage(gm, output, acks[0], encryptedContent, testUsers, testSeeds, testSizes); 
-        
-        ////
-        ////client to write data to socket
-        ////                
-        Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-		ClientSocketWriterStage.newInstance(gm, clientCoordinator, input);
-		new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
-		
-
-		GraphManager.exportGraphDotFile(gm, "UnitTest", true);
-		PipeMonitorCollectorStage.attach(gm);
-		   
-		/////////////////////////////////
-		//run the full test on the JUnit thread until the consumer is complete
-		//////////////////////////////
-		run(gm, watch);
-	}
-
-	private void run(GraphManager gm, PronghornStage watch) {
-		NonThreadScheduler scheduler = new NonThreadScheduler(gm);
-		scheduler.startup();
-		long limit = System.currentTimeMillis() + TIMEOUT;
-		while (!GraphManager.isStageShuttingDown(gm, watch.stageId)) {
-			scheduler.run();
-			scheduler.checkForException();//will throw for unexpected exceptions discovered in the graph.
-			if (System.currentTimeMillis()>limit) {
-				scheduler.shutdown();
-				Assert.fail("Timeout");
-			}			
-		}
-		scheduler.shutdown();
-	}
+							@Override
+							public void buildParser(GraphManager gm, ClientCoordinator ccm,
+													Pipe<NetPayloadSchema>[] clearResponse,
+													Pipe<ReleaseSchema>[] ackReleaseForResponseParser) {
+								
+								watch = new EchoTest(gm, true, clearResponse, toServer, ackReleaseForResponseParser);
+												
+							}
+							
+						});
 	
+	
+		
+		/////////////////
+		//run
+		////////////////
+		gm.enableTelemetry(8098);
+		StageScheduler sched = StageScheduler.defaultScheduler(gm);
+		sched.startup();
+		GraphManager.blockUntilStageTerminated(gm, watch);
+		sched.shutdown();
+	}
+
+
 	
 
     

@@ -57,6 +57,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private static final long MS_TO_NS = 1_000_000;
     private static final long realWorldLimitNS = 2_000_000_000;
     
+    public static boolean hangDetectorEnabled = true;
 
     private int[] producersIdx;
 
@@ -186,9 +187,11 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
         //in cycles but under the human perception of time
         deepSleepCycleLimt = realWorldLimitNS/schedule.commonClock;
-        
-        assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 20_000_000_000L)));
 
+        if (hangDetectorEnabled) {
+        	assert(hangDetectInit(Math.max(schedule.commonClock*100*schedule.script.length, 20_000_000_000L)));
+        }
+        
         if (null != debugStageOrder) {	
         	try {
 	        	debugStageOrder.append("----------full stages -------------Clock:");
@@ -674,7 +677,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private static void waitBeforeRun(ScriptedNonThreadScheduler that, long now) throws InterruptedException {
 		final long wait = that.blockStartTime - now;
-		if (wait>=0) {
+		
 			assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
 	
 			//skip wait if it is short AND if this thread has max proirity
@@ -688,20 +691,18 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			} else {
 				if (wait > 0) {
 					assert(wait<=that.schedule.commonClock) : "wait for next cycle was longer than cycle definition";
-					that.waitForBatch(that.totalRequiredSleep+wait);
+					that.waitForBatch(that.totalRequiredSleep+wait); //updates totalRequiredSleep
 				} else {
 					Thread.yield();
+					that.totalRequiredSleep=0;//clear running sleep.
+					//warning clock rate is faster than the tasks
 				}
 			}
 			
 			if (null!=that.sleepETL) {
 				ElapsedTimeRecorder.record(that.sleepETL, System.nanoTime()-now);
 			}
-		} else {
-			//warning clock rate is faster than the tasks
-			Thread.yield();
-			
-		}
+		
 	}
 
 	private static void checkForLongRun(ScriptedNonThreadScheduler that) {
@@ -758,7 +759,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			automaticLoadSwitchingDelay();
 		} else {		
 			long now = System.nanoTime();
-			Thread.yield();
+			//Thread.yield();
 			LockSupport.parkNanos(totalRequiredSleep);
 			long duration = System.nanoTime()-now;
 			totalRequiredSleep -= (duration>0?duration:1);
@@ -810,6 +811,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			} else {	
 				//let the task manager know we are not doing work.
 				LockSupport.parkNanos(totalRequiredSleep);
+				Thread.yield();
 				
 				long duration = System.nanoTime()-now;
 				//System.err.println(totalRequiredSleep+" vs "+duration);

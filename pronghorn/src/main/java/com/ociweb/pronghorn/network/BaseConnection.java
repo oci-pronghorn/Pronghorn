@@ -43,7 +43,7 @@ public abstract class BaseConnection {
 				) {
 		
 		this.engine = engine; //this is null for non TLS
-		this.socketChannel = socketChannel;		
+		this.socketChannel = socketChannel;
 		this.id = id;
 		if (initQueue) {
 			startTimes = new LongDateTimeQueue(13); //8K of data by default for start times

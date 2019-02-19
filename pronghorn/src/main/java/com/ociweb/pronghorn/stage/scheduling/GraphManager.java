@@ -1657,6 +1657,10 @@ public class GraphManager {
 				count++;
 			}	
 		}
+		
+		//TODO: if we are now immutable cachd this value so we do not need to count!!!
+		
+		
 		return count;
 	}
 
@@ -1801,7 +1805,7 @@ public class GraphManager {
 	        
 	        Map<Object, StringBuilder> ranks = m.cachedRanks; 
 	        
-	        target.append("digraph ");
+	        target.write("digraph ".getBytes());
 	        if (null!=graphName) {
 	        	target.append(graphName);
 	        } else {
@@ -1809,22 +1813,22 @@ public class GraphManager {
 	        		target.append(m.name);
 	        	}
 	        }
-	        target.append(" {\n"); 
+	        target.write(" {\n".getBytes()); 
 	     //   target.append("concentrate=true\n");
 
 			//add new font and black background color
-			target.append("bgcolor=\"#000000\"");
-			target.append("bgcolor=\"#000000\"");
-			target.append("graph [fontname = \"arial\"];");
-			target.append("node [fontname = \"arial\", margin=0, fontsize=25];");
-			target.append("edge [fontname = \"arial\", fontsize=25, arrowsize=1.5];");
+			target.write("bgcolor=\"#000000\"".getBytes());
+			target.write("bgcolor=\"#000000\"".getBytes());
+			target.write("graph [fontname = \"arial\"];".getBytes());
+			target.write("node [fontname = \"arial\", margin=0, fontsize=25];".getBytes());
+			target.write("edge [fontname = \"arial\", fontsize=25, arrowsize=1.5];".getBytes());
 
 	        if (stages<500) {
 	            //no need if the picture is very large
 		        if (isVertical) {
-		        	target.append("rankdir = TD\n"); 
+		        	target.write("rankdir = TD\n".getBytes()); 
 		        } else {
-		        	target.append("rankdir = LR\n"); 
+		        	target.write("rankdir = LR\n".getBytes()); 
 		        }
 		        if (null==ranks) {
 		        	ranks = new HashMap<Object, StringBuilder>();
@@ -1866,7 +1870,7 @@ public class GraphManager {
 	                if (runNs!=0){
 	                	if (runNs<0) {
 	                		
-	                		target.append(" Wrk:100%");
+	                		target.write(" Wrk:100%".getBytes());
 	                	} else {
 	                		long shutdownTime = m.stageShutdownTimeNs[stage.stageId];
 	                		if (shutdownTime<=0) {
@@ -1885,14 +1889,14 @@ public class GraphManager {
 	                		if (pct>=0) {
 	                			target.write(cpuValues[pct]);	                			
 	                		} else {
-	                			target.append(" Wrk:N/A%");
+	                			target.write(" Wrk:N/A%".getBytes());
 	                			
 	                			//logger.info("A bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
 	                					
 	                		}
 	                	}
 	                } else {
-	                	target.append(" Wrk:N/A%");
+	                	target.write(" Wrk:N/A%".getBytes());
 	                	
             			//logger.trace("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
             	            			
@@ -1911,13 +1915,13 @@ public class GraphManager {
 	                target.write(AQUOTE);
 
 					if (pct>=75000) {
-                		target.append(",color=red,penwidth=5");	    
+                		target.write(",color=red,penwidth=5".getBytes());	    
                 	} else if (pct>=40000) {
-                		target.append(",color=orange,penwidth=5");	    
+                		target.write(",color=orange,penwidth=5".getBytes());	    
                 	} else if (pct>=20000) {
-                		target.append(",color=blue,penwidth=5");
+                		target.write(",color=blue,penwidth=5".getBytes());
                 	} else {
-						target.append(",color=white,penwidth=3");
+						target.write(",color=white,penwidth=3".getBytes());
 					}
 	                
 	                /////////////////////////////////////
@@ -1925,7 +1929,7 @@ public class GraphManager {
 	                /////////////////////////////////////
 	            	Object background = getNota(m, stage.stageId, GraphManager.DOT_BACKGROUND, "gray90");
 	            	if (null!=background) {
-	            		target.append(",style=filled,fillcolor=");
+	            		target.write(",style=filled,fillcolor=".getBytes());
 	            		target.append(background.toString());
 	            	}
 	                /////////////////////////////////////
@@ -1945,7 +1949,7 @@ public class GraphManager {
 	        	//TODO: this creates an iterator which needs to be collected, NOTE: find a better way to do this...
 		        for (StringBuilder value: ranks.values()) { //removes comma on end
 		        	target.append(value, 0, value.length()-1);
-		        	target.append(" }\n");	        	
+		        	target.write(" }\n".getBytes());	        	
 		        }
 	        }
 	        
@@ -2074,9 +2078,9 @@ public class GraphManager {
 				                }
 				                
 				                if (null!=pipePercentileFullValues) {
-				                	target.append(" \n");
+				                	target.write(" \n".getBytes());
 				                	target.write(pipeFullValues[pipePercentileFullValues[pipe.id]]);
-				                	target.append(" ");
+				                	target.write(" ".getBytes());
 				                }
 				              
 				                if (null!=pipeTraffic) {
@@ -2123,15 +2127,15 @@ public class GraphManager {
 						    if (null!=pipePercentileFullValues) {		                	
 						    	int pctFull = pipePercentileFullValues[pipe.id];
 						    	if (pctFull>=75) {
-						    		target.append(",color=red");	    
+						    		target.write(",color=red".getBytes());	    
 						    	} else if (pctFull>=40) {
-						    		target.append(",color=orange");	    
+						    		target.write(",color=orange".getBytes());	    
 						    	} else {
-									target.append(",color=white");
+									target.write(",color=white".getBytes());
 								}
 						    }
 						    Appendables.appendValue(target.append(",penwidth="),lineWidth);
-						    target.append(",fontcolor=white");
+						    target.write(",fontcolor=white".getBytes());
 
 						    target.write(CLOSEBRACKET_NEWLINE);
 		                    
@@ -2165,6 +2169,7 @@ public class GraphManager {
 	                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
 	                							/
 	                							p.sizeOfSlabRing;
+	                						oneMsgSize = Math.max(1, oneMsgSize);
 	                							                						
 	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
@@ -2224,6 +2229,7 @@ public class GraphManager {
 		                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
 		                							/
 		                							p.sizeOfSlabRing;
+	                  						oneMsgSize = Math.max(1, oneMsgSize);
 	                  							                  						
 	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
@@ -2266,7 +2272,7 @@ public class GraphManager {
 	            }
 	        }	        
 	    
-            target.append("}\n");
+            target.write("}\n".getBytes());
    
 	}
 

@@ -55,7 +55,9 @@ public class ServerPipesConfig {
 	
 		if (isTLS && (maxRequestSize< (SSLUtil.MinTLSBlock))) {
 			maxRequestSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
+			this.ensureServerCanWrite(SSLUtil.MinTLSBlock);
 		}
+	
 		if (isTLS && (maxResponseSize< (SSLUtil.MinTLSBlock))) {
 			maxResponseSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
 		}
@@ -67,7 +69,9 @@ public class ServerPipesConfig {
 		this.fromRouterToModuleCount = queueLengthIn; // 2 - 1024
 		this.pcmIn = pcmIn;
 		this.pcmOut = pcmOut;
-		
+		if (pcmIn==null || pcmOut==null) {
+			throw new NullPointerException();
+		}
 	    this.logFile = logFile;
 	    this.moduleParallelism = tracks;
 	    this.maxConnectionBitsOnServer = maxConnectionBits;
@@ -90,10 +94,10 @@ public class ServerPipesConfig {
 	    this.maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
 		////////
 		
-		// do not need multiple writers until we have giant load and parallel tracks in play
-	    this.serverSocketWriters       = (moduleParallelism >= 2) ? ( isTLS ? 1: (moduleParallelism>=8 ? 7 : 2)  ) : 1; 
+	    //Need more writers than readers, the OS assumes many threads respond but few read.
+	    this.serverSocketWriters = 2*Math.max(1,NetGraphBuilder.computeGroupsFromTracks(moduleParallelism, isTLS));
 
-		//defaults which are updated by method calls
+	    //defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
 	    		
 		this.releaseMsg                      = 2048;
@@ -117,7 +121,9 @@ public class ServerPipesConfig {
 	}
 	
 	public void ensureServerCanWrite(int length) {
-		pcmOut.ensureSize(NetPayloadSchema.class, 0, length);
+		if (null!=pcmOut) {
+			pcmOut.ensureSize(NetPayloadSchema.class, 0, length);
+		}
 	}
 	
 	
