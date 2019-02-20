@@ -403,5 +403,12 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		return maxQueueOut;
 	}
 
+	@Override
+	public HTTPServerConfig disableEPoll() {
+		// -Djava.nio.channels.spi.SelectorProvider=sun.nio.ch.PollSelectorProvider
+		System.setProperty("java.nio.channels.spi.SelectorProvider","sun.nio.ch.PollSelectorProvider");
+		return this;
+	}
+
 		
 }

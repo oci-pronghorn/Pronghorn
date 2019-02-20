@@ -7,7 +7,7 @@ public interface HTTPServerConfig {
 	HTTPServerConfig setHost(String host);
 	HTTPServerConfig setTLS(TLSCertificates certificates);
 	HTTPServerConfig useInsecureServer();
-	
+	HTTPServerConfig disableEPoll();
 	HTTPServerConfig setMaxConnectionBits(int bits);
 	HTTPServerConfig setMinConnections(int connections);
 		
