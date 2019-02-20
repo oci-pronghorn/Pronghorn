@@ -121,8 +121,7 @@ public class SelectionKeyHashMap extends HashMap<SelectionKey, Object> {
 
 	@Override
 	public boolean containsKey(Object k) {
-		SelectionKey sk = (SelectionKey)k;
-		return ((SelectionKeyHashMappable)sk.attachment()).skPosition()>=0;
+		return ((SelectionKeyHashMappable)((SelectionKey)k).attachment()).skPosition()>=0;
 	}	
 	
 	@Override
