@@ -871,11 +871,14 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return String name of the schema
      */
     public static <S extends MessageSchema<S>> String schemaName(Pipe<S> pipe) {
-        return (null==pipe.schema ?
-        		   "NoSchemaFor "+Pipe.from(pipe).name  :
-           	       pipe.schema.getClass().getSimpleName());
+    	if (null==pipe.cachedSchemaName) {
+    		pipe.cachedSchemaName = (null==pipe.schema ?
+	        		   "NoSchemaFor "+Pipe.from(pipe).name  :
+	           	       pipe.schema.getClass().getSimpleName()).intern();
+    	}
+    	return pipe.cachedSchemaName;
     }
-   
+    private String cachedSchemaName;
     
     /**
      * Back up the cursor read position. So the fragments can be read again for those not yet released.
