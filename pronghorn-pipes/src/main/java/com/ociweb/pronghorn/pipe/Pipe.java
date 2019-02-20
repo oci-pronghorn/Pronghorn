@@ -4600,7 +4600,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @return long slab working head, not yet published and actively used
 	 */
     public static <S extends MessageSchema<S>> long workingHeadPosition(Pipe<S> pipe) {
-        return PaddedLong.get(pipe.slabRingHead.workingHeadPos);
+        return pipe.slabRingHead.workingHeadPos.value;
     }
 
     /**
@@ -4628,7 +4628,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return long new working tail position, not yet published, activily used
      */
     public static <S extends MessageSchema<S>> long getWorkingTailPosition(Pipe<S> pipe) {
-        return PaddedLong.get(pipe.slabRingTail.workingTailPos);
+        return pipe.slabRingTail.workingTailPos.value;
     }
 
     /**
