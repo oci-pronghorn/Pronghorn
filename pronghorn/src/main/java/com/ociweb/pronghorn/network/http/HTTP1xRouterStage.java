@@ -1315,12 +1315,11 @@ private static int accumRunningBytes(
 
 private static long processPlain(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx,
 		Pipe<NetPayloadSchema> selectedInput, long inChnl) {
+
+	long channel = Pipe.takeLong(selectedInput);
 	if (inChnl<0) {
-		that.inputChannels[idx] = Pipe.peekLong(selectedInput, 1);	    	    	
-		assert(that.inputChannels[idx]>=0) : "channel must not be negative.";
+		that.inputChannels[idx] = channel;
 	}
-	final long inChnl1 = inChnl;
-	final long channel = Pipe.takeLong(selectedInput);
 	
 	//instead of using arrival time here, we pull it just before release after each 
 	//block gets parsed, this provides the accurate time of arrival.
@@ -1337,7 +1336,7 @@ private static long processPlain(HTTP1xRouterStage<?, ?, ?, ?> that, final int i
 	assert(length<=selectedInput.maxVarLen);
 	assert(that.inputBlobPos[idx]<=that.inputBlobPosLimit[idx]) : "position is out of bounds.";
 	
-	if (-1 != inChnl1 && that.inputLengths[idx]!=0) {
+	if (-1 != inChnl && that.inputLengths[idx]!=0) {
 		//System.out.println("added length "+length);
 		that.plainMatch(idx, selectedInput, channel, length);
 	} else {
