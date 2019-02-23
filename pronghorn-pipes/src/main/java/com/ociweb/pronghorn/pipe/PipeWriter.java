@@ -483,7 +483,7 @@ public class PipeWriter {
 	public static void publishEOF(Pipe pipe) {	
 		int i = pipe.pubListeners.length;
     	while (--i>=0) {
-    		((PipePublishListener)(pipe.pubListeners[i])).published();
+    		((PipePublishListener)(pipe.pubListeners[i])).published(Pipe.workingHeadPosition(pipe));
     	}
 		
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
@@ -502,7 +502,7 @@ public class PipeWriter {
     public static int publishWrites(Pipe pipe) {
     	int i = pipe.pubListeners.length;
     	while (--i>=0) {
-    		((PipePublishListener)(pipe.pubListeners[i])).published();
+    		((PipePublishListener)(pipe.pubListeners[i])).published(Pipe.workingHeadPosition(pipe));
     	}
 	
 		

@@ -109,10 +109,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
-        Number dsr = graphManager.defaultScheduleRate();
-        if (dsr!=null) {
-        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*7, this);
-        }
+//        Number dsr = graphManager.defaultScheduleRate();
+//        if (dsr!=null) {
+//        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*3, this);
+//        }
                
 		//        //If server socket reader does not catch the data it may be lost
 		//        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
@@ -205,7 +205,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	};
 
-	final int waitForPipeConsume = 10;
+	//final int waitForPipeConsume = 10;
 
     @Override
     public void run() {
@@ -317,18 +317,25 @@ public class ServerSocketReaderStage extends PronghornStage {
 	}
 
 	private boolean processConnection2(SelectionKey selection, long channelId,
-			BaseConnection cc, int responsePipeLineIdx) {
+										BaseConnection cc, int responsePipeLineIdx) {
 		
 		final boolean newBeginning = responsePipeLineIdx<0;
 		
-		if (newBeginning) {
-			responsePipeLineIdx = beginningProcessing(channelId, cc);
-		}			
-		
+		if (!newBeginning) {
+			return (pumpByteChannelIntoPipe(cc.getSocketChannel(), cc.id, 
+					cc.getSequenceNo(), output[responsePipeLineIdx], 
+                    newBeginning, cc, selection)==1);
+		} else {
+			return processConnectionBegin(selection, cc, newBeginning, beginningProcessing(channelId, cc));
+		}
+	}
+
+	private boolean processConnectionBegin(SelectionKey selection, BaseConnection cc, final boolean newBeginning,
+			int responsePipeLineIdx) {
 		if (responsePipeLineIdx >= 0) {		
 			return (pumpByteChannelIntoPipe(cc.getSocketChannel(), cc.id, 
-											cc.getSequenceNo(), output[responsePipeLineIdx], 
-					                        newBeginning, cc, selection)==1);
+					cc.getSequenceNo(), output[responsePipeLineIdx], 
+					newBeginning, cc, selection)==1);
 		} else {			
 			return true;
 		}
@@ -502,13 +509,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 		assert(idToClear>=0);
 				
 		BaseConnection cc = coordinator.lookupConnectionById(idToClear);
-		
-		int pipeIdx = lookupPipeId(idToClear, cc);
-				
-		///////////////////////////////////////////////////
-		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-		if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx])<=pos && (Pipe.headPosition(output[pipeIdx]) == pos)) {
-       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 		
+		//only release if we have a connection to be released.
+		if (null!=cc) {
+			int pipeIdx = lookupPipeId(idToClear, cc);
+					
+			///////////////////////////////////////////////////
+			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
+			if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx])<=pos && (Pipe.headPosition(output[pipeIdx]) == pos)) {
+	       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 		
+			}
+		} else {
+			assert( -1 == PoolIdx.getIfReserved(responsePipeLinePool, idToClear) );
 		}
 		
 		
@@ -532,14 +543,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 		if (pipeIdx < 0) {
 			pipeIdx = null!=cc? cc.getPreviousPoolReservation() : -1;
 			if (pipeIdx < 0) {
-				//slow linear search so we avoid this.
 				pipeIdx = PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
 			}
 		}
 		return pipeIdx;
 	}
 
-    private boolean hasNewDataToRead(Selector selector) {
+	private boolean hasNewDataToRead(Selector selector) {
     	
     	//assert(null==selectedKeys || selectedKeys.isEmpty()) : "All selections should be processed";
 //    	if (null!=selectedKeys && !selectedKeys.isEmpty()) {
@@ -613,6 +623,13 @@ public class ServerSocketReaderStage extends PronghornStage {
                 //read as much as we can, one read is often not enough for high volume
                 boolean isStreaming = false; //TODO: expose this switch..
                 
+//    			try {
+//    				sourceChannel.setOption(ExtendedSocketOptions.TCP_QUICKACK, Boolean.TRUE);
+//    			} catch (IOException e1) {
+//    				// TODO Auto-generated catch block
+//    				e1.printStackTrace();
+//    			}	
+    			
            //     synchronized(sourceChannel) {
 	                do {
 		                temp = sourceChannel.read(targetBuffer);

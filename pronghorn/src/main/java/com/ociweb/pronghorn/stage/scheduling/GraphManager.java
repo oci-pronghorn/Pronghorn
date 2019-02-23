@@ -57,8 +57,8 @@ public class GraphManager {
 	
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
-	private final static int INIT_RINGS = 32;
-	final static int INIT_STAGES = 32;	
+	private final static int INIT_PIPES = 128;
+	final static int INIT_STAGES = 64;	
 	
 	//will show telemetry its self
 	public static boolean monitorAll = false;
@@ -125,20 +125,20 @@ public class GraphManager {
 	private final AtomicInteger stageCounter = new AtomicInteger();
 	
 	//for lookup of source id and target id from the ring id
-	private int[] ringIdToStages  = new int[INIT_RINGS*2]; //stores the sourceId and targetId for every ring id.
+	private int[] ringIdToStages  = new int[INIT_PIPES*2]; //stores the sourceId and targetId for every ring id.
 	
 	//for lookup of input ring start pos from the stage id 
 	private int[] stageIdToInputsBeginIdx  = new int[INIT_STAGES];
-	private int[] multInputIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
+	private int[] multInputIds = new int[INIT_PIPES]; //a -1 marks the end of a run of values
 	private int topInput = 0;
 	
 	//for lookup of output ring start pos from the stage id
 	private int[] stageIdToOutputsBeginIdx = new int[INIT_STAGES];
-	private int[] multOutputIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
+	private int[] multOutputIds = new int[INIT_PIPES]; //a -1 marks the end of a run of values
 	private int topOutput = 0;
 	
 	//for lookup of RingBuffer from RingBuffer id
-	private Pipe[] pipeIdToPipe = new Pipe[INIT_RINGS];
+	private Pipe[] pipeIdToPipe = new Pipe[INIT_PIPES];
 	
 	private static final Pipe[] EMPTY_PIPE_ARRAY = new Pipe[0];
 	
@@ -275,7 +275,7 @@ public class GraphManager {
 
 	//store the notas ids here
 	private int[] stageIdToNotasBeginIdx = new int[INIT_STAGES];
-	private int[] multNotaIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
+	private int[] multNotaIds = new int[INIT_PIPES]; //a -1 marks the end of a run of values
 	private int topNota = 0;
 	
 	//this is never used as a runtime but only as a construction lock
@@ -371,14 +371,14 @@ public class GraphManager {
    @Deprecated    
    static int[] getInputRingIdsForStage(GraphManager gm, int stageId) {
 
-       int[] ringIds = new int[INIT_RINGS];
+       int[] ringIds = new int[INIT_PIPES];
        int index = gm.stageIdToInputsBeginIdx[stageId];
 
        while(-1 != gm.multInputIds[index]) {
            ringIds[index] = gm.multInputIds[index++];
        }
 
-       for(; index < INIT_RINGS; ++index) {
+       for(; index < INIT_PIPES; ++index) {
            ringIds[index] = -1;
        }
 
@@ -721,6 +721,16 @@ public class GraphManager {
 		return result;
 	}
 	
+	private static int[] setValueGrow(int[] target, int idx) {		
+		int[] result = target;
+		if (idx>=target.length) {
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit, -1);
+		}	
+		return result;
+	}
+	
 	private static String stringWrap(Object obj) {
 		try {
 			return obj.toString();
@@ -738,6 +748,14 @@ public class GraphManager {
 		return (T[])result;
 	}	
 	
+	private static <T> T[] setValueGrow(T[] target, int idx) {		
+		T[] result = target;
+		if (idx>=target.length) {
+			result = Arrays.copyOf(target, (1+idx)*2); //double the array
+		}
+		return (T[])result;
+	}	
+	
 	private static byte[] setValue(byte[] target, int idx, final byte value) {
 		byte[] result = target;
 		if (idx>=target.length) {
@@ -747,6 +765,16 @@ public class GraphManager {
 		}
 		
 		result[idx] = value;
+		return result;
+	}
+	
+	private static byte[] setValueGrow(byte[] target, int idx) {
+		byte[] result = target;
+		if (idx>=target.length) {
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit, (byte)-1);
+		}
 		return result;
 	}
 		
@@ -789,6 +817,20 @@ public class GraphManager {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
 			
+			//grow if needed
+			int j = inputs.length;
+			if (j > 2) {
+				int maxId = 0;
+				while (--j>=0) {
+					if (null != inputs[j]) {
+						maxId = Math.max(maxId, inputs[j].id);
+					}
+				}
+				gm.ringIdToStages = setValueGrow(gm.ringIdToStages, (maxId*2)+1); //source +0 then target +1
+				gm.pipeIdToPipe = setValueGrow(gm.pipeIdToPipe, maxId);
+				gm.multInputIds = setValueGrow(gm.multInputIds, gm.topInput+inputs.length);
+			}
+			
 			int i=0;
 			int limit = inputs.length;
 			while (i<limit) {
@@ -799,6 +841,21 @@ public class GraphManager {
 					throw e;
 				}
 			}
+			
+			//grow if needed
+			j = outputs.length;
+			if (j>2) {
+				int maxId = 0;
+				while (--j>=0) {
+					if (null != outputs[j]) {
+						maxId = Math.max(maxId, outputs[j].id);
+					}
+				}
+				gm.ringIdToStages = setValueGrow(gm.ringIdToStages, (maxId*2)); //source +0 then target +1
+				gm.pipeIdToPipe = setValueGrow(gm.pipeIdToPipe, maxId);				
+				gm.multOutputIds = setValueGrow(gm.multOutputIds, gm.topOutput+outputs.length);
+			}
+			
 			
 			//loop over outputs
 			i = 0;
@@ -1011,8 +1068,24 @@ public class GraphManager {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
 			
+			
 			//loop over inputs
 			regInput(gm, input, stageId);
+			
+			//grow if needed
+			int j = outputs.length;
+			if (j>2) {
+				int maxId = 0;
+				while (--j>=0) {
+					if (null != outputs[j]) {
+						maxId = Math.max(maxId, outputs[j].id);
+					}
+				}
+				gm.ringIdToStages = setValueGrow(gm.ringIdToStages, (maxId*2)); //source +0 then target +1
+				gm.pipeIdToPipe = setValueGrow(gm.pipeIdToPipe, maxId);				
+				gm.multOutputIds = setValueGrow(gm.multOutputIds, gm.topOutput+outputs.length);
+			}
+			
 			
 			int i = 0;
 			int limit = outputs.length;
@@ -1026,6 +1099,7 @@ public class GraphManager {
 
 	public static void regOutput(GraphManager gm, Pipe[] outputs, int stageId, int x, Pipe localOutput) {
 		if(null!=localOutput) {
+					
 			//if this same pipe is already in the same output array this may be done for
 			//indexing of data to pipes but we only need to register the usage once
 			assert(outputs[x].id == localOutput.id);
@@ -1045,6 +1119,7 @@ public class GraphManager {
 	
 	public static void regInput(GraphManager gm, Pipe[] inputs, int stageId, int x, Pipe localInput) {
 		if(null!=localInput) {
+			
 			//eliminate duplicates
 			assert(inputs[x].id == localInput.id);
 			boolean alreadyReg = false;
@@ -1066,6 +1141,20 @@ public class GraphManager {
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
+			
+			//grow if needed
+			int j = inputs.length;
+			if (j > 2) {
+				int maxId = 0;
+				while (--j>=0) {
+					if (null != inputs[j]) {
+						maxId = Math.max(maxId, inputs[j].id);
+					}
+				}
+				gm.ringIdToStages = setValueGrow(gm.ringIdToStages, (maxId*2)+1); //source +0 then target +1
+				gm.pipeIdToPipe = setValueGrow(gm.pipeIdToPipe, maxId);
+				gm.multInputIds = setValueGrow(gm.multInputIds, gm.topInput+inputs.length);
+			}
 			
 			int i = 0;
 			int limit = inputs.length;

@@ -23,7 +23,8 @@ public class PipeMonitorStage extends PronghornStage {
 	private final GraphManager gm;
 	private static final Logger logger = LoggerFactory.getLogger(PipeMonitorStage.class);
 	private long dropped = 0;
-
+	private final Pipe[] mapPipeIdToObservedPipe;
+	
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
 	 * controlling the rate of samples
@@ -41,6 +42,18 @@ public class PipeMonitorStage extends PronghornStage {
 		assert(observedRingBuffer.length == notifyRingBuffer.length);
 		this.observedPipe = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
+		
+	    
+		//build this lookup to find which pipe is observed from the notification pipe lookup.
+		mapPipeIdToObservedPipe = new Pipe[Pipe.totalPipes()];
+		int i = notifyRingBuffer.length;
+		while (--i>=0) {
+			mapPipeIdToObservedPipe[ notifyRingBuffer[i].id ] = observedPipe[i];
+		}
+				
+		//this should not be so large...		
+		//logger.info("\ntelemetry is watching {} pipes",notifyRingBuffer.length);		
+		
 		
 		this.gm = gm;
 		this.setNotaFlag(PronghornStage.FLAG_MONITOR);
@@ -63,10 +76,13 @@ public class PipeMonitorStage extends PronghornStage {
 		}
 	}
 
+	private final static int SAMP_SIZE = Pipe.sizeOf(PipeMonitorSchema.instance, MSG_RINGSTATSAMPLE_100);
+	
 	private void monitorSinglePipe(Pipe<PipeMonitorSchema> output, Pipe<?> localObserved) {
 
 		//if we can't write then do it again on the next cycle, and skip this data point.
-		if (Pipe.hasRoomForWrite(output)) {
+		
+		if (Pipe.hasRoomForWrite(output,SAMP_SIZE)) {
 									
 			final int size = Pipe.addMsgIdx(output, MSG_RINGSTATSAMPLE_100);
 	
@@ -92,14 +108,8 @@ public class PipeMonitorStage extends PronghornStage {
 		}
 	}
 
-	public Pipe<?> getObservedPipeForOutputId(int id) {
-		int i = notifyRingBuffer.length;
-		while (--i>=0) {
-			if (id == notifyRingBuffer[i].id) {
-				return observedPipe[i];
-			}
-		}
-		throw new UnsupportedOperationException();
+	public Pipe<?> getObservedPipeForOutputId(int id) {		
+		return mapPipeIdToObservedPipe[id];
 	}
 
 }

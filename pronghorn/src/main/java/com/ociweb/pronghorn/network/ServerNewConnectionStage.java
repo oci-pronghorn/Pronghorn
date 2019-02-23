@@ -422,7 +422,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 			              channel.configureBlocking(false);
 			    			            
 			              //TCP_NODELAY is required for HTTP/2 get used to it being on now.
+			              //channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
 			              channel.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE); //NOTE: may need to turn off for high volume..  
+			                 
+			              
 			              channel.socket().setPerformancePreferences(0,1,2);//(1, 0, 2);			        	              
 
 			           	  //by design we set this in both places

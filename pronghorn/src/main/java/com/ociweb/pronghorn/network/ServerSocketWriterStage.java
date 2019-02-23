@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.PipeWorkWatcher;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 /**
@@ -61,7 +62,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private final int debugMaxBlockSize = 7;//50000;
 	
 	private GraphManager graphManager;
-	
+	    
+    private final PipeWorkWatcher pww = new PipeWorkWatcher();
+    
+      
     
     /**
      * 
@@ -103,6 +107,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()/2, this);
         }
 
+               
     }
     
     
@@ -144,7 +149,10 @@ public class ServerSocketWriterStage extends PronghornStage {
     	activeTails = new long[c];
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
-    	Arrays.fill(activeTails, -1);   	
+    	Arrays.fill(activeTails, -1); 
+
+        //TODO: disable this feature when inputs are very small...
+        pww.init(input);
     }
     
     @Override
@@ -156,42 +164,62 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
     	
-    	boolean didWork = false;
-    	boolean doingWork = false;
-    	int iteration = 0;
-    	do {
-    		iteration++;
-    		doingWork = false;
-	    	int x = input.length;
-	    	while (--x>=0) {	    		
-	    		//ensure all writes are complete
-	    		if (null == writeToChannel[x]) {	    	
-	    			
-					//second check for full content is critical or the data gets copied too soon
-					if (Pipe.isEmpty(input[x])   //Pipe.workingHeadPosition(input[x])==Pipe.getWorkingTailPosition(input[x]) 
-							|| !Pipe.hasContentToRead(input[x])) {    				
-						//no content to read on the pipe
-						//all the old data has been written so the writeChannel remains null
-						continue;
-					} else {
+    	if (pww.hasWork()) {
+	    	int g = pww.groups;
+			while (--g >= 0) {
+			
+				if (PipeWorkWatcher.scan(pww, g)) {
+					   				
+					int start = PipeWorkWatcher.getStartIdx(pww, g);
+					int limit = PipeWorkWatcher.getLimitIdx(pww, g);
 					
-						processMessage(Pipe.takeMsgIdx(input[x]), x);
-						doingWork = true;
-						
+					for(int x = start; x<limit; x++) {
+					
+							//only process if scan marks it as needed
+							if (PipeWorkWatcher.hasWork(pww, x)) {
+										
+						    	boolean doingWork = false;
+						    	int iteration = 0;
+						    				    	    		
+					    		//ensure all writes are complete
+					    		if (null == writeToChannel[x]) {	    	
+					    			
+									//second check for full content is critical or the data gets copied too soon
+									Pipe<NetPayloadSchema> pipe = input[x];
+									if (!Pipe.hasContentToRead(pipe)) {    				
+										//no content to read on the pipe
+										//all the old data has been written so the writeChannel remains null
+										continue;
+									} else {
+									
+										processMessage(Pipe.takeMsgIdx(pipe), x);
+										doingWork = true;
+															
+									}
+					    		} else {	    
+					    			doingWork = publishDataFromLastPass(doingWork, iteration, x);	    			
+					    		}
+						    	
+						    	
+								//we have no pipes to monitor so this must be done explicitly
+							    if (doingWork && (null != this.didWorkMonitor)) {
+							    	this.didWorkMonitor.published();
+							    }
+							    
+								//only set if we do not have any waiting data..
+								if (null == writeToChannel[x]) { 
+									//only clear when this data is published.
+									PipeWorkWatcher.setTailPos(pww, x, g, Pipe.getWorkingTailPosition(input[x])); //TODO:pass this in?
+								}
+							
+							
+						}
 						
 					}
-	    		} else {	    
-	    			doingWork = publishDataFromLastPass(doingWork, iteration, x);	    			
-	    		}
-	    	}	    		    	
-	    	didWork |= doingWork;
-    	} while (doingWork);
-    	
-		//we have no pipes to monitor so this must be done explicitly
-	    if (didWork && (null != this.didWorkMonitor)) {
-	    	this.didWorkMonitor.published();
-	    }
-
+	
+				}
+			}
+    	}
     }
 
 
@@ -328,9 +356,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 	
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
-    	//TODO: we are here 28% of the write time!!
-
-    	
     	final int msgSize = Pipe.sizeOf(input[idx], msgIdx);
     	
         Pipe<NetPayloadSchema> pipe = input[idx];
@@ -398,36 +423,83 @@ public class ServerSocketWriterStage extends PronghornStage {
 
 	private void prepBuffer(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
 			long channelId, int meta, int len) {
-		checkBuffers(idx, pipe, writeToChannel[idx]);
-		ByteBuffer directBuffer = workingBuffers[idx];
+		
 		
 		ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		
-				
-//		try {//try immediate write first then store if we must
-//
-//			//TODO: try locking on socket?
-//			long wroteLen = writeToChannel[idx].write(writeBuffs);
-//			if (wroteLen==len) {
-//				//all wrote so clear
-//				markDoneAndRelease(idx);
-//				Pipe.confirmLowLevelRead(pipe, msgSize);		        
-//				Pipe.releaseReadLock(pipe);
-//				return;
+		//only write if we do not think there is anything to "roll up"
+//		if ((!Pipe.hasContentToRead(pipe))
+//			|| 	Pipe.peekLong(pipe, 1)!=channelId
+//			||  Pipe.peekInt(pipe)!=msgIdx			
+//				) {
+
+			
+//			try {
+//				Selector s = Selector.open();
+//				//s.provider().openServerSocketChannel().socket().
 //				
+//				SelectionKey reg = writeToChannel[idx].register(s, SelectionKey.OP_WRITE);
+//				
+//				if (s.selectNow()>=0) {	//hacktest here.
+
+            
+//            //need to use this in 10 
+//			try {
+//				writeToChannel[idx].setOption(ExtendedSocketOptions.TCP_QUICKACK, Boolean.TRUE);
+//			} catch (IOException e1) {
+//				// TODO Auto-generated catch block
+//				e1.printStackTrace();
+//			}	
+			
+			//////////////////////////////
+					try {//try immediate write first then store if we must
+						if (writeToChannel[idx].write(writeBuffs,0,2)==len) {
+							
+							//all wrote so clear
+							markDoneAndRelease(idx);
+							Pipe.confirmLowLevelRead(pipe, msgSize);		        
+							Pipe.releaseReadLock(pipe);
+							return;
+							
+						}			
+					} catch (IOException e) {
+						//ignore we will try again after the wait.
+						logger.trace("error attempting to write",e);
+					}
+			///////////////////////////
+					
+//					s.selectedKeys().removeAll(s.selectedKeys());
+//					
+//					s.close();
+//				}
+//				
+////				
+//			} catch (IOException e1) {
+//				// TODO Auto-generated catch block
+//				e1.printStackTrace();
 //			}
 //			
-//		} catch (IOException e) {
-//			throw new RuntimeException(e);//TODO: fix
-//		}
-//		System.out.println("did not write on first try");
-		
 			
+			
+//		}
+		
+		//only need buffer after this point so only do this work here so it happens less often
+		if (bufferChecked[idx]) {
+		} else {
+			buildBuffers(idx, pipe, writeToChannel[idx]);
+		}
+
+		rollUpOrSlowPath(msgIdx, idx, msgSize, pipe, channelId, writeBuffs);
+	}
+
+
+	private void rollUpOrSlowPath(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
+			long channelId, ByteBuffer[] writeBuffs) {
+		ByteBuffer directBuffer = workingBuffers[idx];
 		((Buffer)directBuffer).clear();
 		directBuffer.put(writeBuffs[0]);
 		directBuffer.put(writeBuffs[1]);
-		
-		
+				
 		assert(!writeBuffs[0].hasRemaining());
 		assert(!writeBuffs[1].hasRemaining());
 				       		        
@@ -544,25 +616,23 @@ public class ServerSocketWriterStage extends PronghornStage {
 	
 	}
     
-	private void checkBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
-		if (!bufferChecked[i]) {
-			try {
-				
-				int minBufSize = Math.max(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing, 
-						         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
-									
-				if (null==workingBuffers[i] || workingBuffers[i].capacity()<minBufSize) {
-					workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
-				}
-				bufferChecked[i] = true;
-			} catch (ClosedChannelException cce) {
-				if (null==workingBuffers[i]) {
-					workingBuffers[i] = ByteBuffer.allocateDirect(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing);
-				}
-				bufferChecked[i] = true;
-			} catch (IOException e) {
-				throw new RuntimeException(e);
+	private void buildBuffers(int i, Pipe<NetPayloadSchema> pipe, SocketChannel socketChannel) {
+		try {
+			
+			int minBufSize = Math.max(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing, 
+					         socketChannel.getOption(StandardSocketOptions.SO_SNDBUF));
+								
+			if (null==workingBuffers[i] || workingBuffers[i].capacity()<minBufSize) {
+				workingBuffers[i] = ByteBuffer.allocateDirect(minBufSize);
 			}
+			bufferChecked[i] = true;
+		} catch (ClosedChannelException cce) {
+			if (null==workingBuffers[i]) {
+				workingBuffers[i] = ByteBuffer.allocateDirect(workingBuffers.length>8 ? pipe.maxVarLen*4 : pipe.sizeOfBlobRing);
+			}
+			bufferChecked[i] = true;
+		} catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -684,9 +754,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     }
 
     private void markDoneAndRelease(int idx) {
-       
-    	//System.err.println("done with connection");
-    	((Buffer)workingBuffers[idx]).clear();
     	
     	writeToChannel[idx]=null;
         int sequenceNo = 0;//not available here

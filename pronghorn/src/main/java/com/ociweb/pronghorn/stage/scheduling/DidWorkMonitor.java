@@ -27,8 +27,12 @@ public class DidWorkMonitor extends PipePublishListener {
 		that.runningThread = Thread.currentThread();
 	}
 
-	@Override
 	public void published() {
+		didWork = true;
+	}
+	
+	@Override
+	public void published(long workingHeadPos) {
 		didWork = true;
 	}
 

@@ -22,6 +22,7 @@ import com.ociweb.pronghorn.util.AppendableByteWriter;
  */
 public class PipeMonitorCollectorStage extends PronghornStage {
 
+	private static final int MAX_BATCH = 128;
 	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
 	private final Pipe<PipeMonitorSchema>[] inputs;
 
@@ -59,7 +60,7 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		this.inputs = inputs;
 		this.graphManager = graphManager;
 		
-		this.batchSize = inputs.length>=64?64:inputs.length;
+		this.batchSize = Math.min(MAX_BATCH, inputs.length);
 		
 		validateSchema(inputs);
 		this.setNotaFlag(PronghornStage.FLAG_MONITOR);
@@ -89,29 +90,35 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 				
 		position = inputs.length;
 		
-		observedPipeId = new int[inputs.length];
-		Arrays.fill(observedPipeId, -1);
 		
 		lastFragments = new long[inputs.length];
-		lastTime      = new long[inputs.length];
+		lastTime      = new long[inputs.length];		
 		
 		
+		buildObservedPipeLookup();
+		
+		
+	}
+
+	private void buildObservedPipeLookup() {
+
 		////////////////////////////
 		//What pipe is this input monitoring??
 		///////////////////////////
-		
+		observedPipeId = new int[inputs.length];
+		Arrays.fill(observedPipeId, -1);
 		int j = inputs.length;
 		while (--j>=0) {
-			int monitorDataPipe = inputs[j].id;
-			PronghornStage producer = GraphManager.getStage(graphManager, GraphManager.getRingProducerStageId(graphManager, monitorDataPipe));
+			int monitorDataPipeId = inputs[j].id;
+			PronghornStage producer = GraphManager.getStage(graphManager, GraphManager.getRingProducerStageId(graphManager, monitorDataPipeId));
             if (producer instanceof PipeMonitorStage) {            	            	
             	PipeMonitorStage p = (PipeMonitorStage)producer;
-            	observedPipeId[j] = p.getObservedPipeForOutputId(monitorDataPipe).id;
+            	
+            	observedPipeId[j] = p.getObservedPipeForOutputId(monitorDataPipeId).id;
             	
             }
             
 		}
-		
 		
 	}
 		
@@ -171,51 +178,53 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 		/////////////////////
 		//to minimize monitoring work we only use the last value after reading all the data
 		/////////////////////		
-		if (fragments>=0) {
-		
-			if (msgSkipped>100 && --reportSlowSpeed>0) {			
-				logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
-				//this should not happen unless the system is overloaded and scheduler needs to be updated.			
-			}
-			
-			int pctFull = (int)((10000*(head-tail))/ringSize);
-			
-			//NOTE: this is a test to see if we can avoid this avg step.. This seems to slow down reaction greatly...
-			pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>>MA_BITS));
-			
-			//////////////////////////
-			//////////compute the messages per second
-			/////////////////////////
-			if (lastTime[pos]!=0) {
-				long period = time-lastTime[pos];
-				if (period>0) {
-					long messages = fragments-lastFragments[pos];
-					//NOTE: extra 3 zeros of accuracy.
-					long msgPerSecond = (1000_000L*messages)/period;
-					//note this may be incorrect if telemetry falls behind.
-							
-					messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>>MA_BITS);
-				}
-				//System.err.println(messagesPerSecond[pos]);
-				
-			}
-			lastTime[pos] = time;
-			lastFragments[pos] = fragments;
-			//////////////////////////////////
-						
-			/////////////////////////////////////
-			///////////////// record the data for external use
-			/////////////////////////////////////
-			int pipeId = observedPipeId[pos];
-			trafficValues[pipeId] = fragments; 
+		if (fragments>=0) {		
+			processCapturedData(pos, pctFullAvg, messagesPerSecond, fragments, head, tail, ringSize, msgSkipped, time);
+		}
+	}
 
-			messagesPerSecondValues[pipeId] = messagesPerSecond[pos];
-			int temp = pctFullAvg[pos]/100;//only use zero if it really is zero else round up 
-			percentileFullValues[pipeId] = temp!=0?temp:(pctFullAvg[pos]==0?0:1);
-			
-			
+	private void processCapturedData(int pos, short[] pctFullAvg, int[] messagesPerSecond, long fragments, long head,
+			long tail, int ringSize, int msgSkipped, long time) {
+		
+		if (msgSkipped>100 && --reportSlowSpeed>0) {			
+			logger.warn("warning {} samples skipped, telemery read is not keeping up with data", msgSkipped);			
+			//this should not happen unless the system is overloaded and scheduler needs to be updated.			
+		}
+		
+		int pctFull = (int)((10000*(head-tail))/ringSize);
+		
+		//NOTE: this is a test to see if we can avoid this avg step.. This seems to slow down reaction greatly...
+		pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>>MA_BITS));
+		
+		//////////////////////////
+		//////////compute the messages per second
+		/////////////////////////
+		if (lastTime[pos]!=0) {
+			long period = time-lastTime[pos];
+			if (period>0) {
+				long messages = fragments-lastFragments[pos];
+				//NOTE: extra 3 zeros of accuracy.
+				long msgPerSecond = (1000_000L*messages)/period;
+				//note this may be incorrect if telemetry falls behind.
+						
+				messagesPerSecond[pos] = (int)(((MA_MULTI*messagesPerSecond[pos])+msgPerSecond)>>>MA_BITS);
+			}
+			//System.err.println(messagesPerSecond[pos]);
 			
 		}
+		lastTime[pos] = time;
+		lastFragments[pos] = fragments;
+		//////////////////////////////////
+					
+		/////////////////////////////////////
+		///////////////// record the data for external use
+		/////////////////////////////////////
+		int pipeId = observedPipeId[pos];
+		trafficValues[pipeId] = fragments; 
+
+		messagesPerSecondValues[pipeId] = messagesPerSecond[pos];
+		int temp = pctFullAvg[pos]/100;//only use zero if it really is zero else round up 
+		percentileFullValues[pipeId] = temp!=0?temp:(pctFullAvg[pos]==0?0:1);
 	}
 
 	@Override

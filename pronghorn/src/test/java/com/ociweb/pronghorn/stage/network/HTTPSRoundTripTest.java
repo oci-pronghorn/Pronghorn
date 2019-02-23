@@ -45,7 +45,7 @@ public class HTTPSRoundTripTest {
     	int clientRequestSize = SSLUtil.MinTLSBlock;
     	final TLSCertificates tlsCertificates = TLSCerts.define();
     	String bindHost = "127.0.0.1";
-    	int port        = 8199;
+    	int port = (int) (3000 + (System.nanoTime()%12000));
     	int processors  = 1;
     	String testFile = "groovySum.json";
     	int messagesToOrderingSuper = 1<<12;
@@ -117,7 +117,7 @@ public class HTTPSRoundTripTest {
     	int clientRequestCount = 4;
     	int clientRequestSize = SSLUtil.MinTLSBlock;
     	String bindHost = "127.0.0.1";
-    	int port        = 8197;
+    	int port = (int) (3000 + (System.nanoTime()%12000));
     	int processors  = 1;
     	String testFile = "groovySum.json";
     	int messagesToOrderingSuper = 1<<12;
@@ -187,7 +187,7 @@ public class HTTPSRoundTripTest {
     	int clientRequestCount = 4;
     	int clientRequestSize = SSLUtil.MinTLSBlock;
     	String bindHost = "127.0.0.1";
-    	int port        = 8198;
+    	int port = (int) (3000 + (System.nanoTime()%12000));
     	int processors  = 1;
     	String testFile = "groovySum.json"; // contains: {"x":9,"y":17,"groovySum":26}
     	int messagesToOrderingSuper = 1<<12;

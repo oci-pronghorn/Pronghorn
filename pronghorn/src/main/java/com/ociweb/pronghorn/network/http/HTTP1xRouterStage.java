@@ -26,6 +26,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.struct.StructRegistry;
+import com.ociweb.pronghorn.util.PipeWorkWatcher;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -48,10 +49,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     //TODO: double check that this all works with ipv6.
     
+	private static final long lingerForBusinessConnections =     40_000_000L;
+	private static final long lingerForTemeletryConnections = 2_000_000_000L;
+	
 	private static final int NO_LENGTH_DEFINED = -2;
 	private static final int SIZE_OF_BEGIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208);
 	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private static final int MAX_URL_LENGTH = 4096;
+
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
 
     public static boolean showHeader = false; //set to true for debug to see headers in console.
@@ -109,6 +114,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	private boolean catchAll;
     private final int parallelId;
 
+    
+    private final PipeWorkWatcher pww = new PipeWorkWatcher();
+    
+    
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
@@ -183,6 +192,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 	}
 
+    
 	public HTTP1xRouterStage(GraphManager gm, 
 			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 
@@ -223,10 +233,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.supportsBatchedRelease = false;
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
-      
-        ///turned on while we debug why this is not pulling in all the data..
-    //    GraphManager.addNota(gm, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-    //    GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE,  10_000_000L, this);
+           
+ 
         
     }    
 	
@@ -272,8 +280,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             totalShortestRequest = 1;
         }        
         
+        pww.init(inputs);    
+        
     }    
-
+   
     @Override
     public void shutdown() {
         
@@ -301,32 +311,62 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
     @Override
     public void run() {
-
-    	    int i = inputs.length;
-	        while (--i>=0 ) {
-	        	int x;
-	            if ((x=singlePipe(this, i))>=0) {      
-	            	
-	            } else {
-	            	if (-1==x) {
-	            		return;//need to wait for full pipe to empty
-	            	} else {
-	            		assert(x==-2);
-		            	if (--shutdownCount<=0) {
-		            		requestShutdown();
-		            		return;
-		            	}
-	            	}
-	            }
-	            releaseIfNeeded(i);	            
-	      } 
+    
+    	if (pww.hasWork()) {
+    		int g = pww.groups;
+    		while (--g >= 0) {
+    			
+    			if (PipeWorkWatcher.scan(pww, g)) {
+    		
+    				int start = PipeWorkWatcher.getStartIdx(pww, g);
+    				int limit = PipeWorkWatcher.getLimitIdx(pww, g);
+    				
+    				
+    				for(int i = start; i<limit; i++) {
+    				
+    					if (PipeWorkWatcher.hasWork(pww, i)) {
+	    					int x=singlePipe(this, i);
+	        				if (x >= 0) {      
+	        					
+	        				} else {
+	        					if (-1==x) {
+	        						break;//need to wait for full pipe to empty
+	        					} else {
+	        						assert(x==-2);
+	        						if (--shutdownCount<=0) {
+	        							requestShutdown();
+	        							return;
+	        						}
+	        					}
+	        				}
+	        				
+	        				releaseIfNeeded(i);	      
+	    					   				
+	        				
+	        				//pending release so we do not consider pipes empty
+	        				if (this.releaseInputSlabPos[i]>=0) {
+	        					PipeWorkWatcher.setTailPos(pww, i, g, Pipe.getWorkingTailPosition(inputs[i])); //TODO:pass this in?
+	        			
+	    					}
+        				
+    					}
+        				
+    				}
+    				
+       			}
+    		}
+    	
+    	}
+    	
     }
 
     public void releaseIfNeeded(int idx) {
   
     	long pos = releaseInputSlabPos[idx];
     	if (pos>=0) {
-    		long limit = releaseTime[idx] + 20_000_000L; //only release after 1ms of non use.
+    		
+    		long limit = releaseTime[idx] 
+    				    + (isMonitor() ? lingerForTemeletryConnections : lingerForBusinessConnections); //only release after 20ms of non use.
     		if (Pipe.hasRoomForWrite(releasePipe) && System.nanoTime()>limit) {
     							
 					int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
@@ -342,12 +382,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		}
     	}
     }
+
+
     
-    
-    //return 0, 1 work, -1 noroom -2 shutdown.
     private static int singlePipe(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx) {
  		    	
 		        if (accumRunningBytes(that, idx, that.inputs[idx], that.inputChannels[idx]) >=0 ) {//message idx   
+		        	//return 0, 1 work, -1 noroom -2 shutdown.
 		        	if (that.inputLengths[idx]==0) {
 		        		return 0;
 		        	}		        	

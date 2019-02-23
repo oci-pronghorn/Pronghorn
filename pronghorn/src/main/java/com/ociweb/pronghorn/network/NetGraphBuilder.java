@@ -995,8 +995,7 @@ public class NetGraphBuilder {
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		
 		//TODO: the resource server can not span fragments, but all must be in one block.
-		//      also the DOT generator as the same limit, as a result this must be large for now..
-		final int outputPipeChunk = 1<<24;//some graph.dot files are very large..
+		//      as a result pipe var sizes must be large for now..
 		
 		ModuleConfig config = new ModuleConfig(){
 			PipeMonitorCollectorStage monitor;
@@ -1040,7 +1039,7 @@ public class NetGraphBuilder {
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes, 
 								staticFileOutputs = Pipe.buildPipes(instances, 
-										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+										 ServerResponseSchema.instance.newPipeConfig(2, 1<<22)), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTPRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/","index.html");						
 						break;
@@ -1052,7 +1051,7 @@ public class NetGraphBuilder {
 							activeStage = DotModuleStage.newInstance(graphManager, monitor,
 									inputPipes, 
 									staticFileOutputs = Pipe.buildPipes(instances, 
-											           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+										 ServerResponseSchema.instance.newPipeConfig(2, 1<<26)), 
 									((HTTPRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 2:
@@ -1085,7 +1084,7 @@ public class NetGraphBuilder {
 							activeStage = new FixedRestStage(graphManager, 
 									                          inputPipes, 
 									                          staticFileOutputs = Pipe.buildPipes(instances, 
-																           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunk)), 
+																           ServerResponseSchema.instance.newPipeConfig(2, 1<<21)), 
 									                          HTTPContentTypeDefaults.JSON.getBytes(), json);
 							
 							break;

@@ -80,13 +80,16 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		       (400*GraphManager.allPipes(graphManager).length);
 
 	}
+	
 
 	@Override
 	protected boolean payload(AppendableByteWriter<?> payload, 
 			                 GraphManager gm, 
 			                 ChannelReader params,
 			                 HTTPVerbDefaults verb) {
-	
+		
+		//TODO: we need a better way to support this..
+		
 		
 		//logger.info("begin building requested graph");
 		monitor.writeAsDot(gm, graphName, payload);

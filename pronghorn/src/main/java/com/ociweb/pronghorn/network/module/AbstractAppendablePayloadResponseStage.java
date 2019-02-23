@@ -172,6 +172,9 @@ public abstract class AbstractAppendablePayloadResponseStage <
 							//		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, output); 
 							//		        	}
 					}				
+					if (!Pipe.validateVarLength(output, outputStream.length())) {
+						throw new UnsupportedOperationException("dot file is too large: "+outputStream.length());
+					}
 					
 					HeaderWritable additionalHeaderWriter = null;
 					

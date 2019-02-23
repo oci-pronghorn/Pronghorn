@@ -30,6 +30,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     private long[] rates;
     private long[] lastRun;
     public PronghornStage[] stages;
+    public int[] stageSleepCount;
+    
     private long[] sla;
 	
     private final int defaultValue = 4_000; //Default for this scheduler
@@ -107,6 +109,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		                   boolean reverseOrder) {
 
         this.stages = stages;
+        this.stageSleepCount = new int[stages.length];
     	this.stateArray = GraphManager.stageStateArray(graphManager);    	
 
     	int groupId = threadGroupIdGen.incrementAndGet();
@@ -130,8 +133,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     	        
     	StringBuilder totalName = new StringBuilder();
     	
+    	boolean isMonitor = false;
     	for(int s = 0; s<stages.length; s++) {
     		PronghornStage pronghornStage = stages[s];
+    		
+    		isMonitor |= pronghornStage.isMonitor();    		
+    		
     		Appendables.appendValue(totalName, pronghornStage.stageId).append(":");
     		totalName.append(pronghornStage.getClass().getSimpleName()
     				 .replace("Stage","")
@@ -152,6 +159,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		if (s<stages.length-1) {
     			totalName.append(",");
     		}
+    	}
+    	if (isMonitor) {
+    		totalName.append(" internal");
     	}
     	name = totalName.toString();
 
@@ -666,7 +676,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 						
 						waitBeforeRun(that, System.nanoTime());
 		
-						scheduleIdx = that.runBlock(scheduleIdx, script, that.stages, 
+						scheduleIdx = that.runBlock(scheduleIdx, script,
 								GraphManager.isTelemetryEnabled(that.graphManager));
 		        }
 		
@@ -773,7 +783,12 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 
 	private void automaticLoadSwitchingDelay() {
 
+		//TODO: this compute of work or no work is WAY too slow for large pipe counts
+		//      hook this into the did work recorder in the cpu pct usage !!!
 		boolean isNormalCase = accumulateWorkHistory();
+		
+		//TODO: also skip rest of line of stages if first has no work!!!
+		
 						
 		int cyclesOfNoWorkBeforeSleep = 10_000_000; //do not sleep too soon, may cause issues..
 		
@@ -784,21 +799,25 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		if ( (noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
 			
 			if (isInDeepSleepMode) {
-				logger.info("waking up from deep sleep for :\n "+this.name());
+				//logger.trace("waking up from deep sleep for :\n "+this.name());
 			}
 			isInDeepSleepMode = false;
 			
 			long now = System.nanoTime();
 			long nowMS = now/1_000_000l;
 	
+			Thread.yield();	//lets another thread run but do not call often since it does not give back cpu
 			if (0!=(nowMS&7)) {// 1/8 of the time every 1 ms we take a break for task manager
-				long loopTop = -1;
-				while (totalRequiredSleep>1000) {//was 400
+				long loopTop = -1;				
+				while (totalRequiredSleep>1_000) {
 					loopTop = now;
-					if (totalRequiredSleep>20_000) { //was 500_000
-						LockSupport.parkNanos(totalRequiredSleep);				
+			
+					if (totalRequiredSleep>20_000) {
+						LockSupport.parkNanos(totalRequiredSleep);	
+						//TODO:try this hack...
+						//https://blog.hazelcast.com/locksupport-parknanos-under-the-hood-and-the-curious-case-of-parking/
 					} else {
-						Thread.yield();					
+						Thread.yield();
 					}
 					now = System.nanoTime();
 					long duration = now-loopTop;
@@ -809,9 +828,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				}
 				//System.out.println("loop "+x+" "+y);
 			} else {	
-				//let the task manager know we are not doing work.
-				LockSupport.parkNanos(totalRequiredSleep);
-				Thread.yield();
+				//just the time of the yield
 				
 				long duration = System.nanoTime()-now;
 				//System.err.println(totalRequiredSleep+" vs "+duration);
@@ -827,7 +844,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			//NOTE: what we have here is fine but later we will improve it.			
 			
 			if (!isInDeepSleepMode) {
-				logger.info("entering deep sleep for :\n "+this.name());
+				//logger.trace("entering deep sleep for :\n "+this.name());//+" isNormal: "+isNormalCase);
 			}
 			isInDeepSleepMode = true;
 			deepSleep(isNormalCase);
@@ -860,27 +877,21 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			noWorkCounter = 0;
 			return false;
 		} else {
-		
-			boolean hasData=false;
-			while (--p>=0) {		
-				//this does dirty checks so we must be sure no asserts are used
-				if (!Pipe.isEmpty(inputPipes[p])) {
-					hasData=true;
-					break;
+			//NOTE: for super long 100+ stages per script this may be slow but this will not be common.
+			int x = stageSleepCount.length;
+			int minSleepCount = Integer.MAX_VALUE;
+			while (--x >= 0) {
+				if (stageSleepCount[x] < minSleepCount ) {
+					minSleepCount = stageSleepCount[x];
 				}
 			}
-			if (hasData) {
-				noWorkCounter = 0;	
-			} else {			
-				noWorkCounter++;
-			}
+			noWorkCounter = minSleepCount;
 			return producersIdx.length==0;
 		}
 		
 	}
 	
-	private int runBlock(int scheduleIdx, int[] script, 
-			             PronghornStage[] stages,
+	private int runBlock(int scheduleIdx, int[] script,
 			             final boolean recordTime) {
 			
 		final long startNow = System.nanoTime();
@@ -905,8 +916,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	
 			shutDownRequestedHere |= runStage(recordTime, 
 					didWorkMonitor, 
-			        inProgressIdx, SLAStart, start,
-			        stages[inProgressIdx]);		
+			        inProgressIdx, SLAStart, start
+			        );		
 			
 		}
 
@@ -941,8 +952,9 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 	private boolean runStage(final boolean recordTime,
 			final DidWorkMonitor localDidWork, 
 			int inProgressIdx, long SLAStart,
-			long start, final PronghornStage stage) {
+			long start) {
 		
+		final PronghornStage stage = stages[inProgressIdx];
         //////////these two are for hang detection
 		runningStage = stage;	
 		timeStartedRunningStage = start;
@@ -967,11 +979,13 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			shutDownRequestedHere = runStageImpl(this, stage);	
 //		}
 		if (!DidWorkMonitor.didWork(localDidWork)) {
-			GraphManager.recordNoWorkDone(graphManager,stage.stageId);			
+			GraphManager.recordNoWorkDone(graphManager,stage.stageId);	
+			stageSleepCount[inProgressIdx]++;			
 		} else {
 			ScriptedNonThreadScheduler.recordRunResults(
 					         this, recordTime, 
 					         inProgressIdx, start, SLAStart, stage);
+			stageSleepCount[inProgressIdx] = 0;			
 		}
 		return shutDownRequestedHere;
 	}
@@ -1046,8 +1060,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 			if (0== (0x3 & that.msgConsumerTrigger++)) {
 				int c = GraphManager.getInputPipeCount(that.graphManager, stage.stageId);
 				for(int i = 1; i<=c ;i++) {
-					Pipe<?> pipe = GraphManager.getInputPipe(that.graphManager, stage.stageId, i);
-					pipe.markConsumerPassDone();
+					Pipe.markConsumerPassDone(GraphManager.getInputPipe(that.graphManager, stage.stageId, i));
 				}	
 			}
 			

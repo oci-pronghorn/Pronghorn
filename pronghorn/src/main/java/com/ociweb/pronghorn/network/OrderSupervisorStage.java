@@ -601,6 +601,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 /////////////////////////
 		 DataOutputBlobWriter<NetPayloadSchema> outputStream = Pipe.outputStream(output);
 		 DataOutputBlobWriter.openField(outputStream);
+		 //TODO: if last publish could not happen must stop this next one..
 		 /////////////////////////
 		
 		 

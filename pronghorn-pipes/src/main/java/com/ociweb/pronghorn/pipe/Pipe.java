@@ -4379,7 +4379,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    	notifyPubListener(pipe.pubListeners);
+    	notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
        	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
@@ -4412,7 +4412,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @return int total count of bytes consumed by this fragment including optional count.
 	 */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
-    	notifyPubListener(pipe.pubListeners);
+    	notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//add a few extra bytes on the end of the blob so we can "hide" information between fragments.
     	assert(optionalHiddenTrailingBytes>=0) : "only zero or positive values supported";
@@ -4435,14 +4435,15 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe Pipe observed pipe
      */
 	public static <S extends MessageSchema<S>> void notifyPubListener(Pipe<S> pipe) {
-		notifyPubListener(pipe.pubListeners);
+		notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
 	
 	}
 
-	private static void notifyPubListener(PipePublishListener[] listeners) {
+	private static void notifyPubListener(long workingHeadPos, PipePublishListener[] listeners) {
+			
 		int i = listeners.length;	
     	while (--i>=0) {
-    		listeners[i].published();
+    		listeners[i].published(workingHeadPos);
     	}
 	}
     
@@ -4898,12 +4899,6 @@ public class Pipe<T extends MessageSchema<T>> {
 	//low level API
 	////////////
 
-
-	@Deprecated
-	public static <S extends MessageSchema<S>> boolean roomToLowLevelWrite(Pipe<S> pipe, int size) {
-		return hasRoomForWrite(pipe, size);
-	}
-
 	
 	/**
 	 * Checks if outgoing pipe has room for low level fragment write of the given size.
@@ -4948,8 +4943,7 @@ public class Pipe<T extends MessageSchema<T>> {
         assert(null != pipe.llRead) : "Expected pipe to be setup for low level use.";
         assert(Pipe.singleThreadPerPipeWrite(pipe.id));
        
-        long temp = pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));
-		return roomToLowLevelWrite(pipe, temp);
+        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
     }    
     
 	private static <S extends MessageSchema<S>> boolean roomToLowLevelWrite(Pipe<S> pipe, long target) {
@@ -5427,12 +5421,12 @@ public class Pipe<T extends MessageSchema<T>> {
 		return result;
 	}
 
-	public void markConsumerPassDone() {
+	public static void markConsumerPassDone(Pipe<?> target) {
 		
-		long thisPass = totalWrittenFragments-lastFragmentCount;
+		long thisPass = target.totalWrittenFragments-target.lastFragmentCount;
 		if (thisPass>0) {
-			RunningStdDev.sample(fragsPerPass, thisPass);
-			lastFragmentCount = totalWrittenFragments;
+			RunningStdDev.sample(target.fragsPerPass, thisPass);
+			target.lastFragmentCount = target.totalWrittenFragments;
 		}
 	}
 

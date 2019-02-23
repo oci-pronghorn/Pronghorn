@@ -1,6 +1,8 @@
 package com.ociweb.pronghorn.util;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
@@ -17,18 +19,27 @@ public class PipeWorkWatcher {
     private int step;
     private int length;
     
-    private boolean[] scan;
-    private boolean[] isDirty;
+    private AtomicBoolean[] scan;
+
+    private AtomicInteger workFlags = new AtomicInteger();
     
     public PipeWorkWatcher() {
     }
     
+    public boolean hasWork() {
+    	return 0!=workFlags.get();
+    }
+    
 	public void init(Pipe[] inputs) {
 		
-		if (inputs.length >= 32) {
-			groupBits = 4;
+		if (inputs.length >= 1024) {
+			   groupBits = 8; 
 		} else {
-			groupBits = 0;
+			if (inputs.length >= 64 ) {
+			   groupBits = 4; 
+			} else {
+			   groupBits = 0;
+			}
 		}
 		
 		groups = 1<<groupBits;
@@ -40,8 +51,12 @@ public class PipeWorkWatcher {
 		
 		headPos = new long[length];
 		
-		scan = new boolean[groups];
-		isDirty = new boolean[groups];
+		scan = new AtomicBoolean[groups];
+		int j = groups;
+		while (--j>=0) {
+			scan[j] = new AtomicBoolean();
+		}
+		
 		
         int i = inputs.length;
         step = Math.max((int)Math.ceil(1f/(float)groups),i);
@@ -57,8 +72,9 @@ public class PipeWorkWatcher {
 	    		public void published(long workingHeadPosition) {		    			
 	    			headPos[h]=workingHeadPosition;//as long as this number has not moved we have no work.		    			
 	    			if (workingHeadPosition>tailPos[h]) {
-	    				scan[g] = true;
-	    				isDirty[g] = true;
+	    				scan[g].set(true);
+	    			
+	    				workFlags.set(workFlags.get()| (1<<g));
 	    			}
 	    		}
 	        };
@@ -79,29 +95,39 @@ public class PipeWorkWatcher {
 		
 	public static void setTailPos(PipeWorkWatcher pww, int i, int g, long tailPos) {
 		pww.tailPos[i] = tailPos;	
-		pww.isDirty[g] = true;
+		
 	}
 	
 
 	public static boolean scan(PipeWorkWatcher pww, int g) {
 		
-		if (!pww.scan[g] || !pww.isDirty[g]) {
-			return pww.scan[g];
+		boolean b = pww.scan[g].get(); 
+		if (!b) {
+			return b;
 		} else {
 			
 			int s = getStartIdx(pww, g);
 			int l = getLimitIdx(pww, g);
 			boolean doScan = false;
 			for(int i = s; i<l; i++) {
-				if (pww.headPos[i] > pww.tailPos[i]+1) {
+				if (hasWork(pww, i)) {
 					doScan=true;
 					break;
 				}
 			}
-			pww.isDirty[g] = false;
-			pww.scan[g] = doScan;
+			
+			pww.scan[g].set(doScan);
+			
+			if (!doScan) {
+				pww.workFlags.set(pww.workFlags.get()&(~(1<<g)));
+			}
+			
 			return doScan;
 		} 
+	}
+
+	public static boolean hasWork(PipeWorkWatcher pww, int i) {
+		return pww.headPos[i] > pww.tailPos[i]+1;
 	}
     
     

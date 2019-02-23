@@ -95,7 +95,8 @@ public class ServerPipesConfig {
 		////////
 		
 	    //Need more writers than readers, the OS assumes many threads respond but few read.
-	    this.serverSocketWriters = 2*Math.max(1,NetGraphBuilder.computeGroupsFromTracks(moduleParallelism, isTLS));
+	    int mult = 2;//TODO: why is this causing so much CPU usage???
+	    this.serverSocketWriters = mult*Math.max(1,NetGraphBuilder.computeGroupsFromTracks(moduleParallelism, isTLS));
 
 	    //defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
