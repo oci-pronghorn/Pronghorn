@@ -42,7 +42,7 @@ public class WebCookbook  {
 				
 		GraphManager gm = new GraphManager();		
 		populateGraph(gm, host, port, filesPath);		
-		gm.enableTelemetry(8089);		
+		//gm.enableTelemetry(8089);		
 		StageScheduler.defaultScheduler(gm).startup();
 		
 	}

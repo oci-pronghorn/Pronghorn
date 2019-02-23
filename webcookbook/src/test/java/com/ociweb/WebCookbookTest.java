@@ -19,12 +19,12 @@ public class WebCookbookTest {
 
 	@Test
 	public void makeCallsTest() {
-
+		int fieldPort = (int) (3000 + (System.nanoTime()%12000));
 		GraphManager.showThreadIdOnTelemetry = true;
 		
 	    ClientCoordinator.registerDomain("127.0.0.1");	
 	    
-		WebCookbook.main(new String[] {"-h", "127.0.0.1", "-p", "8899"});
+		WebCookbook.main(new String[] {"-h", "127.0.0.1", "-p", String.valueOf(fieldPort)});
 		
 		GraphManager gm = new GraphManager();
 				
@@ -55,9 +55,10 @@ public class WebCookbookTest {
 		clientRequests[0].initBuffers();
 		
 		//these are the test requests
+	
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				1, //sessionId, which instance of this domain is it
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"), 
 				-1L,
 				0, //pipe destination for the response
@@ -66,7 +67,7 @@ public class WebCookbookTest {
 		
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				1, //sessionId, which instance of this domain is it
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"),
 				-1L,
 				0, //pipe destination for the response
@@ -76,7 +77,7 @@ public class WebCookbookTest {
 		//this is the last call which will have the second session id 		
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				1, //sessionId, which instance of this domain is it
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"),
 				-1L,
 				0, //pipe destination for the response
@@ -85,7 +86,7 @@ public class WebCookbookTest {
 		
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				2, //sessionId, use different connection in parallel to the other requests
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"),
 				-1L, 
 				0, //pipe destination for the response
@@ -94,7 +95,7 @@ public class WebCookbookTest {
 		
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				3, //sessionId, use different connection in parallel to the other requests
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"),
 				-1L,
 				0, //pipe destination for the response
@@ -103,7 +104,7 @@ public class WebCookbookTest {
 		
 		ClientHTTPRequestSchema.publishGET(clientRequests[0], 
 				3, //sessionId, use different connection in parallel to the other requests
-				8899, 
+				fieldPort, 
 				ClientCoordinator.registerDomain("127.0.0.1"),
 				-1L,
 				0, //pipe destination for the response
