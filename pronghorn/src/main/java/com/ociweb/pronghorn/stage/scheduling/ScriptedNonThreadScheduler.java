@@ -109,7 +109,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		                   boolean reverseOrder) {
 
         this.stages = stages;
-        this.stageSleepCount = new int[stages.length];
     	this.stateArray = GraphManager.stageStateArray(graphManager);    	
 
     	int groupId = threadGroupIdGen.incrementAndGet();
@@ -122,6 +121,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     		//skipScript = new int[0];
     		return;
     	}
+    	this.stageSleepCount = new int[stages.length];
     	
     	this.sla = new long[stages.length];
     	int j = stages.length;

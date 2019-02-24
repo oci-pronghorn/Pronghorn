@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipePublishListener;
@@ -14,20 +15,19 @@ public class PipeWorkWatcher {
 	private int groupMask;	
 
 	public  long[] tailPos;
-    private long[] headPos;
     
     private int step;
     private int length;
     
+    private AtomicLong[] headPos;
     private AtomicBoolean[] scan;
-
     private AtomicInteger workFlags = new AtomicInteger();
     
     public PipeWorkWatcher() {
     }
     
     public boolean hasWork() {
-    	return 0!=workFlags.get();
+    	return 0 != workFlags.get();
     }
     
 	public void init(Pipe[] inputs) {
@@ -49,7 +49,7 @@ public class PipeWorkWatcher {
 		tailPos = new long[length];
 		Arrays.fill(tailPos, -1);
 		
-		headPos = new long[length];
+		
 		
 		scan = new AtomicBoolean[groups];
 		int j = groups;
@@ -58,22 +58,23 @@ public class PipeWorkWatcher {
 		}
 		
 		
+		headPos = new AtomicLong[length];
         int i = inputs.length;
         step = Math.max((int)Math.ceil(1f/(float)groups),i);
         while (--i >= 0) {
-        	tailPos[i] = -1;
-        	headPos[i] = -1;   
-        	
+        	headPos[i] = new AtomicLong();        	
+        	tailPos[i] = -1;        	
         	
         	final int h = i;
         	final int g = i/step;
         	PipePublishListener listener = new PipePublishListener() {
 	    		@Override
 	    		public void published(long workingHeadPosition) {		    			
-	    			headPos[h]=workingHeadPosition;//as long as this number has not moved we have no work.		    			
-	    			if (workingHeadPosition>tailPos[h]) {
-	    				scan[g].set(true);
 	    			
+	    			headPos[h].set(workingHeadPosition);//as long as this number has not moved we have no work.	
+	    			
+	    			if (workingHeadPosition>tailPos[h]) {
+	    				scan[g].set(true);	    			
 	    				workFlags.set(workFlags.get()| (1<<g));
 	    			}
 	    		}
@@ -110,7 +111,7 @@ public class PipeWorkWatcher {
 			int l = getLimitIdx(pww, g);
 			boolean doScan = false;
 			for(int i = s; i<l; i++) {
-				if (hasWork(pww, i)) {
+				if (pww.headPos[i].get() > pww.tailPos[i]) {
 					doScan=true;
 					break;
 				}
@@ -126,10 +127,5 @@ public class PipeWorkWatcher {
 		} 
 	}
 
-	public static boolean hasWork(PipeWorkWatcher pww, int i) {
-		return pww.headPos[i] > pww.tailPos[i]+1;
-	}
-    
-    
     
 }

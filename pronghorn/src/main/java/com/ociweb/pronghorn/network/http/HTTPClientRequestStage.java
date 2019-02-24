@@ -312,45 +312,52 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			if (ccm.isTLS) {	
 					
-				//If this connection needs to complete a handshake first then do that and do not send the request content yet.
-				//ALL the conent will be held here until the connection and its handshake is complete
-				//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
-				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (needsToShake(handshakeStatus)) {					
-					
-					
-					if (++blockedCycles >= CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
-						//if this is new connection but it is not hand shaking as expected 
-						//then we will drop the connection and try again.
-						long usageCount = ElapsedTimeRecorder.totalCount(activeConnection.histogram());
-						if (0==usageCount) {
-			
-								//logger.warn("\n corrupt connection, retry");
+				if (null != activeConnection.getEngine()) {
+				
+					//If this connection needs to complete a handshake first then do that and do not send the request content yet.
+					//ALL the conent will be held here until the connection and its handshake is complete
+					//If this takes too long we can open a "new" connection and do the handshake again without loosing any data.
+					HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
+					if (needsToShake(handshakeStatus)) {					
+						
+						
+						if (++blockedCycles >= CYCLE_LIMIT_HANDSHAKE) { //are often 10_000 without error.
+							//if this is new connection but it is not hand shaking as expected 
+							//then we will drop the connection and try again.
+							long usageCount = ElapsedTimeRecorder.totalCount(activeConnection.histogram());
+							if (0==usageCount) {
+				
+									//logger.warn("\n corrupt connection, retry");
+									
+	        						///no notification needed. but we must clear this so the connection is rebuilt
+								    activeConnection.clientClosedNotificationSent();
+									activeConnection.close(); //close so next call we will get a fresh connection
+									//old message will find new connection under old connection id!
+									activeConnection = null;
+				
+							} else {
+								//drop request and close the connection
+								Pipe.skipNextFragment(requestPipe);
 								
-        						///no notification needed. but we must clear this so the connection is rebuilt
-							    activeConnection.clientClosedNotificationSent();
-								activeConnection.close(); //close so next call we will get a fresh connection
-								//old message will find new connection under old connection id!
+								//TODO: drop all while match??
+								
+								activeConnection.close();
 								activeConnection = null;
-			
-						} else {
-							//drop request and close the connection
-							Pipe.skipNextFragment(requestPipe);
-							
-							//TODO: drop all while match??
-							
-							activeConnection.close();
-							activeConnection = null;
+							}
+							blockedCycles = 0;
 						}
+	
+						return false;
+						
+					} else {
+						lastHandShake = null;
 						blockedCycles = 0;
 					}
-
-					return false;
-					
+				
 				} else {
-					lastHandShake = null;
-					blockedCycles = 0;
+					return false;//waiting for engine
 				}
+				
 			} else {
 				blockedCycles = 0;
 			}

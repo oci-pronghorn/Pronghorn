@@ -321,10 +321,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     				int start = PipeWorkWatcher.getStartIdx(pww, g);
     				int limit = PipeWorkWatcher.getLimitIdx(pww, g);
     				
-    				
     				for(int i = start; i<limit; i++) {
-    				
-    					if (PipeWorkWatcher.hasWork(pww, i)) {
+    	
+    					{
+    						
 	    					int x=singlePipe(this, i);
 	        				if (x >= 0) {      
 	        					
@@ -348,9 +348,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	        					PipeWorkWatcher.setTailPos(pww, i, g, Pipe.getWorkingTailPosition(inputs[i])); //TODO:pass this in?
 	        			
 	    					}
-        				
     					}
-        				
+        			
     				}
     				
        			}

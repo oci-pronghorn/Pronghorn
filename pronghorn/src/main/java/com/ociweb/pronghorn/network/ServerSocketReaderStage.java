@@ -519,7 +519,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 	       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 		
 			}
 		} else {
-			assert( -1 == PoolIdx.getIfReserved(responsePipeLinePool, idToClear) );
+			int pipeIdx =PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
+			if (pipeIdx!=-1) {
+				PoolIdx.release(responsePipeLinePool, idToClear, pipeIdx);
+			}
+			
 		}
 		
 		

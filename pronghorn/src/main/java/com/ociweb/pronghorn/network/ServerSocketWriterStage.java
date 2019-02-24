@@ -175,8 +175,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 					
 					for(int x = start; x<limit; x++) {
 					
-							//only process if scan marks it as needed
-							if (PipeWorkWatcher.hasWork(pww, x)) {
+							{
 										
 						    	boolean doingWork = false;
 						    	int iteration = 0;
