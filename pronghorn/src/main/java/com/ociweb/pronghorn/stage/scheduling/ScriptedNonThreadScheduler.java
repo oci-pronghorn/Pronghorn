@@ -978,7 +978,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //		} else {		
 			shutDownRequestedHere = runStageImpl(this, stage);	
 //		}
-		if (!DidWorkMonitor.didWork(localDidWork)) {
+		boolean onlyShowCPUAsWorkDone = true;	
+		if (onlyShowCPUAsWorkDone && !DidWorkMonitor.didWork(localDidWork)) {
 			GraphManager.recordNoWorkDone(graphManager,stage.stageId);	
 			stageSleepCount[inProgressIdx]++;			
 		} else {

@@ -20,8 +20,8 @@ public class PipeWorkWatcher {
     private int length;
     
     private AtomicLong[] headPos;
-    private AtomicBoolean[] scan;
-    private AtomicInteger workFlags = new AtomicInteger();
+
+    private AtomicLong workFlags = new AtomicLong();
     
     public PipeWorkWatcher() {
     }
@@ -32,15 +32,13 @@ public class PipeWorkWatcher {
     
 	public void init(Pipe[] inputs) {
 		
-		if (inputs.length >= 1024) {
-			   groupBits = 8; 
-		} else {
-			if (inputs.length >= 64 ) {
-			   groupBits = 4; 
-			} else {
+		if (inputs.length >= 512) {
+			   groupBits = 6;  //64 groups absolute max
+		} else {			
 			   groupBits = 0;
-			}
+			
 		}
+		assert(groupBits<=6);//group bits may not be larger since we use long for mask...
 		
 		groups = 1<<groupBits;
 		groupMask = groups-1;	
@@ -48,19 +46,16 @@ public class PipeWorkWatcher {
 		length = inputs.length;
 		tailPos = new long[length];
 		Arrays.fill(tailPos, -1);
-		
-		
-		
-		scan = new AtomicBoolean[groups];
-		int j = groups;
-		while (--j>=0) {
-			scan[j] = new AtomicBoolean();
-		}
-		
+			
 		
 		headPos = new AtomicLong[length];
         int i = inputs.length;
-        step = Math.max((int)Math.ceil(1f/(float)groups),i);
+        step = (int)Math.ceil(i/(float)groups);
+        if (step<=1) {
+        	step = i+1;
+        }
+        
+        
         while (--i >= 0) {
         	headPos[i] = new AtomicLong();        	
         	tailPos[i] = -1;        	
@@ -74,8 +69,14 @@ public class PipeWorkWatcher {
 	    			headPos[h].set(workingHeadPosition);//as long as this number has not moved we have no work.	
 	    			
 	    			if (workingHeadPosition>tailPos[h]) {
-	    				scan[g].set(true);	    			
-	    				workFlags.set(workFlags.get()| (1<<g));
+	    				
+	    				boolean ok = true;
+	    				do {
+	    					long old = workFlags.get();
+	    					ok = workFlags.compareAndSet(old, old | (1L<<g));
+	    					
+	    				} while(!ok);
+	    				
 	    			}
 	    		}
 	        };
@@ -94,7 +95,7 @@ public class PipeWorkWatcher {
 	}
 
 		
-	public static void setTailPos(PipeWorkWatcher pww, int i, int g, long tailPos) {
+	public static void setTailPos(PipeWorkWatcher pww, int i, long tailPos) {
 		pww.tailPos[i] = tailPos;	
 		
 	}
@@ -102,7 +103,8 @@ public class PipeWorkWatcher {
 
 	public static boolean scan(PipeWorkWatcher pww, int g) {
 		
-		boolean b = pww.scan[g].get(); 
+		boolean b = 0!=(pww.workFlags.get()&(1<<g)); 
+				//pww.scan[g].get(); 
 		if (!b) {
 			return b;
 		} else {
@@ -117,10 +119,18 @@ public class PipeWorkWatcher {
 				}
 			}
 			
-			pww.scan[g].set(doScan);
+			//pww.scan[g].set(doScan);
 			
 			if (!doScan) {
-				pww.workFlags.set(pww.workFlags.get()&(~(1<<g)));
+				boolean ok = true;
+				do {
+					long old = pww.workFlags.get();
+					ok = pww.workFlags.compareAndSet(old, old &(~(1L<<g)));
+					
+				} while(!ok);
+				
+				
+				//pww.workFlags.set(pww.workFlags.get()&(~(1<<g)));
 			}
 			
 			return doScan;

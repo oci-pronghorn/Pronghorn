@@ -83,6 +83,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private       int[]                    inputLengths;
 
+    private int[] releaseProducerPipeIndex;
 	private long[] releaseTime;
 	private long[] releaseChannel;
 	private long[] releaseInputSlabPos;
@@ -113,7 +114,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final Pipe<ServerResponseSchema> errorResponsePipe;
 	private boolean catchAll;
     private final int parallelId;
-
+    private GraphManager gm;//temp needed for startup;
+    
     
     private final PipeWorkWatcher pww = new PipeWorkWatcher();
     
@@ -234,7 +236,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         GraphManager.addNota(gm, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
            
- 
+        this.gm = gm;
         
     }    
 	
@@ -263,6 +265,29 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     	releaseChannel = new long[inputs.length];
     	releaseInputSlabPos = new long[inputs.length];
     	releaseSequences = new int[inputs.length];
+    	
+    	releaseProducerPipeIndex = new int[inputs.length];
+    	int i = inputs.length;
+    	while (--i>=0) {
+    		
+    		int prodId = GraphManager.getRingProducerStageId(gm, inputs[i].id);
+    		
+    		int outCount = GraphManager.getOutputPipeCount(gm, prodId);
+    		for(int j = 1; j <= outCount; j++) {
+    			
+    			if ( GraphManager.getOutputPipe(gm, prodId, j).id == inputs[i].id) {
+    				//we found the pipe so store it
+    				//TODO: not sure these numbers are right
+    				//      can only test after we start sending them...
+    				releaseProducerPipeIndex[i] = j-1; //index position for this pipe...    						
+    						
+    				break;
+    			};
+    		}
+    	}
+    	gm = null;//no longer needed
+    	
+    	
       
         trieReader = new TrieParserReader();//max fields we support capturing.
         
@@ -345,7 +370,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	        				
 	        				//pending release so we do not consider pipes empty
 	        				if (this.releaseInputSlabPos[i]>=0) {
-	        					PipeWorkWatcher.setTailPos(pww, i, g, Pipe.getWorkingTailPosition(inputs[i])); //TODO:pass this in?
+	        					PipeWorkWatcher.setTailPos(pww, i, Pipe.getWorkingTailPosition(inputs[i])); //TODO:pass this in?
 	        			
 	    					}
     					}
@@ -369,6 +394,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		if (Pipe.hasRoomForWrite(releasePipe) && System.nanoTime()>limit) {
     							
 					int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
+					
+					//TODO: which is the pipe we took this off off from the sender??
+					
 					
 					Pipe.addLongValue(releaseChannel[idx], releasePipe);
 					Pipe.addLongValue(pos, releasePipe);

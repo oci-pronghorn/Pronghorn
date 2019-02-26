@@ -164,6 +164,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
     	
+    	//TODO: critical bug, this is scanning for wrk when we have 
+    	//      fished everything!!! bad waste!
     	if (pww.hasWork()) {
 	    	int g = pww.groups;
 			while (--g >= 0) {
@@ -208,7 +210,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 								//only set if we do not have any waiting data..
 								if (null == writeToChannel[x]) { 
 									//only clear when this data is published.
-									PipeWorkWatcher.setTailPos(pww, x, g, Pipe.getWorkingTailPosition(input[x])); //TODO:pass this in?
+									PipeWorkWatcher.setTailPos(pww, x, Pipe.getWorkingTailPosition(input[x])); //TODO:pass this in?
 								}
 							
 							

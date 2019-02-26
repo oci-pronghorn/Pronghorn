@@ -1212,34 +1212,34 @@ public class GraphManager {
 		}
 	}
 	
-	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
-		
-		//TODO: B, this is a test to see if the positions of the ring buffer have moved after shut down, would be called when the real shutdown is completed
-		
-		int ringId;
-		int idx;
-		
-		idx = gm.stageIdToInputsBeginIdx[stageId];
-		while (-1 != (ringId=gm.multInputIds[idx++])) {	
-			
-			//record the tail positions for this stage
-			
-			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete
-			
-		}
-		
-		
-		idx = gm.stageIdToOutputsBeginIdx[stageId];
-		while (-1 != (ringId=gm.multOutputIds[idx++])) {	
-			
-			//record the head positions for this stage
-			
-			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete	
-			
-		}	
-		
-		return true;
-	}
+//	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
+//		
+//		//TODO: B, this is a test to see if the positions of the ring buffer have moved after shut down, would be called when the real shutdown is completed
+//		
+//		int ringId;
+//		int idx;
+//		
+//		idx = gm.stageIdToInputsBeginIdx[stageId];
+//		while (-1 != (ringId=gm.multInputIds[idx++])) {	
+//			
+//			//record the tail positions for this stage
+//			
+//			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete
+//			
+//		}
+//		
+//		
+//		idx = gm.stageIdToOutputsBeginIdx[stageId];
+//		while (-1 != (ringId=gm.multOutputIds[idx++])) {	
+//			
+//			//record the head positions for this stage
+//			
+//			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete	
+//			
+//		}	
+//		
+//		return true;
+//	}
 
 	private static void regOutput(GraphManager gm, Pipe output, int stageId) {
 		if (null!=output) {

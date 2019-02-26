@@ -4,7 +4,7 @@
 
 	<groupId>com.ociweb.logtelemetry</groupId>
 	<artifactId>log-telemetry</artifactId>
-	<version>1.0.36</version>
+	<version>1.0.37</version>
 	<description>load telemetry from log file as a telemetry server for easy viewing.</description>
 
 	<properties>
