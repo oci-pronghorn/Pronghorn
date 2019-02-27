@@ -64,7 +64,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private GraphManager graphManager;
 	    
     private final PipeWorkWatcher pww = new PipeWorkWatcher();
-    
+    private boolean[] pendingWrites;
       
     
     /**
@@ -107,7 +107,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()/2, this);
         }
 
-               
+      
     }
     
     
@@ -126,6 +126,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
         //for high volume this must be on its own
         GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+          
     }
     
     @Override
@@ -151,8 +152,9 @@ public class ServerSocketWriterStage extends PronghornStage {
     	activeMessageIds = new int[c];
     	Arrays.fill(activeTails, -1); 
 
-        //TODO: disable this feature when inputs are very small...
         pww.init(input);
+        pendingWrites = new boolean[pww.groups()];
+        //Arrays.fill(pendingWrites, true);
     }
     
     @Override
@@ -163,22 +165,19 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     @Override
     public void run() {
-    	
-    	//TODO: critical bug, this is scanning for wrk when we have 
-    	//      fished everything!!! bad waste!
+
     	if (pww.hasWork()) {
-	    	int g = pww.groups;
+	    	int g = pww.groups();
 			while (--g >= 0) {
-			
-				if (PipeWorkWatcher.scan(pww, g)) {
+							
+				if (pendingWrites[g] || PipeWorkWatcher.scan(pww, g)) {
 					   				
 					int start = PipeWorkWatcher.getStartIdx(pww, g);
 					int limit = PipeWorkWatcher.getLimitIdx(pww, g);
+					boolean hasPendingWritesInGroup = false;
 					
 					for(int x = start; x<limit; x++) {
-					
-							{
-										
+							
 						    	boolean doingWork = false;
 						    	int iteration = 0;
 						    				    	    		
@@ -200,24 +199,27 @@ public class ServerSocketWriterStage extends PronghornStage {
 					    		} else {	    
 					    			doingWork = publishDataFromLastPass(doingWork, iteration, x);	    			
 					    		}
-						    	
-						    	
+						    							    	
 								//we have no pipes to monitor so this must be done explicitly
 							    if (doingWork && (null != this.didWorkMonitor)) {
 							    	this.didWorkMonitor.published();
 							    }
 							    
+							    
 								//only set if we do not have any waiting data..
 								if (null == writeToChannel[x]) { 
 									//only clear when this data is published.
 									PipeWorkWatcher.setTailPos(pww, x, Pipe.getWorkingTailPosition(input[x])); //TODO:pass this in?
+								} else {
+									//must come back 
+									hasPendingWritesInGroup = true;
 								}
 							
-							
-						}
-						
+												
 					}
-	
+					
+					pendingWrites[g] = hasPendingWritesInGroup;
+					
 				}
 			}
     	}

@@ -58,6 +58,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
     public static final int granularityMultiplier = 4;
     private static final long MS_TO_NS = 1_000_000;
     private static final long realWorldLimitNS = 2_000_000_000;
+    public static boolean disableDeepSleep = true; //TODO: enable this later...
     
     public static boolean hangDetectorEnabled = true;
 
@@ -796,7 +797,7 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//drop CPU usage to greater latency mode since we have no work
 		//once work appears stay engaged until we again find 1000 
 		//cycles of nothing to process, for 40mircros with is 40 ms switch.
-		if ( (noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
+		if (disableDeepSleep || (noWorkCounter<cyclesOfNoWorkBeforeSleep || deepSleepCycleLimt<=0)) {//do it since we have had recent work
 			
 			if (isInDeepSleepMode) {
 				//logger.trace("waking up from deep sleep for :\n "+this.name());
@@ -891,6 +892,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		
 	}
 	
+	public static boolean debugHighCPU = false;
+	
 	private int runBlock(int scheduleIdx, int[] script,
 			             final boolean recordTime) {
 			
@@ -924,7 +927,6 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 		//given how long this took to run set up the next run cycle.
 		blockStartTime = startNow+schedule.commonClock;
 		
-		boolean debugHighCPU = false;
 		if (debugHighCPU && blockStartTime<System.nanoTime()) {
 			System.out.println("slow clock or make stages faster");
 			System.out.println("warning clock is faster than tasks in thread: "+name);
@@ -978,8 +980,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 //		} else {		
 			shutDownRequestedHere = runStageImpl(this, stage);	
 //		}
-		boolean onlyShowCPUAsWorkDone = true;	
-		if (onlyShowCPUAsWorkDone && !DidWorkMonitor.didWork(localDidWork)) {
+		
+		if (!DidWorkMonitor.didWork(localDidWork)) {
 			GraphManager.recordNoWorkDone(graphManager,stage.stageId);	
 			stageSleepCount[inProgressIdx]++;			
 		} else {

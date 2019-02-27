@@ -4378,12 +4378,12 @@ public class Pipe<T extends MessageSchema<T>> {
      * Low level API for publish for new fragment. Must be called in order for consumer to see fragment.
      * @param pipe
      */
-    public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    	notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
-       	
+    public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {       	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
+        //after we write the count of bytes consumed.
+        notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
 
 		publishWritesBatched(pipe);
 

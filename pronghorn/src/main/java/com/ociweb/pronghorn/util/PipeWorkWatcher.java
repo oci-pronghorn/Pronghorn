@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.pipe.PipePublishListener;
 public class PipeWorkWatcher {
 
 	private int groupBits;
-	public int groups;
+	private int groups;
 	private int groupMask;	
 
 	public  long[] tailPos;
@@ -20,7 +20,7 @@ public class PipeWorkWatcher {
     private int length;
     
     private AtomicLong[] headPos;
-
+    private AtomicInteger[] groupVersion;
     private AtomicLong workFlags = new AtomicLong();
     
     public PipeWorkWatcher() {
@@ -29,6 +29,12 @@ public class PipeWorkWatcher {
     public boolean hasWork() {
     	return 0 != workFlags.get();
     }
+    
+    public int groups() {
+    	assert(groups>=1) : "internal error, must init before use";
+    	return groups;
+    }
+    
     
 	public void init(Pipe[] inputs) {
 		
@@ -47,6 +53,11 @@ public class PipeWorkWatcher {
 		tailPos = new long[length];
 		Arrays.fill(tailPos, -1);
 			
+		groupVersion = new AtomicInteger[groups];
+		int r = groups;
+		while (--r >= 0) {
+			groupVersion[r] = new AtomicInteger();
+		}
 		
 		headPos = new AtomicLong[length];
         int i = inputs.length;
@@ -62,22 +73,22 @@ public class PipeWorkWatcher {
         	
         	final int h = i;
         	final int g = i/step;
+        	assert(g<groups) :"internal error";
+        	
         	PipePublishListener listener = new PipePublishListener() {
 	    		@Override
 	    		public void published(long workingHeadPosition) {		    			
 	    			
+	    			groupVersion[g].incrementAndGet();
+	    			
 	    			headPos[h].set(workingHeadPosition);//as long as this number has not moved we have no work.	
 	    			
-	    			if (workingHeadPosition>tailPos[h]) {
+    				boolean ok = true;
+    				do {
+    					long old = workFlags.get();
+    					ok = workFlags.compareAndSet(old, old | (1L<<g));
+    				} while(!ok);
 	    				
-	    				boolean ok = true;
-	    				do {
-	    					long old = workFlags.get();
-	    					ok = workFlags.compareAndSet(old, old | (1L<<g));
-	    					
-	    				} while(!ok);
-	    				
-	    			}
 	    		}
 	        };
 	        
@@ -100,14 +111,12 @@ public class PipeWorkWatcher {
 		
 	}
 	
-
 	public static boolean scan(PipeWorkWatcher pww, int g) {
-		
-		boolean b = 0!=(pww.workFlags.get()&(1<<g)); 
-				//pww.scan[g].get(); 
-		if (!b) {
-			return b;
+			
+		if (0 == (pww.workFlags.get() & (1L<<g))) {			
+			return false;
 		} else {
+			int version = pww.groupVersion[g].get();
 			
 			int s = getStartIdx(pww, g);
 			int l = getLimitIdx(pww, g);
@@ -118,19 +127,24 @@ public class PipeWorkWatcher {
 					break;
 				}
 			}
-			
-			//pww.scan[g].set(doScan);
-			
-			if (!doScan) {
+						
+			if (!doScan && version == pww.groupVersion[g].get()) {
+				
 				boolean ok = true;
 				do {
 					long old = pww.workFlags.get();
-					ok = pww.workFlags.compareAndSet(old, old &(~(1L<<g)));
-					
+					ok = pww.workFlags.compareAndSet(old, old & (~(1L<<g)));					
 				} while(!ok);
-				
-				
-				//pww.workFlags.set(pww.workFlags.get()&(~(1<<g)));
+								
+				if (version != pww.groupVersion[g].get()) {
+					//oops we must put this back
+    				ok = true;
+    				do {
+    					long old = pww.workFlags.get();
+    					ok = pww.workFlags.compareAndSet(old, old | (1L<<g));
+    					
+    				} while(!ok);
+				}
 			}
 			
 			return doScan;

@@ -338,7 +338,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public void run() {
     
     	if (pww.hasWork()) {
-    		int g = pww.groups;
+    		int g = pww.groups();
     		while (--g >= 0) {
     			
     			if (PipeWorkWatcher.scan(pww, g)) {
