@@ -2094,44 +2094,19 @@ public class GraphManager {
 		                	//never combine private topics
 		                	if (!"MessagePrivate".equals(Pipe.schemaName(pipe))) {
 		                	
-		                		final int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
-		                		int sum=0;
-		                		int lastPipeId=-1;
-		                		for(int p=1;p<=outputPipeCount;p++) {
-		                			
-		                			Pipe peerPipe = GraphManager.getOutputPipe(m, producer, p);
-		                			
-		                			if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
-		                				&& GraphManager.getRingConsumerId(m, pipe.id)==GraphManager.getRingConsumerId(m, peerPipe.id)	
-		                					) {
-		                				sum++;
-		                				lastPipeId = peerPipe.id;
-		                			}
-		                		}
+		                		int lastPipeId = lastIdForProdPipe(m, pipe, producer);
 		                		//combine limit
-		                		if (sum>1) {
+		                		if (lastPipeId>=0) {
 		                			showActivePipe = false;//do not display this pipe alone it is in a group
 						    		fanOutGrouping =lastPipeId;
 		                		}
 		                		
 		                		//if not active already grouped so do not group it again.
 								if (showActivePipe) {
-									sum=0;
-			                		lastPipeId=-1;
-			                		final int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
-			                		for(int p=1;p<=inputPipeCount;p++) {
-			                			
-			                			Pipe peerPipe = GraphManager.getInputPipe(m, consumer, p);
-			                			
-			                			if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
-			                				&& GraphManager.getRingProducerId(m, pipe.id)==GraphManager.getRingProducerId(m, peerPipe.id)	
-			                					) {
-			                				sum++;
-			                				lastPipeId = peerPipe.id;
-			                			}
-			                		}
+									
+			                		lastPipeId = lastIdForConsPipe(m, pipe, consumer);
 			                		//combine limit
-			                		if (sum>1) {
+			                		if (lastPipeId>=0) {
 			                			showActivePipe = false;//do not display this pipe alone it is in a group
 							    		fanInGrouping =lastPipeId;
 			                		}
@@ -2276,8 +2251,8 @@ public class GraphManager {
 	                					}
 	                					pipeConstMsg = m.pipeDOTConst[p.id];
 	    			                    if (null==pipeConstMsg) {
-	    			                    	pipeConstMsg = buildPipeConstantText(pipe);
-	    			                    	m.pipeDOTConst[pipe.id] = pipeConstMsg;
+	    			                    	pipeConstMsg = buildPipeConstantText(p);
+	    			                    	m.pipeDOTConst[p.id] = pipeConstMsg;
 	    			                    }
                 					}
                 							
@@ -2336,8 +2311,8 @@ public class GraphManager {
 	                					}	                					
 	                					pipeConstMsg = m.pipeDOTConst[p.id];
 	    			                    if (null==pipeConstMsg) {
-	    			                    	pipeConstMsg = buildPipeConstantText(pipe);
-	    			                    	m.pipeDOTConst[pipe.id] = pipeConstMsg;
+	    			                    	pipeConstMsg = buildPipeConstantText(p);
+	    			                    	m.pipeDOTConst[p.id] = pipeConstMsg;
 	    			                    }
 	                					
                 					}
@@ -2363,6 +2338,82 @@ public class GraphManager {
 	    
             target.write("}\n".getBytes());
    
+	}
+
+	int[] cacheLCP;
+	
+	private static int lastIdForConsPipe(GraphManager m, Pipe pipe, int consumer) {
+		
+		int key = (Pipe.totalPipes()*consumer)+pipe.id;
+		
+		if (null==m.cacheLCP) {
+			m.cacheLCP = new int[m.stageCounter.get()*Pipe.totalPipes()];
+			Arrays.fill(m.cacheLCP, -3);
+		}
+		
+		if (m.cacheLCP[key]!=-3) {
+			return m.cacheLCP[key];
+		}
+		
+		int lastPipeId=-1;
+		int c = 0;
+		{
+			final int inputPipeCount = GraphManager.getInputPipeCount(m, consumer);
+			for(int p=1;p<=inputPipeCount;p++) {
+				
+				Pipe peerPipe = GraphManager.getInputPipe(m, consumer, p);
+				
+				if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
+					&& GraphManager.getRingProducerId(m, pipe.id)==GraphManager.getRingProducerId(m, peerPipe.id)	
+						) {
+					c++;
+					lastPipeId = peerPipe.id;
+					
+				}
+			}
+		}
+		if (c==1) {
+			lastPipeId = -1;//do not group a single pipe.
+		}
+		m.cacheLCP[key] = lastPipeId;
+		return lastPipeId;
+	}
+
+	int[] cacheLPP;
+	
+	private static int lastIdForProdPipe(GraphManager m, Pipe pipe, int producer) {
+		int key = (Pipe.totalPipes()*producer)+pipe.id;
+		
+		if (null==m.cacheLPP) {
+			m.cacheLPP = new int[m.stageCounter.get()*Pipe.totalPipes()];
+			Arrays.fill(m.cacheLPP, -3);
+		}
+		
+		if (m.cacheLPP[key]!=-3) {
+			return m.cacheLPP[key];
+		}
+		
+		int lastPipeId=-1;
+		int c = 0;
+		{
+			final int outputPipeCount = GraphManager.getOutputPipeCount(m, producer);
+			for(int p=1;p<=outputPipeCount;p++) {
+				
+				Pipe peerPipe = GraphManager.getOutputPipe(m, producer, p);
+				
+				if (Pipe.isForSameSchema(pipe,peerPipe) //and same consumer
+					&& GraphManager.getRingConsumerId(m, pipe.id)==GraphManager.getRingConsumerId(m, peerPipe.id)	
+						) {
+					c++;
+					lastPipeId = peerPipe.id;
+				}
+			}
+		}
+		if (c==1) {
+			lastPipeId = -1;//do not group a single pipe.
+		}
+		m.cacheLPP[key] = lastPipeId;
+		return lastPipeId;
 	}
 
 	private static boolean allTheSame(GraphManager m, int producer, int outputPipeCount) {

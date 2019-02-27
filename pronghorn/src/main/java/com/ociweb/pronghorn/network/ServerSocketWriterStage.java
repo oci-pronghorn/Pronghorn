@@ -230,56 +230,59 @@ public class ServerSocketWriterStage extends PronghornStage {
 		Pipe<NetPayloadSchema> localInput = input[x];
  
 		ByteBuffer localWorkingBuffer = workingBuffers[x];
-		
-		int capacity = localWorkingBuffer.capacity();
-		int limit = localWorkingBuffer.limit();
-		boolean hasRoomToWrite = capacity-limit > localInput.maxVarLen;
-		//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
-		if (
-			//these are set up to minimize writes so we can write bigger blocks at once.	
-			/// 	
-		    //accumulating too long so flush now.
-				((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
-			||
-				!hasRoomToWrite //must write to network out buffer has no more room
-			||
-			    //if we have less than 1/2 of blob used wait for normal count down above
-			    //if above this and we have no new data go ahead and write.
-				( (limit>= (localInput.sizeOfBlobRing>>1) ) &&  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
-			) {
-						
-			writeToChannelBatchCountDown[x]=-4;
-			writeToChannelMsg[x] = -1;
-			
-			if (!(doingWork = writeDataToChannel(x))) {
-				//this channel did not write but we need to check the others		    		
-			}	
-		} else {
-			
-			//must set to true to ensure we count up the iterations above.
-			doingWork |= (!Pipe.hasContentToRead(localInput));
-			
-			
-			//unflip
-			int p = ((Buffer)localWorkingBuffer).limit();
-			((Buffer)localWorkingBuffer).limit(localWorkingBuffer.capacity());
-			((Buffer)localWorkingBuffer).position(p);	    				
-			
-			int h = 0;
-			while (	isNextMessageMergeable(localInput, writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
-				h++;
-				//logger.info("opportunity found to batch writes going to {} ", writeToChannelId[x]);
-					    					
-				mergeNextMessage(writeToChannelMsg[x], x, localInput, writeToChannelId[x]);
-					    					
-			}	
-			
-			if (h>0) {
-				Pipe.releaseAllPendingReadLock(localInput);
+		if (null!=localWorkingBuffer) {
+			int capacity = localWorkingBuffer.capacity();
+			int limit = localWorkingBuffer.limit();
+			boolean hasRoomToWrite = capacity-limit > localInput.maxVarLen;
+			//note writeToChannelBatchCountDown is set to zero when nothing else can be combined...
+			if (
+				//these are set up to minimize writes so we can write bigger blocks at once.	
+				/// 	
+			    //accumulating too long so flush now.
+					((iteration>1 && writeToChannelBatchCountDown[x]<=0) || --writeToChannelBatchCountDown[x]<=0) //only count on first pass since it is time based.  
+				||
+					!hasRoomToWrite //must write to network out buffer has no more room
+				||
+				    //if we have less than 1/2 of blob used wait for normal count down above
+				    //if above this and we have no new data go ahead and write.
+					( (limit>= (localInput.sizeOfBlobRing>>1) ) &&  Pipe.isEmpty(localInput) ) //for low latency when pipe is empty fire now...
+				) {
+							
+				writeToChannelBatchCountDown[x]=-4;
+				writeToChannelMsg[x] = -1;
+				
+				if (!(doingWork = writeDataToChannel(x))) {
+					//this channel did not write but we need to check the others		    		
+				}	
+			} else {
+				
+				//must set to true to ensure we count up the iterations above.
+				doingWork |= (!Pipe.hasContentToRead(localInput));
+				
+				
+				//unflip
+				int p = ((Buffer)localWorkingBuffer).limit();
+				((Buffer)localWorkingBuffer).limit(localWorkingBuffer.capacity());
+				((Buffer)localWorkingBuffer).position(p);	    				
+				
+				int h = 0;
+				while (	isNextMessageMergeable(localInput, writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
+					h++;
+					//logger.info("opportunity found to batch writes going to {} ", writeToChannelId[x]);
+						    					
+					mergeNextMessage(writeToChannelMsg[x], x, localInput, writeToChannelId[x]);
+						    					
+				}	
+				
+				if (h>0) {
+					Pipe.releaseAllPendingReadLock(localInput);
+				}
+				((Buffer)localWorkingBuffer).flip();
+	
 			}
-			((Buffer)localWorkingBuffer).flip();
-
 		}
+		
+		
 		return doingWork;
 	}
     
@@ -427,8 +430,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private void prepBuffer(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
 			long channelId, int meta, int len) {
 		
-		
-		ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
+		ByteBuffer[] writeBuffs = Pipe.wrappedReadingDirectBuffers(pipe, meta, len);
 		
 		//only write if we do not think there is anything to "roll up"
 //		if ((!Pipe.hasContentToRead(pipe))

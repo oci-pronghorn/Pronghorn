@@ -531,7 +531,10 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
 	private static ByteBuffer[] wrappedUnstructuredLayoutBufferImpl(Pipe pipe, int meta, int len) {
 		if (meta >= 0) {
-			return Pipe.wrappedReadingBuffersRing(pipe, len, (pipe).blobMask & Pipe.convertToPosition(meta,pipe));
+			ByteBuffer aBuf = Pipe.wrappedBlobRingA(pipe);
+			ByteBuffer bBuf = Pipe.wrappedBlobRingB(pipe);
+			
+			return Pipe.positionedReadingBuffers(pipe, len, (pipe).blobMask & Pipe.convertToPosition(meta,pipe), aBuf, bBuf);
 		} else {
 			return Pipe.wrappedReadingBuffersConst(pipe, meta, len);
 		}

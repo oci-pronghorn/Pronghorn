@@ -559,7 +559,8 @@ public class StructRegistry { //prong struct store
 	
 	public static <T> boolean hasAttachedObject(StructRegistry that, T attachedObject, int structId) {
 		assert ((IS_STRUCT_BIT&structId) !=0 && (structId>0) ) : "Struct Id must be passed in, got "+structId;
-		return IntHashTable.hasItem(that.fieldAttachedIndex[STRUCT_MASK&structId], attachedObject.hashCode());
+		int sid = STRUCT_MASK&structId;
+		return sid<that.fieldAttachedIndex.length && IntHashTable.hasItem(that.fieldAttachedIndex[sid], attachedObject.hashCode());
 
 	}
 	

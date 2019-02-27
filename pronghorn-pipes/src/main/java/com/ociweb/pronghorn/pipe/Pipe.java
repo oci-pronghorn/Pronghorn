@@ -1952,24 +1952,45 @@ public class Pipe<T extends MessageSchema<T>> {
      */
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffers(Pipe<S> pipe, int meta, int len) {
     	if (meta >= 0) {
-    		//MUST call this one which creates side effect of assuming this data is consumed
-			wrappedReadingBuffersRing(pipe, len, pipe.blobMask & bytePosition(meta,pipe,len));
+    		//MUST call bytePosition method which creates side effect of assuming this data is consumed
+			positionedReadingBuffers(pipe, len, 
+					                 pipe.blobMask & bytePosition(meta,pipe,len),
+					                 wrappedBlobRingA(pipe), 
+					                 wrappedBlobRingB(pipe));
 		} else {
 			wrappedReadingBuffersConst(pipe, meta, len);
 		}
 		return pipe.wrappedReadingBuffers;
     }
+    
+    
+    public static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingDirectBuffers(Pipe<S> pipe, int meta, int len) {
+    	if (null != pipe.directBlob) {
+	    	if (meta >= 0) {
+	    		//MUST call bytePosition method which creates side effect of assuming this data is consumed
+				positionedReadingBuffers(pipe, len, 
+						                 pipe.blobMask & bytePosition(meta,pipe,len),
+						                 pipe.directBlobReaderA, 
+						                 pipe.directBlobReaderB);
+			} else {
+				throw new UnsupportedOperationException();
+			}
+			return pipe.wrappedReadingDirectBuffers;
+    	} else {
+    		return wrappedReadingBuffers(pipe,meta,len);
+    	}
+    }
+    
 
-	static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffersRing(Pipe<S> pipe, int len, final int position) {
+	static <S extends MessageSchema<S>> ByteBuffer[] positionedReadingBuffers(Pipe<S> pipe, int len,
+			final int position, ByteBuffer aBuf, ByteBuffer bBuf) {
 		final int endPos = position+(len>=0?len:0);
 		
-		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		((Buffer)aBuf).clear();
 		((Buffer)aBuf).position(position);
 		//use the end of the buffer if the length runs past it.
 		((Buffer)aBuf).limit(Math.min(pipe.sizeOfBlobRing, endPos));
 		
-		ByteBuffer bBuf = wrappedBlobRingB(pipe);
 		((Buffer)bBuf).clear();
 		((Buffer)bBuf).limit(endPos > pipe.sizeOfBlobRing ? pipe.blobMask & endPos : 0 ); 
 				
@@ -4391,6 +4412,78 @@ public class Pipe<T extends MessageSchema<T>> {
 		return consumed;
     }
 
+    private ByteBuffer directBlob;
+    private ByteBuffer directBlobReaderA;
+    private ByteBuffer directBlobReaderB;
+    private ByteBuffer[] wrappedReadingDirectBuffers;
+    
+    
+    public static <S extends MessageSchema<S>> ByteBuffer[] immutableDirectBuffer(Pipe<S> pipe) {       	
+        return null;//pipe.directBlobReader;
+        
+        
+    }
+    
+    //replicate this data into a direct buffer for the consumer
+    //needed by socket writers
+    public static <S extends MessageSchema<S>> int publishWritesDirect(Pipe<S> pipe) {       	
+    	
+    	//init if it is used
+    	if (null==pipe.directBlob) {
+    		pipe.directBlob = ByteBuffer.allocateDirect(pipe.sizeOfBlobRing);
+    		((Buffer)pipe.directBlob).limit(pipe.directBlob.capacity());
+    		
+    		pipe.directBlobReaderA = pipe.directBlob.asReadOnlyBuffer();
+    		if (!pipe.directBlobReaderA.isDirect()) {
+    			throw new UnsupportedOperationException();
+    		}
+
+    		pipe.directBlobReaderB = pipe.directBlob.asReadOnlyBuffer();
+    		if (!pipe.directBlobReaderB.isDirect()) {
+    			throw new UnsupportedOperationException();
+    		}
+    		    
+    		pipe.wrappedReadingDirectBuffers = new ByteBuffer[] {pipe.directBlobReaderA, pipe.directBlobReaderB};
+    	}
+    	
+    	//pipe.blobWriteLastConsumedPos -- start from here    	
+    	//pipe.blobRingHead.byteWorkingHeadPos.value --- limit
+    			
+		int a = pipe.blobMask&pipe.blobRingHead.byteWorkingHeadPos.value;
+		int b = pipe.blobMask&pipe.blobWriteLastConsumedPos;
+		int toCopy = a - b;	
+		
+		((Buffer)pipe.directBlob).position(pipe.blobMask&pipe.blobWriteLastConsumedPos);
+		if (toCopy>=0) {			
+			
+			//copy one block
+			
+			pipe.directBlob.put(pipe.blobRing, b, toCopy);			
+			
+		} else {
+						
+			int lenA = pipe.sizeOfBlobRing-b;
+			pipe.directBlob.put(pipe.blobRing, b, lenA);
+			
+			((Buffer)pipe.directBlob).position(0);			
+			pipe.directBlob.put(pipe.blobRing, 0, a);
+			
+		}
+		
+    	
+    	
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+    	//happens at the end of every fragment
+        int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
+        //after we write the count of bytes consumed.
+        notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
+
+		publishWritesBatched(pipe);
+
+		
+		return consumed;
+    }
+    
     /**
      * Records the count of bytes consumed by this fragment into the pipe. This is part of the internal
      * bookkeeping which allows for skipping over messages when reqired.
@@ -4798,14 +4891,15 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @return int count of bytes
 	 */
 	public static <S extends MessageSchema<S>> int computeCountOfBytesConsumed(Pipe<S> pipe) {
+
 		int consumed = pipe.blobRingHead.byteWorkingHeadPos.value - pipe.blobWriteLastConsumedPos;	
 		
 		if (consumed<0) {			
 			consumed = (1+consumed)+Integer.MAX_VALUE;			
+			//log.trace("wrote {} bytes consumed to position {}",consumed,pipe.blobWriteLastConsumedPos);
 		}	
 		assert(consumed>=0) : "consumed was "+consumed;
-		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
-		return consumed;
+		return consumed & pipe.blobMask;
 	}
 
 	/**
@@ -4822,7 +4916,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 * @param pipe
 	 * @return ByteBuffer a
 	 */
-	public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingA(Pipe<S> pipe) {
+	public static <S extends MessageSchema<S>> ByteBuffer wrappedBlobRingA(Pipe<S> pipe) {				
 		return pipe.wrappedBlobReadingRingA;
 	}
 

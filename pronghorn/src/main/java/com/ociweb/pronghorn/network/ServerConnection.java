@@ -4,9 +4,6 @@ import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLEngine;
 
-import com.ociweb.pronghorn.network.schema.ConnectionStateSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-
 public class ServerConnection extends BaseConnection {
 
 	public final ServerConnectionStruct scs;

@@ -912,11 +912,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int lenWritten = DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output));
 		 assert(lenWritten>0) : "Do not send messages which contain no data, this is a waste";
 		 		 
-		 Pipe.confirmLowLevelWrite(output, plainSize);
-		 Pipe.publishWrites(output);
+		 Pipe.confirmLowLevelWrite(output, plainSize);	
+		 //publish and copy the bytes into the direct byte buffer for consumption outside the JVM
+		 Pipe.publishWritesDirect(output);
 		 
-
-			                     
+		 
 	 	//////////////
 	 	//if needed write out the close connection message
 	 	//can only be done when we are at the end of the message
