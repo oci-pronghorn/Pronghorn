@@ -116,39 +116,46 @@ public class PipeWorkWatcher {
 		if (0 == (pww.workFlags.get() & (1L<<g))) {			
 			return false;
 		} else {
-			int version = pww.groupVersion[g].get();
+			final int version = pww.groupVersion[g].get();
 			
-			int s = getStartIdx(pww, g);
-			int l = getLimitIdx(pww, g);
-			boolean doScan = false;
-			for(int i = s; i<l; i++) {
-				if (pww.headPos[i].get() > pww.tailPos[i]) {
-					doScan=true;
-					break;
-				}
-			}
-						
-			if (!doScan && version == pww.groupVersion[g].get()) {
-				
-				boolean ok = true;
-				do {
-					long old = pww.workFlags.get();
-					ok = pww.workFlags.compareAndSet(old, old & (~(1L<<g)));					
-				} while(!ok);
-								
-				if (version != pww.groupVersion[g].get()) {
-					//oops we must put this back
-    				ok = true;
-    				do {
-    					long old = pww.workFlags.get();
-    					ok = pww.workFlags.compareAndSet(old, old | (1L<<g));
-    					
-    				} while(!ok);
-				}
+			boolean doScan = scanForWork(pww, g);						
+			if (!doScan && version == pww.groupVersion[g].get()) {				
+				clearScanState(pww, g, version);
 			}
 			
 			return doScan;
 		} 
+	}
+
+	private static boolean scanForWork(PipeWorkWatcher pww, int g) {
+		int s = getStartIdx(pww, g);
+		int l = getLimitIdx(pww, g);
+		boolean doScan = false;
+		for(int i = s; i<l; i++) {
+			if (pww.headPos[i].get() > pww.tailPos[i]) {
+				doScan=true;
+				break;
+			}
+		}
+		return doScan;
+	}
+
+	private static void clearScanState(PipeWorkWatcher pww, int g, int version) {
+		boolean ok = true;
+		do {
+			long old = pww.workFlags.get();
+			ok = pww.workFlags.compareAndSet(old, old & (~(1L<<g)));					
+		} while(!ok);
+						
+		if (version != pww.groupVersion[g].get()) {
+			//oops we must put this back
+			ok = true;
+			do {
+				long old = pww.workFlags.get();
+				ok = pww.workFlags.compareAndSet(old, old | (1L<<g));
+				
+			} while(!ok);
+		}
 	}
 
     
