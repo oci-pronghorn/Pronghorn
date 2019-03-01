@@ -1059,8 +1059,8 @@ public class ScriptedNonThreadScheduler extends StageScheduler implements Runnab
 				assert(reportLowAccuracyClock(that));
 			}
 
-			//No need to run on every call, we run 1 out of every 4
-			if (0== (0x3 & that.msgConsumerTrigger++)) {
+			//No need to run on every call, we run 1 out of every 16
+			if (0== (0xF & that.msgConsumerTrigger++)) {
 				int c = GraphManager.getInputPipeCount(that.graphManager, stage.stageId);
 				for(int i = 1; i<=c ;i++) {
 					Pipe.markConsumerPassDone(GraphManager.getInputPipe(that.graphManager, stage.stageId, i));
