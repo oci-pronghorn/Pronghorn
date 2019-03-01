@@ -95,7 +95,7 @@ public class ServerPipesConfig {
 		////////
 		
 	    //Need more writers than readers, the OS assumes many threads respond but few read.
-	    int mult = moduleParallelism > 1 ? 2 : 1;
+	    int mult = moduleParallelism >=2 ? 4 : 1;
 	    this.serverSocketWriters = mult*Math.max(1,NetGraphBuilder.computeGroupsFromTracks(moduleParallelism, isTLS));
 
 	    //defaults which are updated by method calls
