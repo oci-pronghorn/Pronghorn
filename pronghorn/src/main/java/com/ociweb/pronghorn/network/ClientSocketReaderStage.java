@@ -511,6 +511,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					}
 					
 					int fieldSequenceNo = Pipe.takeInt(ack);
+					int pipeIdx = Pipe.takeInt(ack);
 					
 					
 					Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));

@@ -381,6 +381,13 @@ public class ServiceObjectHolder<T> {
 
     }
     
+    public static <T> T get(ServiceObjectHolder<T> that, final long key) {
+        //must ensure we use the same instance for the work
+        int modIdx = that.data.mask & (int)key;
+        return key == that.data.serviceObjectKeys[modIdx] ? that.data.serviceObjectValues[modIdx] : null;
+
+    }
+    
     public T remove(final long key) {  
         //must ensure we use the same instance for the work
         ServiceObjectData<T> localData = data;

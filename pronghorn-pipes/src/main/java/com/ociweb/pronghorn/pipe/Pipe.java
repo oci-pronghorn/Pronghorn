@@ -4403,11 +4403,11 @@ public class Pipe<T extends MessageSchema<T>> {
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
-        //after we write the count of bytes consumed.
+        
+        publishWritesBatched(pipe);
+        
+        //after we write the count of bytes consumed, and the possible publish, only now.
         notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
-
-		publishWritesBatched(pipe);
-
 		
 		return consumed;
     }
@@ -4453,33 +4453,29 @@ public class Pipe<T extends MessageSchema<T>> {
 		int b = pipe.blobMask&pipe.blobWriteLastConsumedPos;
 		int toCopy = a - b;	
 		
+		///////////////
+		//copy to the direct blob
 		((Buffer)pipe.directBlob).position(pipe.blobMask&pipe.blobWriteLastConsumedPos);
-		if (toCopy>=0) {			
-			
-			//copy one block
-			
-			pipe.directBlob.put(pipe.blobRing, b, toCopy);			
-			
-		} else {
-						
+		if (toCopy>=0) {
+			//copy one block			
+			pipe.directBlob.put(pipe.blobRing, b, toCopy);
+		} else {	
 			int lenA = pipe.sizeOfBlobRing-b;
 			pipe.directBlob.put(pipe.blobRing, b, lenA);
 			
 			((Buffer)pipe.directBlob).position(0);			
 			pipe.directBlob.put(pipe.blobRing, 0, a);
-			
 		}
+		////////////////
 		
-    	
-    	
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
-        //after we write the count of bytes consumed.
-        notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
 
-		publishWritesBatched(pipe);
+		publishWritesBatched(pipe); //publish head only after we write to the direct buffer
 
+		//after we write the count of bytes consumed.
+		notifyPubListener(pipe.slabRingHead.workingHeadPos.value, pipe.pubListeners);
 		
 		return consumed;
     }
@@ -5042,7 +5038,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
 	private static <S extends MessageSchema<S>> boolean roomToLowLevelWrite(Pipe<S> pipe, long target) {
 		//only does second part if the first does not pass
-		return (pipe.llRead.llrTailPosCache > target) || roomToLowLevelWriteSlow(pipe, target);
+		return (pipe.llRead.llrTailPosCache >= target) || roomToLowLevelWriteSlow(pipe, target);
 	}
 
 	private static <S extends MessageSchema<S>> boolean roomToLowLevelWriteSlow(Pipe<S> pipe, long target) {

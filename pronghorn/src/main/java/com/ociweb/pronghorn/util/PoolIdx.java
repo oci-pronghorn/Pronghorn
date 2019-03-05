@@ -188,8 +188,12 @@ public final class PoolIdx  {
     private int failureCount = 0;
     
     public int optimisticGet(long key, int idx) {
-    	if (key == keys[idx] && 0 == locked[idx]) {
-    		return startNewLock(this,key,idx);
+    	if (key == keys[idx]) {
+    		if (0 == locked[idx]) {
+    			return startNewLock(this,key,idx);
+    		} else {
+    			return idx;//already locked
+    		}
     	} else {
     		return -1;
     	}

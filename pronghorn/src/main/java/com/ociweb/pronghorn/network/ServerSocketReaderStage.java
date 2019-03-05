@@ -109,10 +109,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.LOAD_BALANCER, GraphManager.LOAD_BALANCER, this);
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
 
-//        Number dsr = graphManager.defaultScheduleRate();
-//        if (dsr!=null) {
-//        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()*3, this);
-//        }
+        Number dsr = graphManager.defaultScheduleRate();
+        if (dsr!=null) {
+        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, dsr.longValue()/2, this);
+        }
                
 		//        //If server socket reader does not catch the data it may be lost
 		//        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
@@ -393,19 +393,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 		}
 	}
 
-	private void debugPipeAssignment(long channelId, int responsePipeLineIdx) {
-		final boolean debugPipeAssignment = false;
-		if (debugPipeAssignment) {
-			if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
-
-				logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
-						this.stageId,
-						channelId, 
-						responsePipeLineIdx,
-						output.length);
-			}
-		}
-	}
+//	private void debugPipeAssignment(long channelId, int responsePipeLineIdx) {
+//		final boolean debugPipeAssignment = false;
+//		if (debugPipeAssignment) {
+//			if (!"Telemetry Server".equals(coordinator.serviceName())) {//do not show for monitor
+//
+//				logger.info("\nstage: {} begin channel id {} pipe line idx {} out of {} ",
+//						this.stageId,
+//						channelId, 
+//						responsePipeLineIdx,
+//						output.length);
+//			}
+//		}
+//	}
 
 	private void handshakeTaskOrWrap(BaseConnection cc) {
 		if (null!=cc && null!=cc.getEngine()) {
@@ -483,12 +483,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 			
-			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), Pipe.takeInt(a));
+			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), Pipe.takeInt(a), Pipe.takeInt(a));
 			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
 
 		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
 			
-			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), -1);
+			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), -1, -1);
 			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
   
 		} else {
@@ -505,13 +505,21 @@ public class ServerSocketReaderStage extends PronghornStage {
 		Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
 	}
 		
-	private void releaseIfUnused(int id, long idToClear, long pos, int seq) {
+	private void releaseIfUnused(int id, long idToClear, long pos, int seq, int providedPipeIdx) {
 		assert(idToClear>=0);
 				
 		BaseConnection cc = coordinator.lookupConnectionById(idToClear);
 		//only release if we have a connection to be released.
 		if (null!=cc) {
-			int pipeIdx = lookupPipeId(idToClear, cc);
+			int pipeIdx;
+			if (providedPipeIdx>=0) {
+				pipeIdx = providedPipeIdx;
+				assert ((-1== lookupPipeId(idToClear, cc)) 
+						|| (lookupPipeId(idToClear, cc) == providedPipeIdx)) : "internall error";
+				
+			} else {			
+				pipeIdx = lookupPipeId(idToClear, cc);
+			}
 					
 			///////////////////////////////////////////////////
 			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
@@ -519,7 +527,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 		
 			}
 		} else {
-			int pipeIdx =PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
+			int pipeIdx = (providedPipeIdx>=0) ? providedPipeIdx : PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
 			if (pipeIdx!=-1) {
 				PoolIdx.release(responsePipeLinePool, idToClear, pipeIdx);
 			}
@@ -801,7 +809,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	  
 	        Pipe.confirmLowLevelWrite(targetPipe, size);
 	        Pipe.publishWrites(targetPipe);
-	        //Pipe.publishAllBatchedWrites(targetPipe); //not needed
+	        Pipe.publishAllBatchedWrites(targetPipe); //Ensure we have nothing waiting, key for watchers.
 	        
 	        remainLen -= localLen;
 	        pos += localLen;	        

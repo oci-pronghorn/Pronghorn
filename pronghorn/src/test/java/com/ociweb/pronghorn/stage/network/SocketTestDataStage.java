@@ -168,6 +168,7 @@ public class SocketTestDataStage extends PronghornStage {
 		Pipe.addLongValue(conId, pipe);
 		Pipe.addLongValue(position, pipe);
 		Pipe.addIntValue(0, pipe);
+		Pipe.addIntValue(-1, pipe);
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 	}

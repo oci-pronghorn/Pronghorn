@@ -10,6 +10,7 @@
      <uInt64 name="ConnectionID" id="1"/>
      <uInt64 name="Position" id="2"/>
      <int32 name="SequenceNo" id="3"/>     
+     <int32 name="PipeIdx" id="4"/>
    </template>
        
 </templates>

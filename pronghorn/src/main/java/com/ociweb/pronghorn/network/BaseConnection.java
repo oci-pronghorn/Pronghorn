@@ -152,6 +152,9 @@ public abstract class BaseConnection {
 		return socketChannel;
 	}
 
+	public static SocketChannel getSocketChannel(BaseConnection that) {
+		return that.socketChannel;
+	}
 
 	public void clearWaitingForNetwork() {
 		lastNetworkBeginWait=0;
@@ -237,5 +240,6 @@ public abstract class BaseConnection {
 		}		
 		return false;
 	}
+
     
 }

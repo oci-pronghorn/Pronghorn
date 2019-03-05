@@ -166,63 +166,86 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
 
-    	if (pww.hasWork()) {
-	    	int g = pww.groups();
-			while (--g >= 0) {
+    	if (PipeWorkWatcher.hasWork(pww)) {
+    
+    		this.didWorkMonitor.published();    	
+    		
+	    	do {
+		    	int g = pww.groups();
+				while (--g >= 0) {
+								
+					final int version = PipeWorkWatcher.version(pww, g);
+					if (pendingWrites[g] || PipeWorkWatcher.hasWork(pww,g)) {
+						   				
+						boolean done = true;
+						int start = PipeWorkWatcher.getStartIdx(pww, g);
+						int limit = PipeWorkWatcher.getLimitIdx(pww, g);
+						boolean hasPendingWritesInGroup = false;
+						
+						for(int x = start; x<limit; x++) {
+													
 							
-				if (pendingWrites[g] || PipeWorkWatcher.scan(pww, g)) {
-					   				
-					int start = PipeWorkWatcher.getStartIdx(pww, g);
-					int limit = PipeWorkWatcher.getLimitIdx(pww, g);
-					boolean hasPendingWritesInGroup = false;
-					
-					for(int x = start; x<limit; x++) {
-							
-						    	boolean doingWork = false;
-						    	int iteration = 0;
-						    				    	    		
-					    		//ensure all writes are complete
-					    		if (null == writeToChannel[x]) {	    	
-					    			
-									//second check for full content is critical or the data gets copied too soon
-									Pipe<NetPayloadSchema> pipe = input[x];
-									if (!Pipe.hasContentToRead(pipe)) {    				
-										//no content to read on the pipe
-										//all the old data has been written so the writeChannel remains null
-										continue;
-									} else {
-									
-										processMessage(Pipe.takeMsgIdx(pipe), x);
-										doingWork = true;
-															
-									}
-					    		} else {	    
-					    			doingWork = publishDataFromLastPass(doingWork, iteration, x);	    			
-					    		}
-						    							    	
-								//we have no pipes to monitor so this must be done explicitly
-							    if (doingWork && (null != this.didWorkMonitor)) {
-							    	this.didWorkMonitor.published();
-							    }
-							    
-							    
-								//only set if we do not have any waiting data..
-								if (null == writeToChannel[x]) { 
-									//only clear when this data is published.
-									PipeWorkWatcher.setTailPos(pww, x, Pipe.getWorkingTailPosition(input[x])); //TODO:pass this in?
+					    	boolean doingWork = false;						    				    	    		
+				    		//ensure all writes are complete
+				    		if (null == writeToChannel[x]) {	    	
+				    			
+								//second check for full content is critical or the data gets copied too soon
+						
+								if (!Pipe.hasContentToRead(input[x])) {    				
+									//no content to read on the pipe
+									//all the old data has been written so the writeChannel remains null
+									continue;
 								} else {
-									//must come back 
-									hasPendingWritesInGroup = true;
+									
+									processMessage(Pipe.takeMsgIdx(input[x]), x);
+									doingWork = true;
+														
 								}
-							
-												
+				    		} else {	    
+				    			doingWork = publishDataFromLastPass(doingWork, 0, x);
+				    		
+				    		}
+					
+				    		//do any more work we find in the pipe.
+				    		while ((null == writeToChannel[x]) && Pipe.hasContentToRead(input[x])) {
+				    			processMessage(Pipe.takeMsgIdx(input[x]), x);
+								doingWork = true;					    			
+				    		}
+				    									    
+							//only set if we do not have any waiting data..
+							if (null == writeToChannel[x]) { 
+								//only clear when this data is published.
+								PipeWorkWatcher.setTailPos(pww, x, Pipe.getWorkingTailPosition(input[x]));
+								
+								if (!Pipe.isEmpty(input[x])) {
+									done = false;
+								}
+								
+							} else {
+								done = false;
+								//must come back 
+								hasPendingWritesInGroup = true;							
+							}
+					  				
+						}
+						
+						pendingWrites[g] = hasPendingWritesInGroup;
+						
+						if (done) {
+							PipeWorkWatcher.clearScanState(pww, g, version);
+						}					
+						
+						if (hasPendingWritesInGroup) {
+							return;
+						}
+						
 					}
-					
-					pendingWrites[g] = hasPendingWritesInGroup;
-					
 				}
-			}
+				
+	    	} while (PipeWorkWatcher.hasWork(pww));
+		
     	}
+    	
     }
 
 
@@ -388,9 +411,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 
 	private void prepSocketConnection(final int msgIdx, final int idx, final int msgSize, Pipe<NetPayloadSchema> pipe,
 			long channelId, int meta, int len) {
+		
 		ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         assert(null!=socketHolder) : "Internal error, too early";
-        ServerConnection serverConnection = socketHolder.get(channelId);
+        ServerConnection serverConnection = ServiceObjectHolder.get(socketHolder, channelId);
         	        
         //only write if this connection is still valid
         if (null != serverConnection) {        
@@ -400,7 +424,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         		debugShowWrites(pipe, meta, len);
         	}	        	
         	
-        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId   
+        	writeToChannel[idx] = BaseConnection.getSocketChannel(serverConnection); //ChannelId or SubscriptionId   
 			writeToChannelId[idx] = channelId;
 			writeToChannelMsg[idx] = msgIdx;
 			writeToChannelBatchCountDown[idx] = maxBatchCount;
@@ -779,6 +803,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		Pipe.addLongValue(conId, pipe);
 		Pipe.addLongValue(position, pipe);
 		Pipe.addIntValue(sequenceNo, pipe);
+		Pipe.addIntValue(-1, pipe);
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 				

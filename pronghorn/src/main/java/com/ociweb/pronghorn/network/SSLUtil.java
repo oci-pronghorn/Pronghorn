@@ -970,16 +970,20 @@ public class SSLUtil {
 
 	private static void sendRelease(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, BaseConnection cc, boolean isServer) {
 		Pipe.presumeRoomForWrite(release);
-		sendReleaseRec(source, release, cc, cc.getSequenceNo(), isServer);
+		sendReleaseRec(source, release, cc, isServer);
 		
 	}
 
-	private static void sendReleaseRec(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, BaseConnection cc, int sequence, boolean isServer) {
+	private static void sendReleaseRec(Pipe<NetPayloadSchema> source, 
+			                           Pipe<ReleaseSchema> release, 
+			                           BaseConnection cc, 
+			                           boolean isServer) {
 		int s = Pipe.addMsgIdx(release, isServer? ReleaseSchema.MSG_RELEASEWITHSEQ_101 : ReleaseSchema.MSG_RELEASE_100);
 		Pipe.addLongValue(cc.id,release);			        		
 		Pipe.addLongValue(Pipe.tailPosition(source),release);
 		if (isServer) {
-			Pipe.addIntValue(sequence, release);
+			Pipe.addIntValue(cc.getSequenceNo(), release);
+			Pipe.addIntValue(-1, release); //PipeIdx is not known so we send -1
 		}
 		Pipe.confirmLowLevelWrite(release, s);
 		Pipe.publishWrites(release);

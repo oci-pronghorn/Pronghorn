@@ -12,22 +12,21 @@ public class PipeWorkWatcher {
 
 	private int groupBits;
 	private int groups;
-	private int groupMask;	
 
 	public  long[] tailPos;
     
     private int step;
     private int length;
     
-    private AtomicLong[] headPos;
+    private Pipe[] inputs;
     private AtomicInteger[] groupVersion;
     private AtomicLong workFlags = new AtomicLong();
     
     public PipeWorkWatcher() {
     }
     
-    public boolean hasWork() {
-    	return 0 != workFlags.get();
+    public static boolean hasWork(PipeWorkWatcher pww) {
+    	return 0 != pww.workFlags.get();
     }
     
     public int groups() {
@@ -46,9 +45,7 @@ public class PipeWorkWatcher {
 		}
 		assert(groupBits<=6);//group bits may not be larger since we use long for mask...
 		
-		groups = 1<<groupBits;
-		groupMask = groups-1;	
-		
+		groups = 1<<groupBits;		
 		length = inputs.length;
 		tailPos = new long[length];
 		Arrays.fill(tailPos, -1);
@@ -59,7 +56,8 @@ public class PipeWorkWatcher {
 			groupVersion[r] = new AtomicInteger();
 		}
 		
-		headPos = new AtomicLong[length];
+		this.inputs = inputs;
+	
         int i = inputs.length;
         step = (int)Math.ceil(i/(float)groups);
         if (step<=1) {
@@ -68,7 +66,7 @@ public class PipeWorkWatcher {
         
         
         while (--i >= 0) {
-        	headPos[i] = new AtomicLong();        	
+        	    	
         	tailPos[i] = -1;        	
         	
         	final int h = i;
@@ -79,16 +77,21 @@ public class PipeWorkWatcher {
 	    		@Override
 	    		public void published(long workingHeadPosition) {		    			
 	    			
+	    			//must bump version since we moved the head.
 	    			groupVersion[g].incrementAndGet();
-	    			
-	    			headPos[h].set(workingHeadPosition);//as long as this number has not moved we have no work.	
 	    			
     				boolean ok = true;
     				do {
+    					long value = 1L<<g;
     					long old = workFlags.get();
-    					ok = workFlags.compareAndSet(old, old | (1L<<g));
+    					if ((value&old)!=0) {
+    						ok = true;
+    					} else {
+    						ok = workFlags.compareAndSet(old, old | value);
+    					}
     				} while(!ok);
-	    				
+	    			
+    				
 	    		}
 	        };
 	        
@@ -110,51 +113,36 @@ public class PipeWorkWatcher {
 		pww.tailPos[i] = tailPos;	
 		
 	}
-	
-	public static boolean scan(PipeWorkWatcher pww, int g) {
-			
-		if (0 == (pww.workFlags.get() & (1L<<g))) {			
-			return false;
-		} else {
-			final int version = pww.groupVersion[g].get();
-			
-			boolean doScan = scanForWork(pww, g);						
-			if (!doScan && version == pww.groupVersion[g].get()) {				
-				clearScanState(pww, g, version);
-			}
-			
-			return doScan;
-		} 
+
+	public static int version(PipeWorkWatcher pww, int g) {
+		return pww.groupVersion[g].get();
 	}
 
-	private static boolean scanForWork(PipeWorkWatcher pww, int g) {
-		int s = getStartIdx(pww, g);
-		int l = getLimitIdx(pww, g);
-		boolean doScan = false;
-		for(int i = s; i<l; i++) {
-			if (pww.headPos[i].get() > pww.tailPos[i]) {
-				doScan=true;
-				break;
-			}
-		}
-		return doScan;
+	public static boolean hasNoWork(PipeWorkWatcher pww, int g) {
+		return 0 == (pww.workFlags.get() & (1L<<g));
 	}
 
-	private static void clearScanState(PipeWorkWatcher pww, int g, int version) {
-		boolean ok = true;
-		do {
-			long old = pww.workFlags.get();
-			ok = pww.workFlags.compareAndSet(old, old & (~(1L<<g)));					
-		} while(!ok);
-						
-		if (version != pww.groupVersion[g].get()) {
-			//oops we must put this back
-			ok = true;
+	public static boolean hasWork(PipeWorkWatcher pww, int g) {
+		return 0 != (pww.workFlags.get() & (1L<<g));
+	}
+
+	public static void clearScanState(PipeWorkWatcher pww, int g, int version) {
+		if (version == version(pww, g)) {
+			boolean ok = true;
 			do {
 				long old = pww.workFlags.get();
-				ok = pww.workFlags.compareAndSet(old, old | (1L<<g));
-				
+				ok = pww.workFlags.compareAndSet(old, old & (~(1L<<g)));					
 			} while(!ok);
+							
+			if (version != version(pww, g)) {
+				//oops we must put this back
+				ok = true;
+				do {
+					long old = pww.workFlags.get();
+					ok = pww.workFlags.compareAndSet(old, old | (1L<<g));
+					
+				} while(!ok);
+			}
 		}
 	}
 
