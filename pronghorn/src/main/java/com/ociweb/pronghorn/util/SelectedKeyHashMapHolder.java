@@ -14,6 +14,7 @@ public class SelectedKeyHashMapHolder {
     private boolean checkedForKeyMap;
     private HashMap<SelectionKey,?> keyMap;
     private final static Logger logger = LoggerFactory.getLogger(SelectedKeyHashMapHolder.class);
+    private final static int initSizeMaxSelections = 1<<15;
 	
     public HashMap<SelectionKey,?> selectedKeyMap(Set<SelectionKey> selectedKeys) {
 		if (!checkedForKeyMap && null==keyMap) {
@@ -34,7 +35,7 @@ public class SelectedKeyHashMapHolder {
 								 if (map instanceof HashMap) {
 									 HashMap<SelectionKey, ?> localMap = (HashMap<SelectionKey,?>)map;
 									 
-									 SelectionKeyHashMap lhm = new SelectionKeyHashMap(1<<12);
+									SelectionKeyHashMap lhm = new SelectionKeyHashMap(initSizeMaxSelections);
 									 lhm.putAll(localMap);
 								
 									 fields2[f2].set(objectF, lhm);

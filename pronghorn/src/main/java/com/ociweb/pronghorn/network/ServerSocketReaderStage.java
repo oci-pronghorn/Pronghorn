@@ -1,14 +1,14 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.net.SocketOption;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -24,7 +24,6 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.PoolIdxPredicate;
-import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 /**
  * Server-side stage that reads from the socket. Useful for building a server.
@@ -147,9 +146,25 @@ public class ServerSocketReaderStage extends PronghornStage {
     	return super.toString()+label;
     }
 
+    private SocketOption<Boolean> TCP_QUICKACK_LOCAL;
+    
     @Override
     public void startup() {
     	
+		//look this up once early in case we are running on Java 10+.
+    	try {
+    		Class<?> clazz = Class.forName("jdk.net.ExtendedSocketOptions");
+    		Field field = clazz.getDeclaredField("TCP_QUICKACK");
+    		
+    		//System.out.println(Arrays.deepToString(clazz.getDeclaredFields()));
+    		
+    		TCP_QUICKACK_LOCAL = (SocketOption<Boolean>)field.get(null);
+    		logger.info("TCP_QUICKACK enabled");
+    	} catch (Throwable t) {
+    		//ignore, not supported on this platform
+    	}
+		
+		
     	//find first pipes all going to the same place
     	//we then assume we have groups of this size, this can easily be asserted
     	int sizeOfOneGroup = output.length;
@@ -173,7 +188,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     	     
     	this.responsePipeLinePool = new PoolIdx(output.length, groups); 	
         	
-    	this.selectedKeyHolder = new SelectedKeyHashMapHolder();
+    	//this.selectedKeyHolder = new SelectedKeyHashMapHolder();
 		
         ServerCoordinator.newSocketChannelHolder(coordinator);
                 
@@ -197,13 +212,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     };    
 
-    private SelectedKeyHashMapHolder selectedKeyHolder;
-	private final BiConsumer keyVisitor = new BiConsumer() {
-		@Override
-		public void accept(Object k, Object v) {
-			selectionKeyAction.accept((SelectionKey)k);
-		}
-	};
+//    private SelectedKeyHashMapHolder selectedKeyHolder;
+//	private final BiConsumer keyVisitor = new BiConsumer() {
+//		@Override
+//		public void accept(Object k, Object v) {
+//			selectionKeyAction.accept((SelectionKey)k);
+//		}
+//	};
 
 	//final int waitForPipeConsume = 10;
 
@@ -232,13 +247,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    	            doneSelectors.clear();
 	    	            hasRoomForMore = true; //set this up before we visit
 	    	            
-	    	            HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-	    	            if (null!=keyMap) {
-	    	               keyMap.forEach(keyVisitor);
-	    	            } else {
+	    	         //   HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+	    	         //   if (null!=keyMap) {
+	    	         //      keyMap.forEach(keyVisitor);
+	    	         //   } else {
 	    	         	   //fall back to old if the map can not be found.
 	    	         	   selectedKeys.forEach(selectionKeyAction);
-	    	            }
+	    	         //  }
 
 	    	    	     
 	    	            //TODO: this has reintroduced the overloading hang bug because we have no timer
@@ -635,21 +650,22 @@ public class ServerSocketReaderStage extends PronghornStage {
                 //read as much as we can, one read is often not enough for high volume
                 boolean isStreaming = false; //TODO: expose this switch..
                 
-//    			try {
-//    				sourceChannel.setOption(ExtendedSocketOptions.TCP_QUICKACK, Boolean.TRUE);
-//    			} catch (IOException e1) {
-//    				// TODO Auto-generated catch block
-//    				e1.printStackTrace();
-//    			}	
-    			
-           //     synchronized(sourceChannel) {
-	                do {
-		                temp = sourceChannel.read(targetBuffer);
-		            	if (temp>0){
-		            		len+=temp;
-		            	}
-	                } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
-          //      }
+                do {
+                	temp = sourceChannel.read(targetBuffer);
+                	if (temp>0){
+                		len+=temp;
+                	}
+                } while (temp>0 && isStreaming); //for multiple in flight pipelined must keep reading...
+
+                try {    
+    				if (null!=TCP_QUICKACK_LOCAL) {
+    					//only for 10+ ExtendedSocketOptions.TCP_QUICKACK
+    					sourceChannel.setOption(TCP_QUICKACK_LOCAL, Boolean.TRUE);
+    				}
+    			} catch (IOException e1) {
+    				//NOTE: may not be supported on on platforms so ignore this 
+    			}	
+        
                 
                 assert(readCountMatchesLength(len, targetBuffer));
                 

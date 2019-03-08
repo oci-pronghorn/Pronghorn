@@ -82,9 +82,10 @@ public class LongDateTimeQueue {
 	}
 
 	public long dequeue() {
+		assert(tail.get()!=head.get());
+			
 		c.decrementAndGet();
-	//	System.out.println("left starts: "+c);
-		assert (tail.get()!=head.get());	
+	
 		temp[0]=tail.get();
 		long value = lastOutputValue+DataInputBlobReader.readPackedLong(data, mask, temp);
 		tail.set(temp[0]&mask);

@@ -56,6 +56,7 @@ import com.ociweb.pronghorn.stage.scheduling.CoresUtil;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.IPv4Tools;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.math.PMath;
 
 public class NetGraphBuilder {
 	
@@ -342,9 +343,15 @@ public class NetGraphBuilder {
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs,				
 				coordinator.pcmIn.getConfig(NetPayloadSchema.class));     
            
+		
+		long gt = computeGroupsAndTracks(coordinator.moduleParallelism(), coordinator.isTLS);
+ 
+		int groups = (int)((gt>>32)&Integer.MAX_VALUE);
+		int tracks = (int)gt&Integer.MAX_VALUE;
+		
         Pipe<ReleaseSchema>[] ack = buildSocketReaderStage(graphManager, 
         		                                                         coordinator, 
-        		                                                         coordinator.moduleParallelism(),
+        		                                                         groups, tracks,
         		                                                         encryptedIncomingGroup);       
         
         Pipe<NetPayloadSchema>[] handshakeIncomingGroup = null;
@@ -486,12 +493,18 @@ public class NetGraphBuilder {
 		/////////////////////
 		
 		PipeConfig<ServerResponseSchema> config = coordinator.pcmOut.getConfig(ServerResponseSchema.class);
-
 		
-		int acksBase = releaseAfterParse.length-1;
+		final int acksBase = releaseAfterParse.length-1;
 		int parallelTrack = toModules.length; 
+				
 		while (--parallelTrack>=0) { 
 									
+			final int releaseIdx = acksBase-parallelTrack;
+			assert(releaseIdx>=0);
+			if (releaseIdx<0) {
+				throw new UnsupportedOperationException("len "+toModules.length+" at "+parallelTrack+" base "+acksBase);
+				
+			}
 			Pipe<HTTPRequestSchema>[] fromRouter = toModules[parallelTrack];
 			int routeIdx = fromRouter.length;
 			while (--routeIdx>=0) {
@@ -533,7 +546,7 @@ public class NetGraphBuilder {
 					fromRouter, 
 					router404Pipe, 
 					log[parallelTrack],
-					releaseAfterParse[acksBase-parallelTrack],
+					releaseAfterParse[releaseIdx],
 					routerConfig,
 					coordinator,captureAll);        
 			
@@ -547,51 +560,77 @@ public class NetGraphBuilder {
 	public static Pipe<ReleaseSchema>[] buildSocketReaderStage(
 			final GraphManager graphManager, 
 			final ServerCoordinator coordinator, 
+			final int groups,
 			final int tracks,
 			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup) {
 
 		Pipe<ReleaseSchema>[] acks;
+
+		int totalTracks = groups*tracks;		
 		
 		if (!coordinator.isTLS) {
-			acks = Pipe.buildPipes(tracks, coordinator.pcmIn.getConfig(ReleaseSchema.class));		
+			acks = Pipe.buildPipes(totalTracks, coordinator.pcmIn.getConfig(ReleaseSchema.class));		
 		} else {
 			///route count is messing up data
-			acks = Pipe.buildPipes(tracks + coordinator.serverRequestUnwrapUnits, 
+			acks = Pipe.buildPipes(totalTracks + coordinator.serverRequestUnwrapUnits, 
 					               coordinator.pcmIn.getConfig(ReleaseSchema.class));						
 		}
-
 				
-		int groups = computeGroupsFromTracks(tracks, coordinator.isTLS);
-				
-		if (groups>0) {			
-			buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, groups);
-		} else {
-			/////////////////
-			//do not split for TLS since it is already slow and the ack backs are more complex
-			/////////////////
-			
-			ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager,  acks, encryptedIncomingGroup, coordinator);
-			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
-			coordinator.processNota(graphManager, readerStage);
-			
-		}
-        
+		buildSocketReaderGroups(graphManager, coordinator, encryptedIncomingGroup, acks, groups);        
         
 		return acks;
 	}
 
-	public static int computeGroupsFromTracks(final int tracks, boolean isTLS) {
-		int groups = -1;
-		if (supportReaderGroups && (tracks>=15 && (0==tracks%5)) && !isTLS) {			
-			groups = 5;			
-		} else
-		if (supportReaderGroups && (tracks>=12 && (0==tracks%3)) && !isTLS) {			
-			groups = 3;
-		} else		
-		if (supportReaderGroups && (tracks>=6 && (0==tracks%2)) && !isTLS) { 		
-			groups = 2;		
+	public static long computeGroupsAndTracks(final int target, 
+			                                 boolean isTLS) {
+	
+		//logger.info("compute groups from target: {} and TLS: {}",target,isTLS);
+		
+		if (isTLS) {
+			return (1L<<32)|target; //only use 1 group for TLS, very compute heavy
 		}
-		return groups;
+				
+		if (target<=1 || !supportReaderGroups) {
+			return (1L<<32)|target;
+		}
+		
+		int selectedDif = Integer.MAX_VALUE;
+		long selectedGroups = -1;
+		long selectedTracks = -1;
+		
+		
+		int maxGroups = (target>3)?(int)Math.sqrt(target):target;
+		int maxTracks = target;
+		
+		//logger.info("max groups:{} max tracks:{}",maxGroups,maxTracks);
+				
+		//do not check a single group
+		int g = maxGroups+1;//must include this group
+		int minGroup = (maxTracks>2)?2:1;
+		while (--g >= minGroup) {
+			int p = PMath.nextPrime(g);
+			do {
+				int proposal = p * g;
+				
+				int dif = Math.abs(proposal-target);
+				
+				if (dif<selectedDif ||
+				    ((dif==selectedDif) && (proposal==target))		
+					) {
+					selectedDif=dif;
+					selectedGroups = g;
+					selectedTracks = p;					
+				}
+				
+				p = PMath.nextPrime(p+1);
+			} while (p<maxTracks);
+		}
+		
+		//System.out.println("selected groups:"+selectedGroups+" tracks:"+selectedTracks);
+		
+		//change to long to return groups and tracks...
+		return (selectedGroups<<32)|selectedTracks;
+
 	}
 
 	private static void buildSocketReaderGroups(final GraphManager graphManager, final ServerCoordinator coordinator,
@@ -861,12 +900,7 @@ public class NetGraphBuilder {
 			                                GraphManager gm, int baseRate) {
 
 		///////////////
-		//telemetry latency can be as large as 160ms so we run this sever very slow
-		//this ensures that the application runs normally without starvation 
-		///////////////
-		//The graph.dot must respond in less than 40ms but 20ms is nominal
-		///////////////
-		final int serverRate = baseRate>>3;
+		final int serverRate = baseRate; //the server here runs slower than the base scan
 
 		final ModuleConfig modules = buildTelemetryModuleConfig(serverRate);
 		boolean isTLS = tlsCertificates != null;

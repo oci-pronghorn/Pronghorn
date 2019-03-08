@@ -64,9 +64,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private GraphManager graphManager;
 	    
     private final PipeWorkWatcher pww = new PipeWorkWatcher();
-    private boolean[] pendingWrites;
-      
-    
+ 
     /**
      * 
      * Writes pay-load back to the appropriate channel based on the channelId in the message.
@@ -153,8 +151,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     	Arrays.fill(activeTails, -1); 
 
         pww.init(input);
-        pendingWrites = new boolean[pww.groups()];
-        //Arrays.fill(pendingWrites, true);
     }
     
     @Override
@@ -166,7 +162,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
 
-    	if (PipeWorkWatcher.hasWork(pww)) {
+    	while (PipeWorkWatcher.hasWork(pww)) {
     
     		this.didWorkMonitor.published();    	
     		
@@ -175,12 +171,11 @@ public class ServerSocketWriterStage extends PronghornStage {
 				while (--g >= 0) {
 								
 					final int version = PipeWorkWatcher.version(pww, g);
-					if (pendingWrites[g] || PipeWorkWatcher.hasWork(pww,g)) {
+					if (PipeWorkWatcher.hasWork(pww,g)) {
 						   				
 						boolean done = true;
 						int start = PipeWorkWatcher.getStartIdx(pww, g);
 						int limit = PipeWorkWatcher.getLimitIdx(pww, g);
-						boolean hasPendingWritesInGroup = false;
 						
 						for(int x = start; x<limit; x++) {
 													
@@ -194,6 +189,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 								if (!Pipe.hasContentToRead(input[x])) {    				
 									//no content to read on the pipe
 									//all the old data has been written so the writeChannel remains null
+									if (!Pipe.isEmpty(input[x])) {
+										done = false;
+									}
 									continue;
 								} else {
 									
@@ -214,31 +212,20 @@ public class ServerSocketWriterStage extends PronghornStage {
 				    									    
 							//only set if we do not have any waiting data..
 							if (null == writeToChannel[x]) { 
-								//only clear when this data is published.
-								PipeWorkWatcher.setTailPos(pww, x, Pipe.getWorkingTailPosition(input[x]));
-								
+				
 								if (!Pipe.isEmpty(input[x])) {
 									done = false;
 								}
 								
 							} else {
-								done = false;
-								//must come back 
-								hasPendingWritesInGroup = true;							
-							}
-					  				
+								done = false; //pending writes must prevent us from clearning work.
+				
+							}					  				
 						}
-						
-						pendingWrites[g] = hasPendingWritesInGroup;
 						
 						if (done) {
 							PipeWorkWatcher.clearScanState(pww, g, version);
-						}					
-						
-						if (hasPendingWritesInGroup) {
-							return;
 						}
-						
 					}
 				}
 				

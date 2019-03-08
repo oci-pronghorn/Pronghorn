@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.util;
 
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -13,12 +11,9 @@ public class PipeWorkWatcher {
 	private int groupBits;
 	private int groups;
 
-	public  long[] tailPos;
-    
     private int step;
     private int length;
     
-    private Pipe[] inputs;
     private AtomicInteger[] groupVersion;
     private AtomicLong workFlags = new AtomicLong();
     
@@ -47,8 +42,6 @@ public class PipeWorkWatcher {
 		
 		groups = 1<<groupBits;		
 		length = inputs.length;
-		tailPos = new long[length];
-		Arrays.fill(tailPos, -1);
 			
 		groupVersion = new AtomicInteger[groups];
 		int r = groups;
@@ -56,8 +49,6 @@ public class PipeWorkWatcher {
 			groupVersion[r] = new AtomicInteger();
 		}
 		
-		this.inputs = inputs;
-	
         int i = inputs.length;
         step = (int)Math.ceil(i/(float)groups);
         if (step<=1) {
@@ -67,8 +58,6 @@ public class PipeWorkWatcher {
         
         while (--i >= 0) {
         	    	
-        	tailPos[i] = -1;        	
-        	
         	final int h = i;
         	final int g = i/step;
         	assert(g<groups) :"internal error";
@@ -106,12 +95,6 @@ public class PipeWorkWatcher {
 	
 	public static int getLimitIdx(PipeWorkWatcher pww, int g) {
 		return Math.min((g+1)*pww.step, pww.length);
-	}
-
-		
-	public static void setTailPos(PipeWorkWatcher pww, int i, long tailPos) {
-		pww.tailPos[i] = tailPos;	
-		
 	}
 
 	public static int version(PipeWorkWatcher pww, int g) {

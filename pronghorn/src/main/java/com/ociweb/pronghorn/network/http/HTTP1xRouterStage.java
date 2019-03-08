@@ -414,8 +414,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					Pipe.confirmLowLevelWrite(releasePipe, s);
 					Pipe.publishWrites(releasePipe);
 					
-					//pending release so we do not consider pipes empty
-					PipeWorkWatcher.setTailPos(pww, idx, Pipe.getWorkingTailPosition(inputs[idx])); //TODO:pass this in?
 					this.releaseInputSlabPos[idx]=-1;
     		}
     	}

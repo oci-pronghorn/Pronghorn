@@ -34,10 +34,10 @@ public class ServerPipesConfig {
 	
     public final PipeConfigManager pcmIn; 
     public final PipeConfigManager pcmOut; 
-    
+    	    
 	public ServerPipesConfig(LogFileConfig logFile, boolean isTLS, 
 							 int maxConnectionBits,
-							 int tracks,
+							 int moduleParallelism,
 							 int encryptUnitsPerTrack,
 							 int concurrentChannelsPerEncryptUnit,
 							 int decryptUnitsPerTrack,
@@ -73,7 +73,7 @@ public class ServerPipesConfig {
 			throw new NullPointerException();
 		}
 	    this.logFile = logFile;
-	    this.moduleParallelism = tracks;
+	    this.moduleParallelism = moduleParallelism;
 	    this.maxConnectionBitsOnServer = maxConnectionBits;
 		
 	    this.serverResponseWrapUnitsAndOutputs = encryptUnitsPerTrack*moduleParallelism;
@@ -94,10 +94,24 @@ public class ServerPipesConfig {
 	    this.maxConcurrentInputs = serverRequestUnwrapUnits*concurrentChannelsPerDecryptUnit;
 		////////
 		
-	    //Need more writers than readers, the OS assumes many threads respond but few read.
-	    int mult = moduleParallelism >=2 ? 4 : 1;
-	    this.serverSocketWriters = mult*Math.max(1,NetGraphBuilder.computeGroupsFromTracks(moduleParallelism, isTLS));
-
+	    long gt = NetGraphBuilder.computeGroupsAndTracks(moduleParallelism, isTLS);
+	    int groups = (int)((gt>>32)&Integer.MAX_VALUE);
+	    int tracks = (int)gt&Integer.MAX_VALUE;
+	    	    
+	    assert(0 == (maxConcurrentOutputs%groups)); //must be divisible by groups.
+	    
+	    int tracksPerGroup = maxConcurrentOutputs/groups;	    
+	    
+	    int mult = 1;	    
+	    if (0==(tracksPerGroup&0x3)) {
+	    	mult = 4;	    	
+	    } else if (0==(tracksPerGroup&0x1)) {
+	    	mult = 2;	    	
+	    }	    
+	    
+	    this.serverSocketWriters = groups*mult;
+	    
+	    
 	    //defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
 	    		

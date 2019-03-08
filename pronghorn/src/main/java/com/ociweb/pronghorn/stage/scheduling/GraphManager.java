@@ -86,8 +86,7 @@ public class GraphManager {
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
 	//must be set before graph starts and impacts the latency of the graph.dot calls
-	//this does NOT impact the data poll rate which is fixed at 160ms
-	public final static int TELEMTRY_SERVER_RATE = 160000000;//160ms 6.25fps
+	public final static int TELEMTRY_SERVER_RATE = 100_000_000;
 	
 	
 	public static void setPercentile(double value) {
@@ -2229,11 +2228,13 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
+	                						//TODO: pull out as constant
 	                						int oneMsgSize = 
 	                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
 	                							/
 	                							p.sizeOfSlabRing;
-	                						oneMsgSize = Math.max(1, oneMsgSize);
+	                						//must be 2 since the 1 is used for "any non zero value"
+	                						oneMsgSize = Math.max(2, oneMsgSize);
 	                							                						
 	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
@@ -2289,11 +2290,13 @@ public class GraphManager {
                 					
 	                					count++;
 	                					if (null!=pipePercentileFullValues) {
+	                						//TODO: pull out as constant
 	                  						int oneMsgSize = 
 		                							(100*FieldReferenceOffsetManager.minFragmentSize(Pipe.from(p)))
 		                							/
 		                							p.sizeOfSlabRing;
-	                  						oneMsgSize = Math.max(1, oneMsgSize);
+	                  					    //must be 2 since the 1 is used for "any non zero value"
+	                  						oneMsgSize = Math.max(2, oneMsgSize);
 	                  							                  						
 	                						sumFull += (pipePercentileFullValues[p.id]>=oneMsgSize?100:0);
 	                						maxPctFull = Math.max(maxPctFull, pipePercentileFullValues[p.id]);
@@ -2485,9 +2488,9 @@ public class GraphManager {
 		if (null!=pipePercentileFullValues) {          	
 			int triggerSource = Math.max(allPctUsed,maxPctFull);
 					
-			if (triggerSource>=60) {
+			if (triggerSource>=80) {
 				target.append(",color=red");	    
-			} else if (triggerSource>=40) {
+			} else if (triggerSource>=60) {
 				target.append(",color=orange");	    
 			} else {
 				target.append(",color=\"#b2b2b2\""); //replaced gray30 with the inverse of it, which is #B2B2B2

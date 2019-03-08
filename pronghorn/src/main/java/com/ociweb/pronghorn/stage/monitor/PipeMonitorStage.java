@@ -100,7 +100,14 @@ public class PipeMonitorStage extends PronghornStage {
 			
 			//if unable to write then the values are dropped.
 			if (Long.numberOfLeadingZeros(dropped)!=Long.numberOfLeadingZeros(++dropped)) {			
-				logger.info("Telemetry is not consuming collected data fast enough dropped:{} rate:{}ns  {}",dropped,(Number)GraphManager.getNota(gm, this, GraphManager.SCHEDULE_RATE, -1),output);
+				PronghornStage consumer = GraphManager.getRingConsumer(this.gm, output.id);
+				
+				logger.info("Telemetry is not consuming collected data fast enough dropped:{} rate:{}ns  {}\n consumer:{}",
+						    dropped,
+						    (Number)GraphManager.getNota(gm, this, GraphManager.SCHEDULE_RATE, -1),
+						    output,
+						    consumer);
+				
 			}
 			//if this is happening we probably have a blocking stage which does not release the thread??
 			

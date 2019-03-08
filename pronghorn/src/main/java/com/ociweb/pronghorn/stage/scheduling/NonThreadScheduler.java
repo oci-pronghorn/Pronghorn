@@ -32,7 +32,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     //Time based events will poll at least this many times over the period.
     // + ensures that the time trigger happens "near" the edge
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
-    public static final int granularityMultiplier = 4;
+    public static final int granularityMultiplier = 10;
     private static final long MS_TO_NS = 1_000_000;
     
     private int[] producersIdx;

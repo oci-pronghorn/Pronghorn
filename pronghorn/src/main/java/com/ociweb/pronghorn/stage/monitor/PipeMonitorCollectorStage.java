@@ -191,10 +191,10 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 			//this should not happen unless the system is overloaded and scheduler needs to be updated.			
 		}
 		
-		int pctFull = (int)((10000*(head-tail))/ringSize);
+		long pctFull = (int)((10000L*(head-tail))/ringSize);
 		
 		//NOTE: this is a test to see if we can avoid this avg step.. This seems to slow down reaction greatly...
-		pctFullAvg[pos] = (short)Math.min(9999, (((MA_MULTI*pctFullAvg[pos])+pctFull)>>>MA_BITS));
+		pctFullAvg[pos] = (short)Math.min(9999L, (((MA_MULTI*(long)pctFullAvg[pos])+pctFull)>>>MA_BITS));
 		
 		//////////////////////////
 		//////////compute the messages per second
@@ -241,7 +241,8 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE); 
-	private static final PipeConfig<PipeMonitorSchema> defaultMonitorRingConfig = new PipeConfig<PipeMonitorSchema>(PipeMonitorSchema.instance, 15, 0);
+	private static final PipeConfig<PipeMonitorSchema> defaultMonitorRingConfig 
+	                      = new PipeConfig<PipeMonitorSchema>(PipeMonitorSchema.instance, 64, 0);
 	
 	public static PipeMonitorCollectorStage attach(GraphManager gm) {
 		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
@@ -261,7 +262,8 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 
 		PipeMonitorCollectorStage stage = new PipeMonitorCollectorStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate>>5, stage);
+		//this one must go faster to ensure all the messages get consumed
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Math.max(monitorRate>>3, 8_000), stage);
 		stage.setNotaFlag(PronghornStage.FLAG_MONITOR);
 		return stage;
 	}
