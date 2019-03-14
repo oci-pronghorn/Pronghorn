@@ -89,9 +89,9 @@ public class LogTelemetry  {
 		
 		//show all these
 		serverConfig.setHost(host);
-		serverConfig.setDecryptionUnitsPerTrack(2);
-		serverConfig.setEncryptionUnitsPerTrack(2);
-		serverConfig.setMaxResponseSize(1<<22);
+		serverConfig.setDecryptionUnitsPerTrack(4);
+		serverConfig.setEncryptionUnitsPerTrack(4);
+		serverConfig.setMaxResponseSize(1<<24); //TODO: match the module logic
 		//serverConfig.logTraffic(); //do not log traffic when we run on build server 
 		serverConfig.setMaxRequestSize(1<<11);
 		serverConfig.setMaxQueueIn(32);
@@ -100,7 +100,7 @@ public class LogTelemetry  {
 		serverConfig.useInsecureServer();//TODO: turn this off later...
 		
 		
-		final Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(32, 1<<15);//TODO: if too small we hang...
+		final Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(64, 1<<15);//TODO: if too small we hang...
 		FileBlobReadStage.newInstance(gm, output, logFilePath, false);
 		
 		
@@ -145,7 +145,7 @@ public class LogTelemetry  {
 						//if we like we can create one module for each input pipe or as we do here
 					    //create one module to consume all the pipes and produce results.
 						Pipe<ServerResponseSchema>[] response = Pipe.buildPipes(inputPipes.length, 
-								 ServerResponseSchema.instance.newPipeConfig(4, 1<<21));
+								 ServerResponseSchema.instance.newPipeConfig(4, 1<<22));
 								
 						ResourceModuleStage.newInstance(graphManager, 
 								inputPipes, 
@@ -163,7 +163,7 @@ public class LogTelemetry  {
 					case 1: 
 						{
 						Pipe<ServerResponseSchema>[] responses = Pipe.buildPipes(inputPipes.length, 
-								 ServerResponseSchema.instance.newPipeConfig(4, 1<<21));
+								 ServerResponseSchema.instance.newPipeConfig(4, 1<<24));
 							
 						new LogTelemetryRestStage(graphManager, inputPipes, responses, logFile);
 								
