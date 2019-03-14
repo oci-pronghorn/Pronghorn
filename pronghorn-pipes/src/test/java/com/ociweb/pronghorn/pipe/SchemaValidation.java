@@ -29,7 +29,6 @@ public class SchemaValidation {
     @Test
     public void testDataTest() {
         assertTrue(FROMValidation.checkSchema("/testDataSchema.xml", TestDataSchema.class));
-    }
-    
+    }   
     
 }

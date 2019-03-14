@@ -3758,7 +3758,8 @@ public class Pipe<T extends MessageSchema<T>> {
      	 
 		 pipe.slabRing[pipe.slabMask & (int)pipe.slabRingHead.workingHeadPos.value++] = msgIdx;
 		 
-		 final int size = Pipe.from(pipe).fragDataSize[msgIdx];
+		 //NOTE: masking off the low index of this fragment id
+		 final int size = Pipe.from(pipe).fragDataSize[0xFFFFFF & msgIdx];
 	   	    
 		    //////////////////////////////////////
 		    //this block is here to allow high level calls to follow low level calls.
@@ -5399,7 +5400,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return int size of message as defined by FROM
      */
     public static <S extends MessageSchema<S>> int sizeOf(S schema, int msgIdx) {
-        return msgIdx>=0 ? schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
+        return msgIdx>=0 ? schema.from.fragDataSize[0xFFFFFF&msgIdx] : Pipe.EOF_SIZE;
     }
 
     /**

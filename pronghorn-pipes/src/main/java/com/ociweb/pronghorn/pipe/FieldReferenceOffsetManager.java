@@ -1,16 +1,17 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.IOException;
+import java.util.Arrays;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.util.Appendables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 public class FieldReferenceOffsetManager {
 	
@@ -382,7 +383,7 @@ public class FieldReferenceOffsetManager {
 				}
 			}
 		}
-		
+
 		int[] result = new int[countOfNeededStarts];
 				
 		j = tokens.length;
@@ -797,59 +798,111 @@ public class FieldReferenceOffsetManager {
         return target;
     }
     
-    
-    public static FieldReferenceOffsetManager buildSingleNumberBlockFrom(
-			final int fieldCount, 
+ 
+    public static FieldReferenceOffsetManager buildAggregateNumberBlockFrom(
 			final int typeMask,
 			final String name) {
+    	
+    	
 		int fields = 1;
 		int size = TypeMask.ringBufferFieldSize[typeMask];
 		if (typeMask==TypeMask.Decimal) {
 			size = 3;
 			fields = 2;
-		}		
+		}
+		//compute max size we can store given TokenBuilder.MAX_INSTANCE
+		int maxLen = ((TokenBuilder.MAX_INSTANCE>>1)-2)/size;		
+		int maxBits = (int)Math.floor(Math.log(maxLen)/Math.log(2));
 		
+		int matLen = 0;
+		int x = maxBits+1;
+		while (--x>=0) {
+			matLen += (fields*(1<<x))+2;
+		}
+		//System.out.println("max bits supported: "+maxBits+" max len "+matLen);
+				
+		int[]    matrixTokens=new int[matLen];
+		String[] matrixNames=new String[matLen];
+		long[]   matrixIds=new long[matLen];
+
+		int pos = 0;
+		for(int i = 0; i<=maxBits; i++) {			
+			pos = addSingleTypeGroup(1<<i, typeMask, matrixTokens, matrixNames, matrixIds, size, pos,
+					 /* ID must be count of fields */ 1<<i, (name+"-"+i).intern());
+		}
+		
+		//last position is left as null and zero
+		assert(matrixIds[matrixIds.length-1]==0);
+		assert(matrixNames[matrixNames.length-1]==null);
+		return new FieldReferenceOffsetManager(matrixTokens, /*preamble*/ (short)0, matrixNames, matrixIds);
+
+	}
+    
+    
+    public static FieldReferenceOffsetManager buildSingleNumberBlockFrom(
+			final int fieldCount, 
+			final int typeMask,
+			final String name) {
+    	
+		int fields = 1;
+		int size = TypeMask.ringBufferFieldSize[typeMask];
+		if (typeMask==TypeMask.Decimal) {
+			size = 3;
+			fields = 2;
+		}
 		
 		int matLen = (fields*fieldCount)+1+1;
 		int[]    matrixTokens=new int[matLen];
 		String[] matrixNames=new String[matLen];
 		long[]   matrixIds=new long[matLen];
-		matrixIds[0] = 10000;
-		matrixNames[0] = name;
+
+		int pos = 0;
 		
-		int dataSize = (size*fieldCount)+1;
+		pos = addSingleTypeGroup(fieldCount, typeMask, matrixTokens, matrixNames, matrixIds, size, pos, 10000, name);
 		
-		if (dataSize>TokenBuilder.MAX_INSTANCE) {
-			logger.info("Data size {} is too large.  Element size is {}, total count of values {} ",dataSize,size,fieldCount);
-		}
-		
-		matrixTokens[0] = TokenBuilder.buildToken(TypeMask.Group, 0, dataSize); 
-		if (typeMask==TypeMask.Decimal) {
-			int m = 1;
-			for (int i=1;i<=fieldCount;i++) {
-				matrixIds[m] = i;
-				matrixNames[m] = Integer.toString(i);
-				matrixTokens[m] = TokenBuilder.buildToken(TypeMask.Decimal, 0, i); 
-				m++;
-				matrixIds[m] = i;
-				matrixNames[m] = Integer.toString(i);
-				matrixTokens[m] = TokenBuilder.buildToken(TypeMask.LongSigned, 0, i);
-				m++;
-			}
-		} else {
-			for (int i=1;i<=fieldCount;i++) {
-				matrixIds[i] = i;
-				matrixNames[i] = Integer.toString(i);
-				matrixTokens[i] = TokenBuilder.buildToken(typeMask, 0, i);
-				
-			}
-		}
-		matrixTokens[matrixTokens.length-1] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, dataSize);
 		//last position is left as null and zero
 		assert(matrixIds[matrixIds.length-1]==0);
 		assert(matrixNames[matrixNames.length-1]==null);
-		FieldReferenceOffsetManager matFrom = new FieldReferenceOffsetManager(matrixTokens, /*pramble*/ (short)0, matrixNames, matrixIds);
-		return matFrom;
+		return new FieldReferenceOffsetManager(matrixTokens, /*preamble*/ (short)0, matrixNames, matrixIds);
+
+	}
+
+	private static int addSingleTypeGroup(final int fieldCount, final int typeMask, int[] matrixTokens,
+			String[] matrixNames, long[] matrixIds, int fieldSize, int pos, int id, String name) {
+		
+		final int dataSize = (fieldSize*fieldCount)+1;
+		assert((pos+dataSize)<=TokenBuilder.MAX_INSTANCE) : "too many fragments or they are too large, limit: "+TokenBuilder.MAX_INSTANCE;
+		
+		matrixIds[pos] = id;
+		matrixNames[pos] = name;
+		matrixTokens[pos++] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Templ, dataSize); 
+		//OperatorMask.Group_Bit_Templ
+		
+		if (typeMask==TypeMask.Decimal) {
+			
+			for (int i=1;i<=fieldCount;i++) {
+				int t = pos++;
+				matrixIds[t] = i;
+				matrixNames[t] = Integer.toString(i).intern();
+				matrixTokens[t] = TokenBuilder.buildToken(TypeMask.Decimal, 0, i); 
+				
+				t = pos++;
+				matrixIds[t] = i;
+				matrixNames[t] = Integer.toString(i).intern();
+				matrixTokens[t] = TokenBuilder.buildToken(TypeMask.LongSigned, 0, i);
+				
+			}
+		} else {
+			for (int i=1;i<=fieldCount;i++) {
+				int t = pos++;
+				matrixIds[t] = i;
+				matrixNames[t] = Integer.toString(i).intern();
+				matrixTokens[t] = TokenBuilder.buildToken(typeMask, 0, i);
+				
+			}
+		}
+		matrixTokens[pos++] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, dataSize);
+		return pos;
 	}
 
 	public static <A extends Appendable>void buildFROMInterfaces(A target, String schemaName, FieldReferenceOffsetManager from) throws IOException {

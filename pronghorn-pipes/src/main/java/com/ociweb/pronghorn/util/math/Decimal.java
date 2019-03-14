@@ -18,6 +18,11 @@ public class Decimal {
 		}
     }
     
+    public static void multiply(final long aM, final byte aE, final long bM, final byte bE, DecimalResult result) {
+        	result.result(aM*bM, (byte)(aE+bE));
+    }
+    
+    
     private static final byte[] placesLookup = 
     	{(byte)0,(byte)-3,  (byte)-6,     (byte)-9,        (byte)-12,              (byte)-15,                   (byte)-18};
     private static final long[] multLookup   = 

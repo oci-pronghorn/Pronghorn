@@ -34,6 +34,10 @@ public abstract class MessageSchema<T extends MessageSchema<T>> {
     public Pipe<T> newPipe(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
     	return new Pipe<T>((PipeConfig<T>) newPipeConfig(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields));
     }
+    
+    public Pipe<T> newPipe(int minimumFragmentsOnRing) {
+    	return new Pipe<T>((PipeConfig<T>) newPipeConfig(minimumFragmentsOnRing, 0));
+    }
 
     //TODO: write a second one for assert only which confirms only 1 static instance field.
 	public static <S extends MessageSchema<S>> S findInstance(Class<S> clazz) {
@@ -41,9 +45,8 @@ public abstract class MessageSchema<T extends MessageSchema<T>> {
 		Field[] declaredFields = clazz.getDeclaredFields();
 		for(int i=0;i<declaredFields.length;i++) {
 			Field f = declaredFields[i];
-			//only look at static fields
-		
-			if (Modifier.isStatic(f.getModifiers())) {
+			//only look at static fields		
+			if (Modifier.isStatic(f.getModifiers())) {				
 				if (f.getGenericType().getTypeName().equals(clazz.getName())) {					
 					try {
 						return (S)f.get(null);

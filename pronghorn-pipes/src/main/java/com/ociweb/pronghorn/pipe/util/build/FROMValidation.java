@@ -118,7 +118,7 @@ public class FROMValidation {
 				    if (null!=encodedFrom) {
 				        logger.error("Template file:"+encodedFrom);
 				    }
-				    logger.error("//replacement source");
+				    logger.error("//replacement source, encoded from missing or not matching");
 				    result = false;
 				}
 				    				    
@@ -146,7 +146,7 @@ public class FROMValidation {
 			result = false;
 			try {
 			    logger.error("Encoded source: {}",expectedFrom);
-				logger.error("//replacement source");
+				logger.error("//replacement source, schema instance missing");
 				
 				FieldReferenceOffsetManager.buildFROMConstructionSource(
 						target, 
