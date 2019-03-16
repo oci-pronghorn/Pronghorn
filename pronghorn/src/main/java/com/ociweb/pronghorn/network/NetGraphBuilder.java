@@ -617,9 +617,13 @@ public class NetGraphBuilder {
 				if (dif<selectedDif ||
 				    ((dif==selectedDif) && (proposal==target))		
 					) {
-					selectedDif=dif;
-					selectedGroups = g;
-					selectedTracks = p;					
+					
+					if (g%p != 0) {//if groups are divisible by tracks do not use.					
+						selectedDif=dif;
+						selectedGroups = g;
+						selectedTracks = p;			
+					}
+					
 				}
 				
 				p = PMath.nextPrime(p+1);
