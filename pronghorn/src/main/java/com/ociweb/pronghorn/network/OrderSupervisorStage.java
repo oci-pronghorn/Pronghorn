@@ -227,8 +227,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			
 		        while (--c >= 0) { 
 		        	if (Pipe.hasContentToRead(localPipes[c])) {
-		        		processPipe(localPipes[c], c);	
-		        		didWork = true;
+		        		didWork |= processPipe(localPipes[c], c);
 		        	}		        	
 		        }		       
 		

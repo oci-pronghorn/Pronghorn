@@ -337,7 +337,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
     
-    	if (PipeWorkWatcher.hasWork(pww)) {
+    	boolean hasRoomToWrite = true;
+    	while (hasRoomToWrite && PipeWorkWatcher.hasWork(pww)) {
     		int g = pww.groups();
     		while (--g >= 0) {
     			
@@ -347,11 +348,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		
     				int start = PipeWorkWatcher.getStartIdx(pww, g);
     				int limit = PipeWorkWatcher.getLimitIdx(pww, g);
-    				
-    		//		boolean contentFound = false;
-    				
-    			//	do {
-	    		//		contentFound = false;
+    			
 	    				for(int idx = start; idx<limit; idx++) {
 	    			
 	    					    if (//!Pipe.hasContentToRead(this.inputs[idx]) 
@@ -364,6 +361,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 										done = false;
 										if (-1 == parsePipe(this, idx)) {
 											//no room
+											hasRoomToWrite = false;
 											break;//need to wait for full pipe to empty
 										};									
 									}
@@ -377,14 +375,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		        				
 		        				releaseIfNeeded(idx);
 	    				}
-	    				Thread.yield();
-    			//	} while(!contentFound);
-    				
-    				
-//    				if (!contentFound) {
-//    					System.out.println("scanner said we have work but none found");
-//    				}
-    				
+
     				if (done) {
 						PipeWorkWatcher.clearScanState(pww, g, version);
 					}	
@@ -431,7 +422,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     			that.blockedOnOutput[idx] = null;
     			return 1;
     		} else {
-    			return 0;
+    			return -1;
     		}
     	}
 	}
