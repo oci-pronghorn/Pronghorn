@@ -220,17 +220,18 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	    	boolean didWork;
 	    	
 	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
+	    	
 	    	do {
 		    	didWork = false;
 				int c = localPipes.length;
 			
 		        while (--c >= 0) { 
-		        	if (!Pipe.hasContentToRead(localPipes[c])) {		        				        		
-		        	} else {
-		        		//has full message
-		        		didWork |= processPipe(localPipes[c], c);		        		
+		        	if (Pipe.hasContentToRead(localPipes[c])) {
+		        		processPipe(localPipes[c], c);	
+		        		didWork = true;
 		        	}		        	
 		        }		       
+		
 	    	} while ( didWork && !shutdownInProgress);
 			
 	 
