@@ -37,7 +37,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private PronghornStage firstStage;
 	
 	
-	static int pipesPerResponseParser = 14;
+	static int pipesPerResponseParser = 31;
 
 	
 	public static boolean TEST_RECORDS = false;

@@ -151,7 +151,7 @@ public class NetGraphBuilder {
 
 		//do not have more parsers than cores and do not have more parsers than needed for pipe goal
 		int maxParser = Math.min(CoresUtil.availableProcessors(),  rawToParse.length/ccm.pipesPerResponseParser);
-		//find the first number going into count evenly which causes the pipe count to be < 32
+
 		int proposed = Math.max(1, maxParser);
 
 		while (0 != (rawToParse.length%proposed) && proposed>1) {
@@ -1217,11 +1217,11 @@ public class NetGraphBuilder {
 		int clientWriters = 1;				
 		int responseUnwrapCount = 1;
 		int clientWrapperCount = 1;
-		int responseQueue = 10;
+		int responseQueue = 20;
 		int releaseCount = 2048;
-		int netResponseCount = 64;
+		int netResponseCount = 64; //reader to response parse
 		int netResponseBlob = 1<<19;
-				
+
 		buildClientGraph(gm, ccm, responseQueue, clientRequests, responseUnwrapCount, clientWrapperCount, clientWriters,
 				         releaseCount, netResponseCount, factory);
 	}
