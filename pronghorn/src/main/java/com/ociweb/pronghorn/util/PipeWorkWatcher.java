@@ -32,7 +32,7 @@ public class PipeWorkWatcher {
     
 	public void init(Pipe[] inputs) {
 		
-		if (inputs.length >= 512) {
+		if (inputs.length >= 256) {
 			   groupBits = 6;  //64 groups absolute max
 		} else {			
 			   groupBits = 0;
