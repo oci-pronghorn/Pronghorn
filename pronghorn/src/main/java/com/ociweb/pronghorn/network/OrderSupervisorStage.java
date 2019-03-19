@@ -17,10 +17,8 @@ import com.ociweb.pronghorn.network.schema.HTTPLogResponseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.ChannelReader;
-import com.ociweb.pronghorn.pipe.ChannelReaderController;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -217,32 +215,26 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				return;
 			}
 
-	    	boolean didWork;
-	    	
 	    	Pipe<ServerResponseSchema>[] localPipes = dataToSend;
-	    	
-	    	do {
-		    	didWork = false;
-				int c = localPipes.length;
-			
-		        while (--c >= 0) { 
-		        	if (Pipe.hasContentToRead(localPipes[c])) {
-		        		didWork |= processPipe(localPipes[c], c);
-		        	}		        	
-		        }		       
-		
-	    	} while ( didWork && !shutdownInProgress);
-			
-	 
-	    	
 
+			int c = localPipes.length;
+				
+		    while (--c >= 0) {
+		        	if (Pipe.hasContentToRead(localPipes[c])) {
+		        		processPipe(localPipes[c], c);//we read as much as we can from here
+		        	}		        	
+		    }		       
+		
     }
 
-	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
+	
+	//HashMap<Integer,Integer> lastPipe = new HashMap<Integer,Integer>(); 
+	
+	
+	private void processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
-		boolean didWork = false;
-		boolean keepWorking = true;
-		while (Pipe.contentRemaining(sourcePipe)>0 && keepWorking) {
+		int blockedCount = 0;
+		while (Pipe.contentRemaining(sourcePipe)>0 && blockedCount<10) {
 				
 			assert(Pipe.bytesReadBase(sourcePipe)>=0);
 			
@@ -257,43 +249,50 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	//ensure that the channelId is not a factor of the roots found in poolMod then take the mod	    	
 		    	int myPipeIdx = (int)((channelId/pipeDivisor) % poolMod);//channel must always have the same pipe for max write speed. 
 		    			   
-		    	//System.out.println("write: "+channelId+" to pipe "+myPipeIdx+" divisor "+pipeDivisor);
+//		    	Integer last = lastPipe.get(myPipeIdx);
+//		    	if (null!=last) {
+//		    		if (last.intValue()!=(int)channelId) {
+//		    			System.out.println("internal error, "+myPipeIdx+" was "+last.intValue()+" now "+channelId);
+//		    		}
+//		    	}		    	
+//		    	lastPipe.put(myPipeIdx, (int)channelId);
+//    	//System.out.println("write: "+channelId+" to pipe "+myPipeIdx+" divisor "+pipeDivisor+" mod pool "+poolMod);
 		    	
 		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
 				    			        	
 			    	//only after we know that we are doing something.
-		        	keepWorking = processInputData(sourcePipe, pipeIdx, keepWorking, 
+		        	if (!processInputData(sourcePipe, pipeIdx,  
 									        		peekMsgId, myPipeIdx,
-													channelId);
-		        	didWork |= keepWorking;
+													channelId)) {
+		        		return;//shutting down OR the next message is not the right sequence number.
+		        	};
+		    
 		    	} else {
-			        ///////////////////////////////
+		    		//keep reading until we get 10 no rooms in a row. or we have no more content.
+		    		Thread.yield();
+		    		blockedCount++;
+					///////////////////////////////
 			        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 			        ///////////////////////////////
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		keepWorking = false; //break out to allow down stream to consume
-		    		
-		    		//logger.info("no room to write out, try again later {}",outgoingPipes[myPipeIdx]);
-		    		
-		    		//return didWork;
+	//	    		keepWorking = false; //break out to allow down stream to consume
+		    		//next item on pipe has no place to write so we are stalled...
 		    	}
 
 		    } else {		 
 		    	//if this was to be skipped then do it
-		    	if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {
-		    		didWork = true;
+		    	if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {		    	
 		    		skipData(sourcePipe, channelId);
 		    	} else {
 		    		break;
 		    	}
 		    }
 		}
-		return didWork;
 	}
 
 	SequenceValidator validator = new SequenceValidator();
 	
-	private boolean processInputData(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
+	private boolean processInputData(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx,
 			int peekMsgId, int myPipeIdx, long channelId) {
 		
 		
@@ -314,41 +313,43 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			
 		}
 
-		return checkSeqAndProcessInput(sourcePipe, pipeIdx, keepWorking, 
+		return checkSeqAndProcessInput(sourcePipe, pipeIdx,  
 				peekMsgId, myPipeIdx, channelId,
 				sequenceNo, idx, expectedSquenceNosSequence[idx]);
 	
 	}
 
-	private boolean checkSeqAndProcessInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, boolean keepWorking,
+	private boolean checkSeqAndProcessInput(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx, 
 			int peekMsgId, int myPipeIdx, long channelId, int sequenceNo, int idx,
 			int expected) {
 			
+		boolean keepRunning = true;
 		if ((0==sequenceNo) || (sequenceNo >= expected)) {
 			if ((0==sequenceNo) || (expected == sequenceNo)) {
-				keepWorking = processExpectedSequenceValue(sourcePipe, pipeIdx,
-						keepWorking, peekMsgId,
+				//stop if we get a shutdown
+				keepRunning = processExpectedSequenceValue(sourcePipe, pipeIdx,
+						peekMsgId,
 						myPipeIdx, sequenceNo, 
 						channelId, idx, expected);
 				
 				//System.out.println("sequence matched "+sequenceNo);
 		    	
 			} else {
-				
-				//TODO: why get backs...
+				//stop if the sequence number does not match
+				keepRunning = false;//sequenceNo<=expected;//false;
 				//System.out.println("for channel:"+channelId+" waiting for: "+expected+" but got "+sequenceNo );
 				
 				assert(hangDetect(pipeIdx, sequenceNo, channelId, expected));
 				assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 				assert(Pipe.bytesReadBase(sourcePipe)>=0);
-				keepWorking = false;
+		
 			}
 		} else {
-			
-			keepWorking = badSequenceNumberProcessing(channelId, sequenceNo, expected);
+			 keepRunning = false;
+			 badSequenceNumberProcessing(channelId, sequenceNo, expected);
 		}
+		return keepRunning;
 		
-		return keepWorking;
 	}
 
 	private boolean badSequenceNumberProcessing(long channelId, int sequenceNo, int expected) {
@@ -372,9 +373,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	
 	private boolean processExpectedSequenceValue(final Pipe<ServerResponseSchema> sourcePipe,
 			int pipeIdx,
-			boolean keepWorking, int peekMsgId, int myPipeIdx, int sequenceNo,
+			int peekMsgId, int myPipeIdx, int sequenceNo,
 			long channelId, int idx, int expected) {
-	
+		
+		boolean keepWorking = true;
+		
 		//logger.trace("found expected sequence {}",sequenceNo);
 		final short expectedPipe = expectedSquenceNosPipeIdx[idx];
 		if (-1 == expectedPipe) {
