@@ -595,8 +595,8 @@ public class NetGraphBuilder {
 		}
 		
 		int selectedDif = Integer.MAX_VALUE;
-		long selectedGroups = -1;
-		long selectedTracks = -1;
+		long selectedGroups = 1;
+		long selectedTracks = target;
 		
 		
 		int maxGroups = (target>3)?(int)Math.sqrt(target):target;
