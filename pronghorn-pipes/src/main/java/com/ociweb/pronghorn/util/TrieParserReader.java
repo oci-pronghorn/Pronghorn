@@ -862,16 +862,17 @@ public class TrieParserReader {
 		
 	}
 
+	
+	//TODO: which are the most common sides?
 	private static void switchJump(TrieParserReader reader, TrieParser trie, boolean hasSafePoint, short sourceShort,
 			int p, short[] localData, int metaPos, short trieLen, short offset) {
-		if (sourceShort>=offset
-		   && ( (sourceShort-offset) < trieLen )) {
+		if (sourceShort>=offset && ( (sourceShort-offset) < trieLen )) {
 					
-			int jump = (sourceShort-offset)<<1;
+			int pJump = p+((sourceShort-offset)<<1);
 			
 			//jump to new position, all are relative to the end of the jump table so no values need to be
 			//adjusted if the jump table grows with new inserts.
-			int idxJump = (((int)localData[p+jump])<<15) | (0x7FFF&localData[p+jump+1]);
+			int idxJump = (((int)localData[pJump])<<15) | (0x7FFF&localData[pJump+1]);
 						
 			if (idxJump >= 0) {				
 				p = idxJump+(metaPos+(trieLen<<1));
@@ -882,13 +883,13 @@ public class TrieParserReader {
 				reader.pos = p;
 			
 			} else {
-				
+
 				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 			}
 		} else {
-			
 			noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 		}
+		
 	}
 	
 	
