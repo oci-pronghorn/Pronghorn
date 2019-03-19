@@ -850,41 +850,45 @@ public class TrieParserReader {
 			short sourceShort = (short) (trie.caseRuleMask&0xFF&source[sourceMask & reader.localSourcePos]);
 			
 			assert(TrieParser.TYPE_SWITCH_BRANCH == trie.data[reader.pos-1]);
+			
 			int p = reader.pos;
-			short[] localData = trie.data;
-			
 			int metaPos = p++;
-			short metaData = localData[metaPos]; 
+			short metaData = trie.data[metaPos]; 
 			
-			short trieLen  = (short)(metaData & 0xFF);//Also needed when we grow the switch on insert later
-			short offset = (short)((metaData>>8) & 0xFF);
-	
-			if (sourceShort>=offset
-			   && ( (sourceShort-offset) < trieLen )) {
-						
-				int jump = (sourceShort-offset)<<1;
-				
-				//jump to new position, all are relative to the end of the jump table so no values need to be
-				//adjusted if the jump table grows with new inserts.
-				int idxJump = (((int)localData[p+jump])<<15) | (0x7FFF&localData[p+jump+1]);
-							
-				if (idxJump >= 0) {				
-					p = idxJump+(metaPos+(trieLen<<1));
-			
-					//read next type and restore the reader position
-					reader.type = localData[p++];
-					assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
-					reader.pos = p;
-				
-				} else {
+			//Also needed when we grow the switch on insert later
+			switchJump(reader, trie, hasSafePoint, sourceShort, p, trie.data, metaPos,
+					   (short)(metaData & 0xFF), 
+					   (short)((metaData>>8) & 0xFF));
+		
+	}
+
+	private static void switchJump(TrieParserReader reader, TrieParser trie, boolean hasSafePoint, short sourceShort,
+			int p, short[] localData, int metaPos, short trieLen, short offset) {
+		if (sourceShort>=offset
+		   && ( (sourceShort-offset) < trieLen )) {
 					
-					noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
-				}
+			int jump = (sourceShort-offset)<<1;
+			
+			//jump to new position, all are relative to the end of the jump table so no values need to be
+			//adjusted if the jump table grows with new inserts.
+			int idxJump = (((int)localData[p+jump])<<15) | (0x7FFF&localData[p+jump+1]);
+						
+			if (idxJump >= 0) {				
+				p = idxJump+(metaPos+(trieLen<<1));
+		
+				//read next type and restore the reader position
+				reader.type = localData[p++];
+				assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
+				reader.pos = p;
+			
 			} else {
 				
 				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 			}
-		
+		} else {
+			
+			noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
+		}
 	}
 	
 	
