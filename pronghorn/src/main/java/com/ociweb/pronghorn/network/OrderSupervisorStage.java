@@ -117,7 +117,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     		Pipe<HTTPLogResponseSchema> log,
     		Pipe<NetPayloadSchema>[] outgoingPipes, 
     		ServerCoordinator coordinator) {
-        super(graphManager, inputPipes, null==log ? outgoingPipes : join(outgoingPipes,log));      
+        super(graphManager, inputPipes, null==log ? outgoingPipes : join(outgoingPipes,log));           
         
         this.channelBitsMask = coordinator.channelBitsMask;
         this.channelBitsSize = coordinator.channelBitsSize;
@@ -221,7 +221,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				
 		    while (--c >= 0) {
 		        	if (Pipe.hasContentToRead(localPipes[c])) {
-		        		processPipe(localPipes[c], c);//we read as much as we can from here
+		        		processPipe(localPipes[c], c);//we read as much as we can from here		        		
 		        	}		        	
 		    }		       
 		
@@ -248,7 +248,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     	
 		    	//ensure that the channelId is not a factor of the roots found in poolMod then take the mod	    	
 		    	int myPipeIdx = (int)((channelId/pipeDivisor) % poolMod);//channel must always have the same pipe for max write speed. 
-		    			   
+		    	//single pipe in is split into the right destination pipes
+		    	
 //		    	Integer last = lastPipe.get(myPipeIdx);
 //		    	if (null!=last) {
 //		    		if (last.intValue()!=(int)channelId) {
@@ -264,11 +265,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	if (!processInputData(sourcePipe, pipeIdx,  
 									        		peekMsgId, myPipeIdx,
 													channelId)) {
+		        		//logger.trace("stall on sequence number or this is shutdown");
 		        		return;//shutting down OR the next message is not the right sequence number.
 		        	};
-		    
+		        	blockedCount = 0;//reset since we found some data
+		        	
 		    	} else {
-		    		//keep reading until we get 10 no rooms in a row. or we have no more content.
+		    		//keep reading until we get N no rooms in a row. or we have no more content.
 		    		Thread.yield();
 		    		blockedCount++;
 					///////////////////////////////
@@ -284,10 +287,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {		    	
 		    		skipData(sourcePipe, channelId);
 		    	} else {
+		    		logger.error("unknown message type");
 		    		break;
 		    	}
 		    }
 		}
+		//this should be flat with 16 max if we have 16 in flight?
+		//we have 1 pipe coming in with 16*592 requests but these are going to 592 different places
+		
+		//System.out.println(" blocked count "+blockedCount+" pipe idx "+pipeIdx);
 	}
 
 	SequenceValidator validator = new SequenceValidator();
