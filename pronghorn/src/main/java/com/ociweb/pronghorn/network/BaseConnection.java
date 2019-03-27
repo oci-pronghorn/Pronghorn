@@ -46,7 +46,7 @@ public abstract class BaseConnection {
 		this.socketChannel = socketChannel;
 		this.id = id;
 		if (initQueue) {
-			startTimes = new LongDateTimeQueue(15); //32K of data by default for start times
+			startTimes = new LongDateTimeQueue(13); //8K of data by default for start times
 			echos = new ByteArrayQueue[0];
 		}
 
