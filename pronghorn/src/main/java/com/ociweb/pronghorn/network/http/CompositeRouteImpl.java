@@ -25,6 +25,7 @@ import com.ociweb.pronghorn.util.TrieParserVisitor;
 
 public class CompositeRouteImpl implements CompositeRoute {
 
+	
 	private static final Logger logger = LoggerFactory.getLogger(CompositeRouteImpl.class);
 	
 	//TODO: move this entire logic into HTTP1xRouterStageConfig to eliminate this object construction.
@@ -47,8 +48,8 @@ public class CompositeRouteImpl implements CompositeRoute {
     //      this must remove the printing of %d headers when -1 found
     //      this must remove the %d pattern added to filters
     //      this must change this boolean to true;
-    boolean skipHeaderDeepChecks = false;
-    
+    final static boolean skipHeaderDeepChecks = false;//not working with telemetry yet
+	final static boolean captureUnknownHeaders = true;
     
     private TrieParserVisitor modifyStructVisitor = new TrieParserVisitor() {
 		@Override
@@ -230,9 +231,11 @@ public class CompositeRouteImpl implements CompositeRoute {
 				HTTPUtil.addHeader(scs.registry, structId, headerParser, toEcho[h]);
 			}
 		}
-		
-		HTTPUtil.addHeader(headerParser,HTTPSpecification.UNKNOWN_HEADER_ID,"%b: %b");
 
+		if (captureUnknownHeaders) {
+			HTTPUtil.addHeader(headerParser,HTTPSpecification.UNKNOWN_HEADER_ID,"%b: %b");
+		}
+		
 		config.storeRouteHeaders(routeId, headerParser);	
 		
 	}
