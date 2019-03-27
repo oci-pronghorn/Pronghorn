@@ -81,7 +81,7 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 									ServerConnectionStruct conStruct) {
 		this.httpSpec = httpSpec;
 		this.conStruct = conStruct;
-        this.revisionMap = new TrieParser(256,true); //avoid deep check        
+        this.revisionMap = new TrieParser(256, 1, true, false); //avoid deep check, disable extraction        
         //Load the supported HTTP revisions
         R[] revs = (R[])httpSpec.supportedHTTPRevisions.getEnumConstants();
         if (revs != null) {
@@ -92,7 +92,7 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	        }
         }
         
-        this.verbMap = new TrieParser(256,true);//skip deep check
+        this.verbMap = new TrieParser(256, 1, true, false); //avoid deep check, disable extraction
         //logger.info("building verb map");
         //Load the supported HTTP verbs
         V[] verbs = (V[])httpSpec.supportedHTTPVerbs.getEnumConstants();

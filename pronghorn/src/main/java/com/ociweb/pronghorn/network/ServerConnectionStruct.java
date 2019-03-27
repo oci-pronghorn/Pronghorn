@@ -112,12 +112,12 @@ public class ServerConnectionStruct {
 		return headersToEcho;
 	}
 
-	public int isEchoHeader(HTTPHeader header) {
-		if (null!=headersToEcho) {
+	public static int isEchoHeader(ServerConnectionStruct that, HTTPHeader header) {
+		if (null!=that.headersToEcho) {
 			//NOTE: may be a better way to do this if we have a long list...
-			int h = headersToEcho.length;
+			int h = that.headersToEcho.length;
 			while (--h >= 0) {
-				if (header == headersToEcho.clone()[h]) {
+				if (header == that.headersToEcho.clone()[h]) {
 					return h;
 				}
 			}

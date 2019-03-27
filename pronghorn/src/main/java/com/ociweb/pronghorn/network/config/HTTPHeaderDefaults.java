@@ -9,10 +9,8 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     /////// 
     //NOTE: tail of both \r\n and \n are both used when these are pattern matched, do not add tail here
     ///////
-	HOST("Host: %b"), 
-    UPGRADE("Upgrade: %b"),
+
     CONNECTION("Connection: %b"),
-    USER_AGENT("User-Agent: %b"),//chromium
     TRANSFER_ENCODING("Transfer-Encoding: chunked") {    
 	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
 	    	return target;
@@ -60,6 +58,9 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
 			return reader.readPackedLong();
 		}
 	}, //note this captures an integer not a string
+	HOST("Host: %b"), 
+    UPGRADE("Upgrade: %b"),
+    USER_AGENT("User-Agent: %b"),//chromium
     CONTENT_TYPE("Content-Type: %b") {
 	    public <A extends Appendable> A writeValue(A target, HTTPSpecification<?,?,?,?> httpSpec, ChannelReader reader) {
             assert(null!=httpSpec) : "http spec required";
