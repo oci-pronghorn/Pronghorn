@@ -78,8 +78,8 @@ public class GraphManager {
 	//turn off to minimize memory and remove from profiler.
 	public static boolean recordElapsedTime = false;//this is turned on by telemetry
 	
-	//used for elapsed time TODO: will use for Wrk and running window?
-	private static double percentile = .98;
+	//used for elapsed time
+	private static double percentile = .80;
 	
 	private MemoryLeakDetector mld = null;
 
@@ -2571,21 +2571,21 @@ public class GraphManager {
 				&& !stageForMonitorData(m,stage);
 	}
 
-	private static void writeElapsed(AppendableByteWriter<?> target, long atPct) {
+	private static void writeElapsed(AppendableByteWriter<?> target, long valueNS) {
 		target.write(ELAP);
 		
-		if (atPct<7_000) {
-			Appendables.appendFixedDecimalDigits(target, atPct, 1000).write(NS);
-		} else if (atPct<7_000_000){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000, 1000).write(MICROS);
-		} else if (atPct<7_000_000_000L){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000, 1000).write(MS);				
-		} else if (atPct<90_000_000_000L){
-			Appendables.appendFixedDecimalDigits(target, atPct/1_000_000_000L, 100).write(SEC);
-		} else if (atPct<(120L*60_000_000_000L)){
-			Appendables.appendFixedDecimalDigits(target, atPct/60_000_000_000L, 100).write(MIN);
+		if (valueNS<7_000) {
+			Appendables.appendFixedDecimalDigits(target, valueNS, 1000).write(NS);
+		} else if (valueNS<7_000_000){
+			Appendables.appendFixedDecimalDigits(target, valueNS/1_000, 1000).write(MICROS);
+		} else if (valueNS<7_000_000_000L){
+			Appendables.appendFixedDecimalDigits(target, valueNS/1_000_000, 1000).write(MS);				
+		} else if (valueNS<90_000_000_000L){
+			Appendables.appendFixedDecimalDigits(target, valueNS/1_000_000_000L, 100).write(SEC);
+		} else if (valueNS<(120L*60_000_000_000L)){
+			Appendables.appendFixedDecimalDigits(target, valueNS/60_000_000_000L, 100).write(MIN);
 		} else {
-			Appendables.appendValue(target, atPct/(60L*60_000_000_000L)).write(HR);
+			Appendables.appendValue(target, valueNS/(60L*60_000_000_000L)).write(HR);
 		}
 	
 	}
