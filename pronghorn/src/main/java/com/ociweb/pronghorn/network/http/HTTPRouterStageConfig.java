@@ -104,7 +104,7 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	            verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
 	        }
         }
-
+    
 
         //unknowns are the least important and must be added last 
         this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
@@ -126,9 +126,11 @@ public class HTTPRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		unmappedHeaders = HTTPUtil.buildHeaderParser(
 				conStruct.registry, 
     			structId,
+    			//List of all headers that all server side parsers can read
     			HTTPHeaderDefaults.CONTENT_LENGTH,
     			HTTPHeaderDefaults.TRANSFER_ENCODING,
-    			HTTPHeaderDefaults.CONNECTION
+    			HTTPHeaderDefaults.CONNECTION,
+    			HTTPHeaderDefaults.HOST
 			);
 		
 	}

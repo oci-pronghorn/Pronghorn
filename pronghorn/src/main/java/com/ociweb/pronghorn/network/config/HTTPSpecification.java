@@ -39,12 +39,9 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	public final IntHashTable fileExtHashTable;
 	public static final boolean supportWrongLineFeeds = false;
 
-	//TODO: if these values are Long.MAX_VALUE-1 then the trie parser does not rebuild them. 
-	//      assembly bug in the trie parser for very large longs.
-	
-    //must not collide with any valid struct field ID so we start with max value
-	public final static long END_OF_HEADER_ID  = Integer.MAX_VALUE-1;//for the empty header found at the bottom of the header
-	public final static long UNKNOWN_HEADER_ID = Integer.MAX_VALUE-2;
+    //must not collide with any valid struct field ID so we start with min value and work up.
+	public final static long END_OF_HEADER_ID  = Long.MIN_VALUE+1L;//for the empty header found at the bottom of the header
+	public final static long UNKNOWN_HEADER_ID = Long.MIN_VALUE+2L;
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> defaultSpec;
     

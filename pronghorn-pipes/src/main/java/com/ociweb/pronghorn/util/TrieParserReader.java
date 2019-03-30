@@ -493,12 +493,12 @@ public class TrieParserReader {
 		return parseNext(reader,trie,-1,-1);
 	}
 	
-	public static long parseNext(TrieParserReader reader, TrieParser trie, final long unfound, final long noMatch) {
+	public static long parseNext(TrieParserReader reader, TrieParser trie, final long unfound, final long notAnyPossibleMatch) {
 
 		final int originalPos = reader.sourcePos;
 		final int originalLen = reader.sourceLen;   
 
-		long result =  query(reader, trie, reader.sourceBacking, originalPos, originalLen, reader.sourceMask, unfound, noMatch);
+		long result =  query(reader, trie, reader.sourceBacking, originalPos, originalLen, reader.sourceMask, unfound, notAnyPossibleMatch);
 
 		//Hack for now
 		if (reader.sourceLen < 0) {
@@ -509,7 +509,7 @@ public class TrieParserReader {
 		//end of hack
 
 
-		if (result!=unfound && result!=noMatch) {
+		if (result!=unfound && result!=notAnyPossibleMatch) {
 			return result;
 		} else {
 			//not found so roll the pos and len back for another try later
@@ -724,18 +724,20 @@ public class TrieParserReader {
 			
 			if (TrieParser.TYPE_RUN == t) {   
 				parseRun(reader, trie, source, sourceLength, sourceMask, hasSafePoint);
-			} else {
-				if (TrieParser.TYPE_BRANCH_VALUE == t) {   
-					processBinaryBranch(reader, trie, source, sourceLength, sourceMask);				
+			} else {	
+				if (TrieParser.TYPE_ALT_BRANCH == t) {
+					processAltBranch(reader, source, trie.data, hasSafePoint);
 				} else {
-					if (TrieParser.TYPE_ALT_BRANCH == t) {
-						processAltBranch(reader, source, trie.data, hasSafePoint);
+					if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
+						processSwitch(reader, trie, source, sourceMask, hasSafePoint);				
 					} else {
-						if (TrieParser.TYPE_SWITCH_BRANCH == t) {				
-							processSwitch(reader, trie, source, sourceMask, hasSafePoint);				
+						if (TrieParser.TYPE_BRANCH_VALUE == t) {   
+							processBinaryBranch(reader, trie, source, sourceLength, sourceMask);				
 						} else {
+							
 							hasSafePoint = extractValue(reader, trie, source, sourceLength, 
 									                   sourceMask, hasSafePoint, t, lastType);
+						
 						}							
 					}
 				}
@@ -763,34 +765,33 @@ public class TrieParserReader {
 		return hasSafePoint;
 	}
 
-
 	private static void parseRun(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, boolean hasSafePoint) {
 		//run
 		final int run = trie.data[reader.pos++];    
 
 		//we will not have the room to do a match.
-		final boolean hasNoRoom = reader.runLength+run > sourceLength 
-				&& !hasSafePoint 
-				&& 0==reader.altStackPos;
+		final boolean temp = !hasSafePoint && 0==reader.altStackPos;
 		
-		final boolean doNotScan = trie.skipDeepChecks 
-				&& !hasSafePoint 
-				&& 0==reader.altStackPos;		
-		
-		if (!hasNoRoom) {
-			if (!doNotScan) {
-				//most frequent case
-				scanForRun(reader, trie, source, sourceMask, hasSafePoint, run);
+		if (reader.runLength+run <= sourceLength || !temp) {
+
+			//TODO: can we know if it NEVER has a safe point and never has alt stack..S
+			
+			if (temp) {
+				if (trie.skipDeepChecks) {
+					reader.pos += run;
+					reader.localSourcePos += run; 
+					reader.runLength += run;
+					reader.type = trie.data[reader.pos++];
+					
+				} else {
+					scanForRun(reader, trie, source, sourceMask, hasSafePoint, run);
+				}
 				
 			} else {
-				//second most frequent case.
-				reader.pos += run;
-				reader.localSourcePos += run; 
-				reader.runLength += run;
-				reader.type = trie.data[reader.pos++];
-				
+				scanForRun(reader, trie, source, sourceMask, hasSafePoint, run);
 			}
+			
 		} else {
 			reader.normalExit=false;
 			reader.result = reader.unfoundConstant;
@@ -798,31 +799,33 @@ public class TrieParserReader {
 		}
 		
 	}
-
+	
 	private static void scanForRun(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask,
 			boolean hasSafePoint, final int run) {
 	
-		if (!scanForNonMatchingBytes(reader, trie, source, run, sourceMask)) {
+		if (scanForMatchingBytes(reader, trie, source, run, sourceMask)) {
 			reader.runLength += run;
+			//System.out.println("run matched now at "+reader.pos);
 			reader.type = trie.data[reader.pos++];
-		} else { 		
-			
+		} else {
+			//System.out.println("run no matched now at "+reader.pos);
 			noMatchAction(reader, trie, hasSafePoint,
 					reader.alwaysCompletePayloads ||
 					(reader.sourceLen >= run) ? reader.noMatchConstant : reader.unfoundConstant);
 		}
 	}
 
-	private static boolean scanForNonMatchingBytes(
-			TrieParserReader reader, 
-			TrieParser trie, byte[] source, 
-			final int run,
-			final int srcMask) {
+	private static boolean scanForMatchingBytes(
+					TrieParserReader reader, 
+					TrieParser trie, byte[] source, 
+					final int run,
+					final int srcMask) {
 		
-			final byte caseMask = trie.caseRuleMask;
-			final int t1 = reader.pos+run;
-			final int t2 = reader.localSourcePos+run;
-			return scanBytes3(reader, source, srcMask, caseMask, t1, t2, trie.data, reader.pos, reader.localSourcePos, run);
+			return scanBytes3(reader, source, srcMask, 
+					           trie.caseRuleMask, 
+					           reader.pos+run, 
+					           reader.localSourcePos+run,
+					           trie.data, reader.pos, reader.localSourcePos, run);
 				
 	}
 
@@ -831,14 +834,14 @@ public class TrieParserReader {
 		if (t11+r < data.length) {
 			while (--r >= 0) {			
 				if ((caseMask & data[t11++]) != (caseMask & 0xFF & source[srcMask & (t21++)]) ) {
-					return true;
+					return false;
 				}				
 			}
 			reader.pos = t1;
 			reader.localSourcePos = t2;
-			return false;
+			return true;
 		} else {
-			return true;			
+			return false;			
 		}
 	}
 
@@ -881,12 +884,13 @@ public class TrieParserReader {
 				reader.type = localData[p++];
 				assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
 				reader.pos = p;
-			
+				//System.out.println("jumped to new position: "+p);
 			} else {
-
+				//System.out.println("no jump");
 				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 			}
 		} else {
+			//System.out.println("no jump");
 			noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 		}
 		
@@ -971,7 +975,8 @@ public class TrieParserReader {
 			long result) {
 		/////////////////
 		//common pattern
-		if (!hasSafePoint) {                       	
+		if (!hasSafePoint) {     
+			
 			if (reader.altStackPos > 0) {                                
 				reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
 			} else {
@@ -981,6 +986,7 @@ public class TrieParserReader {
 				reader.result = result;
 			}
 		} else {
+			
 			reader.normalExit=false;
 			reader.result = useSafePoint(reader);
 			

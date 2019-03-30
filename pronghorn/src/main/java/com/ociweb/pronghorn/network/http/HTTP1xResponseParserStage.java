@@ -842,8 +842,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 		headerToken = TrieParserReader.parseNext(trieReader, cc.headerParser());	
 
-		assert(headerToken==-1 || headerToken>=(Integer.MAX_VALUE-2)) : "bad token "+headerToken;
-
 		int consumed = startingLength - trieReader.sourceLen;							
 		runningHeaderBytes[i] += consumed;
 				

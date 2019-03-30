@@ -54,7 +54,7 @@ public class TrieParser implements Serializable {
     static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value is type mask
     static final int SIZE_OF_VALUE_BYTES          = 1+1; //second value is stop marker
     
-    boolean skipDeepChecks;//these runs are not significant and do not provide any consumed data.
+    final boolean skipDeepChecks;//these runs are not significant and do not provide any consumed data.
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
     
     public final byte ESCAPE_BYTE;
@@ -186,11 +186,7 @@ public class TrieParser implements Serializable {
     public int getLimit() {
         return limit;
     }
-    
-    public void setSkipDeepChecks(boolean value) {
-        skipDeepChecks = value;
-    }
-    
+        
     public boolean isSkipDeepChecks() {
         return skipDeepChecks;
     }
@@ -953,7 +949,8 @@ public class TrieParser implements Serializable {
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
     	
-        assert(value >= 0);
+        assert(value >= 0 || value<Long.MIN_VALUE+3);
+        
 
         altStackPos = 0;
       

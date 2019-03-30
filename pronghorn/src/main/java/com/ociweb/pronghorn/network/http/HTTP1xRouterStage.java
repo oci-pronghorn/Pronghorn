@@ -345,12 +345,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
     
-    	//int inputs = 0;
+    	int closedEnvLimit = 1+(this.inputs.length>>1);
     	
     	boolean hasRoomToWrite = true;
-    	while (hasRoomToWrite && (PipeWorkWatcher.hasWork(pww) /*|| inputs<200*/  )) {
+    	while (hasRoomToWrite && ( (PipeWorkWatcher.hasWork(pww) && closedEnvLimit>=0) )) {
     		int g = pww.groups();
-    		while (--g >= 0) {
+    		while ((--g >= 0) && closedEnvLimit>=0) {
     			
     			boolean done = true;
     			int version = PipeWorkWatcher.version(pww, g);
@@ -359,7 +359,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     				int start = PipeWorkWatcher.getStartIdx(pww, g);
     				int limit = PipeWorkWatcher.getLimitIdx(pww, g);
     			
-	    				for(int idx = start; idx<limit; idx++) {
+	    				for(int idx = start; idx<limit && closedEnvLimit>=0; idx++) {
 	    			
 	    					    if (//!Pipe.hasContentToRead(this.inputs[idx]) 
 									//|| 
@@ -369,7 +369,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 									
 									if (this.inputLengths[idx]>0) {
 										done = false;
-					//					inputs++;
+										closedEnvLimit--;
+																			
 									   //	c= 0;
 										if (-1 == parsePipe(this, idx)) {
 											//no room
@@ -1213,42 +1214,41 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 				//TODO: ensure header map does not have extra stuff and has fewest steps to finish job.
 				
 				//this may be an unknown header so we allow for non matching from our list.
-				long headerToken = TrieParserReader.parseNext(trieReader, headerMap);
+				long headerToken = TrieParserReader.parseNext(trieReader, headerMap, -1, -2);
 				
-			    if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
-			    	return endOfHeader(trieReader, writer,
-			    			errorReporter2, arrivalTime, ccId, requestContext,
-							postLength, iteration);
-			    	
-			    } else if (-1 == headerToken) { 
+				 
+				if (headerToken>=0) { //positive longs	    		
 			    	
 			    	//TODO: add code to skip over unknown headers only in this case so we can make map shorter
 			    	//      the happy case will go faster.
 			    	
-			    	return noHeaderToken(serverConnection, errorReporter2, ccId, requestContext, remainingLen); 
-			    } else if (HTTPSpecification.UNKNOWN_HEADER_ID != headerToken) {	    		
 				    HTTPHeader header = config.getAssociatedObject(headerToken);
-				    int writePosition = writer.position();
-				    
+					    
 				    //TODO: we have 4 false conditionals in a row here.
 				    
+				    //THIS IS FOR EVERY NORMAL FIELD!!!!!
+				    
 				    if (null!=header) {
-				    	int echoIndex = -1;
-				    	if ((echoIndex = ServerConnectionStruct.isEchoHeader(serverConnection.scs, header)) >= 0 ) {
-				    		//write this to be echoed when responding.
-				    		
-				//				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
-				//				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
-				    		//TrieParserReader.writeCapturedValuesToDataOutput(trieReader, null);
-				    		
-				    		//serverConnection.storeHeader(echoIndex, ); ///TODO: how
-				    		
-				    		throw new UnsupportedOperationException("Echo headers not yet implmented...");
-	
-				    	}
+				    	int writePosition = writer.position();
+				    	
+//				    	//TODO: do not call if no echo is enabled for this run...
+//				    	int echoIndex = -1;
+//				    	if ((echoIndex = ServerConnectionStruct.isEchoHeader(serverConnection.scs, header)) >= 0 ) {
+//				    		//write this to be echoed when responding.
+//				    		
+//				//				    		DataOutputBlobWriter.setIntBackData((DataOutputBlobWriter<?>)cw, 
+//				//				    				cw.position(), StructRegistry.FIELD_MASK & (int)headerToken);											    		 
+//				    		//TrieParserReader.writeCapturedValuesToDataOutput(trieReader, null);
+//				    		
+//				    		//serverConnection.storeHeader(echoIndex, ); ///TODO: how
+//				    		
+//				    		throw new UnsupportedOperationException("Echo headers not yet implmented...");
+//	
+//				    	}
 
 				    	//only check these when we have to
-				    	if (header.ordinal()<=COMMON_HEADERS_LIMIT) {				    	
+				    	if (header.ordinal()<=COMMON_HEADERS_LIMIT) {	
+				    		
 						    if (HTTPHeaderDefaults.CONTENT_LENGTH.ordinal() == header.ordinal()) {
 						    	assert(Arrays.equals(HTTPHeaderDefaults.CONTENT_LENGTH.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONTENT_LENGTH does not match";
 					
@@ -1261,17 +1261,44 @@ private static int parseHeaderFields(TrieParserReader trieReader,
 						    	assert(Arrays.equals(HTTPHeaderDefaults.CONNECTION.rootBytes(),header.rootBytes())) : "Custom enums must share same ordinal positions, CONNECTION does not match";
 						    	
 						    	requestContext = applyKeepAliveOrCloseToContext(requestContext, trieReader, serverConnection.id);                
-						    }			                
+						    }		
+						    
 				    	}
 		
 					    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer);
 					    DataOutputBlobWriter.setIntBackData(writer, writePosition, StructRegistry.FIELD_MASK & (int)headerToken);
 			
 				    }
+			    } else if (HTTPSpecification.END_OF_HEADER_ID == headerToken) { 
+					//this happens once per message
+			    	return endOfHeader(trieReader, writer,
+			    			errorReporter2, arrivalTime, ccId, requestContext,
+							postLength, iteration);
+
 			    } else {
-			    	//assert that important headers are not skipped..
-			    	assert(confirmCoreHeadersSupported(trieReader));	    	
+		
+			    	//System.out.println("should not be here when testing");
+			    	
+			    	if (HTTPSpecification.UNKNOWN_HEADER_ID == headerToken) {					
+					  	//assert that important headers are not skipped..
+				    	//assert(confirmCoreHeadersSupported(trieReader)); //only turn on when doing development..	
+				    	
+				    } else if (-1 == headerToken) { 
+				    	//may need more data or NOT a header.
+				    	return noHeaderToken(serverConnection, errorReporter2, ccId, requestContext, remainingLen); 
+				  
+				    } else if (-2 == headerToken) { 
+				    	// NOT a header, broken post (this is more rare)
+			 
+						//client has sent very bad data.
+						logger.info("client has sent bad data connection {} was closed",serverConnection.id);
+						return errorReporter2.sendError(ccId, 400) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+	
+	
+				    } 
 			    }
+			    
+			    
 			    iteration++;
 			}
 		
