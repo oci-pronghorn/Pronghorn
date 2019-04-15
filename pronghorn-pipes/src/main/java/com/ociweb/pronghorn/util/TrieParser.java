@@ -133,6 +133,10 @@ public class TrieParser implements Serializable {
     	return maxExtractedFields;
     }
     
+    public static int maxExtractedFields(TrieParser that) {
+    	return that.maxExtractedFields;
+    }
+    
 	//used for detection of parse errors, eg do we need more data or did something bad happen.
 	private int maxBytesCapturable      = 500; //largest text
 	private int maxNumericLenCapturable = 20; //largest numeric.

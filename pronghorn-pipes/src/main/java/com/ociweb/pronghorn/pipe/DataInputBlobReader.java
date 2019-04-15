@@ -669,7 +669,13 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         reader.position += len;
         return len;
     }
-       
+    
+    @Override
+    public int readInto(byte[] b, int off, int len, int mask) {
+    	return read(this,b,off,len,mask);
+    }
+    
+    
     @Override
     public void readInto(ChannelWriter writer, int length) {
     	

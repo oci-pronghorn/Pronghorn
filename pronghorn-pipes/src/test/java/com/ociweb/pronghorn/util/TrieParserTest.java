@@ -1737,7 +1737,7 @@ public class TrieParserTest {
 		assertEquals(value2, TrieParserReader.query(reader, map, "tuesday".getBytes(), 0, 7, 15));
 		assertEquals(value3, TrieParserReader.query(reader, map, "hello2".getBytes(), 0, 6, 15));
 		assertEquals(value4, TrieParserReader.query(reader, map, "Xtheweb".getBytes(), 0, 7, 15));
-		assertEquals(value5, TrieParserReader.query(reader, map, "theweb".getBytes(), 0, 6, 15));
+		assertEquals(value5, TrieParserReader.query(reader, map, "theweb  ".getBytes(), 0, 6, 15));
 
 		String actual = TrieParserReader.capturedFieldBytesAsUTF8(reader, 0, new StringBuilder()).toString();
 		assertEquals("the", actual);

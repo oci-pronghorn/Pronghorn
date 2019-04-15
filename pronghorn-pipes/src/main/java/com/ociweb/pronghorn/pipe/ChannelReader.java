@@ -119,8 +119,10 @@ public abstract class ChannelReader extends InputStream implements ObjectInput, 
 	 */
 	public abstract void readInto(Externalizable target);
 
-
 	public abstract void readInto(ChannelWriter writer, int length);
+	
+	public abstract int readInto(byte[] b, int off, int len, int mask);
+	 
 
 	/**
 	 * Reads data from ChannelReader and passes it to Object

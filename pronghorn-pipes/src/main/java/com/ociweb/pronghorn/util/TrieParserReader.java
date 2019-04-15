@@ -40,8 +40,10 @@ public class TrieParserReader {
 	private static final int NUMERIC_ABSENT_IS_ZERO_MASK  = 0x8000;      
 	
 	private int[]  capturedValues;
-	private int    capturedPos;
-	private byte[] capturedBlobArray;
+	private int    capturedValuesLength = 0;
+	
+	private int    capturedPos; //using sourceBacking
+
 
 
 	private long    safeReturnValue = -1;
@@ -360,7 +362,7 @@ public class TrieParserReader {
 
 	private static void visitorInitForQuery(TrieParserReader reader, TrieParser trie, byte[] source, int sourcePos, long unfoundResult, long noMatchResult) {
 		reader.capturedPos = 0;
-		reader.capturedBlobArray = source;
+		reader.sourceBacking = source;
 		//working vars
 		reader.pos = 0;
 		reader.runLength = 0;
@@ -720,6 +722,9 @@ public class TrieParserReader {
 			boolean hasSafePoint,
 			int t, int lastType) {
 
+		reader.pos = 0;
+		reader.type = trie.data[reader.pos++];	
+		
 		while (reader.normalExit && (t=reader.type) != TrieParser.TYPE_END ) {  
 			
 			if (TrieParser.TYPE_RUN == t) {   
@@ -765,6 +770,7 @@ public class TrieParserReader {
 		return hasSafePoint;
 	}
 
+	
 	private static void parseRun(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, boolean hasSafePoint) {
 		//run
@@ -778,6 +784,7 @@ public class TrieParserReader {
 			//TODO: can we know if it NEVER has a safe point and never has alt stack..S
 			
 			if (temp) {
+			
 				if (trie.skipDeepChecks) {
 					reader.pos += run;
 					reader.localSourcePos += run; 
@@ -785,11 +792,18 @@ public class TrieParserReader {
 					reader.type = trie.data[reader.pos++];
 					
 				} else {
+					//System.out.println("xxxxxxxxxxx");//not called
 					scanForRun(reader, trie, source, sourceMask, hasSafePoint, run);
 				}
 				
 			} else {
+				//This is called for Headers Trie and the URL Route Trie, both have a single altStackPos since
+				//in both cases we want an unknown value to be processed special.
+				//System.out.println("yyyyyyyyyyyy called about half the time "+(!hasSafePoint)+" && 0=="+(reader.altStackPos));
 				scanForRun(reader, trie, source, sourceMask, hasSafePoint, run);
+				
+				//System.out.println(trie);
+				
 			}
 			
 		} else {
@@ -803,46 +817,49 @@ public class TrieParserReader {
 	private static void scanForRun(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask,
 			boolean hasSafePoint, final int run) {
 	
-		if (scanForMatchingBytes(reader, trie, source, run, sourceMask)) {
+		if (scanBytes3( reader, source, sourceMask, 
+					    trie.caseRuleMask, 
+					    reader.pos+run, 
+					    reader.localSourcePos+run,
+					    trie.data, reader.pos, reader.localSourcePos, run)) {
 			reader.runLength += run;
 			//System.out.println("run matched now at "+reader.pos);
 			reader.type = trie.data[reader.pos++];
 		} else {
-			//System.out.println("run no matched now at "+reader.pos);
+			//System.out.println("shoud not be called under test...");
+			//TODO: this is getting called and rollback as part of branch
+			//     it has no side effect but does show up in the profiler...
 			noMatchAction(reader, trie, hasSafePoint,
-					reader.alwaysCompletePayloads ||
-					(reader.sourceLen >= run) ? reader.noMatchConstant : reader.unfoundConstant);
+					(reader.alwaysCompletePayloads || (reader.sourceLen >= run))
+					 ? reader.noMatchConstant : reader.unfoundConstant);
 		}
-	}
-
-	private static boolean scanForMatchingBytes(
-					TrieParserReader reader, 
-					TrieParser trie, byte[] source, 
-					final int run,
-					final int srcMask) {
-		
-			return scanBytes3(reader, source, srcMask, 
-					           trie.caseRuleMask, 
-					           reader.pos+run, 
-					           reader.localSourcePos+run,
-					           trie.data, reader.pos, reader.localSourcePos, run);
-				
 	}
 
 	private static boolean scanBytes3(TrieParserReader reader, final byte[] source, final int srcMask,
 			final byte caseMask, final int t1, final int t2, final short[] data, int t11, int t21, int r) {
 		if (t11+r < data.length) {
-			while (--r >= 0) {			
-				if ((caseMask & data[t11++]) != (caseMask & 0xFF & source[srcMask & (t21++)]) ) {
-					return false;
-				}				
+			int total = 0;
+			while (--r >= 0) {		
+				
+				
+//				//repeating this if is probably a bad idea lets do a logic approach instead
+//				if ((caseMask & data[t11++]) != (caseMask & 0xFF & source[srcMask & (t21++)]) ) {
+//					return false;
+//				}				
+				
+				//xor
+				total |= (((caseMask & data[t11++]) ^ (caseMask & 0xFF & source[srcMask & (t21++)]) ));
+				
+				
 			}
-			reader.pos = t1;
-			reader.localSourcePos = t2;
-			return true;
-		} else {
-			return false;			
+			if (total==0) {
+				reader.pos = t1;
+				reader.localSourcePos = t2;
+				return true;
+			}
 		}
+		
+		return false;			
 	}
 
 
@@ -856,44 +873,42 @@ public class TrieParserReader {
 			
 			int p = reader.pos;
 			int metaPos = p++;
-			short metaData = trie.data[metaPos]; 
-			
+			short metaData = trie.data[metaPos];
 			//Also needed when we grow the switch on insert later
-			switchJump(reader, trie, hasSafePoint, sourceShort, p, trie.data, metaPos,
-					   (short)(metaData & 0xFF), 
-					   (short)((metaData>>8) & 0xFF));
+			switchJump(reader, trie, hasSafePoint, p, trie.data, metaPos, 
+					  (short)(metaData & 0xFF), sourceShort-(short)((metaData>>8) & 0xFF));
 		
 	}
 
-	
-	//TODO: which are the most common sides?
-	private static void switchJump(TrieParserReader reader, TrieParser trie, boolean hasSafePoint, short sourceShort,
-			int p, short[] localData, int metaPos, short trieLen, short offset) {
-		if (sourceShort>=offset && ( (sourceShort-offset) < trieLen )) {
-					
-			int pJump = p+((sourceShort-offset)<<1);
-			
-			//jump to new position, all are relative to the end of the jump table so no values need to be
-			//adjusted if the jump table grows with new inserts.
-			int idxJump = (((int)localData[pJump])<<15) | (0x7FFF&localData[pJump+1]);
-						
-			if (idxJump >= 0) {				
-				p = idxJump+(metaPos+(trieLen<<1));
+	private static void switchJump(TrieParserReader reader, TrieParser trie, boolean hasSafePoint, int p,
+			short[] localData, final int metaPos, final short trieLen, int len) {
 		
-				//read next type and restore the reader position
-				reader.type = localData[p++];
-				assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
-				reader.pos = p;
-				//System.out.println("jumped to new position: "+p);
-			} else {
-				//System.out.println("no jump");
-				noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
-			}
+		if ((len >= 0) && ( len < trieLen )) {					
+			final int pJump = p+(len<<1);
+			switchJumpImpl(reader, trie, hasSafePoint, localData, metaPos, trieLen, pJump, (int)localData[pJump]);
 		} else {
 			//System.out.println("no jump");
 			noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
 		}
+	}
+
+	private static void switchJumpImpl(TrieParserReader reader, TrieParser trie, boolean hasSafePoint,
+			short[] localData, final int metaPos, final short trieLen, final int pJump, int topVal) {
 		
+		if (topVal >= 0) {				
+			
+			//jump to new position, all are relative to the end of the jump table so no values need to be
+			//adjusted if the jump table grows with new inserts.
+			int p = ((topVal<<15) | (0x7FFF&localData[pJump+1]))+(metaPos+(trieLen<<1));
+
+			//read next type and restore the reader position
+			reader.type = localData[p++];
+			assert(reader.type<8 && reader.type>=0) : "bad type:"+reader.type;
+			reader.pos = p;
+			//System.out.println("jumped to new position: "+p);
+		} else {
+			noMatchAction(reader, trie, hasSafePoint, reader.noMatchConstant);
+		}
 	}
 	
 	
@@ -971,19 +986,20 @@ public class TrieParserReader {
 		}
 	}
 
-	private static void noMatchAction(final TrieParserReader reader, final TrieParser trie, boolean hasSafePoint,
-			long result) {
+	private static void noMatchAction(final TrieParserReader reader, 
+			final TrieParser trie, boolean hasSafePoint,
+			final long result) {
 		/////////////////
+
 		//common pattern
-		if (!hasSafePoint) {     
-			
-			if (reader.altStackPos > 0) {                                
-				reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
-			} else {
+		if (!hasSafePoint) {
+			if (reader.altStackPos <= 0) {                                
 				//we have NO safe point AND we found a non match in the sequence
 				//this will never match no matter how much data is added so return the noMatch code.
 				reader.normalExit=false;
 				reader.result = result;
+			} else {
+				reader.altStackPos = loadupNextChoiceFromStack(reader, trie.data, reader.altStackPos);                           
 			}
 		} else {
 			
@@ -1121,7 +1137,7 @@ public class TrieParserReader {
 		int len = (x-localSourcePos)-1;
 		reader.runLength += (len);
 
-		reader.capturedPos = extractedBytesRange(reader.capturedBlobArray, reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
+		reader.capturedPos = extractedBytesRange(reader.sourceBacking, reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
 		reader.localSourcePos = x;
 		return true;
 	}
@@ -1145,7 +1161,7 @@ public class TrieParserReader {
 			int len = (x-sourcePos)-1;
 			reader.runLength += (len);
 
-			reader.capturedPos = extractedBytesRange(reader.capturedBlobArray ,reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
+			reader.capturedPos = extractedBytesRange(reader.sourceBacking ,reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
 			reader.localSourcePos = x;
 			reader.pos = reader.workingMultiContinue[stopIdx];
 			return true;
@@ -1154,10 +1170,13 @@ public class TrieParserReader {
 
 	private static void initForQuery(TrieParserReader reader, TrieParser trie, 
 			                         byte[] source, int sourcePos, int sourceMask, long unfoundResult, long noMatchResult) {
+
+		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
+		
 		reader.capturedPos = 0;
-		reader.capturedBlobArray = source;
+		reader.sourceBacking = source;
+		
 		//working vars
-		reader.pos = 0;
 		reader.runLength = 0;
 		reader.localSourcePos = sourcePos;
 		
@@ -1168,23 +1187,22 @@ public class TrieParserReader {
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
 		
+		lazyInitCapturedArray(reader, trie);
+	
+		reader.sourceMask = Branchless.ifZero(reader.sourceMask, sourceMask, reader.sourceMask);
+
+
+	}
+
+	private static void lazyInitCapturedArray(TrieParserReader reader, TrieParser trie) {
 		//only allocate when this is going to be used.
-		if (trie.maxExtractedFields()>0) {
-			if (null==reader.capturedValues || (reader.capturedValues.length>>2)<trie.maxExtractedFields()) {
-				reader.capturedValues = new int[4*(1+trie.maxExtractedFields())*4];
+		if (TrieParser.maxExtractedFields(trie) > 0) {
+			int len = (1+TrieParser.maxExtractedFields(trie))<<4;
+			if (reader.capturedValuesLength<len) {
+				reader.capturedValues = new int[len];
+				reader.capturedValuesLength = reader.capturedValues.length;
 			}
 		}
-
-		reader.sourceBacking = source;
-		
-		//if we have a data specific mask use it, if nothing was set take full pipe size.
-		if (0==reader.sourceMask) {
-			reader.sourceMask = sourceMask;
-		}
-		
-		assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
-
-		reader.type = trie.data[reader.pos++];
 	}
 
 	
@@ -1195,7 +1213,7 @@ public class TrieParserReader {
 		//the extracted (byte or number) is ALWAYS local so push LOCAL position on stack and take the JUMP        	
 
 		int pos = reader.pos;
-		int nearJump = pos+ TrieParser.BRANCH_JUMP_SIZE;
+		int nearJump = pos + TrieParser.BRANCH_JUMP_SIZE;
 		int farJump = pos + ((((int)localData[pos])<<15) | (0x7FFF&localData[1+pos]))+ TrieParser.BRANCH_JUMP_SIZE;
 		
 		//if local is NOT numeric then take the jump first
@@ -1221,12 +1239,8 @@ public class TrieParserReader {
 
 			pos = nearJump;
 		}
-		
-		
-		
 		reader.type=localData[pos++];
-		reader.pos = pos;
-		
+		reader.pos = pos;		
 	}
 
 	private static long useSafePointNow(TrieParserReader reader) {
@@ -1282,21 +1296,25 @@ public class TrieParserReader {
 		//if the following does not match we will return this safe value.
 		//we do not yet have enough info to decide if this is the end or not.
 	}
-
-	private static int parseBytes(TrieParserReader reader, final byte[] source, final int sourcePos, long remainingLen, final int sourceMask, final short stopValue) {              
-
+	
+	private static int parseBytes(TrieParserReader reader, 
+			                      final byte[] source, final int sourcePos, 
+			                      final long remainingLen, 
+			                      final int sourceMask, final short stopValue) {              
+				
 		int x = sourcePos;
 		int lim = remainingLen<=sourceMask ? (int)remainingLen : sourceMask+1;
-		boolean noStop = true;
+	
 		do {
-		} while ( (noStop=(stopValue!=source[sourceMask & x++])) && (--lim > 0));         
+		} while ( ((stopValue!=source[sourceMask & x++])) && (--lim > 0));         
 
 		final boolean hasStopValue = 0!=stopValue;
-		if (!(noStop && hasStopValue)) { 
+		if (!((lim<=0) && hasStopValue)) { 
 			
 			final int x1 = hasStopValue ? x : x+1;
 			final int len = (x1-sourcePos)-1;
 			
+			//final int len = hasStopValue ? (x-sourcePos)-1 : x-sourcePos; 
 
 //			if (len>0) {
 ////				OK  -<CAC
@@ -1313,7 +1331,7 @@ public class TrieParserReader {
 		
 			
 			reader.runLength += (len);
-			reader.capturedPos = extractedBytesRange(reader.capturedBlobArray, 
+			reader.capturedPos = extractedBytesRange(reader.sourceBacking, 
 					reader.capturedValues, 
 					reader.capturedPos, 
 					sourcePos, len, sourceMask);                
@@ -1624,7 +1642,7 @@ public class TrieParserReader {
 
 		//this data is already encoded as UTF8 so we do a direct copy
 		target.writeShort(l);
-		DataOutputBlobWriter.write((DataOutputBlobWriter<?>) target, reader.capturedBlobArray, p, l, m);
+		DataOutputBlobWriter.write((DataOutputBlobWriter<?>) target, reader.sourceBacking, p, l, m);
 		return l;
 	}
 
@@ -1691,7 +1709,7 @@ public class TrieParserReader {
 		int l = reader.capturedValues[pos++];
 		int m = reader.capturedValues[pos++];
 
-		Pipe.copyBytesFromToRing(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);
+		Pipe.copyBytesFromToRing(reader.sourceBacking, p, m, target, targetPos, targetMask, l);
 
 		return l;
 	}
@@ -1708,7 +1726,7 @@ public class TrieParserReader {
 		int m = reader.capturedValues[pos++];
 
 		if (l<=target.length) {
-			return Pipe.isEqual(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);			
+			return Pipe.isEqual(reader.sourceBacking, p, m, target, targetPos, targetMask, l);			
 		} else {
 			return false;
 		}
@@ -1728,7 +1746,7 @@ public class TrieParserReader {
 		int m = reader.capturedValues[pos++];
 
 		if (offset<l) {
-			return 0xFF & reader.capturedBlobArray[m & (p+offset)];            
+			return 0xFF & reader.sourceBacking[m & (p+offset)];            
 		} else {
 			return -1;
 		}
@@ -1748,7 +1766,7 @@ public class TrieParserReader {
 		int bmsk = reader.capturedValues[pos++];
 
 		try {
-			target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
+			target.consume(reader.sourceBacking, bpos, blen, bmsk);
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
@@ -1783,7 +1801,7 @@ public class TrieParserReader {
 		int bmsk = reader.capturedValues[pos++];
 
 		//we add 2 to the length to pick up the stop chars, this ensure we have enough text to match
-		return query(reader2, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
+		return query(reader2, trie, reader.sourceBacking, bpos, blen+stopBytesCount, bmsk, -1);
 
 	}
 
@@ -1798,7 +1816,7 @@ public class TrieParserReader {
 		int blen = reader.capturedValues[pos++];
 		int bmsk = reader.capturedValues[pos++];
 
-		trie.setValue(reader.capturedBlobArray, bpos, blen, bmsk, value);
+		trie.setValue(reader.sourceBacking, bpos, blen, bmsk, value);
 
 	}
 
@@ -1834,7 +1852,7 @@ public class TrieParserReader {
 		int blen = reader.capturedValues[pos++];
 		int bmsk = reader.capturedValues[pos++];
 
-		return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
+		return Appendables.appendUTF8(target, reader.sourceBacking, bpos, blen, bmsk);
 
 	}
 
@@ -1849,7 +1867,7 @@ public class TrieParserReader {
 		int blen = reader.capturedValues[pos++];
 		int bmsk = reader.capturedValues[pos++];
 
-		return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos-10, blen+20, bmsk);
+		return Appendables.appendUTF8(target, reader.sourceBacking, bpos-10, blen+20, bmsk);
 
 	}
 
@@ -1860,7 +1878,7 @@ public class TrieParserReader {
 		assert(type==0);
 		int bpos = reader.capturedValues[pos++];
 		int blen = reader.capturedValues[pos++];
-		PipeWriter.writeBytes(target, loc, reader.capturedBlobArray, bpos, blen, reader.capturedValues[pos++]);
+		PipeWriter.writeBytes(target, loc, reader.sourceBacking, bpos, blen, reader.capturedValues[pos++]);
 
 		return blen;
 
@@ -1895,7 +1913,7 @@ public class TrieParserReader {
 
 				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
 				target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
-				DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
+				DataOutputBlobWriter.write(target,reader.sourceBacking,p,l,m);
 
 			} else {
 
@@ -2014,11 +2032,11 @@ public class TrieParserReader {
 				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
 				target.writeShort(len); //write the bytes count as a short first, then the UTF-8 encoded string
 				if (len>0) {
-					DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,len,m);
+					DataOutputBlobWriter.write(target,reader.sourceBacking,p,len,m);
 				}
 
 				if ((null!=validator) && (validator[fieldPosition] instanceof ByteSequenceValidator)) {
-					isValid &= ((ByteSequenceValidator)validator[fieldPosition]).isValid(reader.capturedBlobArray,p&m,len,m);
+					isValid &= ((ByteSequenceValidator)validator[fieldPosition]).isValid(reader.sourceBacking,p&m,len,m);
 				}
 				
 			} else {
@@ -2166,7 +2184,7 @@ public class TrieParserReader {
 				//if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode
 
 				Appendables.appendValue(target, "[", l, "]");                
-				Appendables.appendUTF8(target, reader.capturedBlobArray,p,l,m);
+				Appendables.appendUTF8(target, reader.sourceBacking,p,l,m);
 
 			} else {
 

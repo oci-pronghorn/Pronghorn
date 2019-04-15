@@ -1664,21 +1664,24 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 		Pipe<S>[][] result = new Pipe[pipeCount][];
 			
-		int fullLen = pipes.length;
-		int last = 0;
-		for(int p = 1;p<pipeCount;p++) {			
-			int nextLimit = (p*fullLen)/pipeCount;			
-			int plen = nextLimit-last;			
-		    Pipe<S>[] newPipe = new Pipe[plen];
-		    System.arraycopy(pipes, last, newPipe, 0, plen);
-		    result[p-1]=newPipe;
-			last = nextLimit;
+		if (pipeCount>=2) {
+			int fullLen = pipes.length;
+			int last = 0;
+			for(int p = 1;p<pipeCount;p++) {			
+				int nextLimit = (p*fullLen)/pipeCount;			
+				int plen = nextLimit-last;			
+				Pipe<S>[] newPipe = new Pipe[plen];
+				System.arraycopy(pipes, last, newPipe, 0, plen);
+				result[p-1]=newPipe;
+				last = nextLimit;
+			}
+			int plen = fullLen-last;
+			Pipe<S>[] newPipe = new Pipe[plen];
+			System.arraycopy(pipes, last, newPipe, 0, plen);
+			result[pipeCount-1]=newPipe;
+		} else {
+			result[0] = pipes;
 		}
-		int plen = fullLen-last;
-	    Pipe<S>[] newPipe = new Pipe[plen];
-	    System.arraycopy(pipes, last, newPipe, 0, plen);
-	    result[pipeCount-1]=newPipe;
-				
 		return result;
 				
 	}
@@ -2712,7 +2715,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			assert(Pipe.contentRemaining(pipe)<=pipe.sizeOfSlabRing) : "distance between tail and head must not be larger than the ring, internal error. "+pipe;
 		} else {
 			log.error("Unable to send EOF, the outgoing pipe is 100% full, downstream stages may not get closed.\n"
-					+ "To resolve this issue ensure the outgoing pipe has room for write before calling this.");
+					+ "To resolve this issue ensure the outgoing pipe has room for write before calling this.\n"+pipe, new Exception("check for pipe data"));
 			
 		}
 	}
@@ -4138,7 +4141,7 @@ public class Pipe<T extends MessageSchema<T>> {
     			      Pipe.bytesReadBase(pipe)
     			));
   
-    	return pipe.lastMsgIdx = readIntValue(pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value++);
+    	return pipe.lastMsgIdx = pipe.slabRing[pipe.slabMask & (int)pipe.slabRingTail.workingTailPos.value++];
     }
     
     /**
