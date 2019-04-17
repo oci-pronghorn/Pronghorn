@@ -283,7 +283,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	}
 
 		    } else {
-		    	assert(ServerResponseSchema.MSG_SKIP_300==peekMsgId);
+		    	assert(ServerResponseSchema.MSG_SKIP_300==peekMsgId 
+		    			|| -1==peekMsgId) : "unknown message type: "+peekMsgId;
 		    	//if this was to be skipped then do it
 		    	//if ((ServerResponseSchema.MSG_SKIP_300==peekMsgId) || (-1==peekMsgId)) {		    	
 		    		skipData(sourcePipe, channelId);
