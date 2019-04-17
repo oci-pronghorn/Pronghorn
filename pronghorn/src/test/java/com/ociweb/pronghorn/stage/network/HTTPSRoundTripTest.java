@@ -38,12 +38,24 @@ public class HTTPSRoundTripTest {
        
     @Test
 	public void allCertHTTPSTest() {
-        	    	
-    	int maxPartialResponses = 1;
+    	//ScriptedNonThreadScheduler.debugStageOrder = System.out;    	
+    	runWithCerts(TLSCerts.define());
+    }
+    
+    @Test
+	public void noCertHTTPTest() {
+    	//ServerSocketBulkReaderStage.showRequests = true;
+    	//ServerSocketBulkRouterStage.showRequests = true;
+    	//ScriptedNonThreadScheduler.debugStageOrder = System.out;    	
+    	//HTTP1xRouterStage.showHeader = true;
+    	runWithCerts(null);
+    }
+
+	private void runWithCerts(final TLSCertificates tlsCertificates) {
+		int maxPartialResponses = 1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
     	int clientRequestSize = SSLUtil.MinTLSBlock;
-    	final TLSCertificates tlsCertificates = TLSCerts.define();
     	String bindHost = "127.0.0.1";
     	int port = (int) (3000 + (System.nanoTime()%12000));
     	int processors  = 1;
@@ -104,14 +116,13 @@ public class HTTPSRoundTripTest {
 		NetGraphBuilder.buildHTTPServerGraph(gm, modules, c.buildServerCoordinator());
 		
 		runRoundTrip(gm, results);
-    }
+	}
     
     @Test
 	public void certMatchHTTPSTest() {
     
     	final TLSCertificates tlsCertificates = TLSCerts.define();
-        
-    	
+            	
     	int maxPartialResponses=1;
     	int connectionsInBits = 6;		
     	int clientRequestCount = 4;
@@ -265,7 +276,7 @@ public class HTTPSRoundTripTest {
 		s.shutdown();
 		s.awaitTermination(10, TimeUnit.SECONDS);
 		
-		
+		assertTrue("NO RESULTS",results.toString().trim().length()>0);
 		// expecting  {"x":9,"y":17,"groovySum":26} in the payload
 
 		assertTrue(results.toString(),

@@ -267,7 +267,6 @@ public final class PoolIdx  {
         	that.locked[idx] = 0;
             return idx;
         }
-      
         return -1;
     }
     

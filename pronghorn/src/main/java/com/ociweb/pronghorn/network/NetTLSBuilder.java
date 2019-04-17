@@ -35,7 +35,6 @@ public class NetTLSBuilder {
 		Pipe<NetPayloadSchema>[] serverEncryptedOutput = Pipe.buildPipes(serverPlainOutput);
 				
 		ServerSocketReaderStage reader = new ServerSocketReaderStage(graphManager, serverReleaseAck, serverEncryptedInput, serverCoordinator);
-		GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "socket reader", reader);
 		
 		SSLEngineUnWrapStage unwrap = new SSLEngineUnWrapStage(graphManager, serverCoordinator, serverEncryptedInput, serverPlainInput, serverReleaseAck[0], serverHandshakePipe[0], true /*isServer*/);
 	    GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "socket unwrap", unwrap);

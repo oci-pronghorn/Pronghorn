@@ -59,7 +59,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
-	public final int moduleParallelism;
+	private final int moduleParallelism;
 
 	
 	public final int maxConcurrentInputs;
@@ -267,11 +267,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
                 }
         }
         
-    }
-
-	@Deprecated
-    public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
-        return that.upgradePipeLookup;
     }
     
     public static void setUpgradePipe(ServerCoordinator that, long channelId, int targetPipe) {

@@ -529,7 +529,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 		            final int size = Pipe.addMsgIdx(targetPipe, messageType); //SocketDataSchema.MSG_DATA_210 ;             
 		            Pipe.addLongValue(channelId, targetPipe);  
 		            Pipe.addLongValue(System.nanoTime(), targetPipe);
-			        Pipe.addLongValue(0, targetPipe); //hash space holder. NOTE: upgrade this
+			        Pipe.addLongValue(0, targetPipe); //TODO: hash space holder. NOTE: upgrade this
 					
 			        if (showRequests) {	        	
 			        	showRequests(targetPipe, channelId, pos, localLen);

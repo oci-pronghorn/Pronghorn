@@ -73,8 +73,7 @@ public class HTTPUtil {
 	
 	public static final TrieParser compressionEncodings = buildCompressionEncodings();
     
-	public static void publishStatus(long channelId, int sequence,
-	            					int status,
+	public static void publishStatus(long channelId, int sequence, int status,
 	            					Pipe<ServerResponseSchema> localOutput) {
 
 		int channelIdHigh = (int)(channelId>>32); 

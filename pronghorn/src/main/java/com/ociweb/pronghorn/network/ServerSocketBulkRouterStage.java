@@ -48,26 +48,6 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 	private PoolIdx responsePipeLinePool;
 	private final int tracks;
 	
-    private final class PipeLineFilter implements PoolIdxPredicate {
-		
-    	public final int groups;
-    	private int groupSize;
-    	private int okGroup;
-
-		private PipeLineFilter(int groups, int groupSize) {
-		     this.groups = groups;
-		     this.groupSize = groupSize;
-		}
-
-		public void setId(long ccId) {
-			okGroup = (int)(ccId%groups);			
-		}
-
-		@Override
-		public boolean isOk(final int i) {
-			return okGroup == (i/groupSize);
-		}
-	}
     
     public static ServerSocketBulkRouterStage newInstance(GraphManager graphManager, Pipe<SocketDataSchema> input, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, 
     		                                          ServerCoordinator coordinator) {
@@ -136,7 +116,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
     @Override
     public void startup() {
 		
-    	this.responsePipeLinePool = new PoolIdx(output.length, output.length); 	 //TODO: this is no longer needed!!!!!????
+    	this.responsePipeLinePool = new PoolIdx(output.length, 1);
              
       
     }
@@ -145,7 +125,13 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
     @Override
     public void shutdown() {
     	Pipe.publishEOF(output);  
+    	
+    //	System.out.println("LOCK STATUS:\n"+responsePipeLinePool);
+    	
     }
+    
+    boolean showLocks = false;
+    long lastTime = 0;
     
     @Override
     public void run() {
@@ -160,16 +146,16 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
     	    		this.didWorkMonitor.published();
     	    	}
     	   		
-    	   
     	        ////////////////////////////////////////
     	        ///Read from socket
     	        ////////////////////////////////////////
     	    	int iter = 1;//if no data go around one more time..
+    	    	int maxConsume = 1+(output.length>>1);//closed loop check
     	    	do {
     	    		
     	    		
     	    		
-	    	        if (Pipe.hasContentToRead(input)) { 
+	    	        if (Pipe.hasContentToRead(input) && (--maxConsume>=0)) { 
 	    	        	iter = 1;
 	       
 	    	        	//TODO: we already read but we do not knwo if we have room!!!
@@ -210,6 +196,8 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 										Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, msgIdx));
 										Pipe.releaseReadLock(input);
 									
+										showLocks = true;
+										lastTime = System.currentTimeMillis();
 									} else {
 										iter--;
 									}
@@ -226,11 +214,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 		    	        		Pipe.skipNextFragment(input);
 		    	        		//got the close end of stream message
 		    	        	}
-	    	        		
-							
 	    	        	}
-	    	    	   	    	     
-						
 	    	        }
 	    	        releasePipesForUse();//clear now so select will pick up more
 	    	        
@@ -238,7 +222,11 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 	    	        
     	    	} while (--iter>=0);
     	   
-    	    	
+//    	    	//show 10 sec after no activity.
+//    	    	if (showLocks && System.currentTimeMillis()>(lastTime+10_000)) {
+//    	    		System.out.println("LOCK STATUS:\n"+responsePipeLinePool);
+//    	    		showLocks = false;
+//    	    	}
     	 
     	 } else {
 	    	 int i = output.length;
@@ -264,15 +252,19 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 		
 		if (newBeginning) {
 			responsePipeLineIdx = beginningProcessing(cc.id, cc);
-		
-			//TODO: we may get a spin here trying to start begin multiple times if we have saturated all the connections.
-			//      Note we may need a more element way to support this, perhaps drop all connections and reset?
-			
-			if (responsePipeLineIdx >= 0) {		
+
+			if (responsePipeLineIdx >= 0) {	
+				//System.out.println("new lock "+cc.id+"  "+responsePipeLineIdx);
 				return (pumpByteChannelIntoPipe(input, cc.id, 
 						cc.getSequenceNo(), output[responsePipeLineIdx], 
 						newBeginning, cc)==1);
-			} else {			
+			} else {
+				
+				//TODO: if this happens many times in a row here we should find the oldest pipe which only has partial
+				//      data and close it, it is probably a bad client.
+				
+				
+				//unable to find an open pipe so work later...
 				return false;
 			}
 		} else {			
@@ -313,7 +305,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 			
 			//key & group to ensure connection is sent to same track
 			//linear search because the previous in cc has been replaced since we are sharing this position
-			return responsePipeLinePool.get(channelId, (int)channelId%responsePipeLinePool.groups);	
+			return responsePipeLinePool.get(channelId, 0);	
 			
 		} else {
 			
@@ -322,7 +314,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 			releasePipesForUse();
 		
 			//key & group to ensure connection is sent to same track	
-			return responsePipeLinePool.get(channelId, (int)channelId%responsePipeLinePool.groups);	
+			return responsePipeLinePool.get(channelId, 0);	
 		}
 	}
 
@@ -394,6 +386,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 			while ((!Pipe.isEmpty(a)) && Pipe.hasContentToRead(a)) {	    						
 	    		consumeReleaseMessage(a);	    		
 	    	}
+			
 		}
 	}
 
@@ -408,7 +401,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
 
 		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
-			
+			System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 			releaseIfUnused(msgIdx, Pipe.takeLong(a), Pipe.takeLong(a), -1, -1);
 			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
   
@@ -429,6 +422,8 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 	private void releaseIfUnused(int id, long idToClear, long pos, int seq, int providedPipeIdx) {
 		assert(idToClear>=0);
 				
+		//System.out.println("relase connection: "+idToClear);
+		
 		BaseConnection cc = coordinator.lookupConnectionById(idToClear);
 
 		//only release if we have a connection to be released.
@@ -445,17 +440,21 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 					
 			///////////////////////////////////////////////////
 			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-			if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx])<=pos && (Pipe.headPosition(output[pipeIdx]) == pos)) {
+			if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx])<=pos && (Pipe.headPosition(output[pipeIdx]) == pos)	) {
 	       	    releaseIdx(id, idToClear, seq, cc, pipeIdx); 	
-
+	      // 	     System.out.println("A did clear "+idToClear+"  "+pipeIdx);
+			} else {
+		//		System.out.println("A not cleared "+idToClear+"  "+pipeIdx);
 			}
 		} else {
 			int pipeIdx = (providedPipeIdx>=0) ? providedPipeIdx : PoolIdx.getIfReserved(responsePipeLinePool, idToClear);
 			if (pipeIdx!=-1) {
 				PoolIdx.release(responsePipeLinePool, idToClear, pipeIdx);
+			//	System.out.println("B did clear "+idToClear+"  "+pipeIdx);
+			} else {
+			//	System.out.println("B not cleared "+idToClear+"  "+pipeIdx);
 			}
 		}
-		
 		
 	}
 
@@ -493,6 +492,9 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
     	//keep appending messages until the channel is empty or the pipe is full
    
     	long temp = 0;
+    	
+    	//hack test
+    	Pipe.presumeRoomForWrite(targetPipe);
 
 		if (Pipe.hasRoomForWrite(targetPipe, reqPumpPipeSpace)) {
 			
@@ -612,6 +614,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 		
 		if (messageType>=0) {
 			//true if all written
+			//System.out.println("publishSingleMessage "+channelId);
 			return publishSingleMessage(targetPipe, channelId, Pipe.unstoreBlobWorkingHeadPosition(targetPipe), len);     
 
 		} else {
@@ -626,6 +629,8 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 		    		                 int pos, long remainLen) {
     	
     	while (remainLen>0 && Pipe.hasRoomForWrite(targetPipe)) {
+
+    		//System.out.println("publish to channel "+channelId);
     		
     		    int localLen = (int)Math.min(targetPipe.maxVarLen, remainLen);    		
 	            final int size = Pipe.addMsgIdx(targetPipe, messageType);               

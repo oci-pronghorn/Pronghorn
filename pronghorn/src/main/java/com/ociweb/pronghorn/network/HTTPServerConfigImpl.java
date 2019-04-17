@@ -57,8 +57,9 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	//smaller to use less memory default use
 	private int maxQueueIn = 16; ///from router to modules
 	private int maxQueueOut = 8; //from orderSuper to ChannelWriter
-
-	private int minMemoryInputPipe = 1<<12; //4Kminum input pipe.
+	
+	private int socketToParserBlocks = 4;
+	private int minMemoryInputPipe = 1<<10; //1Kminum input pipe.
 	
 	public final PipeConfigManager pcmIn;
 	public final PipeConfigManager pcmOut;
@@ -408,6 +409,10 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 		// -Djava.nio.channels.spi.SelectorProvider=sun.nio.ch.PollSelectorProvider
 		System.setProperty("java.nio.channels.spi.SelectorProvider","sun.nio.ch.PollSelectorProvider");
 		return this;
+	}
+
+	public int getSocketToParserBlocks() {
+		return socketToParserBlocks;
 	}
 
 		

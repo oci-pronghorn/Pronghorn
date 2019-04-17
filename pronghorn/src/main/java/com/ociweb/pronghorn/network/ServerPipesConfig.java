@@ -43,7 +43,7 @@ public class ServerPipesConfig {
 							 int decryptUnitsPerTrack,
 							 int concurrentChannelsPerDecryptUnit, 
 							 int partialPartsIn,  //make larger for many fragments
-							 int partsInBuffer, //full buffer from socket to parser
+							 int totalMemoryInInputBuffer, //full buffer from socket to parser
 							 int maxRequestSize, //make larger for large posts
 							 int maxResponseSize,
 							 int queueLengthIn, //router to modules
@@ -62,7 +62,7 @@ public class ServerPipesConfig {
 			maxResponseSize = (SSLUtil.MinTLSBlock);//TLS requires this larger payload size
 		}
 
-		if (partialPartsIn<8) {
+		if (partialPartsIn<2) {
 			logger.warn("network buffer is very small ({}) and server is likely to drop incoming data.",partialPartsIn);
 		}
 
@@ -120,7 +120,7 @@ public class ServerPipesConfig {
 		pcmIn.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 		pcmOut.ensureSize(ReleaseSchema.class,  releaseMsg, 0);
 
-		int blockSize = partsInBuffer/partialPartsIn;
+		int blockSize = totalMemoryInInputBuffer/partialPartsIn;
 		pcmIn.ensureSize(NetPayloadSchema.class, partialPartsIn, 
 				Math.max(maxRequestSize, 
 						 isTLS ? (Math.max(blockSize, SSLUtil.MinTLSBlock)) : blockSize				

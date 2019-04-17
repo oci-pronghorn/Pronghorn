@@ -65,7 +65,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     private TrieParserReader trieReader;
    
-    private ErrorReporter errorReporter = new ErrorReporter() {
+    private final ErrorReporter errorReporter = new ErrorReporter() {
 
 			@Override
 			public boolean sendError(long id, int errorCode) {				
@@ -365,7 +365,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 									//|| 
 									accumMessages(this, idx, Integer.MAX_VALUE, 
 											         this.inputs[idx], 
-											         this.inputChannels[idx], 2) >=0  ) {	
+											         this.inputChannels[idx], 32) >=0  ) {	
 									
 									if (this.inputLengths[idx]>0) {
 										done = false;
@@ -400,19 +400,39 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		}
     	
     	}
+    	
+    	if (needsRelease) {
+    		needsRelease = false;
+	    	int idx = releaseInputSlabPos.length;
+	    	while (--idx>=0) {
+	    		releaseIfNeeded(idx);//to pick up any we skipped.
+	    	}
+	    }
 //    	if (inputs>0) {
 //    		System.out.println("reading from: "+inputs+" room to write "+ hasRoomToWrite);
 //    	}
     }
 
+    private boolean needsRelease = false;
     public void releaseIfNeeded(int idx) {
   
     	long pos = releaseInputSlabPos[idx];
     	if (pos>=0) {
     		
+    		//HACK test, due to speed we are dropping some of these which are key to NOT hanging....
+    		//Pipe.presumeRoomForWrite(releasePipe);
+    		
+    		//TODO: this release system is broken!!
+    		
     		long limit = releaseTime[idx] 
     				    + (isMonitor() ? lingerForTemeletryConnections : lingerForBusinessConnections); //only release after 20ms of non use.
-    		if (Pipe.hasRoomForWrite(releasePipe) && System.nanoTime()>limit) {
+    		
+    		
+    		if (Pipe.hasRoomForWrite(releasePipe) 
+    				&& System.nanoTime()>limit
+    				) {
+    			
+    	//		System.out.println("release channel sent MSG_RELEASEWITHSEQ_101: "+releaseChannel[idx]);
     			
 					int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
 		
@@ -424,6 +444,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					Pipe.publishWrites(releasePipe);
 					
 					this.releaseInputSlabPos[idx]=-1;
+				
+    		} else {
+    			needsRelease = true;
     		}
     	}
 			
@@ -735,7 +758,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 								
 				that.releaseTime[idx] = arrivalTime;
 				that.releaseChannel[idx] = channel;
-				that.releaseInputSlabPos[idx] = that.inputSlabPos[idx];
+				long newPos = that.inputSlabPos[idx];
+				if (newPos!=-1) {
+					that.releaseInputSlabPos[idx] = newPos;
+				} else {
+					System.out.println("why is this -1 vvalue here??? its forcing the lock.");
+				}
 				that.releaseSequences[idx] = that.sequences[idx];
 								
 				that.inputSlabPos[idx] = -1;
@@ -1002,41 +1030,63 @@ private int parseHTTPImpl(TrieParserReader trieReader, final long channel, final
         
         DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.openOutputStream(outputPipe);      //write 2   7
       
-        int structId;
-        TrieParser headerMap;
-        
-        if (config.UNMAPPED_ROUTE != pathId) {
-        	
-        	structId = config.extractionParser(pathId).structId;
-        	assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
-            DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-          	if (!captureAllArgsFromURL(config, trieReader, pathId, writer)) {          		
-          		return sendError(trieReader, channel, idx, tempLen, tempPos);
-          	}
-                      	
-        	headerMap = config.headerParserRouteId( routeId );
-     
-        } else {
-       	
-        	structId = config.UNMAPPED_STRUCT;
-            DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
-            TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos,null);
-            
-        	headerMap = config.unmappedHeaders;
-      
-        }
-
-    	tempLen = trieReader.sourceLen;
-    	tempPos = trieReader.sourcePos;
-        int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap, -1, -2);  //  GET /hello/x?x=3 HTTP/1.1 
-        if (httpRevisionId >= 0) {         	
-        	return parseAfterRevision(trieReader, channel, idx, arrivalTime, 
-        			pathId, routeId, outputPipe, size, writer,
-        			structId, headerMap, httpRevisionId);
-        } else {
-        	return noRevisionProcessing(trieReader, channel, idx, tempLen, tempPos, outputPipe, writer, httpRevisionId);
-        }
+        return parseHTTPImpl2(trieReader, channel, idx, arrivalTime, 
+        		              tempLen, tempPos, pathId, routeId, outputPipe,
+				              size, writer);
 		
+}
+
+
+private int parseHTTPImpl2(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime,
+		int tempLen, int tempPos, final int pathId, int routeId, Pipe<HTTPRequestSchema> outputPipe, final int size,
+		DataOutputBlobWriter<HTTPRequestSchema> writer) {
+	int structId;
+	TrieParser headerMap;
+	
+	if (config.UNMAPPED_ROUTE != pathId) {
+		
+		structId = config.extractionParser(pathId).structId;
+		assert(config.getStructIdForRouteId(routeId) == structId) : "internal error";
+	    DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
+	  	if (!captureAllArgsFromURL(config, trieReader, pathId, writer)) {          		
+	  		return sendError(trieReader, channel, idx, tempLen, tempPos);
+	  	}
+	              	
+		headerMap = config.headerParserRouteId( routeId );
+    
+	} else {
+	
+		structId = config.UNMAPPED_STRUCT;
+	    DataOutputBlobWriter.tryClearIntBackData(writer,config.totalSizeOfIndexes(structId));
+	    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, config.unmappedIndexPos,null);
+	    
+		headerMap = config.unmappedHeaders;
+     
+	}
+
+	return parseHTTPImpl3(trieReader, channel, idx, arrivalTime,
+						  pathId, routeId, outputPipe, size, writer,
+						  structId, headerMap);
+}
+
+
+private int parseHTTPImpl3(TrieParserReader trieReader, final long channel, final int idx, long arrivalTime,
+		final int pathId, int routeId, Pipe<HTTPRequestSchema> outputPipe, final int size,
+		DataOutputBlobWriter<HTTPRequestSchema> writer, int structId, TrieParser headerMap) {
+	
+	int tempLen = trieReader.sourceLen;
+	int tempPos = trieReader.sourcePos;
+	int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap, -1, -2);  //  GET /hello/x?x=3 HTTP/1.1 
+	if (httpRevisionId >= 0) {         	
+		return parseAfterRevision(  trieReader, channel, idx, arrivalTime, 
+									pathId, routeId, outputPipe, size, writer,
+									structId, headerMap, httpRevisionId);
+	} else {
+		return noRevisionProcessing(trieReader, channel, idx, tempLen, tempPos,
+				                    outputPipe, writer, httpRevisionId, 
+				                    coordinator, config.revisionMap, this);
+	}
+	
 }
 
 
@@ -1064,6 +1114,7 @@ private int parseAfterRevision(TrieParserReader trieReader, final long channel, 
 		
 			headPos = serverCon.enqueueStartTime(arrivalTime);
 			
+			this.idx = idx;//for the error reporter, this is odd...
 			requestContext = parseHeaderFields(trieReader, pathId, headerMap, writer, serverCon, 
 												httpRevisionId, config,
 												errorReporter, arrivalTime, channel);  // Write 2   10 //if header is p
@@ -1117,18 +1168,19 @@ private int parseAfterRevision(TrieParserReader trieReader, final long channel, 
 }
 
 
-private int noRevisionProcessing(TrieParserReader trieReader, final long channel, final int idx, int tempLen,
+private static int noRevisionProcessing(TrieParserReader trieReader, final long channel, final int idx, int tempLen,
 		int tempPos, Pipe<HTTPRequestSchema> outputPipe, DataOutputBlobWriter<HTTPRequestSchema> writer,
-		int httpRevisionId) {
+		int httpRevisionId, ServerCoordinator coordinator, TrieParser revisionMap, HTTP1xRouterStage stage) {
+	
 	DataOutputBlobWriter.closeLowLevelField(writer);
 	Pipe.resetHead(outputPipe);
 	int result = -1;
-	if (-1==httpRevisionId && (tempLen < (config.revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) )) { //added 1 for the space which must appear after
+	if (-1==httpRevisionId && (tempLen < (revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) )) { //added 1 for the space which must appear after
 		//logger.info("need more data D");        		
 		result = NEED_MORE_DATA;    			
 	} else {
 		logger.info("bad HTTP data recieved by server, channel will be closed.");
-		sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
+		stage.sendError(trieReader, channel, idx, tempLen, tempPos, 400);	
 		
 		boolean debug = false;
 		if (debug) {
@@ -1137,7 +1189,7 @@ private int noRevisionProcessing(TrieParserReader trieReader, final long channel
 			trieReader.sourcePos = tempPos;
 			
 			StringBuilder builder = new StringBuilder();
-			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*4);
+			TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*4);
 			//logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
 		}
 		trieReader.sourceLen = 0;
@@ -1439,18 +1491,35 @@ private static int accumMessages(HTTP1xRouterStage<?, ?, ?, ?> that, final int i
 		Pipe<NetPayloadSchema> selectedInput, long inChnl, int maxIter) {
 	//data may be sent in small chunks even when we only have 1 message in flight
 
+//	if (-1 != inChnl) {
+//		System.out.println("xxxxx "+inChnl);
+//	}
+	
 	while (--maxIter>=0 && hasDataToAccum(selectedInput, inChnl)) {
 		//if the old was released or this matches or this was proposed for release we set this new current channel.
+		
 		
 		messageIdx = Pipe.takeMsgIdx(selectedInput);
 
 	    //logger.info("seen message id of {}",messageIdx);
 	    
 	    if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
+	    	long orig = inChnl;
 	    	inChnl = processPlain(that, idx, selectedInput, inChnl);
+	    //	System.out.println("yyyyy "+orig+" "+inChnl+"    "+messageIdx);
+
 	    } else {	        	
+	    	//System.out.println("yyyyy "+inChnl+"    "+messageIdx);
 	    	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {
-	    		processBegin(that, idx, selectedInput);
+	    		assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
+	    		assert(0==Pipe.releasePendingByteCount(selectedInput));
+	    		//keep this as the base for our counting of sequence
+				that.sequences[idx] = Pipe.takeInt(selectedInput);
+				
+				Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
+				//Pipe.releaseReadLock(selectedInput);
+				Pipe.readNextWithoutReleasingReadLock(selectedInput);
+				//do not return, we will go back around the while again. 
 	    	} else {
 	    		if (NetPayloadSchema.MSG_DISCONNECT_203 == messageIdx) {	 
 	    			processDisconnect(that, idx, selectedInput);	        			
@@ -1596,31 +1665,7 @@ private static void plainFreshStart(HTTP1xRouterStage that, final int idx, Pipe<
 	}
 
 
-	private static void processBegin(
-			HTTP1xRouterStage< ?, ?, ?, ?> that, 
-			final int idx, Pipe<NetPayloadSchema> selectedInput) {
-		assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
-		assert(0==Pipe.releasePendingByteCount(selectedInput));
-			     
-		     //  	  ServerCoordinator.inServerCount.incrementAndGet();
-	       // 	  ServerCoordinator.start = System.nanoTime();
-	     	  
-		//logger.info("accumulate begin");
-		//keep this as the base for our counting of sequence
-		that.sequences[idx] = Pipe.takeInt(selectedInput);
-		
-		Pipe.confirmLowLevelRead(selectedInput, SIZE_OF_BEGIN);
-		//Pipe.releaseReadLock(selectedInput);
-		Pipe.readNextWithoutReleasingReadLock(selectedInput);
-		//do not return, we will go back around the while again. 
-		
-		//releasePendingAsReadLock is not called here because
-		// both it is not needed and it is expensive for every begin
-
-	}
-
-
-    // Warning Pipe.hasContentToRead(selectedInput) must be called first.
+	// Warning Pipe.hasContentToRead(selectedInput) must be called first.
 	private static boolean hasNoActiveChannel(long inChnl) {
 		return inChnl<0;
 	}

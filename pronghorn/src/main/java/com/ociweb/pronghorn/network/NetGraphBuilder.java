@@ -39,6 +39,7 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.network.schema.SocketDataSchema;
 import com.ociweb.pronghorn.network.schema.TwitterEventSchema;
 import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
 import com.ociweb.pronghorn.network.twitter.RequestTwitterQueryStreamStage;
@@ -631,22 +632,73 @@ public class NetGraphBuilder {
 		}
 		
 		//System.out.println("selected groups:"+selectedGroups+" tracks:"+selectedTracks);
-		
+	//	return ((selectedTracks*selectedGroups)<<32)|1;
 		//change to long to return groups and tracks...
 		return (selectedGroups<<32)|selectedTracks;
 
 	}
 
 	private static void buildSocketReaderGroups(final GraphManager graphManager, final ServerCoordinator coordinator,
-			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup, Pipe<ReleaseSchema>[] acks, int groups) {
-		Pipe[][] in  = Pipe.splitPipes(groups, encryptedIncomingGroup);
-		Pipe[][] out = Pipe.splitPipes(groups, acks);
+			final Pipe<NetPayloadSchema>[] encryptedIncomingGroup, Pipe<ReleaseSchema>[] acks, int countOfSocketReaders) {
+		Pipe<NetPayloadSchema>[][] in  = Pipe.splitPipes(countOfSocketReaders, encryptedIncomingGroup);
+		Pipe<ReleaseSchema>[][] out = Pipe.splitPipes(countOfSocketReaders, acks);
 		
-		for(int x=0; x<groups; x++) {
+		long gt = computeGroupsAndTracks(coordinator.moduleParallelism(), coordinator.isTLS);		 
+		int groups = (int)((gt>>32)&Integer.MAX_VALUE);//same as count of SocketReaders
+		int tracks = (int)gt&Integer.MAX_VALUE; //tracks is count of HTTP1xRouters
+		int pipes = in[0].length/tracks; //is count of pipes together going to each parser
+		
+		
+		boolean orig = false;//tracks<=1;
+		
+		if (countOfSocketReaders<1) {
+			throw new UnsupportedOperationException();
+		}
+		
+		for(int x=0; x<countOfSocketReaders; x++) {
 					
-			ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, out[(groups-x)-1], in[x], coordinator);
-			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
-			coordinator.processNota(graphManager, readerStage);
+			if (orig) {
+				ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, out[(countOfSocketReaders-x)-1], in[x], coordinator);
+				coordinator.processNota(graphManager, readerStage);
+			} else {
+				
+				int varLen = PronghornStage.maxVarLength(encryptedIncomingGroup);
+				
+				Pipe<SocketDataSchema>[] localPipe = null;
+				
+				int routers = tracks;
+				if (tracks<1) {
+					throw new UnsupportedOperationException();
+				}
+								
+				localPipe = Pipe.buildPipes(routers, 
+						SocketDataSchema.instance.newPipeConfig(
+								pipes,
+								varLen
+								)
+						);
+				ServerSocketBulkReaderStage readerStage = new ServerSocketBulkReaderStage(graphManager, localPipe, coordinator);
+				coordinator.processNota(graphManager, readerStage);
+				Pipe<ReleaseSchema>[] localAck = out[(countOfSocketReaders-x)-1];
+				Pipe<NetPayloadSchema>[] localPayload = in[x];				
+				
+				Pipe<ReleaseSchema>[][] localOut = Pipe.splitPipes(routers, localAck);
+				Pipe<NetPayloadSchema>[][] localIn = Pipe.splitPipes(routers, localPayload);
+				
+				int r = routers;
+				while (--r>=0) {
+					ServerSocketBulkRouterStage routerStage = new ServerSocketBulkRouterStage(graphManager, localPipe[r], 
+							localOut[(routers-r)-1], 
+							localIn[r],							
+							coordinator);
+					coordinator.processNota(graphManager, routerStage);
+				}
+				
+				
+			}
+			
+			
+			
 
 		}
 	}
@@ -911,7 +963,9 @@ public class NetGraphBuilder {
 		int maxConnectionBits = 8;
 		int tracks = 1;
 		
-		int concurrentChannelsPerDecryptUnit = 8; //need large number for new requests
+		//NOTE!!  if we do not have enough decypt or input units for the number of calls from 
+		//        the browser then we can hang due to the way the Bulk reader, router work.
+		int concurrentChannelsPerDecryptUnit = 24; //need large number for new requests
 		int concurrentChannelsPerEncryptUnit = 4; //this will use a lot of memory if increased
 				
 		 //for cookies sent in

@@ -16,12 +16,18 @@ import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.network.schema.SocketDataSchema;
 import com.ociweb.pronghorn.network.schema.TwitterEventSchema;
 import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
 public class SchemaValidationTest {
 
+    @Test
+    public void messageSocketDataSchemaFROMTest() {
+    	
+        assertTrue(FROMValidation.checkSchema("/SocketData.xml", SocketDataSchema.class));
+    }
 	
     @Test
     public void messageClientNetResponseSchemaFROMTest() {
