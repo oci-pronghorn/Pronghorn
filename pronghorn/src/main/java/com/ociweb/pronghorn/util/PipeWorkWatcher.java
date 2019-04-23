@@ -69,18 +69,15 @@ public class PipeWorkWatcher {
 	    			//must bump version since we moved the head.
 	    			groupVersion[g].incrementAndGet();
 	    			
-    				boolean ok = true;
+    				final long value = 1L<<g;
+    				long old;
     				do {
-    					long value = 1L<<g;
-    					long old = workFlags.get();
+    					old = workFlags.get();
     					if ((value&old)!=0) {
-    						ok = true;
-    					} else {
-    						ok = workFlags.compareAndSet(old, old | value);
+    						break;
     					}
-    				} while(!ok);
-	    			
-    				
+    				} while(!workFlags.compareAndSet(old, old | value));
+	    		
 	    		}
 	        };
 	        
@@ -88,6 +85,7 @@ public class PipeWorkWatcher {
         }
         
 	}
+	
 
 	public static int getStartIdx(PipeWorkWatcher pww, int g) {
 		return g*pww.step;
