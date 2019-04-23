@@ -21,10 +21,10 @@ import com.ociweb.pronghorn.util.AppendableByteWriter;
 /**
  * _no-docs_
  *
- * @param <T>
- * @param <R>
- * @param <V>
- * @param <H>
+ * @param <T> content type
+ * @param <R> revisions
+ * @param <V> verbs
+ * @param <H> headers
  */
 public class SummaryModuleStage<T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
