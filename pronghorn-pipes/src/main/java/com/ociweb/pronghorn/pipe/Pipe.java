@@ -730,6 +730,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
 	/**
 	 * Bookkeeping method to track if a write is in progress to the blob.
+	 * @param <S> schema
 	 * @param pipe writing
 	 * @return boolean true if the blob is in the process of  a write.
 	 */
@@ -779,6 +780,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	/**
 	 * Check if the rate is limited from the consumer side of the pipe.
+	 * @param <S> schema
 	 * @param pipe which is rate limited
 	 * @return boolean true if consumer side is rate limited
 	 */
@@ -788,6 +790,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     /**
 	 * Check if the rate is limited from the producer side of the pipe.
+	 * @param <S> schema
 	 * @param pipe which is rate limited
 	 * @return boolean true if producer side is rate limited
      */
@@ -2628,6 +2631,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * All bytes even those not yet committed.
      *
      * @param ringBuffer
+     * @return total bytes count in content
      */
 	public static <S extends MessageSchema<S>> int bytesOfContent(Pipe<S> ringBuffer) {
 		int dif = (ringBuffer.blobMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.blobMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
@@ -2636,6 +2640,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	/**
 	 * Validate batch size is not too large
+	 * @param <S> schema
 	 * @param pipe Pipe target
 	 * @param size int batch size
 	 */
@@ -2651,6 +2656,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	/**
 	 * maximum batch size based on the Pipe configuration
 	 * 
+	 * @param <S> schema
 	 * @param pipe Pipe source
 	 * @return int max batch size
 	 */
@@ -2661,6 +2667,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	/**
 	 * maximum batch size based on pipe and must fit batches count
 	 * 
+	 * @param <S> schema
 	 * @param pipe Pipe source
 	 * @param mustFit how many batches must fit on the pipe
 	 * @return max batch size

@@ -67,6 +67,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
 	
     /**
      * Internal function only used when dependent classes want to add bounds check per method call.
+     * 
+     * @param <T> schema
      * @param that instance in use
      * @param x needed value
      */
@@ -259,6 +261,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     
     /**
      * Close field and record its length as the number of bytes consumed by the BlobWriter
+     * @param <T> schema
      * @param writer
      */
     public static <T extends MessageSchema<T>> int closeLowLevelField(DataOutputBlobWriter<T> writer) {

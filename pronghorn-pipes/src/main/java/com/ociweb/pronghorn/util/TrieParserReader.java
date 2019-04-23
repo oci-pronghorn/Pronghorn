@@ -826,7 +826,7 @@ public class TrieParserReader {
 			//System.out.println("run matched now at "+reader.pos);
 			reader.type = trie.data[reader.pos++];
 		} else {
-			//System.out.println("shoud not be called under test...");
+			//System.out.println("Should not be called under test...");
 			//TODO: this is getting called and rollback as part of branch
 			//     it has no side effect but does show up in the profiler...
 			noMatchAction(reader, trie, hasSafePoint,
@@ -1376,7 +1376,7 @@ public class TrieParserReader {
 		}
 	}
 
-	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, 
+	static int parseNumeric(final byte escapeByte, TrieParserReader reader, 
 			                         byte[] source, int sourcePos, 
 			                         long sourceLengthIn, int sourceMask, short numTypeIn) {
 

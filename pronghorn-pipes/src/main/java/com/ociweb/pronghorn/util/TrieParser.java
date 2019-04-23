@@ -103,7 +103,7 @@ public class TrieParser implements Serializable {
     
     private final boolean fixedSize;
     short[] data; 
-    private int limit = 0;
+    int limit = 0;
 
     private final int MAX_TEXT_LENGTH = 1024;
     private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(2,MAX_TEXT_LENGTH);

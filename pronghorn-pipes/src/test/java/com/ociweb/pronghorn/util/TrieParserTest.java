@@ -2604,7 +2604,6 @@ public class TrieParserTest {
 		TrieParser map = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
 											 ,true, //supports extraction
 											 true); //ignore case
-		TrieParserReader reader = new TrieParserReader();
 		
 		 map.setUTF8Value("%b ",67108863);
 		 map.setUTF8Value("/plaintext ",0);
@@ -2618,6 +2617,7 @@ public class TrieParserTest {
 		 map.setUTF8Value("/updates?queries=%b ",8);
 		 map.setUTF8Value("/fortunes ",9);
 		 		 
+		 TrieParserReader reader = new TrieParserReader();
 		 byte[] text1 = "/json ".getBytes();
 		 assertEquals(1, TrieParserReader.query(reader, map, wrapping(text1, 5), 0, text1.length, 31));
 		
