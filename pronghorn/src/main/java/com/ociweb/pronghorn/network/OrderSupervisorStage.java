@@ -234,7 +234,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private void processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
 		int blockedCount = 0;
-		while (Pipe.contentRemaining(sourcePipe)>0 && blockedCount<10) {
+		while (Pipe.contentRemaining(sourcePipe)>0 && blockedCount<4) {
 				
 			assert(Pipe.bytesReadBase(sourcePipe)>=0);
 			
@@ -244,22 +244,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    
 		    if (peekMsgId>=0 
 		    	&& ServerResponseSchema.MSG_SKIP_300!=peekMsgId 
-		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0) {
+		    	&& (channelId=Pipe.peekLong(sourcePipe, 1))>=0
+		    	) {
     	
 		    	//ensure that the channelId is not a factor of the roots found in poolMod then take the mod	    	
 		    	int myPipeIdx = (int)((channelId/pipeDivisor) % poolMod);//channel must always have the same pipe for max write speed. 
 		    	//single pipe in is split into the right destination pipes
-		    	
-//		    	Integer last = lastPipe.get(myPipeIdx);
-//		    	if (null!=last) {
-//		    		if (last.intValue()!=(int)channelId) {
-//		    			System.out.println("internal error, "+myPipeIdx+" was "+last.intValue()+" now "+channelId);
-//		    		}
-//		    	}		    	
-//		    	lastPipe.put(myPipeIdx, (int)channelId);
-//    	//System.out.println("write: "+channelId+" to pipe "+myPipeIdx+" divisor "+pipeDivisor+" mod pool "+poolMod);
-		    	
-		        if (Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize) && (log==null || Pipe.hasRoomForWrite(log))) {	
+		        if (
+		        	Pipe.hasRoomForWrite(outgoingPipes[myPipeIdx], maxOuputSize)		        	
+		        	&& (log==null || Pipe.hasRoomForWrite(log))  ) {	
 				    			        	
 			    	//only after we know that we are doing something.
 		        	if (!processInputData(sourcePipe, pipeIdx,  
@@ -271,6 +264,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	blockedCount = 0;//reset since we found some data
 		        	
 		    	} else {
+		    	//	System.out.println("no room: "+outgoingPipes[myPipeIdx]);
+		    		
 		    		//keep reading until we get N no rooms in a row. or we have no more content.
 		    		Thread.yield();
 		    		blockedCount++;
@@ -294,10 +289,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	//}
 		    }
 		}
-		//this should be flat with 16 max if we have 16 in flight?
-		//we have 1 pipe coming in with 16*592 requests but these are going to 592 different places
-		
-		//System.out.println(" blocked count "+blockedCount+" pipe idx "+pipeIdx);
+	
 	}
 
 	SequenceValidator validator = new SequenceValidator();
@@ -469,7 +461,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void finishHandshake(Pipe<NetPayloadSchema> outPipe, long channelId) {
 		BaseConnection con = socketHolder.get(channelId);			
-		if (!SSLUtil.handshakeProcessing(outPipe, con)) {
+		if (!SSLUtil.handshakeProcessingServer(outPipe, con)) {
 			//TODO: we must wait until later...
 		}
 	}
