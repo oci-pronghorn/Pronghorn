@@ -26,9 +26,11 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private int           calls;
 	private final boolean isServer;
 	private int           shutdownCount;
+	
 	private static final int     SIZE_HANDSHAKE_AND_DISCONNECT = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203)
-														+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
-
+														        +Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
+	
+	
 	private final int min = SSLUtil.MinTLSBlock;
 
 	/**
