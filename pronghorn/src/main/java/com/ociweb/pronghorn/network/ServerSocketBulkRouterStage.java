@@ -493,9 +493,6 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
    
     	long temp = 0;
     	
-    	//hack test
-    	Pipe.presumeRoomForWrite(targetPipe);
-
 		if (Pipe.hasRoomForWrite(targetPipe, reqPumpPipeSpace)) {
 			
 			//we have room so now read the data...
