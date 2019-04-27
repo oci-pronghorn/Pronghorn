@@ -5348,7 +5348,8 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe Pipe source
      * @return byte[] backing
      */
-    public static <S extends MessageSchema<S>> byte[] blob(Pipe<S> pipe) {        
+    public static <S extends MessageSchema<S>> byte[] blob(Pipe<S> pipe) { 
+    	assert(pipe.blobRing!=null);
         return pipe.blobRing;
     }
     
@@ -5522,11 +5523,9 @@ public class Pipe<T extends MessageSchema<T>> {
 		return result;
 	}
 
-	public static void markConsumerPassDone(Pipe<?> target) {
-		
-		long thisPass = target.totalWrittenFragments-target.lastFragmentCount;
-		if (thisPass>0) {
-			RunningStdDev.sample(target.fragsPerPass, thisPass);
+	public static void markConsumerPassDone(Pipe<?> target) {		
+		if (target.totalWrittenFragments>target.lastFragmentCount) {
+			RunningStdDev.sample(target.fragsPerPass, target.totalWrittenFragments-target.lastFragmentCount);
 			target.lastFragmentCount = target.totalWrittenFragments;
 		}
 	}

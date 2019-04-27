@@ -63,6 +63,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
         this.byteMask = Pipe.blobMask(pipe); 
         this.workspace = new StringBuilder(64);
         assert(this.backing!=null) : "The pipe must be init before use.";
+        if (this.backing==null) {
+        	throw new UnsupportedOperationException("Not Init...");
+        }
         
         structuredReader = new StructuredReader(this);
     }
