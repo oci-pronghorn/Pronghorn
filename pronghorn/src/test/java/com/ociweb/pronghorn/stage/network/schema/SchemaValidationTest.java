@@ -24,17 +24,15 @@ import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 public class SchemaValidationTest {
 
     @Test
-    public void messageSocketDataSchemaFROMTest() {
-    	
+    public void messageSocketDataSchemaFROMTest() {    	
         assertTrue(FROMValidation.checkSchema("/SocketData.xml", SocketDataSchema.class));
     }
 	
     @Test
-    public void messageClientNetResponseSchemaFROMTest() {
-    	
+    public void messageNetPayloadSchemaFROMTest() {    	
         assertTrue(FROMValidation.checkSchema("/NetPayload.xml", NetPayloadSchema.class));
     }
-    
+
     @Test
     public void messageNetParseAckSchemaFROMTest() {
         assertTrue(FROMValidation.checkSchema("/Release.xml", ReleaseSchema.class));

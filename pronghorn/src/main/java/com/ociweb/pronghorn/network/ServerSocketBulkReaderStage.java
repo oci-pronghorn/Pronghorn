@@ -8,7 +8,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -21,6 +23,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.SelectedKeyHashMapHolder;
 
 
 public class ServerSocketBulkReaderStage extends PronghornStage {
@@ -121,6 +124,8 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	    		//ignore, not supported on this platform
 	    	}
 			
+	    	this.selectedKeyHolder = new SelectedKeyHashMapHolder();
+			
 	        ServerCoordinator.newSocketChannelHolder(coordinator);
  
 	      
@@ -141,15 +146,13 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 				}
 	    };    
 
-//	    private SelectedKeyHashMapHolder selectedKeyHolder;
-//		private final BiConsumer keyVisitor = new BiConsumer() {
-//			@Override
-//			public void accept(Object k, Object v) {
-//				selectionKeyAction.accept((SelectionKey)k);
-//			}
-//		};
-
-		//final int waitForPipeConsume = 10;
+	    private SelectedKeyHashMapHolder selectedKeyHolder;
+		private final BiConsumer keyVisitor = new BiConsumer() {
+			@Override
+			public void accept(Object k, Object v) {
+				selectionKeyAction.accept((SelectionKey)k);
+			}
+		};
 
 	    @Override
 	    public void run() {
@@ -175,23 +178,14 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 		    	            doneSelectors.clear();
 		    	            hasRoomForMore = true; //set this up before we visit
 		    	            
-		    	         //   HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
-		    	         //   if (null!=keyMap) {
-		    	         //      keyMap.forEach(keyVisitor);
-		    	         //   } else {
+		    	            HashMap<SelectionKey, ?> keyMap = selectedKeyHolder.selectedKeyMap(selectedKeys);
+		    	            if (null!=keyMap) {
+		    	               keyMap.forEach(keyVisitor);
+		    	            } else {
 		    	         	   //fall back to old if the map can not be found.
 		    	         	   selectedKeys.forEach(selectionKeyAction);
-		    	         //  }
+		    	            }
 
-		    	    	     
-		    	            //TODO: this has reintroduced the overloading hang bug because we have no timer
-		    	            //      the change did not help that much..
-		    	            
-		    	            //TODO: restore old loop, only remove when we have consumed the data
-		    	            //      this will reduce the selection calls since nothing will repeat
-		    	            //      old data does need a timeout however to ensure we do not hang!!!
-		    	            
-		    	            
 		    	            removeDoneKeys(selectedKeys);
 		    	            
 		    	            if (!hasRoomForMore) {

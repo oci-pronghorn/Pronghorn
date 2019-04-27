@@ -50,7 +50,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
     //TODO: double check that this all works with ipv6.
     
-	private static final long lingerForBusinessConnections =     40_000_000L;
+	private static final long lingerForBusinessConnections =    100_000_000L;
 	private static final long lingerForTemeletryConnections = 2_000_000_000L;
 	
 	private static final int NO_LENGTH_DEFINED = -2;
@@ -428,9 +428,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     				    + (isMonitor() ? lingerForTemeletryConnections : lingerForBusinessConnections); //only release after 20ms of non use.
     		
     		
-    		if (Pipe.hasRoomForWrite(releasePipe) 
-    				&& System.nanoTime()>limit
-    				) {
+    		if (Pipe.hasRoomForWrite(releasePipe) && System.nanoTime()>limit ) {
     			
     	//		System.out.println("release channel sent MSG_RELEASEWITHSEQ_101: "+releaseChannel[idx]);
     			
@@ -1490,26 +1488,19 @@ private void sendRelease(long channel, final int idx) {
 private static int accumMessages(HTTP1xRouterStage<?, ?, ?, ?> that, final int idx, int messageIdx,
 		Pipe<NetPayloadSchema> selectedInput, long inChnl, int maxIter) {
 	//data may be sent in small chunks even when we only have 1 message in flight
-
-//	if (-1 != inChnl) {
-//		System.out.println("xxxxx "+inChnl);
-//	}
 	
 	while (--maxIter>=0 && hasDataToAccum(selectedInput, inChnl)) {
 		//if the old was released or this matches or this was proposed for release we set this new current channel.
-		
-		
+				
 		messageIdx = Pipe.takeMsgIdx(selectedInput);
 
 	    //logger.info("seen message id of {}",messageIdx);
 	    
 	    if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
-	    	long orig = inChnl;
+	    	
 	    	inChnl = processPlain(that, idx, selectedInput, inChnl);
-	    //	System.out.println("yyyyy "+orig+" "+inChnl+"    "+messageIdx);
-
+	
 	    } else {	        	
-	    	//System.out.println("yyyyy "+inChnl+"    "+messageIdx);
 	    	if (NetPayloadSchema.MSG_BEGIN_208 == messageIdx) {
 	    		assert(hasNoActiveChannel(that.inputChannels[idx])) : "Can not begin a new connection if one is already in progress.";        		
 	    		assert(0==Pipe.releasePendingByteCount(selectedInput));

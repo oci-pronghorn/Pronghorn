@@ -408,6 +408,7 @@ public class HTTPServerConfigImpl implements HTTPServerConfig {
 	public HTTPServerConfig disableEPoll() {
 		// -Djava.nio.channels.spi.SelectorProvider=sun.nio.ch.PollSelectorProvider
 		System.setProperty("java.nio.channels.spi.SelectorProvider","sun.nio.ch.PollSelectorProvider");
+		System.setProperty("epoll.native.enabled","false");
 		return this;
 	}
 

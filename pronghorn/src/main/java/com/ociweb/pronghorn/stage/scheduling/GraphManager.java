@@ -606,7 +606,11 @@ public class GraphManager {
 				if (0 == gm.telemetryPort) {
 					recordElapsedTime = true; //Required to see CPU allocation.
 					
-					gm.telemetryMonitor = PipeMonitorCollectorStage.attach(gm);
+					//we have no web server but but poll to the log periodically.
+					//this happens much less often so we lower the rate
+					gm.telemetryMonitor = PipeMonitorCollectorStage.attach(gm, 
+							//60 seconds       
+							60*10 * Long.valueOf(GraphManager.TELEMTRY_SERVER_RATE) );
 					gm.telemetryTimestamp = new ISOTimeFormatterLowGC(true);
 					gm.telemetryBuffer = new AppendableBuilder();		
 					
