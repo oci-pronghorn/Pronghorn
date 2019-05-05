@@ -249,7 +249,8 @@ public class PipeMonitorCollectorStage extends PronghornStage {
 	}
 	
 	public static PipeMonitorCollectorStage attach(GraphManager gm, long rate) {
-	        return attach(gm,Long.valueOf(rate),defaultMonitorRingConfig);
+		//logger.info("monitor stage rate: {}",rate);
+	    return attach(gm,Long.valueOf(rate),defaultMonitorRingConfig);
 	}
 	
 	/**

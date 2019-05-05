@@ -1,13 +1,13 @@
 package com.ociweb.pronghorn.network;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Test;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
