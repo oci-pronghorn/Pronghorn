@@ -93,12 +93,8 @@ public class ServerSocketWriterStage extends PronghornStage {
         GraphManager.addNota(graphManager, GraphManager.DOT_BACKGROUND, "lemonchiffon3", this);
         GraphManager.addNota(graphManager, GraphManager.LOAD_MERGE, GraphManager.LOAD_MERGE, this);
         //for high volume this must be on its own
-        GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
-        //TODO: can we run all these on a single thread with writer/or across??
-    
-        //NOTE:more writers are bad and slow us down but we need some...
-        
-      // GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE,  40_000L, this);
+ //       GraphManager.addNota(graphManager, GraphManager.ISOLATE, GraphManager.ISOLATE, this);
+
         
         Number dsr = graphManager.defaultScheduleRate();
         if (dsr!=null) {
@@ -354,6 +350,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    assert(Pipe.contentRemaining(input[idx])>=0);
 		    
 		} else if (NetPayloadSchema.MSG_BEGIN_208 == activeMessageId) {
+			
+			//TODO: does this happen at all?? It probably should not happen??  Any locks???
+			
 			int seqNo = Pipe.takeInt(input[idx]);
 			Pipe.confirmLowLevelRead(input[idx], Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208));
 			Pipe.releaseReadLock(input[idx]);
@@ -442,62 +441,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 			long channelId, int meta, int len) {
 		
 		ByteBuffer[] writeBuffs = Pipe.wrappedReadingDirectBuffers(pipe, meta, len);
-		
-		//only write if we do not think there is anything to "roll up"
-//		if ((!Pipe.hasContentToRead(pipe))
-//			|| 	Pipe.peekLong(pipe, 1)!=channelId
-//			||  Pipe.peekInt(pipe)!=msgIdx			
-//				) {
 
-			
-//			try {
-//				Selector s = Selector.open();
-//				//s.provider().openServerSocketChannel().socket().
-//				
-//				SelectionKey reg = writeToChannel[idx].register(s, SelectionKey.OP_WRITE);
-//				
-//				if (s.selectNow()>=0) {	//hacktest here.
+		try {//try immediate write first then store if we must
+			if (writeToChannel[idx].write(writeBuffs,0,2)==len) {
+				
+				//all wrote so clear
+				markDoneAndRelease(idx);
+				Pipe.confirmLowLevelRead(pipe, msgSize);		        
+				Pipe.releaseReadLock(pipe);
+				return;
+				
+			}			
+		} catch (IOException e) {
+			//ignore we will try again after the wait.
+			logger.trace("error attempting to write",e);
+		}
 
-            
-//            //need to use this in 10 
-//			try {
-//				writeToChannel[idx].setOption(ExtendedSocketOptions.TCP_QUICKACK, Boolean.TRUE);
-//			} catch (IOException e1) {
-//				// TODO Auto-generated catch block
-//				e1.printStackTrace();
-//			}	
-			
-			//////////////////////////////
-					try {//try immediate write first then store if we must
-						if (writeToChannel[idx].write(writeBuffs,0,2)==len) {
-							
-							//all wrote so clear
-							markDoneAndRelease(idx);
-							Pipe.confirmLowLevelRead(pipe, msgSize);		        
-							Pipe.releaseReadLock(pipe);
-							return;
-							
-						}			
-					} catch (IOException e) {
-						//ignore we will try again after the wait.
-						logger.trace("error attempting to write",e);
-					}
-			///////////////////////////
-					
-//					s.selectedKeys().removeAll(s.selectedKeys());
-//					
-//					s.close();
-//				}
-//				
-////				
-//			} catch (IOException e1) {
-//				// TODO Auto-generated catch block
-//				e1.printStackTrace();
-//			}
-//			
-			
-			
-//		}
 		
 		//only need buffer after this point so only do this work here so it happens less often
 		if (bufferChecked[idx]) {
@@ -668,31 +627,12 @@ public class ServerSocketWriterStage extends PronghornStage {
 			int bytesWritten = 0;
   
 			int localWritten = 0;
-		//	do {		 
-				
-//				int v =  writeToChannel[idx].validOps();
-//				
-//				
-//				if (0== (SelectionKey.OP_WRITE&v)) {
-//					System.out.println("found itsssss ");
-//					break;//leave if we can not write.
-//				}
-//				
-				
-				bytesWritten = writeToChannel[idx].write(source);	
-			
-		    	if (bytesWritten>0) {
-		    		localWritten += bytesWritten;
-		    	} else {
-		    	//	break;
-		    	}
-		    
-		    	//output buffer may be too small so keep writing
-		//	} while (source.hasRemaining());
-			 
-			// max 157569   260442
-	//System.out.println("single block write: "+localWritten+" bytes, has rem:"+target.hasRemaining()+" capacity:"+target.capacity()); //  179,670
-			
+					
+			bytesWritten = writeToChannel[idx].write(source);	
+		
+	    	if (bytesWritten>0) {
+	    		localWritten += bytesWritten;
+	    	}
 			if (!source.hasRemaining()) {
 				markDoneAndRelease(idx);
 			} else {
