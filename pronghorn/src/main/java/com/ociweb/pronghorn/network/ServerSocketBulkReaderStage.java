@@ -64,9 +64,8 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	        //much larger limit since nothing needs this thread back.
 	        GraphManager.addNota(graphManager, GraphManager.SLA_LATENCY, 100_000_000, this);
 	        
-	        messageType = SocketDataSchema.MSG_DATA_210;
-	        singleMessageSpace = Pipe.sizeOf(SocketDataSchema.instance, messageType);
-	        reqPumpPipeSpace = Pipe.sizeOf(SocketDataSchema.instance, messageType);
+	        
+
 	        
 	        try {//must be done early to ensure this is ready before the other stages startup.
 	        	coordinator.registerSelector(selector = Selector.open());
@@ -83,9 +82,9 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	   
 		private final static Logger logger = LoggerFactory.getLogger(ServerSocketBulkReaderStage.class);
 		
-		private final int singleMessageSpace;
-		private final int reqPumpPipeSpace;
-		private final int messageType;
+		private static final int messageType = SocketDataSchema.MSG_DATA_210;;
+		private static final int singleMessageSpace = Pipe.sizeOf(SocketDataSchema.instance, messageType);
+		private static final int reqPumpPipeSpace = Pipe.sizeOf(SocketDataSchema.instance, messageType);
 
 	    private final Pipe<SocketDataSchema>[] output;
 	
@@ -166,7 +165,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	    	    		this.didWorkMonitor.published();
 	    	    	}
 	    	   		
-	    	   
+
 	    	        ////////////////////////////////////////
 	    	        ///Read from socket
 	    	        ////////////////////////////////////////
@@ -226,39 +225,33 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 			
 			assert isRead(selection) : "only expected read"; 
 			//get the context object so we know what the channel identifier is
-			ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
-			long channelId = connectionContext.getChannelId();
+			
+			final long channelId = ((ConnectionContext)selection.attachment()).getChannelId();
 			assert(channelId>=0);
-			BaseConnection cc = coordinator.lookupConnectionById(channelId);
-
 			//logger.info("\nnew key selection in reader for connection {}",channelId);
 			
-			int targetIdx = (int)channelId%output.length;
-			
+			return processSelectionImpl(selection, channelId, 
+					                    coordinator.lookupConnectionById(channelId), 
+					                    output[(int)channelId%output.length]);
+
+		}
+
+		private boolean processSelectionImpl(SelectionKey selection, 
+											final long channelId, BaseConnection cc,
+											Pipe<SocketDataSchema> pipe) {
 			if (null != cc) {
 				if (!coordinator.isTLS) {	
+					return (pumpByteChannelIntoPipe(this, pipe, cc)==1);
 				} else {
 					handshakeTaskOrWrap(cc);
+					return (pumpByteChannelIntoPipe(this, pipe, cc)==1);
 				}		
-				
-				return processConnection2(cc, output[targetIdx]);
-			} else {
-				
-				return processClosedConnection((SocketChannel) selection.channel(), channelId, output[targetIdx]);
+			} else {				
+				return processClosedConnection((SocketChannel) selection.channel(), channelId, pipe);
 			}
-
 		}
 		
-		private boolean processConnection2(BaseConnection cc, Pipe<SocketDataSchema> outputPipe) {
-				
-			return (pumpByteChannelIntoPipe(cc.getSocketChannel(), cc.id, 
-						cc.getSequenceNo(), outputPipe, 
-						cc)==1);			
-			
-		}
-
-
-		private void handshakeTaskOrWrap(BaseConnection cc) {
+		private static void handshakeTaskOrWrap(BaseConnection cc) {
 			if (null!=cc && null!=cc.getEngine()) {
 				 HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 				 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
@@ -271,7 +264,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 		}
 		
 
-		private boolean processClosedConnection(final SocketChannel socketChannel, long channelId, Pipe<SocketDataSchema> outputPipe) {
+		private static boolean processClosedConnection(final SocketChannel socketChannel, long channelId, Pipe<SocketDataSchema> outputPipe) {
 
 			assert(validateClose(socketChannel, channelId));
 			try {
@@ -293,7 +286,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
 
-		private boolean validateClose(final SocketChannel socketChannel, final long channelId) {
+		private static boolean validateClose(final SocketChannel socketChannel, final long channelId) {
 
 			try {
 				int len = socketChannel.read(ByteBuffer.allocate(3));
@@ -351,10 +344,11 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	    private int r2; //needed by assert
 	    
 	    //returns -1 for did not start, 0 for started, and 1 for finished all.
-	    private int pumpByteChannelIntoPipe(SocketChannel sourceChannel, 
-	    		long channelId, int sequenceNo, Pipe<SocketDataSchema> outputPipe, 
-	    		BaseConnection cc) {
+	    private static int pumpByteChannelIntoPipe(
+	    		final ServerSocketBulkReaderStage that,
+	    		final Pipe<SocketDataSchema> outputPipe, final BaseConnection cc) {
 
+	    	
 	    	//keep appending messages until the channel is empty or the pipe is full
 	    	long len = 0;//if data is read then we build a record around it
 	    	ByteBuffer[] targetBuffer = null;
@@ -383,11 +377,12 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 					targetBuffer = Pipe.wrappedWritingBuffers(wrkHeadPos, 
 												outputPipe, readMaxSize);
 	                       
-	                assert(collectRemainingCount(targetBuffer));
+	                assert(that.collectRemainingCount(targetBuffer));
 	  
 	                //read as much as we can, one read is often not enough for high volume
 	                boolean isStreaming = false; //TODO: expose this switch..
 	                
+	                SocketChannel sourceChannel = cc.getSocketChannel();
 	                do {
 	                	temp = sourceChannel.read(targetBuffer);
 	                	if (temp>0){
@@ -400,16 +395,16 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	                //System.out.println(len); ServerSocketReaderStage.showRequests=true;
 	                
 	                try {    
-	    				if (null!=TCP_QUICKACK_LOCAL) {
+	    				if (null!=that.TCP_QUICKACK_LOCAL) {
 	    					//only for 10+ ExtendedSocketOptions.TCP_QUICKACK
-	    					sourceChannel.setOption(TCP_QUICKACK_LOCAL, Boolean.TRUE);
+	    					sourceChannel.setOption(that.TCP_QUICKACK_LOCAL, Boolean.TRUE);
 	    				}
 	    			} catch (IOException e1) {
 	    				//NOTE: may not be supported on on platforms so ignore this 
 	    			}	
 	        
 	                
-	                assert(readCountMatchesLength(len, targetBuffer));
+	                assert(that.readCountMatchesLength(len, targetBuffer));
 	                
 //	                if (temp<=0) {
 //	                	doneSelectors.add(selection);
@@ -418,7 +413,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 	                
 	                	
 						if (len>0) {
-							return publishData(channelId, sequenceNo, outputPipe, len, targetBuffer, true);
+							return that.publishData(cc.id, cc.getSequenceNo(), outputPipe, len, targetBuffer, true);
 						} else {
 							Pipe.unstoreBlobWorkingHeadPosition(outputPipe);
 							return 1;
@@ -432,7 +427,7 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 						//client was disconnected so release all our resources to ensure they can be used by new connections.
 	               	
 						//to abandon this must be negative.				
-						int result = abandonConnection(channelId, outputPipe, false);
+						int result = that.abandonConnection(cc.id, outputPipe, false);
 						
 	                	if (null!=cc) {
 	                		cc.close();
@@ -447,9 +442,9 @@ public class ServerSocketBulkReaderStage extends PronghornStage {
 						boolean isOpen = temp>=0;
 						int result;
 						if (len>0) {			
-							result = publishData(channelId, cc.getSequenceNo(), outputPipe, len, targetBuffer, isOpen);
+							result = that.publishData(cc.id, cc.getSequenceNo(), outputPipe, len, targetBuffer, isOpen);
 						} else {
-							result = abandonConnection(channelId, outputPipe, isOpen);
+							result = that.abandonConnection(cc.id, outputPipe, isOpen);
 						}          	
 	              	   
 						cc.clearPoolReservation(); //TODO: should this be here??

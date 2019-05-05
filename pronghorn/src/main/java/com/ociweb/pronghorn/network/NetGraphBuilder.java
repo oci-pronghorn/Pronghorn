@@ -342,7 +342,7 @@ public class NetGraphBuilder {
 													ServerFactory factory) {
 		logger.trace("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(coordinator.maxConcurrentInputs,				
-				coordinator.pcmIn.getConfig(NetPayloadSchema.class));     
+																				coordinator.pcmIn.getConfig(NetPayloadSchema.class));     
            
 		
 		long gt = computeGroupsAndTracks(coordinator.moduleParallelism(), coordinator.isTLS);
@@ -662,7 +662,7 @@ public class NetGraphBuilder {
 				coordinator.processNota(graphManager, readerStage);
 			} else {
 				
-				int varLen = PronghornStage.maxVarLength(encryptedIncomingGroup);
+				int varLen = PronghornStage.maxVarLength(encryptedIncomingGroup)>>1; //must be smaller than the outgoing pipe var
 				
 				Pipe<SocketDataSchema>[] localPipe = null;
 				
@@ -687,10 +687,11 @@ public class NetGraphBuilder {
 				
 				int r = routers;
 				while (--r>=0) {
-					ServerSocketBulkRouterStage routerStage = new ServerSocketBulkRouterStage(graphManager, localPipe[r], 
-							localOut[(routers-r)-1], 
-							localIn[r],							
-							coordinator);
+					
+					ServerSocketBulkRouterStage routerStage = ServerSocketBulkRouterStage.newInstance(graphManager, localPipe[r], 
+																									localOut[(routers-r)-1], 
+																									localIn[r],							
+																									coordinator);
 					coordinator.processNota(graphManager, routerStage);
 				}
 				

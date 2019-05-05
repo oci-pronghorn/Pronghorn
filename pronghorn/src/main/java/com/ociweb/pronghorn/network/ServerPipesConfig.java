@@ -102,16 +102,22 @@ public class ServerPipesConfig {
 	    
 	    int tracksPerGroup = maxConcurrentOutputs/groups;	    
 	    
-	    int mult = 1;	    
-	    if (0==(tracksPerGroup&0x3)) {
-	    	mult = 4;	    	
-	    } else if (0==(tracksPerGroup&0x1)) {
-	    	mult = 2;	    	
-	    }	    
-	    
-	    this.serverSocketWriters = groups*mult;
-	    
-	    
+//	    int mult = 1;	    
+//	    if (0==(tracksPerGroup%5)) {
+//	    	mult = 5;
+//	    } else if (0==(tracksPerGroup&0x3)) {
+//	    	mult = 4;	
+//	    } else if (0==(tracksPerGroup%3)) {
+//	    	mult = 3;
+//	    } else if (0==(tracksPerGroup&0x1)) {
+//	    	mult = 2;	    	
+//	    }	    
+//	    
+//	    this.serverSocketWriters = groups*mult;
+//	  System.out.println("xxxxxxxxxxxx "+this.serverSocketWriters+"   "+groups+"  "+mult+" tracksPerGroup "+tracksPerGroup);
+//	    
+	  this.serverSocketWriters = groups*tracks;
+	  
 	    //defaults which are updated by method calls
 	    this.fromRouterToModuleBlob		    = Math.max(maxRequestSize, 1<<9); //impacts post performance
 	    		
