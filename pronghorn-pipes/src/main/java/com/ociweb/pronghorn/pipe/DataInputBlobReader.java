@@ -663,7 +663,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
     //support method for direct copy
     ////
     public static <S extends MessageSchema<S>> int read(DataInputBlobReader<S> reader, byte[] b, int off, int len, int mask) {
-
+    	assert(null!=reader.backing);
+    	assert(null!=b);
+    	
         int max = bytesRemaining(reader);
         if (len > max) {
             len = max;

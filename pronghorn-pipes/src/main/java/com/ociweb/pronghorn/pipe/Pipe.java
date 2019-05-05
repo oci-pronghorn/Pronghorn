@@ -3982,7 +3982,13 @@ public class Pipe<T extends MessageSchema<T>> {
      * @return byte[] backing array
      */
     public static <S extends MessageSchema<S>> byte[] byteBackingArray(int meta, Pipe<S> pipe) {
-        return pipe.blobRingLookup[meta>>>31];
+    	int idx = (meta>>>31);
+    	
+    	if (1==idx) {
+    		new Exception("we are not fully done testing this feature").printStackTrace(); 
+    	}
+    	
+        return pipe.blobRingLookup[idx];
     }
 
     @Deprecated

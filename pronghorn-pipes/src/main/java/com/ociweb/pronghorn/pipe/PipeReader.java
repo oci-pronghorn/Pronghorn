@@ -499,7 +499,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	 int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
-    	 return pos<0 ? pipe.blobConstBuffer :  Pipe.blob((Pipe<?>) pipe);
+    	
+    	 if (pos>=0) {
+    		 return Pipe.blob((Pipe<?>) pipe);
+    	 } else {
+    		 new Exception("we are not fully done testing this feature").printStackTrace(); 
+    		 return pipe.blobConstBuffer;
+    	 }
     }
     
     public static ByteBuffer readBytes(Pipe pipe, int loc, ByteBuffer target) {
@@ -946,7 +952,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	 int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+ (OFF_MASK&loc))];
-    	 return pos<0 ? pipe.blobConstBuffer :  Pipe.blob(pipe);
+    	 if (pos>=0) {
+    		 return Pipe.blob(pipe);
+    	 } else {
+    		 new Exception("we are not fully done testing this feature").printStackTrace(); 
+    		 return pipe.blobConstBuffer;
+    	 }
     }
 
     /**
