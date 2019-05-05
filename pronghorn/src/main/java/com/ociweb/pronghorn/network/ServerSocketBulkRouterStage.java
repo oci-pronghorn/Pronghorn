@@ -158,7 +158,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 	    	        if (Pipe.hasContentToRead(input) && (--maxConsume>=0)) { 
 	    	        	iter = 1;
 	       
-	    	        	//TODO: we already read but we do not knwo if we have room!!!
+	    	        	//TODO: we already read but we do not know if we have room!!!
 	    	        	int msgIdx = Pipe.peekInt(input); 
 	    	        			
 	    	        	
@@ -175,6 +175,10 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 	    	        	} else {
 	    	 
 	    	        		if (msgIdx != -1) {
+	    	        			
+	    	        			if (msgIdx != SocketDataSchema.MSG_DATA_210) {
+	    	        				throw new UnsupportedOperationException("unknown msgId: "+msgIdx);
+	    	        			}
 	
 	    	        			long channelId = Pipe.peekLong(input, 0xFF & SocketDataSchema.MSG_DATA_210_FIELD_CONNECTIONID_201);
       	        	
@@ -254,6 +258,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 			responsePipeLineIdx = beginningProcessing(cc.id, cc);
 
 			if (responsePipeLineIdx >= 0) {	
+				assert(output[responsePipeLineIdx].maxVarLen >= input.maxVarLen) : "out: "+output[responsePipeLineIdx].maxVarLen+" in: "+input.maxVarLen;
 				//System.out.println("new lock "+cc.id+"  "+responsePipeLineIdx);
 				return (pumpByteChannelIntoPipe(input, cc.id, 
 						cc.getSequenceNo(), output[responsePipeLineIdx], 
@@ -502,7 +507,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
         	assert(channelId == channelId2) : "internal error";
         	long arrivalTime = Pipe.takeLong(input);
         	long hash = Pipe.takeLong(input);
-        	//TODO: do somehting with this hash value...
+        	//TODO: do something with this hash value...
         	ChannelReader reader = Pipe.openInputStream(input);
         	long len = reader.available();//if data is read then we build a record around it
    		    	
@@ -527,7 +532,7 @@ public class ServerSocketBulkRouterStage extends PronghornStage {
 				int wrkHeadPos = Pipe.storeBlobWorkingHeadPosition(targetPipe);
 				
 				//direct copy into target blob buffer
-				reader.readInto(Pipe.blob(targetPipe),wrkHeadPos,readMaxSize,Pipe.blobMask(targetPipe));
+				reader.readInto(Pipe.blob(targetPipe), wrkHeadPos, readMaxSize, Pipe.blobMask(targetPipe));
 
                 if (temp>=0 & cc!=null && cc.isValid() && !cc.isDisconnecting()) { 
 
